@@ -16,7 +16,6 @@ import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -29,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -40,6 +38,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.TopologyException;
@@ -192,7 +191,7 @@ public class AutoTestUtilities {
         try {
             IHazardEvent hazardEvent = hazardEventBuilder
                     .buildPolygonHazardEvent(coordinates);
-            hazardEventBuilder.addEvent(hazardEvent);
+            hazardEventBuilder.addEvent(hazardEvent, Originator.OTHER);
         } catch (InvalidGeometryException e) {
             throw new TopologyException(e.getMessage());
         }
@@ -311,12 +310,6 @@ public class AutoTestUtilities {
                         .getEmptyContext()));
     }
 
-    void setAddToPendingMode(SpatialDisplayAction.ActionIdentifier mode) {
-        SpatialDisplayAction action = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.ADD_PENDING_TO_SELECTED, mode);
-        eventBus.publishAsync(action);
-    }
-
     void changeStaticSettings(String settingsID) {
         StaticSettingsAction action = new StaticSettingsAction(
                 StaticSettingsAction.ActionType.SETTINGS_CHOSEN, settingsID);
@@ -327,17 +320,6 @@ public class AutoTestUtilities {
         CurrentSettingsAction action = new CurrentSettingsAction(settings,
                 UIOriginator.SETTINGS_MENU);
         eventBus.publishAsync(action);
-    }
-
-    void updateSelectedEventAttributes(
-            Map<String, Serializable> updatedEventAttributes) {
-        IHazardEvent selectedEvent = getSelectedEvent();
-        updatedEventAttributes.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                selectedEvent.getEventID());
-        SpatialDisplayAction displayAction = new SpatialDisplayAction(
-                SpatialDisplayAction.ActionType.UPDATE_EVENT_METADATA);
-        displayAction.setToolParameters(updatedEventAttributes);
-        eventBus.publishAsync(displayAction);
     }
 
     /*

@@ -10,7 +10,7 @@
 package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.JSONConverter;
+import gov.noaa.gsd.common.utilities.JsonConverter;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
@@ -134,7 +134,7 @@ public class ConsolePresenter extends
     /**
      * JSON converter.
      */
-    private final JSONConverter jsonConverter = new JSONConverter();
+    private final JsonConverter jsonConverter = new JsonConverter();
 
     /**
      * Map of hazard event identifiers to allowable start time ranges.

@@ -28,7 +28,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_STRING;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS;
-import gov.noaa.gsd.common.utilities.JSONConverter;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.JsonConverter;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
@@ -131,6 +132,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.icon.IconUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
@@ -270,6 +272,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           trying to be updated before being populated
  * Jul 23, 2015 4245       Chris.Golden      Simplified time zooming.
  * Apr 05, 2016 16885      Chris.Golden      Added support for boolean column values.
+ * Jul 25, 2016 19537      Chris.Golden      Changed to work with revamped context menu
+ *                                           helper.
  * </pre>
  * 
  * @author Chris.Golden
@@ -544,6 +548,30 @@ class TemporalDisplay {
      * which the megawidget should be associated.
      */
     private static final String COLUMN_NAME = "columnName";
+
+    /**
+     * Scheduler to be used to make runnables get executed on the main thread.
+     * For now, the main thread is the UI thread; when this is changed, this
+     * will be rendered obsolete, as at that point there will need to be a
+     * blocking queue of {@link Runnable} instances available to allow the new
+     * worker thread to be fed jobs. At that point, this should be replaced with
+     * an object that enqueues the <code>Runnable</code>s, probably a singleton
+     * that may be accessed by the various components in
+     * gov.noaa.gsd.viz.hazards and perhaps elsewhere.
+     */
+    @Deprecated
+    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
+
+        @Override
+        public void schedule(Runnable runnable) {
+
+            /*
+             * Since the UI thread is currently the thread being used for nearly
+             * everything, just run any asynchronous tasks there.
+             */
+            VizApp.runAsync(runnable);
+        }
+    };
 
     // Private Enumerated Types
 
@@ -1074,7 +1102,7 @@ class TemporalDisplay {
     /**
      * JSON converter.
      */
-    private final JSONConverter jsonConverter = new JSONConverter();
+    private final JsonConverter jsonConverter = new JsonConverter();
 
     /**
      * List, in the order in which to apply them, of sorts that are currently in
@@ -2737,7 +2765,7 @@ class TemporalDisplay {
     }
 
     private String settingsAsJSON() {
-        return new JSONConverter().toJson(currentSettings);
+        return jsonConverter.toJson(currentSettings);
     }
 
     /**
@@ -5713,10 +5741,11 @@ class TemporalDisplay {
      * Create the hazard menu
      */
     private void createHazardMenu() {
-        ContextMenuHelper helper = new ContextMenuHelper(presenter,
-                presenter.getSessionManager());
+        ContextMenuHelper helper = new ContextMenuHelper(
+                presenter.getSessionManager(), RUNNABLE_ASYNC_SCHEDULER);
         List<MenuItem> items = new ArrayList<>();
-        for (IContributionItem item : helper.getSelectedHazardManagementItems()) {
+        for (IContributionItem item : helper
+                .getSelectedHazardManagementItems(UIOriginator.CONSOLE)) {
             MenuItem menuItem = null;
             if (item instanceof ActionContributionItem) {
                 ActionContributionItem actionItem = (ActionContributionItem) item;

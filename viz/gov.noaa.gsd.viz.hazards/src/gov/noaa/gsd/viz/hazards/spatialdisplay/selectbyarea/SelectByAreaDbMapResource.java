@@ -27,7 +27,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.graphics.RGB;
-import org.eclipse.swt.graphics.Rectangle;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
@@ -48,7 +47,6 @@ import com.raytheon.uf.viz.core.drawables.IShadedShape;
 import com.raytheon.uf.viz.core.drawables.IWireframeShape;
 import com.raytheon.uf.viz.core.drawables.PaintProperties;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.map.IMapDescriptor;
 import com.raytheon.uf.viz.core.map.MapDescriptor;
 import com.raytheon.uf.viz.core.maps.rsc.AbstractDbMapResource;
 import com.raytheon.uf.viz.core.maps.rsc.AbstractDbMapResourceData.ColumnDefinition;
@@ -68,18 +66,19 @@ import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.io.WKBReader;
 
 /**
- * Database map resource for Hazard Services select-by-area tool. This loads
- * polygons from the maps database for a specified maps db table. This keeps
- * track of the loaded geometries and the ones selected by the user. The union
- * of these selected geometries forms the basis for a hazard polygon.
+ * Database map resource for the select-by-area tool. An instances of this class
+ * loads polygons from the maps database for a specified maps database table,
+ * and keeps track of the loaded geometries and the ones selected by the user.
+ * The union of these selected geometries forms the basis for a hazard polygon.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Dec.    2011            Bryon.Lawrence   Initial creation
- * 
+ * Date         Ticket#    Engineer        Description
+ * ------------ ---------- --------------- --------------------------
+ * Dec 2011                Bryon.Lawrence  Initial creation.
+ * Jul 25, 2016   19537    Chris.Golden    Completely revamped, adding comments
+ *                                         and cleaning up throughout.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -87,391 +86,792 @@ import com.vividsolutions.jts.io.WKBReader;
  */
 public class SelectByAreaDbMapResource extends
         AbstractDbMapResource<SelectByAreaDbMapResourceData, MapDescriptor> {
+
+    // Private Static Constants
+
+    /**
+     * RGB values for white.
+     */
+    private static final RGB RGB_COLOR_WHITE = new RGB(255, 255, 255);
+
+    /**
+     * Maps database name.
+     */
+    private static final String MAPS_DATABASE_NAME = "maps";
+
+    /**
+     * Logging mechanism.
+     */
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SelectByAreaDbMapResource.class);
 
-    protected class LabelNode {
-        private final Rectangle2D rect;
+    // Private Classes
 
+    /**
+     * Encapsulation of a label, its display bounding box, and its location.
+     */
+    private class LabelNode {
+
+        // Private Variables
+
+        /**
+         * Label text.
+         */
         private final String label;
 
+        /**
+         * Location of the label in pixels as a two-element array, the first
+         * element being the X coordinate, the second the Y coordinate.
+         */
         private final double[] location;
 
-        public LabelNode(String label, Point c, IGraphicsTarget target) {
-            this.label = label;
-            this.location = descriptor.worldToPixel(new double[] {
-                    c.getCoordinate().x, c.getCoordinate().y });
-            DrawableString ds = new DrawableString(label, null);
-            ds.font = font;
-            rect = target.getStringsBounds(ds);
-        }
-
         /**
-         * @return the rect
+         * Bounding box of the label on the display.
          */
-        public Rectangle2D getRect() {
-            return rect;
-        }
+        private final Rectangle2D boundingBox;
+
+        // Public Constructors
 
         /**
-         * @return the label
+         * Construct a standard instance.
+         * 
+         * @param label
+         *            Label text.
+         * @param coordinates
+         *            Point geometry in world units.
+         * @param target
+         *            Graphics target.
+         */
+        public LabelNode(String label, Point coordinates, IGraphicsTarget target) {
+            this.label = label;
+            this.location = getDescriptor().worldToPixel(
+                    new double[] { coordinates.getCoordinate().x,
+                            coordinates.getCoordinate().y });
+            DrawableString drawableString = new DrawableString(label, null);
+            drawableString.font = font;
+            boundingBox = target.getStringsBounds(drawableString);
+        }
+
+        // Public Methods
+
+        /**
+         * Get the label text.
+         * 
+         * @return Label text.
          */
         public String getLabel() {
             return label;
         }
 
         /**
-         * @return the location
+         * Get the location of the label.
+         * 
+         * @return Location of the label in pixels as a two-element array, the
+         *         first element being the X coordinate, the second the Y
+         *         coordinate.
          */
         public double[] getLocation() {
             return location;
         }
+
+        /**
+         * Get the bounding box of the label in pixels.
+         * 
+         * @return Bounding box of the label in pixels.
+         */
+        public Rectangle2D getBoundingBox() {
+            return boundingBox;
+        }
     }
 
     /**
-     * 
-     * Description: Query job for retrieving data from the AWIPS II geo
-     * database. Produces a wireframe shape which can then be rendered on the
-     * CAVE display. This job also buffers the individual geometries for use in
-     * Hazard Services draw-by-area operations.
-     * 
-     * <pre>
-     * 
-     * SOFTWARE HISTORY
-     * Date         Ticket#    Engineer    Description
-     * ------------ ---------- ----------- --------------------------
-     * April 01, 2013          Bryon.Lawrence      Initial creation
-     * 
-     * </pre>
-     * 
-     * @author Bryon.Lawrence
-     * @version 1.0
+     * Query job for retrieving data from the AWIPS II geo database. When run,
+     * an instance produces a wireframe shape which can then be rendered on the
+     * CAVE display. It also buffers the individual geometries for use in
+     * draw-by-area operations.
      */
     private class MapQueryJob extends Job {
 
+        // Private Static Constants
+
+        /**
+         * Maximum size of the request and result queues.
+         */
         private static final int QUEUE_LIMIT = 1;
 
+        // Public Classes
+
+        /**
+         * Request to be submitted as the query.
+         */
         public class Request {
-            Random rand = new Random(System.currentTimeMillis());
 
-            IGraphicsTarget target;
+            // Private Variables
 
-            IMapDescriptor descriptor;
+            /**
+             * Random number generator, used to generate color.
+             */
+            private final Random randomNumberGenerator = new Random(
+                    System.currentTimeMillis());
 
-            SelectByAreaDbMapResource rsc;
+            /**
+             * Graphics target.
+             */
+            private final IGraphicsTarget target;
 
-            String labelField;
+            /**
+             * Query to be submitted.
+             */
+            private final String query;
 
-            String shadingField;
+            /**
+             * Label field.
+             */
+            private final String labelField;
 
-            String query;
+            /**
+             * Shading field.
+             */
+            private final String shadingField;
 
-            Map<Object, RGB> colorMap;
+            // Public Constructors
 
-            Request(IGraphicsTarget target, IMapDescriptor descriptor,
-                    SelectByAreaDbMapResource rsc, String query,
-                    String labelField, String shadingField,
-                    Map<Object, RGB> colorMap) {
+            /**
+             * Construct a standard instance.
+             * 
+             * @param target
+             *            Graphics target.
+             * @param query
+             *            Query string.
+             * @param labelField
+             *            Label field.
+             * @param shadingField
+             *            Shading field.
+             */
+            public Request(IGraphicsTarget target, String query,
+                    String labelField, String shadingField) {
                 this.target = target;
-                this.descriptor = descriptor;
-                this.rsc = rsc;
                 this.query = query;
                 this.labelField = labelField;
                 this.shadingField = shadingField;
-                this.colorMap = colorMap;
             }
 
-            RGB getColor(Object key) {
+            // Public Methods
+
+            /**
+             * Get the color associated with the specified key.
+             * 
+             * @param key
+             *            Key for which to fetch the color.
+             * @return Color in RGB form.
+             */
+            public RGB getColor(Object key) {
+
+                /*
+                 * Create the color map if this has not been done already.
+                 */
                 if (colorMap == null) {
                     colorMap = new HashMap<Object, RGB>();
                 }
+
+                /*
+                 * Get the color from the map, creating a new one with random
+                 * values and recording it if none is found.
+                 */
                 RGB color = colorMap.get(key);
                 if (color == null) {
-                    color = new RGB(rand.nextInt(206) + 50,
-                            rand.nextInt(206) + 50, rand.nextInt(206) + 50);
+                    color = new RGB(randomNumberGenerator.nextInt(206) + 50,
+                            randomNumberGenerator.nextInt(206) + 50,
+                            randomNumberGenerator.nextInt(206) + 50);
                     colorMap.put(key, color);
                 }
 
                 return color;
             }
-        }
 
-        public class Result {
-            public IWireframeShape outlineShape;
+            // Public Methods
 
-            public List<LabelNode> labels;
+            /**
+             * Get the query submitted for this request.
+             * 
+             * @return Query submitted for this request.
+             */
+            public String getQuery() {
+                return query;
+            }
 
-            public IShadedShape shadedShape;
+            /**
+             * Get the graphics target.
+             * 
+             * @return Graphics target.
+             */
+            public IGraphicsTarget getTarget() {
+                return target;
+            }
 
-            public Map<Object, RGB> colorMap;
+            /**
+             * Get the label field.
+             * 
+             * @return Label field.
+             */
+            public String getLabelField() {
+                return labelField;
+            }
 
-            public boolean failed;
-
-            public Throwable cause;
-
-            public String query;
-
-            private Result(String query) {
-                this.query = query;
-                failed = true;
+            /**
+             * Get the shading field.
+             * 
+             * @return Shading field.
+             */
+            public String getShadingField() {
+                return shadingField;
             }
         }
 
+        /**
+         * Result of the submitted query.
+         */
+        public class Result {
+
+            // Private Variables
+
+            /**
+             * Query that was submitted and provided this result.
+             */
+            private final String query;
+
+            /**
+             * Outline shape; if <code>null</code>, the query failed.
+             */
+            private final IWireframeShape outlineShape;
+
+            /**
+             * Shaded shape; if <code>null</code>, the query failed.
+             */
+            private final IShadedShape shadedShape;
+
+            /**
+             * Labels; if <code>null</code>, the query failed.
+             */
+            private final List<LabelNode> labels;
+
+            /**
+             * Cause of failure; if <code>null</code>, there was no failure.
+             */
+            private final Throwable failureCause;
+
+            // Public Constructors
+
+            /**
+             * Construct a standard instance indicating a successful result.
+             * 
+             * @param query
+             *            Query that yielded this result.
+             * @param outlineShape
+             *            Outline shape.
+             * @param shadedShape
+             *            Shaded shape.
+             * @param labels
+             *            Labels.
+             */
+            public Result(String query, IWireframeShape outlineShape,
+                    IShadedShape shadedShape, List<LabelNode> labels) {
+                this.query = query;
+                this.outlineShape = outlineShape;
+                this.shadedShape = shadedShape;
+                this.labels = labels;
+                this.failureCause = null;
+            }
+
+            /**
+             * Construct a standard instance indicating a failed result.
+             * 
+             * @param query
+             *            Query that yielded this result.
+             * @param failureCause
+             *            Cause of the failure.
+             */
+            public Result(String query, Throwable failureCause) {
+                this.query = query;
+                this.outlineShape = null;
+                this.shadedShape = null;
+                this.labels = null;
+                this.failureCause = failureCause;
+            }
+
+            // Public Methods
+
+            /**
+             * Get the query that yielded this result.
+             * 
+             * @return Query that yielded this result.
+             */
+            public String getQuery() {
+                return query;
+            }
+
+            /**
+             * Get the outline shape.
+             * 
+             * @return Outline shape.
+             */
+            public IWireframeShape getOutlineShape() {
+                return outlineShape;
+            }
+
+            /**
+             * Get the shaded shape.
+             * 
+             * @return Shaded shape.
+             */
+            public IShadedShape getShadedShape() {
+                return shadedShape;
+            }
+
+            /**
+             * Get the labels.
+             * 
+             * @return Labels.
+             */
+            public List<LabelNode> getLabels() {
+                return labels;
+            }
+
+            /**
+             * Get the failure cause, if any.
+             * 
+             * @return Failure cause; if <code>null</code>, there was no
+             *         failure.
+             */
+            public Throwable getFailureCause() {
+                return failureCause;
+            }
+        }
+
+        // Private Variables
+
+        /**
+         * Request queue.
+         */
         private final ArrayBlockingQueue<Request> requestQueue = new ArrayBlockingQueue<Request>(
                 QUEUE_LIMIT);
 
+        /**
+         * Result queue.
+         */
         private final ArrayBlockingQueue<Result> resultQueue = new ArrayBlockingQueue<Result>(
                 QUEUE_LIMIT);
 
+        /**
+         * Flag indicating whether or not the job has been canceled.
+         */
         private boolean canceled;
 
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         */
         public MapQueryJob() {
             super("Retrieving map...");
         }
 
-        public void request(IGraphicsTarget target, IMapDescriptor descriptor,
-                SelectByAreaDbMapResource rsc, String query, String labelField,
-                String shadingField, Map<Object, RGB> colorMap) {
+        // Public Methods
+
+        /**
+         * Make a request with the specified parameters.
+         * 
+         * @param target
+         *            Graphics target.
+         * @param query
+         *            Query to be submitted.
+         * @param labelField
+         *            Label field.
+         * @param shadingField
+         *            Shading field.
+         */
+        public void request(IGraphicsTarget target, String query,
+                String labelField, String shadingField) {
+
+            /*
+             * If there is already a request in the queue, remove it. Then add
+             * this new request.
+             */
             if (requestQueue.size() == QUEUE_LIMIT) {
                 requestQueue.poll();
             }
-            requestQueue.add(new Request(target, descriptor, rsc, query,
-                    labelField, shadingField, colorMap));
+            requestQueue.add(new Request(target, query, labelField,
+                    shadingField));
 
-            this.cancel();
-            this.schedule();
+            /*
+             * Stop (if necessary) and start the job.
+             */
+            cancel();
+            schedule();
         }
 
+        /**
+         * Get the latest result.
+         * 
+         * @return Latest result.
+         */
         public Result getLatestResult() {
             return resultQueue.poll();
         }
 
-        /*
-         * (non-Javadoc)
-         * 
-         * @seeorg.eclipse.core.runtime.jobs.Job#run(org.eclipse.core.runtime.
-         * IProgressMonitor)
-         */
         @Override
         protected IStatus run(IProgressMonitor monitor) {
-            Request req = requestQueue.poll();
-            while (req != null) {
-                Result result = new Result(req.query);
+            Request request = requestQueue.poll();
+            while (request != null) {
+                Result result = null;
                 try {
+
+                    /*
+                     * Submit the query and get the result.
+                     */
                     QueryResult mappedResult = DirectDbQuery
-                            .executeMappedQuery(req.query, "maps",
-                                    QueryLanguage.SQL);
+                            .executeMappedQuery(request.getQuery(),
+                                    MAPS_DATABASE_NAME, QueryLanguage.SQL);
 
-                    // Clear the corresponding geometry map.
-                    SelectByAreaDbMapResource.this.getGeometryMap().clear();
+                    /*
+                     * Clear the geometries.
+                     */
+                    originalGeometries.clear();
 
-                    IWireframeShape newOutlineShape = req.target
-                            .createWireframeShape(false, req.descriptor, 0.0f);
-
+                    /*
+                     * Create a new labels list.
+                     */
                     List<LabelNode> newLabels = new ArrayList<LabelNode>();
 
+                    /*
+                     * Create the wireframe and shaded shapes as necessary.
+                     */
+                    IWireframeShape newOutlineShape = request.getTarget()
+                            .createWireframeShape(false, getDescriptor());
                     IShadedShape newShadedShape = null;
-                    if (req.shadingField != null) {
-                        newShadedShape = req.target.createShadedShape(false,
-                                req.descriptor.getGridGeometry(), true);
+                    if (request.getShadingField() != null) {
+                        newShadedShape = request.getTarget().createShadedShape(
+                                false, getDescriptor().getGridGeometry());
                     }
 
+                    /*
+                     * Build a JTS compiler to be used to compile the
+                     * geometries.
+                     */
                     JTSCompiler jtsCompiler = new JTSCompiler(newShadedShape,
-                            newOutlineShape, req.descriptor, PointStyle.CROSS);
+                            newOutlineShape, getDescriptor());
 
-                    List<Geometry> resultingGeoms = new ArrayList<Geometry>(
+                    /*
+                     * Iterate through the query result geometries, handling
+                     * each in turn.
+                     */
+                    List<Geometry> resultGeometries = new ArrayList<Geometry>(
                             mappedResult.getResultCount());
                     int numPoints = 0;
                     WKBReader wkbReader = new WKBReader();
-                    for (int i = 0; i < mappedResult.getResultCount(); i++) {
+                    for (int j = 0; j < mappedResult.getResultCount(); j++) {
+
+                        /*
+                         * If marked as canceled, do nothing more.
+                         */
                         if (canceled) {
                             canceled = false;
-                            result = null;
                             return Status.CANCEL_STATUS;
                         }
-                        Geometry g = null;
-                        Object obj = mappedResult.getRowColumnValue(i, 0);
-                        if (obj instanceof byte[]) {
-                            byte[] wkb = (byte[]) obj;
-                            g = wkbReader.read(wkb);
+
+                        /*
+                         * Get the geometry from the result.
+                         */
+                        Geometry geometry = null;
+                        Object geometryObject = mappedResult.getRowColumnValue(
+                                j, 0);
+                        if (geometryObject instanceof byte[]) {
+                            geometry = wkbReader.read((byte[]) geometryObject);
                         } else {
-                            statusHandler.handle(Priority.ERROR,
-                                    "Expected byte[] received "
-                                            + obj.getClass().getName() + ": "
-                                            + obj.toString() + "\n  query=\""
-                                            + req.query + "\"");
+                            statusHandler.handle(
+                                    Priority.ERROR,
+                                    "Expected byte[] but received "
+                                            + geometryObject.getClass()
+                                                    .getName() + ": "
+                                            + geometryObject.toString()
+                                            + "\n  query=\""
+                                            + request.getQuery() + "\"");
                         }
 
-                        obj = null;
-                        if (req.labelField != null) {
-                            obj = mappedResult.getRowColumnValue(i,
-                                    req.labelField.toLowerCase());
+                        /*
+                         * Get the label, if one was provided, and use it once
+                         * for each sub-geometry within the geometry.
+                         */
+                        Object labelObject = null;
+                        if (request.getLabelField() != null) {
+                            labelObject = mappedResult.getRowColumnValue(j,
+                                    request.getLabelField().toLowerCase());
                         }
+                        if ((labelObject != null) && (geometry != null)) {
 
-                        if (obj != null && g != null) {
+                            /*
+                             * Get the label string.
+                             */
                             String label;
-                            if (obj instanceof BigDecimal) {
-                                label = Double.toString(((Number) obj)
+                            if (labelObject instanceof BigDecimal) {
+                                label = Double.toString(((Number) labelObject)
                                         .doubleValue());
                             } else {
-                                label = obj.toString();
+                                label = labelObject.toString();
                             }
-                            int numGeometries = g.getNumGeometries();
-                            List<Geometry> gList = new ArrayList<Geometry>(
-                                    numGeometries);
-                            for (int polyNum = 0; polyNum < numGeometries; polyNum++) {
-                                Geometry poly = g.getGeometryN(polyNum);
-                                gList.add(poly);
-                            }
-                            // Sort polygons in g so biggest comes first.
-                            Collections.sort(gList, new Comparator<Geometry>() {
-                                @Override
-                                public int compare(Geometry g1, Geometry g2) {
-                                    return (int) Math.signum(g2.getEnvelope()
-                                            .getArea()
-                                            - g1.getEnvelope().getArea());
-                                }
-                            });
 
-                            for (Geometry poly : gList) {
-                                Point point = poly.getInteriorPoint();
+                            /*
+                             * Sort the sub-geometries of the geometry so that
+                             * they are ordered in decreasing size.
+                             */
+                            int numGeometries = geometry.getNumGeometries();
+                            List<Geometry> geometries = new ArrayList<Geometry>(
+                                    numGeometries);
+                            for (int k = 0; k < numGeometries; k++) {
+                                Geometry poly = geometry.getGeometryN(k);
+                                geometries.add(poly);
+                            }
+                            Collections.sort(geometries,
+                                    new Comparator<Geometry>() {
+                                        @Override
+                                        public int compare(Geometry g1,
+                                                Geometry g2) {
+                                            return (int) Math.signum(g2
+                                                    .getEnvelope().getArea()
+                                                    - g1.getEnvelope()
+                                                            .getArea());
+                                        }
+                                    });
+
+                            for (Geometry polygon : geometries) {
+                                Point point = polygon.getInteriorPoint();
                                 if (point.getCoordinate() != null) {
                                     LabelNode node = new LabelNode(label,
-                                            point, req.target);
+                                            point, request.getTarget());
                                     newLabels.add(node);
                                 }
                             }
                         }
 
-                        if (g != null) {
-                            numPoints += g.getNumPoints();
-                            resultingGeoms.add(g);
+                        /*
+                         * Add the number of points in the geometry to the
+                         * total, and add the geometry to the results. Also
+                         * remember its shading field if it has one.
+                         */
+                        if (geometry != null) {
+                            numPoints += geometry.getNumPoints();
+                            resultGeometries.add(geometry);
 
-                            if (req.shadingField != null) {
-                                g.setUserData(mappedResult.getRowColumnValue(i,
-                                        req.shadingField.toLowerCase()));
+                            if (request.getShadingField() != null) {
+                                geometry.setUserData(mappedResult
+                                        .getRowColumnValue(j, request
+                                                .getShadingField()
+                                                .toLowerCase()));
                             }
 
-                            // Need to make a copy. Otherwise, the geometry will
-                            // be compiled.
-                            SelectByAreaDbMapResource.this.getGeometryMap()
-                                    .add((Geometry) g.clone());
+                            /*
+                             * A copy must be made, or else the geometry will be
+                             * compiled.
+                             */
+                            originalGeometries.add((Geometry) geometry.clone());
                         }
                     }
 
+                    /*
+                     * Compile the geometries into the outline shape, and if
+                     * needed, the shaded shape as well.
+                     */
                     newOutlineShape.allocate(numPoints);
-
-                    for (Geometry g : resultingGeoms) {
+                    for (Geometry geometry : resultGeometries) {
                         RGB color = null;
-                        Object shadedField = g.getUserData();
+                        Object shadedField = geometry.getUserData();
                         if (shadedField != null) {
-                            color = req.getColor(shadedField);
+                            color = request.getColor(shadedField);
                         }
-
                         try {
-                            jtsCompiler.handle(g, color);
+                            JTSCompiler.JTSGeometryData jtsGeometryData = jtsCompiler
+                                    .createGeometryData();
+                            jtsGeometryData.setGeometryColor(color);
+                            jtsGeometryData.setPointStyle(PointStyle.CROSS);
+                            jtsCompiler.handle(geometry, jtsGeometryData);
                         } catch (VizException e) {
                             statusHandler.handle(Priority.PROBLEM,
                                     "Error reprojecting map outline", e);
                         }
                     }
-
                     newOutlineShape.compile();
-
-                    if (req.shadingField != null) {
+                    if (request.getShadingField() != null) {
                         newShadedShape.compile();
                     }
 
-                    result.outlineShape = newOutlineShape;
-                    result.labels = newLabels;
-                    result.shadedShape = newShadedShape;
-                    result.colorMap = req.colorMap;
-                    result.failed = false;
+                    /*
+                     * Put together the result, including the shapes, the
+                     * original query, and the labels.
+                     */
+                    result = new Result(request.getQuery(), newOutlineShape,
+                            newShadedShape, newLabels);
 
                 } catch (Throwable e) {
-                    result.cause = e;
+
+                    result = new Result(request.getQuery(), e);
+
                 } finally {
+
+                    /*
+                     * Throw away any previous result, and queue up this new
+                     * one. Then get the enclosing class to refresh its display.
+                     */
                     if (result != null) {
                         if (resultQueue.size() == QUEUE_LIMIT) {
                             resultQueue.poll();
                         }
                         resultQueue.add(result);
-                        req.rsc.issueRefresh();
+                        issueRefresh();
                     }
                 }
 
-                req = requestQueue.poll();
+                /*
+                 * Dequeue the next request for processing.
+                 */
+                request = requestQueue.poll();
             }
 
             return Status.OK_STATUS;
         }
 
-        /*
-         * (non-Javadoc)
-         * 
-         * @see org.eclipse.core.runtime.jobs.Job#canceling()
-         */
         @Override
         protected void canceling() {
             super.canceling();
-
             this.canceled = true;
         }
     }
 
-    // List of the original geometries.
-    private List<Geometry> geometryMap;
+    // Private Variables
 
-    // List of the selected geometries
+    /**
+     * Original geometries.
+     */
+    private final List<Geometry> originalGeometries;
+
+    /**
+     * Selected geometries.
+     */
     private List<Geometry> selectedGeometries;
 
-    // The shapes for the colored groups
-    protected ArrayList<IShadedShape> groupShapes;
+    /**
+     * Outline shape for the resource.
+     */
+    private IWireframeShape outlineShape;
 
-    public static final int NO_GROUP = -1;
+    /**
+     * Shaded shape for the resource.
+     */
+    private IShadedShape shadedShape;
 
-    protected IWireframeShape outlineShape;
+    /**
+     * Labels for the resource.
+     */
+    private List<LabelNode> labels;
 
-    protected List<LabelNode> labels;
+    /**
+     * Map of shaded fields to RGB color values.
+     */
+    private Map<Object, RGB> colorMap;
 
-    protected IShadedShape shadedShape;
+    /**
+     * Available levels.
+     */
+    private double[] levels;
 
-    protected Map<Object, RGB> colorMap;
+    /**
+     * Simple level when last checked.
+     */
+    private double lastSimpLev;
 
-    protected double[] levels;
+    /**
+     * Label field when last checked.
+     */
+    private String lastLabelField;
 
-    protected double lastSimpLev;
+    /**
+     * Shading field when last checked.
+     */
+    private String lastShadingField;
 
-    protected String lastLabelField;
-
-    protected String lastShadingField;
-
+    /**
+     * Query job to submit the request and get the result.
+     */
     private final MapQueryJob queryJob;
 
+    /**
+     * Geometry type as a string.
+     */
     protected String geometryType;
 
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param data
+     *            Data about this resource.
+     * @param loadProperties
+     *            Load properties for the resource.
+     */
     public SelectByAreaDbMapResource(SelectByAreaDbMapResourceData data,
             LoadProperties loadProperties) {
         super(data, loadProperties);
-        groupShapes = new ArrayList<IShadedShape>();
-        geometryMap = new CopyOnWriteArrayList<Geometry>();
-        selectedGeometries = new ArrayList<Geometry>();
+        originalGeometries = new CopyOnWriteArrayList<Geometry>();
+        selectedGeometries = Collections.emptyList();
         queryJob = new MapQueryJob();
     }
 
+    // Public Methods
+
     @Override
-    protected void disposeInternal() {
-        if (outlineShape != null) {
-            outlineShape.dispose();
+    public void project(CoordinateReferenceSystem crs) throws VizException {
+        super.project(crs);
+        if (this.outlineShape != null) {
+            this.outlineShape.dispose();
+            this.outlineShape = null;
         }
-
-        if (shadedShape != null) {
-            shadedShape.dispose();
+        if (this.shadedShape != null) {
+            this.shadedShape.dispose();
+            this.shadedShape = null;
         }
-
-        super.disposeInternal();
-
     }
+
+    /**
+     * Get the geometry for this layer in which the specified coordinates are
+     * found.
+     * 
+     * @param coordinates
+     *            Latitude-longitude coordinates for which to find the enclosing
+     *            geometry.
+     * @return Enclosing geometry, or <code>null</code> if no geometry encloses
+     *         the coordinates.
+     */
+    public Geometry getGeometryContainingLocation(Coordinate coordinates) {
+        Point point = new GeometryFactory().createPoint(coordinates);
+        for (Geometry geometry : originalGeometries) {
+            if (geometry.contains(point)) {
+                return geometry;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Set the currently selected geometries to those specified.
+     * 
+     * @param selectedGeometries
+     *            New selected geometries.
+     */
+    public void setSelectedGeometries(List<Geometry> selectedGeometries) {
+        this.selectedGeometries = selectedGeometries;
+    }
+
+    // Protected Methods
 
     @Override
     protected void initInternal(IGraphicsTarget target) throws VizException {
@@ -480,211 +880,158 @@ public class SelectByAreaDbMapResource extends
                 getLabelFields().toArray(new String[0]));
     }
 
-    protected String buildQuery(PixelExtent extent, double simpLev)
-            throws VizException {
-
-        Envelope env = null;
-        try {
-            Envelope e = descriptor.pixelToWorld(extent, descriptor.getCRS());
-            ReferencedEnvelope ref = new ReferencedEnvelope(e,
-                    descriptor.getCRS());
-            env = ref.transform(MapUtil.LATLON_PROJECTION, true);
-        } catch (Exception e) {
-            throw new VizException("Error transforming extent", e);
+    @Override
+    protected void disposeInternal() {
+        if (outlineShape != null) {
+            outlineShape.dispose();
         }
-
-        DecimalFormat df = new DecimalFormat("0.######");
-        String suffix = "_"
-                + StringUtils.replaceChars(df.format(simpLev), '.', '_');
-
-        String geometryField = resourceData.getGeomField() + suffix;
-
-        // get the geometry field
-        StringBuilder query = new StringBuilder("SELECT AsBinary(");
-        query.append(geometryField);
-        query.append(") as ");
-        query.append(geometryField);
-
-        // add any additional columns
-        List<String> additionalColumns = new ArrayList<String>();
-        if (resourceData.getColumns() != null) {
-            for (ColumnDefinition column : resourceData.getColumns()) {
-                query.append(", ");
-                query.append(column);
-
-                additionalColumns.add(column.getName());
-            }
+        if (shadedShape != null) {
+            shadedShape.dispose();
         }
-
-        // add the label field
-        String labelField = getCapability(LabelableCapability.class)
-                .getLabelField();
-        if (labelField != null && !additionalColumns.contains(labelField)) {
-            query.append(", ");
-            query.append(labelField);
-        }
-
-        // add the shading field
-        String shadingField = getCapability(ShadeableCapability.class)
-                .getShadingField();
-        if (shadingField != null && !additionalColumns.contains(shadingField)) {
-            query.append(", ");
-            query.append(shadingField);
-        }
-
-        // add the geometry table
-        query.append(" FROM ");
-        query.append(resourceData.getTable());
-
-        // add the geospatial constraint
-        query.append(" WHERE ");
-        query.append(getGeospatialConstraint(geometryField, env));
-
-        // add any additional constraints
-        if (resourceData.getConstraints() != null) {
-            for (String constraint : resourceData.getConstraints()) {
-                query.append(" AND ");
-                query.append(constraint);
-            }
-        }
-
-        query.append(';');
-
-        return query.toString();
-    }
-
-    /**
-     * @return
-     */
-    protected Object getGeospatialConstraint(String geometryField, Envelope env) {
-        // create the geospatial constraint from the envelope
-        String geoConstraint = String.format(
-                "%s && ST_SetSrid('BOX3D(%f %f, %f %f)'::box3d,4326)",
-                geometryField, env.getMinX(), env.getMinY(), env.getMaxX(),
-                env.getMaxY());
-        return geoConstraint;
-    }
-
-    /**
-     * @param dpp
-     * @return
-     */
-    protected double getSimpLev(double dpp) {
-        double[] levels = getLevels();
-        return levels[0];
+        super.disposeInternal();
     }
 
     @Override
-    protected void paintInternal(IGraphicsTarget aTarget,
+    protected void paintInternal(IGraphicsTarget target,
             PaintProperties paintProps) throws VizException {
         PixelExtent screenExtent = (PixelExtent) paintProps.getView()
                 .getExtent();
 
-        // compute an estimate of degrees per pixel
-        double yc = screenExtent.getCenter()[1];
-        double x1 = screenExtent.getMinX();
-        double x2 = screenExtent.getMaxX();
-        double[] c1 = descriptor.pixelToWorld(new double[] { x1, yc });
-        double[] c2 = descriptor.pixelToWorld(new double[] { x2, yc });
-        Rectangle canvasBounds = paintProps.getCanvasBounds();
-        int screenWidth = canvasBounds.width;
-        double dppX = Math.abs(c2[0] - c1[0]) / screenWidth;
+        /*
+         * Get the current simple level.
+         */
+        double simpLev = getSimpLev();
 
-        double simpLev = getSimpLev(dppX);
-
+        /*
+         * Determine whether or not the resource is labeled.
+         */
         String labelField = getCapability(LabelableCapability.class)
                 .getLabelField();
-        boolean isLabeled = labelField != null;
+        boolean isLabeled = (labelField != null);
 
+        /*
+         * Get the shading field and compile shading geometries.
+         */
         String shadingField = getCapability(ShadeableCapability.class)
                 .getShadingField();
-
-        // Draw shaded geometries...
         IShadedShape groupShape = null;
-
         if (selectedGeometries.size() > 0) {
-            groupShape = aTarget.createShadedShape(false,
-                    descriptor.getGridGeometry(), true);
+            groupShape = target.createShadedShape(false, getDescriptor()
+                    .getGridGeometry());
             JTSCompiler groupCompiler = new JTSCompiler(groupShape, null,
-                    descriptor, PointStyle.CROSS);
-
+                    getDescriptor());
+            JTSCompiler.JTSGeometryData jtsGeometryData = groupCompiler
+                    .createGeometryData();
+            jtsGeometryData.setGeometryColor(RGB_COLOR_WHITE);
+            jtsGeometryData.setPointStyle(PointStyle.CROSS);
             for (Geometry geometry : selectedGeometries) {
-                groupCompiler.handle((Geometry) geometry.clone(), new RGB(255,
-                        255, 255));
+                groupCompiler.handle((Geometry) geometry.clone(),
+                        jtsGeometryData);
             }
-
             groupShape.compile();
-
         }
 
-        boolean isShaded = isPolygonal() && shadingField != null;
+        /*
+         * Determine whether or not shading is needed.
+         */
+        boolean isShaded = (isPolygonal() && (shadingField != null));
 
-        if (simpLev < lastSimpLev
-                || (isLabeled && !labelField.equals(lastLabelField))
-                || (isShaded && !shadingField.equals(lastShadingField))
-                || lastExtent == null
-                || !lastExtent.getEnvelope().contains(
-                        clipToProjExtent(screenExtent).getEnvelope())) {
-            if (!paintProps.isZooming()) {
-                PixelExtent expandedExtent = getExpandedExtent(screenExtent);
-                String query = buildQuery(expandedExtent, simpLev);
-                queryJob.request(aTarget, descriptor, this, query, labelField,
-                        shadingField, colorMap);
-                lastExtent = expandedExtent;
-                lastSimpLev = simpLev;
-                lastLabelField = labelField;
-                lastShadingField = shadingField;
-            }
+        /*
+         * If the simple level is smaller, or the label has changed, or the
+         * shading has changed, or the extent has changed, and zooming is not
+         * occurring, submit a request for geometries.
+         */
+        if (((simpLev < lastSimpLev)
+                || (isLabeled && (labelField.equals(lastLabelField) == false))
+                || (isShaded && (shadingField.equals(lastShadingField) == false))
+                || (lastExtent == null) || (lastExtent.getEnvelope().contains(
+                clipToProjExtent(screenExtent).getEnvelope()) == false))
+                && (paintProps.isZooming() == false)) {
+            PixelExtent expandedExtent = getExpandedExtent(screenExtent);
+            String query = buildQuery(expandedExtent, simpLev);
+            queryJob.request(target, query, labelField, shadingField);
+            lastExtent = expandedExtent;
+            lastSimpLev = simpLev;
+            lastLabelField = labelField;
+            lastShadingField = shadingField;
         }
 
+        /*
+         * Get the result from the query.
+         */
         MapQueryJob.Result result = queryJob.getLatestResult();
         if (result != null) {
-            if (result.failed) {
-                lastExtent = null; // force to re-query when re-enabled
+
+            /*
+             * If the query failed, an error has occurred.
+             */
+            if (result.getFailureCause() != null) {
+                lastExtent = null;
                 throw new VizException("Error processing map query request: "
-                        + result.query, result.cause);
+                        + result.getQuery(), result.getFailureCause());
             }
+
+            /*
+             * Dispose of the outline and shaded shapes, if any, and get the new
+             * result's shapes and labels.
+             */
             if (outlineShape != null) {
                 outlineShape.dispose();
             }
-
             if (shadedShape != null) {
                 shadedShape.dispose();
             }
-            outlineShape = result.outlineShape;
-            labels = result.labels;
-            shadedShape = result.shadedShape;
-            colorMap = result.colorMap;
+            outlineShape = result.getOutlineShape();
+            shadedShape = result.getShadedShape();
+            labels = result.getLabels();
         }
 
+        /*
+         * Get the transparency component of the layer.
+         */
         float alpha = paintProps.getAlpha();
 
-        if ((groupShape != null) && (groupShape.isDrawable())) {
-            aTarget.drawShadedShape(groupShape, alpha);
+        /*
+         * Draw the group shape if one is available, and the shaded shape if
+         * available and appropriate.
+         */
+        if ((groupShape != null) && groupShape.isDrawable()) {
+            target.drawShadedShape(groupShape, alpha);
+        }
+        if ((shadedShape != null) && shadedShape.isDrawable() && isShaded) {
+            target.drawShadedShape(shadedShape, alpha);
         }
 
-        if (shadedShape != null && shadedShape.isDrawable() && isShaded) {
-            aTarget.drawShadedShape(shadedShape, alpha);
+        /*
+         * Draw the outline shape if one is available.
+         */
+        if (getCapability(OutlineCapability.class).isOutlineOn()) {
+            if ((outlineShape != null) && outlineShape.isDrawable()) {
+                target.drawWireframeShape(outlineShape,
+                        getCapability(ColorableCapability.class).getColor(),
+                        getCapability(OutlineCapability.class)
+                                .getOutlineWidth(),
+                        getCapability(OutlineCapability.class).getLineStyle());
+            } else if (outlineShape == null) {
+                issueRefresh();
+            }
         }
 
-        if (outlineShape != null && outlineShape.isDrawable()
-                && getCapability(OutlineCapability.class).isOutlineOn()) {
-            aTarget.drawWireframeShape(outlineShape,
-                    getCapability(ColorableCapability.class).getColor(),
-                    getCapability(OutlineCapability.class).getOutlineWidth(),
-                    getCapability(OutlineCapability.class).getLineStyle());
-        } else if (outlineShape == null
-                && getCapability(OutlineCapability.class).isOutlineOn()) {
-            issueRefresh();
-        }
-
+        /*
+         * If there are labels and they should be showing, draw them.
+         */
         double labelMagnification = getCapability(MagnificationCapability.class)
                 .getMagnification();
+        if ((labels != null) && isLabeled && (labelMagnification != 0)) {
 
-        if (labels != null && isLabeled && labelMagnification != 0) {
+            /*
+             * Create the font if not already done. This member variable is part
+             * of the superclass, and is disposed of by the latter if necessary,
+             * so no need to do that in this class.
+             */
             if (font == null) {
-                font = aTarget
-                        .initializeFont(aTarget.getDefaultFont().getFontName(),
+                font = target
+                        .initializeFont(target.getDefaultFont().getFontName(),
                                 (float) (10 * labelMagnification), null);
             }
             double screenToWorldRatio = paintProps.getView().getExtent()
@@ -695,33 +1042,67 @@ public class SelectByAreaDbMapResource extends
                     .getxOffset() * screenToWorldRatio;
             double offsetY = getCapability(LabelableCapability.class)
                     .getyOffset() * screenToWorldRatio;
+
+            /*
+             * Get the color to use, and the extent in which the labels must
+             * fall to be drawn.
+             */
             RGB color = getCapability(ColorableCapability.class).getColor();
             IExtent extent = paintProps.getView().getExtent();
+
+            /*
+             * Create a list to hold the drawable strings, and one to hold their
+             * extents.
+             */
             List<DrawableString> strings = new ArrayList<DrawableString>(
                     labels.size());
             List<IExtent> extents = new ArrayList<IExtent>();
+
+            /*
+             * Iterate through the labels, including any that are within the
+             * display extent but that do not intersect the previously drawn
+             * labels with the same text.
+             */
             String lastLabel = null;
             for (LabelNode node : labels) {
-                if (extent.contains(node.location)) {
-                    DrawableString string = new DrawableString(node.label,
+                if (extent.contains(node.getLocation())) {
+
+                    /*
+                     * Construct the drawable.
+                     */
+                    DrawableString string = new DrawableString(node.getLabel(),
                             color);
-                    string.setCoordinates(node.location[0] + offsetX,
-                            node.location[1] - offsetY);
+                    string.setCoordinates(node.getLocation()[0] + offsetX,
+                            node.getLocation()[1] - offsetY);
                     string.font = font;
                     string.horizontalAlignment = HorizontalAlignment.CENTER;
                     string.verticallAlignment = VerticalAlignment.MIDDLE;
                     boolean add = true;
 
+                    /*
+                     * Get the drawable's extent.
+                     */
                     IExtent strExtent = new PixelExtent(
-                            node.location[0],
-                            node.location[0]
-                                    + (node.rect.getWidth() * screenToWorldRatio),
-                            node.location[1], node.location[1]
-                                    + ((node.rect.getHeight() - node.rect
-                                            .getY()) * screenToWorldRatio));
+                            node.getLocation()[0],
+                            node.getLocation()[0]
+                                    + (node.getBoundingBox().getWidth() * screenToWorldRatio),
+                            node.getLocation()[1],
+                            node.getLocation()[1]
+                                    + ((node.getBoundingBox().getHeight() - node
+                                            .getBoundingBox().getY()) * screenToWorldRatio));
 
-                    if (lastLabel != null && lastLabel.equals(node.label)) {
-                        // check intersection of extents
+                    /*
+                     * If this label has the same text as the previous one,
+                     * iterate through any saved extents of previous ones with
+                     * the same text in order to determine if this new label's
+                     * extent intersects any of them. If it does, do not draw
+                     * the label. If this label is not the same as the previous
+                     * one, clear the saved extents, as no comparison to labels
+                     * that have different text should be done the next time
+                     * around.
+                     */
+                    if ((lastLabel != null)
+                            && lastLabel.equals(node.getLabel())) {
                         for (IExtent ext : extents) {
                             if (ext.intersects(strExtent)) {
                                 add = false;
@@ -731,40 +1112,38 @@ public class SelectByAreaDbMapResource extends
                     } else {
                         extents.clear();
                     }
-                    lastLabel = node.label;
+
+                    /*
+                     * Remember this label for next time, and its extent.
+                     */
+                    lastLabel = node.getLabel();
                     extents.add(strExtent);
 
+                    /*
+                     * Add the label if appropriate.
+                     */
                     if (add) {
                         strings.add(string);
                     }
                 }
             }
 
-            aTarget.drawStrings(strings);
+            target.drawStrings(strings);
         }
     }
 
     @Override
-    public void project(CoordinateReferenceSystem crs) throws VizException {
-        super.project(crs);
-
-        if (this.outlineShape != null) {
-            outlineShape.dispose();
-            this.outlineShape = null;
-        }
-
-        if (this.shadedShape != null) {
-            shadedShape.dispose();
-            this.shadedShape = null;
-        }
-    }
-
-    /**
-     * @return the levels
-     */
     protected double[] getLevels() {
+
+        /*
+         * Get the levels if they are not cached.
+         */
         if (levels == null) {
             try {
+
+                /*
+                 * Put together the levels query and submit it.
+                 */
                 int p = resourceData.getTable().indexOf('.');
                 String schema = resourceData.getTable().substring(0, p);
                 String table = resourceData.getTable().substring(p + 1);
@@ -776,10 +1155,13 @@ public class SelectByAreaDbMapResource extends
                 query.append("' AND f_geometry_column LIKE '");
                 query.append(resourceData.getGeomField());
                 query.append("_%';");
+                List<Object[]> results = DirectDbQuery
+                        .executeQuery(query.toString(), MAPS_DATABASE_NAME,
+                                QueryLanguage.SQL);
 
-                List<Object[]> results = DirectDbQuery.executeQuery(
-                        query.toString(), "maps", QueryLanguage.SQL);
-
+                /*
+                 * Get the results and interpret them as floating point numbers.
+                 */
                 levels = new double[results.size()];
                 int i = 0;
                 for (Object[] obj : results) {
@@ -788,6 +1170,10 @@ public class SelectByAreaDbMapResource extends
                             '_', '.');
                     levels[i++] = Double.parseDouble(s);
                 }
+
+                /*
+                 * Sort the levels in increasing order.
+                 */
                 Arrays.sort(levels);
             } catch (VizException e) {
                 statusHandler.handle(Priority.PROBLEM,
@@ -798,9 +1184,18 @@ public class SelectByAreaDbMapResource extends
         return levels;
     }
 
+    @Override
     protected String getGeometryType() {
+
+        /*
+         * Get the geometry type if it is not cached.
+         */
         if (geometryType == null) {
             try {
+
+                /*
+                 * Put together the query and submit it.
+                 */
                 int p = resourceData.getTable().indexOf('.');
                 String schema = resourceData.getTable().substring(0, p);
                 String table = resourceData.getTable().substring(p + 1);
@@ -810,9 +1205,13 @@ public class SelectByAreaDbMapResource extends
                 query.append("' AND f_table_name='");
                 query.append(table);
                 query.append("' LIMIT 1;");
-                List<Object[]> results = DirectDbQuery.executeQuery(
-                        query.toString(), "maps", QueryLanguage.SQL);
+                List<Object[]> results = DirectDbQuery
+                        .executeQuery(query.toString(), MAPS_DATABASE_NAME,
+                                QueryLanguage.SQL);
 
+                /*
+                 * Get the type from the result.
+                 */
                 geometryType = (String) results.get(0)[0];
             } catch (Throwable e) {
                 statusHandler.handle(Priority.PROBLEM,
@@ -823,47 +1222,149 @@ public class SelectByAreaDbMapResource extends
         return geometryType;
     }
 
+    @Override
     protected boolean isLineal() {
         return getGeometryType().endsWith("LINESTRING");
     }
 
+    @Override
     protected boolean isPolygonal() {
         return getGeometryType().endsWith("POLYGON");
     }
 
-    public Geometry clickOnExistingGeometry(Coordinate aLatLon) {
+    // Private Methods
 
-        Point p = new GeometryFactory().createPoint(aLatLon);
+    /**
+     * Build the query to be submitted to get the geometries.
+     * 
+     * @param extent
+     *            Pixel extent for which the query should apply.
+     * @param simpLev
+     *            Simple (first) level.
+     * @return Query string.
+     * @throws VizException
+     *             If an error occurs when attempting to transform the extent to
+     *             latitude-longitude coordinates.
+     */
+    private String buildQuery(PixelExtent extent, double simpLev)
+            throws VizException {
 
-        for (Geometry g : geometryMap) {
-            if (g.contains(p)) {
-                return g;
+        /*
+         * Transform the provided extent to latitude-longitude coordinates.
+         */
+        Envelope envelope = null;
+        try {
+            Envelope e = getDescriptor().pixelToWorld(extent,
+                    descriptor.getCRS());
+            ReferencedEnvelope ref = new ReferencedEnvelope(e, getDescriptor()
+                    .getCRS());
+            envelope = ref.transform(MapUtil.LATLON_PROJECTION, true);
+        } catch (Exception e) {
+            throw new VizException("Error transforming extent", e);
+        }
+
+        /*
+         * Put together the geometry field from the geometry field and the
+         * simple level.
+         */
+        DecimalFormat decimalFormat = new DecimalFormat("0.######");
+        String suffix = "_"
+                + StringUtils.replaceChars(decimalFormat.format(simpLev), '.',
+                        '_');
+        String geometryField = resourceData.getGeomField() + suffix;
+
+        /*
+         * Ensure the query gets the geometry field.
+         */
+        StringBuilder query = new StringBuilder("SELECT AsBinary(");
+        query.append(geometryField);
+        query.append(") as ");
+        query.append(geometryField);
+
+        /*
+         * Ensure the query gets any additional columns from the resource data.
+         */
+        List<String> additionalColumns = new ArrayList<String>();
+        if (resourceData.getColumns() != null) {
+            for (ColumnDefinition column : resourceData.getColumns()) {
+                query.append(", ");
+                query.append(column);
+                additionalColumns.add(column.getName());
             }
         }
-        return null;
-    }
 
-    public void setSelectedGeometries(List<Geometry> selectedGeometries) {
-        this.selectedGeometries = selectedGeometries;
-    }
+        /*
+         * Ensure the query fetches the label field.
+         */
+        String labelField = getCapability(LabelableCapability.class)
+                .getLabelField();
+        if (labelField != null && !additionalColumns.contains(labelField)) {
+            query.append(", ");
+            query.append(labelField);
+        }
 
-    public List<Geometry> getSelectedGeometries() {
-        return selectedGeometries;
+        /*
+         * Ensure the query fetches the shading field.
+         */
+        String shadingField = getCapability(ShadeableCapability.class)
+                .getShadingField();
+        if (shadingField != null && !additionalColumns.contains(shadingField)) {
+            query.append(", ");
+            query.append(shadingField);
+        }
+
+        /*
+         * Indicate that the query should get these from the geometry table.
+         */
+        query.append(" FROM ");
+        query.append(resourceData.getTable());
+
+        /*
+         * Add the geospatial constraint on the results.
+         */
+        query.append(" WHERE ");
+        query.append(getGeospatialConstraint(geometryField, envelope));
+
+        /*
+         * Add any additional constraints.
+         */
+        if (resourceData.getConstraints() != null) {
+            for (String constraint : resourceData.getConstraints()) {
+                query.append(" AND ");
+                query.append(constraint);
+            }
+        }
+
+        query.append(';');
+        return query.toString();
     }
 
     /**
-     * @param geometryMap
-     *            the geometryMap to set
+     * Get the specified envelope as a geospatial constraint on the specified
+     * geometry field.
+     * 
+     * @param geometryField
+     *            Field to be constrained.
+     * @param envelope
+     *            Envelope describing the geospatial bounds to be used.
+     * @return Query-ready geospatial constraint description.
      */
-    public void setGeometryMap(List<Geometry> geometryMap) {
-        this.geometryMap = geometryMap;
+    private String getGeospatialConstraint(String geometryField,
+            Envelope envelope) {
+        String geoConstraint = String.format(
+                "%s && ST_SetSrid('BOX3D(%f %f, %f %f)'::box3d,4326)",
+                geometryField, envelope.getMinX(), envelope.getMinY(),
+                envelope.getMaxX(), envelope.getMaxY());
+        return geoConstraint;
     }
 
     /**
-     * @return the geometryMap
+     * Get the simple (first) level.
+     * 
+     * @return Simple level.
      */
-    public List<Geometry> getGeometryMap() {
-        return geometryMap;
+    private double getSimpLev() {
+        double[] levels = getLevels();
+        return levels[0];
     }
-
 }

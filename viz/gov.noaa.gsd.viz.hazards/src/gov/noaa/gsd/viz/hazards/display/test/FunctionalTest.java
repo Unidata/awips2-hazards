@@ -13,7 +13,6 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
-import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.ContextMenuCreator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
@@ -30,12 +29,6 @@ import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.Presenter;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.IAction;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -307,9 +300,9 @@ public abstract class FunctionalTest<E extends Enum<E>> {
         sb.append(e.getMessage());
         sb.append("\n");
         if (e.getCause() != null) {
-            sb.append(Utils.stackTraceAsString(e.getCause()));
+            sb.append(Utils.getStackTraceAsString(e.getCause()));
         } else {
-            sb.append(Utils.stackTraceAsString(e));
+            sb.append(Utils.getStackTraceAsString(e));
         }
         fail(sb.toString());
     }
@@ -366,20 +359,6 @@ public abstract class FunctionalTest<E extends Enum<E>> {
             eventBus.publish(new TestCompleted(StopTesting.class));
         }
 
-    }
-
-    protected List<String> convertContextMenuToString(List<IAction> actions) {
-        List<String> contextMenu = new ArrayList<>();
-        for (IAction action : actions) {
-            if (action instanceof Action) {
-                Action a = (Action) action;
-                ContextMenuCreator cc = (ContextMenuCreator) a.getMenuCreator();
-                contextMenu.addAll(cc.menuItemTexts());
-            } else {
-                contextMenu.add(action.getText());
-            }
-        }
-        return contextMenu;
     }
 
     public static class StopTesting {

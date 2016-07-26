@@ -224,6 +224,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      the same CAVE session, since stopping and starting the Jep
  *                                      instances when the latter use numpy is dangerous.
  * Jun 23, 2016 19537      Chris.Golden Changed to use new parameter for merging hazard events.
+ * Jul 25, 2016 19537      Chris.Golden Changed to use new originator parameter for setting geometry resolution
+ *                                      of hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -728,7 +730,8 @@ public class SessionProductManager implements ISessionProductManager {
          * Just terminate ongoing operation and return if there is nothing to
          * do.
          */
-        if (!eventManager.setLowResolutionGeometriesVisibleForSelectedEvents()) {
+        if (!eventManager
+                .setLowResolutionGeometriesVisibleForSelectedEvents(Originator.OTHER)) {
             setPreviewOrIssueOngoing(issue, false);
             return false;
         }
@@ -1494,7 +1497,8 @@ public class SessionProductManager implements ISessionProductManager {
     private EventSet<IEvent> buildEventSet(
             ProductGeneratorInformation productGeneratorInformation,
             boolean issue, String locMgrSite) {
-        if (eventManager.setLowResolutionGeometriesVisibleForSelectedEvents() == false) {
+        if (eventManager
+                .setLowResolutionGeometriesVisibleForSelectedEvents(Originator.OTHER) == false) {
             return null;
         }
 

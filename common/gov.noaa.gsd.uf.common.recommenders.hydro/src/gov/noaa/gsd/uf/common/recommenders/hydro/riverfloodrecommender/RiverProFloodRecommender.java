@@ -58,6 +58,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug 20, 2015 9387       Robert.Blum       Fixed UFN where the endTime would get
  *                                           incorrectly set after it was correctly set.
  * Jun 23, 2016 19537      Chris.Golden      Removed spatial info parameter from method.
+ * Jul 25, 2016 19537      Chris.Golden      Moved constant definition to HazardConstants.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -72,12 +73,6 @@ public class RiverProFloodRecommender {
      * recommendation.
      */
     private static final String INCLUDE_NONFLOOD_POINTS = "includeNonFloodPoints";
-
-    /**
-     * Key value for in dialogInputMap for single point workflow
-     * 
-     */
-    private static final String SELECTED_POINT_ID = "selectedPointID";
 
     /**
      * Represents the first character of a river flow PE.
@@ -235,7 +230,8 @@ public class RiverProFloodRecommender {
             boolean includeNonFloodPoints, Map<String, Object> dialogInputMap) {
         EventSet<IHazardEvent> potentialRiverEventSet = new EventSet<IHazardEvent>();
 
-        String pointID = (String) dialogInputMap.get(SELECTED_POINT_ID);
+        String pointID = (String) dialogInputMap
+                .get(HazardConstants.SELECTED_POINT_ID);
 
         RecommenderData recommenderData = getRecommenderData();
 

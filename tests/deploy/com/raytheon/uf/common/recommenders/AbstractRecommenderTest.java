@@ -108,16 +108,4 @@ public abstract class AbstractRecommenderTest {
         }
         return null;
     }
-
-    public Map<String, Serializable> getSpatialInfo(String name) {
-        try {
-            if (engine.getInventory(name) != null) {
-                return engine.getSpatialInfo(name);
-            }
-        } catch (Throwable t) {
-            fail("Could not run get dialog info " + t);
-        }
-        return null;
-    }
-
 }

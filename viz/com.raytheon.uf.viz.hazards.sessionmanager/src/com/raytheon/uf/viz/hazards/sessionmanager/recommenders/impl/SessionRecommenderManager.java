@@ -87,6 +87,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      recommendations if the recommender is run
  *                                      automatically in response to an event
  *                                      changing, etc.
+ * Jul 25, 2016   19537    Chris.Golden Fixed bug that manifested itself when a
+ *                                      null dialog info was provided by a
+ *                                      recommender, causing an exception.
  * </pre>
  * 
  * @author Chris.Golden
@@ -246,12 +249,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 .getDialogInfo(recommenderIdentifier, eventSet);
         if (((visualFeatures != null) && (visualFeatures.isEmpty() == false))
                 || ((dialogDescription != null) && (dialogDescription.isEmpty() == false))) {
-            if (visualFeatures.isEmpty() == false) {
+            if ((visualFeatures != null) && (visualFeatures.isEmpty() == false)) {
                 messenger.getToolParameterGatherer().getToolSpatialInput(
                         recommenderIdentifier, ToolType.RECOMMENDER, context,
                         visualFeatures);
             }
-            if (dialogDescription.isEmpty() == false) {
+            if ((dialogDescription != null)
+                    && (dialogDescription.isEmpty() == false)) {
                 dialogDescription.put(HazardConstants.FILE_PATH_KEY,
                         recommenderEngine.getInventory(recommenderIdentifier)
                                 .getFile().getFile().getPath());

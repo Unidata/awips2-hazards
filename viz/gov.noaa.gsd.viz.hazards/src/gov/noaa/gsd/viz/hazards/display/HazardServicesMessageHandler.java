@@ -7,7 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EVENT_ID_DISPLAY_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
@@ -17,19 +16,15 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NATIONAL;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.product.ReviewAction;
 import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -48,10 +43,7 @@ import net.engio.mbassy.listener.Handler;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
@@ -71,7 +63,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
@@ -83,6 +74,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
 /**
@@ -223,6 +215,10 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Jun 06, 2016 19432      Chris.Golden       Added ability to initiate drawing of lines and
  *                                            points.
  * Jun 23, 2016 19537      Chris.Golden       Removed storm-track-specific code.
+ * Jul 25, 2016 19537      Chris.Golden       Removed a bunch of session-manager-manipulating
+ *                                            code that belongs in the spatial presenter or the
+ *                                            session manager, in the continuing quest to shrink
+ *                                            this class down.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -265,15 +261,15 @@ public final class HazardServicesMessageHandler {
      * 
      * @param appBuilder
      *            A reference to the Hazard Services app builder
+     * @param settings
+     *            Settings with which to start; if <code>null</code>, the
+     *            default settings for the current perspective are used.
      * @param currentTime
      *            The current time, based on the CAVE current time.
-     * @param state
-     *            Saved session state to initialize this session from the
-     *            previous session.
      * 
      */
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
-            Date currentTime) {
+            ObservedSettings settings, Date currentTime) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
         this.sessionProductManager = sessionManager.getProductManager();
@@ -293,7 +289,12 @@ public final class HazardServicesMessageHandler {
                     .getInstance().getCurrentSite());
         }
 
-        String staticSettingID = getSettingForCurrentPerspective();
+        /*
+         * Use the settings that was passed in if one was provided, otherwise
+         * use the one that is the default for this perspective.
+         */
+        String staticSettingID = (settings == null ? getSettingForCurrentPerspective()
+                : settings.getSettingsID());
 
         sessionConfigurationManager.changeSettings(staticSettingID,
                 Originator.OTHER);
@@ -330,24 +331,8 @@ public final class HazardServicesMessageHandler {
     /**
      * Shuts down the Hazard Services session.
      */
-    private void closeHazardServices() {
-        appBuilder.dispose();
-    }
-
-    /**
-     * This method is called when events are deleted. This operation can only be
-     * performed on Pending or Proposed events.
-     * 
-     * @param eventIDs
-     *            Identifiers of events to be deleted.
-     */
-    private void deleteEvent(Collection<ObservedHazardEvent> events) {
-        statusHandler.debug("HazardServicesMessageHandler: deleteEvent: "
-                + events);
-
-        sessionEventManager.removeEvents(events, null);
-
-        appBuilder.hideHazardDetail();
+    void dispose() {
+        eventBus.unsubscribe(this);
     }
 
     /**
@@ -446,9 +431,6 @@ public final class HazardServicesMessageHandler {
                 Long.valueOf(selectedTimeStart_ms),
                 Long.valueOf(selectedTimeEnd_ms));
         sessionTimeManager.setSelectedTime(selectedRange, UIOriginator.CONSOLE);
-        appBuilder.notifyModelChanged(
-                EnumSet.of(HazardConstants.Element.SELECTED_TIME_RANGE),
-                UIOriginator.CONSOLE);
     }
 
     /**
@@ -459,31 +441,6 @@ public final class HazardServicesMessageHandler {
         TimeRange visibleRange = new TimeRange(startTime, endTime);
         sessionTimeManager.setVisibleTimeRange(visibleRange,
                 UIOriginator.CONSOLE);
-    }
-
-    /**
-     * Set the add to selected mode as specified.
-     * 
-     * @param state
-     *            New state of the add-to-selected mode.
-     */
-    private void setAddToSelected(SpatialDisplayAction.ActionIdentifier state) {
-        sessionConfigurationManager.getSettings().setAddToSelected(
-                state.equals(SpatialDisplayAction.ActionIdentifier.ON));
-    }
-
-    /**
-     * Set the add geometry to selected mode as specified.
-     * 
-     * @param state
-     *            New state of the add-geometry-to-selected mode.
-     * @return
-     */
-    private void setAddGeometryToSelected(
-            SpatialDisplayAction.ActionIdentifier state) {
-        sessionConfigurationManager.getSettings().setAddGeometryToSelected(
-                state.equals(SpatialDisplayAction.ActionIdentifier.ON));
-
     }
 
     /**
@@ -646,79 +603,6 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Handles the selection from the right click context menu on the Hazard
-     * Services Spatial Display.
-     * 
-     * @param label
-     *            The label of the selected menu item.
-     */
-    private void handleContextMenuSelection(String label) {
-        if (label
-                .equals(ContextMenuHelper.ContextMenuSelections.PROPOSE_ALL_SELECTED_HAZARDS
-                        .getValue())) {
-            changeSelectedEventsToProposedState(null);
-        } else if (label.equals(HazardConstants.CONTEXT_MENU_DELETE_VERTEX)) {
-            appBuilder.modifyShape(HazardServicesDrawingAction.DELETE_VERTEX);
-        } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_VERTEX)) {
-            appBuilder.modifyShape(HazardServicesDrawingAction.ADD_VERTEX);
-        } else if (label
-                .equals(ContextMenuHelper.ContextMenuSelections.DELETE_ALL_SELECTED_HAZARDS
-                        .getValue())) {
-            deleteEvent(sessionEventManager.getSelectedEvents());
-        } else if (label
-                .contains(HazardConstants.CONTEXT_MENU_HAZARD_INFORMATION_DIALOG)) {
-            /*
-             * Save off any changes the user has made in the HID. Otherwise,
-             * this would be lost when selecting different events.
-             */
-            appBuilder.showHazardDetail();
-        } else if (label
-                .contains(ContextMenuHelper.ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
-                        .getValue())) {
-            removeEventsWithState(HazardConstants.HazardStatus.POTENTIAL
-                    .getValue());
-        } else if (label.equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
-            appBuilder.loadGeometryOverlayForSelectedEvent();
-        } else if (label.equals(HazardConstants.CONTEXT_MENU_SEND_TO_BACK)) {
-            sessionEventManager
-                    .sortEvents(SessionEventManager.SEND_SELECTED_BACK);
-        } else if (label.equals(HazardConstants.CONTEXT_MENU_BRING_TO_FRONT)) {
-            sessionEventManager
-                    .sortEvents(SessionEventManager.SEND_SELECTED_FRONT);
-        } else if (label
-                .equals(HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS)) {
-            sessionEventManager
-                    .setHighResolutionGeometriesVisibleForSelectedEvents();
-
-        } else if (label
-                .equals(HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_SELECTED_EVENTS)) {
-            sessionEventManager
-                    .setLowResolutionGeometriesVisibleForSelectedEvents();
-
-        } else if (label
-                .equals(HazardConstants.CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT)) {
-            sessionEventManager
-                    .setHighResolutionGeometryVisibleForCurrentEvent();
-
-        } else if (label
-                .equals(HazardConstants.CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT)) {
-            sessionEventManager
-                    .setLowResolutionGeometryVisibleForCurrentEvent();
-
-        } else {
-            throw new IllegalArgumentException("Unexpected label " + label);
-        }
-    }
-
-    private void removeEventsWithState(String stateValue) {
-        HazardStatus state = HazardStatus.valueOf(stateValue.toUpperCase());
-        for (ObservedHazardEvent event : sessionEventManager
-                .getEventsByStatus(state)) {
-            sessionEventManager.removeEvent(event, null);
-        }
-    }
-
-    /**
      * Changes the state of an event to "Issued".
      */
     private void setIssuedState() {
@@ -798,44 +682,11 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Handles an undo action from the Console.
-     * 
-     * @param
-     * @return
-     */
-    private void handleUndoAction() {
-        this.sessionManager.undo();
-    }
-
-    /**
-     * Handles a redo action from the Console.
-     * 
-     * @param
-     * @return
-     */
-    private void handleRedoAction() {
-        this.sessionManager.redo();
-    }
-
-    /**
      * Update the visible time delta.
      */
     void updateConsoleVisibleTimeDelta() {
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.VISIBLE_TIME_DELTA));
-    }
-
-    /**
-     * Request that a mouse handler be loaded.
-     * 
-     * @param mouseHandler
-     *            Mouse handler to be loaded.
-     * @param args
-     *            Additional optional arguments.
-     */
-    private void requestMouseHandler(HazardServicesMouseHandlers mouseHandler,
-            String... args) {
-        appBuilder.requestMouseHandler(mouseHandler, args);
     }
 
     /**
@@ -915,129 +766,53 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * This will no longer be needed once presenters listen directly for session
-     * events.
+     * Respond to the settings being modified.
+     * 
+     * @param change
+     *            Change that occurred.
+     * @deprecated This method will go away once the
+     *             {@link HazardServicesAppBuilder} and this class are merged
+     *             into an app controller, and <code>notifyModelChanged()</code>
+     *             is no longer used anywhere.
      */
-    @Handler
+    @Handler(priority = 1)
     @Deprecated
-    public void settingsModified(final SettingsModified notification) {
+    public void settingsModified(final SettingsModified change) {
+
+        /*
+         * Tell the app builder about the change. The method being invoked will
+         * eventually be a @Handler itself, and will not need to be called here
+         * anymore.
+         */
+        appBuilder.settingsModified(change);
+
+        /*
+         * Notify of model changed the obsolete way.
+         */
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CURRENT_SETTINGS));
     }
 
     /**
-     * Handle a received spatial display action. This method is called
-     * implicitly by the event bus when actions of this type are sent across the
-     * latter.
+     * Respond to the selected time being modified.
      * 
-     * @param spatialDisplayAction
-     *            Action received.
+     * @param change
+     *            Change that occurred.
+     * @deprecated This method will go away once the
+     *             {@link HazardServicesAppBuilder} and this class are merged
+     *             into an app controller, and <code>notifyModelChanged()</code>
+     *             is no longer used anywhere.
      */
-    @Handler
-    public void spatialDisplayActionOccurred(
-            final SpatialDisplayAction spatialDisplayAction) {
-        SpatialDisplayAction.ActionType actionType = spatialDisplayAction
-                .getActionType();
-        statusHandler.debug("SpatialDisplayActionOccurred actionType: "
-                + actionType);
-        switch (actionType) {
-        case ADD_PENDING_TO_SELECTED:
-            setAddToSelected(spatialDisplayAction.getActionIdentifier());
-            break;
+    @Handler(priority = 1)
+    @Deprecated
+    public void selectedTimeChanged(final SelectedTimeChanged change) {
 
-        case ADD_GEOMETRY_TO_SELECTED:
-            setAddGeometryToSelected(spatialDisplayAction.getActionIdentifier());
-
-        case DRAWING:
-            switch (spatialDisplayAction.getActionIdentifier()) {
-
-            case SELECT_EVENT:
-                requestMouseHandler(HazardServicesMouseHandlers.SINGLE_SELECTION);
-                break;
-
-            case DRAW_POLYGON:
-                appBuilder.getSpatialPresenter().setEditInProgress(false);
-                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
-                        GeometryType.POLYGON.getValue());
-                break;
-
-            case DRAW_LINE:
-                appBuilder.getSpatialPresenter().setEditInProgress(false);
-                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
-                        GeometryType.LINE.getValue());
-                break;
-
-            case DRAW_POINT:
-                appBuilder.getSpatialPresenter().setEditInProgress(false);
-                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
-                        GeometryType.POINT.getValue());
-                break;
-
-            case EDIT_POLYGON:
-                appBuilder.getSpatialPresenter().setEditInProgress(true);
-                requestMouseHandler(HazardServicesMouseHandlers.VERTEX_DRAWING,
-                        GeometryType.LINE.getValue());
-                break;
-
-            case DRAW_FREE_HAND_POLYGON:
-                appBuilder.getSpatialPresenter().setEditInProgress(false);
-                requestMouseHandler(
-                        HazardServicesMouseHandlers.FREEHAND_DRAWING,
-                        GeometryType.POLYGON.getValue());
-                break;
-
-            case EDIT_POLYGON_FREE_HAND:
-                appBuilder.getSpatialPresenter().setEditInProgress(true);
-                requestMouseHandler(
-                        HazardServicesMouseHandlers.FREEHAND_DRAWING,
-                        GeometryType.POLYGON.getValue());
-                break;
-
-            case SELECT_BY_AREA:
-                String tableName = spatialDisplayAction.getMapsDbTableName();
-                String displayName = spatialDisplayAction.getLegendName();
-                requestMouseHandler(HazardServicesMouseHandlers.DRAW_BY_AREA,
-                        tableName, displayName);
-                break;
-
-            default:
-                break;
-
-            }
-            break;
-
-        case CONTEXT_MENU_SELECTED:
-            String label = spatialDisplayAction.getContextMenuLabel();
-            handleContextMenuSelection(label);
-            break;
-
-        case DISPLAY_DISPOSED:
-            eventBus.unsubscribe(this);
-            closeHazardServices();
-            break;
-
-        case FRAME_CHANGED:
-            appBuilder.sendFrameInformationToSessionManager();
-            break;
-
-        case UPDATE_EVENT_METADATA:
-            updateEventData(spatialDisplayAction.getToolParameters(), true,
-                    spatialDisplayAction.getOriginator());
-            break;
-
-        case UNDO:
-            handleUndoAction();
-            break;
-
-        case REDO:
-            handleRedoAction();
-            break;
-
-        default:
-            throw new UnsupportedOperationException(String.format(
-                    "ActionType %s not handled", actionType));
-        }
-
+        /*
+         * Tell the app builder about the change. The method being invoked will
+         * eventually be a @Handler itself, and will not need to be called here
+         * anymore.
+         */
+        appBuilder.selectedTimeChanged(change);
     }
 
     /**
@@ -1122,8 +897,7 @@ public final class HazardServicesMessageHandler {
             break;
 
         case CLOSE:
-            eventBus.unsubscribe(this);
-            closeHazardServices();
+            appBuilder.dispose();
             break;
 
         case RUN_AUTOMATED_TESTS:
@@ -1466,27 +1240,6 @@ public final class HazardServicesMessageHandler {
         }
 
         return userSelection;
-    }
-
-    /**
-     * Update Hazard Event Id Display Type on Settings change.
-     * 
-     * This method should be run before refreshing Console and Spatial displays.
-     * 
-     */
-    private void reloadHazardServidesEventId() {
-        ISettings currentSettings = sessionManager.getConfigurationManager()
-                .getSettings();
-        String eventIdDisplayTypeString = sessionManager
-                .getConfigurationManager().getSettingsValue(
-                        EVENT_ID_DISPLAY_TYPE, currentSettings);
-
-        if ((eventIdDisplayTypeString != null)
-                && (eventIdDisplayTypeString.isEmpty() == false)) {
-            HazardServicesEventIdUtil
-                    .setIdDisplayType(HazardServicesEventIdUtil.IdDisplayType
-                            .valueOf(eventIdDisplayTypeString));
-        }
     }
 
     /**

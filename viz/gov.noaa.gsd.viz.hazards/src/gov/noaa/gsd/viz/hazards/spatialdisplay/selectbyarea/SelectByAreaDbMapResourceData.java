@@ -13,27 +13,23 @@ import com.raytheon.uf.viz.core.maps.rsc.AbstractDbMapResourceData;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 
 /**
- * Constructs an SelectByAreaDbMapResource object. Based upon RTS code written
- * by Ron Anderson
+ * Select by area database map resource data, providing information about the
+ * select by area database map resource.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * November 2011           Bryon.Lawrence    Initial creation
- * 
+ * Date         Ticket#     Engineer        Description
+ * ------------ ---------- ---------------- --------------------------
+ * Nov 2011                 Bryon.Lawrence  Initial creation.
  * </pre>
  * 
  * @author Bryon.Lawrence
  * @version 1.0
  */
-
 public class SelectByAreaDbMapResourceData extends AbstractDbMapResourceData {
 
-    public SelectByAreaDbMapResourceData() {
-        super();
-    }
+    // Public Methods
 
     @Override
     public SelectByAreaDbMapResource construct(LoadProperties loadProperties,

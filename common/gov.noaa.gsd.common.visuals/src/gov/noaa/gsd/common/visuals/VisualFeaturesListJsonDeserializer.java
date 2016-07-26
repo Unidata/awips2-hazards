@@ -75,6 +75,9 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                      value for label text in visual features,
  *                                      as well as support for new topmost and
  *                                      symbol shape properties of visual features.
+ * Jul 25, 2016   19537    Chris.Golden Added support for new fill style and
+ *                                      allow-drag-of-points-in-multi-geometries
+ *                                      flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -292,6 +295,18 @@ class VisualFeaturesListJsonDeserializer {
                                     VisualFeaturesListJsonConverter.KEY_BORDER_STYLE);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_FILL_STYLE,
+                    new IPropertyDeserializer<FillStyle>() {
+
+                        @Override
+                        public FillStyle deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeFillStyle(
+                                    node,
+                                    identifier,
+                                    VisualFeaturesListJsonConverter.KEY_FILL_STYLE);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_DIAMETER,
                     new IPropertyDeserializer<Double>() {
 
@@ -390,6 +405,18 @@ class VisualFeaturesListJsonDeserializer {
                                     node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_DRAGGABILITY);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE,
+                    new IPropertyDeserializer<Boolean>() {
+
+                        @Override
+                        public Boolean deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeBoolean(
+                                    node,
+                                    identifier,
+                                    VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_ROTATABLE,
@@ -522,6 +549,16 @@ class VisualFeaturesListJsonDeserializer {
                             visualFeature.setBorderStyle(value);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_FILL_STYLE,
+                    new IPropertyAssigner<FillStyle>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<FillStyle> value,
+                                VisualFeature visualFeature) {
+                            visualFeature.setFillStyle(value);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_DIAMETER,
                     new IPropertyAssigner<Double>() {
 
@@ -600,6 +637,17 @@ class VisualFeaturesListJsonDeserializer {
                                 TemporallyVariantProperty<DragCapability> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setDragCapability(value);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE,
+                    new IPropertyAssigner<Boolean>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<Boolean> value,
+                                VisualFeature visualFeature) {
+                            visualFeature
+                                    .setMultiGeometryPointsDraggable(value);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_ROTATABLE,
@@ -925,6 +973,11 @@ class VisualFeaturesListJsonDeserializer {
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<BorderStyle>) deserializer,
                         (IPropertyAssigner<BorderStyle>) assigner);
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_FILL_STYLE)) {
+                deserializeAndAssignProperty(node, visualFeature, name,
+                        (IPropertyDeserializer<FillStyle>) deserializer,
+                        (IPropertyAssigner<FillStyle>) assigner);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
@@ -1638,6 +1691,34 @@ class VisualFeaturesListJsonDeserializer {
             String identifier, String propertyName) throws JsonParseException {
         String description = node.getTextValue();
         BorderStyle style = BorderStyle.getInstance(description);
+        if (style == null) {
+            throw createValueDeserializationException(
+                    identifier,
+                    propertyName,
+                    "one of: "
+                            + Joiner.on(", ").join(
+                                    BorderStyle.getDescriptions()), node, null);
+        }
+        return style;
+    }
+
+    /**
+     * Deserialize the specified node as a fill style.
+     * 
+     * @param node
+     *            Node to be deserialized.
+     * @param identifier
+     *            Identifier of the visual feature that is being deserialized.
+     * @param propertyName
+     *            Name of the property for which a value is being deserialized.
+     * @return Border style.
+     * @throws JsonParseException
+     *             If an error occurs during deserialization.
+     */
+    private static FillStyle deserializeFillStyle(JsonNode node,
+            String identifier, String propertyName) throws JsonParseException {
+        String description = node.getTextValue();
+        FillStyle style = FillStyle.getInstance(description);
         if (style == null) {
             throw createValueDeserializationException(
                     identifier,

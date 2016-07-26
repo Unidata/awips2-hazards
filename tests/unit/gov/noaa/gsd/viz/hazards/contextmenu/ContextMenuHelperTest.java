@@ -13,6 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.ContextMenuSelections;
 
 import java.util.ArrayList;
@@ -26,9 +27,11 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
 /**
  * Description: Test of {@link ContextMenuHelper}
@@ -63,8 +66,14 @@ public class ContextMenuHelperTest {
         eventManager = mock(ISessionEventManager.class);
         when(eventManager.getSelectedEvents()).thenReturn(events);
         when(sessionManager.getEventManager()).thenReturn(eventManager);
-        contextMenuHelper = new ContextMenuHelper(null, sessionManager);
+        contextMenuHelper = new ContextMenuHelper(sessionManager,
+                new IRunnableAsynchronousScheduler() {
 
+                    @Override
+                    public void schedule(Runnable runnable) {
+                        VizApp.runAsync(runnable);
+                    }
+                });
     }
 
     @Test
@@ -206,7 +215,7 @@ public class ContextMenuHelperTest {
 
     private List<String> buildSelections() {
         List<IContributionItem> items = contextMenuHelper
-                .getSelectedHazardManagementItems();
+                .getSelectedHazardManagementItems(Originator.OTHER);
         List<String> selections = selectionsFromItems(items);
         return selections;
     }
@@ -225,7 +234,7 @@ public class ContextMenuHelperTest {
         when(eventManager.getSelectedEvents()).thenReturn(
                 Collections.EMPTY_LIST);
         List<IContributionItem> items = contextMenuHelper
-                .getSelectedHazardManagementItems();
+                .getSelectedHazardManagementItems(Originator.OTHER);
         assertEquals(items.size(), 0);
     }
 }

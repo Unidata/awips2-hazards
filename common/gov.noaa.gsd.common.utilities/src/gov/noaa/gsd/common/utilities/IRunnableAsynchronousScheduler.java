@@ -14,6 +14,14 @@ package gov.noaa.gsd.common.utilities;
  * class to be considered an asynchronous scheduler of {@link Runnable} objects.
  * Implementations allow arbitrary <code>Runnable</code>s to be scheduled to run
  * asynchronously.
+ * <p>
+ * TODO: A subclass is needed that allows the use of {@link GetterRunnable}
+ * methods, perhaps a <code>call(GetterRunnable)</code> method that returns an
+ * object of generic type <code>R</code> from <code>GetterRunnable</code>. Note
+ * that this will mean that the main worker thread will need to allow not just
+ * scheduling of asynchronous runnables, but also blocking calls that wait for
+ * the runnable to be executed and then return the result.
+ * </p>
  * 
  * <pre>
  * SOFTWARE HISTORY

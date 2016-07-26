@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import gov.noaa.gsd.common.utilities.Utils;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -23,7 +25,7 @@ import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Puntal;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
@@ -64,6 +66,13 @@ import com.vividsolutions.jts.io.WKBWriter;
  * Jun 23, 2016   19537    Chris.Golden Added ability to use "as event" as a
  *                                      value for label text. Also added new
  *                                      topmost and symbol shape properties.
+ * Jul 25, 2015   19537    Chris.Golden Changed spatial entity creation methods
+ *                                      to work with immutable entities; added
+ *                                      fill style property; and added flag that
+ *                                      allows multi-geometry visual features
+ *                                      to avoid allowing dragging of their
+ *                                      point sub-geometries even if drag
+ *                                      capability would otherwise allow it.
  * </pre>
  * 
  * @author Chris.Golden
@@ -348,6 +357,11 @@ public class VisualFeature implements Serializable {
     public static final BorderStyle DEFAULT_BORDER_STYLE = BorderStyle.SOLID;
 
     /**
+     * Default fill style.
+     */
+    public static final FillStyle DEFAULT_FILL_STYLE = FillStyle.SOLID;
+
+    /**
      * Default diameter.
      */
     public static final double DEFAULT_DIAMETER = 5.0;
@@ -382,6 +396,12 @@ public class VisualFeature implements Serializable {
      * Default drag capability.
      */
     public static final DragCapability DEFAULT_DRAG_CAPABILITY = DragCapability.NONE;
+
+    /**
+     * Default draggable flag for {@link Puntal} geometries that are part of
+     * collections of multiple geometries.
+     */
+    public static final boolean DEFAULT_MULTI_GEOMETRY_POINTS_DRAGGABLE = true;
 
     /**
      * Default rotatable flag.
@@ -464,6 +484,19 @@ public class VisualFeature implements Serializable {
                 Date time) {
             TemporallyVariantProperty<BorderStyle> property = visualFeature
                     .getBorderStyle();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
+     * Fill style fetcher.
+     */
+    private static final IPropertyFetcher<FillStyle> FILL_STYLE_FETCHER = new IPropertyFetcher<FillStyle>() {
+
+        @Override
+        public FillStyle getPropertyValue(VisualFeature visualFeature, Date time) {
+            TemporallyVariantProperty<FillStyle> property = visualFeature
+                    .getFillStyle();
             return (property == null ? null : property.getProperty(time));
         }
     };
@@ -589,6 +622,19 @@ public class VisualFeature implements Serializable {
     };
 
     /**
+     * Draggable points within multi-geometry collection flag fetcher.
+     */
+    private static final IPropertyFetcher<Boolean> MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER = new IPropertyFetcher<Boolean>() {
+
+        @Override
+        public Boolean getPropertyValue(VisualFeature visualFeature, Date time) {
+            TemporallyVariantProperty<Boolean> property = visualFeature
+                    .getMultiGeometryPointsDraggable();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
      * Scaleable flag fetcher.
      */
     private static final IPropertyFetcher<Boolean> SCALEABLE_FETCHER = new IPropertyFetcher<Boolean>() {
@@ -700,6 +746,11 @@ public class VisualFeature implements Serializable {
     private TemporallyVariantProperty<BorderStyle> borderStyle;
 
     /**
+     * Fill style; may be <code>null</code>.
+     */
+    private TemporallyVariantProperty<FillStyle> fillStyle;
+
+    /**
      * Diameter in pixels; may be <code>null</code>.
      */
     private TemporallyVariantProperty<Double> diameter;
@@ -747,6 +798,16 @@ public class VisualFeature implements Serializable {
     private TemporallyVariantProperty<Boolean> rotatable;
 
     /**
+     * Flag indicating whether or not, if {@link #geometry} is a collection of
+     * multiple geometries, any {@link Puntal} sub-geometries within that
+     * collection are draggable. If <code>false</code>, this overrides any
+     * capabilities specified in {@link #dragCapability} for such points, but
+     * has no effect on a <code>geometry</code> consisting of a single
+     * <code>Puntal</code> object. May be <code>null</code>.
+     */
+    private TemporallyVariantProperty<Boolean> multiGeometryPointsDraggable;
+
+    /**
      * Flag indicating whether or not the feature is scaleable; may be
      * <code>null</code>.
      */
@@ -781,6 +842,7 @@ public class VisualFeature implements Serializable {
         this.fillColor = original.fillColor;
         this.borderThickness = original.borderThickness;
         this.borderStyle = original.borderStyle;
+        this.fillStyle = original.fillStyle;
         this.diameter = original.diameter;
         this.symbolShape = original.symbolShape;
         this.label = original.label;
@@ -790,6 +852,7 @@ public class VisualFeature implements Serializable {
         this.textColor = original.textColor;
         this.dragCapability = original.dragCapability;
         this.rotatable = original.rotatable;
+        this.multiGeometryPointsDraggable = original.multiGeometryPointsDraggable;
         this.scaleable = original.scaleable;
         this.topmost = original.topmost;
 
@@ -827,40 +890,48 @@ public class VisualFeature implements Serializable {
             return false;
         }
         VisualFeature otherFeature = (VisualFeature) other;
-        return (compare(identifier, otherFeature.identifier)
+        return (Utils.equal(identifier, otherFeature.identifier)
                 && (visibilityConstraints == otherFeature.visibilityConstraints)
-                && compare(templates, otherFeature.templates)
-                && compare(geometry, otherFeature.geometry)
-                && compare(borderColor, otherFeature.borderColor)
-                && compare(fillColor, otherFeature.fillColor)
-                && compare(borderThickness, otherFeature.borderThickness)
-                && compare(borderStyle, otherFeature.borderStyle)
-                && compare(diameter, otherFeature.diameter)
-                && compare(symbolShape, otherFeature.symbolShape)
-                && compare(label, otherFeature.label)
-                && compare(textOffsetLength, otherFeature.textOffsetLength)
-                && compare(textOffsetDirection,
+                && Utils.equal(templates, otherFeature.templates)
+                && Utils.equal(geometry, otherFeature.geometry)
+                && Utils.equal(borderColor, otherFeature.borderColor)
+                && Utils.equal(fillColor, otherFeature.fillColor)
+                && Utils.equal(borderThickness, otherFeature.borderThickness)
+                && Utils.equal(borderStyle, otherFeature.borderStyle)
+                && Utils.equal(fillStyle, otherFeature.fillStyle)
+                && Utils.equal(diameter, otherFeature.diameter)
+                && Utils.equal(symbolShape, otherFeature.symbolShape)
+                && Utils.equal(label, otherFeature.label)
+                && Utils.equal(textOffsetLength, otherFeature.textOffsetLength)
+                && Utils.equal(textOffsetDirection,
                         otherFeature.textOffsetDirection)
-                && compare(textSize, otherFeature.textSize)
-                && compare(textColor, otherFeature.textColor)
-                && compare(dragCapability, otherFeature.dragCapability)
-                && compare(rotatable, otherFeature.rotatable)
-                && compare(scaleable, otherFeature.scaleable) && compare(
-                    topmost, otherFeature.topmost));
+                && Utils.equal(textSize, otherFeature.textSize)
+                && Utils.equal(textColor, otherFeature.textColor)
+                && Utils.equal(dragCapability, otherFeature.dragCapability)
+                && Utils.equal(multiGeometryPointsDraggable,
+                        otherFeature.multiGeometryPointsDraggable)
+                && Utils.equal(rotatable, otherFeature.rotatable)
+                && Utils.equal(scaleable, otherFeature.scaleable) && Utils
+                    .equal(topmost, otherFeature.topmost));
     }
 
     @Override
     public int hashCode() {
-        return (int) ((getHashCode(identifier)
-                + getHashCode(visibilityConstraints) + getHashCode(templates)
-                + getHashCode(geometry) + getHashCode(borderColor)
-                + getHashCode(fillColor) + getHashCode(borderThickness)
-                + getHashCode(borderStyle) + getHashCode(diameter)
-                + getHashCode(symbolShape) + getHashCode(label)
-                + getHashCode(textOffsetLength)
-                + getHashCode(textOffsetDirection) + getHashCode(textSize)
-                + getHashCode(textColor) + getHashCode(dragCapability)
-                + getHashCode(rotatable) + getHashCode(scaleable) + getHashCode(topmost)) % Integer.MAX_VALUE);
+        return (int) ((Utils.getHashCode(identifier)
+                + Utils.getHashCode(visibilityConstraints)
+                + Utils.getHashCode(templates) + Utils.getHashCode(geometry)
+                + Utils.getHashCode(borderColor) + Utils.getHashCode(fillColor)
+                + Utils.getHashCode(borderThickness)
+                + Utils.getHashCode(borderStyle) + Utils.getHashCode(fillStyle)
+                + Utils.getHashCode(diameter) + Utils.getHashCode(symbolShape)
+                + Utils.getHashCode(label)
+                + Utils.getHashCode(textOffsetLength)
+                + Utils.getHashCode(textOffsetDirection)
+                + Utils.getHashCode(textSize) + Utils.getHashCode(textColor)
+                + Utils.getHashCode(dragCapability)
+                + Utils.getHashCode(multiGeometryPointsDraggable)
+                + Utils.getHashCode(rotatable) + Utils.getHashCode(scaleable) + Utils
+                    .getHashCode(topmost)) % Integer.MAX_VALUE);
     }
 
     /**
@@ -942,6 +1013,17 @@ public class VisualFeature implements Serializable {
      */
     public BorderStyle getBorderStyle(Date time) {
         return getValue(BORDER_STYLE_FETCHER, time, DEFAULT_BORDER_STYLE);
+    }
+
+    /**
+     * Get the fill style for the specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return Fill style that applies for the specified time.
+     */
+    public FillStyle getFillStyle(Date time) {
+        return getValue(FILL_STYLE_FETCHER, time, DEFAULT_FILL_STYLE);
     }
 
     /**
@@ -1048,6 +1130,25 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Determine whether, if {@link #getGeometry(Date)} yields a collection of
+     * multiple geometries, any {@link Puntal} sub-geometries within that
+     * collection are draggable for the specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return True if <code>Puntal</code> geometries within a multi-geometry
+     *         collection returned by <code>getGeometry()</code> are draggable,
+     *         false otherwise. If the latter, this overrides any capabilities
+     *         specified in {@link #getDragCapability(Date)} for such points,
+     *         but has no effect on a geometry consisting of a single
+     *         <code>Puntal</code> object.
+     */
+    public boolean isMultiGeometryPointsDraggable(Date time) {
+        return getValue(MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER, time,
+                DEFAULT_MULTI_GEOMETRY_POINTS_DRAGGABLE);
+    }
+
+    /**
      * Determine whether the feature is rotatable for the specified time.
      * 
      * @param time
@@ -1090,15 +1191,25 @@ public class VisualFeature implements Serializable {
      * specified hazard event visual property. For example, if the border color
      * is found to be {@link #COLOR_OF_EVENT_TYPE}, the color specified by
      * <code>hazardColor</code> is used.
+     * <p>
+     * A spatial entity may be provided when this method is invoked if the
+     * caller wishes to reuse an existing object instead of building a new one.
+     * If provided, the existing object is returned (assuming a spatial entity
+     * is appropriate for the specified time) only if the entity that would have
+     * been built would have been identical to the one provided.
+     * <p>
      * 
      * @param spatialEntity
-     *            Spatial entity to be updated to reflect this object's state at
-     *            the given time, or <code>null</code> if a spatial entity is to
-     *            be created if necessary by this invocation.
-     * @param identifierGenerator
-     *            Identifier generator, used if <code>spatialEntity</code> is
-     *            specified as <code>null</code> to generate the identifier for
-     *            the newly-created spatial entity.
+     *            Previously constructed spatial entity which, if sufficient to
+     *            represent this visual feature at the specified time, is
+     *            returned in lieu of building a new spatial entity. If
+     *            <code>null</code>, a new spatial entity is built if the visual
+     *            feature is visible at the specified time.
+     * @param identifier
+     *            Identifier of the spatial entity; if
+     *            <code>spatialEntity</code> is not <code>null</code>, its
+     *            {@link SpatialEntity#getIdentifier()} method must return a
+     *            result equivalent to this object.
      * @param selected
      *            Flag indicating whether or not the item represented by this
      *            object is currently selected.
@@ -1150,61 +1261,66 @@ public class VisualFeature implements Serializable {
      *            {@link #INTEGER_OF_EVENT_TYPE}.
      * @return Spatial entity representing the state of this object at the
      *         specified time, or <code>null</code> if this object is not
-     *         visible at that time. If a visual entity is returned, the flag
-     *         returned by its {@link SpatialEntity#checkAndResetModified()}
-     *         will indicate whether the entity was updated in the course of the
-     *         execution of this method; if it was created and/or modified by
-     *         this method, the flag will be true.
+     *         visible at that time. If a spatial entity is returned and the
+     *         <code>spatialEntity</code> parameter was not <code>null</code>,
+     *         the returned object may be the unaltered spatial entity so
+     *         provided by the caller.
      */
     public <I> SpatialEntity<I> getStateAtTime(SpatialEntity<I> spatialEntity,
-            IIdentifierGenerator<I> identifierGenerator, boolean selected,
-            Date time, Color hazardColor, double hazardBorderThickness,
-            BorderStyle hazardBorderStyle, double hazardPointDiameter,
-            String hazardLabel, double hazardSinglePointTextOffsetLength,
+            I identifier, boolean selected, Date time, Color hazardColor,
+            double hazardBorderThickness, BorderStyle hazardBorderStyle,
+            double hazardPointDiameter, String hazardLabel,
+            double hazardSinglePointTextOffsetLength,
             double hazardSinglePointTextOffsetDirection,
             double hazardMultiPointTextOffsetLength,
             double hazardMultiPointTextOffsetDirection, int hazardTextSize) {
+
+        /*
+         * If the visibility constraints do not allow this visual feature to be
+         * visible, create nothing.
+         */
         if ((visibilityConstraints == VisibilityConstraints.NEVER)
                 || ((visibilityConstraints == VisibilityConstraints.UNSELECTED) && selected)
                 || ((visibilityConstraints == VisibilityConstraints.SELECTED) && (selected == false))) {
             return null;
         }
+
+        /*
+         * If the geometry at this time is not visible create nothing.
+         */
         Geometry geometry = getGeometry(time);
         if (geometry == null) {
             return null;
         }
-        if (spatialEntity == null) {
-            spatialEntity = new SpatialEntity<>(
-                    identifierGenerator.generate(identifier));
-        }
-        spatialEntity.setGeometry(geometry);
-        boolean pointGeometry = (geometry instanceof Point);
-        spatialEntity
-                .setBorderColor(getColor(getBorderColor(time), hazardColor));
-        spatialEntity.setFillColor(getColor(getFillColor(time), hazardColor));
-        spatialEntity.setBorderThickness(getDouble(getBorderThickness(time),
-                hazardBorderThickness));
-        spatialEntity.setBorderStyle(getBorderStyle(getBorderStyle(time),
-                hazardBorderStyle));
-        spatialEntity.setDiameter(getDouble(getDiameter(time),
-                hazardPointDiameter));
-        spatialEntity.setSymbolShape(getSymbolShape(time));
-        spatialEntity.setLabel(getString(getLabel(time), hazardLabel));
-        spatialEntity.setTextOffsetLength(getDouble(getTextOffsetLength(time),
-                (pointGeometry ? hazardSinglePointTextOffsetLength
-                        : hazardMultiPointTextOffsetLength)));
-        spatialEntity.setTextOffsetDirection(getDouble(
-                getTextOffsetDirection(time),
-                (pointGeometry ? hazardSinglePointTextOffsetDirection
-                        : hazardMultiPointTextOffsetDirection)));
-        spatialEntity
-                .setTextSize(getInteger(getTextSize(time), hazardTextSize));
-        spatialEntity.setTextColor(getColor(getTextColor(time), hazardColor));
-        spatialEntity.setDragCapability(getDragCapability(time));
-        spatialEntity.setRotatable(isRotatable(time));
-        spatialEntity.setScaleable(isScaleable(time));
-        spatialEntity.setTopmost(isTopmost(time));
-        return spatialEntity;
+
+        /*
+         * Build a spatial entity, or reuse the one provided if its properties
+         * match the ones specified by this visual feature at the given time.
+         */
+        double textOffsetLength = getTextOffsetLength(time);
+        double textOffsetDirection = getTextOffsetDirection(time);
+        return SpatialEntity.build(
+                spatialEntity,
+                identifier,
+                geometry,
+                getColor(getBorderColor(time), hazardColor),
+                getColor(getFillColor(time), hazardColor),
+                getDouble(getBorderThickness(time), hazardBorderThickness),
+                getBorderStyle(getBorderStyle(time), hazardBorderStyle),
+                getFillStyle(time),
+                getDouble(getDiameter(time), hazardPointDiameter),
+                getSymbolShape(time),
+                getString(getLabel(time), hazardLabel),
+                getDouble(textOffsetLength, hazardSinglePointTextOffsetLength),
+                getDouble(textOffsetDirection,
+                        hazardSinglePointTextOffsetDirection),
+                getDouble(textOffsetLength, hazardMultiPointTextOffsetLength),
+                getDouble(textOffsetDirection,
+                        hazardMultiPointTextOffsetDirection),
+                getInteger(getTextSize(time), hazardTextSize),
+                getColor(getTextColor(time), hazardColor),
+                getDragCapability(time), isMultiGeometryPointsDraggable(time),
+                isRotatable(time), isScaleable(time), isTopmost(time));
     }
 
     /**
@@ -1214,61 +1330,66 @@ public class VisualFeature implements Serializable {
      * for that parameter. For example, if the border color is found to be
      * {@link #COLOR_OF_EVENT_TYPE}, then the color specified by
      * {@link #DEFAULT_BORDER_COLOR} is used.
+     * <p>
+     * A spatial entity may be provided when this method is invoked if the
+     * caller wishes to reuse an existing object instead of building a new one.
+     * If provided, the existing object is returned (assuming a spatial entity
+     * is appropriate for the specified time) only if the entity that would have
+     * been built would have been identical to the one provided.
+     * <p>
      * 
      * @param spatialEntity
-     *            Spatial entity to be updated to reflect this object's state at
-     *            the given time, or <code>null</code> if a spatial entity is to
-     *            be created if necessary by this invocation.
-     * @param identifierGenerator
-     *            Identifier generator, used if <code>spatialEntity</code> is
-     *            specified as <code>null</code> to generate the identifier for
-     *            the newly-created spatial entity.
+     *            Previously constructed spatial entity which, if sufficient to
+     *            represent this visual feature at the specified time, is
+     *            returned in lieu of building a new spatial entity. If
+     *            <code>null</code>, a new spatial entity is built if the visual
+     *            feature is visible at the specified time.
+     * @param identifier
+     *            Identifier of the spatial entity; if
+     *            <code>spatialEntity</code> is not <code>null</code>, its
+     *            {@link SpatialEntity#getIdentifier()} method must return a
+     *            result equivalent to this object.
      * @param time
-     *            Time for which to get the state of this object.
+     *            Time for which to get the state of this visual feature object.
      * @return Spatial entity representing the state of this object at the
      *         specified time, or <code>null</code> if this object is not
-     *         visible at that time. If a spatial entity is returned, the flag
-     *         returned by its {@link SpatialEntity#checkAndResetModified()}
-     *         will indicate whether the entity was updated in the course of the
-     *         execution of this method; if it was created and/or modified by
-     *         this method, the flag will be true.
+     *         visible at said time. If a spatial entity is returned and the
+     *         <code>spatialEntity</code> parameter was not <code>null</code>,
+     *         the returned object may be the unaltered spatial entity so
+     *         provided by the caller.
      */
     public <I> SpatialEntity<I> getStateAtTime(SpatialEntity<I> spatialEntity,
-            IIdentifierGenerator<I> identifierGenerator, Date time) {
+            I identifier, Date time) {
+
+        /*
+         * If the geometry at this time is not visible create nothing.
+         */
         Geometry geometry = getGeometry(time);
         if (geometry == null) {
             return null;
         }
-        if (spatialEntity == null) {
-            spatialEntity = new SpatialEntity<>(
-                    identifierGenerator.generate(identifier));
-        }
-        spatialEntity.setGeometry(geometry);
-        spatialEntity.setBorderColor(getColor(getBorderColor(time),
-                DEFAULT_BORDER_COLOR));
-        spatialEntity.setFillColor(getColor(getFillColor(time),
-                DEFAULT_FILL_COLOR));
-        spatialEntity.setBorderThickness(getDouble(getBorderThickness(time),
-                DEFAULT_BORDER_THICKNESS));
-        spatialEntity.setBorderStyle(getBorderStyle(getBorderStyle(time),
-                DEFAULT_BORDER_STYLE));
-        spatialEntity
-                .setDiameter(getDouble(getDiameter(time), DEFAULT_DIAMETER));
-        spatialEntity.setSymbolShape(getSymbolShape(time));
-        spatialEntity.setLabel(getLabel(time));
-        spatialEntity.setTextOffsetLength(getDouble(getTextOffsetLength(time),
-                DEFAULT_TEXT_OFFSET_LENGTH));
-        spatialEntity.setTextOffsetDirection(getDouble(
-                getTextOffsetDirection(time), DEFAULT_TEXT_OFFSET_DIRECTION));
-        spatialEntity.setTextSize(getInteger(getTextSize(time),
-                DEFAULT_TEXT_SIZE));
-        spatialEntity.setTextColor(getColor(getTextColor(time),
-                DEFAULT_TEXT_COLOR));
-        spatialEntity.setDragCapability(getDragCapability(time));
-        spatialEntity.setRotatable(isRotatable(time));
-        spatialEntity.setScaleable(isScaleable(time));
-        spatialEntity.setTopmost(isTopmost(time));
-        return spatialEntity;
+
+        /*
+         * Build a spatial entity, or reuse the one provided if its properties
+         * match the ones specified by this visual feature at the given time.
+         */
+        double textOffsetLength = getDouble(getTextOffsetLength(time),
+                DEFAULT_TEXT_OFFSET_LENGTH);
+        double textOffsetDirection = getDouble(getTextOffsetDirection(time),
+                DEFAULT_TEXT_OFFSET_DIRECTION);
+        return SpatialEntity.build(spatialEntity, identifier, geometry,
+                getColor(getBorderColor(time), DEFAULT_BORDER_COLOR),
+                getColor(getFillColor(time), DEFAULT_FILL_COLOR),
+                getDouble(getBorderThickness(time), DEFAULT_BORDER_THICKNESS),
+                getBorderStyle(getBorderStyle(time), DEFAULT_BORDER_STYLE),
+                getFillStyle(time),
+                getDouble(getDiameter(time), DEFAULT_DIAMETER),
+                getSymbolShape(time), getLabel(time), textOffsetLength,
+                textOffsetDirection, textOffsetLength, textOffsetDirection,
+                getInteger(getTextSize(time), DEFAULT_TEXT_SIZE),
+                getColor(getTextColor(time), DEFAULT_TEXT_COLOR),
+                getDragCapability(time), isMultiGeometryPointsDraggable(time),
+                isRotatable(time), isScaleable(time), isTopmost(time));
     }
 
     /**
@@ -1389,6 +1510,15 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Get the fill style.
+     * 
+     * @return Fill style; may be <code>null</code>.
+     */
+    TemporallyVariantProperty<FillStyle> getFillStyle() {
+        return fillStyle;
+    }
+
+    /**
      * Get the diameter in pixels.
      * 
      * @return Diameter; may be <code>null</code>.
@@ -1459,6 +1589,24 @@ public class VisualFeature implements Serializable {
      */
     TemporallyVariantProperty<DragCapability> getDragCapability() {
         return dragCapability;
+    }
+
+    /**
+     * Get the flag indicating whether, if {@link #getGeometry(Date)} yields a
+     * collection of multiple geometries, any {@link Puntal} sub-geometries
+     * within that collection are draggable for the specified time.
+     * 
+     * @return Flag indicating whether or not <code>Puntal</code> geometries
+     *         within a multi-geometry collection returned by
+     *         <code>getGeometry()</code> are draggable. If the latter, this
+     *         overrides any capabilities specified in
+     *         {@link #getDragCapability(Date)} for such points, but has no
+     *         effect on a geometry consisting of a single <code>Puntal</code>
+     *         object. whether or not the feature is rotatable. May be
+     *         <code>null</code>.
+     */
+    TemporallyVariantProperty<Boolean> getMultiGeometryPointsDraggable() {
+        return multiGeometryPointsDraggable;
     }
 
     /**
@@ -1562,6 +1710,16 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Set the fill style.
+     * 
+     * @param fillStyle
+     *            New value; may be <code>null</code>.
+     */
+    void setFillStyle(TemporallyVariantProperty<FillStyle> fillStyle) {
+        this.fillStyle = fillStyle;
+    }
+
+    /**
      * Set the diameter in pixels.
      * 
      * @param diameter
@@ -1650,6 +1808,17 @@ public class VisualFeature implements Serializable {
      * @param rotatable
      *            New value; may be <code>null</code>.
      */
+    void setMultiGeometryPointsDraggable(
+            TemporallyVariantProperty<Boolean> multiGeometryPointsDraggable) {
+        this.multiGeometryPointsDraggable = multiGeometryPointsDraggable;
+    }
+
+    /**
+     * Set the flag indicating whether or not the feature is rotatable.
+     * 
+     * @param rotatable
+     *            New value; may be <code>null</code>.
+     */
     void setRotatable(TemporallyVariantProperty<Boolean> rotatable) {
         this.rotatable = rotatable;
     }
@@ -1700,6 +1869,7 @@ public class VisualFeature implements Serializable {
         stream.writeObject(fillColor);
         stream.writeObject(borderThickness);
         stream.writeObject(borderStyle);
+        stream.writeObject(fillStyle);
         stream.writeObject(diameter);
         stream.writeObject(symbolShape);
         stream.writeObject(label);
@@ -1708,6 +1878,7 @@ public class VisualFeature implements Serializable {
         stream.writeObject(textSize);
         stream.writeObject(textColor);
         stream.writeObject(dragCapability);
+        stream.writeObject(multiGeometryPointsDraggable);
         stream.writeObject(rotatable);
         stream.writeObject(scaleable);
         stream.writeObject(topmost);
@@ -1769,6 +1940,7 @@ public class VisualFeature implements Serializable {
                 .readObject();
         borderStyle = (TemporallyVariantProperty<BorderStyle>) stream
                 .readObject();
+        fillStyle = (TemporallyVariantProperty<FillStyle>) stream.readObject();
         diameter = (TemporallyVariantProperty<Double>) stream.readObject();
         symbolShape = (TemporallyVariantProperty<SymbolShape>) stream
                 .readObject();
@@ -1781,6 +1953,8 @@ public class VisualFeature implements Serializable {
         textColor = (TemporallyVariantProperty<SerializableColor>) stream
                 .readObject();
         dragCapability = (TemporallyVariantProperty<DragCapability>) stream
+                .readObject();
+        multiGeometryPointsDraggable = (TemporallyVariantProperty<Boolean>) stream
                 .readObject();
         rotatable = (TemporallyVariantProperty<Boolean>) stream.readObject();
         scaleable = (TemporallyVariantProperty<Boolean>) stream.readObject();
@@ -1814,33 +1988,6 @@ public class VisualFeature implements Serializable {
                 throw new IOException("could not read in geometry", e);
             }
         }
-    }
-
-    /**
-     * Compare the specified objects to see if they are equivalent, or are both
-     * <code>null</code>.
-     * 
-     * @param object1
-     *            First object to be compared; may be <code>null</code>.
-     * @param object2
-     *            Second object to be compared; may be <code>null</code>.
-     * @return True if the two objects are equivalent or are both
-     *         <code>null</code>, false otherwise.
-     */
-    private boolean compare(Object object1, Object object2) {
-        return (object1 == null ? object2 == null : object1.equals(object2));
-    }
-
-    /**
-     * Get the hash code of the specified object.
-     * 
-     * @param object
-     *            Object for which the hash code is to be generated, or
-     *            <code>null</code>.
-     * @return Hash code, or 0 if the object is <code>null</code>.
-     */
-    private long getHashCode(Object object) {
-        return (object == null ? 0L : object.hashCode());
     }
 
     /**

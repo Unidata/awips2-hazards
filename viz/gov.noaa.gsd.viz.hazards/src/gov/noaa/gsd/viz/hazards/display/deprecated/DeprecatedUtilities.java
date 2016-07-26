@@ -9,20 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.display.deprecated;
 
-import gov.noaa.gsd.common.utilities.JSONConverter;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
 
-import java.io.Serializable;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ArrayNode;
-import org.codehaus.jackson.node.ObjectNode;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -46,6 +36,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * Nov 18, 2014  4124       Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014  4124       Chris.Golden      Changed to work with newly
  *                                            parameterized config manager.
+ * Jul 25, 2016 19537       Chris,Golden      Removed unused method.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -115,73 +106,4 @@ public class DeprecatedUtilities {
             }
         }
     }
-
-    /**
-     * This method is used to bring into the HID the arbitrary attributes that
-     * can be associated with different {@link IHazardEvent}s depending on the
-     * event type. Since we have to convert back and forth between JSON and
-     * POJO's; this method isn't quite so bad; it's somewhat general. But what's
-     * really messy about all this is {@link DeprecatedEvent} It's encoding only
-     * the known (non-arbitrary) attributes. A preferred approach would be to
-     * eliminate {@link DeprecatedEvent} and do all the conversion from
-     * {@link IHazardEvent} to JSON in this method. But that would also require
-     * separating out the other logic in {@link DeprecatedEvent} that's
-     * unrelated to POJO/JSON conversion.
-     */
-    @SuppressWarnings("unchecked")
-    @Deprecated
-    public static String eventsAsNodeJSON(
-            Collection<? extends IHazardEvent> events, DeprecatedEvent[] events2) {
-        ObjectMapper jsonObjectMapper = new ObjectMapper();
-        JSONConverter jsonConverter = new JSONConverter();
-        ArrayNode jevents = jsonObjectMapper.createArrayNode();
-
-        Iterator<? extends IHazardEvent> it2 = events.iterator();
-
-        for (int ii = 0; ii < events2.length; ii++) {
-
-            // HID needs all the extra attributes.
-            JsonNode jobj = jsonConverter.fromJson(
-                    jsonConverter.toJson(events2[ii]), JsonNode.class);
-            ObjectNode node = (ObjectNode) jobj;
-            IHazardEvent hevent = it2.next();
-            for (Entry<String, Serializable> entry : hevent
-                    .getHazardAttributes().entrySet()) {
-                if (entry.getValue() instanceof String) {
-                    node.put(entry.getKey(), (String) entry.getValue());
-                } else if (entry.getValue() instanceof Boolean) {
-                    node.put(entry.getKey(), (Boolean) entry.getValue());
-                } else if (entry.getValue() instanceof Date) {
-                    node.put(entry.getKey(),
-                            ((Date) entry.getValue()).getTime());
-                } else if (entry.getValue() instanceof String[]) {
-                    ArrayNode tmpArray = jsonObjectMapper.createArrayNode();
-                    for (Object obj : (String[]) entry.getValue()) {
-                        tmpArray.add(obj.toString());
-                    }
-                    node.put(entry.getKey(), tmpArray);
-                } else if (entry.getValue() instanceof Integer) {
-                    node.put(entry.getKey(), (Integer) entry.getValue());
-                } else if (entry.getValue() instanceof Long) {
-                    node.put(entry.getKey(), (Long) entry.getValue());
-                } else if (entry.getValue() instanceof Float) {
-                    node.put(entry.getKey(),
-                            ((Float) entry.getValue()).doubleValue());
-                } else if (entry.getValue() instanceof Double) {
-                    node.put(entry.getKey(), (Double) entry.getValue());
-                } else if (entry.getValue() instanceof List) {
-                    ArrayNode tmpArray = jsonObjectMapper.createArrayNode();
-                    for (Object obj : (List<Object>) entry.getValue()) {
-                        tmpArray.add(obj.toString());
-                    }
-                    node.put(entry.getKey(), tmpArray);
-                }
-
-            }
-            jevents.add(jobj);
-        }
-        return jsonConverter.toJson(jevents);
-
-    }
-
 }

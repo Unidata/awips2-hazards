@@ -137,7 +137,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEvents() {
+    public List<ObservedHazardEvent> getEvents() {
         return events;
     }
 
@@ -196,7 +196,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEventsForCurrentSettings() {
+    public List<ObservedHazardEvent> getEventsForCurrentSettings() {
         throw new UnsupportedOperationException();
     }
 
@@ -259,7 +259,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getCheckedEvents() {
+    public List<ObservedHazardEvent> getCheckedEvents() {
         throw new UnsupportedOperationException();
     }
 
@@ -291,11 +291,6 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void noCurrentEvent() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public boolean isCurrentEvent() {
         throw new UnsupportedOperationException();
     }
@@ -307,7 +302,7 @@ public class SimpleSessionEventManager implements
 
     @Override
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent) {
+            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
         throw new UnsupportedOperationException();
     }
 
@@ -318,7 +313,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void addOrRemoveEnclosingUGCs(Coordinate location) {
+    public void addOrRemoveEnclosingUGCs(Coordinate location,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -349,27 +345,32 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void setHighResolutionGeometriesVisibleForSelectedEvents() {
+    public boolean setEventGeometry(ObservedHazardEvent event,
+            Geometry geometry, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean setLowResolutionGeometriesVisibleForSelectedEvents() {
+    public void setHighResolutionGeometriesVisibleForSelectedEvents(
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void setHighResolutionGeometryVisibleForCurrentEvent() {
+    public boolean setLowResolutionGeometriesVisibleForSelectedEvents(
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean setLowResolutionGeometryVisibleForCurrentEvent() {
+    public void setHighResolutionGeometryVisibleForCurrentEvent(
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean setModifiedEventGeometry(String eventID, Geometry geometry) {
+    public boolean setLowResolutionGeometryVisibleForCurrentEvent(
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 

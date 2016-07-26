@@ -1173,7 +1173,7 @@ public class PgenDisplayElementFactory {
     /**
      * Create displayable elements for line elements. This method gets
      * attributes such as colors from the input elements, then applies these
-     * attributes on the smoothed(if needed) points to create a list of
+     * attributes on the smoothed (if needed) points to create a list of
      * displayables.
      * 
      * @param line

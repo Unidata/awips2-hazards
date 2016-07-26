@@ -32,7 +32,6 @@ import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -89,6 +88,11 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jun 06, 2016 19432      Chris.Golden Added method to set a flag indicating whether newly-created
  *                                      (by the user) hazard events should be added to the selected
  *                                      set or not.
+ * Jul 25, 2016   19537    Chris.Golden Changed collections of events that were returned into lists,
+ *                                      since the unordered nature of the collections was not
+ *                                      appropriate. Added originator parameters for methods for
+ *                                      setting high- and low-res geometries for hazard events.
+ *                                      Removed obsolete set-geometry method.
  * </pre>
  * 
  * @author bsteffen
@@ -185,8 +189,24 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         rejected because one or both values fell outside their allowed
      *         boundaries.
      */
-    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
-            Date endTime, IOriginator originator);
+    public boolean setEventTimeRange(E event, Date startTime, Date endTime,
+            IOriginator originator);
+
+    /**
+     * Set the specified event's geometry. It is assumed that the specified
+     * geometry is valid, that is, that {@link Geometry#isValid()} would return
+     * <code>true</code>.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param geometry
+     *            New geometry.
+     * @param originator
+     *            Originator of this change.
+     * @return True if the new geometry is now in use, false if it was rejected.
+     */
+    public boolean setEventGeometry(E event, Geometry geometry,
+            IOriginator originator);
 
     /**
      * Get the megawidget specifier manager for the specified event. Note that
@@ -264,7 +284,7 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * 
      * @return
      */
-    public Collection<E> getEvents();
+    public List<E> getEvents();
 
     /**
      * 
@@ -313,9 +333,9 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * 
      * @return the checked events
      */
-    public Collection<E> getCheckedEvents();
+    public List<E> getCheckedEvents();
 
-    public Collection<E> getEventsForCurrentSettings();
+    public List<E> getEventsForCurrentSettings();
 
     /**
      * Tests whether it is valid to change a hazard type(includes phen, sig, and
@@ -505,8 +525,11 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     /**
      * Makes visible the hazard (high resolution) representation of the selected
      * hazard geometries.
+     * 
+     * @param originator
      */
-    public void setHighResolutionGeometriesVisibleForSelectedEvents();
+    public void setHighResolutionGeometriesVisibleForSelectedEvents(
+            IOriginator originator);
 
     /**
      * Builds, stores and makes visible the product (low resolution)
@@ -514,29 +537,34 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * to the CWA, modifying the polygons to conform to the hazard areas and
      * simplifying the polygons to conform to the max 20 point rule.
      * 
-     * @param
+     * @param originator
      * @return true - this function successfully clipped the hazard geometries
      *         false - this function failed, probably because a geometry was
      *         outside of the forecast area (cwa or hsa).
      */
-    public boolean setLowResolutionGeometriesVisibleForSelectedEvents();
+    public boolean setLowResolutionGeometriesVisibleForSelectedEvents(
+            IOriginator originator);
 
     /**
      * Makes visible the hazard (high resolution) representation of the selected
      * hazard geometries.
+     * 
+     * @param originator
      */
-    public void setHighResolutionGeometryVisibleForCurrentEvent();
+    public void setHighResolutionGeometryVisibleForCurrentEvent(
+            IOriginator originator);
 
     /**
      * Builds, stores and makes visible the product (low resolution)
      * representation of the current hazard geometry.
      * 
-     * @param
+     * @param originator
      * @return true - this function successfully clipped the hazard geometru
      *         false - this function failed, probably because the geometry was
      *         outside of the forecast area.
      */
-    public boolean setLowResolutionGeometryVisibleForCurrentEvent();
+    public boolean setLowResolutionGeometryVisibleForCurrentEvent(
+            IOriginator originator);
 
     /**
      * Updates the UGC information associated with the selected hazard events.
@@ -570,11 +598,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public E getCurrentEvent();
 
     /**
-     * Indicates the user it not currently point to any event
-     */
-    public void noCurrentEvent();
-
-    /**
      * @return true if the user is currently pointing to an event
      */
     public boolean isCurrentEvent();
@@ -587,27 +610,34 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     /**
      * Determine whether the specified hazard event may accept the specified
      * geometry as its new geometry. It is assumed that the geometry is valid,
-     * i.e. {@link Geometry#isValid()} returns <code>true</code>.
+     * i.e. {@link Geometry#isValid()} returns <code>true</code>, if this method
+     * is told not to check geometry validity.
      * 
      * @param geometry
      *            Geometry to be used.
      * @param hazardEvent
      *            Hazard event to have its geometry changed.
+     * @param checkGeometryValidity
+     *            Flag indicating whether or not to check the geometry's
+     *            validity itself.
      * @return True if the geometry of the given hazard event can be modified to
      *         the given geometry, false otherwise,.
      */
-    public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent);
+    public boolean isValidGeometryChange(Geometry geometry, E hazardEvent,
+            boolean checkGeometryValidity);
 
     /**
-     * Find a UGC enclosing the given location. If that UGC is included in the
-     * selected event then remove it. If it is not included, add it.
+     * Find the UGC enclosing the given location. If that UGC is included in the
+     * currently selected event then remove it; if it is not included, add it.
+     * If more or less than one event is selected, then do not make any change.
      * 
      * @param location
-     *            - coordinate enclosed by a UGC
-     * @return
+     *            Coordinate enclosed by a UGC
+     * @param originator
+     *            Originator of the change.
      */
-    public void addOrRemoveEnclosingUGCs(Coordinate location);
+    public void addOrRemoveEnclosingUGCs(Coordinate location,
+            IOriginator originator);
 
     /**
      * @param hazardEvent
@@ -621,20 +651,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param hazardEvent
      */
     public void updateHazardAreas(IHazardEvent hazardEvent);
-
-    /**
-     * Set the specified event's geometry to be as specified. It is assumed that
-     * the geometry is valid, that is, that {@link Geometry#isValid()} would
-     * return <code>true</code>.
-     * 
-     * @param eventID
-     *            Identifier of the event that is to have its geometry modified.
-     * @param geometry
-     *            New geometry.
-     * @return True if the geometry was set, false if it was not (for example,
-     *         the geometry of the specified event cannot be modified).
-     */
-    public boolean setModifiedEventGeometry(String eventID, Geometry geometry);
 
     public void saveEvents(List<IHazardEvent> events);
 

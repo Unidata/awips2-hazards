@@ -79,24 +79,13 @@ public class AutomatedTests {
     public void consoleActionOccurred(final ConsoleAction consoleAction) {
         if (consoleAction.getActionType().equals(
                 ConsoleAction.ActionType.RUN_AUTOMATED_TESTS)) {
-            runTest(new MixedHazardStoryFunctionalTest(appBuilder));
+            runTest(new StormTrackFunctionalTest(appBuilder));
         }
     }
 
     @Handler(priority = -1)
     public void testCompleted(final TestCompleted testCompleted) {
-        if (testCompleted.getTestClass().equals(
-                MixedHazardStoryFunctionalTest.class)) {
-            runTest(new StormTrackFunctionalTest(appBuilder));
-        }
-
-        else if (testCompleted.getTestClass().equals(
-                StormTrackFunctionalTest.class)) {
-            runTest(new AddNewPendingToSelectedTest(appBuilder));
-        }
-
-        else if (testCompleted.getTestClass().equals(
-                AddNewPendingToSelectedTest.class)) {
+        if (testCompleted.getTestClass().equals(StormTrackFunctionalTest.class)) {
             runTest(new ChangeHazardAreaFunctionalTest(appBuilder));
         }
 
@@ -117,10 +106,6 @@ public class AutomatedTests {
 
         else if (testCompleted.getTestClass().equals(
                 FilteringFunctionalTest.class)) {
-            runTest(new ContextMenuFunctionalTest(appBuilder));
-
-        } else if (testCompleted.getTestClass().equals(
-                ContextMenuFunctionalTest.class)) {
             runTest(new HazardConflictFunctionalTest(appBuilder));
 
         } else if (testCompleted.getTestClass().equals(

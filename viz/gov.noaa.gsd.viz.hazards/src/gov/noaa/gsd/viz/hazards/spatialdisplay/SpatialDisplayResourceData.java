@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -33,9 +34,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 05, 2013     585    Chris.Golden      Initial creation
- * Dec 05, 2014    4124    Chris.Golden      Changed to work with newly parameterized
- *                                           config manager and with ObservedSettings.
+ * Jul 05, 2013     585    Chris.Golden Initial creation
+ * Dec 05, 2014    4124    Chris.Golden Changed to work with newly parameterized
+ *                                      config manager and with ObservedSettings.
+ * Jul 25, 2016   19537    Chris.Golden Moved app builder use from spatial display
+ *                                      to here, since this class should be doing
+ *                                      any interaction with the app builder.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,7 +53,8 @@ public class SpatialDisplayResourceData extends
     // Private Variables
 
     /**
-     * settings currently in use.
+     * Settings currently in use. A record must be kept here so that it is saved
+     * and can be restored when loading from a bundle (deserialization).
      */
     @XmlElement
     private ObservedSettings settings;
@@ -105,8 +110,7 @@ public class SpatialDisplayResourceData extends
     @Override
     public SpatialDisplay construct(LoadProperties loadProperties,
             IDescriptor descriptor) throws VizException {
-        return new SpatialDisplay(this, loadProperties,
-                instantiatedViaDeserialization, appBuilder);
+        return new SpatialDisplay(this, loadProperties);
     }
 
     @Override
@@ -124,11 +128,54 @@ public class SpatialDisplayResourceData extends
         this.appBuilder = appBuilder;
     }
 
+    /**
+     * Get the current settings.
+     * 
+     * @return Current settings.
+     */
     public ObservedSettings getSettings() {
         return settings;
     }
 
+    /**
+     * Set the current settings.
+     * 
+     * @param settings
+     *            Current settings.
+     */
     public void setSettings(ObservedSettings settings) {
         this.settings = settings;
+    }
+
+    // Package-Private Methods
+
+    /**
+     * Finish construction of the application.
+     * 
+     * @param spatialDisplay
+     *            Spatial display that is the basis of this application.
+     */
+    void finishConstruction(SpatialDisplay spatialDisplay) {
+
+        /*
+         * Create the app builder if necessary.
+         */
+        if (appBuilder == null) {
+            appBuilder = new HazardServicesAppBuilder(spatialDisplay);
+            appBuilder.buildGUIs(instantiatedViaDeserialization);
+        }
+
+        /*
+         * If the resource data has a setting to be used, use that; otherwise,
+         * give the resource data the setting already in use by the app builder
+         * so that it will have it in case it is saved as part of a bundle.
+         */
+        if (settings != null) {
+            appBuilder.setCurrentSettings(settings,
+                    UIOriginator.SPATIAL_DISPLAY);
+        } else {
+            ObservedSettings observedSettings = appBuilder.getCurrentSettings();
+            setSettings(observedSettings);
+        }
     }
 }

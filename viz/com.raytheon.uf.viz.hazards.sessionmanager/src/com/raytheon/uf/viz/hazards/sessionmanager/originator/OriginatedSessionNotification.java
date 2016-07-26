@@ -93,7 +93,7 @@ public class OriginatedSessionNotification implements ISessionNotification {
             try {
                 throw new RuntimeException();
             } catch (RuntimeException e) {
-                notificationContext = Utils.stackTraceAsString(e);
+                notificationContext = Utils.getStackTraceAsString(e);
             }
         } else {
             notificationContext = "Not Available";

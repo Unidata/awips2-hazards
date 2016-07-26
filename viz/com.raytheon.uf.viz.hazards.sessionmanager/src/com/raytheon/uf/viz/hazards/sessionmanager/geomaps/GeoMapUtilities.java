@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -102,6 +103,10 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  *                                      appropriate.
  * Sep 03, 2015 11213      mduff        Fixed performance issue for initial preview.
  * Jun 23, 2016 19537      Chris.Golden Added support for no-hatching event types.
+ * Jul 25, 2016 19537      Chris.Golden Changed buildHazardAreaForEvent() to return a map
+ *                                      of UGC+geometry identifiers to the geometries, so
+ *                                      that this information may be used when generating
+ *                                      hatching polygons within the spatial presenter.
  * </pre>
  * 
  * @author blawrenc
@@ -329,9 +334,8 @@ public class GeoMapUtilities {
                 .get(hazardType).getUgcLabel();
 
         String cwa = configManager.getSiteID();
-        return buildHazardAreaForEvent(mapDBtableName, mapLabelParameter, cwa,
-                hazardEvent);
-
+        return new ArrayList<>(buildHazardAreaForEvent(mapDBtableName,
+                mapLabelParameter, cwa, hazardEvent).values());
     }
 
     /**
@@ -348,12 +352,26 @@ public class GeoMapUtilities {
      * @param hazardEvent
      *            The hazard event to build the hazard area for.
      * 
-     * @return {@link IGeometryData}s describing the actual hazard area
-     *         associated with this event.
+     * @return Map pairing strings holding UGC identifiers with geometry data;
+     *         the union of the latter describes the actual hazard area
+     *         associated with this event. Note that if a particular UGC hazard
+     *         area for the event is of type
+     *         {@link HazardConstants#HAZARD_AREA_INTERSECTION}, then the
+     *         identifier for any associated geometry data will consist of both
+     *         the UGC and the index of the sub-geometry of the hazard event
+     *         with which that data is associated.
      */
-    public List<IGeometryData> buildHazardAreaForEvent(String mapDBtableName,
-            String mapLabelParameter, String cwa, IHazardEvent hazardEvent) {
-        List<IGeometryData> result = new ArrayList<>();
+    public Map<String, IGeometryData> buildHazardAreaForEvent(
+            String mapDBtableName, String mapLabelParameter, String cwa,
+            IHazardEvent hazardEvent) {
+
+        /*
+         * TODO: A linked hash map is used to preserve the order in which items
+         * are inserted. This is because this method previously returned a List,
+         * but it's unclear whether ordering matters. If it does not matter,
+         * this should just be made into a standard map.
+         */
+        Map<String, IGeometryData> result = new LinkedHashMap<>();
 
         try {
             @SuppressWarnings("unchecked")
@@ -367,7 +385,7 @@ public class GeoMapUtilities {
             for (String ugc : hazardArea.keySet()) {
                 IGeometryData mappingData = mapping.get(ugc);
                 if (hazardArea.get(ugc).equals(HAZARD_AREA_ALL)) {
-                    result.add(mappingData);
+                    result.put(ugc, mappingData);
                 } else if (hazardArea.get(ugc).equals(HAZARD_AREA_INTERSECTION)) {
                     Geometry mappingGeometry = mappingData.getGeometry();
                     GeometryCollection asCollection = (GeometryCollection) hazardEvent
@@ -386,7 +404,8 @@ public class GeoMapUtilities {
                                         .setGeometry(intersectionGeometry);
                                 // .setGeometry(mappingGeometry.intersection(asCollection
                                 // .getGeometryN(geometryIndex)));
-                                result.add(intersectionGeometryData);
+                                result.put(ugc + " " + geometryIndex,
+                                        intersectionGeometryData);
                             }
                         }
                     }
@@ -432,7 +451,6 @@ public class GeoMapUtilities {
                  */
                 g = GeometryPrecisionReducer.reduce(g, precisionModel);
                 Geometry intersectionGeometry = cwaGeometry.intersection(g);
-
                 intersectedGeometries.add(intersectionGeometry);
 
             }
@@ -444,10 +462,10 @@ public class GeoMapUtilities {
              */
             result = geometryFactory.createGeometryCollection(null);
         } else {
-            result = intersectedGeometries.get(0);
-            for (int i = 1; i < intersectedGeometries.size(); i++) {
-                result = result.union(intersectedGeometries.get(i));
-            }
+            result = geometryFactory
+                    .createGeometryCollection(intersectedGeometries
+                            .toArray(new Geometry[intersectedGeometries.size()]));
+            result = result.union();
         }
 
         return result;

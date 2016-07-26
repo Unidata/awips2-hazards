@@ -31,6 +31,12 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.P
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_UTILITIES_DIR;
+import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.ENCRYPTION_KEY;
+import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.PASSWORD;
+import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.REGISTRY_LOCATION;
+import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.TRUST_STORE_LOCATION;
+import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.TRUST_STORE_PASSWORD;
+import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.USER_NAME;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
@@ -43,7 +49,6 @@ import gov.noaa.gsd.viz.hazards.console.ConsoleView;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutomatedTests;
-import gov.noaa.gsd.viz.hazards.display.test.product_generators.ProductGenerationTests;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter;
@@ -56,13 +61,12 @@ import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingView;
 import gov.noaa.gsd.viz.hazards.risecrestfall.GraphicalEditor;
 import gov.noaa.gsd.viz.hazards.setting.SettingsPresenter;
 import gov.noaa.gsd.viz.hazards.setting.SettingsView;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialDisplayHandler;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.tools.ToolsView;
@@ -85,6 +89,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IPerspectiveDescriptor;
 import org.eclipse.ui.IPerspectiveListener4;
@@ -98,6 +103,7 @@ import org.eclipse.ui.PlatformUI;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -107,13 +113,16 @@ import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.util.FileUtil;
+import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.VizConstants;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
+import com.raytheon.uf.viz.core.drawables.IDescriptor.IFrameChangedListener;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
@@ -122,6 +131,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISpatialContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
@@ -133,6 +143,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.uf.viz.productgen.dialog.ProductViewer;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
@@ -177,8 +188,6 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             to warn the user. This is injectable
  *                                             for testing.
  * Nov 15, 2013  2182       daniel.s.schaffer@noaa.gov    Refactoring JSON - ProductStagingDialog
- * 
- * 
  * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
  * Jan 27, 2014 2155       Chris.Golden        Fixed bug that caused occasional exceptions
  *                                             when loading a bundle with Hazard Services in
@@ -232,15 +241,22 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 01, 2016 16225      Chris.Golden        Added ability to cancel tasks that are scheduled to run
  *                                             at regular intervals.
  * Jun 23, 2016 19537      Chris.Golden        Added use of a spatial context provider.
+ * Jul 25, 2016 19537      Chris.Golden        Changed to implement spatial display handler (to
+ *                                             deal with display-closed events) and frame-change
+ *                                             listener (previously handled by the spatial display
+ *                                             components). Removed product generation test menu item.
+ *                                             Moved loading of registry preferences here, so that if
+ *                                             Hazard Services is loaded via bundle load, the prefs
+ *                                             will be loaded. Removed inappropriate access of spatial
+ *                                             display components.
  * </pre>
  * 
  * @author The Hazard Services Team
  * @version 1.0
  */
 public class HazardServicesAppBuilder implements IPerspectiveListener4,
-        IGlobalChangedListener, IWorkbenchListener, IMessenger {
-
-    // Private Classes
+        IGlobalChangedListener, IWorkbenchListener, IFrameChangedListener,
+        ISpatialDisplayHandler, IMessenger {
 
     // Public Static Constants
 
@@ -287,11 +303,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Run automated tests command string.
      */
     private static final String AUTO_TEST_COMMAND_MENU_TEXT = "Run Automated Tests";
-
-    /**
-     * Run product generation tests command string.
-     */
-    private static final String PRODUCT_GENERATION_TEST_COMMAND_MENU_TEXT = "Run Product Generation Tests";
 
     /**
      * Logging mechanism.
@@ -428,8 +439,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     private IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
 
-    private ProductGenerationTests productGenerationTests;
-
     private AutomatedTests automatedTests;
 
     private IRiseCrestFallEditor graphicalEditor;
@@ -437,6 +446,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private GraphicalEditor editor;
 
     private IToolParameterGatherer toolParameterGatherer;
+
+    /**
+     * Epoch time in milliseconds of the current frame.
+     */
+    private long currentFrameTime = Long.MIN_VALUE;
 
     public boolean getUserAnswerToQuestion(String question) {
         return questionAnswerer.getUserAnswerToQuestion(question);
@@ -584,6 +598,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 generatorsProductsPath, generatorsFormatsPath), getClass()
                 .getClassLoader());
 
+        loadRegistryPreferences();
+
         /*
          * For testing and demos, force DRT for operational mode start HS
          * according to CAVE clock for practice mode. Needed to do this, because
@@ -593,7 +609,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         currentTime = SimulatedTime.getSystemTime().getTime();
         this.sessionManager = SessionManagerFactory.getSessionManager(this,
                 spatialContextProvider, frameContextProvider, eventBus);
-        messageHandler = new HazardServicesMessageHandler(this, currentTime);
+        messageHandler = new HazardServicesMessageHandler(this,
+                ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
+                        .getSettings(), currentTime);
 
         /**
          * Get a true/false, or OK/cancel, or yes/no answer from the user.
@@ -737,21 +755,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                                         ConsoleAction.ActionType.RUN_AUTOMATED_TESTS));
                             }
                         };
-
-                        Action productGenerationTestAction = new BasicAction(
-                                PRODUCT_GENERATION_TEST_COMMAND_MENU_TEXT,
-                                null, Action.AS_PUSH_BUTTON, null) {
-                            @Override
-                            public void run() {
-                                productGenerationTests = new ProductGenerationTests();
-                                productGenerationTests
-                                        .init(HazardServicesAppBuilder.this);
-                                eventBus.publish(new ConsoleAction(
-                                        ConsoleAction.ActionType.RUN_PRODUCT_GENERATION_TESTS));
-                            }
-                        };
-                        return Lists.newArrayList(autoTestAction,
-                                productGenerationTestAction);
+                        return Lists.newArrayList(autoTestAction);
                     }
                     return Collections.emptyList();
                 }
@@ -763,6 +767,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * what hazards will be drawn on.
          */
         createSpatialDisplay(spatialDisplay);
+
+        /*
+         * Make this object listen for frame changes with the spatial display's
+         * descriptor.
+         */
+        spatialDisplay.getDescriptor().addFrameChangedListener(this);
 
         // Determine whether or not views are to be hidden at first if this
         // app builder is being created as the result of a bundle load.
@@ -802,23 +812,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         // Allow all views to contribute to the console toolbar.
         buildToolBar();
 
-        spatialPresenter.updateSelectedTime();
-
         // Add THIS HazardServicesAppBuilder as a perspective listener.
         // when loading a drawing layer
         PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                 .addPerspectiveListener(this);
-
-        // Set the default cursor to an arrow
-        spatialPresenter.getView().setCursor(
-                SpatialViewCursorTypes.ARROW_CURSOR);
-
-        /*
-         * Set the default mouse listener... This is the select mouse handler.
-         */
-
-        spatialPresenter.getView().setMouseHandler(
-                HazardServicesMouseHandlers.SINGLE_SELECTION, new String[] {});
 
         // Set the time line duration.
         messageHandler.updateConsoleVisibleTimeDelta();
@@ -827,19 +824,36 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         VizGlobalsManager.addListener(VizConstants.FRAMES_ID, this);
         VizGlobalsManager.addListener(VizConstants.LOOPING_ID, this);
 
-        spatialPresenter.getView().redoTimeMatching();
+        redoTimeMatching();
 
         // Send the current frame information to the session manager.
-        sendFrameInformationToSessionManager();
+        handleFrameChange();
+    }
+
+    @Override
+    public void frameChanged(IDescriptor descriptor, DataTime oldTime,
+            DataTime newTime) {
+        if (spatialDisplay == null) {
+            return;
+        }
+        FramesInfo framesInfo = frameContextProvider.getFramesInfo();
+        if ((framesInfo != null) && (newTime != null)) {
+            long newRefTime = newTime.getRefTime().getTime();
+            if (newRefTime != currentFrameTime) {
+                handleFrameChange();
+                currentFrameTime = newRefTime;
+            }
+        }
     }
 
     /**
-     * Updates the model with CAVE frame information.
+     * Update the model with CAVE frame information.
      */
-    public void sendFrameInformationToSessionManager() {
+    public void handleFrameChange() {
 
         /*
-         * If frame information is available, use it.
+         * If frame information is available, use it, but ensure that this is
+         * done in the UI thread.
          */
         final FramesInfo framesInfo = frameContextProvider.getFramesInfo();
         if (framesInfo != null) {
@@ -847,26 +861,54 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
                 @Override
                 public void run() {
+
+                    /*
+                     * If there are frames and the frame index is valid, set the
+                     * selected time to go with the current frame. This must be
+                     * done in the worker thread.
+                     */
                     int frameCount = framesInfo.getFrameCount();
                     int frameIndex = framesInfo.getFrameIndex();
                     if ((frameCount > 0) && (frameIndex != -1)) {
-                        long selectedTime = framesInfo.getFrameTimes()[frameIndex]
+                        final long selectedTime = framesInfo.getFrameTimes()[frameIndex]
                                 .getValidTime().getTimeInMillis();
-                        ISessionTimeManager timeManager = sessionManager
-                                .getTimeManager();
-                        long delta = timeManager.getUpperSelectedTimeInMillis()
-                                - timeManager.getLowerSelectedTimeInMillis();
-                        SelectedTime timeRange = new SelectedTime(selectedTime,
-                                selectedTime + delta);
-                        timeManager
-                                .setSelectedTime(timeRange, Originator.OTHER);
-                        notifyModelChanged(
-                                EnumSet.of(HazardConstants.Element.SELECTED_TIME_RANGE),
-                                Originator.OTHER);
+                        RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+                            @Override
+                            public void run() {
+                                ISessionTimeManager timeManager = sessionManager
+                                        .getTimeManager();
+                                long delta = timeManager
+                                        .getUpperSelectedTimeInMillis()
+                                        - timeManager
+                                                .getLowerSelectedTimeInMillis();
+                                SelectedTime timeRange = new SelectedTime(
+                                        selectedTime, selectedTime + delta);
+                                timeManager.setSelectedTime(timeRange,
+                                        Originator.OTHER);
+                            }
+                        });
                     }
                 }
             });
         }
+    }
+
+    @Override
+    public void spatialDisplayDisposed() {
+        dispose();
+    }
+
+    /**
+     * Initialize the Hazard Services web services interfaces.
+     */
+    private void loadRegistryPreferences() {
+        IPreferenceStore store = HazardServicesActivator.getDefault()
+                .getPreferenceStore();
+        HazardServicesClient.init(store.getString(REGISTRY_LOCATION),
+                store.getString(USER_NAME), store.getString(PASSWORD),
+                store.getString(TRUST_STORE_LOCATION),
+                store.getString(TRUST_STORE_PASSWORD),
+                store.getString(ENCRYPTION_KEY));
     }
 
     /**
@@ -1027,9 +1069,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * We'll have to see if we ever want to recreate it.
      */
     private void createSpatialDisplay(SpatialDisplay spatialDisplay) {
-        SpatialView spatialView = new SpatialView(spatialDisplay);
+        ISpatialView<Action, RCPMainUserInterfaceElement> spatialView = new SpatialView(
+                spatialDisplay);
         if (spatialPresenter == null) {
-            spatialPresenter = new SpatialPresenter(sessionManager, eventBus);
+            spatialPresenter = new SpatialPresenter(sessionManager, this,
+                    eventBus);
             presenters.add(spatialPresenter);
         } else {
             spatialPresenter.getView().dispose();
@@ -1083,6 +1127,47 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     }
 
     /**
+     * Force time matching to be recalculated.
+     */
+    private void redoTimeMatching() {
+
+        /*
+         * Sometimes when Hazard Services is not fully constructed (when being
+         * loaded from a bundle), the editor or descriptor is not available.
+         * When this occurs, simply schedule an asynchronous run of this method.
+         * Otherwise, simply redo the time matching immediately.
+         */
+        AbstractEditor editor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        IDescriptor descriptor = (editor != null ? editor
+                .getActiveDisplayPane().getDescriptor() : null);
+        if (descriptor == null) {
+            Display.getDefault().asyncExec(new Runnable() {
+
+                @Override
+                public void run() {
+                    redoTimeMatching();
+                }
+            });
+        } else {
+
+            /*
+             * Need to account for the possibility that a time matcher does not
+             * exist (for example, in GFE).
+             */
+            AbstractTimeMatcher timeMatcher = descriptor.getTimeMatcher();
+            if (timeMatcher != null) {
+                try {
+                    timeMatcher.redoTimeMatching(descriptor);
+                } catch (VizException e) {
+                    statusHandler.error(
+                            "HazardServicesAppBuilder.redoTimeMatching():", e);
+                }
+            }
+        }
+    }
+
+    /**
      * Shut down this instance of hazard services, disposing of all allocated
      * resources.
      */
@@ -1114,6 +1199,124 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     public ObservedSettings getCurrentSettings() {
         return (sessionManager.getConfigurationManager().getSettings());
 
+    }
+
+    /**
+     * Respond to the selected time being modified.
+     * <p>
+     * TODO: Should be annotated with <code>@Handler(priority = 1)</code> when
+     * this class becomes an event bus listener as it is merged with
+     * {@link HazardServicesMessageHandler}.
+     * </p>
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    public void selectedTimeChanged(SelectedTimeChanged change) {
+        long selectedTimeMillis = sessionManager.getTimeManager()
+                .getSelectedTime().getLowerBound();
+
+        /*
+         * Get the available data times from the frames, if any.
+         */
+        DataTime[] availableDataTimes = null;
+        FramesInfo framesInfo = frameContextProvider.getFramesInfo();
+        int frameCount = framesInfo.getFrameCount();
+        if (frameCount > 0) {
+            availableDataTimes = framesInfo.getFrameTimes();
+        }
+
+        /*
+         * If there are data times, find the closest valid time.
+         */
+        if (availableDataTimes != null) {
+
+            /*
+             * Iterate through the frames, looking for the smallest difference
+             * between each frame's time and the selected time.
+             */
+            int frameIndex = 0;
+            long diff;
+            long smallestDiff = Long.MAX_VALUE;
+            for (DataTime time : availableDataTimes) {
+
+                /*
+                 * If there is no difference, use this frame.
+                 */
+                diff = Math.abs(time.getValidTime().getTimeInMillis()
+                        - selectedTimeMillis);
+                if (diff == 0) {
+                    break;
+                }
+
+                /*
+                 * If the new difference is greater than the last one, then the
+                 * iteration is moving away from the closest difference; in that
+                 * case, use the previous frame.
+                 */
+                if (smallestDiff < diff) {
+                    frameIndex--;
+                    break;
+                }
+
+                /*
+                 * Remmember this difference for the next iteration, and
+                 * increment the frame index.
+                 */
+                smallestDiff = diff;
+                frameIndex++;
+            }
+
+            /*
+             * Ensure the resulting frame index is not out of bounds.
+             */
+            if (frameIndex >= frameCount) {
+                frameIndex--;
+            }
+
+            /*
+             * If there is only one frame time, use it; otherwise, use the one
+             * that was chosen above.
+             */
+            FramesInfo newFramesInfo;
+            if (availableDataTimes.length == 1) {
+                DataTime newDataTime = new DataTime(
+                        new Date(selectedTimeMillis));
+                newFramesInfo = new FramesInfo(new DataTime[] { newDataTime },
+                        0);
+                currentFrameTime = selectedTimeMillis;
+            } else {
+                newFramesInfo = new FramesInfo(frameIndex);
+                currentFrameTime = availableDataTimes[frameIndex].getRefTime()
+                        .getTime();
+            }
+            spatialDisplay.getDescriptor().setFramesInfo(newFramesInfo);
+        }
+    }
+
+    /**
+     * Respond to the settings being modified.
+     * <p>
+     * TODO: Should be annotated with <code>@Handler(priority = 1)</code> when
+     * this class becomes an event bus listener as it is merged with
+     * {@link HazardServicesMessageHandler}.
+     * </p>
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    public void settingsModified(final SettingsModified change) {
+        VizApp.runAsync(new Runnable() {
+
+            @Override
+            public void run() {
+                if (spatialDisplay != null) {
+                    ((SpatialDisplayResourceData) spatialDisplay
+                            .getResourceData()).setSettings(change
+                            .getSettings());
+                }
+            }
+        });
     }
 
     /**
@@ -1257,9 +1460,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {
-                sendFrameInformationToSessionManager();
+                handleFrameChange();
             }
         });
+
+        /*
+         * Ensure this object no longer listens for frame changes with the old
+         * spatial display's descriptor.
+         */
+        spatialDisplay.getDescriptor().removeFrameChangedListener(this);
 
         // Get the tool layer data from the old tool layer, and delete the
         // latter.
@@ -1288,7 +1497,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Create a new spatial view for the new tool layer.
         addSpatialDisplayResourceToPerspective();
-        spatialPresenter.getView().addGeometryDisplayResourceToPerspective();
+
+        /*
+         * Make this object listen for frame changes with the new spatial
+         * display's descriptor.
+         */
+        spatialDisplay.getDescriptor().addFrameChangedListener(this);
 
         // Rebuild the console menubar.
         buildMenuBar();
@@ -1297,7 +1511,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         buildToolBar();
 
         // Update the spatial display.
-        spatialPresenter.updateDisplayables();
+        spatialPresenter.updateAllDisplayables();
     }
 
     @Override
@@ -1370,51 +1584,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     @Override
     public void updateValue(IWorkbenchWindow changedWindow, Object value) {
-        sendFrameInformationToSessionManager();
-    }
-
-    /**
-     * Request a mouse handler to load in the current editor.
-     * 
-     * @param mouseHandler
-     *            The identifier of the mouseHandler to load
-     * @param args
-     *            Optional arguments which can be used by the loaded mouse
-     *            handler.
-     */
-    public void requestMouseHandler(HazardServicesMouseHandlers mouseHandler,
-            String... args) {
-        spatialPresenter.getView().setMouseHandler(mouseHandler, args);
-    }
-
-    /**
-     * Modify a shape according to the specified action.
-     * 
-     * @param drawingAction
-     *            Action to be executed to modify the shape.
-     */
-    public void modifyShape(HazardServicesDrawingAction drawingAction) {
-        spatialPresenter.getView().modifyShape(drawingAction);
-    }
-
-    /**
-     * Sets the cursor to the specified type.
-     * 
-     * @param cursorType
-     *            Specified cursor type.
-     */
-    public void setCursor(SpatialViewCursorTypes cursorType) {
-        spatialPresenter.getView().setCursor(cursorType);
-    }
-
-    /**
-     * Checks to determine if a geometry overlay needs to be loaded for the
-     * current selected events. If multiple geometry overlays need to be loaded
-     * this currently only loads the first overlay.
-     * 
-     */
-    public void loadGeometryOverlayForSelectedEvent() {
-        spatialPresenter.getView().loadGeometryOverlayForSelectedEvent();
+        handleFrameChange();
     }
 
     /**
@@ -1422,10 +1592,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void addSpatialDisplayResourceToPerspective() {
         createSpatialDisplay(spatialDisplay);
-
-        // Set the default mouse listener; this is the select mouse handler.
-        spatialPresenter.getView().setMouseHandler(
-                HazardServicesMouseHandlers.SINGLE_SELECTION, new String[] {});
     }
 
     /**
@@ -1437,10 +1603,19 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            sentence ending with a period (.).
      */
     private void closeHazardServices(String message) {
+
         if (disposing) {
             return;
         }
         disposing = true;
+
+        messageHandler.dispose();
+
+        /*
+         * Ensure this object no longer listens for frame changes with the
+         * spatial display's descriptor.
+         */
+        spatialDisplay.getDescriptor().removeFrameChangedListener(this);
 
         ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
                 .setAppBuilder(null);
@@ -1466,11 +1641,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         } catch (Exception e) {
             statusHandler.error("Error removing Perspective listener.", e);
         }
-
-        /*
-         * Remove the current mouse listener from the editor...
-         */
-        spatialPresenter.getView().unregisterCurrentMouseHandler();
 
         for (HazardServicesPresenter<?> presenter : presenters) {
             if ((presenter instanceof ConsolePresenter) == false) {

@@ -9,7 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import gov.noaa.gsd.common.utilities.JSONConverter;
+import gov.noaa.gsd.common.utilities.JsonConverter;
 
 import java.io.File;
 import java.util.Collections;
@@ -155,7 +155,7 @@ public class EventModifyingScriptExecutor extends
         script.run(scriptFile);
         script.set(HAZARD_EVENT, hazardEvent);
         script.set(FUNCTION_NAME, functionName);
-        JSONConverter converter = new JSONConverter();
+        JsonConverter converter = new JsonConverter();
         script.set(EXTRA_DATA, converter.toJson(mutableProperties));
         IHazardEvent result = (IHazardEvent) script.getValue(INVOKE_FUNCTION);
         String jsonData = (result == null ? null : (String) result

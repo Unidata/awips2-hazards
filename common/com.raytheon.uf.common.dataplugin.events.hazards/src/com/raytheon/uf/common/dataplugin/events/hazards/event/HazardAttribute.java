@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
-import gov.noaa.gsd.common.utilities.JSONConverter;
+import gov.noaa.gsd.common.utilities.JsonConverter;
 
 import java.io.Serializable;
 import java.util.ArrayDeque;
@@ -182,7 +182,7 @@ public class HazardAttribute implements IValidator, Serializable {
      * >here</a>, as long as it is not configured during serialization or
      * deserialization.
      */
-    private static final JSONConverter JSON_CONVERTER = new JSONConverter();
+    private static final JsonConverter JSON_CONVERTER = new JsonConverter();
 
     /**
      * Well-Known-Text reader, used for deserializing {@link Geometry} objects.

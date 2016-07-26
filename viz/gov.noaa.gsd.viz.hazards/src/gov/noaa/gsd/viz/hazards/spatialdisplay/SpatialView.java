@@ -10,9 +10,8 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.display.action.SpatialDisplayAction;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.SelectionAction.SelectionHandler;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
@@ -20,55 +19,46 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IPerspectiveDescriptor;
-import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.DataTime;
-import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.IExtent;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
-import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
-import com.raytheon.uf.viz.core.drawables.IDescriptor.IFrameChangedListener;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.map.IMapDescriptor;
-import com.raytheon.uf.viz.core.map.MapDescriptor;
 import com.raytheon.uf.viz.core.maps.rsc.DbMapResource;
 import com.raytheon.uf.viz.core.maps.rsc.DbMapResourceData;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.IDisposeListener;
-import com.raytheon.uf.viz.core.rsc.IInputHandler;
 import com.raytheon.uf.viz.core.rsc.IResourceGroup;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
@@ -76,11 +66,10 @@ import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.ResourceDataUpdateDetector;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Spatial display view, which manages the spatial display.
@@ -124,59 +113,24 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           by data layer changes.
  * Jun 06, 2016 19432      Chris.Golden      Added ability to draw lines and points.
  * Jun 23, 2016 19537      Chris.Golden      Removed storm-track-specific code.
+ * Jul 25, 2016 19537      Chris.Golden      Extensively refactored as the move toward MVP
+ *                                           compliance continues. Added Javadoc comments,
+ *                                           continued separation of concerns between view,
+ *                                           presenter, display, and mouse handlers.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SpatialView implements
-        ISpatialView<Action, RCPMainUserInterfaceElement>,
-        IFrameChangedListener, IDisposeListener {
-
-    // Public Enumerated Types
-
-    /**
-     * Types of cursors.
-     */
-    public static enum SpatialViewCursorTypes {
-
-        // Types of cursors.
-        MOVE_SHAPE_CURSOR(SWT.CURSOR_SIZEALL), MOVE_VERTEX_CURSOR(
-                SWT.CURSOR_HAND), ARROW_CURSOR(SWT.CURSOR_ARROW), DRAW_CURSOR(
-                SWT.CURSOR_CROSS), WAIT_CURSOR(SWT.CURSOR_WAIT);
-
-        // Private Variables
-
-        /**
-         * SWT cursor type that goes with this cursor.
-         */
-        private final int swtType;
-
-        // Private Constructors
-
-        /**
-         * Construct a standard instance.
-         * 
-         * @param swtType
-         *            SWT type of cursor.
-         */
-        private SpatialViewCursorTypes(int swtType) {
-            this.swtType = swtType;
-        }
-
-        // Public Methods
-
-        /**
-         * Get the SWT cursor type.
-         * 
-         * @return SWT cursor type.
-         */
-        public int getSwtType() {
-            return swtType;
-        }
-    };
+        ISpatialView<Action, RCPMainUserInterfaceElement>, IDisposeListener {
 
     // Private Static Constants
+
+    /**
+     * Suffix to append to the legend text for a select-by-area layer.
+     */
+    private static final String SELECT_BY_AREA_LEGEND_SUFFIX = " (Select By Area)";
 
     /**
      * Scheduler to be used to make runnables get executed on the main thread.
@@ -228,22 +182,189 @@ public class SpatialView implements
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SpatialView.class);
 
+    // Private Enumerated Types
+
+    /**
+     * Input modes.
+     */
+    private enum InputMode {
+        SELECT_OR_MODIFY("Select event", "moveAndSelect.png"), DRAW_POINT(
+                "Draw points", "drawPoint.png"), DRAW_LINE("Draw path",
+                "drawPath.png"), DRAW_POLYGON("Draw polygon", "drawPolygon.png"), DRAW_FREEHAND_POLYGON(
+                "Draw freehand polygon", "drawFreehandPolygon.png"), EDIT_POLYGON(
+                "Edit polygon", "editPolygon.png"), EDIT_FREEHAND_POLYGON(
+                "Edit polygon freehand", "editPolygonFreeHand.png");
+
+        // Private Variables
+
+        /**
+         * Text description.
+         */
+        private final String description;
+
+        /**
+         * Name of the file holding the icon to use to represent this mode in
+         * the toolbar.
+         */
+        private final String iconFile;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param description
+         *            Text description.
+         * @param iconFile
+         *            Name of the file holding the icon to use to represent this
+         *            mode in the toolbar.
+         */
+        private InputMode(String description, String iconFile) {
+            this.description = description;
+            this.iconFile = iconFile;
+        }
+
+        // Public Methods
+
+        /**
+         * Get the text description.
+         * 
+         * @return Text description.
+         */
+        public String getDescription() {
+            return description;
+        }
+
+        /**
+         * Get the name of the file holding the icon to use to represent this
+         * mode in the toolbar.
+         * 
+         * @return Icon file name.
+         */
+        public String getIconFile() {
+            return iconFile;
+        }
+    };
+
     // Private Classes
 
     /**
-     * Standard action.
+     * Input mode.
+     */
+    private class InputModeAction extends BasicAction {
+
+        // Private Constants
+
+        /**
+         * Input mode.
+         */
+        private final InputMode inputMode;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param inputMode
+         *            Input mode.
+         */
+        public InputModeAction(InputMode inputMode) {
+            super("", inputMode.getIconFile(), Action.AS_CHECK_BOX, inputMode
+                    .getDescription());
+            this.inputMode = inputMode;
+        }
+
+        // Public Methods
+
+        @Override
+        public void run() {
+
+            /*
+             * Do nothing if the spatial display is gone, since this invocation
+             * may be the result of the application closing.
+             */
+            if (spatialDisplay == null) {
+                return;
+            }
+
+            /*
+             * Determine whether or not the new-shape-being-drawn flag should be
+             * set.
+             */
+            switch (inputMode) {
+            case DRAW_POLYGON:
+            case DRAW_LINE:
+            case DRAW_POINT:
+            case DRAW_FREEHAND_POLYGON:
+                drawingOfNewShapeInProgress = true;
+                break;
+            default:
+                drawingOfNewShapeInProgress = false;
+                break;
+            }
+
+            /*
+             * Uncheck the other input mode buttons.
+             */
+            for (Map.Entry<InputMode, InputModeAction> entry : actionsForInputModes
+                    .entrySet()) {
+                if (entry.getKey() != inputMode) {
+                    entry.getValue().setChecked(false);
+                }
+            }
+
+            /*
+             * Unload the draw-by-area resource if it exists.
+             */
+            unloadSelectByAreaVizResourceFromPerspective();
+
+            /*
+             * Tell the spatial display to use the appropriate input handler.
+             */
+            switch (inputMode) {
+            case SELECT_OR_MODIFY:
+                spatialDisplay
+                        .setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                break;
+            case DRAW_POINT:
+                spatialDisplay.setCurrentInputHandlerToDrawing(
+                        InputHandlerType.VERTEX_DRAWING, GeometryType.POINT);
+                break;
+            case DRAW_LINE:
+                spatialDisplay.setCurrentInputHandlerToDrawing(
+                        InputHandlerType.VERTEX_DRAWING, GeometryType.LINE);
+                break;
+            case DRAW_POLYGON:
+                spatialDisplay.setCurrentInputHandlerToDrawing(
+                        InputHandlerType.VERTEX_DRAWING, GeometryType.POLYGON);
+                break;
+            case DRAW_FREEHAND_POLYGON:
+                spatialDisplay
+                        .setCurrentInputHandlerToDrawing(
+                                InputHandlerType.FREEHAND_DRAWING,
+                                GeometryType.POLYGON);
+                break;
+            case EDIT_POLYGON:
+                spatialDisplay.setCurrentInputHandlerToDrawing(
+                        InputHandlerType.VERTEX_DRAWING, GeometryType.LINE);
+                break;
+            case EDIT_FREEHAND_POLYGON:
+                spatialDisplay.setCurrentInputHandlerToDrawing(
+                        InputHandlerType.FREEHAND_DRAWING, GeometryType.LINE);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Standard spatial display menu or toolbar action.
      */
     private class BasicSpatialAction extends BasicAction {
 
         /**
-         * Action type.
+         * Runnable to be executed for this action.
          */
-        private final SpatialDisplayAction.ActionType actionType;
-
-        /**
-         * Action name.
-         */
-        private final SpatialDisplayAction.ActionIdentifier actionName;
+        private final Runnable runnable;
 
         /**
          * Construct a standard instance.
@@ -258,37 +379,18 @@ public class SpatialView implements
          *            Style; one of the <code>IAction</code> style constants.
          * @param toolTipText
          *            Tool tip text, or <code>null</code> if none is required.
-         * @param actionType
-         *            Type of action to be taken when this action is invoked.
-         * @param actionName
-         *            Name of action to be taken when this action is invoked;
-         *            ignored for actions of checkbox style, since they always
-         *            send "on" or "off" as their action name.
+         * @param runnable
+         *            Runnable to be executed for this action.
          */
         private BasicSpatialAction(String text, String iconFileName, int style,
-                String toolTipText, SpatialDisplayAction.ActionType actionType,
-                SpatialDisplayAction.ActionIdentifier actionName) {
+                String toolTipText, Runnable runnable) {
             super(text, iconFileName, style, toolTipText);
-            this.actionType = actionType;
-            this.actionName = actionName;
+            this.runnable = runnable;
         }
 
-        /**
-         * Run the action.
-         */
         @Override
         public void run() {
-
-            SpatialDisplayAction.ActionIdentifier ai = (getStyle() == Action.AS_CHECK_BOX ? (isChecked() ? SpatialDisplayAction.ActionIdentifier.ON
-                    : SpatialDisplayAction.ActionIdentifier.OFF)
-                    : actionName);
-
-            presenter
-                    .publish(new SpatialDisplayAction(
-                            actionType,
-                            (getStyle() == Action.AS_CHECK_BOX ? (isChecked() ? SpatialDisplayAction.ActionIdentifier.ON
-                                    : SpatialDisplayAction.ActionIdentifier.OFF)
-                                    : actionName)));
+            RUNNABLE_ASYNC_SCHEDULER.schedule(runnable);
         }
     }
 
@@ -301,9 +403,17 @@ public class SpatialView implements
          * Listener for menu item invocations.
          */
         private final SelectionListener listener = new SelectionAdapter() {
+
             @Override
             public void widgetSelected(SelectionEvent event) {
-                presenter.publish(((MenuItem) event.widget).getData());
+                MenuItem item = (MenuItem) event.widget;
+                loadSelectByAreaVizResourceAndInputHandler(new SelectByAreaContext(
+                        null,
+                        null,
+                        (String) item
+                                .getData(HazardConstants.GEOMETRY_REFERENCE_KEY),
+                        (String) item
+                                .getData(HazardConstants.GEOMETRY_MAP_NAME_KEY)));
             }
         };
 
@@ -313,7 +423,7 @@ public class SpatialView implements
         private SelectByAreaMapsPulldownAction() {
             super("");
             setImageDescriptor(getImageDescriptorForFile("mapsForSelectByArea.png"));
-            setToolTipText("Maps for Select by Area");
+            setToolTipText("Maps for select by area");
 
             // Enable or disable the action based upon the currently
             // loaded maps, building a list of said maps that are
@@ -321,17 +431,6 @@ public class SpatialView implements
             notifyResourceListChanged();
         }
 
-        /**
-         * Get the menu for the specified parent, possibly reusing the specified
-         * menu if provided.
-         * 
-         * @param parent
-         *            Parent control.
-         * @param menu
-         *            Menu that was created previously, if any; this may be
-         *            reused, or disposed of completely.
-         * @return Menu.
-         */
         @Override
         protected Menu doGetMenu(Control parent, Menu menu) {
 
@@ -386,11 +485,12 @@ public class SpatialView implements
                             MenuItem item = new MenuItem(menu, SWT.PUSH);
                             item.setText(mapName);
                             if (overlayResource.getProperties().isVisible()) {
-                                item.setData(new SpatialDisplayAction(
-                                        SpatialDisplayAction.ActionType.DRAWING,
-                                        SpatialDisplayAction.ActionIdentifier.SELECT_BY_AREA,
-                                        mapName + " (Select By Area)",
-                                        tableName));
+                                item.setData(
+                                        HazardConstants.GEOMETRY_MAP_NAME_KEY,
+                                        mapName + SELECT_BY_AREA_LEGEND_SUFFIX);
+                                item.setData(
+                                        HazardConstants.GEOMETRY_REFERENCE_KEY,
+                                        tableName);
                                 item.addSelectionListener(listener);
                             } else {
                                 item.setEnabled(false);
@@ -469,6 +569,7 @@ public class SpatialView implements
      * resources currently displayed.
      */
     private final AddListener addListener = new AddListener() {
+
         @Override
         public void notifyAdd(final ResourcePair resourcePair)
                 throws VizException {
@@ -524,26 +625,13 @@ public class SpatialView implements
     };
 
     /**
-     * Map of cursor types to the corresponding cursors.
-     */
-    private final Map<SpatialViewCursorTypes, Cursor> cursorsForCursorTypes = Maps
-            .newEnumMap(SpatialViewCursorTypes.class);
-
-    /**
      * Map pairing viz resources with the data update detectors associated with
      * them.
      */
     private final Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> dataUpdateDetectorsForVizResources = new HashMap<>();
 
     /**
-     * The current mouse handler. The mouse handler selection is driven by the
-     * toolbar option chosen. The mouse handler controls how the user interacts
-     * with the Hazard Services display.
-     */
-    private IInputHandler currentMouseHandler;
-
-    /**
-     * Hazard Services Tool Layer
+     * CAVE resource layer used as spatial display.
      */
     private SpatialDisplay spatialDisplay;
 
@@ -553,56 +641,25 @@ public class SpatialView implements
     private SpatialPresenter presenter;
 
     /**
-     * Undo command action. NOTE: This may not belong here; which view should
-     * manage Undo/Redo? For now, the action is disabled anyway.
+     * Undo command action.
      */
     private Action undoCommandAction;
 
     /**
-     * Redo command action. NOTE: This may not belong here; which view should
-     * manage Undo/Redo? For now, the action is disabled anyway.
+     * Redo command action.
      */
     private Action redoCommandAction;
 
     /**
      * Add to selected toggle action.
      */
-    private Action addToSelectedToggleAction;
+    private Action addNewEventToSelectedToggleAction;
 
     /**
-     * Move and select choice action.
+     * Map of input modes to their corresponding actions.
      */
-    private Action moveAndSelectChoiceAction;
-
-    /**
-     * Draw vertex based polygon choice action.
-     */
-    private Action drawVertexBasedPolygonChoiceAction;
-
-    /**
-     * Draw freehand polygon choice action.
-     */
-    private Action drawFreehandPolygonChoiceAction;
-
-    /**
-     * Edit vertex based polygon choice action.
-     */
-    private Action editVertexBasedPolygonChoiceAction;
-
-    /**
-     * Edit free hand vertex based polygon choice action.
-     */
-    private Action editFreeHandVertexBasedPolygonChoiceAction;
-
-    /**
-     * Draw vertex path choice action.
-     */
-    private Action drawVertexPathChoiceAction;
-
-    /**
-     * Draw point choice action.
-     */
-    private Action drawPointChoiceAction;
+    private final EnumMap<InputMode, InputModeAction> actionsForInputModes = new EnumMap<>(
+            InputMode.class);
 
     /**
      * Maps for select by area pulldown action.
@@ -612,34 +669,40 @@ public class SpatialView implements
     /**
      * Add geometry to selected event action.
      */
-    private Action addGeometryToSelectedAction;
-
-    private long currentFrameTime = Long.MIN_VALUE;
+    private Action addNewGeometryToSelectedEventToggleAction;
 
     /**
-     * Map DB display with selectable geometries
+     * Flag indicating whether the drawing of a new shape is in progress.
      */
-    private SelectByAreaDbMapResource selectableGeometryDisplay;
+    private boolean drawingOfNewShapeInProgress;
 
-    /*
-     * Mouse handler factory.
+    /**
+     * Select-by-area viz resource currently in use, if any.
      */
-    private MouseHandlerFactory mouseFactory;
+    private SelectByAreaDbMapResource selectByAreaVizResource;
+
+    /**
+     * Flag indicating whether or not select-by-area input mode is active.
+     */
+    private boolean selectByAreaActive = false;
+
+    /**
+     * Currently selected spatial entity identifiers.
+     */
+    private final Set<IEntityIdentifier> selectedSpatialEntityIdentifiers = new HashSet<>();
+
+    /**
+     * Currently selected time.
+     */
+    private Date selectedTime;
 
     // Public Constructors
 
     /**
-     * Track Select By Area Selection state. Ending a select by area operation
-     * (whether or not areas are selected) causes an unwanted
-     * SpatialDisplayAction.ActionIdentifier.SELECT_EVENT to be dispatched at
-     * the end of the dispose call that releases the Spatial View resource. This
-     * flag allows for the SELECT_EVENT to be ignored and retain a stable system
-     * state.
-     */
-    private boolean isSelectByAreaActive = false;
-
-    /**
      * Construct a standard instance.
+     * 
+     * @param spatialDisplay
+     *            Spatial display.
      */
     public SpatialView(SpatialDisplay spatialDisplay) {
         this.spatialDisplay = spatialDisplay;
@@ -648,58 +711,32 @@ public class SpatialView implements
 
     // Public Methods
 
-    /**
-     * Initialize the view.
-     * 
-     * @param presenter
-     *            Presenter managing this view.
-     */
     @Override
-    public final void initialize(SpatialPresenter presenter,
-            MouseHandlerFactory mouseFactory) {
+    public final void initialize(SpatialPresenter presenter) {
         this.presenter = presenter;
-        this.mouseFactory = mouseFactory;
 
         /*
-         * Initialize the spatial display and add it to the CAVE editor's
-         * resource list.
+         * Ensure any previously loaded select-by-area viz resources are
+         * removed.
          */
-        IMapDescriptor desc = null;
-        IDescriptor idesc = null;
+        updatePerspectiveUseOfSelectByAreaVizResource();
+
+        /*
+         * Add the spatial display and to the CAVE editor's resource list, and
+         * create listeners for the addition and removal of resource layers.
+         */
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
         if (abstractEditor != null) {
             for (IDisplayPane displayPane : Arrays.asList(abstractEditor
                     .getDisplayPanes())) {
-                displayPane.getBounds();
-                displayPane.getRenderableDisplay().getView();
-                idesc = displayPane.getDescriptor();
-
-                if ((idesc != null) && (idesc instanceof IMapDescriptor)) {
-                    desc = (IMapDescriptor) idesc;
-
-                    try {
-                        desc.getResourceList().add(spatialDisplay);
-                        spatialDisplay.initInternal(displayPane.getTarget());
-                    } catch (Exception e) {
-                        statusHandler.error(
-                                "Error initializing spatial display", e);
-                    }
-
-                    idesc.addFrameChangedListener(this);
+                IDescriptor descriptor = displayPane.getDescriptor();
+                if ((descriptor != null)
+                        && (descriptor instanceof IMapDescriptor)) {
+                    descriptor.getResourceList().add(spatialDisplay);
                 }
             }
-
             createListeners(abstractEditor);
-        }
-
-        /*
-         * Create the cursors that will be used by Hazard Services.
-         */
-        Display display = Display.getCurrent();
-        for (SpatialViewCursorTypes cursor : SpatialViewCursorTypes.values()) {
-            cursorsForCursorTypes.put(cursor,
-                    display.getSystemCursor(cursor.getSwtType()));
         }
 
         /*
@@ -720,9 +757,6 @@ public class SpatialView implements
                                 .unmodifiableMap(dataUpdateDetectorsForVizResources));
     }
 
-    /**
-     * Prepare for disposal.
-     */
     @Override
     public final void dispose() {
 
@@ -730,23 +764,17 @@ public class SpatialView implements
                 .getActiveEditorAs(AbstractEditor.class);
         removeListeners(abstractEditor);
 
-        setMouseHandler(null);
-
         /*
-         * Unload from all panes
+         * Unload from all panes.
          */
         if (abstractEditor != null) {
             for (IDisplayPane displayPane : Arrays.asList(abstractEditor
                     .getDisplayPanes())) {
-                displayPane.getDescriptor().removeFrameChangedListener(this);
                 for (ResourcePair rp : displayPane.getDescriptor()
                         .getResourceList()) {
                     if (rp.getResource() instanceof SpatialDisplay) {
                         SpatialDisplay display = (SpatialDisplay) rp
                                 .getResource();
-                        display.getDescriptor()
-                                .removeFrameChangedListener(this);
-                        display.setGenerateDisposeMessage(false);
                         display.unload();
                         displayPane.getDescriptor().getResourceList()
                                 .remove(rp);
@@ -755,78 +783,112 @@ public class SpatialView implements
             }
         }
         spatialDisplay = null;
-        removeGeometryDisplay();
+        unloadSelectByAreaVizResourceFromPerspective();
     }
 
     @Override
-    public void setSettings(final ObservedSettings settings) {
+    public void centerAndZoomDisplay(List<Coordinate> hull, Coordinate center) {
+
+        /*
+         * Do nothing unless the center has been supplied.
+         */
+        if (center != null) {
+
+            /*
+             * Get the current perspective; if it is anything but GFE, adjust
+             * the center and zoom.
+             */
+            String perspectiveID = getCurrentPerspectiveDescriptor().getId();
+            double[] centerAsArray = new double[] { center.x, center.y };
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if ((abstractEditor != null)
+                    && (perspectiveID.equals("GFE") == false)) {
+                for (IDisplayPane pane : Arrays.asList(abstractEditor
+                        .getDisplayPanes())) {
+                    IRenderableDisplay display = pane.getRenderableDisplay();
+                    if (isHullWithinDisplay(hull, display) == false) {
+                        double zoom = display.getZoom();
+                        display.getExtent().reset();
+                        display.recenter(centerAsArray);
+                        display.zoom(zoom);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void loadSelectByAreaVizResourceAndInputHandler(
+            final SelectByAreaContext context) {
+
+        /*
+         * Unload any currently loaded select-by-area viz resource.
+         */
+        if (isSelectByAreaVizResourceLoaded()) {
+            unloadSelectByAreaVizResourceFromPerspective();
+        }
+
+        /*
+         * Get the select-by-area input handler, but do it asynchronously so as
+         * to ensure that the old select-by-area viz resource has been fully
+         * unloaded first.
+         */
         VizApp.runAsync(new Runnable() {
+
             @Override
             public void run() {
-                if (spatialDisplay != null) {
-                    ((SpatialDisplayResourceData) spatialDisplay
-                            .getResourceData()).setSettings(settings);
+
+                /*
+                 * Attempt to load the new select-by-area viz resource.
+                 */
+                boolean loadInputHandler = true;
+                try {
+
+                    /*
+                     * Create the select-by-area viz resource and add it to the
+                     * display.
+                     */
+                    getSelectByAreaVizResource(context.getDatabaseTableName(),
+                            context.getLegend());
+                    updatePerspectiveUseOfSelectByAreaVizResource();
+
+                    /*
+                     * Check if the action above resulted in the display of a
+                     * viz resource for select-by-area. If not then do not
+                     * complete the loading of the select-by-area input handler.
+                     */
+                    if (isSelectByAreaVizResourceLoaded()) {
+                        notifySelectByAreaInitiated();
+                    } else {
+                        loadInputHandler = false;
+                        handleUserResetOfInputMode();
+                    }
+                } catch (VizException e) {
+                    loadInputHandler = false;
+                    statusHandler
+                            .error("SpatialView.requestSelectByAreaInputHandler(): "
+                                    + "Error loading select-by-area input handler: ",
+                                    e);
+                    handleUserResetOfInputMode();
+                }
+
+                /*
+                 * Load the input handler if appropriate.
+                 */
+                if (loadInputHandler) {
+                    spatialDisplay.setCurrentInputHandlerToSelectByArea(
+                            selectByAreaVizResource,
+                            context.getSelectedGeometries(),
+                            context.getIdentifier());
                 }
             }
         });
     }
 
     @Override
-    public void issueRefresh() {
-        spatialDisplay.issueRefresh();
-    }
-
-    @Override
-    public void redoTimeMatching() {
-        MapDescriptor desc = spatialDisplay.getDescriptor();
-
-        /*
-         * Need to account for the possibility that a time matcher does not
-         * exist (for example, in GFE)
-         */
-        AbstractTimeMatcher timeMatcher = desc.getTimeMatcher();
-
-        if (timeMatcher != null) {
-            try {
-                desc.getTimeMatcher().redoTimeMatching(desc);
-            } catch (VizException e) {
-                statusHandler.error("SpatialView.redoTimeMatching():", e);
-            }
-        }
-    }
-
-    private void setDisplayZoomParameters(Coordinate[] hull, Coordinate center) {
-        String perspectiveID = getCurrentPerspectiveDescriptor().getId();
-        double[] centerAsArray = new double[] { center.x, center.y };
-        AbstractEditor abstractEditor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
-
-        if (abstractEditor != null && !perspectiveID.equals("GFE")) {
-            for (IDisplayPane pane : Arrays.asList(abstractEditor
-                    .getDisplayPanes())) {
-                IRenderableDisplay display = pane.getRenderableDisplay();
-                if (!hullWithinDisplay(hull, display)) {
-                    double zoom = display.getZoom();
-                    display.getExtent().reset();
-                    display.recenter(centerAsArray);
-                    display.zoom(zoom);
-                }
-            }
-        }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#recenterRezoomDisplay
-     * (double[])
-     */
-    @Override
-    public void recenterRezoomDisplay(Coordinate[] hull, Coordinate center) {
-        if (center != null) {
-            setDisplayZoomParameters(hull, center);
-        }
+    public void setSelectedTime(Date selectedTime) {
+        this.selectedTime = selectedTime;
     }
 
     @Override
@@ -834,484 +896,119 @@ public class SpatialView implements
             RCPMainUserInterfaceElement type) {
         if (type == RCPMainUserInterfaceElement.TOOLBAR) {
 
-            // Create the actions.
+            /*
+             * Create the actions.
+             */
             undoCommandAction = new BasicSpatialAction("", "undo.png",
-                    Action.AS_PUSH_BUTTON, "Undo",
-                    SpatialDisplayAction.ActionType.UNDO, null);
+                    Action.AS_PUSH_BUTTON, "Undo", new Runnable() {
+
+                        @Override
+                        public void run() {
+                            presenter.handleUndoCommand();
+                        }
+                    });
             undoCommandAction.setEnabled(false);
             redoCommandAction = new BasicSpatialAction("", "redo.png",
-                    Action.AS_PUSH_BUTTON, "Redo",
-                    SpatialDisplayAction.ActionType.REDO, null);
+                    Action.AS_PUSH_BUTTON, "Redo", new Runnable() {
+
+                        @Override
+                        public void run() {
+                            presenter.handleRedoCommand();
+                        }
+                    });
             redoCommandAction.setEnabled(false);
-            addToSelectedToggleAction = new BasicSpatialAction("",
+            addNewEventToSelectedToggleAction = new BasicSpatialAction("",
                     "addToSelected.png", Action.AS_CHECK_BOX,
-                    "Add New Pending to Selected",
-                    SpatialDisplayAction.ActionType.ADD_PENDING_TO_SELECTED,
-                    null);
-            moveAndSelectChoiceAction = new BasicSpatialAction("",
-                    "moveAndSelect.png", Action.AS_RADIO_BUTTON,
-                    "Select Event", SpatialDisplayAction.ActionType.DRAWING,
-                    SpatialDisplayAction.ActionIdentifier.SELECT_EVENT);
+                    "Add New Pending to Selected", new Runnable() {
+
+                        @Override
+                        public void run() {
+                            presenter
+                                    .handleToggleAddNewEventToSelectedSet(addNewEventToSelectedToggleAction
+                                            .isChecked());
+                        }
+                    });
+            InputModeAction moveAndSelectChoiceAction = new InputModeAction(
+                    InputMode.SELECT_OR_MODIFY);
             moveAndSelectChoiceAction.setChecked(true);
-            drawVertexBasedPolygonChoiceAction = new BasicSpatialAction("",
-                    "drawPolygon.png", Action.AS_RADIO_BUTTON, "Draw Polygon",
-                    SpatialDisplayAction.ActionType.DRAWING,
-                    SpatialDisplayAction.ActionIdentifier.DRAW_POLYGON);
-            drawFreehandPolygonChoiceAction = new BasicSpatialAction(
-                    "",
-                    "drawFreehandPolygon.png",
-                    Action.AS_RADIO_BUTTON,
-                    "Draw Freehand Polygon",
-                    SpatialDisplayAction.ActionType.DRAWING,
-                    SpatialDisplayAction.ActionIdentifier.DRAW_FREE_HAND_POLYGON);
-            editVertexBasedPolygonChoiceAction = new BasicSpatialAction("",
-                    "editPolygon.png", Action.AS_RADIO_BUTTON, "Edit Polygon",
-                    SpatialDisplayAction.ActionType.DRAWING,
-                    SpatialDisplayAction.ActionIdentifier.EDIT_POLYGON);
+            actionsForInputModes.put(InputMode.SELECT_OR_MODIFY,
+                    moveAndSelectChoiceAction);
+            InputModeAction drawVertexBasedPolygonChoiceAction = new InputModeAction(
+                    InputMode.DRAW_POLYGON);
+            actionsForInputModes.put(InputMode.DRAW_POLYGON,
+                    drawVertexBasedPolygonChoiceAction);
+            InputModeAction drawFreehandPolygonChoiceAction = new InputModeAction(
+                    InputMode.DRAW_FREEHAND_POLYGON);
+            actionsForInputModes.put(InputMode.DRAW_FREEHAND_POLYGON,
+                    drawFreehandPolygonChoiceAction);
+            InputModeAction drawVertexPathChoiceAction = new InputModeAction(
+                    InputMode.DRAW_LINE);
+            actionsForInputModes.put(InputMode.DRAW_LINE,
+                    drawVertexPathChoiceAction);
+            InputModeAction drawPointChoiceAction = new InputModeAction(
+                    InputMode.DRAW_POINT);
+            actionsForInputModes.put(InputMode.DRAW_POINT,
+                    drawPointChoiceAction);
+            InputModeAction editVertexBasedPolygonChoiceAction = new InputModeAction(
+                    InputMode.EDIT_POLYGON);
             editVertexBasedPolygonChoiceAction.setEnabled(false);
-            editFreeHandVertexBasedPolygonChoiceAction = new BasicSpatialAction(
-                    "",
-                    "editPolygonFreeHand.png",
-                    Action.AS_RADIO_BUTTON,
-                    "Edit Polygon Free Hand",
-                    SpatialDisplayAction.ActionType.DRAWING,
-                    SpatialDisplayAction.ActionIdentifier.EDIT_POLYGON_FREE_HAND);
-            editFreeHandVertexBasedPolygonChoiceAction.setEnabled(false);
-            drawVertexPathChoiceAction = new BasicSpatialAction("",
-                    "drawPath.png", Action.AS_RADIO_BUTTON, "Draw Path",
-                    SpatialDisplayAction.ActionType.DRAWING,
-                    SpatialDisplayAction.ActionIdentifier.DRAW_LINE);
-            drawPointChoiceAction = new BasicSpatialAction("", "drawPoint.png",
-                    Action.AS_RADIO_BUTTON, "Draw Points",
-                    SpatialDisplayAction.ActionType.DRAWING,
-                    SpatialDisplayAction.ActionIdentifier.DRAW_POINT);
+            actionsForInputModes.put(InputMode.EDIT_POLYGON,
+                    editVertexBasedPolygonChoiceAction);
+            InputModeAction editFreehandVertexBasedPolygonChoiceAction = new InputModeAction(
+                    InputMode.EDIT_FREEHAND_POLYGON);
+            editFreehandVertexBasedPolygonChoiceAction.setEnabled(false);
+            actionsForInputModes.put(InputMode.EDIT_FREEHAND_POLYGON,
+                    editFreehandVertexBasedPolygonChoiceAction);
             selectByAreaMapsPulldownAction = new SelectByAreaMapsPulldownAction();
 
-            addGeometryToSelectedAction = new BasicSpatialAction("",
-                    "addGeometryToSelected.png", Action.AS_CHECK_BOX,
-                    "Add Geometry To Selected",
-                    SpatialDisplayAction.ActionType.ADD_GEOMETRY_TO_SELECTED,
-                    null);
+            addNewGeometryToSelectedEventToggleAction = new BasicSpatialAction(
+                    "", "addGeometryToSelected.png", Action.AS_CHECK_BOX,
+                    "Add Geometry To Selected", new Runnable() {
 
-            // Return the list.
+                        @Override
+                        public void run() {
+                            presenter
+                                    .handleToggleAddGeometryToSelectedEvent(addNewGeometryToSelectedEventToggleAction
+                                            .isChecked());
+                        }
+                    });
+
+            /*
+             * Return the list of the actions created.
+             */
             return Lists.newArrayList(undoCommandAction, redoCommandAction,
-                    new SeparatorAction(), addToSelectedToggleAction,
+                    new SeparatorAction(), addNewEventToSelectedToggleAction,
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
                     drawVertexPathChoiceAction, drawPointChoiceAction,
                     drawFreehandPolygonChoiceAction,
                     editVertexBasedPolygonChoiceAction,
-                    editFreeHandVertexBasedPolygonChoiceAction,
+                    editFreehandVertexBasedPolygonChoiceAction,
                     selectByAreaMapsPulldownAction, new SeparatorAction(),
-                    addGeometryToSelectedAction);
+                    addNewGeometryToSelectedEventToggleAction);
         }
         return Collections.emptyList();
     }
 
     @Override
-    public void drawEvents(Collection<ObservedHazardEvent> events,
-            Map<String, Boolean> eventEditability,
-            Set<String> hatchedEventIdentifiers) {
-        enableAddGeometryToSelected();
-        spatialDisplay.drawEvents(events, eventEditability,
-                hatchedEventIdentifiers);
-    }
-
-    @Override
     public void drawSpatialEntities(
-            List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
-            Set<String> selectedEventIdentifiers) {
+            List<SpatialEntity<? extends IEntityIdentifier>> spatialEntities,
+            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers) {
+
+        /*
+         * Remember the current set of selected spatial entities.
+         */
+        this.selectedSpatialEntityIdentifiers.clear();
+        this.selectedSpatialEntityIdentifiers
+                .addAll(selectedSpatialEntityIdentifiers);
+
+        /*
+         * Draw the spatial entities.
+         */
         spatialDisplay.drawSpatialEntities(spatialEntities,
-                selectedEventIdentifiers);
+                selectedSpatialEntityIdentifiers);
     }
 
-    @Override
-    public void setMouseHandler(HazardServicesMouseHandlers mouseHandlerType,
-            String... args) {
-        /*
-         * Unload the draw-by-area resource if it exists.
-         */
-        unloadGeometryDisplayResource();
-
-        // Mouse handlers are registered to editors,
-        // but they operate on specific AbstractVizResources.
-        saveCurrentMouseHandler();
-
-        boolean loadMouseHandler = true;
-
-        switch (mouseHandlerType) {
-        case SINGLE_SELECTION:
-            setCursor(SpatialViewCursorTypes.MOVE_SHAPE_CURSOR);
-            break;
-
-        case FREE_HAND_MULTI_SELECTION:
-            setCursor(SpatialViewCursorTypes.ARROW_CURSOR);
-            break;
-
-        case RECTANGLE_MULTI_SELECTION:
-            setCursor(SpatialViewCursorTypes.ARROW_CURSOR);
-            break;
-
-        case VERTEX_DRAWING:
-            setCursor(SpatialViewCursorTypes.DRAW_CURSOR);
-            break;
-
-        case FREEHAND_DRAWING:
-            setCursor(SpatialViewCursorTypes.DRAW_CURSOR);
-            break;
-
-        case DRAW_BY_AREA:
-            // Make sure this geometry can be used in select by area
-            // operations.
-            String tableName = args[0];
-            String displayName = args[1];
-
-            // Unload the resource if it exists.
-            if (isGeometryDisplayResourceLoaded()) {
-                unloadGeometryDisplayResource();
-            }
-
-            try {
-                getGeometryDisplay(tableName, displayName);
-                addGeometryDisplayResourceToPerspective();
-
-                // Check if there is a geometry displayed to use for
-                // select-by-area. If not then do not complete
-                // the loading of the select-by-area mouse handler.
-                if (isGeometryDisplayResourceLoaded()) {
-                    setCursor(SpatialViewCursorTypes.DRAW_CURSOR);
-                    notifySelectByAreaInitiated();
-                } else {
-                    loadMouseHandler = false;
-                    drawingActionComplete();
-                }
-            } catch (VizException e) {
-                loadMouseHandler = false;
-                statusHandler.error("In SpatialView.setMouseHandler():", e);
-                drawingActionComplete();
-            }
-
-            break;
-
-        default:
-            statusHandler
-                    .debug("SpatialView.setMouseHandler(): Unrecognized Mouse Handler");
-            loadMouseHandler = false;
-            break;
-        }
-
-        if (loadMouseHandler) {
-            IInputHandler mouseHandler = mouseFactory.getMouseHandler(
-                    mouseHandlerType, args);
-
-            if (mouseHandler != null) {
-                setMouseHandler(mouseHandler);
-            }
-        }
-
-    }
-
-    @Override
-    public void modifyShape(HazardServicesDrawingAction drawingAction) {
-        switch (drawingAction) {
-        case ADD_VERTEX:
-            IInputHandler mouseHandler = mouseFactory.getMouseHandler(
-                    HazardServicesMouseHandlers.SINGLE_SELECTION,
-                    new String[] {});
-            SelectionHandler addMouseHandler = (SelectionHandler) mouseHandler;
-            addMouseHandler.addVertex();
-            break;
-
-        case DELETE_VERTEX:
-            mouseHandler = mouseFactory.getMouseHandler(
-                    HazardServicesMouseHandlers.SINGLE_SELECTION,
-                    new String[] {});
-            SelectionHandler deleteMouseHandler = (SelectionHandler) mouseHandler;
-            deleteMouseHandler.deleteVertex();
-            break;
-
-        default:
-            statusHandler
-                    .debug("SpatialView.modifyShape(): Unrecognized drawing action.");
-            break;
-        }
-    }
-
-    @Override
-    public void frameChanged(IDescriptor descriptor, DataTime oldTime,
-            DataTime newTime) {
-        FramesInfo framesInfo = spatialDisplay.getDescriptor().getFramesInfo();
-
-        if (newTime != null) {
-            long caveNewTime = newTime.getRefTime().getTime();
-
-            if (caveNewTime != currentFrameTime) {
-                if (framesInfo != null) {
-                    presenter.publish(new SpatialDisplayAction(
-                            SpatialDisplayAction.ActionType.FRAME_CHANGED,
-                            framesInfo));
-                }
-
-                currentFrameTime = caveNewTime;
-            }
-        }
-    }
-
-    /**
-     * Manage the view frames based on the selected time.
-     * 
-     * @param selectedTime
-     *            the selected time to try to match a view frame to.
-     * @return
-     */
-    @Override
-    public void manageViewFrames(Date selectedTime) {
-        long selectedTimeMS = selectedTime.getTime();
-
-        int frameIndex = 0;
-        long diff;
-        long smallestDiff = Long.MAX_VALUE;
-
-        // The selected time to switch CAVE to...
-        IMapDescriptor descriptor = null;
-        int numberOfFrames = 0;
-        DataTime[] availableDataTimes = null;
-        AbstractEditor abstractEditor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
-        if (abstractEditor != null) {
-            IDescriptor idesc = abstractEditor.getActiveDisplayPane()
-                    .getDescriptor();
-            if ((idesc != null) && (idesc instanceof IMapDescriptor)) {
-                descriptor = (IMapDescriptor) idesc;
-                if (descriptor != null) {
-                    numberOfFrames = descriptor.getFramesInfo().getFrameCount();
-                    if (numberOfFrames > 0) {
-                        availableDataTimes = descriptor.getFramesInfo()
-                                .getFrameTimes();
-                    }
-                }
-            }
-        }
-
-        // Try to find the closest valid time
-        if (availableDataTimes != null) {
-            for (DataTime time : availableDataTimes) {
-                Calendar cal = time.getValidTime();
-                diff = Math.abs(cal.getTimeInMillis() - selectedTimeMS);
-
-                // Exact Match.
-                if (diff == 0) {
-                    break;
-                }
-
-                if (smallestDiff < diff) {
-                    frameIndex--;
-                    break;
-                }
-
-                smallestDiff = diff;
-                frameIndex++;
-            }
-
-            if (frameIndex >= numberOfFrames) {
-                frameIndex--;
-            }
-
-            FramesInfo newFramesInfo;
-
-            if (availableDataTimes.length == 1) {
-                DataTime newDataTime = new DataTime(new Date(selectedTimeMS));
-                newFramesInfo = new FramesInfo(new DataTime[] { newDataTime },
-                        0);
-                currentFrameTime = selectedTimeMS;
-            } else {
-                newFramesInfo = new FramesInfo(frameIndex);
-                currentFrameTime = availableDataTimes[frameIndex].getRefTime()
-                        .getTime();
-            }
-
-            descriptor.setFramesInfo(newFramesInfo);
-
-            issueRefresh();
-        }
-    }
-
-    /**
-     * Unregisters the current mouse handler from the active editor.
-     * 
-     * @param
-     * @return
-     */
-    @Override
-    public void unregisterCurrentMouseHandler() {
-        if (currentMouseHandler != null) {
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if (abstractEditor != null) {
-                abstractEditor.unregisterMouseHandler(currentMouseHandler);
-                currentMouseHandler = null;
-            }
-        }
-    }
-
-    /**
-     * Adds the draw by area viz resource to the CAVE editor.
-     * 
-     * @return
-     */
-    @Override
-    public void addGeometryDisplayResourceToPerspective() {
-
-        AbstractEditor abstractEditor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
-        if (abstractEditor != null) {
-            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                    .getDisplayPanes())) {
-                IDescriptor idesc = displayPane.getDescriptor();
-
-                if (idesc instanceof IMapDescriptor) {
-                    IMapDescriptor desc = (IMapDescriptor) idesc;
-
-                    // This is ugly, but remove all instances of
-                    // IHISDbMapResource
-                    // resources from the list.
-                    ResourceList rescList = desc.getResourceList();
-
-                    for (ResourcePair pair : rescList) {
-                        if (pair.getResource() instanceof SelectByAreaDbMapResource) {
-                            rescList.removeRsc(pair.getResource());
-                        }
-                    }
-
-                    if (selectableGeometryDisplay != null) {
-                        rescList = desc.getResourceList();
-                        if (rescList.containsRsc(selectableGeometryDisplay)) {
-                            rescList.removeRsc(selectableGeometryDisplay);
-                        }
-                        desc.getResourceList().add(selectableGeometryDisplay);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Returns the current instance of the draw by area resource.
-     * 
-     * @return the selectableGeometryDisplay
-     */
-    @Override
-    public SelectByAreaDbMapResource getSelectableGeometryDisplay() {
-        return selectableGeometryDisplay;
-    }
-
-    /**
-     * Whenever the user has completed a drawing action (i.e, the user has
-     * completed a polygon, a point, a line, or a select by area, then notify
-     * the toolbar to reset to the default selected event editing mode.
-     */
-    @Override
-    public void drawingActionComplete() {
-        // Unload the resource if it exists.
-        if (isGeometryDisplayResourceLoaded()) {
-            unloadGeometryDisplayResource();
-        }
-
-        /*
-         * Notify the view of the completion of the drawing action. NOTE: This
-         * should not be here; the spatial display should, when it is made part
-         * of the view, notify the view instead.
-         */
-        notifyDrawingActionComplete();
-    }
-
-    /**
-     * Checks to determine if a geometry overlay needs to be loaded for a
-     * selected event. If multiple geometry overlays need to be loaded this
-     * currently only loads the first overlay.
-     * 
-     * @param
-     * @return
-     */
-    @Override
-    public void loadGeometryOverlayForSelectedEvent() {
-        /*
-         * Need to determine if the selected event was based on a geometry read
-         * from the database
-         */
-        Collection<ObservedHazardEvent> selectedEvents = presenter
-                .getSessionManager().getEventManager().getSelectedEvents();
-
-        for (IHazardEvent selectedEvent : selectedEvents) {
-            final String eventID = selectedEvent.getEventID();
-
-            if (selectedEvent.getHazardAttributes().containsKey(
-                    HazardConstants.GEOMETRY_REFERENCE_KEY)) {
-
-                /*
-                 * This was an event generated from a union of one or more
-                 * geometries.
-                 */
-                final String tableName = (String) selectedEvent
-                        .getHazardAttribute(HazardConstants.GEOMETRY_REFERENCE_KEY);
-                final String displayName = (String) selectedEvent
-                        .getHazardAttribute(HazardConstants.GEOMETRY_MAP_NAME_KEY);
-
-                /*
-                 * Launch the select-by-area layer. Give it the table name from
-                 * above as well as the hazard polygon(s). Unload the resource
-                 * if it exists.
-                 */
-                if (isGeometryDisplayResourceLoaded()) {
-                    unloadGeometryDisplayResource();
-                }
-
-                /*
-                 * Need to make sure that we add the geometry display after the
-                 * old one has been removed...
-                 */
-                VizApp.runAsync(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        setMouseHandler(
-                                HazardServicesMouseHandlers.DRAW_BY_AREA,
-                                tableName, displayName, eventID);
-                    }
-                });
-
-                break;
-
-            }
-        }
-    }
-
-    /**
-     * Sets the mouse cursor to the specified type.
-     * 
-     * @param cursorType
-     *            The type of cursor to set.
-     */
-    @Override
-    public void setCursor(SpatialViewCursorTypes cursorType) {
-        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                .getShell();
-        shell.setCursor(cursorsForCursorTypes.get(cursorType));
-    }
-
-    /**
-     * @return An instance of the spatial display.
-     */
-    @Override
-    public SpatialDisplay getSpatialDisplay() {
-        return spatialDisplay;
-    }
-
-    /**
-     * @param
-     * @return
-     */
     @Override
     public void disposed(AbstractVizResource<?, ?> rsc) {
         if (rsc instanceof SelectByAreaDbMapResource) {
@@ -1319,75 +1016,306 @@ public class SpatialView implements
         }
     }
 
+    @Override
+    public void setUndoEnabled(final Boolean enable) {
+        if (undoCommandAction != null) {
+            undoCommandAction.setEnabled(enable);
+        }
+    }
+
+    @Override
+    public void setRedoEnabled(final Boolean enable) {
+        if (redoCommandAction != null) {
+            redoCommandAction.setEnabled(enable);
+        }
+    }
+
+    @Override
+    public void setEditMultiPointGeometryEnabled(Boolean enable) {
+        for (InputMode mode : EnumSet.of(InputMode.EDIT_POLYGON,
+                InputMode.EDIT_FREEHAND_POLYGON)) {
+            InputModeAction action = actionsForInputModes.get(mode);
+            if (action != null) {
+                action.setEnabled(enable);
+            }
+        }
+    }
+
+    @Override
+    public void setAddNewGeometryToSelectedToggleState(boolean enable,
+            boolean check) {
+        if (addNewGeometryToSelectedEventToggleAction != null) {
+            addNewGeometryToSelectedEventToggleAction.setEnabled(enable);
+            addNewGeometryToSelectedEventToggleAction.setChecked(check);
+        }
+    }
+
+    // Package-Private Methods
+
     /**
-     * Sets the enabled state of the undo button.
+     * Handle an attempt by the user to select or deselect the specified spatial
+     * entity on the spatial display.
      * 
-     * @param undoFlag
-     *            True - enabled, False - disabled
+     * @param identifier
+     *            Identifier of the spatial entity.
+     * @param multipleSelection
+     *            Indicates whether or not this is a part of a multiple
+     *            selection action.
+     */
+    void handleUserSingleSpatialEntitySelection(IEntityIdentifier identifier,
+            boolean multipleSelection) {
+
+        /*
+         * If this is a multiple selection operation, then check if the user is
+         * selecting something that was already selected and treat this as a
+         * deselect; otherwise, if this is a multiple selection operation, treat
+         * it as a select; and finally, if a single selection, clear the
+         * selected set and select only the clicked wntity. Note that the member
+         * data set that tracks which spatial entities is not changed, since the
+         * presenter may not accept the new selection; it is only altered in
+         * response to the presenter saying is has been changed.
+         */
+        Set<IEntityIdentifier> identifiers = null;
+        if (multipleSelection) {
+            identifiers = new HashSet<>(selectedSpatialEntityIdentifiers);
+            if (identifiers.contains(identifier)) {
+                identifiers.remove(identifier);
+            } else {
+                identifiers.add(identifier);
+            }
+        } else {
+            identifiers = Sets.newHashSet(identifier);
+        }
+
+        presenter.handleUserSpatialEntitySelectionChange(identifiers);
+    }
+
+    /**
+     * Handle an attempt by the user to set the selection set to include only
+     * the specified spatial entities on the spatial display.
+     * 
+     * @param identifiers
+     *            Identifiers of the spatial entities.
+     */
+    void handleUserMultipleSpatialEntitiesSelection(
+            Set<IEntityIdentifier> identifiers) {
+        presenter.handleUserSpatialEntitySelectionChange(identifiers);
+    }
+
+    /**
+     * Handle user modification of the geometry of the specified spatial entity.
+     * 
+     * @param identifier
+     *            Identifier of the spatial entity.
+     * @param geometry
+     *            New geometry to be used by the spatial entity.
+     */
+    void handleUserModificationOfSpatialEntity(IEntityIdentifier identifier,
+            Geometry geometry) {
+        presenter.handleUserModificationOfSpatialEntity(identifier,
+                selectedTime, geometry);
+    }
+
+    /**
+     * Handle the the setting of the flag indicating whether or not newly
+     * created shapes should be added to the current selection set.
+     * 
+     * @param state
+     *            New state of the flag.
+     */
+    void handleSetAddCreatedEventsToSelected(boolean state) {
+        presenter.handleSetAddCreatedEventsToSelected(state);
+    }
+
+    /**
+     * Handle the completion of a multi-point drawing action, creating a
+     * multi-point shape.
+     * 
+     * @param geometry
+     *            New multi-point shape that was created.
+     */
+    void handleUserCreationOfShape(Geometry geometry) {
+        presenter.handleUserShapeCreation(geometry);
+    }
+
+    /**
+     * Handle the user selection of a location on the spatial display (not a
+     * spatial entity).
+     * 
+     * @param location
+     *            Location selected by the user.
+     */
+    void handleUserLocationSelection(Coordinate location) {
+        presenter.handleUserLocationSelection(location);
+    }
+
+    /**
+     * Handle the user initiation of a river gage action.
+     * 
+     * @param gageIdentifier
+     *            Identifier of the gage for which the action is being invoked.
+     */
+    void handleUserInvocationOfGageAction(String gageIdentifier) {
+        presenter.handleUserInvocationOfGageAction(gageIdentifier);
+    }
+
+    /**
+     * Handle the completion of a select-by-area drawing action, creating a new
+     * polygonal shape or modifying an existing shape.
+     * 
+     * @param identifier
+     *            Identifier of the entity being edited; if <code>null</code>,
+     *            no entity is being edited, and a new geometry is being
+     *            created.
+     * @param selectedGeometries
+     *            Geometries selected during the select-by-area process; these
+     *            may be combined to create the new geometry.
+     */
+    void handleUserSelectByAreaDrawingActionComplete(
+            IEntityIdentifier identifier, Set<Geometry> selectedGeometries) {
+        SelectByAreaDbMapResourceData resourceData = selectByAreaVizResource
+                .getResourceData();
+        presenter.handleUserSelectByAreaCreationOrModification(identifier,
+                resourceData.getTable(), resourceData.getMapName(),
+                selectedGeometries);
+        handleUserResetOfInputMode();
+    }
+
+    /**
+     * Handle the user finishing with the use of an input mode, and having said
+     * mode reset to default.
+     */
+    void handleUserResetOfInputMode() {
+
+        /*
+         * Unload the resource if it exists.
+         */
+        if (isSelectByAreaVizResourceLoaded()) {
+            unloadSelectByAreaVizResourceFromPerspective();
+        }
+
+        /*
+         * Notify the view of the completion of the drawing action.
+         */
+        resetInputMode();
+    }
+
+    /**
+     * Handle the closing of the spatial display.
+     */
+    void handleSpatialDisplayClosed() {
+        presenter.handleSpatialDisplayClosed();
+    }
+
+    /**
+     * Get the context menu items appropriate to the specified pixel
+     * coordinates.
+     * 
+     * @param entityIdentifier
+     *            Identifier of the spatial that was chosen with the context
+     *            menu invocation, or <code>null</code> if none was chosen.
+     * @return Actions for the menu items to be shown.
+     */
+    List<IAction> getContextMenuActions(IEntityIdentifier entityIdentifier) {
+        return presenter.getContextMenuActions(entityIdentifier,
+                RUNNABLE_ASYNC_SCHEDULER);
+    }
+
+    /**
+     * Determine whether or not a new shape is being drawn.
      * 
      * @return
      */
-    @Override
-    public void setUndoEnabled(final Boolean undoFlag) {
-        /*
-         * undoCommandAction can be null until the Console is initialized
-         */
-        if (this.undoCommandAction != null) {
-            this.undoCommandAction.setEnabled(undoFlag);
-        }
-    }
-
-    /**
-     * Sets the enabled state of the redo button.
-     * 
-     * @param redoFlag
-     *            True - enabled, False - disabled
-     * 
-     * @return
-     */
-    @Override
-    public void setRedoEnabled(final Boolean redoFlag) {
-        /*
-         * redoCommandAction can be null until the Console is initialized
-         */
-        if (this.redoCommandAction != null) {
-            this.redoCommandAction.setEnabled(redoFlag);
-        }
-    }
-
-    /**
-     * Determine whether this cursor is the current cursor.
-     * 
-     * @param cursorType
-     *            The type of cursor against which to check.
-     * @return True if the current cursor is of the specified type, false
-     *         otherwise.
-     */
-    public boolean isCurrentCursor(SpatialViewCursorTypes cursorType) {
-        Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                .getShell();
-        return (shell.getCursor() == cursorsForCursorTypes.get(cursorType));
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#
-     * setEditEventGeometryEnabled(java.lang.Boolean)
-     */
-    @Override
-    public void setEditEventGeometryEnabled(Boolean enabled) {
-        if (editVertexBasedPolygonChoiceAction != null) {
-            editVertexBasedPolygonChoiceAction.setEnabled(enabled);
-        }
-        if (editFreeHandVertexBasedPolygonChoiceAction != null) {
-            editFreeHandVertexBasedPolygonChoiceAction.setEnabled(enabled);
-        }
+    boolean isDrawingOfNewShapeInProgress() {
+        return drawingOfNewShapeInProgress;
     }
 
     // Private Methods
 
-    private boolean hullWithinDisplay(Coordinate[] hull,
+    /**
+     * Remove the current select-by-area viz resource and forget about it. This
+     * differs from the first part of
+     * {@link #updatePerspectiveUseOfSelectByAreaVizResource()} in that it
+     * removes any select-by-area viz resource in use by this object, not just
+     * old ones that are hanging around but unreferenced by this object.
+     */
+    private void unloadSelectByAreaVizResourceFromPerspective() {
+        if (selectByAreaVizResource != null) {
+            AbstractEditor abstractEditor = EditorUtil
+                    .getActiveEditorAs(AbstractEditor.class);
+            if (abstractEditor != null) {
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                        .getDisplayPanes())) {
+                    IDescriptor idesc = displayPane.getDescriptor();
+                    IMapDescriptor desc = null;
+                    if (idesc instanceof IMapDescriptor) {
+                        desc = (IMapDescriptor) idesc;
+
+                        try {
+                            desc.getResourceList().removeRsc(
+                                    selectByAreaVizResource);
+                        } catch (Exception e) {
+                            statusHandler.error("Failure while unloading "
+                                    + "select-by-area map database resource.",
+                                    e);
+                        }
+                    }
+                }
+                selectByAreaVizResource = null;
+            }
+        }
+    }
+
+    /**
+     * Remove any currently loaded but old select-by-area viz resources, and if
+     * a select-by-area viz resource that is associated with this view is
+     * available, load it.
+     */
+    private void updatePerspectiveUseOfSelectByAreaVizResource() {
+
+        AbstractEditor abstractEditor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (abstractEditor != null) {
+
+            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                    .getDisplayPanes())) {
+
+                IDescriptor idesc = displayPane.getDescriptor();
+                if (idesc instanceof IMapDescriptor) {
+
+                    IMapDescriptor desc = (IMapDescriptor) idesc;
+                    ResourceList rescList = desc.getResourceList();
+                    for (ResourcePair pair : rescList) {
+                        if (pair.getResource() instanceof SelectByAreaDbMapResource) {
+                            rescList.removeRsc(pair.getResource());
+                        }
+                    }
+
+                    if (selectByAreaVizResource != null) {
+                        rescList = desc.getResourceList();
+                        if (rescList.containsRsc(selectByAreaVizResource)) {
+                            rescList.removeRsc(selectByAreaVizResource);
+                        }
+                        desc.getResourceList().add(selectByAreaVizResource);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine whether or not the specified hull area lies within the
+     * currently visible portion of the specified display.
+     * 
+     * @param hull
+     *            Coordinates to be checked to ensure they lie within the
+     *            currently visible display.
+     * @param display
+     *            Display to be checked.
+     * @return <code>true</code> if the coordinateds lie within the visible
+     *         portion of the display, <code>false</code> otherwise.
+     */
+    private boolean isHullWithinDisplay(List<Coordinate> hull,
             IRenderableDisplay display) {
         IExtent extent = display.getExtent();
         IDescriptor descriptor = display.getDescriptor();
@@ -1403,72 +1331,53 @@ public class SpatialView implements
     }
 
     /**
-     * Receive notification that a drawing action has been completed.
+     * Handle switching back to the standard input mode.
      */
-    private void notifyDrawingActionComplete() {
+    private void resetInputMode() {
 
-        if (isSelectByAreaActive == true) {
-            isSelectByAreaActive = false;
+        /*
+         * If select-by-area is active, just set the flag to no longer true;
+         * otherwise, check the button of, and load the standard, input handler.
+         * Note that if the former is the case, the unloading of the
+         * select-by-area viz resource will trigger a call to
+         * dbMapResourceUnloaded(), which will in turn cause this method to be
+         * called again, and that time through, the standard input handler will
+         * be loaded.
+         */
+        if (selectByAreaActive) {
+            selectByAreaActive = false;
         } else {
-            moveAndSelectChoiceAction.setChecked(true);
-            moveAndSelectChoiceAction.run();
+            InputModeAction action = actionsForInputModes
+                    .get(InputMode.SELECT_OR_MODIFY);
+            action.setChecked(true);
+            action.run();
         }
-        presenter.getSessionManager().getEventManager()
-                .setAddCreatedEventsToSelected(false);
 
-        drawVertexBasedPolygonChoiceAction.setChecked(false);
-        drawFreehandPolygonChoiceAction.setChecked(false);
-        drawVertexPathChoiceAction.setChecked(false);
-        drawPointChoiceAction.setChecked(false);
+        /*
+         * Uncheck the other input mode radio buttons in the toolbar.
+         */
+        for (Map.Entry<InputMode, InputModeAction> entry : actionsForInputModes
+                .entrySet()) {
+            if (entry.getKey() != InputMode.SELECT_OR_MODIFY) {
+                entry.getValue().setChecked(false);
+            }
+        }
+
+        /*
+         * Ensure that newly-created events are not added to the selected events
+         * set.
+         */
+        presenter.handleSetAddCreatedEventsToSelected(false);
     }
 
     /**
      * Receive notification that a select-by-area operation has been initiated.
      */
     private void notifySelectByAreaInitiated() {
-        moveAndSelectChoiceAction.setChecked(false);
-        drawVertexBasedPolygonChoiceAction.setChecked(false);
-        drawFreehandPolygonChoiceAction.setChecked(false);
-        drawVertexPathChoiceAction.setChecked(false);
-        drawPointChoiceAction.setChecked(false);
-        isSelectByAreaActive = true;
-    }
-
-    /**
-     * Sets the mouse handler.
-     * 
-     * @param mouseHandler
-     *            The mouse handler to load.
-     * @return
-     */
-
-    private void setMouseHandler(IInputHandler mouseHandler) {
-
-        if (this.currentMouseHandler != null) {
-            unSetMouseHandler(this.currentMouseHandler);
+        for (InputModeAction action : actionsForInputModes.values()) {
+            action.setChecked(false);
         }
-
-        this.currentMouseHandler = mouseHandler;
-        spatialDisplay.setMouseHandler(mouseHandler);
-    }
-
-    /**
-     * Removes the specified mouse handler from the current editor.
-     * 
-     * @param mouseHandler
-     *            the mouseHandler to set
-     */
-    private void unSetMouseHandler(IInputHandler mouseHandler) {
-        this.currentMouseHandler = null;
-    }
-
-    /**
-     * Saves the current mouse handler for future retrieval.
-     */
-    private void saveCurrentMouseHandler() {
-        if (currentMouseHandler != null) {
-            unSetMouseHandler(currentMouseHandler);
-        }
+        selectByAreaActive = true;
     }
 
     /**
@@ -1618,154 +1527,90 @@ public class SpatialView implements
     }
 
     /**
-     * Returns a new instance of the draw by area viz resource.
+     * Get a new instance of the draw by area viz resource.
      * 
-     * @param table_name
-     *            The geo database table to retrieve overlay data for
-     * @param mapName
-     *            The name of the map (to display in the legend)
-     * @return A new instance of the draw by area resource.
-     * 
+     * @param databaseTableName
+     *            Geo database table for which to retrieve overlay data.
+     * @param legend
+     *            Legend to be displayed by the resource.
+     * @return New instance of the select-by-area viz resource.
+     * @throws VizException
+     *             If something goes wrong during viz resource instantiation.
      */
-    private SelectByAreaDbMapResource getGeometryDisplay(String table_name,
-            String mapName) throws VizException {
-        // Create the resource data class for the geo database
-        // map resource.
+    private SelectByAreaDbMapResource getSelectByAreaVizResource(
+            String databaseTableName, String legend) throws VizException {
+
+        /*
+         * Create the resource data class for the geo database map resource.
+         */
         SelectByAreaDbMapResourceData resourceData = new SelectByAreaDbMapResourceData();
-        resourceData.setTable(table_name);
-        resourceData.setMapName(mapName);
+        resourceData.setTable(databaseTableName);
+        resourceData.setMapName(legend);
         resourceData.setGeomField("the_geom");
 
-        // Filter by the CWA. We should try to get this
-        // identifier dynamically.
-        // Some overlays do not have a cwa field.
+        /*
+         * Filter by the CWA.
+         * 
+         * TODO: This should be fetched dynamically, as some overlays do not
+         * have a CWA field.
+         */
         String siteID = LocalizationManager.getInstance().getCurrentSite();
         resourceData.setConstraints(new String[] { "cwa = '" + siteID + "'" });
 
-        // Create the Viz Resource to display in CAVE
-        selectableGeometryDisplay = resourceData.construct(
-                new LoadProperties(), null);
-        selectableGeometryDisplay.registerListener(this);
+        /*
+         * Create the viz resource to display in CAVE.
+         */
+        selectByAreaVizResource = resourceData.construct(new LoadProperties(),
+                null);
+        selectByAreaVizResource.registerListener(this);
 
-        return selectableGeometryDisplay;
+        return selectByAreaVizResource;
     }
 
     /**
-     * Removes the geometry viz resource from the CAVE editor
+     * Determine whether or not the select-by-area viz resource is loaded.
      * 
-     * @param
-     * @return
+     * @return <code>true</code> if the resource is loaded, <code>false</code>
+     *         otherwise.
      */
-    private void removeGeometryDisplay() {
-
-        if (selectableGeometryDisplay != null) {
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if (abstractEditor != null) {
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                        .getDisplayPanes())) {
-                    IDescriptor idesc = displayPane.getDescriptor();
-                    IMapDescriptor desc = null;
-                    if (idesc instanceof IMapDescriptor) {
-                        desc = (IMapDescriptor) idesc;
-
-                        try {
-                            desc.getResourceList().removeRsc(
-                                    selectableGeometryDisplay);
-                        } catch (Exception e) {
-                            // ignore
-                        }
-                    }
-                }
-                selectableGeometryDisplay = null;
-            }
-        }
-    }
-
-    /**
-     * Tests whether or not the draw by area resource is loaded.
-     * 
-     * @param
-     * @return true - the resource is loaded, false - the resource is not loaded
-     */
-    private boolean isGeometryDisplayResourceLoaded() {
+    private boolean isSelectByAreaVizResourceLoaded() {
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
-        boolean isLoaded = false;
-        if (abstractEditor != null) {
-            IDescriptor idesc = null;
-            IMapDescriptor desc = null;
-            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                    .getDisplayPanes())) {
-                idesc = displayPane.getDescriptor();
+        if (selectByAreaVizResource != null) {
+            boolean isLoaded = false;
+            if (abstractEditor != null) {
+                IDescriptor idesc = null;
+                IMapDescriptor desc = null;
+                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
+                        .getDisplayPanes())) {
+                    idesc = displayPane.getDescriptor();
 
-                if (selectableGeometryDisplay != null) {
                     if (idesc instanceof IMapDescriptor) {
                         desc = (IMapDescriptor) idesc;
                         ResourceList rescList = desc.getResourceList();
                         isLoaded = rescList
-                                .containsRsc(selectableGeometryDisplay);
+                                .containsRsc(selectByAreaVizResource);
                         if (isLoaded) {
                             break;
                         }
                     }
                 }
             }
+            return isLoaded;
         }
-        return isLoaded;
+        return false;
     }
 
     /**
-     * Unloads the selected geometry display resource if it is loaded in CAVE.
-     */
-    private void unloadGeometryDisplayResource() {
-        if (selectableGeometryDisplay != null) {
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if (abstractEditor != null) {
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                        .getDisplayPanes())) {
-                    IDescriptor idesc = displayPane.getDescriptor();
-                    IMapDescriptor desc = null;
-
-                    if (idesc instanceof IMapDescriptor) {
-                        desc = (IMapDescriptor) idesc;
-                        ResourceList rescList = desc.getResourceList();
-                        rescList.removeRsc(selectableGeometryDisplay);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * This function is called when the selected geometry display resource is
-     * disposed. This will happen if the user right-clicks on the legend item
-     * for this resource and selects the 'unload' option. This will also be
-     * called when this resource is removed from the AbstractVizResource list
-     * using the removeRsc method.
+     * Respond to the select-by-area viz resource is disposed. This will happen
+     * if the user right-clicks on the legend item for said resource and selects
+     * the 'unload' option. This will also be called when this resource is
+     * removed from the {@link AbstractVizResource} list using the
+     * {@link ResourceList#removeRsc(AbstractVizResource)} method.
      */
     private void dbMapResourceUnloaded() {
-        selectableGeometryDisplay = null;
-        drawingActionComplete();
+        selectByAreaVizResource = null;
+        selectByAreaActive = false;
+        resetInputMode();
     }
-
-    /**
-     * Enables or disables the "add geometry to selected" button based on the
-     * number of selected hazard events. This button is enabled only if there is
-     * one hazard event selected.
-     * 
-     * @param
-     * @return
-     */
-    private void enableAddGeometryToSelected() {
-
-        int numSelected = presenter.getSessionManager().getEventManager()
-                .getSelectedEvents().size();
-
-        if (addGeometryToSelectedAction != null) {
-            addGeometryToSelectedAction.setEnabled(numSelected == 1);
-        }
-    }
-
 }

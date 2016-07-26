@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.raytheon.uf.common.colormap.Color;
 import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * Description: Class providing methods allowing the conversion of
@@ -50,6 +51,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      value for label text in visual features,
  *                                      as well as support for new topmost and
  *                                      symbol shape properties of visual features.
+ * Jul 25, 2016   19537    Chris.Golden Added support for new fill style and
+ *                                      allow-drag-of-points-in-multi-geometries
+ *                                      flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -102,6 +106,11 @@ public class VisualFeaturesListJsonConverter {
     public static final String KEY_BORDER_STYLE = "borderStyle";
 
     /**
+     * Key for the fill style in a JSON object representing a visual feature.
+     */
+    public static final String KEY_FILL_STYLE = "fillStyle";
+
+    /**
      * Key for the diameter in a JSON object representing a visual feature.
      */
     public static final String KEY_DIAMETER = "diameter";
@@ -143,6 +152,14 @@ public class VisualFeaturesListJsonConverter {
      * feature.
      */
     public static final String KEY_DRAGGABILITY = "dragCapability";
+
+    /**
+     * Key for the flag in a JSON object representing a visual feature that
+     * indicates whether or not, if a visual feature's geometry is a collection
+     * of multiple geometries, any {@link Puntal} sub-geometries within that
+     * collection are draggable.
+     */
+    public static final String KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE = "multiGeometryPointsDraggable";
 
     /**
      * Key for the rotatable flag in a JSON object representing a visual
@@ -226,6 +243,11 @@ public class VisualFeaturesListJsonConverter {
             .of(BorderStyle.class);
 
     /**
+     * Type of a fill style.
+     */
+    static final TypeToken<?> TYPE_FILL_STYLE = TypeToken.of(FillStyle.class);
+
+    /**
      * Type of a symbol shape.
      */
     static final TypeToken<?> TYPE_SYMBOL_SHAPE = TypeToken
@@ -248,6 +270,7 @@ public class VisualFeaturesListJsonConverter {
             .put(KEY_FILL_COLOR, TYPE_COLOR)
             .put(KEY_BORDER_THICKNESS, TYPE_DOUBLE)
             .put(KEY_BORDER_STYLE, TYPE_BORDER_STYLE)
+            .put(KEY_FILL_STYLE, TYPE_FILL_STYLE)
             .put(KEY_DIAMETER, TYPE_DOUBLE)
             .put(KEY_SYMBOL_SHAPE, TYPE_SYMBOL_SHAPE)
             .put(KEY_LABEL, TYPE_STRING)
@@ -255,6 +278,7 @@ public class VisualFeaturesListJsonConverter {
             .put(KEY_TEXT_OFFSET_DIR, TYPE_DOUBLE)
             .put(KEY_TEXT_SIZE, TYPE_INTEGER).put(KEY_TEXT_COLOR, TYPE_COLOR)
             .put(KEY_DRAGGABILITY, TYPE_DRAGGABILITY)
+            .put(KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE, TYPE_BOOLEAN)
             .put(KEY_ROTATABLE, TYPE_BOOLEAN).put(KEY_SCALEABLE, TYPE_BOOLEAN)
             .put(KEY_TOPMOST, TYPE_BOOLEAN).build();
 

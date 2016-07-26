@@ -9,24 +9,16 @@
  */
 package gov.noaa.gsd.viz.hazards.display.test;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesDrawingAction;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.HazardServicesMouseHandlers;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -52,6 +44,10 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class SpatialViewForTesting implements ISpatialView {
 
     @Override
+    public void initialize(SpatialPresenter presenter) {
+    }
+
+    @Override
     public void dispose() {
     }
 
@@ -61,64 +57,7 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void initialize(SpatialPresenter presenter,
-            MouseHandlerFactory mouseFactory) {
-    }
-
-    @Override
-    public void setSettings(ObservedSettings settings) {
-    }
-
-    @Override
-    public void redoTimeMatching() {
-    }
-
-    @Override
-    public void issueRefresh() {
-    }
-
-    @Override
-    public void setMouseHandler(HazardServicesMouseHandlers mouseHandler,
-            String... args) {
-    }
-
-    @Override
-    public void unregisterCurrentMouseHandler() {
-    }
-
-    @Override
-    public void modifyShape(HazardServicesDrawingAction drawingAction) {
-    }
-
-    @Override
-    public void manageViewFrames(Date selectedTime) {
-    }
-
-    @Override
-    public void addGeometryDisplayResourceToPerspective() {
-    }
-
-    @Override
-    public void setCursor(SpatialViewCursorTypes cursorType) {
-    }
-
-    @Override
-    public void drawingActionComplete() {
-
-    }
-
-    @Override
-    public SpatialDisplay getSpatialDisplay() {
-        return null;
-    }
-
-    @Override
-    public void loadGeometryOverlayForSelectedEvent() {
-    }
-
-    @Override
-    public SelectByAreaDbMapResource getSelectableGeometryDisplay() {
-        return null;
+    public void setSelectedTime(Date selectedTime) {
     }
 
     @Override
@@ -134,24 +73,6 @@ public class SpatialViewForTesting implements ISpatialView {
         return ToStringBuilder.reflectionToString(this);
     }
 
-    @Override
-    public void drawEvents(Collection events, Map eventEditability,
-            Set hatchedEventIdentifiers) {
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#recenterRezoomDisplay
-     * (com.vividsolutions.jts.geom.Coordinate[],
-     * com.vividsolutions.jts.geom.Coordinate)
-     */
-    @Override
-    public void recenterRezoomDisplay(Coordinate[] hull, Coordinate center) {
-        throw new UnsupportedOperationException();
-    }
-
     /*
      * (non-Javadoc)
      * 
@@ -159,13 +80,30 @@ public class SpatialViewForTesting implements ISpatialView {
      * setEditEventGeometryEnabled(java.lang.Boolean)
      */
     @Override
-    public void setEditEventGeometryEnabled(Boolean enabled) {
+    public void setEditMultiPointGeometryEnabled(Boolean enabled) {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public void drawSpatialEntities(List spatialEntities,
             Set selectedEventIdentifiers) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void loadSelectByAreaVizResourceAndInputHandler(
+            SelectByAreaContext context) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setAddNewGeometryToSelectedToggleState(boolean enable,
+            boolean check) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void centerAndZoomDisplay(List hull, Coordinate center) {
         throw new UnsupportedOperationException();
     }
 }

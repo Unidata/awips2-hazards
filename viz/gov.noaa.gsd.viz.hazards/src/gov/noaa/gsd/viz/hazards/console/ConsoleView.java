@@ -90,9 +90,14 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Feb 06, 2015    2331    Chris.Golden      Removed bogus debug message, and also
  *                                           changed to use time range boundaries for
  *                                           the events.
- * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
- * Jul 30, 2015 9681       Robert.Blum       Added new ViewProductsAction to the console.
- * Sep 14, 2015  3473      Chris.Cody   Implement Hazard Services Import/Export through Central Registry server.
+ * May 05, 2015    6898    Chris.Cody        Pan & Scale Visible and Selected Time
+ * Jul 30, 2015    9681    Robert.Blum       Added new ViewProductsAction to the console.
+ * Sep 14, 2015    3473    Chris.Cody        Implement Hazard Services Import/Export
+ *                                           through Central Registry server.
+ * Jul 25, 2016   19537    Chris.Golden      Fixed bug that sometimes manifested when
+ *                                           Hazard Services was closing so that another
+ *                                           session of Hazard Services could open via
+ *                                           a bundle load, causing an exception.
  * </pre>
  * 
  * @author Chris.Golden
@@ -885,7 +890,16 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
-                getViewPart().updateActiveAlerts(activeAlerts);
+
+                /*
+                 * Check to ensure the view part is still around, since the
+                 * enclosing method is sometimes called when the view part has
+                 * been deleted and the application is closing.
+                 */
+                ConsoleViewPart viewPart = getViewPart();
+                if (viewPart != null) {
+                    viewPart.updateActiveAlerts(activeAlerts);
+                }
             }
         });
     }

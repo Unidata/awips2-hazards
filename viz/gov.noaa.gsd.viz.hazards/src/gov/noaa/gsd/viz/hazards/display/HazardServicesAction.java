@@ -9,20 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.ENCRYPTION_KEY;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.PASSWORD;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.REGISTRY_LOCATION;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.TRUST_STORE_LOCATION;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.TRUST_STORE_PASSWORD;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.USER_NAME;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
-import org.eclipse.jface.preference.IPreferenceStore;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.drawables.ResourcePair;
@@ -37,12 +29,18 @@ import com.raytheon.viz.ui.input.EditableManager;
  * 
  * <pre>
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * June 2011               Bryon.Lawrence    Initial creation
- * Jul 08, 2013    585     Chris.Golden      Changed to support loading from bundle.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * Jul 21, 2015 2921      Robert.Blum        Changes for multi panel displays.
+ * Date         Ticket#    Engineer       Description
+ * ------------ ---------- -------------- --------------------------
+ * June 2011               Bryon.Lawrence Initial creation.
+ * Jul 08, 2013     585    Chris.Golden   Changed to support loading from bundle.
+ * May 29, 2015    6895    Ben.Phillippe  Refactored Hazard Service data access
+ * Jul 21, 2015    2921    Robert.Blum    Changes for multi panel displays.
+ * Jul 25, 2016   19537    Chris.Golden   Moved loading of registry preferences
+ *                                        elsewhere, since loading via a bundle
+ *                                        load did not get the registry prefs
+ *                                        loaded when it was done here. Also
+ *                                        changed to create the correct subclass
+ *                                        of resource data.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -59,22 +57,8 @@ public class HazardServicesAction extends
      */
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
-        loadRegistryPreferences();
         super.execute(event);
         return null;
-    }
-
-    /**
-     * Initializes the Hazard Services web services interfaces
-     */
-    private void loadRegistryPreferences() {
-        IPreferenceStore store = HazardServicesActivator.getDefault()
-                .getPreferenceStore();
-        HazardServicesClient.init(store.getString(REGISTRY_LOCATION),
-                store.getString(USER_NAME), store.getString(PASSWORD),
-                store.getString(TRUST_STORE_LOCATION),
-                store.getString(TRUST_STORE_PASSWORD),
-                store.getString(ENCRYPTION_KEY));
     }
 
     /*
@@ -85,8 +69,7 @@ public class HazardServicesAction extends
      */
     @Override
     protected GenericToolsResourceData<SpatialDisplay> getResourceData() {
-        return new GenericToolsResourceData<SpatialDisplay>("Hazard Services",
-                SpatialDisplay.class);
+        return new SpatialDisplayResourceData();
     }
 
     @Override

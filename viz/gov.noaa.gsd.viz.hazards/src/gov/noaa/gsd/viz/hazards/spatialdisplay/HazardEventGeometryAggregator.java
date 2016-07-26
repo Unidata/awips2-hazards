@@ -45,10 +45,12 @@ import com.vividsolutions.jts.geom.Polygon;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * July 07, 2015 7279      dhladky     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jul 07, 2015    7279    dhladky      Initial creation.
+ * Jul 25, 2016   19537    Chris.Golden Made deholePolygon() static and
+ *                                      package-private, as it is needed
+ *                                      in the spatial display components.
  * </pre>
  * 
  * @author dhladky
@@ -298,12 +300,12 @@ public class HazardEventGeometryAggregator {
 
             if (g.getGeometryN(i) instanceof Polygon) {
                 Polygon poly = (Polygon) g.getGeometryN(i);
-                poly = deholePolygon(poly);
+                poly = deholePolygon(poly, geometryFactory);
             } else if (g.getGeometryN(i) instanceof MultiPolygon) {
                 MultiPolygon mpoly = (MultiPolygon) g.getGeometryN(i);
                 for (int j = 0; j < mpoly.getNumGeometries(); j++) {
                     Polygon poly = (Polygon) mpoly.getGeometryN(j);
-                    poly = deholePolygon(poly);
+                    poly = deholePolygon(poly, geometryFactory);
                 }
             }
         }
@@ -312,29 +314,37 @@ public class HazardEventGeometryAggregator {
     }
 
     /**
-     * Dehole the polygon
+     * Attempt to remove interior holes from a polygon. Up to three passes are
+     * made over the polygon, each one expanding any interior rings and merging
+     * rings back in.
+     * <p>
+     * Note that this algorithm was added as part of Redmine issues #7624 and
+     * #7279, in order to simplify polygons that are themselves elements of
+     * multi-polygons, due to performance problems when rendering; and to
+     * simplify complex basins for the Flash Flood Recommender.
+     * </p>
      * 
-     * @param p
-     * @return
+     * @param polygon
+     *            Polygon to have holes pruned out.
+     * @param geometryFactory
+     *            Geometry factory to be used during the pruning.
+     * @return Polygon with the holes pruned out after three iterations.
      */
-    private Polygon deholePolygon(Polygon p) {
-
-        int interiorRings = p.getNumInteriorRing();
-        int iterations = 0;
-        while ((interiorRings > 0) && (iterations < 3)) {
-            Geometry[] hucGeometries = new Geometry[interiorRings + 1];
-            hucGeometries[0] = p;
-            for (int i = 0; i < interiorRings; i++) {
-                hucGeometries[i + 1] = p.getInteriorRingN(i).buffer(
+    static Polygon deholePolygon(Polygon polygon,
+            GeometryFactory geometryFactory) {
+        int numInteriorRings = polygon.getNumInteriorRing();
+        for (int j = 0; (numInteriorRings > 0) && (j < 3); j++) {
+            Geometry[] hucGeometries = new Geometry[numInteriorRings + 1];
+            hucGeometries[0] = polygon;
+            for (int i = 0; i < numInteriorRings; i++) {
+                hucGeometries[i + 1] = polygon.getInteriorRingN(i).buffer(
                         BUFFER_LEVEL);
             }
-            p = (Polygon) geometryFactory.createGeometryCollection(
+            polygon = (Polygon) geometryFactory.createGeometryCollection(
                     hucGeometries).buffer(0);
-            iterations++;
-            interiorRings = p.getNumInteriorRing();
+            numInteriorRings = polygon.getNumInteriorRing();
         }
-
-        return p;
+        return polygon;
     }
 
     /**

@@ -56,6 +56,9 @@ import com.vividsolutions.jts.io.WKTWriter;
  *                                      value for label text in visual features,
  *                                      as well as support for new topmost and
  *                                      symbol shape properties of visual features.
+ * Jul 25, 2016   19537    Chris.Golden Added support for new fill style and
+ *                                      allow-drag-of-points-in-multi-geometries
+ *                                      flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -202,6 +205,20 @@ class VisualFeaturesListJsonSerializer {
                                     VisualFeaturesListJsonConverter.KEY_BORDER_STYLE);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_FILL_STYLE,
+                    new IPropertySerializer<FillStyle>() {
+
+                        @Override
+                        public void serializeProperty(FillStyle value,
+                                JsonGenerator generator, String identifier)
+                                throws JsonGenerationException {
+                            serializeFillStyle(
+                                    value,
+                                    generator,
+                                    identifier,
+                                    VisualFeaturesListJsonConverter.KEY_FILL_STYLE);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_DIAMETER,
                     new IPropertySerializer<Double>() {
 
@@ -309,6 +326,20 @@ class VisualFeaturesListJsonSerializer {
                                     generator,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_DRAGGABILITY);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE,
+                    new IPropertySerializer<Boolean>() {
+
+                        @Override
+                        public void serializeProperty(Boolean value,
+                                JsonGenerator generator, String identifier)
+                                throws JsonGenerationException {
+                            serializeBoolean(
+                                    value,
+                                    generator,
+                                    identifier,
+                                    VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_ROTATABLE,
@@ -426,6 +457,15 @@ class VisualFeaturesListJsonSerializer {
                             return visualFeature.getBorderStyle();
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_FILL_STYLE,
+                    new IPropertyFetcher<FillStyle>() {
+
+                        @Override
+                        public TemporallyVariantProperty<FillStyle> fetchPropertyValue(
+                                VisualFeature visualFeature) {
+                            return visualFeature.getFillStyle();
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_DIAMETER,
                     new IPropertyFetcher<Double>() {
 
@@ -496,6 +536,16 @@ class VisualFeaturesListJsonSerializer {
                         public TemporallyVariantProperty<DragCapability> fetchPropertyValue(
                                 VisualFeature visualFeature) {
                             return visualFeature.getDragCapability();
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE,
+                    new IPropertyFetcher<Boolean>() {
+
+                        @Override
+                        public TemporallyVariantProperty<Boolean> fetchPropertyValue(
+                                VisualFeature visualFeature) {
+                            return visualFeature
+                                    .getMultiGeometryPointsDraggable();
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_ROTATABLE,
@@ -646,6 +696,11 @@ class VisualFeaturesListJsonSerializer {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<BorderStyle>) fetcher,
                         (IPropertySerializer<BorderStyle>) serializer);
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_FILL_STYLE)) {
+                fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
+                        (IPropertyFetcher<FillStyle>) fetcher,
+                        (IPropertySerializer<FillStyle>) serializer);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
@@ -1019,6 +1074,31 @@ class VisualFeaturesListJsonSerializer {
      *             If an error occurs during serialization.
      */
     private static void serializeBorderStyle(BorderStyle value,
+            JsonGenerator generator, String identifier, String propertyName)
+            throws JsonGenerationException {
+        try {
+            generator.writeString(value.getDescription());
+        } catch (IOException e) {
+            throw createValueSerializationException(value, identifier,
+                    propertyName, e);
+        }
+    }
+
+    /**
+     * Serialize the specified fill style.
+     * 
+     * @param value
+     *            Item to be serialized.
+     * @param generator
+     *            JSON generator to be used for serialization.
+     * @param identifier
+     *            Identifier of the visual feature that is being serialized.
+     * @param propertyName
+     *            Name of the property for which a value is being serialized.
+     * @throws JsonGenerationException
+     *             If an error occurs during serialization.
+     */
+    private static void serializeFillStyle(FillStyle value,
             JsonGenerator generator, String identifier, String propertyName)
             throws JsonGenerationException {
         try {

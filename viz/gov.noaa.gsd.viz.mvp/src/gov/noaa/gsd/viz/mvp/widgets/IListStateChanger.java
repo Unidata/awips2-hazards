@@ -25,6 +25,11 @@ import java.util.List;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 14, 2016   15676    Chris.Golden Initial creation.
+ * Jul 25, 2016   19537    Chris.Golden Changed method names, and altered
+ *                                      the replace() method to allow a
+ *                                      different number of items to be
+ *                                      removed from the number being
+ *                                      inserted.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,7 +60,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      *            particular list.
      * @return Contents of the specified list.
      */
-    public List<E> getList(I identifier);
+    public List<E> get(I identifier);
 
     /**
      * Clear the specified list of any contents.
@@ -65,7 +70,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      *            This may be <code>null</code> if this object only handles one
      *            particular list.
      */
-    public void clearList(I identifier);
+    public void clear(I identifier);
 
     /**
      * Set the contents of the specified list.
@@ -79,7 +84,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      *            {@link IListStateChangeHandler} should not be notified of
      *            values set in this fashion.
      */
-    public void setList(I identifier, List<E> elements);
+    public void set(I identifier, List<E> elements);
 
     /**
      * Add the specified element to the end of the specified list.
@@ -91,7 +96,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param element
      *            Element to be appended to the list.
      */
-    public void addElementToList(I identifier, E element);
+    public void addElement(I identifier, E element);
 
     /**
      * Add the specified elements to the end of the specified list.
@@ -103,7 +108,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param elements
      *            List of elements to be appended to the list.
      */
-    public void addElementsToList(I identifier, List<E> elements);
+    public void addElements(I identifier, List<E> elements);
 
     /**
      * Insert the specified element at the specified index of the specified
@@ -118,7 +123,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param element
      *            Element to be inserted into the list.
      */
-    public void insertElementIntoList(I identifier, int index, E element);
+    public void insertElement(I identifier, int index, E element);
 
     /**
      * Insert the specified elements at the specified index of the specified
@@ -133,7 +138,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param elements
      *            List of elements to be inserted into the list.
      */
-    public void insertElementsIntoList(I identifier, int index, List<E> elements);
+    public void insertElements(I identifier, int index, List<E> elements);
 
     /**
      * Replace the element at the specified index in the specified list with the
@@ -148,13 +153,11 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param element
      *            Element to replace the element at the index in the list.
      */
-    public void replaceElementInList(I identifier, int index, E element);
+    public void replaceElement(I identifier, int index, E element);
 
     /**
-     * Replace the elements at the specified index in the specified list with
-     * the specified new elements. If the number of elements to be replaced
-     * exceeds the number of elements at or beyond the given index, the list
-     * will be extended to accommodate all the specified new elements.
+     * Replace the specified number of elements at the specified index in the
+     * specified list with the specified new elements.
      * 
      * @param identifier
      *            Identifier of the list widget to have its contents modified.
@@ -162,11 +165,14 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      *            particular list.
      * @param index
      *            Index at which to start replacing the existing elements.
+     * @param count
+     *            Number of elements to be removed during replacement.
      * @param elements
      *            List of elements to replace the elements starting at the index
      *            in the list.
      */
-    public void replaceElementsInList(I identifier, int index, List<E> elements);
+    public void replaceElements(I identifier, int index, int count,
+            List<E> elements);
 
     /**
      * Remove the element at the specified index in the specified list.
@@ -178,7 +184,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param index
      *            Index at which to remove an existing element.
      */
-    public void removeElementInList(I identifier, int index);
+    public void removeElement(I identifier, int index);
 
     /**
      * Remove the specified number of elements starting at the specified index
@@ -193,7 +199,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param count
      *            Number of elements to be removed.
      */
-    public void removeElementsInList(I identifier, int index, int count);
+    public void removeElements(I identifier, int index, int count);
 
     /**
      * Set the list state change handler to that specified. The handler will be

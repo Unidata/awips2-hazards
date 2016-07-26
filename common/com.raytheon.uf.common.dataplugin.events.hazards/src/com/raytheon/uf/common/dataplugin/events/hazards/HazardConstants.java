@@ -92,6 +92,8 @@ import com.google.common.collect.ImmutableMap;
  *                                      based upon selection state to individual visual features.
  * Jun 23, 2016 19537     Chris.Golden  Added recommender-related constants, and removed storm-
  *                                      track-specific constants.
+ * Jul 25, 2016 19537     Chris.Golden  Changed as part of partial MVP refactor for spatial
+ *                                      display.
  * </pre>
  * 
  * @author mnash
@@ -311,6 +313,10 @@ public final class HazardConstants {
         public static boolean issuedButNotEndedOrElapsed(HazardStatus status) {
             return status == ISSUED || status == ENDING;
         }
+
+        public static boolean endingEndedOrElapsed(HazardStatus status) {
+            return status == ENDING || status == ENDED || status == ELAPSED;
+        }
     }
 
     public static HazardStatus hazardStatusFromString(String value) {
@@ -491,6 +497,11 @@ public final class HazardConstants {
     public static final String FLOOD_RECORD_STATUS = "Flood Record Status";
 
     public static final String FLOOD_IMMEDIATE_CAUSE = "Flood Immediate Cause";
+
+    /**
+     * Dialog info key for recommender gage identifier.
+     */
+    public static final String SELECTED_POINT_ID = "selectedPointID";
 
     /*
      * The following are used to identify attributes which are returned from
@@ -717,31 +728,6 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_SHAPES = "shapes";
 
     /**
-     * Shape type key in hazard
-     */
-    public static final String HAZARD_EVENT_SHAPE_TYPE = "shapeType";
-
-    /**
-     * Geometry type key in hazard
-     */
-    public static final String HAZARD_EVENT_GEOMETRY_TYPE = "geometryType";
-
-    /**
-     * Circle shape type
-     */
-    public static final String HAZARD_EVENT_SHAPE_TYPE_CIRCLE = "circle";
-
-    /**
-     * Dot shape type
-     */
-    public static final String HAZARD_EVENT_SHAPE_TYPE_DOT = "dot";
-
-    /**
-     * Star shape type
-     */
-    public static final String HAZARD_EVENT_SHAPE_TYPE_STAR = "star";
-
-    /**
      * Event-is-checked key in hazard
      */
     public static final String HAZARD_EVENT_CHECKED = "checked";
@@ -916,9 +902,9 @@ public final class HazardConstants {
 
     public static final String CONTEXT_MENU_SELECTED = "ContextMenuSelected";
 
-    public static final String CONTEXT_MENU_BRING_TO_FRONT = "Bring to Front";
+    public static final String CONTEXT_MENU_BRING_TO_FRONT = "Front";
 
-    public static final String CONTEXT_MENU_SEND_TO_BACK = "Send to Back";
+    public static final String CONTEXT_MENU_SEND_TO_BACK = "Back";
 
     public static final String CONTEXT_MENU_HAZARD_INFORMATION_DIALOG = "Hazard Information Dialog";
 

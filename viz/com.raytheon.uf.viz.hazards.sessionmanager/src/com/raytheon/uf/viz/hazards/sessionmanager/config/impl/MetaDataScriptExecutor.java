@@ -9,7 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import gov.noaa.gsd.common.utilities.JSONConverter;
+import gov.noaa.gsd.common.utilities.JsonConverter;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -112,7 +112,7 @@ public class MetaDataScriptExecutor extends
         script.set(HAZARD_EVENT, hazardEvent);
         script.set(ENVIRONMENTAL_DICT, environment);
         String result = (String) script.getValue(INVOKE_FUNCTION);
-        JSONConverter converter = new JSONConverter();
+        JsonConverter converter = new JsonConverter();
         try {
             return converter.fromJson(result);
         } catch (Exception e) {

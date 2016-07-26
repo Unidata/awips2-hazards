@@ -8,19 +8,14 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.common.visuals.SpatialEntity;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.SpatialViewCursorTypes;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.mousehandlers.MouseHandlerFactory;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 import gov.noaa.gsd.viz.mvp.IView;
 
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -49,6 +44,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Mar 24, 2016 15676      Chris.Golden      Changed method that draws spatial entities
  *                                           to take another parameter.
  * Jun 23, 2016 19537      Chris.Golden      Removed storm-track-specific code.
+ * Jul 25, 2016 19537      Chris.Golden      Removed a number of methods that got
+ *                                           refactored away as the move toward MVP
+ *                                           compliance continues.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,172 +58,92 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
 
     /**
      * Initialize the view.
+     * <p>
+     * TODO: <code>presenter</code> should not be passed in once refactoring is
+     * complete; this gives the view way too much access.
+     * </p>
      * 
      * @param presenter
      *            Presenter managing this view.
-     * @param mouseFactory
-     *            Mouse handler factory.
      */
-    public void initialize(SpatialPresenter presenter,
-            MouseHandlerFactory mouseFactory);
-
-    /**
-     * Set the settings.
-     * 
-     * @param settings
-     */
-    public void setSettings(ObservedSettings settings);
-
-    /**
-     * Draw events on the view.
-     * 
-     * @param eventEditability
-     * @param events
-     */
-    public void drawEvents(Collection<ObservedHazardEvent> events,
-            Map<String, Boolean> eventEditability,
-            Set<String> hatchedEventIdentifiers);
+    public void initialize(SpatialPresenter presenter);
 
     /**
      * Draw spatial entities on the view.
      * 
      * @param spatialEntities
      *            Spatial entities.
-     * @param selectedEventIdentifiers
-     *            Identifiers of events that are currently selected.
+     * @param selectedSpatialEntityIdentifiers
+     *            Identifiers of spatial entities that are currently selected.
      */
     public void drawSpatialEntities(
-            List<SpatialEntity<VisualFeatureSpatialIdentifier>> spatialEntities,
-            Set<String> selectedEventIdentifiers);
+            List<SpatialEntity<? extends IEntityIdentifier>> spatialEntities,
+            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers);
 
     /**
-     * Set the spatial entities
-     */
-
-    /**
-     * Force time matching to be recalculated.
-     */
-    public void redoTimeMatching();
-
-    /**
-     * Recenter and rezoom the display to the given location if the display
-     * doesn't already contain the hull
+     * Recenter and rezoom the display to the specified location if the display
+     * doesn't already contain the specified hull.
      * 
-     * @param hullCoordinates
+     * @param hull
+     *            Coordinates of the hull area that must be visible.
      * @param center
+     *            Center of the new area to be displayed.
      */
-    public void recenterRezoomDisplay(Coordinate[] hull, Coordinate center);
+    public void centerAndZoomDisplay(List<Coordinate> hull, Coordinate center);
 
     /**
-     * Refresh the spatial view.
-     */
-    public void issueRefresh();
-
-    /**
-     * Sets the mouse handler.
-     * 
-     * @param appBuilder
-     *            The app builder.
-     * @param messageHandler
-     *            The app message handler
-     * @param mouseHandler
-     *            The mouse handler to load.
-     * @param args
-     *            arguments required by the draw by area mouse handler.
-     */
-    public void setMouseHandler(HazardServicesMouseHandlers mouseHandler,
-            String... args);
-
-    /**
-     * Unregisters the current mouse handler from the active editor.
-     */
-    public void unregisterCurrentMouseHandler();
-
-    /**
-     * Modify a displayed shape.
-     * 
-     * @param drawingAction
-     *            The modification action..
-     */
-    public void modifyShape(HazardServicesDrawingAction drawingAction);
-
-    /**
-     * Manage the view frames based on the selected time.
+     * Set the selected time to that specified.
      * 
      * @param selectedTime
-     *            the selected time to try to match a view frame to.
+     *            New selected time.
      */
-    public void manageViewFrames(Date selectedTime);
+    public void setSelectedTime(Date selectedTime);
 
     /**
-     * Adds the draw by area viz resource to the CAVE editor.
+     * Load the specified select-by-area viz resource and associated input
+     * handler.
+     * 
+     * @param context
+     *            Context for the load.
      */
-    public void addGeometryDisplayResourceToPerspective();
+    public void loadSelectByAreaVizResourceAndInputHandler(
+            SelectByAreaContext context);
 
     /**
-     * Sets the mouse cursor to the specified type.
+     * Set the enabled state of the undo action.
      * 
-     * @param cursorType
-     *            The type of cursor to set.
+     * @param enable
+     *            Flag indicating whether or not undo should be enabled.
      */
-    public void setCursor(SpatialViewCursorTypes cursorType);
+    public void setUndoEnabled(final Boolean enable);
 
     /**
-     * Whenever the user has completed a drawing action (i.e, the user has
-     * completed a polygon, a point, a line, or a select by area, then notify
-     * the toolbar to reset to the default selected event editing mode.
+     * Set the enabled state of the redo action.
+     * 
+     * @param enable
+     *            Flag indicating whether or not redo should be enabled.
      */
-    public void drawingActionComplete();
+    public void setRedoEnabled(final Boolean enable);
 
     /**
-     * Get the spatial display tool layer.
+     * Set the enabled state of the edit polygon buttons.
      * 
-     * @return An instance of the spatial display.
+     * @param enable
+     *            Flag indicating whether or not edit polygon buttons should be
+     *            enabled.
      */
-    public SpatialDisplay getSpatialDisplay();
+    public void setEditMultiPointGeometryEnabled(final Boolean enable);
 
     /**
-     * Checks to determine if a geometry overlay needs to be loaded for a
-     * selected event. If multiple geometry overlays need to be loaded this
-     * currently only loads the first overlay.
+     * Set the enabled and checked state of the add new geometry to selected
+     * toggle button.
      * 
+     * @param enable
+     *            Flag indicating whether or not the button should be enabled.
+     * @param check
+     *            Flag indicating whether or not the button should be checked
+     *            (selected).
      */
-    public void loadGeometryOverlayForSelectedEvent();
-
-    /**
-     * Returns the current instance of the draw by area resource.
-     * 
-     * @return the current instance of the draw by area resource.
-     */
-    public SelectByAreaDbMapResource getSelectableGeometryDisplay();
-
-    /**
-     * Sets the enabled state of the undo flag.
-     * 
-     * @param undoFlag
-     *            True - enabled, False - disabled
-     * 
-     * @return
-     */
-    public void setUndoEnabled(final Boolean undoFlag);
-
-    /**
-     * Sets the enabled state of the redo flag.
-     * 
-     * @param redoFlag
-     *            True - enabled, False - disabled
-     * 
-     * @return
-     */
-    public void setRedoEnabled(final Boolean redoFlag);
-
-    /**
-     * Enables the edit polygon button. This will be true when there is a single
-     * selected hazard event
-     * 
-     * @param enabled
-     *            True - enabled, False - disabled
-     */
-    public void setEditEventGeometryEnabled(final Boolean enabled);
-
+    public void setAddNewGeometryToSelectedToggleState(boolean enable,
+            boolean check);
 }

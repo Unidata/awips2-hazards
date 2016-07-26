@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ETNS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EVENT_ID_DISPLAY_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EXPIRATION_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FORECAST_POINT;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
@@ -150,6 +151,7 @@ import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
+import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * Implementation of ISessionEventManager
@@ -384,6 +386,10 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      selection state to individual visual features.
  * Jun 23, 2016   19537    Chris.Golden More combining of base and selected visual feature lists. Also
  *                                      added support for no-hatching type hazard events.
+ * Jul 25, 2016   19537    Chris.Golden Changed collections of events that were returned into lists, since
+ *                                      the unordered nature of the collections was inappropriate. Added
+ *                                      originator parameters for methods for setting high- and low-res
+ *                                      geometries for hazard events. Removed obsolete set-geometry method.
  * </pre>
  * 
  * @author bsteffen
@@ -684,10 +690,9 @@ public class SessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getCheckedEvents() {
+    public List<ObservedHazardEvent> getCheckedEvents() {
         Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
-        Collection<ObservedHazardEvent> events = new ArrayList<>(
-                allEvents.size());
+        List<ObservedHazardEvent> events = new ArrayList<>(allEvents.size());
         for (ObservedHazardEvent event : allEvents) {
             if (Boolean.TRUE.equals(event
                     .getHazardAttribute(HAZARD_EVENT_CHECKED))) {
@@ -695,12 +700,6 @@ public class SessionEventManager implements
             }
         }
         return events;
-    }
-
-    @Override
-    public boolean setModifiedEventGeometry(String eventID, Geometry geometry) {
-        ObservedHazardEvent event = this.getEventById(eventID);
-        return setModifiedEventGeometry(event, geometry);
     }
 
     /**
@@ -719,41 +718,6 @@ public class SessionEventManager implements
                 .isEmpty())) || ((string1 != null) && string1.equals(string2)));
     }
 
-    private boolean setModifiedEventGeometry(ObservedHazardEvent event,
-            Geometry geometry) {
-        if (event != null) {
-            if (isValidGeometryChange(geometry, event)) {
-                if (userConfirmationAsNecessary(event)) {
-                    makeHighResolutionVisible(event);
-                    event.setGeometry(geometry);
-                    updateHazardAreas(event);
-                } else {
-                    /*
-                     * If the user says they don't want to overwrite, the
-                     * spatial display can be in an odd state. Force an update
-                     * to clear it out by issuing this notification.
-                     * 
-                     * TODO - Is there a way to handle this more directly in the
-                     * spatial display?
-                     */
-                    hazardEventModified(new SessionEventGeometryModified(this,
-                            event, Originator.OTHER));
-                    return false;
-                }
-            } else {
-                return false;
-            }
-            if (event.getHazardType() == null) {
-                // Send Notification of geometry change, this is not done
-                // in updateHazardAreas if type is null.
-                hazardEventModified(new SessionEventGeometryModified(this,
-                        event, Originator.OTHER));
-            }
-            return true;
-        }
-        return false;
-    }
-
     private boolean userConfirmationAsNecessary(ObservedHazardEvent event) {
         if (event.getHazardAttribute(VISIBLE_GEOMETRY).equals(
                 LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
@@ -765,8 +729,8 @@ public class SessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEventsForCurrentSettings() {
-        Collection<ObservedHazardEvent> result = getEvents();
+    public List<ObservedHazardEvent> getEventsForCurrentSettings() {
+        List<ObservedHazardEvent> result = getEvents();
 
         filterEventsForConfig(result);
         return result;
@@ -937,6 +901,81 @@ public class SessionEventManager implements
         return (originator != Originator.OTHER);
     }
 
+    @Override
+    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
+            Date endTime, IOriginator originator) {
+
+        /*
+         * Ensure that the start time falls within its allowable boundaries.
+         */
+        long start = startTime.getTime();
+        Range<Long> startBoundaries = startTimeBoundariesForEventIdentifiers
+                .get(event.getEventID());
+        Range<Long> endBoundaries = endTimeBoundariesForEventIdentifiers
+                .get(event.getEventID());
+        if ((start < startBoundaries.lowerEndpoint())
+                || (start > startBoundaries.upperEndpoint())) {
+            return false;
+        }
+
+        /*
+         * Ensure the end time is at least the minimum interval distance from
+         * the start time.
+         */
+        long end = endTime.getTime();
+        if (end - start < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
+            return false;
+        }
+
+        /*
+         * If the event will now have "until further notice" as its end time, or
+         * the event has a duration and the latter has not changed, shift
+         * whichever (or both) end time boundaries to accommodate the new end
+         * time and (if not "until further notice") whatever other possible
+         * durations the event is allowed. This allows duration-equipped hazard
+         * events that have their durations limited (they cannot be expanded, or
+         * cannot be shrunk, or both) to still have their end times displaced as
+         * the user changes the start time, and also allows "until further
+         * notice" to be accommodated. Otherwise, ensure the event end time
+         * falls within the correct bounds.
+         */
+        boolean hasDuration = (configManager.getDurationChoices(event)
+                .isEmpty() == false);
+        if ((end == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
+                || (hasDuration && (event.getEndTime().getTime()
+                        - event.getStartTime().getTime() == end - start))) {
+            updateEndTimeBoundariesForSingleEvent(event, start, end);
+        } else if ((end < endBoundaries.lowerEndpoint())
+                || (end > endBoundaries.upperEndpoint())) {
+            return false;
+        }
+
+        /*
+         * Set the new time range for the event.
+         */
+        event.setTimeRange(startTime, endTime, originator);
+        return true;
+    }
+
+    @Override
+    public boolean setEventGeometry(ObservedHazardEvent event,
+            Geometry geometry, IOriginator originator) {
+
+        /*
+         * If the geometry change is valid and the user confirms (if necessary),
+         * change the geometry and update the hazard areas. Otherwise, reject
+         * the change.
+         */
+        if (isValidGeometryChange(geometry, event, false)
+                && userConfirmationAsNecessary(event)) {
+            makeHighResolutionVisible(event, originator);
+            event.setGeometry(geometry, originator);
+            updateHazardAreas(event);
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Validates the hazard's attributes when the event type is changed. It
      * compares the the Specifiers from the new and old MegawidgetManagers and
@@ -1075,65 +1114,31 @@ public class SessionEventManager implements
         }
     }
 
-    @Override
-    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
-            Date endTime, IOriginator originator) {
-
-        /*
-         * Ensure that the start time falls within its allowable boundaries.
-         */
-        long start = startTime.getTime();
-        Range<Long> startBoundaries = startTimeBoundariesForEventIdentifiers
-                .get(event.getEventID());
-        Range<Long> endBoundaries = endTimeBoundariesForEventIdentifiers
-                .get(event.getEventID());
-        if ((start < startBoundaries.lowerEndpoint())
-                || (start > startBoundaries.upperEndpoint())) {
-            return false;
-        }
-
-        /*
-         * Ensure the end time is at least the minimum interval distance from
-         * the start time.
-         */
-        long end = endTime.getTime();
-        if (end - start < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
-            return false;
-        }
-
-        /*
-         * If the event will now have "until further notice" as its end time, or
-         * the event has a duration and the latter has not changed, shift
-         * whichever (or both) end time boundaries to accommodate the new end
-         * time and (if not "until further notice") whatever other possible
-         * durations the event is allowed. This allows duration-equipped hazard
-         * events that have their durations limited (they cannot be expanded, or
-         * cannot be shrunk, or both) to still have their end times displaced as
-         * the user changes the start time, and also allows "until further
-         * notice" to be accommodated. Otherwise, ensure the event end time
-         * falls within the correct bounds.
-         */
-        boolean hasDuration = (configManager.getDurationChoices(event)
-                .isEmpty() == false);
-        if ((end == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
-                || (hasDuration && (event.getEndTime().getTime()
-                        - event.getStartTime().getTime() == end - start))) {
-            updateEndTimeBoundariesForSingleEvent(event, start, end);
-        } else if ((end < endBoundaries.lowerEndpoint())
-                || (end > endBoundaries.upperEndpoint())) {
-            return false;
-        }
-
-        /*
-         * Set the new time range for the event.
-         */
-        event.setTimeRange(startTime, endTime, originator);
-        return true;
-    }
-
     @Handler(priority = 1)
     public void settingsModified(SettingsModified notification) {
+        reloadHazardServicesEventId();
         loadEventsForSettings(notification.getSettings());
+    }
+
+    /**
+     * Update Hazard Event Id Display Type on Settings change.
+     * 
+     * This method should be run before refreshing Console and Spatial displays.
+     * 
+     */
+    private void reloadHazardServicesEventId() {
+        ISettings currentSettings = sessionManager.getConfigurationManager()
+                .getSettings();
+        String eventIdDisplayTypeString = sessionManager
+                .getConfigurationManager().getSettingsValue(
+                        EVENT_ID_DISPLAY_TYPE, currentSettings);
+
+        if ((eventIdDisplayTypeString != null)
+                && (eventIdDisplayTypeString.isEmpty() == false)) {
+            HazardServicesEventIdUtil
+                    .setIdDisplayType(HazardServicesEventIdUtil.IdDisplayType
+                            .valueOf(eventIdDisplayTypeString));
+        }
     }
 
     /**
@@ -2493,7 +2498,7 @@ public class SessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEvents() {
+    public List<ObservedHazardEvent> getEvents() {
         synchronized (events) {
             return new ArrayList<ObservedHazardEvent>(events);
         }
@@ -3511,9 +3516,9 @@ public class SessionEventManager implements
 
                     String ugcLabel = hazardTypeEntry.getUgcLabel();
 
-                    List<IGeometryData> hatchedAreasForEvent = geoMapUtilities
-                            .buildHazardAreaForEvent(ugcType, ugcLabel, cwa,
-                                    eventToCompare);
+                    List<IGeometryData> hatchedAreasForEvent = new ArrayList<>(
+                            geoMapUtilities.buildHazardAreaForEvent(ugcType,
+                                    ugcLabel, cwa, eventToCompare).values());
 
                     /*
                      * Retrieve matching events from the Hazard Event Manager
@@ -3571,11 +3576,14 @@ public class SessionEventManager implements
                                             .getUgcLabel();
 
                                     if (hazardTypeEntry != null) {
-                                        List<IGeometryData> hatchedAreasEventToCheck = geoMapUtilities
-                                                .buildHazardAreaForEvent(
-                                                        otherUgcType,
-                                                        otherUgcLabel, cwa,
-                                                        eventToCheck);
+                                        List<IGeometryData> hatchedAreasEventToCheck = new ArrayList<>(
+                                                geoMapUtilities
+                                                        .buildHazardAreaForEvent(
+                                                                otherUgcType,
+                                                                otherUgcLabel,
+                                                                cwa,
+                                                                eventToCheck)
+                                                        .values());
 
                                         conflictingHazardsMap
                                                 .putAll(buildConflictMap(
@@ -3857,10 +3865,11 @@ public class SessionEventManager implements
      * #selectedEventGeometriesHighResolutionVisible()
      */
     @Override
-    public void setHighResolutionGeometriesVisibleForSelectedEvents() {
+    public void setHighResolutionGeometriesVisibleForSelectedEvents(
+            IOriginator originator) {
 
         for (ObservedHazardEvent selectedEvent : getSelectedEvents()) {
-            makeHighResolutionVisible(selectedEvent);
+            makeHighResolutionVisible(selectedEvent, originator);
         }
     }
 
@@ -3872,8 +3881,9 @@ public class SessionEventManager implements
      * #setHighResolutionGeometryVisibleForCurrentEvent()
      */
     @Override
-    public void setHighResolutionGeometryVisibleForCurrentEvent() {
-        makeHighResolutionVisible(getCurrentEvent());
+    public void setHighResolutionGeometryVisibleForCurrentEvent(
+            IOriginator originator) {
+        makeHighResolutionVisible(getCurrentEvent(), originator);
 
     }
 
@@ -3885,7 +3895,8 @@ public class SessionEventManager implements
      * #selectedEventGeometriesLowResolutionVisible()
      */
     @Override
-    public boolean setLowResolutionGeometriesVisibleForSelectedEvents() {
+    public boolean setLowResolutionGeometriesVisibleForSelectedEvents(
+            IOriginator originator) {
         Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
 
         for (ObservedHazardEvent selectedEvent : selectedEvents) {
@@ -3896,7 +3907,8 @@ public class SessionEventManager implements
                 warnUserOfGeometryOutsideCWA(selectedEvent);
                 return false;
             }
-            setLowResolutionGeometry(selectedEvent, lowResolutionGeometry);
+            setLowResolutionGeometry(selectedEvent, lowResolutionGeometry,
+                    originator);
         }
 
         return true;
@@ -3910,7 +3922,8 @@ public class SessionEventManager implements
      * #setLowResolutionGeometryVisibleForCurrentEvent()
      */
     @Override
-    public boolean setLowResolutionGeometryVisibleForCurrentEvent() {
+    public boolean setLowResolutionGeometryVisibleForCurrentEvent(
+            IOriginator originator) {
         ObservedHazardEvent hazardEvent = getCurrentEvent();
         Geometry lowResolutionGeometry;
         try {
@@ -3919,7 +3932,7 @@ public class SessionEventManager implements
             warnUserOfGeometryOutsideCWA(hazardEvent);
             return false;
         }
-        setLowResolutionGeometry(hazardEvent, lowResolutionGeometry);
+        setLowResolutionGeometry(hazardEvent, lowResolutionGeometry, originator);
         return true;
     }
 
@@ -3948,7 +3961,7 @@ public class SessionEventManager implements
 
     @Override
     public void setCurrentEvent(String eventId) {
-        setCurrentEvent(getEventById(eventId));
+        setCurrentEvent(eventId == null ? null : getEventById(eventId));
     }
 
     @Override
@@ -3959,11 +3972,6 @@ public class SessionEventManager implements
     @Override
     public ObservedHazardEvent getCurrentEvent() {
         return currentEvent;
-    }
-
-    @Override
-    public void noCurrentEvent() {
-        this.currentEvent = null;
     }
 
     @Override
@@ -3993,8 +4001,14 @@ public class SessionEventManager implements
     @Override
     @SuppressWarnings("unchecked")
     public boolean isValidGeometryChange(Geometry geometry,
-            ObservedHazardEvent hazardEvent) {
-        boolean result = true;
+            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
+        if (checkGeometryValidity && !geometry.isValid()) {
+            IsValidOp op = new IsValidOp(geometry);
+            statusHandler.warn("Invalid Geometry: "
+                    + op.getValidationError().getMessage()
+                    + ": Geometry modification undone");
+            return false;
+        }
         if (hasEverBeenIssued(hazardEvent)) {
             HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
                     .get(HazardEventUtilities.getHazardType(hazardEvent));
@@ -4011,11 +4025,11 @@ public class SessionEventManager implements
                 if (!newUGCs.isEmpty()) {
                     statusHandler
                             .warn("This hazard event cannot be expanded in area.  Please create a new hazard event for the new areas.");
-                    result = false;
+                    return false;
                 }
             }
         }
-        return result;
+        return true;
     }
 
     /*
@@ -4055,14 +4069,23 @@ public class SessionEventManager implements
      * #addOrRemoveEnclosingUGCs(com.vividsolutions.jts.geom.Coordinate)
      */
     @Override
-    public void addOrRemoveEnclosingUGCs(Coordinate location) {
+    public void addOrRemoveEnclosingUGCs(Coordinate location,
+            IOriginator originator) {
         try {
             List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
             if (selectedEvents.size() != 1) {
+
+                /*
+                 * TODO: This message is annoying to have pop up all the time
+                 * when one accidentally right-clicks. Explore having it pop up
+                 * only when the user has two or more selected events, not when
+                 * there are no events selected. Would that be better from a
+                 * user-experience perspective?
+                 */
                 messenger
                         .getWarner()
                         .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                                "Cannot add or remove UGCs unless exactly one hazard event is selected");
+                                "Cannot add or remove UGCs unless exactly one hazard event is selected.");
                 return;
             }
             ObservedHazardEvent hazardEvent = selectedEvents.get(0);
@@ -4071,27 +4094,29 @@ public class SessionEventManager implements
                 messenger
                         .getWarner()
                         .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                                "Cannot add or remove UGCs for a hazard with an undefined type");
+                                "Cannot add or remove UGCs for a hazard with an undefined type.");
                 return;
             }
-            if (hazardEvent.getStatus().equals(HazardStatus.ENDED)) {
-                messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
-                        "Cannot add or remove UGCs for an ended hazard");
+            if (HazardStatus.endingEndedOrElapsed(hazardEvent.getStatus())) {
+                messenger
+                        .getWarner()
+                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                                "Cannot add or remove UGCs for an ending, ended, or elapsed hazard.");
                 return;
             }
 
-            if (!hazardEvent.getStatus().equals(HazardStatus.PENDING)
+            if ((hazardEvent.getStatus().equals(HazardStatus.PENDING) == false)
                     && geoMapUtilities.isPointBasedHatching(hazardEvent)) {
                 messenger
                         .getWarner()
                         .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                                "Can only add or remove UGCs for pending point hazards");
+                                "Can only add or remove UGCs for point hazards when they are pending.");
                 return;
             }
-            if (!userConfirmationAsNecessary(hazardEvent)) {
+            if (userConfirmationAsNecessary(hazardEvent) == false) {
                 return;
             }
-            makeHighResolutionVisible(hazardEvent);
+            makeHighResolutionVisible(hazardEvent, originator);
 
             @SuppressWarnings("unchecked")
             Map<String, String> hazardAreas = (Map<String, String>) hazardEvent
@@ -4121,7 +4146,7 @@ public class SessionEventManager implements
             Geometry hazardEventGeometry = hazardEvent.getGeometry();
 
             Geometry modifiedHazardGeometry = hazardEventGeometry;
-            if (!geoMapUtilities.isPointBasedHatching(hazardEvent)) {
+            if (geoMapUtilities.isPointBasedHatching(hazardEvent) == false) {
                 GeometryCollection asGeometryCollection = (GeometryCollection) hazardEventGeometry;
                 modifiedHazardGeometry = geoMapUtilities
                         .asUnion(asGeometryCollection);
@@ -4136,17 +4161,23 @@ public class SessionEventManager implements
                 if (geoMapUtilities.isWarngenHatching(hazardEvent)) {
                     warngenHatchingAddRemove(hazardAreas, locationAsGeometry,
                             modifiedHazardGeometry, enclosingUGC, hazardArea);
-                    // hazardAreas updated, now update the modified geometry
-                    modifiedHazardGeometry = modifiedHazardGeometry
-                            .difference(enclosingUgcGeometry);
                     if (!(hazardAreas.values().contains(HAZARD_AREA_ALL) || hazardAreas
                             .values().contains(HAZARD_AREA_INTERSECTION))) {
                         statusHandler.warn(EMPTY_GEOMETRY_ERROR);
                         return;
                     }
-                }
-
-                else if (geoMapUtilities.isPointBasedHatching(hazardEvent)) {
+                    if (hazardAreas.get(enclosingUGC) == HazardConstants.HAZARD_AREA_NONE) {
+                        modifiedHazardGeometry = modifiedHazardGeometry
+                                .difference(enclosingUgcGeometry);
+                    } else {
+                        modifiedHazardGeometry = modifiedHazardGeometry
+                                .union(enclosingUgcGeometry);
+                    }
+                    if (isValidGeometryChange(modifiedHazardGeometry,
+                            hazardEvent, true) == false) {
+                        return;
+                    }
+                } else if (geoMapUtilities.isPointBasedHatching(hazardEvent)) {
                     pointBasedAddRemove(hazardAreas, enclosingUGC, hazardArea);
                 } else {
                     modifiedHazardGeometry = gfeHatchingAddRemove(hazardAreas,
@@ -4162,9 +4193,9 @@ public class SessionEventManager implements
             }
 
             hazardEventGeometry = modifiedHazardGeometry;
-            hazardEvent.setGeometry(hazardEventGeometry);
+            hazardEvent.setGeometry(hazardEventGeometry, originator);
             hazardEvent.addHazardAttribute(HAZARD_AREA,
-                    (Serializable) hazardAreas, true);
+                    (Serializable) hazardAreas, true, originator);
         } catch (TopologyException e) {
             /*
              * /* TODO Use {@link GeometryPrecisionReducer}?
@@ -4233,16 +4264,17 @@ public class SessionEventManager implements
     }
 
     private void setLowResolutionGeometry(ObservedHazardEvent selectedEvent,
-            Geometry lowResolutionGeometry) {
+            Geometry lowResolutionGeometry, IOriginator originator) {
         selectedEvent.addHazardAttribute(VISIBLE_GEOMETRY,
-                LOW_RESOLUTION_GEOMETRY_IS_VISIBLE);
+                LOW_RESOLUTION_GEOMETRY_IS_VISIBLE, originator);
         selectedEvent.addHazardAttribute(LOW_RESOLUTION_GEOMETRY,
-                lowResolutionGeometry);
+                lowResolutionGeometry, originator);
     }
 
-    private void makeHighResolutionVisible(ObservedHazardEvent hazardEvent) {
+    private void makeHighResolutionVisible(ObservedHazardEvent hazardEvent,
+            IOriginator originator) {
         hazardEvent.addHazardAttribute(VISIBLE_GEOMETRY,
-                HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE);
+                HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE, originator);
 
     }
 

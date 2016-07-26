@@ -5,11 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * Description: General class of static utilities.
@@ -23,6 +19,9 @@ import java.util.List;
  * Nov 25, 2013    2336    Chris.Golden      Moved to gov.noaa.gsd.common.utilities,
  *                                           and removed unused methods and variables.
  * Apr 09, 2014    2925    Chris.Golden      Fixed typo in method name.
+ * Jul 25, 2016   19537    Chris.Golden      Cleaned up, and added methods for testing
+ *                                           equality and generating hash codes for
+ *                                           potentially null objects.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -30,134 +29,128 @@ import java.util.List;
  */
 public class Utils {
 
-    /**
-     * The string S with all sequences of adjacent blanks replaced by a single
-     * blank. Thus, squeeze("This  is     a test") is "This is a test".
-     */
-    public static String squeeze(String s) {
-        return s.replaceAll("\\s+", " ");
-    }
-
-    public static String removeBlanks(String s) {
-        return s.replaceAll("\\s+", "");
-    }
+    // Public Static Methods
 
     /**
-     * Reads a text file from the local/network file system and returns it as a
-     * String
+     * Compare the specified objects to see if they are equivalent, or are both
+     * <code>null</code>.
      * 
-     * @param filepath
-     *            String
-     * @return String
-     * @throws IOException
+     * @param object1
+     *            First object to be compared; may be <code>null</code>.
+     * @param object2
+     *            Second object to be compared; may be <code>null</code>.
+     * @return <code>true>/code> if the two objects are equivalent or are both
+     *         <code>null</code>, <code>false</code> otherwise.
      */
-    public static String textFileAsString(String filepath) {
-        return textFileAsString(filepath, false);
+    public static boolean equal(Object object1, Object object2) {
+        return (object1 == null ? object2 == null : object1.equals(object2));
     }
 
     /**
-     * Reads a text file from the local/network file system and returns it as a
-     * String
+     * Get the hash code of the specified object.
      * 
-     * @param filepath
-     *            String
-     * @return String
-     * @throws IOException
+     * @param object
+     *            Object for which the hash code is to be generated, or
+     *            <code>null</code>.
+     * @return Hash code, or 0 if the object is <code>null</code>.
      */
-    public static String textFileAsString(String filepath,
-            boolean retainNewlines) {
+    public static long getHashCode(Object object) {
+        return (object == null ? 0L : object.hashCode());
+    }
 
+    /**
+     * Read the specified text file from the local/network file system and
+     * return it as a {@link String}, with new lines not retained.
+     * 
+     * @param path
+     *            Path to the file.
+     * @return String contents of the file.
+     */
+    public static String textFileAsString(String path) {
+        return textFileAsString(path, false);
+    }
+
+    /**
+     * Read the specified text file from the local/network file system and
+     * return it as a {@link String}.
+     * 
+     * @param path
+     *            Path to the file.
+     * @param retainNewLines
+     *            Flag indicating whether or not new line characters should be
+     *            retained.
+     * @return String contents of the file.
+     */
+    public static String textFileAsString(String path, boolean retainNewlines) {
         try {
-            BufferedReader reader = new BufferedReader(new FileReader(filepath));
+            BufferedReader reader = new BufferedReader(new FileReader(path));
             String s = readBufferedTextReader(reader, retainNewlines);
             return s;
         } catch (FileNotFoundException e) {
             return null;
         } catch (IOException e) {
-            runtimeWrap(e);
-            return null;
+            throw new RuntimeException("Unexpected exception: "
+                    + e.getMessage(), e);
         }
-
-    }
-
-    public static String textFileAsString(File file) {
-
-        return textFileAsString(file.getPath());
-
     }
 
     /**
-     * Reads a text from a buffered reader and returns it as a String
+     * Read the specified text file from the local/network file system and
+     * return it as a {@link String}, with new lines not retained.
+     * 
+     * @param file
+     *            File to be read.
+     * @return String contents of the file.
+     */
+    public static String textFileAsString(File file) {
+        return textFileAsString(file.getPath());
+    }
+
+    /**
+     * Read text from the specified buffered reader and return it as a
+     * {@link String}.
      * 
      * @param reader
-     *            BufferedReader
-     * @return String
+     *            Buffered reader.
+     * @return String contents of the buffered reader.
      * @throws IOException
+     *             If the text could not be read.
      */
     public static String readBufferedTextReader(BufferedReader reader,
             boolean retainNewlines) throws IOException {
-        StringBuilder text = new StringBuilder();
-
+        StringBuilder stringBuilder = new StringBuilder();
         try {
-            String s = null;
-            while ((s = reader.readLine()) != null) {
-                text.append(s);
+            String string = null;
+            while ((string = reader.readLine()) != null) {
+                stringBuilder.append(string);
                 if (retainNewlines) {
-                    text.append("\n");
+                    stringBuilder.append("\n");
                 }
             }
-            if (retainNewlines && text.length() > 0) {
-                text.setLength(text.length() - 1);
+            if (retainNewlines && stringBuilder.length() > 0) {
+                stringBuilder.setLength(stringBuilder.length() - 1);
             }
         } finally {
             if (reader != null) {
                 reader.close();
             }
         }
-
-        return (text.toString());
+        return (stringBuilder.toString());
     }
 
     /**
-     * Returns the directory from a filepath. For example, if filepath =
-     * "/p10/somedir/run.ksh" this method returns "/p10/somedir"
+     * Convert the specified throwable's stack trace into a {@link String}.
      * 
-     * @param filepath
-     *            String
-     * @return String
+     * @param e
+     *            Throwable.
+     * @return String representation of the throwable's stack trace.
      */
-    public static String dirName(String filepath) {
-        int index;
-        for (index = filepath.lastIndexOf(File.separator); index > 0; index--) {
-            if ((filepath.charAt(index) == File.separatorChar)) {
-                break;
-            }
+    public static String getStackTraceAsString(Throwable e) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (StackTraceElement stackTraceElement : e.getStackTrace()) {
+            stringBuilder.append(stackTraceElement.toString() + "\n");
         }
-        String dir = filepath.substring(0, index);
-        return (dir);
-    }
-
-    public static String hostName() {
-        try {
-            InetAddress localMachine = InetAddress.getLocalHost();
-            return localMachine.getHostName();
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    public static void runtimeWrap(Throwable e) {
-        throw new RuntimeException("Unexpected exception: " + e.getMessage(), e);
-    }
-
-    public static String stackTraceAsString(Throwable e) {
-        StringBuilder sb = new StringBuilder();
-        StackTraceElement[] stackTrace = e.getStackTrace();
-        for (StackTraceElement stackTraceElement : stackTrace) {
-            sb.append(stackTraceElement.toString() + "\n");
-        }
-        return sb.toString();
+        return stringBuilder.toString();
     }
 
     /**
@@ -169,8 +162,8 @@ public class Utils {
      * @param classes
      *            Set of classes, at least one of which which the value must
      *            implement.
-     * @return True if the value is an instance of at least one of the classes,
-     *         false otherwise.
+     * @return <code>true</code> if the value is an instance of at least one of
+     *         the classes, <code>false</code> otherwise.
      */
     public static boolean isValueInstanceOfAtLeastOneClass(Object value,
             Collection<Class<?>> classes) {
@@ -199,13 +192,14 @@ public class Utils {
     public static int getGenerationsBetweenClasses(Class<?> ancestor,
             Class<?> descendant) {
 
-        // If both are classes, simply iterate through the gener-
-        // ations separating them, counting said generations.
-        // Otherwise, iterate through the interfaces implemented
-        // by the descendant and its ancestor classes, and re-
-        // cursively through the interfaces extended by those
-        // those interfaces, finding the shortest generational
-        // path between the ancestor and the descendant.
+        /*
+         * If both are classes, simply iterate through the generations
+         * separating them, counting said generations. Otherwise, iterate
+         * through the interfaces implemented by the descendant and its ancestor
+         * classes, and recursively through the interfaces extended by those
+         * interfaces, finding the shortest generational path between the
+         * ancestor and the descendant.
+         */
         if (!ancestor.isInterface() && !descendant.isInterface()) {
             int generationDelta = 0;
             for (Class<?> aClass = descendant; aClass != null; aClass = aClass
@@ -244,25 +238,11 @@ public class Utils {
             }
         }
 
-        // If no familial relationship between the two was found,
-        // they are not related.
+        /*
+         * If no familial relationship between the two was found, they are not
+         * related.
+         */
         throw new IllegalArgumentException(descendant
                 + " is not a descendant of " + ancestor);
     }
-
-    @SuppressWarnings("unchecked")
-    public static <T> T listAsArray(List<?> list) {
-        try {
-            T r = (T) (T[]) Array.newInstance(list.get(0).getClass(),
-                    list.size());
-            Object[] result = (Object[]) r;
-            for (int i = 0; i < list.size(); i++) {
-                result[i] = list.get(i);
-            }
-            return (T) result;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new RuntimeException("Cannot convert and empty list");
-        }
-    }
-
 }
