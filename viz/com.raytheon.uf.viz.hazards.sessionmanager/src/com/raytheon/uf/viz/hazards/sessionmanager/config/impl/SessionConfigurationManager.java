@@ -91,9 +91,7 @@ import com.raytheon.uf.common.style.StyleRule;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.ResourceDataUpdateDetector;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
@@ -107,7 +105,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCatego
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.DataLayerType;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenToolEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenTools;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
@@ -229,6 +226,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      avoid triggering if the data time passed in is
  *                                      not later than the last data time that triggered
  *                                      the same tool.
+ * Jul 27, 2016 19924      Chris.Golden Removed obsolete code related to data layer
+ *                                      changes triggering event-driven tools; the
+ *                                      configuration of such is now read in within the
+ *                                      configuration manager, but the work of tracking
+ *                                      data layer changes is done by the app builder
+ *                                      where it belongs.
  * </pre>
  * 
  * @author bsteffen
@@ -359,15 +362,9 @@ public class SessionConfigurationManager implements
 
     private final Map<Runnable, Integer> minuteIntervalsForEventDrivenToolExecutors = new IdentityHashMap<>();
 
+    private Runnable dataLayerChangeTriggeredToolExecutor;
+
     private boolean runRecommendersAtRegularIntervals;
-
-    private final Set<String> classNamesTriggeringEventDrivenTools = new HashSet<>();
-
-    private final Map<String, Runnable> dataLayerChangeDrivenToolExecutorsForClassNames = new HashMap<>();
-
-    private final Map<Runnable, Long> latestDataTimesTriggeringEventDrivenToolsForExecutors = new HashMap<>();
-
-    private Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> dataUpdateDetectorsForVizResources;
 
     SessionConfigurationManager() {
 
@@ -453,7 +450,7 @@ public class SessionConfigurationManager implements
         /*
          * Load any event-driven tool specifications from configuration, and
          * create the executors for them, saving them along with their minute
-         * intervals or resource class names as appropriate.
+         * intervals as appropriate.
          */
         file = pathManager
                 .getStaticLocalizationFile(HazardsConfigurationConstants.EVENT_DRIVEN_TOOLS_PY);
@@ -491,15 +488,8 @@ public class SessionConfigurationManager implements
             if (entry.getTriggerType() == TriggerType.TIME_INTERVAL) {
                 minuteIntervalsForEventDrivenToolExecutors.put(runnable,
                         entry.getIntervalMinutes());
-            } else if (entry.getTriggerType() == TriggerType.DATA_LAYER_CHANGE) {
-                for (DataLayerType dataLayerType : entry.getDataTypes()) {
-                    Set<String> classNames = dataLayerType.getClassNames();
-                    classNamesTriggeringEventDrivenTools.addAll(classNames);
-                    for (String className : classNames) {
-                        dataLayerChangeDrivenToolExecutorsForClassNames.put(
-                                className, runnable);
-                    }
-                }
+            } else {
+                dataLayerChangeTriggeredToolExecutor = runnable;
             }
         }
 
@@ -1153,65 +1143,14 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public boolean isClassNameDataLayerChangeDrivenToolTrigger(String className) {
-        return classNamesTriggeringEventDrivenTools.contains(className);
-    }
-
-    @Override
-    public void triggerDataLayerChangeDrivenTool(String className,
-            long dataUpdateTime) {
+    public void triggerDataLayerChangeDrivenTool() {
 
         /*
-         * Get the runnable associated with this class name.
+         * Trigger the tool sequence if there is one to be triggered.
          */
-        Runnable runnable = dataLayerChangeDrivenToolExecutorsForClassNames
-                .get(className);
-        if (runnable == null) {
-            statusHandler.warn("No tool found to execute in response "
-                    + "to a data update for " + "the loaded resource of type "
-                    + className + ".");
-            return;
+        if (dataLayerChangeTriggeredToolExecutor != null) {
+            dataLayerChangeTriggeredToolExecutor.run();
         }
-
-        /*
-         * See if the provided data time is less than or equal to the last
-         * recorded data time that triggered this runnable; if so, do not
-         * trigger.
-         */
-        Long latestDataUpdateTime = latestDataTimesTriggeringEventDrivenToolsForExecutors
-                .get(runnable);
-        if (((latestDataUpdateTime == null) && (dataUpdateTime == 0L))
-                || ((latestDataUpdateTime != null) && (latestDataUpdateTime >= dataUpdateTime))) {
-            return;
-        }
-
-        /*
-         * Trigger the tool, recording the data time that triggered it.
-         */
-        latestDataTimesTriggeringEventDrivenToolsForExecutors.put(runnable,
-                dataUpdateTime);
-        runnable.run();
-    }
-
-    @Override
-    public void setDataUpdateDetectorsForVizResources(
-            Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> map) {
-        dataUpdateDetectorsForVizResources = map;
-    }
-
-    @Override
-    public long getLatestDataTimeFromVizResources(Set<String> classNames) {
-        long latest = 0L;
-        for (Map.Entry<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> entry : dataUpdateDetectorsForVizResources
-                .entrySet()) {
-            if (classNames.contains(entry.getKey().getClass().getSimpleName())) {
-                long thisLatest = entry.getValue().getLatestDataTime();
-                if (thisLatest > latest) {
-                    latest = thisLatest;
-                }
-            }
-        }
-        return latest;
     }
 
     @Override

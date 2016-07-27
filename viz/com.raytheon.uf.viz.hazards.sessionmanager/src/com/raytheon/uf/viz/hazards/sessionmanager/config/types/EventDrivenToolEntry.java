@@ -27,6 +27,12 @@ import java.util.List;
  * Apr 27, 2016   18266    Chris.Golden Reworked to allow different trigger
  *                                      types, including the new data
  *                                      layer changed trigger.
+ * Jul 27, 2016   19924    Chris.Golden Removed obsolete methods and data
+ *                                      member that was tracking which
+ *                                      "classes" of data layer should
+ *                                      trigger a particular sequence of
+ *                                      tools, as the classes are no longer
+ *                                      important.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,8 +47,6 @@ public class EventDrivenToolEntry {
     private TriggerType triggerType;
 
     private int intervalMinutes;
-
-    private List<DataLayerType> dataTypes;
 
     public ToolType getToolType() {
         return toolType;
@@ -74,13 +78,5 @@ public class EventDrivenToolEntry {
 
     public void setIntervalMinutes(int intervalMinutes) {
         this.intervalMinutes = intervalMinutes;
-    }
-
-    public List<DataLayerType> getDataTypes() {
-        return Collections.unmodifiableList(dataTypes);
-    }
-
-    public void setDataTypes(List<DataLayerType> dataTypes) {
-        this.dataTypes = dataTypes;
     }
 }

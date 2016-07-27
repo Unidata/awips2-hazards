@@ -152,7 +152,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['eventState'] = 'Pending'
         metadata['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         metadata['onlyIncludeTriggerEvent'] = True
-        metadata['includeLatestDataLayerTime'] = [ "radar" ]
+        metadata['includeDataLayerTimes'] = True
         
         # This tells Hazard Services to not notify the user when the recommender
         # creates no hazard events. Since this recommender is to be run in response
@@ -196,8 +196,20 @@ class Recommender(RecommenderTemplate.Recommender):
         trigger = eventSetAttrs.get('trigger')
         self._currentTime = long(eventSetAttrs.get("currentTime"))
         
-        self._latestDataLayerTime = TimeUtils.roundEpochTimeMilliseconds(
-                    eventSetAttrs.get("latestDataLayerTime", self._currentTime))
+        # TODO: This code is temporary, to adapt the old code (which only
+        # got the latest data layer time) to work with the new information
+        # the event set provides (it now gives a list of data layer times,
+        # not just the latest one). This should be changed so that instead
+        # of only using the last data time, the recommender uses all of
+        # the data times.
+        self._latestDataLayerTime = eventSetAttrs.get("dataLayerTimes", self._currentTime)
+        if isinstance(self._latestDataLayerTime, (list, tuple)):
+            if len(self._latestDataLayerTime) > 0:
+                self._latestDataLayerTime = self._latestDataLayerTime[-1]
+            else:
+                self._latestDataLayerTime = self._currentTime 
+
+        self._latestDataLayerTime = TimeUtils.roundEpochTimeMilliseconds(self._latestDataLayerTime)
         print 'latestDataLayerTime', self._probUtils._displayMsTime(self._latestDataLayerTime)
         print 'currentTime', self._probUtils._displayMsTime(self._currentTime)
         self.flush()

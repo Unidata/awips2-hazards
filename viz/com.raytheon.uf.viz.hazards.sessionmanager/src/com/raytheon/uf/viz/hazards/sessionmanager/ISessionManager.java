@@ -65,6 +65,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
+ * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * </pre>
  * 
  * @author bsteffen
@@ -122,6 +123,13 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @return Spatial context provider.
      */
     public ISpatialContextProvider getSpatialContextProvider();
+
+    /**
+     * Get the display resource context provider.
+     * 
+     * #return Display resource context provider.
+     */
+    public IDisplayResourceContextProvider getDisplayResourceContextProvider();
 
     /**
      * Get the temporal frame context provider.

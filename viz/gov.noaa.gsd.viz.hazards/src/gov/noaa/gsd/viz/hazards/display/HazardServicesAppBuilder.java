@@ -39,6 +39,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services
 import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.USER_NAME;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
@@ -75,11 +76,14 @@ import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import net.engio.mbassy.bus.config.BusConfiguration;
 import net.engio.mbassy.bus.error.IPublicationErrorHandler;
@@ -123,10 +127,20 @@ import com.raytheon.uf.viz.core.VizConstants;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.IFrameChangedListener;
+import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
+import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
+import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
+import com.raytheon.uf.viz.core.rsc.IResourceDataChanged.ChangeType;
+import com.raytheon.uf.viz.core.rsc.IResourceGroup;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
+import com.raytheon.uf.viz.core.rsc.ResourceList;
+import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
+import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
+import com.raytheon.uf.viz.d2d.core.time.D2DTimeMatcher;
+import com.raytheon.uf.viz.hazards.sessionmanager.IDisplayResourceContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISpatialContextProvider;
@@ -249,6 +263,12 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             Hazard Services is loaded via bundle load, the prefs
  *                                             will be loaded. Removed inappropriate access of spatial
  *                                             display components.
+ * Jul 27, 2016 19924      Chris.Golden        Added code to monitor loaded data layers for Time Match
+ *                                             Basis time changes. An earlier version of this code
+ *                                             (not monitoring Time Match Basis, but instead particular
+ *                                             "classes" of resources) was in the session configuration
+ *                                             manager and the spatial view, but those were not
+ *                                             appropriate places for it.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -350,6 +370,127 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                         coordInLatLon[2]);
             }
             return null;
+        }
+    };
+
+    /**
+     * Implementation of a display resource context provider.
+     */
+    private final IDisplayResourceContextProvider displayResourceContextProvider = new IDisplayResourceContextProvider() {
+
+        @Override
+        public List<Long> getTimeMatchBasisDataLayerTimes() {
+            return (timeMatchBasisTimes == null ? null : Collections
+                    .unmodifiableList(timeMatchBasisTimes));
+        }
+    };
+
+    /**
+     * Data times for the Time Match Basis (TMB) product that is currently
+     * loaded; if no such product is loaded or the D2D perspective is not being
+     * used, the list will be empty.
+     */
+    private List<Long> timeMatchBasisTimes = null;
+
+    /**
+     * Set of viz resources that are having changes listened for via
+     * {@link #resourceChangeListener}.
+     */
+    private final Set<AbstractVizResource<?, ?>> monitoredVizResources = new HashSet<>();
+
+    /**
+     * Resource list add listener, for detecting changes in the list of
+     * resources currently displayed.
+     */
+    private final AddListener addListener = new AddListener() {
+
+        @Override
+        public void notifyAdd(final ResourcePair resourcePair)
+                throws VizException {
+            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+
+                @Override
+                public void run() {
+                    setUpDataUpdateDetectorsForResource(resourcePair
+                            .getResource());
+                }
+            });
+        }
+    };
+
+    /**
+     * Resource list remove listener, for detecting changes in the list of
+     * resources currently displayed.
+     */
+    private final RemoveListener removeListener = new RemoveListener() {
+        @Override
+        public void notifyRemove(final ResourcePair resourcePair)
+                throws VizException {
+            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+
+                @Override
+                public void run() {
+                    removeDataUpdateDetectorsForResource(resourcePair
+                            .getResource());
+                }
+            });
+        }
+    };
+
+    /**
+     * Resource change listener, for detecting changes in resource data times.
+     */
+    private final IResourceDataChanged resourceChangeListener = new IResourceDataChanged() {
+
+        @Override
+        public void resourceChanged(ChangeType type, Object object) {
+
+            /*
+             * Only respond to data updates and removals.
+             */
+            if ((type != ChangeType.DATA_UPDATE)
+                    && (type != ChangeType.DATA_REMOVE)) {
+                return;
+            }
+
+            /*
+             * Determine what the new Time Match Basis times are. If the D2D
+             * time matcher is not available, or if there is no TMB product, or
+             * if the TMB product has no times, record this; otherwise, make a
+             * list of the times.
+             */
+            AbstractTimeMatcher timeMatcher = spatialDisplay.getDescriptor()
+                    .getTimeMatcher();
+            AbstractVizResource<?, ?> timeMatchBasisResource = (timeMatcher instanceof D2DTimeMatcher ? ((D2DTimeMatcher) timeMatcher)
+                    .getTimeMatchBasis() : null);
+            List<Long> newTimeMatchBasisTimes = null;
+            if (timeMatchBasisResource != null) {
+                DataTime[] dataTimes = timeMatchBasisResource.getDataTimes();
+                newTimeMatchBasisTimes = (dataTimes == null ? null
+                        : new ArrayList<Long>(dataTimes.length));
+                if (dataTimes != null) {
+                    for (DataTime dataTime : dataTimes) {
+                        newTimeMatchBasisTimes.add(dataTime.getMatchRef());
+                    }
+                }
+            }
+
+            /*
+             * If the new times are not the same as the old ones, record the new
+             * times, and trigger any tools that should run in response to a
+             * Time Match Basis change.
+             */
+            if (Utils.equal(timeMatchBasisTimes, newTimeMatchBasisTimes) == false) {
+                timeMatchBasisTimes = newTimeMatchBasisTimes;
+                RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        sessionManager.getConfigurationManager()
+                                .triggerDataLayerChangeDrivenTool();
+                    }
+                });
+            }
         }
     };
 
@@ -608,7 +749,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         currentTime = SimulatedTime.getSystemTime().getTime();
         this.sessionManager = SessionManagerFactory.getSessionManager(this,
-                spatialContextProvider, frameContextProvider, eventBus);
+                spatialContextProvider, displayResourceContextProvider,
+                frameContextProvider, eventBus);
         messageHandler = new HazardServicesMessageHandler(this,
                 ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
                         .getSettings(), currentTime);
@@ -825,6 +967,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         VizGlobalsManager.addListener(VizConstants.LOOPING_ID, this);
 
         redoTimeMatching();
+
+        addResourceListeners();
 
         // Send the current frame information to the session manager.
         handleFrameChange();
@@ -1163,6 +1307,128 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     statusHandler.error(
                             "HazardServicesAppBuilder.redoTimeMatching():", e);
                 }
+            }
+        }
+    }
+
+    /**
+     * Add resource-related listeners.
+     */
+    private void addResourceListeners() {
+
+        /*
+         * Set up listeners for notifications concerning the addition or removal
+         * of resources, as well as a listener for changes to specific
+         * resources.
+         */
+        AbstractEditor editor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        for (IDisplayPane displayPane : editor.getDisplayPanes()) {
+            if (displayPane != null) {
+                ResourceList resourceList = displayPane.getDescriptor()
+                        .getResourceList();
+                resourceList.addPostAddListener(addListener);
+                resourceList.addPostRemoveListener(removeListener);
+                for (ResourcePair resourcePair : resourceList) {
+                    setUpDataUpdateDetectorsForResource(resourcePair
+                            .getResource());
+                }
+            }
+        }
+
+        /*
+         * Trigger the data layer update notification, in case there is a Time
+         * Match Basis product already loaded.
+         */
+        resourceChangeListener.resourceChanged(ChangeType.DATA_UPDATE, null);
+    }
+
+    /**
+     * Remove resource-related listeners.
+     */
+    private void removeResourceListeners() {
+
+        /*
+         * Remove any listeners for specific resource data updates.
+         */
+        for (AbstractVizResource<?, ?> resource : monitoredVizResources) {
+            resource.getResourceData().removeChangeListener(
+                    resourceChangeListener);
+        }
+        monitoredVizResources.clear();
+
+        /*
+         * Remove the listeners for resource list changes.
+         */
+        AbstractEditor editor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (editor != null) {
+            for (IDisplayPane displayPane : editor.getDisplayPanes()) {
+                ResourceList resourceList = displayPane.getDescriptor()
+                        .getResourceList();
+                resourceList.removePostAddListener(addListener);
+                resourceList.removePostRemoveListener(removeListener);
+            }
+        }
+    }
+
+    /**
+     * Set up data update detectors for the specified resource and any child
+     * resources it has.
+     * 
+     * @param resource
+     *            Resource for which to set up data detectors, for both it and
+     *            any children.
+     */
+    private void setUpDataUpdateDetectorsForResource(
+            AbstractVizResource<?, ?> resource) {
+
+        /*
+         * Register to listen for the resource's changes, and remember that this
+         * resource is being monitored.
+         */
+        monitoredVizResources.add(resource);
+        resource.getResourceData().addChangeListener(resourceChangeListener);
+
+        /*
+         * If this resource contains other resources, recursively set up
+         * detectors from them.
+         */
+        if (resource instanceof IResourceGroup) {
+            for (ResourcePair resourcePair : ((IResourceGroup) resource)
+                    .getResourceList()) {
+                setUpDataUpdateDetectorsForResource(resourcePair.getResource());
+            }
+        }
+    }
+
+    /**
+     * Remove any data update detectors for the specified resource and any child
+     * resources it has if said resources' data updates had detectors monitoring
+     * them.
+     * 
+     * @param resource
+     *            Resource for which to remove data detectors, for both it and
+     *            its children.
+     */
+    private void removeDataUpdateDetectorsForResource(
+            AbstractVizResource<?, ?> resource) {
+
+        /*
+         * If this resource was being monitored, remove the listener and remove
+         * the resource from the monitored set.
+         */
+        resource.getResourceData().removeChangeListener(resourceChangeListener);
+        monitoredVizResources.remove(resource);
+
+        /*
+         * If this resource contains other resources, recursively remove
+         * detectors from them.
+         */
+        if (resource instanceof IResourceGroup) {
+            for (ResourcePair resourcePair : ((IResourceGroup) resource)
+                    .getResourceList()) {
+                removeDataUpdateDetectorsForResource(resourcePair.getResource());
             }
         }
     }
@@ -1627,6 +1893,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         eventBus.publishAsync(new HazardServicesCloseAction());
         sessionManager.shutdown();
         eventBus.shutdown();
+
+        /*
+         * Remove resource-related listeners.
+         */
+        removeResourceListeners();
 
         VizGlobalsManager.removeListener(VizConstants.FRAMES_ID, this);
         VizGlobalsManager.removeListener(VizConstants.LOOPING_ID, this);

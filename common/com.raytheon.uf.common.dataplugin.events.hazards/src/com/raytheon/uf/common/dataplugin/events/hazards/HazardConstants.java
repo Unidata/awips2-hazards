@@ -95,6 +95,9 @@ import com.google.common.collect.ImmutableMap;
  * Jul 25, 2016 19537     Chris.Golden  Changed as part of partial MVP refactor for spatial
  *                                      display.
  * Jul 26, 2016 20755     Chris.Golden  Added constant for recommender result event set attribute.
+ * Jul 27, 2016 19924     Chris.Golden  Changed recommmender-related data layer update constants
+ *                                      to reflect the fact that now all data times are wanted,
+ *                                      not just the latest one.
  * </pre>
  * 
  * @author mnash
@@ -149,7 +152,7 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES = "includeEventTypes";
 
-    public static final String RECOMMENDER_METADATA_INCLUDE_LATEST_DATA_LAYER_TIME = "includeLatestDataLayerTime";
+    public static final String RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES = "includeDataLayerTimes";
 
     // Recommender method names
 
@@ -771,7 +774,7 @@ public final class HazardConstants {
 
     public static final String TEST_MODE = "testMode";
 
-    public static final String LATEST_DATA_TIME = "latestDataLayerTime";
+    public static final String DATA_TIMES = "dataLayerTimes";
 
     /*
      * The following are related to product generation.

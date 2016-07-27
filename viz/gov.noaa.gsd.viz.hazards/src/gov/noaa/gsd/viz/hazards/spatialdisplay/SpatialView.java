@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,13 +58,10 @@ import com.raytheon.uf.viz.core.maps.rsc.DbMapResource;
 import com.raytheon.uf.viz.core.maps.rsc.DbMapResourceData;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.IDisposeListener;
-import com.raytheon.uf.viz.core.rsc.IResourceGroup;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.ResourceList;
 import com.raytheon.uf.viz.core.rsc.ResourceList.AddListener;
 import com.raytheon.uf.viz.core.rsc.ResourceList.RemoveListener;
-import com.raytheon.uf.viz.hazards.sessionmanager.ResourceDataUpdateDetector;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -117,6 +113,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           compliance continues. Added Javadoc comments,
  *                                           continued separation of concerns between view,
  *                                           presenter, display, and mouse handlers.
+ * Jul 27, 2016 19924      Chris.Golden      Removed code related to monitoring data layer
+ *                                           changes, as it belongs in the app builder.
  * </pre>
  * 
  * @author Chris.Golden
@@ -164,7 +162,9 @@ public class SpatialView implements
      */
     private static final Set<String> ACCEPTABLE_MAP_OVERLAYS;
 
-    // Initialize the acceptable map overlays set.
+    /*
+     * Initialize the acceptable map overlays set.
+     */
     static {
         Set<String> set = Sets.newHashSet();
         String[] mapOverlays = { "mapdata.cwa", "mapdata.ffmp_basins",
@@ -425,17 +425,21 @@ public class SpatialView implements
             setImageDescriptor(getImageDescriptorForFile("mapsForSelectByArea.png"));
             setToolTipText("Maps for select by area");
 
-            // Enable or disable the action based upon the currently
-            // loaded maps, building a list of said maps that are
-            // appropriate for select by area operations.
+            /*
+             * Enable or disable the action based upon the currently loaded
+             * maps, building a list of said maps that are appropriate for
+             * select by area operations.
+             */
             notifyResourceListChanged();
         }
 
         @Override
         protected Menu doGetMenu(Control parent, Menu menu) {
 
-            // If the menu has not yet been created, do so now;
-            // otherwise, delete its contents.
+            /*
+             * If the menu has not yet been created, do so now; otherwise,
+             * delete its contents.
+             */
             if (menu == null) {
                 menu = new Menu(parent);
             } else {
@@ -444,8 +448,10 @@ public class SpatialView implements
                 }
             }
 
+            /*
+             * Load the current editor.
+             */
             IDescriptor descriptor = null;
-            // Load the current editor.
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
@@ -455,17 +461,21 @@ public class SpatialView implements
                     descriptor = displayPane.getDescriptor();
                 }
             }
-            // Load the list of viz resources associated with it,
-            // and iterate through the resource pairs, looking
-            // for those that are database map resources. For
-            // each of these that is visible, add a menu item.
+            /*
+             * Load the list of viz resources associated with it, and iterate
+             * through the resource pairs, looking for those that are database
+             * map resources. For each of these that is visible, add a menu
+             * item.
+             */
             if ((descriptor != null) && (descriptor instanceof IMapDescriptor)) {
                 IMapDescriptor mapDescriptor = (IMapDescriptor) descriptor;
                 ResourceList resourceList = mapDescriptor.getResourceList();
                 for (ResourcePair pair : resourceList) {
                     if (pair.getResource() instanceof DbMapResource) {
 
-                        // For now, just take the first one.
+                        /*
+                         * For now, just take the first one.
+                         */
                         DbMapResource overlayResource = (DbMapResource) pair
                                 .getResource();
                         DbMapResourceData resourceData = overlayResource
@@ -473,15 +483,17 @@ public class SpatialView implements
                         String mapName = resourceData.getMapName();
                         String tableName = resourceData.getTable();
 
-                        // Make sure that this is an acceptable
-                        // overlay table; if it is, create a menu
-                        // item for it.
+                        /*
+                         * Make sure that this is an acceptable overlay table;
+                         * if it is, create a menu item for it.
+                         */
                         if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
 
-                            // Create the menu item, giving it a
-                            // corresponding action if the map is
-                            // visible, or just disabling it if
-                            // not.
+                            /*
+                             * Create the menu item, giving it a corresponding
+                             * action if the map is visible, or just disabling
+                             * it if not.
+                             */
                             MenuItem item = new MenuItem(menu, SWT.PUSH);
                             item.setText(mapName);
                             if (overlayResource.getProperties().isVisible()) {
@@ -500,7 +512,6 @@ public class SpatialView implements
                 }
             }
 
-            // Return the menu.
             return menu;
         }
 
@@ -510,17 +521,18 @@ public class SpatialView implements
          */
         public void notifyResourceListChanged() {
 
-            // Load the list of viz resources associated with it,
-            // and iterate through the resource pairs, looking
-            // for those that are database map resources. If at
-            // least one is an acceptable resource for select by
-            // area operations, this action should be enabled.
+            /*
+             * Load the list of viz resources associated with it, and iterate
+             * through the resource pairs, looking for those that are database
+             * map resources. If at least one is an acceptable resource for
+             * select by area operations, this action should be enabled.
+             */
             boolean enable = false;
 
-            IDescriptor descriptor = null;
             /*
              * Only do this if there is an active editor.
              */
+            IDescriptor descriptor = null;
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
@@ -535,13 +547,17 @@ public class SpatialView implements
                         for (ResourcePair pair : resourceList) {
                             if (pair.getResource() instanceof DbMapResource) {
 
-                                // For now, just take the first one.
+                                /*
+                                 * For now, just take the first one.
+                                 */
                                 String tableName = ((DbMapResource) pair
                                         .getResource()).getResourceData()
                                         .getTable();
 
-                                // Make sure that this is an acceptable
-                                // overlay table.
+                                /*
+                                 * Make sure that this is an acceptable overlay
+                                 * table.
+                                 */
                                 if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
                                     enable = true;
                                     break;
@@ -555,9 +571,10 @@ public class SpatialView implements
                 }
             }
 
-            // Enable or disable this action based upon whether
-            // any maps were found that may be used in select
-            // by area operations.
+            /*
+             * Enable or disable this action based upon whether any maps were
+             * found that may be used in select by area operations.
+             */
             setEnabled(enable);
         }
     }
@@ -573,15 +590,6 @@ public class SpatialView implements
         @Override
         public void notifyAdd(final ResourcePair resourcePair)
                 throws VizException {
-            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    setUpDataUpdateDetectorsForResource(presenter
-                            .getSessionManager().getConfigurationManager(),
-                            resourcePair.getResource());
-                }
-            });
             VizApp.runAsync(new Runnable() {
 
                 @Override
@@ -603,14 +611,6 @@ public class SpatialView implements
         @Override
         public void notifyRemove(final ResourcePair resourcePair)
                 throws VizException {
-            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    removeDataUpdateDetectorsForResource(resourcePair
-                            .getResource());
-                }
-            });
             VizApp.runAsync(new Runnable() {
 
                 @Override
@@ -623,12 +623,6 @@ public class SpatialView implements
             });
         }
     };
-
-    /**
-     * Map pairing viz resources with the data update detectors associated with
-     * them.
-     */
-    private final Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> dataUpdateDetectorsForVizResources = new HashMap<>();
 
     /**
      * CAVE resource layer used as spatial display.
@@ -736,25 +730,8 @@ public class SpatialView implements
                     descriptor.getResourceList().add(spatialDisplay);
                 }
             }
-            createListeners(abstractEditor);
+            createResourceListeners(abstractEditor);
         }
-
-        /*
-         * Give the configuration manager a read-only view the map of viz
-         * resources to their corresponding data update detectors, so that it
-         * can use it to query the detectors for latest times.
-         * 
-         * TODO: This is a kludge. The map being passed to the configuration
-         * manager should probably be owned by the latter. This is being done
-         * for expediency's sake, but should be altered when the spatial display
-         * is refactored.
-         */
-        presenter
-                .getSessionManager()
-                .getConfigurationManager()
-                .setDataUpdateDetectorsForVizResources(
-                        Collections
-                                .unmodifiableMap(dataUpdateDetectorsForVizResources));
     }
 
     @Override
@@ -762,7 +739,6 @@ public class SpatialView implements
 
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
-        removeListeners(abstractEditor);
 
         /*
          * Unload from all panes.
@@ -1381,127 +1357,23 @@ public class SpatialView implements
     }
 
     /**
-     * Set up data update detectors for the specified resource and any child
-     * resources it has if said resources' data updates are of interest.
-     * 
-     * @param configManager
-     *            Session configuration manager.
-     * @param resource
-     *            Resource for which to set up data detectors for it and its
-     *            children as appropriate.
-     */
-    private void setUpDataUpdateDetectorsForResource(
-            ISessionConfigurationManager<?> configManager,
-            AbstractVizResource<?, ?> resource) {
-
-        /*
-         * If this resource is one whose data updates are of interest, create a
-         * detector for its data updates.
-         */
-        if (configManager.isClassNameDataLayerChangeDrivenToolTrigger(resource
-                .getClass().getSimpleName())) {
-            dataUpdateDetectorsForVizResources.put(resource,
-                    new ResourceDataUpdateDetector(resource, configManager));
-        }
-
-        /*
-         * If this resource contains other resources, recursively set up
-         * detectors from them.
-         */
-        if (resource instanceof IResourceGroup) {
-            for (ResourcePair resourcePair : ((IResourceGroup) resource)
-                    .getResourceList()) {
-                setUpDataUpdateDetectorsForResource(configManager,
-                        resourcePair.getResource());
-            }
-        }
-    }
-
-    /**
-     * Remove any data update detectors for the specified resource and any child
-     * resources it has if said resources' data updates had detectors monitoring
-     * them.
-     * 
-     * @param resource
-     *            Resource for which to remove data detectors for it and its
-     *            children as appropriate.
-     */
-    private void removeDataUpdateDetectorsForResource(
-            AbstractVizResource<?, ?> resource) {
-
-        /*
-         * If a detector was in place for this resource, dispose of it.
-         */
-        ResourceDataUpdateDetector detector = dataUpdateDetectorsForVizResources
-                .remove(resource);
-        if (detector != null) {
-            detector.dispose();
-        }
-
-        /*
-         * If this resource contains other resources, recursively remove
-         * detectors from them.
-         */
-        if (resource instanceof IResourceGroup) {
-            for (ResourcePair resourcePair : ((IResourceGroup) resource)
-                    .getResourceList()) {
-                removeDataUpdateDetectorsForResource(resourcePair.getResource());
-            }
-        }
-    }
-
-    /**
      * Create listeners.
      * 
      * @param editor
      *            Editor in which to find display panes with resources.
      */
-    private void createListeners(AbstractEditor editor) {
+    private void createResourceListeners(AbstractEditor editor) {
 
         /*
          * Set up listeners for notifications concerning the addition or removal
-         * of resources, as well as listeners for specific resources whose data
-         * updates are of interest.
+         * of resources.
          */
-        ISessionConfigurationManager<?> configManager = presenter
-                .getSessionManager().getConfigurationManager();
         for (IDisplayPane displayPane : editor.getDisplayPanes()) {
             if (displayPane != null) {
                 ResourceList resourceList = displayPane.getDescriptor()
                         .getResourceList();
                 resourceList.addPostAddListener(addListener);
                 resourceList.addPostRemoveListener(removeListener);
-                for (ResourcePair resourcePair : resourceList) {
-                    setUpDataUpdateDetectorsForResource(configManager,
-                            resourcePair.getResource());
-                }
-            }
-        }
-    }
-
-    /**
-     * Remove listeners.
-     */
-    private void removeListeners(AbstractEditor editor) {
-
-        /*
-         * Remove any listeners for specific resource data updates.
-         */
-        for (ResourceDataUpdateDetector detector : dataUpdateDetectorsForVizResources
-                .values()) {
-            detector.dispose();
-        }
-        dataUpdateDetectorsForVizResources.clear();
-
-        /*
-         * Remove the listeners for resource list changes.
-         */
-        if (editor != null) {
-            for (IDisplayPane displayPane : editor.getDisplayPanes()) {
-                ResourceList resourceList = displayPane.getDescriptor()
-                        .getResourceList();
-                resourceList.removePostAddListener(addListener);
-                resourceList.removePostRemoveListener(removeListener);
             }
         }
     }

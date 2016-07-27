@@ -41,9 +41,7 @@ import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.DataLayerType;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -90,6 +88,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 25, 2016   19537    Chris.Golden Fixed bug that manifested itself when a
  *                                      null dialog info was provided by a
  *                                      recommender, causing an exception.
+ * Jul 27, 2016   19924    Chris.Golden Changed to pass all data layer times to
+ *                                      a recommender when requested, not just the
+ *                                      latest data layer.
  * </pre>
  * 
  * @author Chris.Golden
@@ -297,8 +298,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES);
         Set<String> includeEventTypes = (includeEventTypesList != null ? new HashSet<>(
                 includeEventTypesList) : null);
-        Collection<String> latestDataTimeDataLayerTypes = (Collection<String>) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_LATEST_DATA_LAYER_TIME);
+        Boolean includeDataLayerTimes = (Boolean) metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES);
 
         /*
          * Create the event set, determine which events are to be added to it
@@ -330,8 +331,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         /*
          * Add session information to event set.
          */
-        ISessionConfigurationManager<?> configManager = sessionManager
-                .getConfigurationManager();
         long currentTime = sessionManager.getTimeManager().getCurrentTime()
                 .getTime();
         eventSet.addAttribute(HazardConstants.CURRENT_TIME, currentTime);
@@ -349,37 +348,20 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         .toString());
 
         /*
-         * If the latest data time is to be included, add that to the event set
-         * as well. Determine the latest time by iterating through the types of
-         * data layers that are to be checked, and finding the latest for each
-         * type in turn, then taking the greatest of these. Use the current time
-         * if no data layers of these types are loaded, or if one or more are
-         * loaded but none of them have any data times.
+         * If the data times are to be included, add them to the event set as
+         * well, using a list of just the current time if none are available.
          */
         final String toolName = (String) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_TOOL_NAME);
-        if ((latestDataTimeDataLayerTypes != null)
-                && (latestDataTimeDataLayerTypes.isEmpty() == false)) {
-            long latest = 0;
-            for (String typeString : latestDataTimeDataLayerTypes) {
-                DataLayerType type = DataLayerType.valueOf(typeString
-                        .toUpperCase());
-                if (type == null) {
-                    statusHandler.warn("Ignoring data layer type \""
-                            + typeString + "\" specified by " + toolName
-                            + " in list of data layer types to "
-                            + "query for latest data time, "
-                            + "since there is no such type.");
-                    continue;
-                }
-                long thisLatest = configManager
-                        .getLatestDataTimeFromVizResources(type.getClassNames());
-                if (thisLatest > latest) {
-                    latest = thisLatest;
-                }
-            }
-            eventSet.addAttribute(HazardConstants.LATEST_DATA_TIME,
-                    (latest == 0L ? currentTime : latest));
+        if (Boolean.TRUE.equals(includeDataLayerTimes)) {
+            List<Long> dataLayerTimes = sessionManager
+                    .getDisplayResourceContextProvider()
+                    .getTimeMatchBasisDataLayerTimes();
+            Serializable times = (dataLayerTimes == null ? Lists
+                    .newArrayList(currentTime)
+                    : (dataLayerTimes instanceof Serializable ? (Serializable) dataLayerTimes
+                            : new ArrayList<>(dataLayerTimes)));
+            eventSet.addAttribute(HazardConstants.DATA_TIMES, times);
         }
 
         /*

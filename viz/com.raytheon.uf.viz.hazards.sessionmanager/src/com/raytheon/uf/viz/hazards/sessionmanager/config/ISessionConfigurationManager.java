@@ -22,15 +22,12 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
-import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
-import com.raytheon.uf.viz.hazards.sessionmanager.ResourceDataUpdateDetector;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.EventDrivenTools;
@@ -88,6 +85,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      times.
  * May 04, 2016 18266      Chris.Golden Added passing of data time to method allowing
  *                                      triggering by data layer change.
+ * Jul 27, 2016 19924      Chris.Golden Removed obsolete code related to data layer
+ *                                      changes triggering event-driven tools; the
+ *                                      configuration of such is now read in within
+ *                                      the configuration manager, but the work of
+ *                                      tracking data layer changes is done by the
+ *                                      app builder where it belongs.
  * </pre>
  * 
  * @author bsteffen
@@ -417,55 +420,10 @@ public interface ISessionConfigurationManager<S extends ISettings> {
     public void setEventDrivenToolRunningEnabled(boolean enable);
 
     /**
-     * Determine whether or not the specified class name is one that triggers
-     * tool execution when loaded instances of the class experience a data
-     * update.
-     * 
-     * @return True if the class name for which data layer changes trigger tool
-     *         execution, false otherwise.
+     * Trigger the appropriate tool sequence, if any, in response to a data
+     * layer change.
      */
-    public boolean isClassNameDataLayerChangeDrivenToolTrigger(String className);
-
-    /**
-     * Trigger the appropriate tool for the specified class name, an instance of
-     * which experienced a data update, if the specified latest time is later
-     * than the last data update that triggered the associated tool.
-     * 
-     * @param className
-     *            Name of the class, an instance of which experienced a data
-     *            update.
-     * @param dataUpdateTime
-     *            Data time that was updated by the instance of the class, in
-     *            epoch time in millliseconds.
-     */
-    public void triggerDataLayerChangeDrivenTool(String className,
-            long dataUpdateTime);
-
-    /**
-     * Give the map of viz resources to their corresponding data update
-     * detectors to the session configuration manager.
-     * 
-     * TODO: This is a kludge. Instances of this interface should own this map,
-     * not be passed it. To be corrected when the spatial display is refactored.
-     * 
-     * @param map
-     *            Map to be used.
-     */
-    public void setDataUpdateDetectorsForVizResources(
-            Map<AbstractVizResource<?, ?>, ResourceDataUpdateDetector> map);
-
-    /**
-     * Get the latest data time for any loaded viz resources that are instances
-     * of any of the specified classes.
-     * 
-     * @param classNames
-     *            Names of classes for which instances are to be checked for the
-     *            latest data time.
-     * @return Latest data time for any loaded viz resources that are instances
-     *         of the specified classes, or <code>0</code> if no such data times
-     *         are found.
-     */
-    public long getLatestDataTimeFromVizResources(Set<String> classNames);
+    public void triggerDataLayerChangeDrivenTool();
 
     /**
      * Execute any shutdown needed.

@@ -50,6 +50,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
  *                                      manager.
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
+ * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * </pre>
  * 
  * @author bsteffen
@@ -61,12 +62,14 @@ public class SessionManagerFactory {
     public static ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager(
             IMessenger messenger,
             ISpatialContextProvider spatialContextProvider,
+            IDisplayResourceContextProvider displayResourceContextProvider,
             IFrameContextProvider frameContextProvider,
             BoundedReceptionEventBus<Object> eventBus) {
         Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
                 : Mode.OPERATIONAL;
         return new SessionManager(PathManagerFactory.getPathManager(),
                 new HazardEventManager(mode), spatialContextProvider,
-                frameContextProvider, messenger, eventBus);
+                displayResourceContextProvider, frameContextProvider,
+                messenger, eventBus);
     }
 }
