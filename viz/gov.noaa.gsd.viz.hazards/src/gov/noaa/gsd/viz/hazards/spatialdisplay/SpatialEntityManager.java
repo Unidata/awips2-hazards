@@ -76,6 +76,13 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 22, 2016   19537    Chris.Golden Initial creation.
+ * Jul 28, 2016   19537    Chris.Golden Fixed bugs related to tracking
+ *                                      spatial entity indices, which
+ *                                      among other things caused any
+ *                                      attempts to remove a hazard event
+ *                                      to incorrectly change the indices
+ *                                      and thus eventually lead to
+ *                                      index-out-of-bounds exceptions.
  * </pre>
  * 
  * @author Chris.Golden
@@ -184,19 +191,19 @@ class SpatialEntityManager {
     private final List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> toolSpatialEntities = new ArrayList<>();
 
     /**
-     * Absolute index within {@link spatialEntities} of the first non-hatching
-     * spatial entity associated with an unselected hazard event.
+     * Index within {@link spatialEntities} of the first non-hatching spatial
+     * entity associated with an unselected hazard event.
      */
     private int unselectedEventStartIndex;
 
     /**
-     * Absolute index within {@link spatialEntities} of the first non-hatching
-     * spatial entity associated with a selected hazard event.
+     * Index within {@link spatialEntities} of the first non-hatching spatial
+     * entity associated with a selected hazard event.
      */
     private int selectedEventStartIndex;
 
     /**
-     * Absolute index within {@link spatialEntities} of the first spatial entity
+     * Index within {@link spatialEntities} of the first spatial entity
      * generated from one of the visual features found in
      * {@link #toolVisualFeatures}.
      */
@@ -204,24 +211,22 @@ class SpatialEntityManager {
 
     /**
      * Map pairing each hazard event that is currently showing at least one
-     * hatching spatial entity with the absolute index of its first such entity
-     * within {@link #spatialEntities}.
+     * hatching spatial entity with the index of its first such entity within
+     * {@link #spatialEntities}.
      */
     private final Map<String, Integer> hatchingIndicesForEvents = new HashMap<>();
 
     /**
      * Map pairing each hazard event that is currently unselected and visible
-     * with the relative index of its first non-hatching spatial entity within
-     * {@link #spatialEntities}. To get the absolute index, any index found
-     * within this map must be offset by {@link #unselectedEventStartIndex}.
+     * with the index of its first non-hatching spatial entity within
+     * {@link #spatialEntities}.
      */
     private final Map<String, Integer> unselectedIndicesForEvents = new HashMap<>();
 
     /**
      * Map pairing each hazard event that is currently selected and visible with
-     * the relative index of its first non-hatching spatial entity within
-     * {@link #spatialEntities}. To get the absolute index, any index found
-     * within this map must be offset by {@link #selectedEventStartIndex}.
+     * the index of its first non-hatching spatial entity within
+     * {@link #spatialEntities}.
      */
     private final Map<String, Integer> selectedIndicesForEvents = new HashMap<>();
 
@@ -457,7 +462,8 @@ class SpatialEntityManager {
             }
             if (hatchingCount > 0) {
                 hatchingIndex = hatchingIndicesForEvents.get(eventIdentifier);
-                offsetsForIndices.put(Range.atLeast(hatchingIndex),
+                offsetsForIndices.put(
+                        Range.atLeast(hatchingIndex + hatchingCount),
                         hatchingCount * -1);
             }
 
@@ -472,7 +478,8 @@ class SpatialEntityManager {
                     : unselectedIndicesForEvents).get(eventIdentifier);
             int nonHatchingCount = entities.size() - hatchingCount;
             if (nonHatchingCount > 0) {
-                offsetsForIndices.put(Range.atLeast(nonHatchingIndex),
+                offsetsForIndices.put(
+                        Range.atLeast(nonHatchingIndex + entities.size()),
                         entities.size() * -1);
             }
 
@@ -499,13 +506,15 @@ class SpatialEntityManager {
 
             /*
              * Remove both the hatching and non-hatching spatial entities from
-             * the list.
+             * the list, doing the non-hatching first so that the starting
+             * non-hatching index is accurate, since the hatching ones have not
+             * been removed from below it in the list yet.
              */
-            if (hatchingCount > 0) {
-                removeSpatialEntities(hatchingIndex, hatchingCount);
-            }
             if (nonHatchingCount > 0) {
                 removeSpatialEntities(nonHatchingIndex, nonHatchingCount);
+            }
+            if (hatchingCount > 0) {
+                removeSpatialEntities(hatchingIndex, hatchingCount);
             }
 
             /*
@@ -626,10 +635,10 @@ class SpatialEntityManager {
         }
 
         /*
-         * Remember the absolute index for each of the following: The first
-         * unselected event spatial entity, the first selected event spatial
-         * entity, and the first tool visual feature spatial entity. Any that
-         * are not found in the spatial entities are recorded as -1.
+         * Remember the index for each of the following: The first unselected
+         * event spatial entity, the first selected event spatial entity, and
+         * the first tool visual feature spatial entity. Any that are not found
+         * in the spatial entities are recorded as -1.
          */
         unselectedEventStartIndex = (unselectedSpatialEntities.isEmpty() ? -1
                 : hatchingSpatialEntities.size());
@@ -642,16 +651,16 @@ class SpatialEntityManager {
                         + hatchingSpatialEntities.size());
 
         /*
-         * Remember the relative starting indices for each hazard event for each
-         * of the following: its first hatching spatial entity, its first
-         * unselected spatial entity, and its first selected spatial entity.
+         * Remember the starting indices for each hazard event for each of the
+         * following: its first hatching spatial entity, its first unselected
+         * spatial entity, and its first selected spatial entity.
          */
         repopulateEntityIndicesForEventsMap(hatchingSpatialEntities,
-                hatchingIndicesForEvents);
+                hatchingIndicesForEvents, 0);
         repopulateEntityIndicesForEventsMap(unselectedSpatialEntities,
-                unselectedIndicesForEvents);
+                unselectedIndicesForEvents, unselectedEventStartIndex);
         repopulateEntityIndicesForEventsMap(selectedSpatialEntities,
-                selectedIndicesForEvents);
+                selectedIndicesForEvents, selectedEventStartIndex);
 
         /*
          * Concatenate the lists together into one, and have the view draw them.
@@ -717,22 +726,24 @@ class SpatialEntityManager {
     /**
      * Clear and repopulate the specified map associating in each case an event
      * identifier with the index of that event's first spatial entity in the
-     * specified list.
+     * specified list, offset as specified.
      * 
      * @param entities
      *            List from which to draw the information.
      * @param entityIndicesForEvents
      *            Map to be repopulated.
+     * @param offset
+     *            Amount by which to offset each recorded index.
      */
     private void repopulateEntityIndicesForEventsMap(
             List<SpatialEntity<? extends IHazardEventEntityIdentifier>> entities,
-            Map<String, Integer> entityIndicesForEvents) {
+            Map<String, Integer> entityIndicesForEvents, int offset) {
         entityIndicesForEvents.clear();
         for (int j = 0; j < entities.size(); j++) {
             String eventIdentifier = entities.get(j).getIdentifier()
                     .getEventIdentifier();
             if (entityIndicesForEvents.containsKey(eventIdentifier) == false) {
-                entityIndicesForEvents.put(eventIdentifier, j);
+                entityIndicesForEvents.put(eventIdentifier, j + offset);
             }
         }
     }
@@ -1342,17 +1353,17 @@ class SpatialEntityManager {
     }
 
     /**
-     * Get the absolute index of the point within {@link spatialEntities} at
-     * which to insert hatching spatial entities for the event at the specified
-     * index within the specified events list.
+     * Get the index of the point within {@link spatialEntities} at which to
+     * insert hatching spatial entities for the event at the specified index
+     * within the specified events list.
      * 
      * @param events
      *            List of events.
      * @param eventIndex
      *            Index of the event within <code>events</code> for which
      *            hatching spatial entities are to be inserted.
-     * @return Absolute index of the insertion point, or <code>-1</code> if the
-     *         entities should instead be appended.
+     * @return Index of the insertion point, or <code>-1</code> if the entities
+     *         should instead be appended.
      */
     private int getInsertionIndexForHatchingEntities(
             List<ObservedHazardEvent> events, int eventIndex) {
@@ -1384,17 +1395,17 @@ class SpatialEntityManager {
     }
 
     /**
-     * Get the absolute index of the point within {@link spatialEntities} at
-     * which to insert non-hatching spatial entities for the event at the
-     * specified index within the specified events list.
+     * Get the index of the point within {@link spatialEntities} at which to
+     * insert non-hatching spatial entities for the event at the specified index
+     * within the specified events list.
      * 
      * @param events
      *            List of events.
      * @param eventIndex
      *            Index of the event within <code>events</code> for which
      *            non-hatching spatial entities are to be inserted.
-     * @return Absolute index of the insertion point, or <code>-1</code> if the
-     *         entities should instead be appended.
+     * @return Index of the insertion point, or <code>-1</code> if the entities
+     *         should instead be appended.
      */
     private int getInsertionIndexForNonHatchingEntities(
             List<ObservedHazardEvent> events, int eventIndex) {
@@ -1416,10 +1427,10 @@ class SpatialEntityManager {
                             .containsKey(eventIdentifier)))) {
                 if (selected) {
                     nextEntityIndex = selectedIndicesForEvents
-                            .get(eventIdentifier) + selectedEventStartIndex;
+                            .get(eventIdentifier);
                 } else {
                     nextEntityIndex = unselectedIndicesForEvents
-                            .get(eventIdentifier) + unselectedEventStartIndex;
+                            .get(eventIdentifier);
                 }
                 break;
             }
@@ -1455,9 +1466,9 @@ class SpatialEntityManager {
      * all values between 3 and 9 inclusive with -2, and all values 10 and above
      * with 4. Using these parameters will cause this method to alter some
      * indices recorded in the abovementioned member variables. Any recorded
-     * index with an absolute value between 3 and 9 inclusive will have -2 added
-     * to it, while any such index with an absolute value of 10 or greater will
-     * have 4 added to it.
+     * index with a value between 3 and 9 inclusive will have -2 added to it,
+     * while any such index with a value of 10 or greater will have 4 added to
+     * it.
      * </p>
      * 
      * @param offsetsForIndices
@@ -1467,15 +1478,13 @@ class SpatialEntityManager {
      */
     private void updateRecordedEntityIndices(
             RangeMap<Integer, Integer> offsetsForIndices) {
-        updateEntityIndicesMap(offsetsForIndices, hatchingIndicesForEvents, 0);
-        updateEntityIndicesMap(offsetsForIndices, unselectedIndicesForEvents,
-                unselectedEventStartIndex);
-        updateEntityIndicesMap(offsetsForIndices, selectedIndicesForEvents,
-                selectedEventStartIndex);
+        updateEntityIndicesMap(offsetsForIndices, hatchingIndicesForEvents);
         unselectedEventStartIndex = updateEntityIndex(offsetsForIndices,
                 unselectedEventStartIndex);
+        updateEntityIndicesMap(offsetsForIndices, unselectedIndicesForEvents);
         selectedEventStartIndex = updateEntityIndex(offsetsForIndices,
                 selectedEventStartIndex);
+        updateEntityIndicesMap(offsetsForIndices, selectedIndicesForEvents);
         toolVisualFeatureStartIndex = updateEntityIndex(offsetsForIndices,
                 toolVisualFeatureStartIndex);
     }
@@ -1488,9 +1497,9 @@ class SpatialEntityManager {
      * all values between 3 and 9 inclusive with -2, and all values 10 and above
      * with 4. Using these parameters will cause this method to alter some
      * indices recorded in the specified map of event identifiers to indices.
-     * Any recorded index with an absolute value between 3 and 9 inclusive will
-     * have -2 added to it, while any such index with an absolute value of 10 or
-     * greater will have 4 added to it.
+     * Any recorded index with a value between 3 and 9 inclusive will have -2
+     * added to it, while any such index with a value of 10 or greater will have
+     * 4 added to it.
      * 
      * @param offsetsForIndices
      *            Range map pairing ranges of indices with the offsets that
@@ -1499,20 +1508,15 @@ class SpatialEntityManager {
      * @param indicesForEvents
      *            Map of event identifiers to spatial entity indices that is to
      *            be updated with new offsets as appropriate.
-     * @param absoluteOffset
-     *            Offset to apply to any index values within
-     *            <code>indicesForEvents</code> to convert them to absolute
-     *            indices for the sake of determining whether they fall within
-     *            any of the ranges given by <code>offsetsForIndices</code>.
      */
     private void updateEntityIndicesMap(
             RangeMap<Integer, Integer> offsetsForIndices,
-            Map<String, Integer> indicesForEvents, int absoluteOffset) {
+            Map<String, Integer> indicesForEvents) {
         for (Map.Entry<String, Integer> entry : indicesForEvents.entrySet()) {
-            int index = entry.getValue() + absoluteOffset;
+            int index = entry.getValue();
             Integer offset = offsetsForIndices.get(index);
             if (offset != null) {
-                entry.setValue(index + offset - absoluteOffset);
+                entry.setValue(index + offset);
             }
         }
     }
