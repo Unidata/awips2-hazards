@@ -5,6 +5,7 @@ from KeyInfo import KeyInfo
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 import Legacy_Hydro_Formatter
 from collections import OrderedDict
+import Domains
 
 OUTPUTDIR = '/scratch/convectiveSigmetTesting'
 
@@ -15,6 +16,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         self.initProductPartMethodMapping()
 
         self._productGeneratorName = 'Convective_SIGMET_ProductGenerator' 
+        self._domains = Domains.Domains()
         
     def initProductPartMethodMapping(self):
         self.productPartMethodMapping = {
@@ -29,20 +31,27 @@ class Format(Legacy_Hydro_Formatter.Format):
         self.productDict = productDict
         self._editableParts = OrderedDict()
         
+        domains = Domains.AviationDomains
+        
         parts = self.productDict.get('productParts')
-        events = self.productDict.get('events')
+        eventDicts = self.productDict.get('eventDicts')
 
         self._fcstList = {}
         
-        for event in events:
-            self._formatConvectiveSigmet(event)
-            self._fcst = self._preProcessProduct(event, '', {})
+        for eventDict in eventDicts:
+            self._issueFlag = eventDict.get('issueFlag',False)
+            self._status = eventDict.get('status',False)
+            self._formatConvectiveSigmet(eventDict)
+            self._fcst = self._preProcessProduct('', domains)
             self._fcst = str.upper(self._fcst)
-            self._fcstList[event['sigmetNumber']+event['domain']] = self._fcst
+            self._fcstList[eventDict['sigmetNumber']+eventDict['domain']] = self._fcst
             self.flush()
             
-        productDict = self._outputFormatter(events, self._fcstList)
-        self._outputText(productDict)
+        productDict = self._assembleProduct(eventDicts, self._fcstList, domains)
+        
+        if self._status == "PENDING" or self._status == "ISSUED":
+            if self._issueFlag == "True":
+                self._outputText(productDict)
         
         legacyText = productDict.get('text')
 
@@ -51,25 +60,27 @@ class Format(Legacy_Hydro_Formatter.Format):
     ######################################################
     #  Product Part Methods 
     ######################################################
-
-    ################# Product Level
-    def _formatConvectiveSigmet(self, event):                
+    def _formatConvectiveSigmet(self, eventDict):                
         self._SIGMET_ProductName = 'CONVECTIVE SIGMET'
-        self._convectiveSigmetNumberStr = event['sigmetNumber']
-        self._convectiveSigmetDomain = event['domain']
-        self._endTime = event['parts']['endTime']
-        self._statesListStr = event['parts']['states']
-        self._boundingStatement = event['parts']['boundingStatement']
-        self._convectiveSigmetModifierStr = event['parts']['modifier']
-        self._convectiveSigmetModeStr = event['parts']['mode']
-        self._hazardEmbeddedStr = event['parts']['embedded']
-        self._hazardMotionStr = event['parts']['motion']
-        self._convectiveSigmetCloudTopStr = event['parts']['cloudTop']
-        self._convectiveSigmetAdditionalHazardsStr = event['parts']['additionalHazards']
-        self._currentTime = event['parts']['currentTime']
-        self._startTime = event['parts']['startTime']
-        self._startDate = event['parts']['startDate']                
-        self._endDate = event['parts']['endDate']
+        self._convectiveSigmetNumberStr = eventDict['sigmetNumber']
+        self._convectiveSigmetDomain = eventDict['domain']
+        
+        eventDictParts = eventDict.get('parts')
+        
+        self._statesListStr = eventDictParts.get('states','NULL')
+        self._convectiveSigmetModifierStr = eventDictParts.get('modifier','')
+        self._hazardMotionStr = eventDictParts.get('motion','MOV LTL.')
+        self._convectiveSigmetCloudTopStr = eventDictParts.get('cloudTop','TOPS ABV FL450.')
+        self._startTime = eventDictParts.get('startTime','DDHHMM')
+        self._endTime = eventDictParts.get('endTime','DDHHMM')      
+        self._startDate = eventDictParts.get('startDate','YYYYMMDD_HHmm')               
+        self._endDate = eventDictParts.get('endDate','YYYYMMDD_HHmm')
+        self._vertices = eventDictParts.get('geometry',None)
+        self._boundingStatement = eventDictParts.get('boundingStatement','')
+        self._convectiveSigmetModeStr = eventDictParts.get('mode','AREA')
+        self._hazardEmbeddedStr = eventDictParts.get('embedded','')
+        self._convectiveSigmetAdditionalHazardsStr = eventDictParts.get('additionalHazards','')
+        self._currentTime = eventDictParts.get('currentTime','DDHHMM')
         
         self._productLoc = 'MKC'  # product name 
         self._fullStationID = 'KKCI'  # full station identifier (4letter)
@@ -84,13 +95,13 @@ class Format(Legacy_Hydro_Formatter.Format):
         self._awipsWANPil = 'PANCSIGAK1'  # Product ID for transmitting to AWIPS WAN.
         self._lineLength = 68  # line length
         
-        if event['parts']['specialTime'] is not None:
-            self._specialTime = event['parts']['specialTime']          
+        if eventDictParts.get('specialTime') is not None:
+            self._specialTime = eventDictParts.get('specialTime')          
                     
-    def _outputFormatter(self, events, fcstList):                         
-        fcstDict = self._createFcstDict(events, fcstList)                             
-        fcstDict = self._orderFcstDict(fcstDict)
-        headerDict = self._createHeader(fcstDict)
+    def _assembleProduct(self, eventDicts, fcstList, domains):                       
+        fcstDict = self._createFcstDict(eventDicts, fcstList, domains)                             
+        fcstDict = self._orderFcstDict(fcstDict, domains)
+        headerDict = self._createHeader(fcstDict, domains)
         fcst = self._createFcst(fcstDict, headerDict)
         
         productDict = collections.OrderedDict()        
@@ -100,36 +111,32 @@ class Format(Legacy_Hydro_Formatter.Format):
             
         return productDict
     
-    def _createFcstDict(self, events, fcstList):        
-        self._domains = ['East', 'Central', 'West']
-
+    def _createFcstDict(self, eventDicts, fcstList, domains):        
         fcstDict = collections.OrderedDict()
-        for domain in self._domains:
-            fcstDict[domain] = {}
-            fcstDict[domain]['special']= {}
-            fcstDict[domain]['regular']= {}
-            for event in events:
-                numberStr = event['sigmetNumber']
+        for domain in domains:
+            fcstDict[domain.domainName()] = {}
+            fcstDict[domain.domainName()]['special']= {}
+            fcstDict[domain.domainName()]['regular']= {}
+            for event in eventDicts:
+                numberStr = event.get('sigmetNumber',None)
                 number = int(numberStr)              
-                if event['domain'] == domain and event['specialIssuance'] == True:
-                    fcst = fcstList[numberStr+domain]
-                    fcstDict[domain]['special'][number] = fcst
-                elif event['domain'] == domain and event['specialIssuance'] == False:
-                    fcst = fcstList[numberStr+domain]
-                    fcstDict[domain]['regular'][number] = fcst
+                if event.get('domain') == domain.domainName() and event.get('specialIssuance') == True:
+                    fcst = fcstList[numberStr+(domain.domainName())]
+                    fcstDict[domain.domainName()]['special'][number] = fcst
+                elif event.get('domain') == domain.domainName() and event.get('specialIssuance') == False:
+                    fcst = fcstList[numberStr+(domain.domainName())]
+                    fcstDict[domain.domainName()]['regular'][number] = fcst
                 else:
                     continue
                                                       
         return fcstDict 
     
-    def _orderFcstDict(self,fcstDict):    
-        
-        for domain in self._domains:
-            if len(fcstDict[domain]['special'].keys()):
-                fcstDict[domain]['special'] = collections.OrderedDict(sorted(fcstDict[domain]['special'].items()))
-            if len(fcstDict[domain]['regular'].keys()):
-                fcstDict[domain]['regular'] = collections.OrderedDict(sorted(fcstDict[domain]['regular'].items()))                       
-        
+    def _orderFcstDict(self,fcstDict, domains):    
+        for domain in domains:
+            if len(fcstDict[domain.domainName()]['special'].keys()):
+                fcstDict[domain.domainName()]['special'] = collections.OrderedDict(sorted(fcstDict[domain.domainName()]['special'].items()))
+            if len(fcstDict[domain.domainName()]['regular'].keys()):
+                fcstDict[domain.domainName()]['regular'] = collections.OrderedDict(sorted(fcstDict[domain.domainName()]['regular'].items()))                       
         return fcstDict            
 
     def _createFcst(self, fcstDict, headerDict):
@@ -149,28 +156,21 @@ class Format(Legacy_Hydro_Formatter.Format):
         
         return fcst         
     
-    def _createHeader(self, fcstDict):        
-        domainDict = {'East': 'E', 'Central': 'C', 'West': 'W'}
+    def _createHeader(self, fcstDict, domains):        
         headerDict = {}
-        
-        for domain in self._domains:
-            if len(fcstDict[domain]['special'].keys()):
-                header = '%s %s%s %s %s\n' % (self._zczc, self._productLoc, self._pilDict[domainDict[domain]],
-                    self._all, self._specialTime)            
-                header = '%s%s %s %s\n' % (header, self._wmoHeaderDict[domainDict[domain]], self._fullStationID,
-                    self._specialTime)
-                header = '%s%s%s %s %s' % (header, self._productLoc, domainDict[domain],
-                    self._productIdentifier, self._specialTime)
+
+        for domain in domains:
+            if len(fcstDict[domain.domainName()]['special'].keys()):
+                timeStr = self._specialTime
             else:
-                header = '%s %s%s %s %s\n' % (self._zczc, self._productLoc, self._pilDict[domainDict[domain]],
-                    self._all, self._startTime)
-                header = '%s%s %s %s\n' % (header, self._wmoHeaderDict[domainDict[domain]], self._fullStationID,
-                    self._startTime)
-                header = '%s%s%s %s %s' % (header, self._productLoc, domainDict[domain],
-                    self._productIdentifier, self._startTime)
-            
-            headerDict[domain] = header
-                  
+                timeStr = self._startTime
+            header = '%s %s%s %s %s\n' % (self._zczc, self._productLoc, domain.pil(),
+                self._all, timeStr)            
+            header = '%s%s %s %s\n' % (header, domain.wmoHeader(), self._fullStationID,
+                timeStr)
+            header = '%s%s%s %s %s' % (header, self._productLoc, domain.abbrev(),
+                self._productIdentifier, timeStr)
+            headerDict[domain.domainName()] = header       
         return headerDict    
     
     def _outputText(self, productDict):              
@@ -189,9 +189,10 @@ class Format(Legacy_Hydro_Formatter.Format):
     
         return    
             
-    def _preProcessProduct(self, event, fcst, argDict):
-        domainDict = {'East': 'E', 'Central': 'C', 'West': 'W'}
-        self._convectiveSigmetDomainStr = domainDict[self._convectiveSigmetDomain]
+    def _preProcessProduct(self,fcst,domains):
+        for domain in domains:
+            if domain.domainName() == self._convectiveSigmetDomain:
+                self._convectiveSigmetDomainStr = domain.abbrev()
         
         fcst = '%s%s %s%s\n' % (fcst, self._SIGMET_ProductName, self._convectiveSigmetNumberStr, self._convectiveSigmetDomainStr)        
         fcst = fcst + 'VALID UNTIL ' + self._endTime + 'Z\n'
@@ -206,63 +207,3 @@ class Format(Legacy_Hydro_Formatter.Format):
         fcst = fcst.replace("_", " ")       
         
         return fcst
-
-    def _postProcessProduct(self, fcst, argDict):
-        endTimeStr = time.strftime('%b %Y', time.gmtime(
-            self._currentTime))
-      
-        fcst = fcst + '\n' + 'OUTLOOK VALID ' + 'DDHHMM - DDHHMM+4\n' 
-        fcst = fcst + 'TS ARE NOT EXPD TO REQUIRE WST ISSUANCES.\n'
-        fcst = fcst + '\n' + 'NNNN'
-
-        return fcst
-
-    def _wordWrap(self, string, width=66):
-        newstring = ''
-        if len(string) > width:
-            while True:
-                # find position of nearest whitespace char to the left of 'width'
-                marker = width - 1
-                while not string[marker].isspace():
-                    marker = marker - 1
-
-                # remove line from original string and add it to the new string
-                newline = string[0:marker] + '\n'
-                newstring = newstring + newline
-                string = string[marker + 1:]
-
-                # break out of loop when finished
-                if len(string) <= width:
-                    break
-    
-        return newstring + string
-                
-    def _groupSegments(self, segments):
-        '''
-        Group the segments into the products
-        
-         ESF products are not segmented, so make a product from each 'segment' i.e. HY.O event
-        '''        
-        productSegmentGroups = []
-        for segment in segments:
-            vtecRecords = self.getVtecRecords(segment)
-            productSegmentGroups.append(self.createProductSegmentGroup('ESF', self._ESF_ProductName, 'area', self._vtecEngine, 'counties', False,
-                                            [self.createProductSegment(segment, vtecRecords)]))            
-        for productSegmentGroup in productSegmentGroups:
-            self._addProductParts(productSegmentGroup)
-        return productSegmentGroups
-    
-    def _addProductParts(self, productSegmentGroup):
-        productSegments = productSegmentGroup.productSegments
-        productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))                
-
-    ################# Segment Level
-
-    ################# Section Level    
-    def _narrativeForecastInformation(self, segmentDict):
-        text = ''
-        narrative = segmentDict.get('narrativeForecastInformation')
-        if narrative:
-            text = narrative
-            text += '\n\n'
-        return text

@@ -433,6 +433,7 @@ class MetaData(CommonMetaData.MetaData):
         return specialIssuance
     
     def getConvectiveSigmetDomain(self,domain):
+        domainChoices = ["East", "Central", "West"]
         domain = {
             "fieldType": "Group",
             "fieldName": "convectiveSigmetNumberGroup",
@@ -444,7 +445,8 @@ class MetaData(CommonMetaData.MetaData):
                         "fieldType":"RadioButtons",
                         "label":"Domain:",
                         "expandHorizontally": False,
-                        "choices": domain,
+                        "choices": domainChoices,
+                        "values": domain,
                         "enable": False
                         }                       
                        ]

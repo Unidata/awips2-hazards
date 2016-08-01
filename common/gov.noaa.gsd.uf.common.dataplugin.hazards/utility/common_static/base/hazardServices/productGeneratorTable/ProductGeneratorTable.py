@@ -72,7 +72,7 @@ ProductGeneratorTable = {
             ('SIGMET.Convective', 'Aviation'),
             ],
             "previewFormatters": ["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],
-            "issueFormatters": ["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],                                   
+            "issueFormatters": [], #["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],                                   
             },                
                          
         # WFO Legacy                                           

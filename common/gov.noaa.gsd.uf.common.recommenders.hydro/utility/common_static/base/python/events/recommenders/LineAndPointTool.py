@@ -12,6 +12,11 @@ from shapely.geometry import Polygon
 from inspect import currentframe, getframeinfo
 import os, sys
 from VisualFeatures import VisualFeatures
+import Domains
+import AviationUtils
+
+######
+TABLEFILE = '/home/nathan.hardin/Desktop/snap.tbl'
 
 class Recommender(RecommenderTemplate.Recommender):
     
@@ -51,7 +56,7 @@ class Recommender(RecommenderTemplate.Recommender):
         '''   
         return None
         
-    def execute(self, eventSet, dialogInputMap, visualFeatures): #spatialInputMap):
+    def execute(self, eventSet, dialogInputMap, visualFeatures):
         '''
         Runs the Line and Point Tool
         
@@ -82,18 +87,18 @@ class Recommender(RecommenderTemplate.Recommender):
       
         changed = False
         for event in eventSet:
-            width = event.getHazardAttributes().get('convectiveSigmetWidth')
-            self._geomType = self._getGeometryType(event)
+            validTime = event.get('validTime')
+            self._originalGeomType = event.get('originalGeomType')
+            event.set('originalGeometry', event.getGeometry())
+            self._width = event.getHazardAttributes().get('convectiveSigmetWidth')
             vertices = self._getVertices(event)
             
-            if width == 10 and self._geomType is 'Point':
-                basePoly = event.getGeometry()
-                event.set('basePoly', basePoly)
-            
-            if self._geomType is not 'Polygon':
-                poly = self.createPolygon(vertices,width)
-                event.set('polygon', poly)
-                changed = (self.addVisualFeatures(event,poly) or changed)
+            #for points and lines, calculate polygon and add visual feature
+            if self._originalGeomType != 'Polygon':
+                if self._trigger == 'hazardEventModification':
+                    poly = self.createPolygon(vertices,self._width)
+                    event.set('polygon', poly)
+                    changed = (self.addVisualFeatures(event,poly) or changed)
                 
             # Event Modification
             changed = self._processEventModification(event, self._trigger, eventSetAttrs)
@@ -103,7 +108,6 @@ class Recommender(RecommenderTemplate.Recommender):
         return eventSet
     
     def _processEventModification(self, event, trigger, eventSetAttrs):
-        # Make updates to the event
         if not self._makeUpdates(event, trigger, eventSetAttrs):                                
             return False
         return True
@@ -111,7 +115,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def _makeUpdates(self, event, trigger, eventSetAttrs):
         if trigger == 'hazardEventModification': 
             return False            
-        if trigger == 'hazardEventVisualFeatureChange':                 
+        if trigger == 'hazardEventVisualFeatureChange' and len(self._attribute) is 1:                 
             self._adjustForVisualFeatureChange(event, eventSetAttrs)
         return True            
     
@@ -127,38 +131,108 @@ class Recommender(RecommenderTemplate.Recommender):
             if featureIdentifier == changedIdentifier:
                 # Get feature polygon
                 polyDict = feature["geometry"]
-                #  This will work because we only have one polygon in our features
-                #  TODO refactor to have multiple polygons per feature
                 for timeBounds, geometry in polyDict.iteritems():
-                    featureSt, featureEt = timeBounds
-                    featureSt = long(featureSt)
                     featurePoly = geometry
+                    vertices = shapely.geometry.base.dump_coords(featurePoly)
+                    if any(isinstance(i, list) for i in vertices):
+                        vertices = vertices[0]
+                    convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(event,vertices,self._originalGeomType,'modification')
+                    boundingStatement = AviationUtils.AviationUtils().boundingStatement(event,self._originalGeomType,TABLEFILE,vertices,'modification')
+                        
+                    if self._originalGeomType != 'Polygon':
+                        poly = self.createPolygon(vertices,self._width)
+                        self._updateVisualFeatures(event, vertices, poly)
+                    else:
+                        poly = []
+                        self._updateVisualFeatures(event, vertices, poly)                       
+                    
+    def _updateVisualFeatures(self, event, vertices, polyPoints):
+        #if feature is changed/moved update visual features
+        startTime = TimeUtils.roundDatetime(event.getStartTime())
+        endTime = TimeUtils.roundDatetime(event.getEndTime())
+        eventID = event.getEventID()
+        selectedFeatures = []
+        VOR_points = event.getHazardAttributes().get('VOR_points')
+               
+        if self._originalGeomType != 'Polygon':
+            poly = GeometryFactory.createPolygon(polyPoints)
+            event.setGeometry(poly)
+            if self._originalGeomType == 'Point':
+                basePoly = vertices
+                basePoly = GeometryFactory.createPoint(basePoly)
+            elif self._originalGeomType == 'LineString':
+                basePoly = vertices
+                basePoly = GeometryFactory.createLineString(basePoly)                        
+        else:
+            poly = GeometryFactory.createPolygon(VOR_points)
+            basePoly = GeometryFactory.createPolygon(vertices)
+            event.setGeometry(basePoly)
+        
+        if self._originalGeomType is not 'Polygon':        
+            borderColorHazard = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 }
+            fillColorHazard = {"red": 1, "green": 1, "blue": 1, "alpha": 0}
+            borderColorBase = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }
+            fillColorBase = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 0.5 }
+        else:
+            borderColorHazard = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }
+            fillColorHazard = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 0.5 }
+            borderColorBase = "eventType"
+            fillColorBase = {"red": 1, "green": 1, "blue": 1, "alpha": 0}       
+        
+        hazardEventPoly = {
+            "identifier": "hazardEventPolygon_" + eventID,
+            "visibilityConstraints": "always",
+            "diameter": "eventType",
+            "borderColor": borderColorHazard,
+            "fillColor": fillColorHazard,
+            "geometry": {
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
+            }
+        }
+        
+        basePoly = {
+            "identifier": "basePreview_" + eventID,
+            "visibilityConstraints": "selected",
+            "dragCapability": "all",
+            "borderThickness": "eventType",
+            "diameter": "eventType",
+            "borderColor": borderColorBase,
+            "fillColor": fillColorBase,
+            "geometry": {
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
+            }
+        }                    
 
+        selectedFeatures.append(basePoly)                      
+        selectedFeatures.append(hazardEventPoly)            
+        event.setVisualFeatures(VisualFeatures(selectedFeatures))
 
+        return True
+    
+    def _setVORPoints(self, vorLat, vorLon, event):
+        VOR_points = zip(vorLon, vorLat)
+        event.set('VOR_points', VOR_points)
+        
+        return       
+        
     def _getVertices(self, hazardEvent):
         for g in hazardEvent.getGeometry().geoms:
             vertices = shapely.geometry.base.dump_coords(g)        
         
-        return vertices
-    
-    def _getGeometryType(self, hazardEvent):        
-        for g in hazardEvent.getGeometry():
-            geomType = g.geom_type
-        
-        return geomType    
+        return vertices 
 
     def addVisualFeatures(self, event, points):
-        startTime = self._roundTime(event.getStartTime())
-        endTime = self._roundTime(event.getEndTime())
+        startTime = TimeUtils.roundDatetime(event.getStartTime())
+        endTime = TimeUtils.roundDatetime(event.getEndTime())
         eventID = event.getEventID()
         selectedFeatures = []
         
         poly = GeometryFactory.createPolygon(points)        
         
-        if self._geomType is 'Point':
-            basePoly = event.get('basePoly')
+        if self._originalGeomType == 'Point':
+            basePoly = event.get('originalGeometry')
             basePoly = basePoly[0]
-        elif self._geomType is 'LineString':
+        elif self._originalGeomType == 'LineString':
             basePoly = event.getGeometry()
             basePoly = basePoly[0]                          
         else:
@@ -166,11 +240,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         borderColor = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 }       
         
-        HazardEventPoly = {
+        hazardEventPoly = {
             "identifier": "hazardEventPolygon_" + eventID,
             "visibilityConstraints": "selected",
             "borderColor": borderColor,
-            #"dragCapability": "all",
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
             }
@@ -189,7 +262,7 @@ class Recommender(RecommenderTemplate.Recommender):
         }                    
 
         selectedFeatures.append(basePoly)                      
-        selectedFeatures.append(HazardEventPoly)            
+        selectedFeatures.append(hazardEventPoly)            
         event.setVisualFeatures(VisualFeatures(selectedFeatures))
 
         return True      
@@ -221,6 +294,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def pointToPolygon(self, vertices, width):
         buffer = []
+        print "vertices: ", vertices
         if len(vertices) == 1:
             width = width/2
             for bearing in range(0,360,15):
@@ -234,9 +308,9 @@ class Recommender(RecommenderTemplate.Recommender):
         vertices = [x[::-1] for x in vertices]
         width = float(width) * 1.852  # convert Nautical Miles to KM
         
-        if self._geomType is 'Point':
+        if self._originalGeomType == 'Point':
             poly = self.pointToPolygon(vertices,width)
-        elif self._geomType is 'LineString':
+        elif self._originalGeomType == 'LineString':
             poly = self.lineToPolygon(vertices,width)
                 
         poly = [x[::-1] for x in poly]    
@@ -272,14 +346,7 @@ class Recommender(RecommenderTemplate.Recommender):
         lon2 = math.degrees(rlon2)
         if lon2 > 180.: lon2 = lon2 - 360.
         latlong_2 = (lat2, lon2)
-        return latlong_2
-    
-    def _roundTime(self, dt=None, dateDelta=datetime.timedelta(minutes=1)):
-        roundTo = dateDelta.total_seconds()
-        if dt is None: dt = datetime.datetime.now()
-        seconds = (dt - dt.min).seconds
-        rounding = ((seconds+roundTo/2)// roundTo) * roundTo
-        return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)        
+        return latlong_2   
     
     def flush(self):
         import os

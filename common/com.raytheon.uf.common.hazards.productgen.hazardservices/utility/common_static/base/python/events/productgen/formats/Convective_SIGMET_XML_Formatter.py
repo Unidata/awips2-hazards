@@ -1,5 +1,6 @@
 import FormatTemplate
 from xml.etree.ElementTree import Element, SubElement, tostring
+from xml.dom import minidom
 import os, collections, datetime, dateutil.parser
 from TextProductCommon import TextProductCommon
 
@@ -8,8 +9,81 @@ from KeyInfo import KeyInfo
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 import Legacy_Hydro_Formatter
 from collections import OrderedDict
+import Domains
 
 OUTPUTDIR = '/scratch/convectiveSigmetTesting'
+
+# <?xml version="1.0" ?>
+# <iwxxm-us:SIGMET gml:id="sigmet-conv-MKCE-2E-20150421855Z" status="NORMAL" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:iwxxm="http://icao.int/iwxxm/1.1" xmlns:iwxxm-us="http://nws.weather.gov/schemas/IWXXM-US/1.0/Release" xmlns:metce="http://def.wmo.int/metce/2013" xmlns:om="http://www.opengis.net/om/2.0" xmlns:saf="http://icao.int/saf/1.1" xmlns:sams="http://www.opengis.net/samplingSpatial/2.0" xmlns:sf="http://www.opengis.net/sampling/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://nws.weather.gov/schemas/IWXXM-US/1.0/Release http://nws.weather.gov/schemas/IWXXM-US/1.0/Release/schemas/usSigmet.xsd">
+#     <iwxxm:issuingAirTrafficServicesUnit>
+#         <saf:Unit gml:id="atsu-MKCE">
+#             <saf:designator>MKCE</saf:designator>
+#         </saf:Unit>
+#     </iwxxm:issuingAirTrafficServicesUnit>
+#     <iwxxm:originatingMeteorologicalWatchOffice>
+#         <saf:Unit gml:id="mwo-KKCI">
+#             <saf:name>KKCI MWO</saf:name>
+#             <saf:type>MWO</saf:type>
+#             <saf:designator>KKCI</saf:designator>
+#         </saf:Unit>
+#     </iwxxm:originatingMeteorologicalWatchOffice>
+#     <iwxxm:sequenceNumber>2E</iwxxm:sequenceNumber>
+#     <iwxxm:validPeriod>
+#         <gml:TimePeriod gml:id="tp-26T1855Z-26T2055Z">
+#             <gml:beginPosition>2015-04-26T18:55:00Z</gml:beginPosition>
+#             <gml:endPosition>2015-04-26T20:55:00Z</gml:endPosition>
+#         </gml:TimePeriod>
+#     </iwxxm:validPeriod>
+#     <iwxxm:phenomenon xlink:href="http://nws.weather.gov/codes/NWSI10-811/2011/USAeronauticalSignificantWeatherPhenomenon/CONVECTIVE_SIGMET"/>
+#     <iwxxm:analysis>
+#         <om:OM_Observation gml:id="a1-26T1855Z">
+#             <om:type xlink:href="http://codes.wmo.int/49-2/observation-type/IWXXM/1.1/SIGMETEvolvingConditionAnalysis"/>
+#             <om:resultTime>
+#                 <gml:TimeInstant gml:id="ti-26T1855Z">
+#                     <gml:timePosition>2015-04-26T18:55:00Z</gml:timePosition>
+#                 </gml:TimeInstant>
+#             </om:resultTime>
+#             <om:phenomenonTime xlink:href="#ti-26T1855Z"/>
+#             <om:validTime xlink:href="#tp-26T1855Z-26T2055Z"/>
+#             <om:procedure>
+#                 <metce:Process gml:id="process-wmo-49-2-SIGMET">
+#                     <gml:description>WMO Doc 49-2 Appendix 6.1: SIGMET</gml:description>
+#                 </metce:Process>
+#             </om:procedure>
+#             <om:observedProperty xlink:href="http://codes.wmo.int/49-2/observable-property/SIGMETEvolvingConditionAnalysis"/>
+#             <om:featureOfInterest xlink:href="#sampling-surface"/>
+#             <om:result>
+#                 <iwxxm:EvolvingMeteorologicalCondition gml:id="emc-conv-a1" intensityChange="NO_CHANGE">
+#                     <iwxxm:geometry>
+#                         <saf:AirspaceVolume gml:id="av-conv-obs-pos-MKCE-2E-201504261855Z-a1">
+#                             <saf:upperLimit uom="FL">450</saf:upperLimit>
+#                             <saf:upperLimitReference>STD</saf:upperLimitReference>
+#                             <saf:horizontalProjection>
+#                                 <gml:Polygon gml:id="polygon-conv-a1-obs-position-MKCE-2E-201504261855Z-a1" srsDimension="2" srsName="http://www.opengis.net/def/crs/EPSG/0/4326">
+#                                     <gml:exterior>
+#                                         <gml:LinearRing>
+#                                             <gml:posList count="6">30.21 -79.01 28.09 -81.31 26.95 -80.67 27.79 -78.89 29.19 -78.14 30.21 -79.01 </gml:posList>
+#                                         </gml:LinearRing>
+#                                     </gml:exterior>
+#                                 </gml:Polygon>
+#                             </saf:horizontalProjection>
+#                         </saf:AirspaceVolume>
+#                     </iwxxm:geometry>
+#                     <iwxxm:speedOfMotion uom="[nmi_i]">-999</iwxxm:speedOfMotion>
+#                 </iwxxm:EvolvingMeteorologicalCondition>
+#                 <iwxxm-us:convectionGeometry xlink:href="http://nws.weather.gov/codes/NWSI10-811/2011/SIGMETConvectionGeometry/AREA_OF_THUNDERSTORMS/"/>
+#                 <iwxxm-us:ConvectionHeightForecast>
+#                     <iwxxm-us:aboveBelowIndicator xlink:href="http://nws.weather.gov/codes/NWSI10-811/2011/ConvectionTopIndicator/TOPS_ABOVE/"/>
+#                     <iwxxm-us:convectionHeightValue uom="FL">450</iwxxm-us:convectionHeightValue>
+#                 </iwxxm-us:ConvectionHeightForecast>
+#             </om:result>
+#         </om:OM_Observation>
+#     </iwxxm:analysis>
+#     <iwxxm:basisForIssuance xlink:href="http://nws.weather.gov/codes/NWSI10-811/2011/BasisForIssuance/OBSERVATION"/>
+#     <iwxxm:continuationAfterInitialValidPeriod>false</iwxxm:continuationAfterInitialValidPeriod>
+#     <iwxxm:isSpecialIssuance>false</iwxxm:isSpecialIssuance>
+#     <iwxxm:isCorrection>false</iwxxm:isCorrection>
+# </iwxxm-us:SIGMET>
 
 class Format(Legacy_Hydro_Formatter.Format):
 
@@ -18,6 +92,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         self.initProductPartMethodMapping()
         
         self._productGeneratorName = 'Convective_SIGMET_ProductGenerator'
+        self._domains = Domains.Domains()
         
     def initProductPartMethodMapping(self):
         self.productPartMethodMapping = {
@@ -31,248 +106,427 @@ class Format(Legacy_Hydro_Formatter.Format):
     def execute(self, productDict, editableEntries=None):    
         self.productDict = productDict
         self._editableParts = OrderedDict()
+        domains = Domains.AviationDomains
+        
+        xmlParts = ['issuingAirTrafficServicesUnit', 'originatingMeteorologicalWatchOffice', 'sequenceNumber',
+                    'validPeriod', 'phenomenon', 'analysis', 'basisForIssuance', 'continuation',
+                    'isSpecialIssuance', 'isCorrection']
+        self._rootPrefix = 'iwxxm-us:SIGMET'
+        self._prefix = 'iwxxm:'
         
         parts = self.productDict.get('productParts')
-        events = self.productDict.get('events')
-
-        self._fcstList = {}
+        eventDicts = self.productDict.get('eventDicts')
         
-        for event in events:
-            self._formatConvectiveSigmet(event)
-            self._fcst = self._preProcessProduct(event, '', {})
-            self._fcst = str.upper(self._fcst)
-            self._fcstList[event['sigmetNumber']+event['domain']] = self._fcst
-            self.flush()
-            
-        productDict = self._outputFormatter(events, self._fcstList)
-        self._outputXML(productDict)
-        
-        legacyText = productDict.get('text')
+        for eventDict in eventDicts:
+            self._specialIssuance = eventDict.get('specialIssuance',False)
+            self._issueFlag = eventDict.get('issueFlag',False)
+            self._status = eventDict.get('status',"PENDING")
+            self._formatConvectiveSigmet(eventDict, domains)
+            xml = self._createXML(eventDict, xmlParts, domains)
+            xmlString = tostring(xml, 'utf-8')
+            xmlOut = self.prettify(xmlString)
+            xmlString = str(xmlOut)
 
-        return [ProductUtils.wrapLegacy(legacyText)],self._editableParts
-
-    ######################################################
-    #  Product Part Methods 
-    ######################################################
-
-    ################# Product Level
-    def _formatConvectiveSigmet(self, event):                
-        self._SIGMET_ProductName = 'CONVECTIVE SIGMET'
-        self._convectiveSigmetNumberStr = event['sigmetNumber']
-        self._convectiveSigmetDomain = event['domain']
-        self._endTime = event['parts']['endTime']
-        self._statesListStr = event['parts']['states']
-        self._boundingStatement = event['parts']['boundingStatement']
-        self._convectiveSigmetModifierStr = event['parts']['modifier']
-        self._convectiveSigmetModeStr = event['parts']['mode']
-        self._hazardEmbeddedStr = event['parts']['embedded']
-        self._hazardMotionStr = event['parts']['motion']
-        self._convectiveSigmetCloudTopStr = event['parts']['cloudTop']
-        self._convectiveSigmetAdditionalHazardsStr = event['parts']['additionalHazards']
-        self._currentTime = event['parts']['currentTime']
-        self._startTime = event['parts']['startTime']
-        self._startDate = event['parts']['startDate']                
-        self._endDate = event['parts']['endDate']
+            if self._status in ["PENDING","ISSUED"]:
+                if self._issueFlag == "True":
+                    self._outputXML(xmlOut)
+        return [ProductUtils.wrapLegacy(xmlString)],self._editableParts
+    
+    def prettify(self, xmlString):
+        reparsed = minidom.parseString(xmlString)
+        xmlString = reparsed.toprettyxml(indent='    ')        
         
-        self._productLoc = 'MKC'  # product name 
-        self._fullStationID = 'KKCI'  # full station identifier (4letter)
-        self._wmoHeaderDict = {'E': 'WSUS31', 'C': 'WSUS32', 'W': 'WSUS33'}  # WMO header based on region
-        self._productIdentifier = 'WST'
-        self._pilDict = {'E': 'SIGE', 'C': 'SIGC', 'W': 'SIGW'}  # Product pil
-        self._areaName = 'NONE'  # Name of state, such as 'GEORGIA' -- optional
-        self._wfoCityState = 'NONE'  # Location of WFO - city state
-        self._zczc = 'ZCZC'
-        self._all = 'ALL'
-        self._textdbPil = 'ANCFASIGAK1'  # Product ID for storing to AWIPS text database.
-        self._awipsWANPil = 'PANCSIGAK1'  # Product ID for transmitting to AWIPS WAN.
-        self._lineLength = 68  # line length
+        return xmlString
         
-        if event['parts']['specialTime'] is not None:
-            self._specialTime = event['parts']['specialTime']          
+    def _createXML(self, eventDict, xmlParts, domains):
+        xml = self._makeRootElement()
+        
+        for part in xmlParts:
+            exec "self._"+part+"(xml, eventDict, domains)"
+        self.flush()
+        
+        return xml
+    
+    def _makeRootElement(self):
+        namespaces = {
+                      'xlink':'http://www.w3.org/1999/xlink',
+                      'xsi':'http://www.w3.org/2001/XMLSchema-instance',
+                      'gml':'http://www.opengis.net/gml/3.2',
+                      'om':'http://www.opengis.net/om/2.0',
+                      'sf':'http://www.opengis.net/sampling/2.0',
+                      'sams':'http://www.opengis.net/samplingSpatial/2.0',
+                      'metce':'http://def.wmo.int/metce/2013',
+                      'saf':'http://icao.int/saf/1.1',
+                      'iwxxm':'http://icao.int/iwxxm/1.1',
+                      'iwxxm-us':'http://nws.weather.gov/schemas/IWXXM-US/1.0/Release',
+                      }
+        
+        xml = Element(self._rootPrefix)
+        
+        for name in namespaces:
+            xml.set('xmlns:'+name,namespaces[name])
+                
+        xml.set('xsi:schemaLocation', \
+                "http://nws.weather.gov/schemas/IWXXM-US/1.0/Release http://nws.weather.gov/schemas/IWXXM-US/1.0/Release/schemas/usSigmet.xsd")
+        xml.set('gml:id','sigmet-conv-'+self._productLoc+self._abbrev+'-'+self._convectiveSigmetNumberStr+
+                self._abbrev+'-'+self._startDate[:7]+self._startDate[9:]+'Z')
+        xml.set('status','NORMAL')
+        
+        return xml
+        
+    def _issuingAirTrafficServicesUnit(self, xml, eventDict, domains):        
+        key = 'issuingAirTrafficServicesUnit'
+        
+        issuingAirTrafficServicesUnit = self._makeElement(xml, key)
+        
+        atsUnit = SubElement(issuingAirTrafficServicesUnit, 'saf:Unit')
+        atsUnit.set('gml:id', 'atsu-'+self._productLoc + self._abbrev)
+        
+        atsDesignator = SubElement(atsUnit, 'saf:designator')
+        atsDesignator.text = self._productLoc + self._abbrev
+        
+    def _originatingMeteorologicalWatchOffice(self, xml, eventDict, domains):
+        key = 'originatingMeteorologicalWatchOffice'
+        
+        originatingMeteorologicalWatchOffice = self._makeElement(xml, key)
+        
+        mwoUnit = SubElement(originatingMeteorologicalWatchOffice, 'saf:Unit')
+        mwoUnit.set('gml:id', 'mwo-'+self._fullStationID)
+        
+        mwoName = SubElement(mwoUnit, 'saf:name')
+        mwoName.text = self._fullStationID+' MWO'
+        
+        mwoType = SubElement(mwoUnit, 'saf:type')
+        mwoType.text = 'MWO'
+        
+        mwoDesignator = SubElement(mwoUnit, 'saf:designator')
+        mwoDesignator.text = self._fullStationID
+                
+    def _sequenceNumber(self, xml, eventDict, domains):
+        key = 'sequenceNumber'
+        
+        sequenceNumber = self._makeElement(xml, key)
+        sequenceNumber.text = self._convectiveSigmetNumberStr + self._abbrev
+                
+    def _validPeriod(self, xml, eventDict, domains):
+        endPositionText = self._endDate[:4]+'-'+self._endDate[4:6]+'-'+self._endTime[:2]+'T'+self._endTime[2:4]+':'+self._endTime[4:6]+':00Z'           
+        key = 'validPeriod'
+        
+        validPeriod = self._makeElement(xml, key)
+        
+        timePeriod = SubElement(validPeriod, 'gml:TimePeriod')
+        timePeriod.set('gml:id', self._timePeriod)
+        
+        beginPosition = SubElement(timePeriod, 'gml:beginPosition')
+        beginPosition.text = self._beginPositionText
+        
+        endPosition = SubElement(timePeriod, 'gml:endPosition')
+        endPosition.text = endPositionText
+                
+    def _phenomenon(self, xml, eventDict, domains):
+        key = 'phenomenon'
+        phenomLink = "http://nws.weather.gov/codes/NWSI10-811/2011/USAeronauticalSignificantWeatherPhenomenon/CONVECTIVE_SIGMET"
+        
+        phenomenon = self._makeElement(xml, key)
+        phenomenon.set('xlink:href', phenomLink)
+                
+    def _analysis(self, xml, eventDict, domains):
+        key = 'analysis'
+        analysis = self._makeElement(xml, key)
+
+        #Load SubElements for analysis section
+        omObservation = self._omObservation(analysis)
+        self._omType(omObservation)
+        omResultTime = self._omResultTime(omObservation)
+        timeInstant = self._timeInstant(omResultTime)
+        self._timePosition(timeInstant)
+        self._phenomenonTime(omObservation)
+        self._validTime(omObservation)
+        procedure = self._procedure(omObservation)
+        process = self._process(procedure)
+        self._processDescription(process)
+        self._observedProperty(omObservation)
+        self._featureOfInterest(omObservation)
+        result = self._result(omObservation)
+        evolvingMetCondition = self._evolvingMetCondition(result)
+        
+        if self._hazardMotionStr != 'MOV LTL.':
+            self._directionOfMotion(evolvingMetCondition)
                     
-    def _outputFormatter(self, events, fcstList):                         
-        fcstDict = self._createFcstDict(events, fcstList)                             
-        fcstDict = self._orderFcstDict(fcstDict)
-        headerDict = self._createHeader(fcstDict)
-        fcst = self._createFcst(fcstDict, headerDict)
+        geometry = self._geometry(evolvingMetCondition)
+        airspaceVolume = self._airspaceVolume(geometry)
+        self._upperLimit(airspaceVolume)
+        self._upperLimitReference(airspaceVolume)
+        horizontalProjection = self._horizontalProjection(airspaceVolume)
+        polygon = self._polygon(horizontalProjection)
+        exterior = self._exterior(polygon)
+        linearRing = self._linearRing(exterior)
+        self._posList(linearRing)
+        self._speedOfMotion(evolvingMetCondition)
+        self._convectionGeometry(result)
+        self._convectionHeightForecast(result)
         
-        productDict = collections.OrderedDict()        
-        productDict['productID'] = 'SIGMET.Convective'
-        productDict['productName'] = 'CONVECTIVE SIGMET'        
-        productDict['text'] = fcst            
-            
-        return productDict
+    def _omObservation(self, parent):
+        omObservationText = 'a1-' + self._startTime[:2] + 'T' + self._startTime[2:] + 'Z'
+        
+        omObservation = SubElement(parent, 'om:OM_Observation')
+        omObservation.set('gml:id', omObservationText)                
+        
+        return omObservation
+        
+    def _omType(self, parent):
+        omType = SubElement(parent, 'om:type')
+        omType.set('xlink:href', "http://codes.wmo.int/49-2/observation-type/IWXXM/1.1/SIGMETEvolvingConditionAnalysis")        
+        
+        return omType
+        
+    def _omResultTime(self, parent):
+        omResultTime = SubElement(parent, 'om:resultTime')        
+        
+        return omResultTime
+        
+    def _timeInstant(self, parent):
+        self._timeInstantText = 'ti-'+self._startTime[:2]+'T'+self._startTime[2:]+'Z'        
+        
+        timeInstant = SubElement(parent, 'gml:TimeInstant')
+        timeInstant.set('gml:id', self._timeInstantText)        
+        
+        return timeInstant
+        
+    def _timePosition(self, parent):
+        timePosition = SubElement(parent, 'gml:timePosition')
+        timePosition.text = self._beginPositionText         
+        
+    def _phenomenonTime(self, parent):
+        phenomenonTime = SubElement(parent, 'om:phenomenonTime')
+        phenomenonTime.set('xlink:href', '#'+self._timeInstantText)        
+        
+    def _validTime(self, parent):
+        validTimeText = '#tp-'+self._startTime[:2]+'T'+self._startTime[2:]+'Z-'+self._endTime[:2]+'T'+self._endTime[2:]+'Z'
+                
+        validTime = SubElement(parent, 'om:validTime')
+        validTime.set('xlink:href', validTimeText)
+                
+    def _procedure(self, parent):
+        procedure = SubElement(parent, 'om:procedure')        
+        
+        return procedure
+        
+    def _process(self, parent):
+        process = SubElement(parent, 'metce:Process')
+        process.set('gml:id', "process-wmo-49-2-SIGMET")        
+        
+        return process
+        
+    def _processDescription(self, parent):
+        processDescription = SubElement(parent, 'gml:description')
+        processDescription.text = "WMO Doc 49-2 Appendix 6.1: SIGMET"        
+        
+    def _observedProperty(self, parent):
+        observedProperty = SubElement(parent, 'om:observedProperty')
+        observedProperty.set('xlink:href', "http://codes.wmo.int/49-2/observable-property/SIGMETEvolvingConditionAnalysis")        
+        
+    def _featureOfInterest(self, parent):
+        featureOfInterest = SubElement(parent, 'om:featureOfInterest')
+        featureOfInterest.set('xlink:href', "#sampling-surface")        
+        
+    def _result(self, parent):
+        result = SubElement(parent, 'om:result')        
+        
+        return result
+        
+    def _evolvingMetCondition(self, parent):
+        intensityChangeDict = {'DVLPG ': 'INTENSIFY', 'INTSF ': 'INTENSIFY', 'DMSHG ': 'WEAKEN', '': 'NO_CHANGE'}        
+        
+        evolvingMetCondition = SubElement(parent, 'iwxxm:EvolvingMeteorologicalCondition')
+        evolvingMetCondition.set('gml:id', "emc-conv-a1")
+        evolvingMetCondition.set('intensityChange', intensityChangeDict[self._convectiveSigmetModifierStr])
+        
+        return evolvingMetCondition
     
-    def _createFcstDict(self, events, fcstList):        
-        self._domains = ['East', 'Central', 'West']
+    def _directionOfMotion(self, parent):
+        directionOfMotion = SubElement(parent, 'iwxxm:directionOfMotion')
+        directionOfMotion.set('uom',"deg")
+        directionOfMotion.text = self._hazardMotionStr[8:12]        
+        
+    def _geometry(self, parent):
+        geometry = SubElement(parent, 'iwxxm:geometry')
+        
+        return geometry        
+        
+    def _airspaceVolume(self, parent):
+        airspaceVolumeText = 'av-conv-obs-pos-'+self._productLoc+self._abbrev+'-'+ \
+                              self._convectiveSigmetNumberStr+self._abbrev+'-'+ \
+                              self._startDate[:8]+self._startDate[9:]+'Z-a1'        
+        
+        airspaceVolume = SubElement(parent, 'saf:AirspaceVolume')
+        airspaceVolume.set('gml:id', airspaceVolumeText)
+        
+        return airspaceVolume        
+        
+    def _upperLimit(self, parent):
+        if self._convectiveSigmetCloudTopStr == 'TOPS ABV FL450.':
+            self._upperLimitText = '450'
+        else:
+            self._upperLimitText = self._convectiveSigmetCloudTopStr[10:-1]        
+        
+        upperLimit = SubElement(parent, 'saf:upperLimit')
+        upperLimit.set('uom', "FL")
+        upperLimit.text = self._upperLimitText        
+        
+    def _upperLimitReference(self, parent):
+        upperLimitReference = SubElement(parent, 'saf:upperLimitReference')
+        upperLimitReference.text = 'STD'        
+        
+    def _horizontalProjection(self, parent):
+        horizontalProjection = SubElement(parent, 'saf:horizontalProjection')        
+        
+        return horizontalProjection
+        
+    def _polygon(self, parent):
+        polygonID = 'polygon-conv-a1-obs-position-'+self._productLoc+self._abbrev+'-'+ \
+                              self._convectiveSigmetNumberStr+self._abbrev+'-'+ \
+                              self._startDate[:8]+self._startDate[9:]+'Z-a1'        
+        
+        polygon = SubElement(parent, 'gml:Polygon')
+        polygon.set('gml:id', polygonID)
+        polygon.set('srsDimension', '2')
+        polygon.set('srsName', 'http://www.opengis.net/def/crs/EPSG/0/4326')        
+        
+        return polygon
+    
+    def _exterior(self, parent):
+        exterior = SubElement(parent, 'gml:exterior')        
+        return exterior
+    
+    def _linearRing(self, parent):
+        linearRing = SubElement(parent, 'gml:LinearRing')        
+        return linearRing
+    
+    def _posList(self, parent):
+        posListText = ''
+        count = str(len(self._vertices))
+        for vertice in self._vertices:
+            posListText = posListText+("{0:.2f}".format(vertice[1]))+' '+("{0:.2f}".format(vertice[0]))+' '        
+        
+        posList = SubElement(parent, 'gml:posList')
+        posList.set('count', count)
+        posList.text = posListText        
+        
+    def _speedOfMotion(self, parent):
+        if self._hazardMotionStr == 'MOV LTL.':
+            speedOfMotionText = '-999'
+        else:
+            speedOfMotionText = self._hazardMotionStr[12:14]        
+        
+        speedOfMotion = SubElement(parent, 'iwxxm:speedOfMotion')
+        speedOfMotion.set('uom',"[nmi_i]")
+        speedOfMotion.text = speedOfMotionText
+        
+    def _convectionGeometry(self, parent):
+        convectionGeometryLinkDict = {'Polygon': 'AREA_OF_THUNDERSTORMS/', 'Point': 'ISOLATED_THUNDERSTORMS/', 'LineString': 'LINE_OF_THUNDERSTORMS/'}    
+        convectionGeometryLink = "http://nws.weather.gov/codes/NWSI10-811/2011/SIGMETConvectionGeometry/" + \
+                                 convectionGeometryLinkDict[self._geomType]        
+        
+        convectionGeometry = SubElement(parent, 'iwxxm-us:convectionGeometry')
+        convectionGeometry.set('xlink:href', convectionGeometryLink)        
+        
+    def _convectionHeightForecast(self, parent):
+        if self._convectiveSigmetCloudTopStr == 'TOPS ABV FL450.':
+            aboveBelowIndicatorLink = "http://nws.weather.gov/codes/NWSI10-811/2011/ConvectionTopIndicator/TOPS_ABOVE/"
+        else:
+            aboveBelowIndicatorLink = "http://nws.weather.gov/codes/NWSI10-811/2011/ConvectionTopIndicator/TOPS_TO/"        
 
-        fcstDict = collections.OrderedDict()
-        for domain in self._domains:
-            fcstDict[domain] = {}
-            fcstDict[domain]['special']= {}
-            fcstDict[domain]['regular']= {}
-            for event in events:
-                numberStr = event['sigmetNumber']
-                number = int(numberStr)              
-                if event['domain'] == domain and event['specialIssuance'] == True:
-                    fcst = fcstList[numberStr+domain]
-                    fcstDict[domain]['special'][number] = fcst
-                elif event['domain'] == domain and event['specialIssuance'] == False:
-                    fcst = fcstList[numberStr+domain]
-                    fcstDict[domain]['regular'][number] = fcst
-                else:
-                    continue
-                                                      
-        return fcstDict 
-    
-    def _orderFcstDict(self,fcstDict):    
+        convectionHeightForecast = SubElement(parent, 'iwxxm-us:ConvectionHeightForecast')
+        aboveBelowIndicator = SubElement(convectionHeightForecast, 'iwxxm-us:aboveBelowIndicator')
+        aboveBelowIndicator.set('xlink:href', aboveBelowIndicatorLink)
+        convectionHeightValue = SubElement(convectionHeightForecast, 'iwxxm-us:convectionHeightValue')
+        convectionHeightValue.set('uom', "FL")
+        convectionHeightValue.text = self._upperLimitText        
         
-        for domain in self._domains:
-            if len(fcstDict[domain]['special'].keys()):
-                fcstDict[domain]['special'] = collections.OrderedDict(sorted(fcstDict[domain]['special'].items()))
-            if len(fcstDict[domain]['regular'].keys()):
-                fcstDict[domain]['regular'] = collections.OrderedDict(sorted(fcstDict[domain]['regular'].items()))                       
+    def _basisForIssuance(self, xml, eventDict, domains):
+        key = 'basisForIssuance'
+        basisLink = "http://nws.weather.gov/codes/NWSI10-811/2011/BasisForIssuance/OBSERVATION"
         
-        return fcstDict            
+        basisForIssuance = self._makeElement(xml, key)
+        basisForIssuance.set('xlink:href', basisLink)
+        
+    def _continuation(self, xml, eventDict, domains):
+        key = 'continuationAfterInitialValidPeriod'
+        continuationText = 'false'
+        
+        continuation = self._makeElement(xml, key)
+        continuation.text = continuationText
+        
+    def _isSpecialIssuance(self, xml, eventDict, domains):
+        key = 'isSpecialIssuance'
+        #if self._specialIssuance == True:
+        if self._specialIssuance:
+            specialText = 'true'
+        else:
+            specialText = 'false'
+        
+        isSpecialIssuance = self._makeElement(xml, key)
+        isSpecialIssuance.text = specialText
+        
+    def _isCorrection(self, xml, eventDict, domains):
+        key = 'isCorrection'
+        correctionText = 'false'
+        
+        isCorrection = self._makeElement(xml, key)
+        isCorrection.text = correctionText
+        
+    def _makeElement(self, root, key, addPrefix=True):
+        return SubElement(root, self._prefix+key)                            
 
-    def _createFcst(self, fcstDict, headerDict):
-        fcst = ''
+    def _formatConvectiveSigmet(self, eventDict, domains):
+        self._productLoc = 'MKC' 
+        self._fullStationID = 'KKCI'                
+        self._SIGMET_ProductName = 'CONVECTIVE SIGMET'
+        self._convectiveSigmetNumberStr = eventDict.get('sigmetNumber','1')
+        self._convectiveSigmetDomain = eventDict.get('domain','East')
+        self._geomType = eventDict.get('geomType','Polygon')
+                
+        eventDictParts = eventDict.get('parts')
         
-        print "fcstDict in _createFcst: ", fcstDict
-        print "headerDict in _createFcst: ", headerDict
-        
-        for key in fcstDict:
-            print "domain: ", key
-            fcst = fcst + headerDict[key] + '\n'
-            if len(fcstDict[key]['special'].keys()):
-                print "special issuance for domain: ", key
-                for entry in fcstDict[key]['special']:
-                    fcst = fcst + fcstDict[key]['special'][entry] + '\n\n'
-            if len(fcstDict[key]['regular'].keys()):
-                print "regular issuance for domain: ", key
-                for entry in fcstDict[key]['regular']:
-                    fcst = fcst + fcstDict[key]['regular'][entry] + '\n\n'
-            if not len(fcstDict[key]['regular'].keys()) and not len(fcstDict[key]['special'].keys()):
-                fcst = fcst + 'CONVECTIVE SIGMET...NONE\n\n'
-            fcst = fcst + 'NNNN' + '\n\n'      
-        
-        return fcst         
-    
-    def _createHeader(self, fcstDict):        
-        domainDict = {'East': 'E', 'Central': 'C', 'West': 'W'}
-        headerDict = {}
-        
-        for domain in self._domains:
-            if len(fcstDict[domain]['special'].keys()):
-                header = '%s %s%s %s %s\n' % (self._zczc, self._productLoc, self._pilDict[domainDict[domain]],
-                    self._all, self._specialTime)            
-                header = '%s%s %s %s\n' % (header, self._wmoHeaderDict[domainDict[domain]], self._fullStationID,
-                    self._specialTime)
-                header = '%s%s%s %s %s' % (header, self._productLoc, domainDict[domain],
-                    self._productIdentifier, self._specialTime)
-            else:
-                header = '%s %s%s %s %s\n' % (self._zczc, self._productLoc, self._pilDict[domainDict[domain]],
-                    self._all, self._startTime)
-                header = '%s%s %s %s\n' % (header, self._wmoHeaderDict[domainDict[domain]], self._fullStationID,
-                    self._startTime)
-                header = '%s%s%s %s %s' % (header, self._productLoc, domainDict[domain],
-                    self._productIdentifier, self._startTime)
-            
-            headerDict[domain] = header
+        self._statesListStr = eventDictParts.get('states','NULL')
+        self._convectiveSigmetModifierStr = eventDictParts.get('modifier','')
+        self._hazardMotionStr = eventDictParts.get('motion','MOV LTL.')
+        self._convectiveSigmetCloudTopStr = eventDictParts.get('cloudTop','TOPS ABV FL450.')
+        self._startTime = eventDictParts.get('startTime','DDHHMM')
+        self._endTime = eventDictParts.get('endTime','DDHHMM')      
+        self._startDate = eventDictParts.get('startDate','YYYYMMDD_HHmm')               
+        self._endDate = eventDictParts.get('endDate','YYYYMMDD_HHmm')
+        self._vertices = eventDictParts.get('geometry',None)
 
-        print "headerDict: ", headerDict
-                  
-        return headerDict    
-    
-    def _outputXML(self, productDict):              
-        outDirAll = os.path.join(OUTPUTDIR, self._startDate)
-        outAllAdvisories = 'convectiveSIGMET_' + self._startDate + '.xml'
-        pathAllFile = os.path.join(outDirAll, outAllAdvisories)
         
-        if not os.path.exists(outDirAll):
+        for domain in domains:
+            if domain.domainName() == self._convectiveSigmetDomain:
+                self._abbrev = domain.abbrev()
+        
+        if eventDictParts.get('specialTime') is not None:
+            self._specialTime = eventDictParts.get('specialTime')
+            startTime = eventDictParts.get('specialTime')
+        else:
+            startTime = self._startTime
+        self._startTime = startTime
+        
+        self._timePeriod = 'tp-'+self._startTime[:2]+'T'+self._startTime[2:]+'Z-'+ \
+                           self._endTime[:2]+'T'+self._endTime[2:]+'Z'
+        self._beginPositionText = self._startDate[:4]+'-'+self._startDate[4:6]+'-'+ \
+                                  self._startTime[:2]+'T'+self._startTime[2:4]+':'+ \
+                                  self._startTime[4:6]+':00Z'        
+    
+    def _outputXML(self, xmlString):              
+        outDir = os.path.join(OUTPUTDIR, self._startDate)
+        outAdvisory = 'convectiveSIGMET_'+self._convectiveSigmetNumberStr+self._convectiveSigmetDomain+'.xml'
+        pathFile = os.path.join(outDir, outAdvisory)
+        
+        if not os.path.exists(outDir):
             try:
-                os.makedirs(outDirAll)
+                os.makedirs(outDir)
             except:
                 sys.stderr.write('Could not create output directory')
-
-        with open(pathAllFile, 'w') as outFile:
-            outFile.write(productDict['text'])
-    
+        with open(pathFile, 'w') as outFile:
+            outFile.write(xmlString)
         return    
-            
-    def _preProcessProduct(self, event, fcst, argDict):
-        domainDict = {'East': 'E', 'Central': 'C', 'West': 'W'}
-        self._convectiveSigmetDomainStr = domainDict[self._convectiveSigmetDomain]
-        
-        fcst = '%s%s %s%s\n' % (fcst, self._SIGMET_ProductName, self._convectiveSigmetNumberStr, self._convectiveSigmetDomainStr)        
-        fcst = fcst + 'VALID UNTIL ' + self._endTime + 'Z\n'
-        fcst = '%s%s\n' % (fcst, self._statesListStr)
-        fcst = '%s%s\n' % (fcst, self._boundingStatement)
-        fcst = '%s%s%s %s%s %s' % (fcst, self._convectiveSigmetModifierStr, self._convectiveSigmetModeStr, self._hazardEmbeddedStr,
-            self._hazardMotionStr, self._convectiveSigmetCloudTopStr)
-        
-        if len(self._convectiveSigmetAdditionalHazardsStr):
-            fcst = '\n%s%s' % (fcst, self._convectiveSigmetAdditionalHazardsStr)
-        
-        fcst = fcst.replace("_", " ")       
-        
-        return fcst
-
-    def _postProcessProduct(self, fcst, argDict):
-        endTimeStr = time.strftime('%b %Y', time.gmtime(
-            self._currentTime))
-      
-        fcst = fcst + '\n' + 'OUTLOOK VALID ' + 'DDHHMM - DDHHMM+4\n' 
-        fcst = fcst + 'TS ARE NOT EXPD TO REQUIRE WST ISSUANCES.\n'
-        fcst = fcst + '\n' + 'NNNN'
-
-        return fcst
-
-    def _wordWrap(self, string, width=66):
-        newstring = ''
-        if len(string) > width:
-            while True:
-                # find position of nearest whitespace char to the left of 'width'
-                marker = width - 1
-                while not string[marker].isspace(): 
-                    marker = marker - 1
-
-                # remove line from original string and add it to the new string
-                newline = string[0:marker] + '\n'
-                newstring = newstring + newline
-                string = string[marker + 1:]
-
-                # break out of loop when finished
-                if len(string) <= width:
-                    break
-    
-        return newstring + string
-                
-    def _groupSegments(self, segments):
-        '''
-        Group the segments into the products
-        
-         ESF products are not segmented, so make a product from each 'segment' i.e. HY.O event
-        '''        
-        productSegmentGroups = []
-        for segment in segments:
-            vtecRecords = self.getVtecRecords(segment)
-            productSegmentGroups.append(self.createProductSegmentGroup('ESF', self._ESF_ProductName, 'area', self._vtecEngine, 'counties', False,
-                                            [self.createProductSegment(segment, vtecRecords)]))            
-        for productSegmentGroup in productSegmentGroups:
-            self._addProductParts(productSegmentGroup)
-        return productSegmentGroups
-    
-    def _addProductParts(self, productSegmentGroup):
-        productSegments = productSegmentGroup.productSegments
-        productSegmentGroup.setProductParts(self._hydroProductParts._productParts_ESF(productSegments))
-    ################# Segment Level
-
-    ################# Section Level    
-    def _narrativeForecastInformation(self, segmentDict):
-        text = ''
-        narrative = segmentDict.get('narrativeForecastInformation')
-        if narrative:
-            text = narrative
-            text += '\n\n'
-        return text

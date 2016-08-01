@@ -50,9 +50,9 @@ Aviation = {
         "proposed",
         "pending",
         "issued",
-        "elapsed",
-        "ending",
-        "ended"
+        #"elapsed",
+        #"ending",
+        #"ended"
     ],
     "columns": {
         "Event ID": {
