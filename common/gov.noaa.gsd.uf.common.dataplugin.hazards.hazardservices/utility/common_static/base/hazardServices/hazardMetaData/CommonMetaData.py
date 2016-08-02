@@ -2069,6 +2069,13 @@ class MetaData(object):
                         "values": False,
                         "modifyRecommender": "SwathRecommender"
                         },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "moveStartTime",
+                        "label": "Move Start Time",
+                        "values": False,
+                        "modifyRecommender": "SwathRecommender"
+                        },
                        self._getConvectiveSwathPresets()
                        ]
         }

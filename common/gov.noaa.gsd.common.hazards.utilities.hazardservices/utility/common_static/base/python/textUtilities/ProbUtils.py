@@ -4,7 +4,12 @@ Utility for PHIGridRecommender and PreviewGridRecommender
 import numpy as np
 import datetime, math
 import time
+#from math import *
+import shapely
 import shapely.ops as so
+import shapely.geometry as sg
+import shapely.affinity as sa
+
 import os, sys
 import matplotlib
 from matplotlib import path as mPath
@@ -14,6 +19,7 @@ from scipy.io import netcdf
 from collections import defaultdict
 from shutil import copy2
 import HazardDataAccess
+from inspect import currentframe, getframeinfo
 import TimeUtils
 from VisualFeatures import VisualFeatures
 
@@ -93,8 +99,6 @@ class ProbUtils(object):
             firstIdx =  next(i for i,j in enumerate(downstreamTimes) if j[0]/1000 >= int(currentTime.strftime('%s')))
         probTrend = self._getInterpolatedProbTrendColors(event)
         
-        #print 'PU: firstIdx', firstIdx
-        
         probGridSwath = self.makeGrid(downstreamPolys[firstIdx:], probTrend[firstIdx:], self._lons, self._lats, 
                                  self._xMin1, self._xMax1, self._yMax1, self._yMin1)
         probGridSnap = self.makeGrid(downstreamPolys[firstIdx:], probTrend[firstIdx:], self._lons, self._lats, 
@@ -164,8 +168,7 @@ class ProbUtils(object):
         '''
         Almost all of the code in this method is pulled from 
         Karstens' (NSSL) PHI Prototype tool code with some minor modifications
-        '''
-
+        '''        
         probability = np.zeros((len(y1), len(x1)))
 
         nx1, ny1 = y1.shape[0], x1.shape[0]
@@ -178,7 +181,6 @@ class ProbUtils(object):
         llLat = (math.floor(union.bounds[1] * 100) / 100.) - 0.01
         urLon = (math.ceil(union.bounds[2] * 100) / 100.) + 0.01
         urLat = (math.ceil(union.bounds[3] * 100) / 100.) + 0.01
-
 
         # shrink domain if object is on the end
         if llLon < xMin1:
@@ -228,7 +230,7 @@ class ProbUtils(object):
             distances = ndimage.distance_transform_edt(maskProjected)
             dMax = distances.max()
             if dMax == 0:
-                dMax = 1.
+                dMax = 1.                
             try:
                 probMap = np.ceil(probTrend[k] - probTrend[k] * np.exp((pow(np.array((distances / dMax) * 1475.0),2) / -2.0) / pow(500,2)))
             except:
@@ -393,9 +395,7 @@ class ProbUtils(object):
         newGraphVals[-1]['y'] = 0
         newGraphVals[-1]['editable'] = False
             
-        return newGraphVals
-            
-            
+        return newGraphVals            
     
     def _getGraphProbs(self, event, latestDataLayerTime=None):
         ### Get difference in minutes and the probability trend
@@ -403,12 +403,7 @@ class ProbUtils(object):
         issueStart = event.get("eventStartTimeAtIssuance")
         graphVals = event.get("convectiveProbTrendGraph")
         currentStart = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
-        
-        print '==='
-        print event.getEventID()
-        self.flush()
-        
-        
+                
         if graphVals is None:
             return self._getGraphProbsBasedOnDuration(event)
         
@@ -419,10 +414,7 @@ class ProbUtils(object):
         ### Need to clean up, but problem with time trend aging off too fast was 
         ### currentProbTrend-previousProbTrend but timediff was currentTime-issueTime
         ###So saving previousDataLayerTime so that our timeDiffs match probTrendDiffs
-        
-        #print latestDataLayerTime, previousDataLaterTime, latestDataLayerTime is not None and previousDataLaterTime is not None
-        #self.flush()
-        
+                
         if latestDataLayerTime is not None and previousDataLaterTime is not None:
             #print '+++ Using latestDataLayerTime-previousDataLaterTime'
             #self.flush()
@@ -444,8 +436,8 @@ class ProbUtils(object):
         #print 'previous', type(previous), previous
         #print 'latest', type(latest), latest
         minsDiff = (latest-previous).seconds/60
-        print 'ProbUtils minsDiff', minsDiff
-        self.flush()
+        #print 'ProbUtils minsDiff', minsDiff
+        #self.flush()
         
         ### Get interpolated times and probabilities 
         intervalDict = self._getInterpolatedProbTrendColors(event, returnOneMinuteTime=True)
@@ -488,10 +480,10 @@ class ProbUtils(object):
 #        print 'fiveMinuteUpdatedProbs'
 #        pprint.pprint(fiveMinuteUpdatedProbs)
 #        print '---'
-        print 'ProbUtils graphVals'
-        pprint.pprint(graphVals)
+        #print 'ProbUtils graphVals'
+        #pprint.pprint(graphVals)
 #        print type(probTrend), type(probTrend[0])
-        self.flush()
+        #self.flush()
         return graphVals
 
     def _getGraphProbsBasedOnDuration(self, event):
@@ -564,6 +556,374 @@ class ProbUtils(object):
         self._lons = np.arange(self._xMin1,self._xMax1,0.01)
         self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)                
 
+
+    def _reducePolygon(self, initialPoly):   
+        numPoints = self._hazardPointLimit()
+        tolerance = 0.001
+        newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
+        while len(newPoly.exterior.coords) > numPoints:
+            tolerance += 0.001
+            newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
+            
+        return newPoly    
+
+    def _relocatePolygon(self, newCentroid, initialPoly):
+        if isinstance(initialPoly, shapely.geometry.collection.GeometryCollection):
+            initialPoly = initialPoly.geoms[0]
+        initialPoly_gglGeom = so.transform(self._c4326t3857, initialPoly)
+        newCentroid_gglGeom = so.transform(self._c4326t3857, newCentroid)
+        xdis = newCentroid_gglGeom.x-initialPoly_gglGeom.centroid.x
+        ydis = newCentroid_gglGeom.y-initialPoly_gglGeom.centroid.y
+        newPoly_gglGeom = sa.translate(initialPoly_gglGeom,\
+                                                xoff=xdis, yoff=ydis)
+        newPoly = so.transform(self._c3857t4326, newPoly_gglGeom)
+        return newPoly
+
+
+    ###############################
+    # Compute Motion Vector       #
+    ###############################
+
+    def computeMotionVector(self, polygonTuples, currentTime, defaultSpeed=32, defaultDir=270):
+        '''
+        polygonTuples is a list of tuples expected as:
+        [(poly1, startTime1), (poly2, startTime2),,,,(polyN, startTimeN)]
+        '''
+        meanU = None
+        meanV = None
+        uList = []
+        vList = []
+
+        ### Sort polygonTuples by startTime
+        sortedPolys = sorted(polygonTuples, key=lambda tup: tup[1])
+
+        ### Get create sorted list of u's & v's
+#        for i in range(len(sortedPolys)):
+#            if i == 0:
+#                ### Use default motionVector. 
+#                ### Note, need to invert dir since Meteorological winds
+#                ### by definition are entered in as *from*
+#                speed = defaultSpeed*0.514444
+#                bearing = (180+defaultDir)%360
+#                u, v = self.get_uv(speed, bearing)
+#            else: ### use i, i-1 pair
+#                p1 = sortedPolys[i-1][0]
+#                t1 = sortedPolys[i-1][1]
+#                p2 = sortedPolys[i][0]
+#                t2 = sortedPolys[i][1]
+#                dist = self.getHaversineDistance(p1, p2)
+#                speed = dist/((t2-t1)/1000)
+#                bearing = self.getBearing(p1, p2)
+#                u, v = self.get_uv(speed, bearing)
+#
+#            uList.append(u)
+#            vList.append(v)
+
+        ### Get create sorted list of u's & v's
+        for i in range(1, len(sortedPolys)):
+            p1 = sortedPolys[i-1][0]
+            t1 = sortedPolys[i-1][1]
+            p2 = sortedPolys[i][0]
+            t2 = sortedPolys[i][1]
+            dist = self.getHaversineDistance(p1, p2)
+            speed = dist/((t2-t1)/1000)
+            bearing = self.getBearing(p1, p2)
+            u, v = self.get_uv(speed, bearing)
+
+            uList.append(u)
+            vList.append(v)
+
+            
+        uStatsDict = self.weightedAvgAndStdDev(uList)
+        vStatsDict = self.weightedAvgAndStdDev(vList)
+
+        meanU = uStatsDict['weightedAverage']
+        stdU = uStatsDict['stdDev']
+
+        meanV = vStatsDict['weightedAverage']
+        stdV = vStatsDict['stdDev']
+
+        meanDir = math.atan2(-1*meanU,-1*meanV) * (180 / math.pi)
+        meanSpd = math.sqrt(meanU**2 + meanV**2)
+
+        ### Default Uncertainties
+        if len(uList) == 1:
+            stdDir = 12
+            stdSpd = 2.16067
+                   
+        stdDir = math.atan2(stdV, stdU) * (180 / math.pi)
+        stdDir = 45 if stdDir < 45 else stdDir
+        stdDir = 12 if stdDir < 12 else stdDir
+
+        stdSpd = math.sqrt(stdU**2 + stdV**2)
+        stdSpd = 10.2889 if stdSpd > 10.2889 else stdSpd
+        stdSpd = 2.16067 if stdSpd < 2.16067 else stdSpd
+
+        meanSpd = 102 if meanSpd > 102 else meanSpd
+
+        
+        return {
+                'convectiveObjectDir' : meanDir%360,
+                'convectiveObjectDirUnc' : (stdDir%360)/2,
+                'convectiveObjectSpdKts' : meanSpd*1.94384,
+                'convectiveObjectSpdKtsUnc' : (stdSpd*1.94384)/2
+                }    
+
+    def weightedAvgAndStdDev(self, xList):
+        arr = np.array(xList)
+        weights = range(1,len(arr)+1)
+        weightedAvg = np.average(arr, weights=weights)
+        weightedVar = np.average((arr-weightedAvg)**2, weights=weights)
+        return {'weightedAverage':weightedAvg, 'stdDev': math.sqrt(weightedVar)}
+
+    def get_uv(self, Spd, DirGeo):
+        '''
+        from https://www.eol.ucar.edu/content/wind-direction-quick-reference
+        '''
+        RperD = (math.pi / 180)
+        DirGeo = (180+DirGeo)%360
+        Ugeo = (-1*Spd) * math.sin(DirGeo * RperD)
+        Vgeo = (-1*Spd) * math.cos(DirGeo * RperD)
+        return Ugeo, Vgeo
+
+    def weightedMean(self, xList):
+        numerator = 0
+        denomenator = 0
+        for i, val in enumerate(xList):
+            numerator += ((i+1)*val)
+            denomenator += (i+1)
+        return numerator/denomenator
+
+    def getBearing(self, poly1, poly2):
+        lat1 = poly1.centroid.y
+        lon1 = poly1.centroid.x
+        lat2 = poly2.centroid.y
+        lon2 = poly2.centroid.x
+        # convert decimal degrees to radians 
+        lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+
+        bearing = math.atan2(math.sin(lon2-lon1)*math.cos(lat2), math.cos(lat1)*math.sin(lat2)-math.sin(lat1)*math.cos(lat2)*math.cos(lon2-lon1))
+        bearing = math.degrees(bearing)
+        bearing = bearing % 360
+        return bearing
+    
+    def getHaversineDistance(self, poly1, poly2):
+        """
+        Calculate the great circle distance between two points 
+        on the earth (specified in decimal degrees)
+        """
+        lat1 = poly1.centroid.y
+        lon1 = poly1.centroid.x
+        lat2 = poly2.centroid.y
+        lon2 = poly2.centroid.x
+        # convert decimal degrees to radians 
+        lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+        # haversine formula 
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c = 2 * math.asin(math.sqrt(a))
+        meters = 6367000 * c # 6367000 Earth's radius in meters
+        return meters
+
+    def sind(self, x):
+        return math.sin(radians(x))
+
+    def cosd(self, x):
+        return math.cos(radians(x))
+    
+
+    ######################################################
+    # Compute Interval (downstream and upstream Polygons #
+    ######################################################
+            
+    def _createIntervalPolys(self, event, eventSetAttrs, nudge, swathPresetClass, eventSt_ms, 
+                             timeIntervals, timeDirection='downstream'):
+        '''
+        This method creates the downstream or upstream polygons given 
+          -- event start time polygon 
+          -- a direction and direction uncertainty
+          -- a speed and a speed uncertainty
+          -- a Preset Choice
+          -- a list of timeIntervals -- list of intervals (in secs) relative to eventSt_ms for
+             which to produce downstream or upstream polygons
+          -- timeDirection -- 'downstream' or 'upstream'
+          
+        Note that the timeIntervals will be negative for upstream and positive for downstream
+                
+        From the downstreamPolys and upstreamPolys, the visualFeatures 
+            (swath, trackpoints, and upstream polygons) can be determined.
+        
+        '''        
+        attrs = event.getHazardAttributes()
+
+        # Set up direction and speed values
+        ### get dir
+        dirVal = attrs.get('convectiveObjectDir')
+        if not dirVal:
+            dirVal = self._defaultWindDir()
+        dirVal = int(dirVal)
+        ### get dirUncertainty (degrees)
+        dirUVal = attrs.get('convectiveObjectDirUnc')
+        if dirUVal:
+            dirUVal = int(dirUVal)
+        else:
+            dirUVal = 12
+        ### get speed
+        speedVal = attrs.get('convectiveObjectSpdKts')
+        if not speedVal:
+            speedVal = self._defaultWindSpeed()
+        speedVal = int(speedVal)
+        # get speedUncertainty
+        spdUVal = attrs.get('convectiveObjectSpdKtsUnc')
+        if spdUVal:
+            spdUVal = int(spdUVal)
+        else:
+            spdUVal = int(2.16067*1.94384)
+                            
+        ### Get initial polygon.  
+        # This represents the polygon at the event start time resulting from the last nudge.
+        if nudge:
+            poly = event.getGeometry()
+        else:
+            downstreamPolys = event.get('downstreamPolys', [])
+            if downstreamPolys:
+                poly = downstreamPolys[0]
+            else:
+                poly = event.getGeometry()
+        if type(poly) is shapely.geometry.collection.GeometryCollection:
+            poly = poly[0] 
+                    
+        presetChoice = attrs.get('convectiveSwathPresets') if attrs.get('convectiveSwathPresets') is not None else 'NoPreset'
+        presetMethod = getattr(swathPresetClass, presetChoice)
+                
+        ### convert poly to Google Coords to make use of Karstens' code
+        fi_filename = os.path.basename(getframeinfo(currentframe()).filename)
+        total = time.time()
+        gglPoly = so.transform(self._c4326t3857,poly)
+                    
+        intervalPolys = []
+        intervalTimes = []
+        totalSecs = abs(timeIntervals[-1]-timeIntervals[0]) 
+        if not totalSecs:
+            totalSecs = timeIntervals[0]
+        self._prevDirVal = None
+        
+        for secs in timeIntervals:
+            origDirVal = dirVal
+            intervalPoly, secs = self._getIntervalPoly(secs, totalSecs, poly, gglPoly, 
+                                                       speedVal, dirVal, spdUVal, dirUVal, 
+                                                       timeDirection, presetMethod) 
+            intervalPoly = self._reducePolygon(intervalPoly)
+            intervalPolys.append(intervalPoly)
+            st = self._convertFeatureTime(eventSt_ms, secs)
+            et = self._convertFeatureTime(eventSt_ms, secs+self._timeStep())
+            intervalTimes.append((st, et))
+                    
+        if timeDirection == 'downstream':
+            event.addHazardAttribute('downstreamPolys',intervalPolys)       
+            event.addHazardAttribute('downstreamTimes',intervalTimes) 
+        else:
+            event.addHazardAttribute('upstreamPolys',intervalPolys)       
+            event.addHazardAttribute('upstreamTimes',intervalTimes)     
+
+    def _getIntervalPoly(self, secs, totalSecs, poly, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
+                         timeDirection, presetMethod):
+        if timeDirection == 'upstream':
+            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
+            dirValLast = dirVal
+        else:
+            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)            
+            dirValLast = presetResults['dirVal']
+            if self._prevDirVal:
+                dirValLast = self._prevDirVal
+            speedVal = presetResults['speedVal']
+            dirVal = presetResults['dirVal']
+            self._prevDirVal = dirVal
+            spdUVal = presetResults['spdUVal']
+            dirUVal = presetResults['dirUVal']           
+        
+        gglDownstream = self._computePoly(secs, speedVal, dirVal, spdUVal, dirUVal,
+                            dirValLast,gglPoly)
+        intervalPoly = so.transform(self._c3857t4326, gglDownstream)
+        if timeDirection == "upstream":
+            intervalPoly = self._relocatePolygon(intervalPoly.centroid, poly)
+        return intervalPoly, secs
+
+    def computeUpstreamCentroid(self, centroid, dirDeg, spdKts, time):
+        diffSecs = abs(time)
+        d = (spdKts*0.514444*diffSecs)/1000
+        R = 6378.1 #Radius of the Earth
+
+        brng = radians(dirDeg)
+        lon1, lat1 = centroid.coords[0]
+
+        lat2 = math.degrees((d/R) * math.cos(brng)) + lat1
+        lon2 = math.degrees((d/(R*math.sin(math.radians(lat2)))) * math.sin(brng)) + lon1
+
+        newCentroid = shapely.geometry.point.Point(lon2, lat2)
+        return newCentroid
+
+    def _computePoly(self, secs, speedVal, dirVal, spdUVal, dirUVal, dirValLast, threat):
+        speedVal = float(speedVal)
+        dirVal = float(dirVal)
+        dis = secs * speedVal * 0.514444444
+        xDis = dis * math.cos(math.radians(270.0 - dirVal))
+        yDis = dis * math.sin(math.radians(270.0 - dirVal))
+        xDis2 = secs * spdUVal * 0.514444444
+        yDis2 = dis * math.tan(math.radians(dirUVal))
+        threat = sa.translate(threat,xDis,yDis)
+        rot = dirValLast - dirVal
+        threat = sa.rotate(threat,rot,origin='centroid')
+        rotVal = -1 * (270 - dirValLast)
+        if rotVal > 0:
+            rotVal = -1 * (360 - rotVal)
+
+        threat = sa.rotate(threat,rotVal,origin='centroid')
+        coords = threat.exterior.coords
+        center = threat.centroid
+        newCoords = []
+        for c in coords:
+                dir = math.atan2(c[1] - center.y,c[0] - center.x)
+                x = math.cos(dir) * xDis2
+                y = math.sin(dir) * yDis2
+                p = sg.Point(c)
+                c2 = sa.translate(p,x,y)
+                newCoords.append((c2.x,c2.y))
+        threat = sg.Polygon(newCoords)
+        rotVal = 270 - dirValLast
+        if rotVal < 0:
+            rotVal = rotVal + 360
+        threat = sa.rotate(threat,rotVal,origin='centroid')
+
+        return threat
+    
+    
+    def _c4326t3857(self, lon, lat):
+        """
+        Pure python 4326 -> 3857 transform. About 8x faster than pyproj.
+        """
+        lat_rad = math.radians(lat)
+        xtile = lon * 111319.49079327358
+        ytile = math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / \
+            math.pi * 20037508.342789244
+        return(xtile, ytile)
+    
+    
+    def _c3857t4326(self, lon, lat):
+        """
+        Pure python 3857 -> 4326 transform. About 12x faster than pyproj.
+        """
+        xtile = lon / 111319.49079327358
+        ytile = math.degrees(
+            math.asin(math.tanh(lat / 20037508.342789244 * math.pi)))
+        return(xtile, ytile)
+    
+    def _convertFeatureTime(self, eventSt_ms, secs):
+        # Return millis given the event start time and secs offset
+        # Round to minutes
+        millis = long(eventSt_ms + secs * 1000 )
+        return TimeUtils.roundEpochTimeMilliseconds(millis)
     
     def flush(self):
         import os
@@ -576,12 +936,17 @@ class ProbUtils(object):
     def _timeStep(self):
         # Time step for downstream polygons and track points
         return 60 # secs
+    
+    # TO DO:  The Recommender should access HazardTypes.py for this 
+    #   information
+    def _hazardPointLimit(self):
+        return 20
 
     def _probTrendColors(self):
         '''
         Should match PHI Prototype Tool
         (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
-                          ((20,40), { "red": 1, "green": 1, "blue": 0 }),
+                          ((20,4getProbGrid0), { "red": 1, "green": 1, "blue": 0 }),
         
         '''            
         colors = {
@@ -601,7 +966,7 @@ class ProbUtils(object):
         self._buff = 1.
         self._lonPoints = 1200
         self._latPoints = 1000
-        self._initial_ulLat = 40.0
-        self._initial_ulLon = -79.0
+        self._initial_ulLat = 36.2 # 43.0
+        self._initial_ulLon = -108.7 # -104.00
     
     #########################################

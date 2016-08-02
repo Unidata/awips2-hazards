@@ -93,13 +93,13 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # For now, just print out a message saying this was run.
         import sys
-        sys.stderr.write("Running PHI grid recommender.\n    trigger:    " +
-                         str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
-                         str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
-                         str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
-                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
-                         str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
-        sys.stderr.flush()
+#         sys.stderr.write("Running PHI grid recommender.\n    trigger:    " +
+#                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
+#                          str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
+#                          str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
+#                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
+#                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
+#         sys.stderr.flush()
                 
         ProbUtils().processEvents(eventSet, writeToFile=True)
 
