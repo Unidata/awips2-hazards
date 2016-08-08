@@ -89,7 +89,8 @@ class Product(HydroGenerator.Product):
             self._storeDialogInputMap(dialogInputMap)
         else:
             self._dialogInputMap = {}
-           
+            
+        self._issueTime = long(metaDict.get("currentTime"))
         self._validTime = eventSet.getAttributes().get("currentTime")/1000
         
         domains = Domains.AviationDomains
@@ -114,6 +115,7 @@ class Product(HydroGenerator.Product):
                     self._latestStartTime = startTime
                           
         for event in self._inputHazardEvents:
+            event.set('issueTime', self._issueTime)
             if not self._eventValid(event, self._latestStartTime):
                 continue
             self._geomType = AviationUtils.AviationUtils().getGeometryType(event)
@@ -139,7 +141,7 @@ class Product(HydroGenerator.Product):
         
         productDict['eventDicts'] = eventDicts
         productDict['productID'] = 'SIGMET.Convective'
-        productDict['productName'] = 'CONVECTIVE SIGMET'      
+        productDict['productName'] = 'CONVECTIVE SIGMET'     
 
         return [productDict], self._inputHazardEvents
  
@@ -208,24 +210,37 @@ class Product(HydroGenerator.Product):
     
     def _sigmetNumber(self, hazardEvent, domains):
         startTime = hazardEvent.getStartTime()
+        startTimeTuple = hazardEvent.getStartTime().timetuple()
+        startTimeStr = str(startTimeTuple[2])+' '+str(startTimeTuple[3])+':'+str(startTimeTuple[4])
         if hazardEvent.getStatus() in ["PENDING"]:
             if self._issueFlag == "True":
                 convectiveSigmetNumberStr = self._setConvectiveSigmetNumber(hazardEvent)
             else:
                 convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(hazardEvent)
                 convectiveSigmetNumberStr = self._applyCount(convectiveSigmetNumberStr, domains)                                                        
-        elif hazardEvent.getStatus() in ["ISSUED"]:            
-            convectiveSigmetNumberStr = hazardEvent.get('convectiveSigmetNumberStr')
+        elif hazardEvent.getStatus() in ["ISSUED"]:
+            validTime = hazardEvent.get('validTime')
+            validTime = validTime/1000
+            validTime = datetime.datetime.fromtimestamp(validTime).strftime('%d %H:%M')
+            if startTimeStr == validTime:
+                #if startTime and validTime are equal get the existing number          
+                convectiveSigmetNumberStr = hazardEvent.get('convectiveSigmetNumberStr')
+            else:
+                #if startTime and validTime are not equal, iterate to the next number
+                convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(hazardEvent)
+                if self._issueFlag == 'True':
+                    convectiveSigmetNumberStr = self._setConvectiveSigmetNumber(hazardEvent)
+                else:
+                    convectiveSigmetNumberStr = self._applyCount(convectiveSigmetNumberStr, domains)         
         else:
             convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(hazardEvent)            
             
-        if hazardEvent.getStatus() in ["PENDING"]:
+        if hazardEvent.getStatus() in ["PENDING", "ISSUED"]:
             if self._issueFlag is not "True":
                 self._addCount(domains)
                 
-        if hazardEvent.getStatus() in ["PENDING", "ISSUED"]:
-            hazardEvent.set('convectiveSigmetNumberStr', convectiveSigmetNumberStr)
-            hazardEvent.set('validTime', self._validTime)             
+        hazardEvent.set('convectiveSigmetNumberStr', convectiveSigmetNumberStr)
+        hazardEvent.set('validTime', startTime)             
                 
         return convectiveSigmetNumberStr        
     
@@ -359,7 +374,7 @@ class Product(HydroGenerator.Product):
         self._convectiveSigmetWidth = str(hazardEvent.getHazardAttributes().get('convectiveSigmetWidth'))
         self._convectiveSigmetEmbeddedSvr = hazardEvent.getHazardAttributes().get('convectiveSigmetEmbeddedSvr')
         
-        hazardEmbeddedDict = {'Severe': 'SEV', 'Embedded': ' EMBD'}
+        hazardEmbeddedDict = {'Severe': 'SEV ', 'Embedded': 'EMBD '}
         embeddedStr = ""
         
         if self._geomType == "LineString":

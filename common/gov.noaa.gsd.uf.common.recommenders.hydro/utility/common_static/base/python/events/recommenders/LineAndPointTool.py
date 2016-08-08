@@ -84,6 +84,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self._trigger = eventSetAttrs.get('trigger')
         self._attribute = eventSetAttrs.get('attributeIdentifiers')
         self._eventIdentifier = eventSetAttrs.get('eventIdentifier')
+        self._issueFlag = eventSetAttrs.get('issueFlag')
       
         changed = False
         for event in eventSet:
@@ -92,13 +93,18 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('originalGeometry', event.getGeometry())
             self._width = event.getHazardAttributes().get('convectiveSigmetWidth')
             vertices = self._getVertices(event)
+            VOR_points = event.getHazardAttributes().get('VOR_points')
             
             #for points and lines, calculate polygon and add visual feature
             if self._originalGeomType != 'Polygon':
                 if self._trigger == 'hazardEventModification':
-                    poly = self.createPolygon(vertices,self._width)
-                    event.set('polygon', poly)
-                    changed = (self.addVisualFeatures(event,poly) or changed)
+                    if event.get('generated'):
+                        self._adjustForVisualFeatureChange(event, eventSetAttrs)                       
+                    else:
+                        poly = self.createPolygon(vertices,self._width)
+                        event.set('polygon', poly) 
+                        changed = (self.addVisualFeatures(event,poly) or changed)
+                    event.set('generated',True)                     
                 
             # Event Modification
             changed = self._processEventModification(event, self._trigger, eventSetAttrs)
@@ -115,8 +121,9 @@ class Recommender(RecommenderTemplate.Recommender):
     def _makeUpdates(self, event, trigger, eventSetAttrs):
         if trigger == 'hazardEventModification': 
             return False            
-        if trigger == 'hazardEventVisualFeatureChange' and len(self._attribute) is 1:                 
+        if trigger == 'hazardEventVisualFeatureChange' and len(self._attribute) is 1:                
             self._adjustForVisualFeatureChange(event, eventSetAttrs)
+      
         return True            
     
     def _adjustForVisualFeatureChange(self, event, eventSetAttrs):
@@ -128,7 +135,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for feature in features:
             featureIdentifier = feature.get('identifier')
             # Find the feature that has changed
-            if featureIdentifier == changedIdentifier:
+            if (featureIdentifier == changedIdentifier) or (changedIdentifier == 'convectiveSigmetWidth' and 'basePreview' in featureIdentifier):
                 # Get feature polygon
                 polyDict = feature["geometry"]
                 for timeBounds, geometry in polyDict.iteritems():
@@ -156,19 +163,18 @@ class Recommender(RecommenderTemplate.Recommender):
                
         if self._originalGeomType != 'Polygon':
             poly = GeometryFactory.createPolygon(polyPoints)
-            event.setGeometry(poly)
+            basePoly = vertices
             if self._originalGeomType == 'Point':
-                basePoly = vertices
                 basePoly = GeometryFactory.createPoint(basePoly)
             elif self._originalGeomType == 'LineString':
-                basePoly = vertices
-                basePoly = GeometryFactory.createLineString(basePoly)                        
+                basePoly = GeometryFactory.createLineString(basePoly)
+            event.setGeometry(basePoly)        
         else:
             poly = GeometryFactory.createPolygon(VOR_points)
             basePoly = GeometryFactory.createPolygon(vertices)
             event.setGeometry(basePoly)
         
-        if self._originalGeomType is not 'Polygon':        
+        if self._originalGeomType != 'Polygon':       
             borderColorHazard = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 }
             fillColorHazard = {"red": 1, "green": 1, "blue": 1, "alpha": 0}
             borderColorBase = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }
@@ -217,7 +223,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
     def _getVertices(self, hazardEvent):
         for g in hazardEvent.getGeometry().geoms:
-            vertices = shapely.geometry.base.dump_coords(g)        
+            vertices = shapely.geometry.base.dump_coords(g)     
         
         return vertices 
 
@@ -294,7 +300,6 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def pointToPolygon(self, vertices, width):
         buffer = []
-        print "vertices: ", vertices
         if len(vertices) == 1:
             width = width/2
             for bearing in range(0,360,15):

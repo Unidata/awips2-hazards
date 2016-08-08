@@ -22,7 +22,6 @@ Prob_WFO = {
 #                         "com.raytheon.viz.mpe.ui.MPEPerspective",
 #                         "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
 #                         "com.raytheon.viz.ui.GFEPerspective"],
-
     "displayName": "Probabilistic Convective",
     "possibleSites": ["National"],
     "visibleSites": ["National"],

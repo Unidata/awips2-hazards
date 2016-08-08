@@ -35,6 +35,8 @@ class Format(Legacy_Hydro_Formatter.Format):
         
         parts = self.productDict.get('productParts')
         eventDicts = self.productDict.get('eventDicts')
+        
+        print "Legacy_Convective_SIGMET_Formatter - execute - eventDicts: ", eventDicts
 
         self._fcstList = {}
         
@@ -202,7 +204,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             self._hazardMotionStr, self._convectiveSigmetCloudTopStr)
         
         if len(self._convectiveSigmetAdditionalHazardsStr):
-            fcst = '\n%s%s' % (fcst, self._convectiveSigmetAdditionalHazardsStr)
+            fcst = '%s %s' % (fcst, self._convectiveSigmetAdditionalHazardsStr)
         
         fcst = fcst.replace("_", " ")       
         

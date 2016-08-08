@@ -30,9 +30,6 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         trigger = 'generation'
         
         convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(hazardEvent,[],geomType,trigger)
-        #print "convectiveSigmetDomain in metadata_convective_sigmet: ", convectiveSigmetDomain
-        #domain = []
-        #domain.append(convectiveSigmetDomain)
         
         boundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,geomType,TABLEFILE,[],trigger)
         if geomType == 'Polygon':
@@ -46,7 +43,6 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         metaData = [
                         self.getAdvisoryType(advisoryType),
                         self.getConvectiveSigmetInputs(geomType, convectiveSigmetDomain, convectiveSigmetModifiers),
-                        #self.getConvectiveSigmetInputs(geomType, domain, convectiveSigmetModifiers),
                    ]
 
         return  {
@@ -114,7 +110,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
             newStart = startTime + datetime.timedelta(minutes=minuteDiff)
         elif startTimeMinute > 55:
             minuteDiff = startTimeMinute - 55
-            newStart = startTime + datetime.timedelta(minutes=(55+minuteDiff))
+            newStart = startTime + datetime.timedelta(minutes=(60-minuteDiff))
         elif startTimeMinute == 55:
             newStart = startTime
             
