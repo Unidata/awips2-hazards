@@ -19,8 +19,7 @@ from scipy.io import netcdf
 from collections import defaultdict
 from shutil import copy2
 import HazardDataAccess
-from inspect import currentframe, getframeinfo
-import TimeUtils
+import TimeUtils, LogUtils
 from VisualFeatures import VisualFeatures
 
 class ProbUtils(object):
@@ -399,12 +398,13 @@ class ProbUtils(object):
     
     def _getGraphProbs(self, event, latestDataLayerTime=None):
         ### Get difference in minutes and the probability trend
-        previousDataLaterTime = event.get("previousDataLayerTime")
+        previousDataLayerTime = event.get("previousDataLayerTime")
         issueStart = event.get("eventStartTimeAtIssuance")
         graphVals = event.get("convectiveProbTrendGraph")
         currentStart = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
                 
         if graphVals is None:
+            #LogUtils.logMessage('[HERE-0]')
             return self._getGraphProbsBasedOnDuration(event)
         
         if issueStart is None:
@@ -415,10 +415,10 @@ class ProbUtils(object):
         ### currentProbTrend-previousProbTrend but timediff was currentTime-issueTime
         ###So saving previousDataLayerTime so that our timeDiffs match probTrendDiffs
                 
-        if latestDataLayerTime is not None and previousDataLaterTime is not None:
-            #print '+++ Using latestDataLayerTime-previousDataLaterTime'
+        if latestDataLayerTime is not None and previousDataLayerTime is not None:
+            #print '+++ Using latestDataLayerTime-previousDataLayerTime'
             #self.flush()
-            previous = datetime.datetime.utcfromtimestamp(previousDataLaterTime/1000)
+            previous = datetime.datetime.utcfromtimestamp(previousDataLayerTime/1000)
             latest = datetime.datetime.utcfromtimestamp(latestDataLayerTime/1000)
         else:
             #print '--- Using currentStart-issueStart'
@@ -428,7 +428,7 @@ class ProbUtils(object):
         latestDataLayerTime = latestDataLayerTime if latestDataLayerTime is not None else issueStart
         #print 'Setting previousDataLayerTime', latestDataLayerTime
         #self.flush()
-        previousDataLaterTime = event.set("previousDataLayerTime", latestDataLayerTime)
+        previousDataLayerTime = event.set("previousDataLayerTime", latestDataLayerTime)
 
         
         inc = event.get('convectiveProbabilityTrendIncrement', 5)
@@ -454,6 +454,7 @@ class ProbUtils(object):
         updatedProbs[0:len(remainingProbs)] = remainingProbs
         ### Sample at increment 
         fiveMinuteUpdatedProbs = updatedProbs[::inc].tolist()
+        #LogUtils.logMessage('Updated', fiveMinuteUpdatedProbs)
         
         ### update original times with shifted probs, if length of arrays match
         if len(fiveMinuteUpdatedProbs) == len(graphVals):
@@ -494,9 +495,13 @@ class ProbUtils(object):
         ### Round up for some context
         duration = duration+probInc if duration%probInc != 0 else duration
         
+        max = 100
+        if event.get('probSeverAttrs'):
+            max = event.get('probSeverAttrs').get('probabilities')
+        
         for i in range(0, duration+1, probInc):
         #for i in range(0, duration+probInc+1, probInc):
-            y = 100-(i*100/int(duration))
+            y = max - (i * max / int(duration))
             y = 0 if i >= duration else y
             editable = True if y != 0 else False
             #editable = 1 if y != 0 else 0
@@ -798,8 +803,6 @@ class ProbUtils(object):
         presetMethod = getattr(swathPresetClass, presetChoice)
                 
         ### convert poly to Google Coords to make use of Karstens' code
-        fi_filename = os.path.basename(getframeinfo(currentframe()).filename)
-        total = time.time()
         gglPoly = so.transform(self._c4326t3857,poly)
                     
         intervalPolys = []
@@ -932,6 +935,12 @@ class ProbUtils(object):
     
     #########################################
     ### OVERRIDES        
+    
+    def _defaultWindSpeed(self):
+        return 32
+    
+    def _defaultWindDir(self):
+        return 270    
 
     def _timeStep(self):
         # Time step for downstream polygons and track points
@@ -966,7 +975,6 @@ class ProbUtils(object):
         self._buff = 1.
         self._lonPoints = 1200
         self._latPoints = 1000
-        self._initial_ulLat = 36.2 # 43.0
-        self._initial_ulLon = -108.7 # -104.00
+        self._initial_ulLat = 48.5
+        self._initial_ulLon = -89.0
     
-    #########################################

@@ -39,12 +39,16 @@
 #   frozen), or whenever the CAVE time is changed, frozen, or unfrozen.
 #
 
+_CENTRAL_PROCESSOR = False 
 
 EventDrivenTools = [
                     #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender" ], 
                     #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
                     #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender" ], 
                     #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
-                    #{"toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
-                    # "triggerType": "DATA_LAYER_CHANGE" }
                     ]
+
+if _CENTRAL_PROCESSOR:
+    cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender", "PHI_GridRecommender"],
+                     "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
+    EventDrivenTools.append(cpEntry)

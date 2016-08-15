@@ -955,7 +955,13 @@ public class SessionConfigurationManager implements
          */
         if (object instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) object;
-            if (map.containsKey(parameterName)
+            /*
+             * if (map.containsKey(parameterName) &&
+             * map.containsKey(HazardConstants.FIELD_NAME)) {
+             */
+            Object parameterValue = map.get(parameterName);
+            if ((parameterValue instanceof String)
+                    && (((String) parameterValue).isEmpty() == false)
                     && map.containsKey(HazardConstants.FIELD_NAME)) {
                 valuesForTriggerIdentifiers.put(
                         map.get(HazardConstants.FIELD_NAME).toString(),

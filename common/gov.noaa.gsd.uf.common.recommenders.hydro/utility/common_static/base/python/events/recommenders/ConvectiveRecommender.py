@@ -28,10 +28,9 @@ import glob, os, time, datetime
 import pprint
 from collections import defaultdict
 from shapely.wkt import loads
+from shapely.geometry import Polygon, Point
 
-import TimeUtils
-from PHI_GridRecommender import Recommender as PHIGridRecommender
-#from MapsDatabaseAccessor import MapsDatabaseAccessor
+import TimeUtils, LogUtils
 from ProbUtils import ProbUtils
 
 from HazardConstants import *
@@ -39,6 +38,7 @@ import HazardDataAccess
 
 from com.raytheon.uf.common.time import SimulatedTime
 from edu.wisc.ssec.cimss.common.dataplugin.convectprob import ConvectProbRecord
+from SwathRecommender import Recommender as SwathRecommender 
 #
 # The size of the buffer for default flood polygons.
 DEFAULT_POLYGON_BUFFER = 0.05
@@ -53,7 +53,7 @@ MILLIS_PER_SECOND = 1000
 ### FIXME
 DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
 #DEFAULT_DURATION_IN_SECS = 120
-PROBABILITY_FILTER = 20 # filter our any objects less than this.
+PROBABILITY_FILTER = 8 # filter our any objects less than this.
 SOURCEPATH_ARCHIVE = '/awips2/edex/data/hdf5/convectprob'
 SOURCEPATH_REALTIME = '/realtime-a2/hdf5/probsevere'
     
@@ -83,6 +83,13 @@ class Recommender(RecommenderTemplate.Recommender):
             Column11: mean motion south, in m/s (float)
         """
         self._probUtils = ProbUtils()
+        lats = self._probUtils._lats
+        ulLat = lats[0]
+        lrLat = lats[-1]
+        lons = self._probUtils._lons
+        ulLon = lons[0]
+        lrLon = lons[-1]
+        self._domainPolygon = Polygon([(ulLon, ulLat), (lrLon, ulLat), (lrLon, lrLat), (ulLon, lrLat), (ulLon, ulLat)])
     
     def defineScriptMetadata(self):
         """
@@ -97,28 +104,13 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["eventState"] = "Pending"
         metaDict['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         metaDict['background'] = True
+        metaDict['includeDataLayerTimes'] = False
         return metaDict
 
     def defineDialog(self, eventSet):
         """
         @return: A dialog definition to solicit user input before running tool
         """        
-#===============================================================================
-#         dialogDict = {"title": "PHI Cell ID Recommender"}
-#         
-#         choiceFieldDict = {}
-#         choiceFieldDict["fieldType"] = "RadioButtons"
-#         choiceFieldDict["fieldName"] = "forecastType"
-#         choiceFieldDict["label"] = "Type:"
-#         choiceFieldDict["choices"] = ["Watch", "Warning", "Advisory", "ALL"]
-#         
-#         fieldDicts = []
-#         dialogDict["fields"] = fieldDicts
-# 
-#         valueDict = {"forecastType":"Warning"}
-#         dialogDict["valueDict"] = valueDict
-#         
-#         return dialogDict
 #===============================================================================
         return None
 
@@ -149,15 +141,29 @@ class Recommender(RecommenderTemplate.Recommender):
         if sessionAttributes:
             sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
             
-        currentTime = datetime.datetime.utcfromtimestamp(long(sessionAttributes["currentTime"])/1000)
-        latestCurrentEventTime = self.getLatestTimestampOfCurrentEvents(eventSet)
-        
+        #st = time.time()
+
         currentEvents = self.getCurrentEvents(eventSet)        
-        recommendedEventsDict = self.getRecommendedEventsDict(currentTime, latestCurrentEventTime)
-        recommendedEventsDict = self.filterForUserOwned(currentEvents, recommendedEventsDict)
-                
-        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventsDict, currentTime)
+
+        #LogUtils.logMessage('Finnished ', 'getCurrentEvent',' Took Seconds', time.time()-st)
+        #st = time.time()
+            
+        currentTime = datetime.datetime.utcfromtimestamp(long(sessionAttributes["currentTime"])/1000)
+        latestCurrentEventTime = self.getLatestTimestampOfCurrentEvents(eventSet, currentEvents)
+
+        #LogUtils.logMessage('Finnished ', 'getLatestTimestampOfCurrentEvents',' Took Seconds', time.time()-st)
+        #st = time.time()
         
+        recommendedEventsDict = self.getRecommendedEventsDict(currentTime, latestCurrentEventTime)
+
+        #LogUtils.logMessage('Finnished ', 'getRecommendedEventsDict',' Took Seconds', time.time()-st)
+        #st = time.time()
+        recommendedEventsDict = self.filterForUserOwned(currentEvents, recommendedEventsDict)
+        #LogUtils.logMessage('Finnished ', 'filterForUserOwne',' Took Seconds', time.time()-st)
+        #st = time.time()
+        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventsDict, currentTime)
+
+        #LogUtils.logMessage('Finnished ', 'mergeHazardEvent',' Took Seconds', time.time()-st)
         #for evt in mergedEventSet:
         #    print 'ME:', evt.getHazardAttributes().get('removeEvent')
         #    #  Tracy -- Not sure about this -- does probSeverAttrs really have an OBJECT_ID entry?
@@ -165,18 +171,23 @@ class Recommender(RecommenderTemplate.Recommender):
         #    print evt.getHazardAttributes().get('probSeverAttrs').get(OBJECT_ID) 
         #    print evt.getCreationTime(), evt.getStartTime(), evt.getEndTime()
         
-#        ### REMOVE ME!! This is to automate the PHI_GridRecommender following
-#        ### execution of the Convective recommender until we find a better 
-#        ### way to implement this  
-#        pgr = PHIGridRecommender()
-#        pgr.execute(mergedEventSet, None, None)
+        
+        if len(mergedEventSet.events) > 0:
+            st = time.time()
+            swathRec = SwathRecommender()
+            mergedEventSet = swathRec.execute(mergedEventSet, None, None)
+            LogUtils.logMessage('Finnished ', 'swathRec.execute',' Took Seconds', time.time()-st)
+        
+        # Ensure that any resulting events are saved to the database.
+        mergedEventSet.addAttribute("saveToDatabase", True)
         
         return mergedEventSet
     
 
     def getRecommendedEventsDict(self, currentTime, latestDatetime):
-        hdfFilesList = self._getLatestProbSevereDataHDFFileList(latestDatetime)
-        eventsDict = self._eventSetFromHDFFile(hdfFilesList, currentTime, latestDatetime)
+        hdfFilesList = self._getLatestProbSevereDataHDFFileList(currentTime)
+        #eventsDict = self._eventSetFromHDFFile(hdfFilesList, currentTime, latestDatetime)
+        eventsDict = self._latestEventSetFromHDFFile(hdfFilesList, currentTime)
         return eventsDict
 
     def _uvToSpdDir(self, motionEasts, motionSouths):
@@ -194,6 +205,55 @@ class Recommender(RecommenderTemplate.Recommender):
         return {'wdir':wdir, 'wspd':wspd}
 
 
+    def _latestEventSetFromHDFFile(self, hdfFilenameList, currentTime):
+        ### Should be a single file with latest timestamp
+        hFile = None
+        try:
+            hFile = h5py.File(hdfFilenameList[0],'r')
+        except:
+            print 'Convective Recommender Warning: Unable to open', hdfFilenameList[0], ' in h5py. Skipping...'
+            return
+        
+        valuesDict = {self._parseGroupName(group.name):group for group in hFile.values()}
+        latestGroupDT = min(valuesDict.keys(), key=lambda date : abs(currentTime-date))
+        latestGroup = valuesDict.get(latestGroupDT)
+
+        returnDict = {}
+        for i in range(latestGroup.values()[0].len()):
+            row = {k:v[i] for k,v in latestGroup.iteritems()}
+
+            ### Dumb filter. Need to make dynamic
+            if row.get('probabilities') < PROBABILITY_FILTER:
+                continue
+            
+            thisPoly = row.get('polygons')
+            #LogUtils.logMessage(type(thisPoly), thisPoly, self._domainPolygon)
+            if thisPoly is None:
+                continue
+            elif not loads(thisPoly).centroid.within(self._domainPolygon):
+                #LogUtils.logMessage("Skipping....")
+                continue
+           
+            ### Current CONVECTPROB feed has objectids like "653830; Flash Rate 0 fl/min"
+            objIds = row.get('objectids')
+            if ';' in objIds:
+                row['objectids'] =  objIds.split(';')[0]
+            
+            
+            row['startTime'] = latestGroupDT
+            vectorDict = self._uvToSpdDir(row.get('motionEasts'),row.get('motionSouths'))
+            row['wdir'] = vectorDict.get('wdir')
+            row['wspd'] = vectorDict.get('wspd')
+            
+            ### Needed for now - refactor
+            returnDict[row['objectids']] = row
+
+        return returnDict
+        
+        
+
+        
+        
     def _eventSetFromHDFFile(self, hdfFilenameList, currentTime, latestDatetime=None):
 
         eventsList = []
@@ -224,6 +284,20 @@ class Recommender(RecommenderTemplate.Recommender):
                         ### Dumb filter. Need to make dynamic
                         if row.get('probabilities') < PROBABILITY_FILTER:
                             continue
+                        
+                        thisPoly = row.get('polygons')
+                        #LogUtils.logMessage(type(thisPoly), thisPoly, self._domainPolygon)
+                        if thisPoly is None:
+                            continue
+                        elif not loads(thisPoly).centroid.within(self._domainPolygon):
+                            #LogUtils.logMessage("Skipping....")
+                            continue
+                       
+                        ### Current CONVECTPROB feed has objectids like "653830; Flash Rate 0 fl/min"
+                        #LogUtils.logMessage('OBJECTIDs:', row)
+                        objIds = row.get('objectids')
+                        if ';' in objIds:
+                            row['objectids'] =  objIds.split(';')[0]
                         
                         
                         row['startTime'] = startTime
@@ -264,7 +338,20 @@ class Recommender(RecommenderTemplate.Recommender):
             print 'Returning:', fileList
             return fileList
         
+        
+        
+        
         if latestDatetime:
+            ### Use filename to make datetime and return ONLY the latest
+            regex = "convectprob-%Y-%m-%d-%H.h5"
+            if fileList:
+                if fileList[0].startswith('probsevere'):
+                    regex = "probsevere-%Y-%m-%d-%H.h5"
+                
+            fileDict = {datetime.datetime.strptime(os.path.basename(x),regex):x for x in fileList}
+            
+            # see https://bytes.com/topic/python/answers/765154-find-nearest-time-datetime-list
+            returnFileList = [fileDict.get(min(fileDict.keys(), key=lambda date : abs(latestDatetime-date)))]
             
             ### Use filename to make datetime
             #returnFileList = [x for x in fileList if 
@@ -274,10 +361,10 @@ class Recommender(RecommenderTemplate.Recommender):
             #                  ]
             
             ### Use file's modification time to make datetime
-            returnFileList = [x for x in fileList if 
-                              datetime.datetime.utcfromtimestamp(os.path.getmtime(x))
-                              > latestDatetime
-                              ]
+            #returnFileList = [x for x in fileList if 
+            #                  datetime.datetime.utcfromtimestamp(os.path.getmtime(x))
+            #                  > latestDatetime
+            #                  ]
             
             return returnFileList
         else:
@@ -287,22 +374,21 @@ class Recommender(RecommenderTemplate.Recommender):
     def toString(self):
         return "ConvectiveRecommender"
     
-    def getLatestTimestampOfCurrentEvents(self, eventSet):
+    def getLatestTimestampOfCurrentEvents(self, eventSet, currentEvents):
         ### Initialize latestDatetime
         latestDatetime = datetime.datetime.min
-        siteID = eventSet.getAttributes().get('siteID')
-        mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
-        
-        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode)
-        for event in databaseEvents:
+
+        for event in currentEvents:
             eventCreationTime = event.getCreationTime()
             if eventCreationTime > latestDatetime:
                latestDatetime =  eventCreationTime
 
-        for event in eventSet:
-            eventCreationTime = event.getCreationTime()
-            if eventCreationTime > latestDatetime:
-               latestDatetime =  eventCreationTime
+        #=======================================================================
+        # for event in eventSet:
+        #     eventCreationTime = event.getCreationTime()
+        #     if eventCreationTime > latestDatetime:
+        #        latestDatetime =  eventCreationTime
+        #=======================================================================
                
         return latestDatetime
     
@@ -366,20 +452,26 @@ class Recommender(RecommenderTemplate.Recommender):
             
     def mergeHazardEvents(self, currentEventsList, recommendedEventsDict, currentTime):    
         ### if no recommended events
-        if len(recommendedEventsDict) == 0:
-            #print '[1] No NEW records, returning no events
-            return [] # We only want to return events we have changed
-        
         mergedEvents = EventSet(None)
         
-        # Ensure that any resulting events are saved to the database.
-        mergedEvents.addAttribute("saveToDatabase", True)
+        if len(recommendedEventsDict) == 0:
+            #print '[1] No NEW records, returning no events
+            return mergedEvents # We only want to return events we have changed
+        
+        _currentTimeMS = int(currentTime.strftime('%s'))*1000
+        mergedEvents.addAttribute('currentTime', _currentTimeMS)
+        mergedEvents.addAttribute('trigger', 'autoUpdate')
+        self._latestDataLayerTime = _currentTimeMS
+        
+        
         
         ### recommended events but no current events
         if len(currentEventsList) == 0:
             #print '[2] No CURRENT records, making and returning NEW events...'
             for ID, recommendedValues in recommendedEventsDict.iteritems():
                 recommendedEvent = self.makeHazardEvent(ID, recommendedValues, currentTime)
+                graphProbs = self._probUtils._getGraphProbs(recommendedEvent, self._latestDataLayerTime)
+                recommendedEvent.set('convectiveProbTrendGraph', graphProbs)
                 mergedEvents.add(recommendedEvent)
             return mergedEvents
 
@@ -400,36 +492,37 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         ### Using set difference, obtain new recommended objects and add
         newRecs = list(set(recEventObjectIDs).difference(set(nonUserOwnedObjectIDs)))
-        for newRec in newRecs:
-            #print '[3] Adding NEW event', newRec, ' to mergedEvents'            
-            recommendedEvent = self.makeHazardEvent(newRec, recommendedEventsDict[newRec], currentTime)
-            
-            recGeom = recommendedEvent.getGeometry()
-            intersects = False
-                
-            #===================================================================
-            # #########  FIXME ###############
-            # #
-            # # Keep getting error at intersects call:
-            # # <class 'shapely.geos.PredicateError'>: Failed to evaluate <_FuncPtr object at 0x7f88208aeae0>
-            # # at /awips2/python/lib/python2.7/site-packages/shapely/geos.errcheck_predicate(geos.py:500)
-            # # at /awips2/python/lib/python2.7/site-packages/shapely/predicates.__call__(predicates.py:11)
-            # # at /awips2/python/lib/python2.7/site-packages/shapely/geometry/base.intersects(base.py:614)
-            # # but cannot repeat in python interpreter (see intersectionTest.py)
-            # ################################
-            #
-            # ### Logic to ignore any automated events that spatially overlap a manually drawn event
-            # for manEvt in manualCurrentEvents:
-            #     manGeom = manEvt.getGeometry()
-            #     print 'MAN:', type(manGeom)
-            #     print 'AUTO:', type(recGeom)
-            #     #if recGeom.intersects(manGeom):
-            #     if manGeom.intersects(recGeom):
-            #         intersects = True
-            #===================================================================
-
-            if not intersects:
-                mergedEvents.add(recommendedEvent)
+#===============================================================================
+#         ### Section to ignore auto-generated hazard events if sptially overlap with manually created haz evt
+#         for newRec in newRecs:
+#             LogUtils.logMessage( '[3] Adding NEW event', newRec, ' to mergedEvents')
+#             recommendedEvent = self.makeHazardEvent(newRec, recommendedEventsDict[newRec], currentTime)
+#             
+#             recGeom = recommendedEvent.getGeometry()
+#             intersects = False
+#                 
+#             #########  FIXME ###############
+#             #
+#             # Keep getting error at intersects call:
+#             # <class 'shapely.geos.PredicateError'>: Failed to evaluate <_FuncPtr object at 0x7f88208aeae0>
+#             # at /awips2/python/lib/python2.7/site-packages/shapely/geos.errcheck_predicate(geos.py:500)
+#             # at /awips2/python/lib/python2.7/site-packages/shapely/predicates.__call__(predicates.py:11)
+#             # at /awips2/python/lib/python2.7/site-packages/shapely/geometry/base.intersects(base.py:614)
+#             # but cannot repeat in python interpreter (see intersectionTest.py)
+#             ################################
+#             
+#             ### Logic to ignore any automated events that spatially overlap a manually drawn event
+#             for manEvt in manualCurrentEvents:
+#                 manGeom = manEvt.getGeometry()
+#                 LogUtils.logMessage('MAN:', type(manGeom))
+#                 LogUtils.logMessage( 'AUTO:', type(recGeom))
+#                 #if recGeom.intersects(manGeom):
+#                 if manGeom.intersects(recGeom):
+#                     intersects = True
+# 
+#             if not intersects:
+#                 mergedEvents.add(recommendedEvent)
+#===============================================================================
                             
         ### Using set difference, obtain expired (recommended event ID no longer present) IDs and set hazardEvent to 'ended'
         expiredRecs = list(set(nonUserOwnedObjectIDs).difference(set(recEventObjectIDs)))
@@ -438,13 +531,11 @@ class Recommender(RecommenderTemplate.Recommender):
             for currentEvent in nonUserOwnedCurrentEvents:
                 if currentEvent.get('objectID') == expiredRec:
                     if currentEvent.getStatus() != 'ISSUED' and currentEvent.get('objectID'):
-                        currentEvent.set('vtecCodes', ['CAN'])
                         currentEvent.setStatus('ENDED')
                         #print '\t[4.5] Setting current event', currentEvent.get('objectID'), ' to status ', currentEvent.getStatus()
                         mergedEvents.add(currentEvent)
         
         ### Using set intersection, update current events with recommended event attributes
-        updates = list(set(recEventObjectIDs).intersection(set(nonUserOwnedObjectIDs)))
         for currentEvent in nonUserOwnedCurrentEvents:
             currID = currentEvent.get('objectID')
             #print '[5] Potentially updating event', currID, ' (status', currentEvent.getStatus(), ')'
@@ -460,6 +551,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 currentEvent.set('convectiveObjectDir', recommendedEventValues.get('wdir'))
                 currentEvent.set('convectiveObjectSpdKts', recommendedEventValues.get('wspd'))
                 currentEvent.set('probSeverAttrs',recommendedEventValues)
+                graphProbs = self._probUtils._getGraphProbs(currentEvent, self._latestDataLayerTime)
+                currentEvent.set('convectiveProbTrendGraph', graphProbs)
                 mergedEvents.add(currentEvent)
                             
 #         print 'Returning...'
@@ -503,8 +596,5 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def _defaultWindDir(self):
         return 270
-
-    #########################################
-                
 
 

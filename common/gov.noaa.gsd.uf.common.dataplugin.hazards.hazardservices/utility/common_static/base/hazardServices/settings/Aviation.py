@@ -17,10 +17,7 @@
 Aviation = {
     "settingsID" : "Aviation",
 #    "perspectiveIDs" : [],    
-    "perspectiveIDs" :  ["com.raytheon.viz.hydro.HydroPerspective",
-                        "com.raytheon.viz.mpe.ui.MPEPerspective",
-                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
-                        "com.raytheon.viz.ui.GFEPerspective"],
+    "perspectiveIDs" :  [],
     "displayName": "Aviation", #"Aviation",
     "possibleSites": ["National"],
     "visibleSites": ["National"],    

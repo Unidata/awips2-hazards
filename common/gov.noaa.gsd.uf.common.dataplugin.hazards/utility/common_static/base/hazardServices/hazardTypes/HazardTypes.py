@@ -111,6 +111,10 @@
 HOURS = 3600000
 MINUTES = 60000
 OVERRIDE_LOCK =  ['headline', 'combinableSegments', 'includeAll', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True]
+CENTRAL_PROCESSOR = False
+
+modRecsDict = {} if CENTRAL_PROCESSOR else {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]}
+
 HazardTypes = {
     'AF.Y' : {'headline': 'ASHFALL ADVISORY',
               '_override_lock_': OVERRIDE_LOCK, 
@@ -1985,9 +1989,7 @@ HazardTypes = {
               'inclusionAreaInSqKm' : 1.0,
               'allowUntilFurtherNotice': True,
               'allowAnyStartTime': True,
-              'modifyRecommenders': {
-                                     'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]
-                                     },
+              'modifyRecommenders': modRecsDict,
               'allowOverlappingPolygons': True,
               },
     'Prob_Severe' : {
@@ -2014,9 +2016,7 @@ HazardTypes = {
               'inclusionAreaInSqKm' : 1.0,
               'allowUntilFurtherNotice': False,
               'allowAnyStartTime': True,
-              'modifyRecommenders': {
-                                     'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]
-                                     },
+              'modifyRecommenders': modRecsDict,
               'allowOverlappingPolygons': True,
               },
     ################

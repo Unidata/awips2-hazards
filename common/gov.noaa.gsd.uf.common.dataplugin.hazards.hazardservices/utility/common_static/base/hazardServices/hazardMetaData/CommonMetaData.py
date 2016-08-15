@@ -62,6 +62,7 @@ class MetaData(object):
         self._riverForecastManager = None
         self._riverForecastPoint = None
         self._probUtils = ProbUtils()
+        self._CENTRAL_PROCESSOR = False 
 
     def editableWhenNew(self):
         return self.hazardStatus == "pending"
@@ -1940,12 +1941,13 @@ class MetaData(object):
 
     def _buildStormChars(self, typ, vals):
         capType = typ.capitalize()
+        labelDict = {'Wind':'Max Wind', 'Hail': 'Max Hail', 'Torn': 'Tornado'}
         values = ["None"]
         values.extend(vals)
         chars = {
             "fieldType": "ComboBox",
             "fieldName": "convectiveStormChars"+capType,
-            "label": capType+" Chars:",
+            "label": labelDict.get(capType, 'THREAT'),
             "choices": values,
             "values": "None",
             "expandHorizontally": False,
@@ -1995,6 +1997,9 @@ class MetaData(object):
         wdir = self.hazardEvent.get('convectiveObjectDir', 270)
         wspd = self.hazardEvent.get('convectiveObjectSpdKts', 32) 
         
+        recommender = '' if self._CENTRAL_PROCESSOR else "SwathRecommender" 
+        
+        
         grp = {
             "fieldType": "Composite",
             "fieldName": "convectiveMotionVectorGroup",
@@ -2017,7 +2022,7 @@ class MetaData(object):
                         "values": int(wdir),
                         "incrementDelta": 5,
                         "showScale": False,
-                        "modifyRecommender": "SwathRecommender"
+                        "modifyRecommender": recommender
                         },
                         {
                         "fieldType": "IntegerSpinner",
@@ -2028,7 +2033,7 @@ class MetaData(object):
                         "maxValue": 200,
                         "values": int(wspd),
                         "showScale": False,
-                        "modifyRecommender": "SwathRecommender"
+                        "modifyRecommender": recommender
                         },
                        {
                         "fieldType": "IntegerSpinner",
@@ -2040,7 +2045,7 @@ class MetaData(object):
                         "values": 12,
                         "incrementDelta": 5,
                         "showScale": False,
-                        "modifyRecommender": "SwathRecommender"
+                        "modifyRecommender": recommender
                         },
                        {
                         "fieldType": "IntegerSpinner",
@@ -2051,7 +2056,7 @@ class MetaData(object):
                         "maxValue": 20,
                         "values": int(4.2),
                         "showScale": False,
-                        "modifyRecommender": "SwathRecommender"
+                        "modifyRecommender": recommender
                         },
                        {
                         "fieldType": "CheckBox",
@@ -2060,21 +2065,21 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "showScale": False,
                         "values": False,
-                        "modifyRecommender": "SwathRecommender"
+                        "modifyRecommender": recommender
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "resetMotionVector",
                         "label": "Reset Motion Vector",
                         "values": False,
-                        "modifyRecommender": "SwathRecommender"
+                        "modifyRecommender": recommender
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "moveStartTime",
                         "label": "Move Start Time",
                         "values": False,
-                        "modifyRecommender": "SwathRecommender"
+                        "modifyRecommender": recommender
                         },
                        self._getConvectiveSwathPresets()
                        ]
@@ -2101,6 +2106,7 @@ class MetaData(object):
         return { "red": 1, "green": 1, "blue": 1 }
                       
     def _getConvectiveProbabilityTrend(self):
+        recommender = '' if self._CENTRAL_PROCESSOR else "SwathRecommender" 
 
         trends = {
             "fieldType": "Composite",
@@ -2218,7 +2224,7 @@ class MetaData(object):
                         "yLabelInterval": 20,
                         "yLabelSuffix": "%",
                         "drawnPointsInterval": 5,
-                        "modifyRecommender": "SwathRecommender",
+                        "modifyRecommender": recommender,
                         "sendEveryChange":False,
                         "yColors": colors,
                         "values": graphProbs,
@@ -2368,6 +2374,7 @@ class MetaData(object):
         
 
     def _getConvectiveSwathPresets(self):
+        recommender = '' if self._CENTRAL_PROCESSOR else "SwathRecommender" 
         presets = {
             "fieldType": "ComboBox",
             "fieldName": "convectiveSwathPresets",
@@ -2382,7 +2389,7 @@ class MetaData(object):
             "values": "NoPreset",
             "expandHorizontally": False,
             "width":2,
-            "modifyRecommender": "SwathRecommender"
+            "modifyRecommender": recommender,
         }
         
         return presets

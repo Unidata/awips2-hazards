@@ -9,6 +9,7 @@ from VisualFeatures import VisualFeatures
 from ProbUtils import ProbUtils
 import logging, UFStatusHandler
 import matplotlib.pyplot as plt
+import LogUtils
 
 import math, time
 from math import *
@@ -191,12 +192,11 @@ class Recommender(RecommenderTemplate.Recommender):
         origin = eventSetAttrs.get('origin')
         self._currentTime = long(eventSetAttrs.get("currentTime"))        
         self._setDataLayerTimes(eventSetAttrs)                
-        self._attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers')
+        self._attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers', [])
 
         resultEventSet = EventSetFactory.createEventSet(None)
                 
-        for event in eventSet:                           
-            #event.set('issueTime', self._currentTime) # Try removing this and see if we can issue
+        for event in eventSet:
              
             if not self._selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
                 continue
@@ -236,6 +236,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     continue
             elif trigger == 'hazardEventVisualFeatureChange':
                 self._adjustForVisualFeatureChange(event, eventSetAttrs)
+            elif trigger == 'autoUpdate':
+                self._adjustForAutoUpdate(event, eventSetAttrs)
 
             print self.logMessage("Re-calculating")                                                
             # Re-calculate Motion Vector-related and Probabilistic Information
@@ -246,6 +248,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     
             if trigger == 'dataLayerUpdate':
                 graphProbs = self._probUtils.getGraphProbs(event, self._latestDataLayerTime)
+                #LogUtils.logMessage('[0]', graphProbs)
                 event.set('convectiveProbTrendGraph', graphProbs)
             
             # Construct Updated Visual Features
@@ -412,6 +415,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 changed = True
                 if t == 'duration':
                     graphProbs = self._probUtils._getGraphProbs(event, self._latestDataLayerTime)
+                    #LogUtils.logMessage('[1]', graphProbs)
                     event.set('convectiveProbTrendGraph', graphProbs)
                 elif t == 'convectiveProbTrendGraph':
                     self._ensureLastGraphProbZeroAndUneditable(event)
@@ -548,6 +552,35 @@ class Recommender(RecommenderTemplate.Recommender):
         #self.flush()
         self._probUtils._createIntervalPolys(event, eventSetAttrs, self._nudge, SwathPreset(), 
                                              self._eventSt_ms, timeIntervals, timeDirection)
+
+    ###############################
+    # Visual Features and Nudging #
+    ###############################  
+      
+    def _adjustForAutoUpdate(self, event, eventSetAttrs):
+        self._nudge = True
+        #=======================================================================
+        # # If nudging an issued event, restore the issuedDuration
+        # if not self._showUpstream:
+        #     durationSecs = event.get("durationSecsAtIssuance")
+        #     if durationSecs is not None:
+        #         endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self._eventSt_ms + durationSecs *1000)
+        #         event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS/1000))
+        #         #graphProbs = self._probUtils._getGraphProbsBasedOnDuration(event)
+        #         graphProbs = event.get("graphProbsAtIssuance")
+        #         event.set('convectiveProbTrendGraph', graphProbs)
+        # #=======================================================================
+        # # newMotion = self._probUtils.computeMotionVector(motionVectorTuples, self._eventSt_ms, #self._currentTime,                     
+        # #            event.get('convectiveObjectSpdKts', self._defaultWindSpeed()),
+        # #            event.get('convectiveObjectDir',self._defaultWindDir())) 
+        # # for attr in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+        # #               'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+        # #     event.set(attr, int(newMotion.get(attr)))
+        # #=======================================================================
+        #=======================================================================
+        
+        
+        
  
     ###############################
     # Visual Features and Nudging #
@@ -608,6 +641,7 @@ class Recommender(RecommenderTemplate.Recommender):
                             event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS/1000))
                             #graphProbs = self._probUtils._getGraphProbsBasedOnDuration(event)
                             graphProbs = event.get("graphProbsAtIssuance")
+                            #LogUtils.logMessage('[2]', graphProbs)
                             event.set('convectiveProbTrendGraph', graphProbs)
                                         
         #print "SR Feature ST", featureSt, self._probUtils._displayMsTime(featureSt)
@@ -664,6 +698,7 @@ class Recommender(RecommenderTemplate.Recommender):
         newTimes = [(st,et) for poly, st, et in newTuples]            
         return newPolys, newTimes         
 
+ 
     def _setVisualFeatures(self, event):
         print self.logMessage("Setting Visual Features")
         self.flush()
@@ -1017,6 +1052,10 @@ class Recommender(RecommenderTemplate.Recommender):
         print label
         if self._printEventSetAttributes:
             # TODO Kevin can we just use print?
+            if isinstance(eventSet, list):
+                print "No values in EventSet"
+                return
+                
             eventSetAttrs = eventSet.getAttributes()
             print "trigger: ", eventSetAttrs.get("trigger")
             print "eventIdentifier: ", eventSetAttrs.get("eventIdentifier")
@@ -1039,7 +1078,7 @@ class Recommender(RecommenderTemplate.Recommender):
             import pprint
             if label: print label
             if eventLevel >=1:
-                print event.getEventID(), event.get('objectID')
+                print 'ID:', event.getEventID(), event.get('objectID')
                 print "start, end", event.getStartTime(), event.getEndTime()
                 print "userOwned", event.get('convectiveUserOwned')
             if eventLevel >= 2:
