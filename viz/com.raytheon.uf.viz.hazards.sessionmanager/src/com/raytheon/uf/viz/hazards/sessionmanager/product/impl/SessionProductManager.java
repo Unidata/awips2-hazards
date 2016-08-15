@@ -226,6 +226,8 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jun 23, 2016 19537      Chris.Golden Changed to use new parameter for merging hazard events.
  * Jul 25, 2016 19537      Chris.Golden Changed to use new originator parameter for setting geometry resolution
  *                                      of hazard events.
+ * Aug 15, 2016 18376      Chris.Golden Added code to make garbage collection of the messenger instance
+ *                                      passed in (which is the app builder) more likely.
  * </pre>
  * 
  * @author bsteffen
@@ -266,7 +268,7 @@ public class SessionProductManager implements ISessionProductManager {
      * use the same code for creating these dialogs, it makes it easier for them
      * to be stubbed for testing.
      */
-    private final IMessenger messenger;
+    private IMessenger messenger;
 
     private final SessionManager sessionManager;
 
@@ -889,6 +891,7 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void shutdown() {
         productGen.shutdown();
+        messenger = null;
     }
 
     /*

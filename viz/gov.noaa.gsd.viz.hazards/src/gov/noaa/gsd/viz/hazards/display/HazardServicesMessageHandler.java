@@ -19,7 +19,6 @@ import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
-import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -219,6 +218,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            code that belongs in the spatial presenter or the
  *                                            session manager, in the continuing quest to shrink
  *                                            this class down.
+ * Aug 15, 2016 18376      Chris.Golden       Removed unsubscribing from the event bus when H.S.
+ *                                            closes, as this is already being done in dispose().
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1118,17 +1119,6 @@ public final class HazardServicesMessageHandler {
                 ConsoleAction.ActionType.SITE_CHANGED);
         cAction.setId(action.getSite());
         consoleActionOccurred(cAction);
-    }
-
-    /**
-     * Handle a received shut down action.
-     * 
-     * @param closeAction
-     *            The Hazard Services shutdown notification.
-     */
-    @Handler
-    public void closeActionOccurred(final HazardServicesCloseAction closeAction) {
-        eventBus.unsubscribe(this);
     }
 
     /**

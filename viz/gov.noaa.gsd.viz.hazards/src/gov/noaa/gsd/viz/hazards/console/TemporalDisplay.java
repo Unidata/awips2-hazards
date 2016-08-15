@@ -274,6 +274,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Apr 05, 2016 16885      Chris.Golden      Added support for boolean column values.
  * Jul 25, 2016 19537      Chris.Golden      Changed to work with revamped context menu
  *                                           helper.
+ * Aug 15, 2016 18376      Chris.Golden      Added code to make garbage collection of the
+ *                                           session manager more likely.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1864,6 +1866,13 @@ class TemporalDisplay {
 
         // Update the active alerts.
         updateActiveAlerts(activeAlerts);
+    }
+
+    /**
+     * Dispose of the display.
+     */
+    public void dispose() {
+        eventManager = null;
     }
 
     /**

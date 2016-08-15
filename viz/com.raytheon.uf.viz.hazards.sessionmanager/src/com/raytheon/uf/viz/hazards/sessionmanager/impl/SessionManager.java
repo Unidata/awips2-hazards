@@ -138,6 +138,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jul 26, 2016 20755      Chris.Golden Added ability to save recommender-created/modified hazard
  *                                      events to the database if the recommender requests it.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
+ * Aug 15, 2016 18376      Chris.Golden Added code to unsubscribe session sub-managers from the
+ *                                      event bus to aide in garbage collection.
  * </pre>
  * 
  * @author bsteffen
@@ -254,12 +256,12 @@ public class SessionManager implements
          * observer (done in the stop method)?
          */
         alertsManager.start();
-        eventBus.subscribe(timeManager);
-        eventBus.subscribe(configManager);
-        eventBus.subscribe(eventManager);
-        eventBus.subscribe(productManager);
-        eventBus.subscribe(recommenderManager);
-        eventBus.subscribe(alertsManager);
+        registerForNotification(timeManager);
+        registerForNotification(configManager);
+        registerForNotification(eventManager);
+        registerForNotification(productManager);
+        registerForNotification(recommenderManager);
+        registerForNotification(alertsManager);
 
     }
 
@@ -320,6 +322,13 @@ public class SessionManager implements
 
     @Override
     public void shutdown() {
+
+        unregisterForNotification(timeManager);
+        unregisterForNotification(configManager);
+        unregisterForNotification(eventManager);
+        unregisterForNotification(productManager);
+        unregisterForNotification(recommenderManager);
+        unregisterForNotification(alertsManager);
 
         eventManager.shutdown();
 

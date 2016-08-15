@@ -48,7 +48,6 @@ import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.ConsoleView;
 import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
-import gov.noaa.gsd.viz.hazards.display.action.HazardServicesCloseAction;
 import gov.noaa.gsd.viz.hazards.display.test.AutomatedTests;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
@@ -269,6 +268,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             "classes" of resources) was in the session configuration
  *                                             manager and the spatial view, but those were not
  *                                             appropriate places for it.
+ * Aug 15, 2016 18376      Chris.Golden        Added code to make garbage collection of the session
+ *                                             manager and so forth more likely.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1156,6 +1157,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
             };
             alertVizPresenter = new AlertVizPresenter(sessionManager, eventBus);
+            presenters.add(alertVizPresenter);
             alertVizPresenter.setView(alertVizView);
         }
     }
@@ -1876,6 +1878,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         disposing = true;
 
         messageHandler.dispose();
+        messageHandler = null;
 
         /*
          * Ensure this object no longer listens for frame changes with the
@@ -1886,12 +1889,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
                 .setAppBuilder(null);
 
-        /*
-         * Notify any objects interested in the shutting down of Hazard
-         * Services.
-         */
-        eventBus.publishAsync(new HazardServicesCloseAction());
         sessionManager.shutdown();
+        sessionManager = null;
         eventBus.shutdown();
 
         /*

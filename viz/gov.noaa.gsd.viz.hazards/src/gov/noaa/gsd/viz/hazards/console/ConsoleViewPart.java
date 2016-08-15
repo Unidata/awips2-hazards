@@ -63,6 +63,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Feb 09, 2015   2331     Chris.Golden      Changed to use time range boundaries
  *                                           for the events.
  * May 05, 2015   6898     Chris.Cody        Pan & Scale Visible and Selected Time
+ * Aug 15, 2016  18376     Chris.Golden      Added code to make garbage collection of
+ *                                           the session manager more likely.
  * </pre>
  * 
  * @author Chris.Golden
@@ -199,6 +201,7 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     @Override
     public void dispose() {
         modeListener.dispose();
+        temporalDisplay.dispose();
         super.dispose();
     }
 

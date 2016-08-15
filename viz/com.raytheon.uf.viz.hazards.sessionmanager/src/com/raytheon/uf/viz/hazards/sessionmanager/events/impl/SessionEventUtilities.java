@@ -76,6 +76,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Jun 23, 2016 19537      Chris.Golden Added option when merging hazard events to keep
  *                                      old visual featuers list if new event's list is
  *                                      empty (previously, this was mandatory).
+ * Aug 09, 2016 18376      Chris.Golden Fixed incidental bug that occurred because time
+ *                                      range boundaries were not yet calculated for an
+ *                                      event that was being merged, since the setting
+ *                                      of its type had not occurred yet.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -117,13 +121,25 @@ public class SessionEventUtilities {
             boolean forceMerge, boolean keepVisualFeatures,
             IOriginator originator) {
         oldEvent.setSiteID(newEvent.getSiteID(), originator);
+
+        /*
+         * Set the hazard type and time range via the session manager if not a
+         * forced merge.
+         */
         if (forceMerge) {
+            oldEvent.setHazardType(newEvent.getPhenomenon(),
+                    newEvent.getSignificance(), newEvent.getSubType(),
+                    originator);
             oldEvent.setTimeRange(newEvent.getStartTime(),
                     newEvent.getEndTime(), originator);
         } else {
+            eventManager.setEventType(oldEvent, newEvent.getPhenomenon(),
+                    newEvent.getSignificance(), newEvent.getSubType(),
+                    originator);
             eventManager.setEventTimeRange(oldEvent, newEvent.getStartTime(),
                     newEvent.getEndTime(), originator);
         }
+
         oldEvent.setCreationTime(newEvent.getCreationTime(), originator);
         oldEvent.setGeometry(newEvent.getGeometry(), originator);
 
@@ -139,18 +155,6 @@ public class SessionEventUtilities {
             oldEvent.setVisualFeatures(newEvent.getVisualFeatures(), originator);
         }
 
-        /*
-         * Set the hazard type via the session manager if not a forced merge.
-         */
-        if (forceMerge) {
-            oldEvent.setHazardType(newEvent.getPhenomenon(),
-                    newEvent.getSignificance(), newEvent.getSubType(),
-                    originator);
-        } else {
-            eventManager.setEventType(oldEvent, newEvent.getPhenomenon(),
-                    newEvent.getSignificance(), newEvent.getSubType(),
-                    originator);
-        }
         oldEvent.setHazardMode(newEvent.getHazardMode(), originator);
 
         /*

@@ -162,6 +162,8 @@ import com.vividsolutions.jts.geom.Point;
  *                                           continues. Added Javadoc comments, continued separation of
  *                                           concerns between view, presenter, display, and mouse
  *                                           handlers.
+ * Aug 15, 2016  18376     Chris.Golden      Added code to make garbage collection of the session
+ *                                           manager and app builder more likely.
  * </pre>
  * 
  * @author Chris.Golden
@@ -276,7 +278,7 @@ public class SpatialPresenter extends
      * Handler to be notified when the spatial display is disposed of, changes
      * frames, etc.
      */
-    private final ISpatialDisplayHandler displayHandler;
+    private ISpatialDisplayHandler displayHandler;
 
     // Public Constructors
 
@@ -568,6 +570,12 @@ public class SpatialPresenter extends
         /*
          * No action.
          */
+    }
+
+    @Override
+    protected void doDispose() {
+        spatialEntityManager.dispose();
+        displayHandler = null;
     }
 
     // Package Methods
@@ -923,7 +931,9 @@ public class SpatialPresenter extends
      * Handle the closing of the spatial display.
      */
     void handleSpatialDisplayClosed() {
-        displayHandler.spatialDisplayDisposed();
+        if (displayHandler != null) {
+            displayHandler.spatialDisplayDisposed();
+        }
     }
 
     /**

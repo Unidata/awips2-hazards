@@ -32,15 +32,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
- * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
- * 
- * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Aug  9, 2013 1921       daniel.s.schaffer Support of replacement of JSON with POJOs
+ * Dec 03, 2013 2182       daniel.s.schaffer Refactoring - eliminated IHazardsIF
  * May 17, 2014 2925       Chris.Golden      Removed protected variables; everything
  *                                           they provided is either accessible using
  *                                           getModel().getXxxxManager(), or is for
  *                                           deprecated JSON-to-Java code.
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Aug 15, 2016 18376      Chris.Golden      Changed to work with newest version of
+ *                                           superclass.
  * </pre>
  * 
  * @author Chris.Golden
@@ -69,17 +70,6 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
     // Public Methods
 
     /**
-     * Dispose of the presenter. This implementation does nothing, but
-     * subclasses may override this to, for example, unregister for
-     * notifications.
-     */
-    @Override
-    public void dispose() {
-
-        // No action.
-    }
-
-    /**
      * Get the session manager.
      * 
      * TODO: Get rid of this method, replacing calls to it with
@@ -98,5 +88,15 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
     @Deprecated
     public ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager() {
         return getModel();
+    }
+
+    // Protected Methods
+
+    @Override
+    protected void doDispose() {
+
+        /*
+         * No action.
+         */
     }
 }

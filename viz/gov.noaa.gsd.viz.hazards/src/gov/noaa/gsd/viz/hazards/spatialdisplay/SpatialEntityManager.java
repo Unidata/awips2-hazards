@@ -83,6 +83,9 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      to incorrectly change the indices
  *                                      and thus eventually lead to
  *                                      index-out-of-bounds exceptions.
+ * Aug 15, 2016   18376    Chris.Golden Added code to make garbage
+ *                                      collection of the session manager
+ *                                      more likely.
  * </pre>
  * 
  * @author Chris.Golden
@@ -141,7 +144,7 @@ class SpatialEntityManager {
     /**
      * Session manager.
      */
-    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     /**
      * View associated with the presenter using this manager.
@@ -166,7 +169,7 @@ class SpatialEntityManager {
     /**
      * Geo-map utilities, for collecting map-related geometries for hatching.
      */
-    private final GeoMapUtilities geoMapUtilities;
+    private GeoMapUtilities geoMapUtilities;
 
     /**
      * Overall list of spatial entities.
@@ -265,6 +268,14 @@ class SpatialEntityManager {
      */
     void setView(ISpatialView<?, ?> view) {
         this.view = view;
+    }
+
+    /**
+     * Dispose of the manager.
+     */
+    void dispose() {
+        sessionManager = null;
+        geoMapUtilities = null;
     }
 
     /**

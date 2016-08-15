@@ -31,7 +31,7 @@ import java.util.Set;
  * Jul 15, 2013     585    Chris.Golden   Changed to have event bus passed
  *                                        in so that it did not have to be a
  *                                        singleton.
- * Aug  9, 2013    1921    daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug  9, 2013    1921    Dan Schaffer   Support of replacement of JSON with POJOs
  * Aug 22, 2013    1936    Chris.Golden   Added console countdown timers.
  * May 17, 2014    2925    Chris.Golden   Changed to initialize a view when that
  *                                        view is first attached, or reinitialize
@@ -46,7 +46,12 @@ import java.util.Set;
  *                                        (since presenters should manipulate the
  *                                        model directly, and should be notified of
  *                                        changes to the model via @Handler methods.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014    4959    Dan Schaffer   Spatial Display cleanup and other bug fixes
+ * Aug 15, 2016   18376    Chris.Golden   Changed reference to model to be non-final
+ *                                        so that it may be zeroed out when this
+ *                                        class's instances are disposed of, and also
+ *                                        added new abstract doDispose() method that
+ *                                        is called by dispose(), which is now final.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,7 +69,7 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     /**
      * Model.
      */
-    private final M model;
+    private M model;
 
     /**
      * Event bus used to signal changes.
@@ -156,10 +161,14 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     public abstract void modelChanged(EnumSet<E> changed);
 
     /**
-     * Dispose of the presenter. This may be implemented, for example, to
-     * unregister for notifications for which the presenter was listening.
+     * Dispose of the presenter. If overridden, This may be implemented, for
+     * example, to unregister for notifications for which the presenter was
+     * listening.
      */
-    public abstract void dispose();
+    public final void dispose() {
+        doDispose();
+        model = null;
+    }
 
     // Protected Methods
 
@@ -183,6 +192,14 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
      *            View to be initialized.
      */
     protected abstract void reinitialize(V view);
+
+    /**
+     * Perform any subclass-specific disposal. This method is called by
+     * {@link #dispose()} before the latter removes access to the model, i.e.
+     * for the duration of the execution of this method, {@link #getModel()}
+     * will return whatever model was passed in at creation time.
+     */
+    protected abstract void doDispose();
 
     /**
      * Get the model.

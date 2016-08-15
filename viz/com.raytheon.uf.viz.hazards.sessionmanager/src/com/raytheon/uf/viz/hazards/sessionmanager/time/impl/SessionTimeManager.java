@@ -104,6 +104,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Apr 25, 2016 18129      Chris.Golden Changed time-interval-triggered tasks to be
  *                                      triggered close to the instant when the CAVE
  *                                      current time ticks over to a new minute.
+ * Aug 15, 2016 18376      Chris.Golden Changed current time provider to be a class
+ *                                      variable instead of an instance variable, so
+ *                                      that it does not contain a reference to the
+ *                                      time manager object (which it doesn't need
+ *                                      anyway), to facilitate in garbage collection.
  * </pre>
  * 
  * @author bsteffen
@@ -138,17 +143,17 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
     };
 
-    // Private Variables
-
     /**
      * Provider of the current time.
      */
-    private final ICurrentTimeProvider currentTimeProvider = new ICurrentTimeProvider() {
+    private static final ICurrentTimeProvider CURRENT_TIME_PROVIDER = new ICurrentTimeProvider() {
         @Override
         public long getCurrentTime() {
             return SimulatedTime.getSystemTime().getMillis();
         }
     };
+
+    // Private Variables
 
     /**
      * Notification sender, used to send out time-related notifications.
@@ -252,7 +257,7 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     @Override
     public ICurrentTimeProvider getCurrentTimeProvider() {
-        return currentTimeProvider;
+        return CURRENT_TIME_PROVIDER;
     }
 
     @Override

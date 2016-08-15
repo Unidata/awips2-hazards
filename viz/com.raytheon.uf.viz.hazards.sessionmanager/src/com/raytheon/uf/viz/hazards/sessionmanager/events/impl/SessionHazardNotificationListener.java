@@ -56,6 +56,13 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      the database.
  * Jun 23, 2016 19537      Chris.Golden Changed to use new parameter for
  *                                      merging hazard events.
+ * Aug 15, 2016 18376      Chris.Golden Added use of new temporary session
+ *                                      event manager method isShutDown() to
+ *                                      prevent forwarding of notifications
+ *                                      to event managers that are shut down,
+ *                                      until Redmine issue #21271 is resolved
+ *                                      and garbage collection problems no
+ *                                      longer exist.
  * </pre>
  * 
  * @author bsteffen
@@ -83,10 +90,14 @@ public class SessionHazardNotificationListener implements INotificationObserver 
         }
     }
 
+    /*
+     * TODO: Remove use of manager.isShutDown() within method body once garbage
+     * collection issues have been sorted out; see Redmine issue #21271.
+     */
     @Override
     public void notificationArrived(NotificationMessage[] messages) {
         ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
-        if (manager == null) {
+        if ((manager == null) || manager.isShutDown()) {
             NotificationManagerJob.removeObserver(
                     HazardNotification.HAZARD_TOPIC, this);
             return;

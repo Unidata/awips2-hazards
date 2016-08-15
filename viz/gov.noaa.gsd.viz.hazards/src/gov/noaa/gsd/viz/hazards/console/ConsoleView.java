@@ -98,6 +98,13 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           Hazard Services was closing so that another
  *                                           session of Hazard Services could open via
  *                                           a bundle load, causing an exception.
+ * Aug 15, 2016   18376    Chris.Golden      Added code to remove any actions created
+ *                                           for the menu or toolbar in order to aid
+ *                                           garbage collection. However, this does not
+ *                                           appear to be allowing said actions to be
+ *                                           garbage-collected; additional work will
+ *                                           be needed under the dedicated ticket
+ *                                           #21271.
  * </pre>
  * 
  * @author Chris.Golden
@@ -790,6 +797,25 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
 
             return actions;
         }
+    }
+
+    @Override
+    public void dispose() {
+
+        /*
+         * Remove all toolbar and menubar items.
+         */
+        executeOnCreatedViewPart(new Runnable() {
+
+            @Override
+            public void run() {
+                IActionBars actionBars = getViewPart()
+                        .getMainActionBarsManager();
+                actionBars.getToolBarManager().removeAll();
+                actionBars.getMenuManager().removeAll();
+            }
+        });
+        super.dispose();
     }
 
     @Override

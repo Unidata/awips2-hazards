@@ -211,6 +211,7 @@ class Recommender(RecommenderTemplate.Recommender):
             # Origin Database
             #  From another machine: create Visual Features
             if origin == 'database':
+                self._initializeEvent(event)
                 self._setVisualFeatures(event)
                 resultEventSet.add(event)
                 continue
@@ -273,8 +274,11 @@ class Recommender(RecommenderTemplate.Recommender):
             if abs(self._currentTime - newTime) / (60*1000) > self._upstreamTimeLimit():
                     continue
             self._dataLayerTimes.append(newTime)
-        self._latestDataLayerTime = self._dataLayerTimes[-1]
-        
+        if self._dataLayerTimes:
+            self._latestDataLayerTime = self._dataLayerTimes[-1]
+        else:
+            self._latestDataLayerTime = self._currentTime        
+
         print 'latestDataLayerTime', self._probUtils._displayMsTime(self._latestDataLayerTime)
         print 'dataLayerTimes'
         for t in self._dataLayerTimes:

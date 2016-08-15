@@ -104,6 +104,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           have the correct possible-value boundaries.
  * Mar 15, 2015   15676    Chris.Golden      Removed visible time range reaction, as
  *                                           the notification is obsolete.
+ * Aug 15, 2016   18376    Chris.Golden      Removed unregistering for notification
+ *                                           at shutdown, since this is already done
+ *                                           by the session manager (and it was
+ *                                           asymmetric to have it done here, since
+ *                                           the preceding registering for notification
+ *                                           was done by the session manager, not this
+ *                                           object).
  * </pre>
  * 
  * @author Chris.Golden
@@ -244,11 +251,6 @@ public class ConsolePresenter extends
             getView().updateTitle(
                     getModel().getConfigurationManager().getSiteID());
         }
-    }
-
-    @Override
-    public void dispose() {
-        getModel().unregisterForNotification(this);
     }
 
     // Protected Methods

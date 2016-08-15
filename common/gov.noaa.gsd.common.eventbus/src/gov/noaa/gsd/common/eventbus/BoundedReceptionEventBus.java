@@ -49,6 +49,8 @@ import net.engio.mbassy.listener.Handler;
  * May 14, 2014   2925     Chris.Golden Corrected Javadoc.
  * Jul 03, 2014   4084     Chris.Golden Made shutdown() shut down the nested
  *                                      event bus as well as itself.
+ * Aug 15, 2016  18376     Chris.Golden Fixed problem with notifications
+ *                                      being published after shutdown.
  * </pre>
  * 
  * @author Chris.Golden
@@ -113,6 +115,11 @@ public class BoundedReceptionEventBus<T> extends MBassador<T> {
     private final MBassador<EventWrapper> asyncBus = new MBassador<>(
             BusConfiguration.Default(0));
 
+    /**
+     * Flag indicating whether or not the bus has been shut down.
+     */
+    private boolean shutdown = false;
+
     // Public Constructors
 
     /**
@@ -141,19 +148,33 @@ public class BoundedReceptionEventBus<T> extends MBassador<T> {
     // Public Methods
 
     @Override
+    public void publish(T message) {
+        if (shutdown == false) {
+            super.publish(message);
+        }
+    }
+
+    @Override
     public MessagePublication publishAsync(T message) {
+        if (shutdown) {
+            return null;
+        }
         return asyncBus.publishAsync(new EventWrapper(message));
     }
 
     @Override
     public MessagePublication publishAsync(T message, long timeout,
             TimeUnit unit) {
+        if (shutdown) {
+            return null;
+        }
         return asyncBus.publishAsync(new EventWrapper(message), timeout, unit);
     }
 
     @Override
     public void shutdown() {
         asyncBus.shutdown();
+        shutdown = true;
         super.shutdown();
     }
 

@@ -91,6 +91,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 27, 2016   19924    Chris.Golden Changed to pass all data layer times to
  *                                      a recommender when requested, not just the
  *                                      latest data layer.
+ * Aug 15, 2016   18376    Chris.Golden Added code to make garbage collection of the
+ *                                      messenger instance passed in (which is the
+ *                                      app builder) more likely.
  * </pre>
  * 
  * @author Chris.Golden
@@ -149,7 +152,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     /**
      * Messenger used to communicate with the user.
      */
-    private final IMessenger messenger;
+    private IMessenger messenger;
 
     /**
      * Engine to be used to actually run recommenders.
@@ -454,6 +457,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     @Override
     public void shutdown() {
         recommenderEngine.shutdownEngine();
+        messenger = null;
     }
 
     // Private Methods

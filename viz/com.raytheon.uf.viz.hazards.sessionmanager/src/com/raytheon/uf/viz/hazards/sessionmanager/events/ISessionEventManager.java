@@ -88,11 +88,14 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jun 06, 2016 19432      Chris.Golden Added method to set a flag indicating whether newly-created
  *                                      (by the user) hazard events should be added to the selected
  *                                      set or not.
- * Jul 25, 2016   19537    Chris.Golden Changed collections of events that were returned into lists,
+ * Jul 25, 2016 19537      Chris.Golden Changed collections of events that were returned into lists,
  *                                      since the unordered nature of the collections was not
  *                                      appropriate. Added originator parameters for methods for
  *                                      setting high- and low-res geometries for hazard events.
  *                                      Removed obsolete set-geometry method.
+ * Aug 15, 2016 18376      Chris.Golden Added temporary method isShutDown() to allow the session
+ *                                      hazard event notification listener to know whether or not
+ *                                      to forward on notifications.
  * </pre>
  * 
  * @author bsteffen
@@ -662,4 +665,17 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            value.
      */
     public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected);
+
+    /**
+     * Determine whether or not this manager is shut down.
+     * 
+     * @return <code>true</code> if the manager is shut down, <code>false</code>
+     *         otherwise.
+     * 
+     * @deprecated Remove this method once garbage collection is sorted out, as
+     *             it will no longer be needed at that point; see Redmine issue
+     *             #21271.
+     */
+    @Deprecated
+    public boolean isShutDown();
 }

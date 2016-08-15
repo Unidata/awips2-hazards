@@ -232,6 +232,16 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      configuration manager, but the work of tracking
  *                                      data layer changes is done by the app builder
  *                                      where it belongs.
+ * Aug 09, 2016 18376      Chris.Golden Changed PythonJobCoordinator instance to be
+ *                                      a static instead of a member variable, and
+ *                                      removed any shutdown of the coordinator, so that
+ *                                      it is reused between H.S. sessions within the
+ *                                      same CAVE session. Also added tracking of
+ *                                      file observers and their associated files during
+ *                                      this class's instances' lifetimes so that the
+ *                                      observers may be removed when shutting down,
+ *                                      which will help with garbage collecting these
+ *                                      class's instances.
  * </pre>
  * 
  * @author bsteffen
@@ -302,6 +312,13 @@ public class SessionConfigurationManager implements
             Collections.<String, String> emptyMap(),
             Collections.<String> emptySet(), null, null);
 
+    /**
+     * Python job coordinator that handles both metadata fetching scripts and
+     * event modifying scripts.
+     */
+    private static final PythonJobCoordinator<ContextSwitchingPythonEval> PYTHON_JOB_COORDINATOR = PythonJobCoordinator
+            .newInstance(new ConfigScriptFactory());
+
     private ISessionNotificationSender notificationSender;
 
     private final JobPool loaderPool = new JobPool(
@@ -335,13 +352,6 @@ public class SessionConfigurationManager implements
 
     private String siteId;
 
-    /**
-     * Python job coordinator that handles both metadata fetching scripts and
-     * event modifying scripts.
-     */
-    private final PythonJobCoordinator<ContextSwitchingPythonEval> coordinator = PythonJobCoordinator
-            .newInstance(new ConfigScriptFactory());
-
     private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
 
     private Map<String, ImmutableList<String>> replaceByTypesForHazardTypes;
@@ -366,6 +376,8 @@ public class SessionConfigurationManager implements
 
     private boolean runRecommendersAtRegularIntervals;
 
+    private final Map<LocalizationFile, ILocalizationFileObserver> observersForLocalizationFiles = new HashMap<>();
+
     SessionConfigurationManager() {
 
     }
@@ -381,50 +393,55 @@ public class SessionConfigurationManager implements
 
         LocalizationContext commonStaticBase = pathManager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        LocalizationFile settingsDir = pathManager.getLocalizationFile(
-                commonStaticBase, "hazardServices/settings/");
-        settingsDir
-                .addFileUpdatedObserver(new SettingsDirectoryUpdateObserver());
+        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
+                commonStaticBase, "hazardServices/settings/"),
+                new SettingsDirectoryUpdateObserver());
 
         loadAllSettings();
 
-        // Add observer to base file
-        LocalizationFile file = pathManager.getLocalizationFile(
+        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
                 commonStaticBase,
-                HazardsConfigurationConstants.START_UP_CONFIG_PY);
-        file.addFileUpdatedObserver(new StartUpConfigObserver());
+                HazardsConfigurationConstants.START_UP_CONFIG_PY),
+                new StartUpConfigObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.START_UP_CONFIG_PY);
-        startUpConfig = new ConfigLoader<StartUpConfig>(file,
+        startUpConfig = new ConfigLoader<StartUpConfig>(
+                pathManager
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.START_UP_CONFIG_PY),
                 StartUpConfig.class);
         loaderPool.schedule(startUpConfig);
 
-        // Add observer to base file
-        file = pathManager.getLocalizationFile(commonStaticBase,
-                HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
-        file.addFileUpdatedObserver(new HazardCategoriesObserver());
+        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
+                commonStaticBase,
+                HazardsConfigurationConstants.HAZARD_CATEGORIES_PY),
+                new HazardCategoriesObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
-        hazardCategories = new ConfigLoader<HazardCategories>(file,
+        hazardCategories = new ConfigLoader<HazardCategories>(
+                pathManager
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY),
                 HazardCategories.class);
         loaderPool.schedule(hazardCategories);
 
         // THe HazardMetaData needs an include path that includes Hazard
         // Categories.
         StringBuilder metadataIncludes = new StringBuilder();
-        metadataIncludes.append(file.getFile().getParent());
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.VTEC_CONSTANTS_PY);
-        metadataIncludes.append(":").append(file.getFile().getParent());
+        metadataIncludes.append(pathManager
+                .getStaticLocalizationFile(
+                        HazardsConfigurationConstants.HAZARD_CATEGORIES_PY)
+                .getFile().getParent());
+        metadataIncludes
+                .append(":")
+                .append(pathManager
+                        .getStaticLocalizationFile(
+                                HazardsConfigurationConstants.VTEC_CONSTANTS_PY)
+                        .getFile().getParent());
 
         // Add observer to base file
-        file = pathManager.getLocalizationFile(commonStaticBase,
-                HazardsConfigurationConstants.HAZARD_METADATA_PY);
-        file.addFileUpdatedObserver(new HazardMetaDataObserver());
+        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
+                commonStaticBase,
+                HazardsConfigurationConstants.HAZARD_METADATA_PY),
+                new HazardMetaDataObserver());
 
-        file = pathManager
+        LocalizationFile file = pathManager
                 .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_METADATA_PY);
         metadataIncludes.append(":").append(file.getFile().getParent());
         for (LocalizationFile f : pathManager.listStaticFiles(
@@ -438,23 +455,28 @@ public class SessionConfigurationManager implements
         loaderPool.schedule(hazardMetaData);
 
         // Add observer to base file
-        file = pathManager.getLocalizationFile(commonStaticBase,
-                HazardsConfigurationConstants.HAZARD_TYPES_PY);
-        file.addFileUpdatedObserver(new HazardTypesObserver());
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase,
+                        HazardsConfigurationConstants.HAZARD_TYPES_PY),
+                new HazardTypesObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
-        hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class);
+        hazardTypes = new ConfigLoader<HazardTypes>(
+                pathManager
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY),
+                HazardTypes.class);
         loaderPool.schedule(hazardTypes);
 
         /*
          * Load any event-driven tool specifications from configuration, and
          * create the executors for them, saving them along with their minute
          * intervals as appropriate.
+         * 
+         * TODO: Think about how to allow a file observer for event-driven tools
+         * to reinitialize said tool running.
          */
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.EVENT_DRIVEN_TOOLS_PY);
-        eventDrivenTools = new ConfigLoader<EventDrivenTools>(file,
+        eventDrivenTools = new ConfigLoader<EventDrivenTools>(
+                pathManager
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.EVENT_DRIVEN_TOOLS_PY),
                 EventDrivenTools.class);
         loaderPool.schedule(eventDrivenTools);
         EventDrivenTools tools = eventDrivenTools.getConfig();
@@ -501,37 +523,57 @@ public class SessionConfigurationManager implements
         setEventDrivenToolRunningEnabled(true);
 
         // Add observer to base file
-        file = pathManager.getLocalizationFile(commonStaticBase,
-                HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
-        file.addFileUpdatedObserver(new HazardAlertsConfigObserver());
+        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
+                commonStaticBase,
+                HazardsConfigurationConstants.ALERTS_CONFIG_PATH),
+                new HazardAlertsConfigObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
-        alertsConfig = new ConfigLoader<HazardAlertsConfig>(file,
+        alertsConfig = new ConfigLoader<HazardAlertsConfig>(
+                pathManager
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.ALERTS_CONFIG_PATH),
                 HazardAlertsConfig.class);
         loaderPool.schedule(alertsConfig);
 
         // Add observer to base file
-        file = pathManager.getLocalizationFile(commonStaticBase,
-                HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
-        file.addFileUpdatedObserver(new ProductGeneratorTableObserver());
+        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
+                commonStaticBase,
+                HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY),
+                new ProductGeneratorTableObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
-        pgenTable = new ConfigLoader<ProductGeneratorTable>(file,
+        pgenTable = new ConfigLoader<ProductGeneratorTable>(
+                pathManager
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY),
                 ProductGeneratorTable.class);
         loaderPool.schedule(pgenTable);
 
         // Add observer to base file
-        file = pathManager.getLocalizationFile(commonStaticBase,
-                HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
-        file.addFileUpdatedObserver(new DefaultConfigObserver());
+        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
+                commonStaticBase,
+                HazardsConfigurationConstants.DEFAULT_CONFIG_PY),
+                new DefaultConfigObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
-        settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
+        settingsConfig = new ConfigLoader<SettingsConfig[]>(
+                pathManager
+                        .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY),
                 SettingsConfig[].class, "viewConfig");
         loaderPool.schedule(settingsConfig);
+    }
+
+    /**
+     * Associate the specified localization file with the specified observer by
+     * assigning the latter as a listener for the former, and by recording the
+     * association so that it may be undone later.
+     * 
+     * @param localizationFile
+     *            Localization file to be associated.
+     * @param observer
+     *            Observer to be assigned with the file.
+     */
+    private void associateObserverWithLocalizationFile(
+            LocalizationFile localizationFile,
+            ILocalizationFileObserver observer) {
+        localizationFile.addFileUpdatedObserver(observer);
+        observersForLocalizationFiles.put(localizationFile, observer);
     }
 
     protected void loadAllSettings() {
@@ -775,7 +817,7 @@ public class SessionConfigurationManager implements
                 hazardEvent, ENVIRONMENT);
         Map<String, Object> result = null;
         try {
-            result = coordinator.submitSyncJob(executor);
+            result = PYTHON_JOB_COORDINATOR.submitSyncJob(executor);
         } catch (Exception e) {
             statusHandler.error("Error executing metadata-fetching job.", e);
             return EMPTY_HAZARD_EVENT_METADATA;
@@ -967,7 +1009,7 @@ public class SessionConfigurationManager implements
                     });
                 }
             };
-            coordinator.submitAsyncJob(executor, pythonJobListener);
+            PYTHON_JOB_COORDINATOR.submitAsyncJob(executor, pythonJobListener);
         } catch (Exception e) {
             handleEventModifyingScriptExecutionError(hazardEvent, functionName,
                     e);
@@ -1621,7 +1663,25 @@ public class SessionConfigurationManager implements
 
     @Override
     public void shutdown() {
-        coordinator.shutdown();
+
+        /*
+         * Remove the observers for localization file changes, and clear the
+         * map.
+         */
+        for (Entry<LocalizationFile, ILocalizationFileObserver> entry : observersForLocalizationFiles
+                .entrySet()) {
+            entry.getKey().removeFileUpdatedObserver(entry.getValue());
+        }
+        observersForLocalizationFiles.clear();
+
+        /*
+         * Do nothing with the Python job coordinator. Previously, the
+         * PYTHON_JOB_COORDINATOR (which was at that time an instance variable,
+         * not a static constant) was shut down, but since Jep and numpy do not
+         * play well together when a Jep instance is shut down and then another
+         * one started that also uses numpy, the coordinator needs to be kept
+         * around and functional in case H.S. starts up again.
+         */
     }
 
 }

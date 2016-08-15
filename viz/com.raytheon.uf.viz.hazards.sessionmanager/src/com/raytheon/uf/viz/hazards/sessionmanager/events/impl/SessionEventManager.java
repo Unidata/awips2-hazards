@@ -393,6 +393,10 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      out visual features, unlike the storing of events when issued.
  *                                      Also added ability to avoid saving any events with "potential"
  *                                      status.
+ * Aug 15, 2016   18376    Chris.Golden Added code to make garbage collection of the messenger instance
+ *                                      passed in (which is the app builder) more likely. Also added
+ *                                      implementation of new temporary method from interface that indicates
+ *                                      whether or not the manager has been shut down.
  * </pre>
  * 
  * @author bsteffen
@@ -547,7 +551,7 @@ public class SessionEventManager implements
      * use the same code for creating these dialogs, it makes it easier for them
      * to be stubbed for testing.
      */
-    private final IMessenger messenger;
+    private IMessenger messenger;
 
     private final GeometryFactory geometryFactory;
 
@@ -570,6 +574,15 @@ public class SessionEventManager implements
     private final RiverForecastManager riverForecastManager;
 
     private boolean addCreatedEventsToSelected;
+
+    /**
+     * Flag indicating whether the manager has been shut down.
+     * 
+     * @deprecated This should be removed once garbage collection problems have
+     *             been sorted out; see Redmine issue #21271.
+     */
+    @Deprecated
+    private boolean shutDown = false;
 
     // Public Constructors
 
@@ -2422,7 +2435,7 @@ public class SessionEventManager implements
          * visual features; this may need to trigger a recommender.
          */
         if (originator == Originator.DATABASE) {
-            this.hazardVisualFeatureChanged(new SessionEventVisualFeaturesModified(
+            hazardVisualFeatureChanged(new SessionEventVisualFeaturesModified(
                     this, oevent, Collections.<String> emptySet(), originator));
         }
         return oevent;
@@ -3687,13 +3700,15 @@ public class SessionEventManager implements
 
         /*
          * TODO: Decide whether expiration is to be done in Java code or not.
-         * For now, this code is commented out; not expiration of events will
+         * For now, this code is commented out; no expiration of events will
          * occur. This is not a permanent solution.
          */
         // eventExpirationTimer.cancel();
         // eventExpirationTimer = null;
         SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
                 timeListener);
+        messenger = null;
+        shutDown = true;
     }
 
     /**
@@ -4544,5 +4559,15 @@ public class SessionEventManager implements
     @Override
     public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected) {
         this.addCreatedEventsToSelected = addCreatedEventsToSelected;
+    }
+
+    /*
+     * TODO: Remove once garbage collection is sorted out; see Redmine issue
+     * #21271.
+     */
+    @Override
+    @Deprecated
+    public boolean isShutDown() {
+        return shutDown;
     }
 }
