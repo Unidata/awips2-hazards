@@ -84,7 +84,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.engio.mbassy.bus.config.BusConfiguration;
 import net.engio.mbassy.bus.error.IPublicationErrorHandler;
 import net.engio.mbassy.bus.error.PublicationError;
 
@@ -270,6 +269,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             appropriate places for it.
  * Aug 15, 2016 18376      Chris.Golden        Added code to make garbage collection of the session
  *                                             manager and so forth more likely.
+ * Aug 19, 2016 16259      Chris.Golden        Changed event bus to use only one each of dispatcher and
+ *                                             handler threads, so as to avoid messages arriving out
+ *                                             of order.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -334,10 +336,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     // Private Variables
 
     /**
-     * Event bus.
+     * Event bus, configured to have one each dispatcher and handler thread;
+     * previously, with two or more of either, it was possible for out-of-order
+     * reception by handlers of asynchronously-posted messages to occur.
      */
     private final BoundedReceptionEventBus<Object> eventBus = new BoundedReceptionEventBus<>(
-            BusConfiguration.Default(0), RUNNABLE_ASYNC_SCHEDULER);
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Implementation of a temporal frame context provider.

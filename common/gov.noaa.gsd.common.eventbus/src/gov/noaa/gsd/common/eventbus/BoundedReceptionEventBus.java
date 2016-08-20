@@ -51,12 +51,31 @@ import net.engio.mbassy.listener.Handler;
  *                                      event bus as well as itself.
  * Aug 15, 2016  18376     Chris.Golden Fixed problem with notifications
  *                                      being published after shutdown.
+ * Aug 19, 2016  16259     Chris.Golden Changed nested event bus to use only
+ *                                      one each of dispatcher and handler
+ *                                      threads, so as to avoid messages
+ *                                      arriving out of order.
+ * Aug 22, 2016  19537     Chris.Golden Added constants
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class BoundedReceptionEventBus<T> extends MBassador<T> {
+
+    // Private Static Constants
+
+    /**
+     * Number of dispatch threads allowed. More than one can occasionally cause
+     * out-of-order reception by handlers of messages published asynchronously.
+     */
+    private static final int DISPATCH_THREAD_COUNT = 1;
+
+    /**
+     * Number of handler threads allowed. More than one can occasionally cause
+     * out-of-order reception by handlers of messages published asynchronously.
+     */
+    private static final int HANDLER_THREAD_COUNT = 1;
 
     // Private Classes
 
@@ -110,10 +129,14 @@ public class BoundedReceptionEventBus<T> extends MBassador<T> {
      * reason that another event bus is used is because {@link EventWrapper}
      * cannot implement the generic type <code>T</code>, so there is no way to
      * have the main event bus handle both <code>EventWrapper</code> instances
-     * and objects of generic type <code>T</code>.
+     * and objects of generic type <code>T</code>. This nested event bus is
+     * configured to have one each dispatcher and handler thread; previously,
+     * with two or more of either, it was possible for out-of-order reception by
+     * handlers of asynchronously-posted messages to occur.
      */
     private final MBassador<EventWrapper> asyncBus = new MBassador<>(
-            BusConfiguration.Default(0));
+            BusConfiguration.Default(DISPATCH_THREAD_COUNT,
+                    HANDLER_THREAD_COUNT, HANDLER_THREAD_COUNT));
 
     /**
      * Flag indicating whether or not the bus has been shut down.
@@ -125,17 +148,16 @@ public class BoundedReceptionEventBus<T> extends MBassador<T> {
     /**
      * Construct a standard instance.
      * 
-     * @param configuration
-     *            Configuration to be used when building this instance.
      * @param receiverThreadScheduler
      *            Scheduler to be used to republish events back on the
      *            appropriate receiver threads. The specified object must take
      *            {@link Runnable} objects and schedule them to be run
      *            asynchronously on said threads.
      */
-    public BoundedReceptionEventBus(BusConfiguration configuration,
+    public BoundedReceptionEventBus(
             IRunnableAsynchronousScheduler receiverThreadScheduler) {
-        super(configuration);
+        super(BusConfiguration.Default(DISPATCH_THREAD_COUNT,
+                HANDLER_THREAD_COUNT, HANDLER_THREAD_COUNT));
         this.receiverThreadScheduler = receiverThreadScheduler;
 
         /*
