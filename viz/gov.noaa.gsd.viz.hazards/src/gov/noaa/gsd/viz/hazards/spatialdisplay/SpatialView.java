@@ -10,6 +10,9 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Toggle;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
@@ -17,6 +20,15 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapRes
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
+import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
+import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -69,6 +81,12 @@ import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Spatial display view, which manages the spatial display.
+ * <p>
+ * The view manages both the {@link SpatialDisplay}, a CAVE viz resource, as
+ * well as, if necessary, an instance of {@link SelectByAreaDbMapResource},
+ * another viz resource. The latter is used only when the user is creating or
+ * modifying a hazard event's area using the select-by-area approach.
+ * </p>
  * 
  * <pre>
  * 
@@ -76,23 +94,23 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Jul 10, 2013    585     Chris.Golden      Changed to support loading from bundle.
- * Jul 18, 2013   1264     Chris.Golden      Added support for drawing lines and
+ * Jul 10, 2013  585       Chris.Golden      Changed to support loading from bundle.
+ * Jul 18, 2013 1264       Chris.Golden      Added support for drawing lines and
  *                                           points.
- * Aug 04, 2013   1265     Bryon.Lawrence    Added support for undo/redo
- * Aug  9, 2013   1921     daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
- * Aug 29, 2013   1921     bryon.lawrence    Updated loadGeometryOverlayForSelectedEvent
+ * Aug 04, 2013 1265       Bryon.Lawrence    Added support for undo/redo
+ * Aug  9, 2013 1921       daniel.s.schaffer Support of replacement of JSON with POJOs
+ * Aug 29, 2013 1921       bryon.lawrence    Updated loadGeometryOverlayForSelectedEvent
  *                                           to use Java event objects instead of
  *                                           JSON.
- * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
- * Nov 27, 2013  1462      bryon.lawrence    Updated to support 
+ * Nov 16, 2013 2166       daniel.s.schaffer Some tidying
+ * Nov 27, 2013 1462       bryon.lawrence    Updated to support 
  *                                           display of hazard hatched areas.
- * Apr 09, 2014    2925    Chris.Golden      Changed to ensure that method is called
+ * Apr 09, 2014 2925       Chris.Golden      Changed to ensure that method is called
  *                                           within the UI thread.
- * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
- * Dec 15, 2014    3846    Tracy Hansen      Added ability to draw points back in
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
- * Feb 03, 2015    3865    Chris.Cody        Check for valid Active Editor class
+ * Dec 05, 2014 4124       Chris.Golden      Changed to work with ObservedSettings.
+ * Dec 15, 2014 3846       Tracy Hansen      Added ability to draw points back in
+ * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Feb 03, 2015 3865       Chris.Cody        Check for valid Active Editor class
  * Feb 24, 2015 6499       Dan Schaffer      Disable drawing of point hazards
  * Feb 25, 2015 6600       Dan Schaffer      Fixed bug in spatial display centering
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
@@ -115,6 +133,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           presenter, display, and mouse handlers.
  * Jul 27, 2016 19924      Chris.Golden      Removed code related to monitoring data layer
  *                                           changes, as it belongs in the app builder.
+ * Aug 23, 2016 19537      Chris.Golden      Continued extensive spatial display refactor,
+ *                                           including the use of MVP widgets and delegates
+ *                                           to decouple the presenter and view.
  * </pre>
  * 
  * @author Chris.Golden
@@ -625,13 +646,346 @@ public class SpatialView implements
     };
 
     /**
+     * Selected spatial entity identifiers state change handler.
+     */
+    private IStateChangeHandler<Object, Set<IEntityIdentifier>> selectedEntityIdentifiersChangeHandler;
+
+    /**
+     * Selected spatial entity identifiers state changer. The identifier is
+     * ignored.
+     */
+    private final IStateChanger<Object, Set<IEntityIdentifier>> selectedEntityIdentifiersChanger = new IStateChanger<Object, Set<IEntityIdentifier>>() {
+
+        @Override
+        public void setEnabled(Object identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of selected entity identifiers");
+        }
+
+        @Override
+        public void setEditable(Object identifier, boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change editable state of selected entity identifiers");
+        }
+
+        @Override
+        public Set<IEntityIdentifier> getState(Object identifier) {
+            return selectedSpatialEntityIdentifiers;
+        }
+
+        @Override
+        public void setState(Object identifier,
+                Set<IEntityIdentifier> selectedEntityIdentifiers) {
+
+            /*
+             * Since the selected spatial entity identifiers set is an
+             * unmodifiable view of what the presenter has, it does not need to
+             * be updated. However, the reactive entities need to be
+             * repopulated, since this invocation indicates that the selected
+             * ones have changed.
+             */
+            spatialDisplay
+                    .repopulateReactiveSpatialEntityIdentifiers(SpatialEntityType.TOOL);
+        }
+
+        @Override
+        public void setStates(
+                Map<Object, Set<IEntityIdentifier>> valuesForIdentifiers) {
+            throw new UnsupportedOperationException(
+                    "cannot change multiple states for selected entity identifiers");
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IStateChangeHandler<Object, Set<IEntityIdentifier>> handler) {
+            selectedEntityIdentifiersChangeHandler = handler;
+        }
+    };
+
+    /**
+     * Selected spatial entity identifiers state changer delegate.
+     */
+    private final IStateChanger<Object, Set<IEntityIdentifier>> selectedEntityIdentifiersChangerDelegate = new StateChangerDelegate<>(
+            new BasicWidgetDelegateHelper<>(selectedEntityIdentifiersChanger),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Spatial entity list state changer delegate.
+     */
+    private final IListStateChanger<SpatialEntityType, SpatialEntity<? extends IEntityIdentifier>> spatialEntitiesChangerDelegate;
+
+    /**
+     * Create shape command invocation handler.
+     */
+    private ICommandInvocationHandler<Geometry> createShapeInvocationHandler;
+
+    /**
+     * Create shape command invoker.
+     */
+    private final ICommandInvoker<Geometry> createShapeInvoker = new ICommandInvoker<Geometry>() {
+
+        @Override
+        public void setEnabled(Geometry identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of create shape");
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<Geometry> handler) {
+            createShapeInvocationHandler = handler;
+        }
+    };
+
+    /**
+     * Create shape command invoker delegate.
+     */
+    private final ICommandInvoker<Geometry> createShapeInvokerDelegate = new CommandInvokerDelegate<>(
+            new BasicWidgetDelegateHelper<>(createShapeInvoker),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Modify geometry command invocation handler.
+     */
+    private ICommandInvocationHandler<EntityGeometryModificationContext> modifyGeometryInvocationHandler;
+
+    /**
+     * Modify geometry command invoker.
+     */
+    private final ICommandInvoker<EntityGeometryModificationContext> modifyGeometryInvoker = new ICommandInvoker<EntityGeometryModificationContext>() {
+
+        @Override
+        public void setEnabled(EntityGeometryModificationContext identifier,
+                boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of modify entity geometry");
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<EntityGeometryModificationContext> handler) {
+            modifyGeometryInvocationHandler = handler;
+        }
+    };
+
+    /**
+     * Modify geometry command invoker delegate.
+     */
+    private final ICommandInvoker<EntityGeometryModificationContext> modifyGeometryInvokerDelegate = new CommandInvokerDelegate<>(
+            new BasicWidgetDelegateHelper<>(modifyGeometryInvoker),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Select-by-area command invocation handler.
+     */
+    private ICommandInvocationHandler<SelectByAreaContext> selectByAreaInvocationHandler;
+
+    /**
+     * Select-by-area command invoker.
+     */
+    private final ICommandInvoker<SelectByAreaContext> selectByAreaInvoker = new ICommandInvoker<SelectByAreaContext>() {
+
+        @Override
+        public void setEnabled(SelectByAreaContext identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of select-by-area");
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<SelectByAreaContext> handler) {
+            selectByAreaInvocationHandler = handler;
+        }
+    };
+
+    /**
+     * Select-by-area command invoker delegate.
+     */
+    private final ICommandInvoker<SelectByAreaContext> selectByAreaInvokerDelegate = new CommandInvokerDelegate<>(
+            new BasicWidgetDelegateHelper<>(selectByAreaInvoker),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Select location command invocation handler.
+     */
+    private ICommandInvocationHandler<Coordinate> selectLocationInvocationHandler;
+
+    /**
+     * Select location command invoker.
+     */
+    private final ICommandInvoker<Coordinate> selectLocationInvoker = new ICommandInvoker<Coordinate>() {
+
+        @Override
+        public void setEnabled(Coordinate identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of select location");
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<Coordinate> handler) {
+            selectLocationInvocationHandler = handler;
+        }
+    };
+
+    /**
+     * Select location command invoker delegate.
+     */
+    private final ICommandInvoker<Coordinate> selectLocationInvokerDelegate = new CommandInvokerDelegate<>(
+            new BasicWidgetDelegateHelper<>(selectLocationInvoker),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Gage action command invocation handler.
+     */
+    private ICommandInvocationHandler<String> gageActionInvocationHandler;
+
+    /**
+     * Gage action command invoker.
+     */
+    private final ICommandInvoker<String> gageActionInvoker = new ICommandInvoker<String>() {
+
+        @Override
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of gage action");
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<String> handler) {
+            gageActionInvocationHandler = handler;
+        }
+    };
+
+    /**
+     * Gage action command invoker delegate.
+     */
+    private final ICommandInvoker<String> gageActionInvokerDelegate = new CommandInvokerDelegate<>(
+            new BasicWidgetDelegateHelper<>(gageActionInvoker),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Toggle change handler.
+     */
+    private IStateChangeHandler<Toggle, Boolean> toggleChangeHandler;
+
+    /**
+     * Toggle changer.
+     */
+    private final IStateChanger<Toggle, Boolean> toggleChanger = new IStateChanger<Toggle, Boolean>() {
+
+        @Override
+        public void setEnabled(Toggle identifier, boolean enable) {
+            if (identifier == Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT) {
+                if (addNewGeometryToSelectedEventToggleAction != null) {
+                    addNewGeometryToSelectedEventToggleAction
+                            .setEnabled(enable);
+                }
+            } else {
+                throw new UnsupportedOperationException(
+                        "cannot change enabled state of toggle " + identifier);
+            }
+        }
+
+        @Override
+        public void setEditable(Toggle identifier, boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change editable state of toggles");
+        }
+
+        @Override
+        public Boolean getState(Toggle identifier) {
+            throw new UnsupportedOperationException(
+                    "cannot get state of toggles");
+        }
+
+        @Override
+        public void setState(Toggle identifier, Boolean value) {
+            if (identifier == Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT) {
+                if (addNewGeometryToSelectedEventToggleAction != null) {
+                    addNewGeometryToSelectedEventToggleAction.setChecked(value);
+                }
+            } else if (identifier == Toggle.ADD_CREATED_EVENTS_TO_SELECTED) {
+                if (addNewEventToSelectedToggleAction != null) {
+                    addNewEventToSelectedToggleAction.setChecked(value);
+                }
+            } else {
+                throw new UnsupportedOperationException(
+                        "cannot change state of toggle " + identifier);
+            }
+        }
+
+        @Override
+        public void setStates(Map<Toggle, Boolean> valuesForIdentifiers) {
+            throw new UnsupportedOperationException(
+                    "cannot change multiple states for toggles");
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IStateChangeHandler<Toggle, Boolean> handler) {
+            toggleChangeHandler = handler;
+        }
+    };
+
+    /**
+     * Toggle changer delegate.
+     */
+    private final IStateChanger<Toggle, Boolean> toggleChangerDelegate = new StateChangerDelegate<>(
+            new BasicWidgetDelegateHelper<>(toggleChanger),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
+     * Miscellaneous commands invocation handler.
+     */
+    private ICommandInvocationHandler<Command> commandInvocationHandler;
+
+    /**
+     * Miscellaneous commands invoker.
+     */
+    private final ICommandInvoker<Command> commandInvoker = new ICommandInvoker<Command>() {
+
+        @Override
+        public void setEnabled(Command identifier, boolean enable) {
+            if (identifier == Command.UNDO) {
+                setUndoEnabled(enable);
+            } else if (identifier == Command.REDO) {
+                setRedoEnabled(enable);
+            } else {
+                throw new UnsupportedOperationException(
+                        "cannot change enabled state of close command");
+            }
+        }
+
+        @Override
+        public void setCommandInvocationHandler(
+                ICommandInvocationHandler<Command> handler) {
+            commandInvocationHandler = handler;
+        }
+    };
+
+    /**
+     * Miscellaneous commands invoker delegate.
+     */
+    private final ICommandInvoker<Command> commandInvokerDelegate = new CommandInvokerDelegate<>(
+            new BasicWidgetDelegateHelper<>(commandInvoker),
+            RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
      * CAVE resource layer used as spatial display.
      */
     private SpatialDisplay spatialDisplay;
 
     /**
      * Presenter.
+     * 
+     * @deprecated This must be removed when no more direct calls are made to
+     *             the presenter (see
+     *             {@link SpatialPresenter#getContextMenuActions(IEntityIdentifier, IRunnableAsynchronousScheduler)}
+     *             ).
      */
+    @Deprecated
     private SpatialPresenter presenter;
 
     /**
@@ -678,17 +1032,18 @@ public class SpatialView implements
     /**
      * Flag indicating whether or not select-by-area input mode is active.
      */
-    private boolean selectByAreaActive = false;
+    private boolean selectByAreaActive;
 
     /**
-     * Currently selected spatial entity identifiers.
+     * Currently selected spatial entity identifiers. This is an unmodifiable
+     * view that is kept up to date by the presenter.
      */
-    private final Set<IEntityIdentifier> selectedSpatialEntityIdentifiers = new HashSet<>();
+    private Set<IEntityIdentifier> selectedSpatialEntityIdentifiers;
 
     /**
      * Currently selected time.
      */
-    private Date selectedTime;
+    private volatile Date selectedTime;
 
     // Public Constructors
 
@@ -701,13 +1056,19 @@ public class SpatialView implements
     public SpatialView(SpatialDisplay spatialDisplay) {
         this.spatialDisplay = spatialDisplay;
         spatialDisplay.setSpatialView(this);
+        spatialEntitiesChangerDelegate = new ListStateChangerDelegate<>(
+                new BasicWidgetDelegateHelper<>(
+                        spatialDisplay.getSpatialEntitiesChanger()),
+                RUNNABLE_ASYNC_SCHEDULER);
     }
 
     // Public Methods
 
     @Override
-    public final void initialize(SpatialPresenter presenter) {
+    public final void initialize(SpatialPresenter presenter,
+            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers) {
         this.presenter = presenter;
+        this.selectedSpatialEntityIdentifiers = selectedSpatialEntityIdentifiers;
 
         /*
          * Ensure any previously loaded select-by-area viz resources are
@@ -732,6 +1093,62 @@ public class SpatialView implements
             }
             createResourceListeners(abstractEditor);
         }
+    }
+
+    @Override
+    public IStateChanger<Object, Set<IEntityIdentifier>> getSelectedSpatialEntityIdentifiersChanger() {
+        return selectedEntityIdentifiersChangerDelegate;
+    }
+
+    @Override
+    public IListStateChanger<SpatialEntityType, SpatialEntity<? extends IEntityIdentifier>> getSpatialEntitiesChanger() {
+        return spatialEntitiesChangerDelegate;
+    }
+
+    @Override
+    public ICommandInvoker<Geometry> getCreateShapeInvoker() {
+        return createShapeInvokerDelegate;
+    }
+
+    @Override
+    public ICommandInvoker<EntityGeometryModificationContext> getModifyGeometryInvoker() {
+        return modifyGeometryInvokerDelegate;
+    }
+
+    @Override
+    public ICommandInvoker<SelectByAreaContext> getSelectByAreaInvoker() {
+        return selectByAreaInvokerDelegate;
+    }
+
+    @Override
+    public ICommandInvoker<Coordinate> getSelectLocationInvoker() {
+        return selectLocationInvokerDelegate;
+    }
+
+    @Override
+    public ICommandInvoker<String> getGageActionInvoker() {
+        return gageActionInvokerDelegate;
+    }
+
+    @Override
+    public IStateChanger<Toggle, Boolean> getToggleChanger() {
+        return toggleChangerDelegate;
+    }
+
+    @Override
+    public ICommandInvoker<Command> getCommandInvoker() {
+        return commandInvokerDelegate;
+    }
+
+    @Override
+    public void refresh() {
+        VizApp.runAsync(new Runnable() {
+
+            @Override
+            public void run() {
+                spatialDisplay.issueRefresh();
+            }
+        });
     }
 
     @Override
@@ -763,107 +1180,127 @@ public class SpatialView implements
     }
 
     @Override
-    public void centerAndZoomDisplay(List<Coordinate> hull, Coordinate center) {
+    public void centerAndZoomDisplay(final List<Coordinate> hull,
+            final Coordinate center) {
 
-        /*
-         * Do nothing unless the center has been supplied.
-         */
-        if (center != null) {
-
-            /*
-             * Get the current perspective; if it is anything but GFE, adjust
-             * the center and zoom.
-             */
-            String perspectiveID = getCurrentPerspectiveDescriptor().getId();
-            double[] centerAsArray = new double[] { center.x, center.y };
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if ((abstractEditor != null)
-                    && (perspectiveID.equals("GFE") == false)) {
-                for (IDisplayPane pane : Arrays.asList(abstractEditor
-                        .getDisplayPanes())) {
-                    IRenderableDisplay display = pane.getRenderableDisplay();
-                    if (isHullWithinDisplay(hull, display) == false) {
-                        double zoom = display.getZoom();
-                        display.getExtent().reset();
-                        display.recenter(centerAsArray);
-                        display.zoom(zoom);
-                    }
-                }
-            }
-        }
-    }
-
-    @Override
-    public void loadSelectByAreaVizResourceAndInputHandler(
-            final SelectByAreaContext context) {
-
-        /*
-         * Unload any currently loaded select-by-area viz resource.
-         */
-        if (isSelectByAreaVizResourceLoaded()) {
-            unloadSelectByAreaVizResourceFromPerspective();
-        }
-
-        /*
-         * Get the select-by-area input handler, but do it asynchronously so as
-         * to ensure that the old select-by-area viz resource has been fully
-         * unloaded first.
-         */
         VizApp.runAsync(new Runnable() {
 
             @Override
             public void run() {
 
                 /*
-                 * Attempt to load the new select-by-area viz resource.
+                 * Do nothing unless the center has been supplied.
                  */
-                boolean loadInputHandler = true;
-                try {
+                if (center != null) {
 
                     /*
-                     * Create the select-by-area viz resource and add it to the
-                     * display.
+                     * Get the current perspective; if it is anything but GFE,
+                     * adjust the center and zoom.
                      */
-                    getSelectByAreaVizResource(context.getDatabaseTableName(),
-                            context.getLegend());
-                    updatePerspectiveUseOfSelectByAreaVizResource();
-
-                    /*
-                     * Check if the action above resulted in the display of a
-                     * viz resource for select-by-area. If not then do not
-                     * complete the loading of the select-by-area input handler.
-                     */
-                    if (isSelectByAreaVizResourceLoaded()) {
-                        notifySelectByAreaInitiated();
-                    } else {
-                        loadInputHandler = false;
-                        handleUserResetOfInputMode();
+                    String perspectiveID = getCurrentPerspectiveDescriptor()
+                            .getId();
+                    double[] centerAsArray = new double[] { center.x, center.y };
+                    AbstractEditor abstractEditor = EditorUtil
+                            .getActiveEditorAs(AbstractEditor.class);
+                    if ((abstractEditor != null)
+                            && (perspectiveID.equals("GFE") == false)) {
+                        for (IDisplayPane pane : Arrays.asList(abstractEditor
+                                .getDisplayPanes())) {
+                            IRenderableDisplay display = pane
+                                    .getRenderableDisplay();
+                            if (isHullWithinDisplay(hull, display) == false) {
+                                double zoom = display.getZoom();
+                                display.getExtent().reset();
+                                display.recenter(centerAsArray);
+                                display.zoom(zoom);
+                            }
+                        }
                     }
-                } catch (VizException e) {
-                    loadInputHandler = false;
-                    statusHandler
-                            .error("SpatialView.requestSelectByAreaInputHandler(): "
-                                    + "Error loading select-by-area input handler: ",
-                                    e);
-                    handleUserResetOfInputMode();
-                }
-
-                /*
-                 * Load the input handler if appropriate.
-                 */
-                if (loadInputHandler) {
-                    spatialDisplay.setCurrentInputHandlerToSelectByArea(
-                            selectByAreaVizResource,
-                            context.getSelectedGeometries(),
-                            context.getIdentifier());
                 }
             }
         });
     }
 
     @Override
-    public void setSelectedTime(Date selectedTime) {
+    public void loadSelectByAreaVizResourceAndInputHandler(
+            final SelectByAreaContext context) {
+
+        VizApp.runAsync(new Runnable() {
+
+            @Override
+            public void run() {
+
+                /*
+                 * Unload any currently loaded select-by-area viz resource.
+                 */
+                if (isSelectByAreaVizResourceLoaded()) {
+                    unloadSelectByAreaVizResourceFromPerspective();
+                }
+
+                /*
+                 * Get the select-by-area input handler, but do it
+                 * asynchronously so as to ensure that the old select-by-area
+                 * viz resource has been fully unloaded first.
+                 */
+                VizApp.runAsync(new Runnable() {
+
+                    @Override
+                    public void run() {
+
+                        /*
+                         * Attempt to load the new select-by-area viz resource.
+                         */
+                        boolean loadInputHandler = true;
+                        try {
+
+                            /*
+                             * Create the select-by-area viz resource and add it
+                             * to the display.
+                             */
+                            getSelectByAreaVizResource(
+                                    context.getDatabaseTableName(),
+                                    context.getLegend());
+                            updatePerspectiveUseOfSelectByAreaVizResource();
+
+                            /*
+                             * Check if the action above resulted in the display
+                             * of a viz resource for select-by-area. If not then
+                             * do not complete the loading of the select-by-area
+                             * input handler.
+                             */
+                            if (isSelectByAreaVizResourceLoaded()) {
+                                notifySelectByAreaInitiated();
+                            } else {
+                                loadInputHandler = false;
+                                handleUserResetOfInputMode();
+                            }
+                        } catch (VizException e) {
+                            loadInputHandler = false;
+                            statusHandler
+                                    .error("SpatialView.requestSelectByAreaInputHandler(): "
+                                            + "Error loading select-by-area input handler: ",
+                                            e);
+                            handleUserResetOfInputMode();
+                        }
+
+                        /*
+                         * Load the input handler if appropriate.
+                         */
+                        if (loadInputHandler) {
+                            spatialDisplay
+                                    .setCurrentInputHandlerToSelectByArea(
+                                            selectByAreaVizResource,
+                                            context.getSelectedGeometries(),
+                                            context.getIdentifier());
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    @Override
+    public void setSelectedTime(final Date selectedTime) {
         this.selectedTime = selectedTime;
     }
 
@@ -880,7 +1317,10 @@ public class SpatialView implements
 
                         @Override
                         public void run() {
-                            presenter.handleUndoCommand();
+                            if (commandInvocationHandler != null) {
+                                commandInvocationHandler
+                                        .commandInvoked(Command.UNDO);
+                            }
                         }
                     });
             undoCommandAction.setEnabled(false);
@@ -889,7 +1329,10 @@ public class SpatialView implements
 
                         @Override
                         public void run() {
-                            presenter.handleRedoCommand();
+                            if (commandInvocationHandler != null) {
+                                commandInvocationHandler
+                                        .commandInvoked(Command.REDO);
+                            }
                         }
                     });
             redoCommandAction.setEnabled(false);
@@ -899,9 +1342,12 @@ public class SpatialView implements
 
                         @Override
                         public void run() {
-                            presenter
-                                    .handleToggleAddNewEventToSelectedSet(addNewEventToSelectedToggleAction
-                                            .isChecked());
+                            if (toggleChangeHandler != null) {
+                                toggleChangeHandler.stateChanged(
+                                        Toggle.ADD_CREATED_EVENTS_TO_SELECTED,
+                                        addNewEventToSelectedToggleAction
+                                                .isChecked());
+                            }
                         }
                     });
             InputModeAction moveAndSelectChoiceAction = new InputModeAction(
@@ -943,9 +1389,13 @@ public class SpatialView implements
 
                         @Override
                         public void run() {
-                            presenter
-                                    .handleToggleAddGeometryToSelectedEvent(addNewGeometryToSelectedEventToggleAction
-                                            .isChecked());
+                            if (toggleChangeHandler != null) {
+                                toggleChangeHandler
+                                        .stateChanged(
+                                                Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT,
+                                                addNewGeometryToSelectedEventToggleAction
+                                                        .isChecked());
+                            }
                         }
                     });
 
@@ -967,25 +1417,6 @@ public class SpatialView implements
     }
 
     @Override
-    public void drawSpatialEntities(
-            List<SpatialEntity<? extends IEntityIdentifier>> spatialEntities,
-            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers) {
-
-        /*
-         * Remember the current set of selected spatial entities.
-         */
-        this.selectedSpatialEntityIdentifiers.clear();
-        this.selectedSpatialEntityIdentifiers
-                .addAll(selectedSpatialEntityIdentifiers);
-
-        /*
-         * Draw the spatial entities.
-         */
-        spatialDisplay.drawSpatialEntities(spatialEntities,
-                selectedSpatialEntityIdentifiers);
-    }
-
-    @Override
     public void disposed(AbstractVizResource<?, ?> rsc) {
         if (rsc instanceof SelectByAreaDbMapResource) {
             dbMapResourceUnloaded();
@@ -993,40 +1424,33 @@ public class SpatialView implements
     }
 
     @Override
-    public void setUndoEnabled(final Boolean enable) {
-        if (undoCommandAction != null) {
-            undoCommandAction.setEnabled(enable);
-        }
-    }
-
-    @Override
-    public void setRedoEnabled(final Boolean enable) {
-        if (redoCommandAction != null) {
-            redoCommandAction.setEnabled(enable);
-        }
-    }
-
-    @Override
-    public void setEditMultiPointGeometryEnabled(Boolean enable) {
-        for (InputMode mode : EnumSet.of(InputMode.EDIT_POLYGON,
-                InputMode.EDIT_FREEHAND_POLYGON)) {
-            InputModeAction action = actionsForInputModes.get(mode);
-            if (action != null) {
-                action.setEnabled(enable);
+    public void setEditMultiPointGeometryEnabled(final boolean enable) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                for (InputMode mode : EnumSet.of(InputMode.EDIT_POLYGON,
+                        InputMode.EDIT_FREEHAND_POLYGON)) {
+                    InputModeAction action = actionsForInputModes.get(mode);
+                    if (action != null) {
+                        action.setEnabled(enable);
+                    }
+                }
             }
-        }
-    }
-
-    @Override
-    public void setAddNewGeometryToSelectedToggleState(boolean enable,
-            boolean check) {
-        if (addNewGeometryToSelectedEventToggleAction != null) {
-            addNewGeometryToSelectedEventToggleAction.setEnabled(enable);
-            addNewGeometryToSelectedEventToggleAction.setChecked(check);
-        }
+        });
     }
 
     // Package-Private Methods
+
+    /**
+     * Get an unmodifiable view of the selected spatial entity identifiers.
+     * 
+     * @return Unmodifiable view of the selected spatial entity identifiers.
+     *         Note that this may be <code>null</code> if the view is not yet
+     *         initialized.
+     */
+    Set<IEntityIdentifier> getSelectedSpatialEntityIdentifiers() {
+        return selectedSpatialEntityIdentifiers;
+    }
 
     /**
      * Handle an attempt by the user to select or deselect the specified spatial
@@ -1042,14 +1466,22 @@ public class SpatialView implements
             boolean multipleSelection) {
 
         /*
+         * Do nothing if there is no selected entity identifiers change handler.
+         */
+        if (selectedEntityIdentifiersChangeHandler == null) {
+            return;
+        }
+
+        /*
          * If this is a multiple selection operation, then check if the user is
          * selecting something that was already selected and treat this as a
          * deselect; otherwise, if this is a multiple selection operation, treat
          * it as a select; and finally, if a single selection, clear the
-         * selected set and select only the clicked wntity. Note that the member
-         * data set that tracks which spatial entities is not changed, since the
-         * presenter may not accept the new selection; it is only altered in
-         * response to the presenter saying is has been changed.
+         * selected set and select only the clicked entity. Note that the member
+         * data set that tracks which spatial entities are selected is not
+         * changed, since the presenter may not accept the new selection (and
+         * said member is an unmodifiable view anyway); it has its contents
+         * altered by the presenter as necessary.
          */
         Set<IEntityIdentifier> identifiers = null;
         if (multipleSelection) {
@@ -1062,8 +1494,7 @@ public class SpatialView implements
         } else {
             identifiers = Sets.newHashSet(identifier);
         }
-
-        presenter.handleUserSpatialEntitySelectionChange(identifiers);
+        selectedEntityIdentifiersChangeHandler.stateChanged(null, identifiers);
     }
 
     /**
@@ -1075,7 +1506,10 @@ public class SpatialView implements
      */
     void handleUserMultipleSpatialEntitiesSelection(
             Set<IEntityIdentifier> identifiers) {
-        presenter.handleUserSpatialEntitySelectionChange(identifiers);
+        if (selectedEntityIdentifiersChangeHandler != null) {
+            selectedEntityIdentifiersChangeHandler.stateChanged(null,
+                    identifiers);
+        }
     }
 
     /**
@@ -1088,8 +1522,11 @@ public class SpatialView implements
      */
     void handleUserModificationOfSpatialEntity(IEntityIdentifier identifier,
             Geometry geometry) {
-        presenter.handleUserModificationOfSpatialEntity(identifier,
-                selectedTime, geometry);
+        if (modifyGeometryInvocationHandler != null) {
+            modifyGeometryInvocationHandler
+                    .commandInvoked(new EntityGeometryModificationContext(
+                            identifier, geometry, selectedTime));
+        }
     }
 
     /**
@@ -1100,7 +1537,10 @@ public class SpatialView implements
      *            New state of the flag.
      */
     void handleSetAddCreatedEventsToSelected(boolean state) {
-        presenter.handleSetAddCreatedEventsToSelected(state);
+        if (toggleChangeHandler != null) {
+            toggleChangeHandler.stateChanged(
+                    Toggle.ADD_CREATED_EVENTS_TO_SELECTED_OVERRIDE, state);
+        }
     }
 
     /**
@@ -1111,7 +1551,9 @@ public class SpatialView implements
      *            New multi-point shape that was created.
      */
     void handleUserCreationOfShape(Geometry geometry) {
-        presenter.handleUserShapeCreation(geometry);
+        if (createShapeInvocationHandler != null) {
+            createShapeInvocationHandler.commandInvoked(geometry);
+        }
     }
 
     /**
@@ -1122,7 +1564,9 @@ public class SpatialView implements
      *            Location selected by the user.
      */
     void handleUserLocationSelection(Coordinate location) {
-        presenter.handleUserLocationSelection(location);
+        if (selectLocationInvocationHandler != null) {
+            selectLocationInvocationHandler.commandInvoked(location);
+        }
     }
 
     /**
@@ -1132,7 +1576,9 @@ public class SpatialView implements
      *            Identifier of the gage for which the action is being invoked.
      */
     void handleUserInvocationOfGageAction(String gageIdentifier) {
-        presenter.handleUserInvocationOfGageAction(gageIdentifier);
+        if (gageActionInvocationHandler != null) {
+            gageActionInvocationHandler.commandInvoked(gageIdentifier);
+        }
     }
 
     /**
@@ -1149,11 +1595,14 @@ public class SpatialView implements
      */
     void handleUserSelectByAreaDrawingActionComplete(
             IEntityIdentifier identifier, Set<Geometry> selectedGeometries) {
-        SelectByAreaDbMapResourceData resourceData = selectByAreaVizResource
-                .getResourceData();
-        presenter.handleUserSelectByAreaCreationOrModification(identifier,
-                resourceData.getTable(), resourceData.getMapName(),
-                selectedGeometries);
+        if (selectByAreaInvocationHandler != null) {
+            SelectByAreaDbMapResourceData resourceData = selectByAreaVizResource
+                    .getResourceData();
+            selectByAreaInvocationHandler
+                    .commandInvoked(new SelectByAreaContext(identifier,
+                            selectedGeometries, resourceData.getTable(),
+                            resourceData.getMapName()));
+        }
         handleUserResetOfInputMode();
     }
 
@@ -1180,7 +1629,9 @@ public class SpatialView implements
      * Handle the closing of the spatial display.
      */
     void handleSpatialDisplayClosed() {
-        presenter.handleSpatialDisplayClosed();
+        if (commandInvocationHandler != null) {
+            commandInvocationHandler.commandInvoked(Command.CLOSE);
+        }
     }
 
     /**
@@ -1200,13 +1651,38 @@ public class SpatialView implements
     /**
      * Determine whether or not a new shape is being drawn.
      * 
-     * @return
+     * @return <code>true</code> if a new shape is being drawn,
+     *         <code>false</code> otherwise.
      */
     boolean isDrawingOfNewShapeInProgress() {
         return drawingOfNewShapeInProgress;
     }
 
     // Private Methods
+
+    /**
+     * Set the enabled state of the undo button.
+     * 
+     * @param enable
+     *            Flag indicating whether or not undo should be enabled.
+     */
+    private void setUndoEnabled(boolean enable) {
+        if (undoCommandAction != null) {
+            undoCommandAction.setEnabled(enable);
+        }
+    }
+
+    /**
+     * Set the enabled state of the redo button.
+     * 
+     * @param enable
+     *            Flag indicating whether or not redo should be enabled.
+     */
+    private void setRedoEnabled(boolean enable) {
+        if (redoCommandAction != null) {
+            redoCommandAction.setEnabled(enable);
+        }
+    }
 
     /**
      * Remove the current select-by-area viz resource and forget about it. This
@@ -1343,7 +1819,10 @@ public class SpatialView implements
          * Ensure that newly-created events are not added to the selected events
          * set.
          */
-        presenter.handleSetAddCreatedEventsToSelected(false);
+        if (toggleChangeHandler != null) {
+            toggleChangeHandler.stateChanged(
+                    Toggle.ADD_CREATED_EVENTS_TO_SELECTED_OVERRIDE, false);
+        }
     }
 
     /**

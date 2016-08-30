@@ -105,6 +105,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           garbage-collected; additional work will
  *                                           be needed under the dedicated ticket
  *                                           #21271.
+ * Aug 29, 2016   19537    Chris.Golden      Changed to make show hatched areas menu
+ *                                           item start in checked state.
  * </pre>
  * 
  * @author Chris.Golden
@@ -774,7 +776,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     SHOW_HATCHED_AREAS_MENU_TEXT, null, Action.AS_CHECK_BOX,
                     null, ConsoleAction.ActionType.CHANGE_MODE,
                     ConsoleAction.SHOW_HATCHED_AREA);
-            showHatchedAreaAction.setChecked(false);
+            showHatchedAreaAction.setChecked(true);
 
             Action reviewAction = new ReviewAction(presenter);
             Action viewProductsAction = new ViewProductAction(presenter);

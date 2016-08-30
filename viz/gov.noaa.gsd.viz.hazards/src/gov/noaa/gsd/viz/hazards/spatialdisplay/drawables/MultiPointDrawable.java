@@ -12,7 +12,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
-import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
 import java.awt.Color;
@@ -39,6 +38,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                             be concrete (not abstract) class, as
  *                                             no subclasses for lines and polygons
  *                                             are needed.
+ * Aug 22, 2016 19537      Chris.Golden        Removed unneeded layer constructor
+ *                                             parameter. Also added toString()
+ *                                             method.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -94,17 +96,9 @@ public class MultiPointDrawable extends Line implements IDrawable {
      *            Drawable attributes.
      * @param geometry
      *            Geometry.
-     * @param geometryIndex
-     *            Index of the sub-geometry this shape represents within the
-     *            overall geometry represented by this shape's
-     *            {@link DECollection}, or <code>-1</code> if this shape does
-     *            not represent a sub-geometry (or if it does, but it is the
-     *            only sub-geometry within a collection).
-     * @param activeLayer
-     *            PGEN layer in which this line will be drawn.
      */
     public MultiPointDrawable(IEntityIdentifier identifier,
-            DrawableAttributes attributes, Geometry geometry, Layer activeLayer) {
+            DrawableAttributes attributes, Geometry geometry) {
         this.identifier = identifier;
         this.geometryIndex = attributes.getGeometryIndex();
         this.geometry = geometry;
@@ -113,7 +107,6 @@ public class MultiPointDrawable extends Line implements IDrawable {
         update(attributes);
         setPgenCategory(LINE);
         setPgenType(attributes.getLineStyle().toString());
-        setParent(activeLayer);
     }
 
     // Public Methods
@@ -169,5 +162,11 @@ public class MultiPointDrawable extends Line implements IDrawable {
         }
         copy.setColors(colors);
         return copy;
+    }
+
+    @Override
+    public String toString() {
+        return getIdentifier() + " (" + (isClosedLine() ? "polygon" : "line")
+                + ")";
     }
 }

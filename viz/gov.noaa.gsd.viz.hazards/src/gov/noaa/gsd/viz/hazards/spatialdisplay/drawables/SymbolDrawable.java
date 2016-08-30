@@ -9,7 +9,6 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.display.SymbolImageUtil;
-import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
 import java.util.List;
@@ -42,6 +41,9 @@ import com.vividsolutions.jts.geom.LinearRing;
  * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
  * Jul 25, 2016 19537      Chris.Golden        Renamed, and removed unneeded member
  *                                             data and methods.
+ * Aug 22, 2016 19537      Chris.Golden        Removed unneeded layer constructor
+ *                                             parameter. Also added toString()
+ *                                             method.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -57,7 +59,7 @@ public class SymbolDrawable extends Symbol implements IDrawable {
     private final int geometryIndex;
 
     /**
-     * Creates an IHISSymbol.
+     * Creates a symbol.
      * 
      * @param identifier
      *            Identifier of this symbol.
@@ -67,18 +69,15 @@ public class SymbolDrawable extends Symbol implements IDrawable {
      *            The PGEN type of this symbol, indicating the symbol geometry.
      * @param location
      *            Lat-lon location of this symbol.
-     * @param activeLayer
-     *            PGEN layer to which this this symbol will be drawn.
      */
     public SymbolDrawable(IEntityIdentifier identifier,
             DrawableAttributes drawingAttributes, String pgenType,
-            Coordinate location, Layer activeLayer) {
+            Coordinate location) {
         this.identifier = identifier;
         this.geometryIndex = drawingAttributes.getGeometryIndex();
         setLocation(location);
         setPgenCategory(pgenType);
         setPgenType(pgenType);
-        setParent(activeLayer);
         setColors(drawingAttributes.getColors());
         setLineWidth(drawingAttributes.getLineWidth());
         setSizeScale(drawingAttributes.getSizeScale());
@@ -120,6 +119,11 @@ public class SymbolDrawable extends Symbol implements IDrawable {
     @Override
     public int getGeometryIndex() {
         return geometryIndex;
+    }
+
+    @Override
+    public String toString() {
+        return getIdentifier() + " (symbol = \"" + getPgenType() + "\")";
     }
 
     // Private Methods

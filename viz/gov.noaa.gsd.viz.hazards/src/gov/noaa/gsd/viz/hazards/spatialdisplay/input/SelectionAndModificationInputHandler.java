@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
+import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.MultiPointElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.SinglePointElement;
 
@@ -48,6 +49,17 @@ import com.vividsolutions.jts.geom.Point;
  * ------------ ---------- ------------ --------------------------
  * Jul 05, 2016   19537    Chris.Golden Initial creation (adapted from the old
  *                                      SelectionAction innner class).
+ * Aug 22, 2016   19537    Chris.Golden Renamed selected elements to be reactive
+ *                                      elements, since this class only cares
+ *                                      about which elements may react to a
+ *                                      mouse over, not which elements are
+ *                                      selected. Also changed call to spatial
+ *                                      display's useHandleBarPoints() to work
+ *                                      with new version. Also fixed bug in
+ *                                      finalizeMouseHandling() that caused a
+ *                                      NullPointerException in some cases.
+ *                                      Changed code to work with new names of
+ *                                      spatial display methods.
  * </pre>
  * 
  * @author Chris.Golden
@@ -196,26 +208,26 @@ public class SelectionAndModificationInputHandler extends
                  */
                 AbstractDrawableComponent drawable = null;
                 List<AbstractDrawableComponent> containingDrawables = getSpatialDisplay()
-                        .getContainingComponents(location, x, y);
+                        .getContainingDrawables(location, x, y);
 
                 /*
-                 * Get the selected drawable identifiers.
+                 * Get the reactive drawable identifiers.
                  */
-                Set<IEntityIdentifier> selectedIdentifiers = getSelectedDrawableIdentifiers();
+                Set<IEntityIdentifier> reactiveIdentifiers = getReactiveDrawableIdentifiers();
 
                 /*
                  * If there is at least one containing drawable, make sure that
-                 * the topmost drawable is equal to one of the selected ones. If
+                 * the topmost drawable is equal to one of the reactive ones. If
                  * there are symbols (including points), give them precedence.
                  */
                 for (AbstractDrawableComponent containingDrawable : containingDrawables) {
                     IEntityIdentifier identifier = ((IDrawable) containingDrawable)
                             .getIdentifier();
                     if (((drawable == null) || (containingDrawable instanceof SymbolDrawable))
-                            && selectedIdentifiers.contains(identifier)
-                            && (getSpatialDisplay().isComponentEditable(
+                            && reactiveIdentifiers.contains(identifier)
+                            && (getSpatialDisplay().isDrawableEditable(
                                     containingDrawable) || getSpatialDisplay()
-                                    .isComponentMovable(containingDrawable))) {
+                                    .isDrawableMovable(containingDrawable))) {
                         drawable = containingDrawable;
                         if (containingDrawable instanceof SymbolDrawable) {
                             break;
@@ -224,20 +236,20 @@ public class SelectionAndModificationInputHandler extends
                 }
 
                 /*
-                 * If none of the selected components were found to have been
-                 * clicked, then just pick the topmost component containing the
+                 * If none of the reactive drawables were found to have been
+                 * clicked, then just pick the topmost drawable containing the
                  * click. Also choose the topmost one that is uneditable and
                  * unmovable, in case it needs to be selected during mouse-up
                  * later.
                  * 
                  * TODO: May need a better way of determining which containing
-                 * component of multiple components to choose as the selected?
+                 * drawable of multiple drawables to choose as the selected?
                  */
                 if (drawable == null) {
                     for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                        if (getSpatialDisplay().isComponentEditable(
+                        if (getSpatialDisplay().isDrawableEditable(
                                 containingDrawable)
-                                || getSpatialDisplay().isComponentMovable(
+                                || getSpatialDisplay().isDrawableMovable(
                                         containingDrawable)) {
                             drawable = containingDrawable;
                             break;
@@ -262,7 +274,7 @@ public class SelectionAndModificationInputHandler extends
                  */
                 allowPanning = (drawable == null);
 
-                getSpatialDisplay().setElementBeingEdited(drawable);
+                getSpatialDisplay().setDrawableBeingEdited(drawable);
             }
         } else if (button == 2) {
             allowPanning = true;
@@ -355,12 +367,12 @@ public class SelectionAndModificationInputHandler extends
         }
 
         /*
-         * If the drawable being edited is not selected, allow panning.
+         * If the drawable being edited is not reactive, allow panning.
          */
         AbstractDrawableComponent editedElement = getSpatialDisplay()
-                .getElementBeingEdited();
+                .getDrawableBeingEdited();
         if ((editedElement != null)
-                && (getSpatialDisplay().getSelectedElements().contains(
+                && (getSpatialDisplay().getReactiveDrawables().contains(
                         editedElement) == false)) {
             allowPanning = true;
         }
@@ -472,12 +484,12 @@ public class SelectionAndModificationInputHandler extends
          * any hover element.
          */
         if (mutableDrawableInfo.getDrawable() == null) {
-            getSpatialDisplay().setHoverElement(null);
+            getSpatialDisplay().setHoverDrawable(null);
             getSpatialDisplay().setCursor(CursorTypes.ARROW_CURSOR);
         } else {
-            if (getSpatialDisplay().isComponentEditable(
+            if (getSpatialDisplay().isDrawableEditable(
                     mutableDrawableInfo.getDrawable())) {
-                getSpatialDisplay().setHoverElement(
+                getSpatialDisplay().setHoverDrawable(
                         mutableDrawableInfo.getDrawable());
                 if (mutableDrawableInfo.getVertexIndex() == -1) {
                     getSpatialDisplay()
@@ -491,27 +503,29 @@ public class SelectionAndModificationInputHandler extends
                             .getVertexIndex();
                 }
             } else {
-                getSpatialDisplay().setHoverElement(null);
+                getSpatialDisplay().setHoverDrawable(null);
                 getSpatialDisplay().setCursor(CursorTypes.MOVE_SHAPE_CURSOR);
             }
         }
     }
 
     /**
-     * Get the set of selected drawable identifiers.
+     * Get the set of reactive drawable identifiers, that is, those drawables
+     * that may react when moused over to indicate they are editable, movable,
+     * etc.
      * 
-     * @return Set of selected drawable identifiers.
+     * @return Set of reactive drawable identifiers.
      */
-    private Set<IEntityIdentifier> getSelectedDrawableIdentifiers() {
-        Set<AbstractDrawableComponent> selectedElements = getSpatialDisplay()
-                .getSelectedElements();
-        Set<IEntityIdentifier> selectedIdentifiers = new HashSet<>(
-                selectedElements.size(), 1.0f);
-        for (AbstractDrawableComponent selectedElement : selectedElements) {
-            selectedIdentifiers.add(((IDrawable) selectedElement)
+    private Set<IEntityIdentifier> getReactiveDrawableIdentifiers() {
+        Set<AbstractDrawableComponent> reactiveElements = getSpatialDisplay()
+                .getReactiveDrawables();
+        Set<IEntityIdentifier> reactiveIdentifiers = new HashSet<>(
+                reactiveElements.size(), 1.0f);
+        for (AbstractDrawableComponent reactiveElement : reactiveElements) {
+            reactiveIdentifiers.add(((IDrawable) reactiveElement)
                     .getIdentifier());
         }
-        return selectedIdentifiers;
+        return reactiveIdentifiers;
     }
 
     /**
@@ -526,9 +540,9 @@ public class SelectionAndModificationInputHandler extends
      */
     private void handleShapeMove(Coordinate location, int x, int y) {
         AbstractDrawableComponent editedElement = getSpatialDisplay()
-                .getElementBeingEdited();
+                .getDrawableBeingEdited();
         if (editedElement != null) {
-            if (getSpatialDisplay().isComponentMovable(editedElement)) {
+            if (getSpatialDisplay().isDrawableMovable(editedElement)) {
 
                 /*
                  * If nothing is being dragged yet, determine whether or not the
@@ -579,7 +593,7 @@ public class SelectionAndModificationInputHandler extends
                         selectedPoint = new Coordinate(clickPoint.getX(),
                                 clickPoint.getY());
                         ghostDrawable = getSpatialDisplay()
-                                .getElementBeingEdited().copy();
+                                .getDrawableBeingEdited().copy();
                     }
                 }
 
@@ -630,9 +644,9 @@ public class SelectionAndModificationInputHandler extends
                     /*
                      * Set the ghost and hover drawables to be the same.
                      */
-                    getSpatialDisplay().setGhostOfElementBeingEdited(
+                    getSpatialDisplay().setGhostOfDrawableBeingEdited(
                             ghostDrawable);
-                    getSpatialDisplay().setHoverElement(ghostDrawable);
+                    getSpatialDisplay().setHoverDrawable(ghostDrawable);
                     getSpatialDisplay().issueRefresh();
                 }
             }
@@ -647,7 +661,7 @@ public class SelectionAndModificationInputHandler extends
      */
     private void handleVertexMove(Coordinate location) {
         AbstractDrawableComponent editedElement = getSpatialDisplay()
-                .getElementBeingEdited();
+                .getDrawableBeingEdited();
         if (editedElement != null) {
 
             /*
@@ -678,9 +692,9 @@ public class SelectionAndModificationInputHandler extends
                  * Update the ghost drawable and the handlbar points.
                  */
                 ghostDrawable = editedElement.copy();
-                getSpatialDisplay().setGhostOfElementBeingEdited(ghostDrawable);
-                getSpatialDisplay().useAsHandlebarPoints(
-                        points.toArray(new Coordinate[points.size()]));
+                getSpatialDisplay()
+                        .setGhostOfDrawableBeingEdited(ghostDrawable);
+                getSpatialDisplay().useAsHandlebarPoints(points);
                 getSpatialDisplay().issueRefresh();
             }
         }
@@ -695,7 +709,7 @@ public class SelectionAndModificationInputHandler extends
          * Get the drawable being edited.
          */
         AbstractDrawableComponent editedElement = getSpatialDisplay()
-                .getElementBeingEdited();
+                .getDrawableBeingEdited();
         if (editedElement == null) {
             return;
         }
@@ -715,8 +729,8 @@ public class SelectionAndModificationInputHandler extends
          */
         getSpatialDisplay().handleUserModificationOfDrawable(editedElement,
                 modifiedGeometry);
-        getSpatialDisplay().setHoverElement(null);
-        getSpatialDisplay().setElementBeingEdited(null);
+        getSpatialDisplay().setHoverDrawable(null);
+        getSpatialDisplay().setDrawableBeingEdited(null);
         getSpatialDisplay().issueRefresh();
         preEditPoints = null;
     }
@@ -736,14 +750,14 @@ public class SelectionAndModificationInputHandler extends
          * If there is an element being edited, complete the edit.
          */
         AbstractDrawableComponent editedElement = getSpatialDisplay()
-                .getElementBeingEdited();
+                .getDrawableBeingEdited();
         if (editedElement != null) {
-            getSpatialDisplay().setElementBeingEdited(null);
+            getSpatialDisplay().setDrawableBeingEdited(null);
             IDrawable entityShape = (IDrawable) editedElement;
             Geometry modifiedGeometry = getSpatialDisplay()
                     .buildModifiedGeometry(entityShape,
                             editedElement.getPoints());
-            getSpatialDisplay().setHoverElement(null);
+            getSpatialDisplay().setHoverDrawable(null);
 
             /*
              * If the newly moved vertex results in a valid geometry, use the
@@ -787,17 +801,21 @@ public class SelectionAndModificationInputHandler extends
      * Finish up whatever selection or modification operation is in process.
      */
     private void finalizeMouseHandling() {
-        getSpatialDisplay().removeGhostOfElementBeingEdited();
+        getSpatialDisplay().setGhostOfDrawableBeingEdited(null);
 
         if (preEditPoints != null) {
-            List<Coordinate> editedElementPoints = getSpatialDisplay()
-                    .getElementBeingEdited().getPoints();
-            editedElementPoints.clear();
-            editedElementPoints.addAll(preEditPoints);
+            DrawableElement drawableBeingEdited = getSpatialDisplay()
+                    .getDrawableBeingEdited();
+            if (drawableBeingEdited != null) {
+                List<Coordinate> editedElementPoints = drawableBeingEdited
+                        .getPoints();
+                editedElementPoints.clear();
+                editedElementPoints.addAll(preEditPoints);
+            }
             preEditPoints = null;
         }
 
-        getSpatialDisplay().setElementBeingEdited(null);
+        getSpatialDisplay().setDrawableBeingEdited(null);
         ghostDrawable = null;
 
         drawableUnderMouseDown = null;

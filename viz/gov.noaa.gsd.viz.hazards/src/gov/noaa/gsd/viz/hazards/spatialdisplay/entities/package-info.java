@@ -9,6 +9,7 @@
  */
 
 /**
- * Description: Contains classes related to {@link SpatialEntity} usage.
+ * Description: Contains classes related to spatial entity usage.
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
+

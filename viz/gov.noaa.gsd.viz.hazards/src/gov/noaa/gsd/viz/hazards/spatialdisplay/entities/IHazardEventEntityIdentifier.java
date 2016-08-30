@@ -11,10 +11,12 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
 
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+
 /**
  * Description: Interface describing the methods that must be implemented by
  * classes acting as identifiers for {@link SpatialEntity} objects used to
- * represent {@IHazardEvent} objects in the spatial display.
+ * represent {@link IHazardEvent} objects in the spatial display.
  * 
  * <pre>
  * 

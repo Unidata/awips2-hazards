@@ -45,10 +45,10 @@ public interface IDrawable {
     public IEntityIdentifier getIdentifier();
 
     /**
-     * Returns the {@link Geometry} version of this shape. All shapes have an
-     * associated JTS geometries.
+     * Returns the geometry version of this shape. All shapes have an associated
+     * JTS geometries.
      * 
-     * @return JTS geometry representing this shape.
+     * @return Geometry representing this shape.
      */
     public Geometry getGeometry();
 
@@ -64,7 +64,10 @@ public interface IDrawable {
     public int getGeometryIndex();
 
     /**
-     * @return True if the user can edit this shape.
+     * Determine whether or not the shape is editable.
+     * 
+     * @return <code>true</code> if the user can edit this shape,
+     *         <code>false</code> otherwise.
      */
     public boolean isEditable();
 
@@ -72,20 +75,23 @@ public interface IDrawable {
      * Set the editable status of this shape.
      * 
      * @param editable
-     *            true if this shape is editable.
+     *            Flag indicating whether or not this shape is editable.
      */
     public void setEditable(boolean editable);
 
     /**
-     * @return True if the user can move this shape.
+     * Determine whether or not the shape is editable.
+     * 
+     * @return <code>true</code> if the user can move this shape,
+     *         <code>false</code> otherwise.
      */
     public boolean isMovable();
 
     /**
      * Set the movable status of this shape.
      * 
-     * @param isMovable
-     *            true if this shape is movable.
+     * @param movable
+     *            Flag indicating whether or not this shape is movable.
      */
     public void setMovable(boolean movable);
 }

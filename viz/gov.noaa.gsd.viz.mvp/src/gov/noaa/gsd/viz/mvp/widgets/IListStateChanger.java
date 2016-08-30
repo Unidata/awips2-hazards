@@ -30,6 +30,9 @@ import java.util.List;
  *                                      different number of items to be
  *                                      removed from the number being
  *                                      inserted.
+ * Aug 22, 2016   19537    Chris.Golden Made passed-in list parameters more
+ *                                      flexible with regard to their element
+ *                                      types.
  * </pre>
  * 
  * @author Chris.Golden
@@ -84,7 +87,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      *            {@link IListStateChangeHandler} should not be notified of
      *            values set in this fashion.
      */
-    public void set(I identifier, List<E> elements);
+    public void set(I identifier, List<? extends E> elements);
 
     /**
      * Add the specified element to the end of the specified list.
@@ -108,7 +111,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param elements
      *            List of elements to be appended to the list.
      */
-    public void addElements(I identifier, List<E> elements);
+    public void addElements(I identifier, List<? extends E> elements);
 
     /**
      * Insert the specified element at the specified index of the specified
@@ -138,7 +141,8 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      * @param elements
      *            List of elements to be inserted into the list.
      */
-    public void insertElements(I identifier, int index, List<E> elements);
+    public void insertElements(I identifier, int index,
+            List<? extends E> elements);
 
     /**
      * Replace the element at the specified index in the specified list with the
@@ -172,7 +176,7 @@ public interface IListStateChanger<I, E> extends IWidget<I> {
      *            in the list.
      */
     public void replaceElements(I identifier, int index, int count,
-            List<E> elements);
+            List<? extends E> elements);
 
     /**
      * Remove the element at the specified index in the specified list.

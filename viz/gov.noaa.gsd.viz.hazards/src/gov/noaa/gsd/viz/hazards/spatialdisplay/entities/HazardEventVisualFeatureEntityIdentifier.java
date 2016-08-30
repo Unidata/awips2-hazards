@@ -26,6 +26,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * ------------ ---------- ------------ --------------------------
  * Jun 15, 2016   19537    Chris.Golden Initial creation.
  * Jun 27, 2016   19537    Chris.Golden Revamped class hierarchy.
+ * Aug 28, 2016   19537    Chris.Golden Added toString() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,5 +91,11 @@ public class HazardEventVisualFeatureEntityIdentifier implements
         return (int) (((eventIdentifier == null ? 0L : (long) eventIdentifier
                 .hashCode()) + (visualFeatureIdentifier == null ? 0L
                 : (long) visualFeatureIdentifier.hashCode())) % Integer.MAX_VALUE);
+    }
+
+    @Override
+    public String toString() {
+        return getEventIdentifier() + " (visual feature = \""
+                + getVisualFeatureIdentifier() + "\")";
     }
 }

@@ -12,25 +12,22 @@ import gov.noaa.gsd.common.visuals.DragCapability;
 import gov.noaa.gsd.common.visuals.FillStyle;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.common.visuals.SymbolShape;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventHatchingEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
-import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -90,6 +87,20 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Jul 25, 2016 19537      Chris.Golden Renamed, and removed unneeded methods as part of
  *                                      the move to generate drawables solely from spatial
  *                                      entities.
+ * Aug 18, 2016 19537      Chris.Golden Fixed bug that caused exception to be thrown when
+ *                                      a hatching polygon had a label to be displayed.
+ *                                      Also simplified building of drawables by removing
+ *                                      any need to call back into the spatial display;
+ *                                      instead, drawables are returned to the caller of
+ *                                      the various buildXXXX() methods. Removed obsolete
+ *                                      method for amalgamating text drawables, and added
+ *                                      a new method that builds an amalgamated text
+ *                                      drawable (the work of determining which text
+ *                                      drawables should be amalgamated is now done
+ *                                      elsewhere, as this isn't really this class's job).
+ *                                      Also added ability to break spatial entity label
+ *                                      text into different lines, using newline
+ *                                      characters as delimiters.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -110,14 +121,11 @@ public class DrawableBuilder {
     private static final String FILLED_STAR = "FILLED_STAR";
 
     /**
-     * Comparator to sort strings longest to shortest.
+     * Splitter, used to break up text if it has newlines in it into an array of
+     * strings, with the newlines being the delimiters between the elements in
+     * the array.
      */
-    private static final Comparator<String> DECREASING_LENGTH_COMPARATOR = new Comparator<String>() {
-        @Override
-        public int compare(String o1, String o2) {
-            return Integer.compare(o2.length(), o1.length());
-        }
-    };
+    private static final Splitter SPLITTER = Splitter.on("\n");
 
     /**
      * Map of visual feature symbol shapes to PGEN symbol shape names to be used
@@ -174,28 +182,23 @@ public class DrawableBuilder {
     /**
      * Build drawable components for the specified spatial entity.
      * 
-     * @param spatialDisplay
-     *            Spatial display for which the components are to be built.
      * @param spatialEntity
      *            Spatial entity for which the components are to be built. The
      *            entity's geometry may consist of a single point, line, or
      *            polygon, or else a geometry collection holding any mix of one
      *            or more points, lines, and polygons, but no nested
      *            collections.
-     * @param activeLayer
-     *            PGEN active layer.
-     * @param selected
-     *            Flag indicating that this entity is part of a hazard event
-     *            that is selected.
+     * @return Drawable components that were built; may be an empty list.
      */
-    public void buildDrawableComponents(SpatialDisplay spatialDisplay,
-            SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Layer activeLayer, boolean selected) {
+    public List<AbstractDrawableComponent> buildDrawables(
+            SpatialEntity<? extends IEntityIdentifier> spatialEntity) {
 
         /*
          * Only create drawables for the entity's geometry if the entity is not
          * intended solely for hazard hatching.
          */
+        List<AbstractDrawableComponent> drawableComponents = new ArrayList<>();
+        boolean createDrawableAttributes = true;
         if (spatialEntity.getIdentifier() instanceof HazardEventHatchingEntityIdentifier == false) {
 
             /*
@@ -203,151 +206,122 @@ public class DrawableBuilder {
              * drawable component for each sub-geometry separately. Otherwise,
              * create a single drawable component for the entire geometry.
              */
+            createDrawableAttributes = false;
             Geometry geometry = spatialEntity.getGeometry();
             if (geometry instanceof GeometryCollection) {
                 GeometryCollection geometryCollection = (GeometryCollection) geometry;
                 for (int j = 0; j < geometryCollection.getNumGeometries(); j++) {
-                    buildDrawableComponent(spatialDisplay, spatialEntity,
+                    drawableComponents.add(buildDrawable(spatialEntity,
                             geometryCollection.getGeometryN(j),
                             (geometryCollection.getNumGeometries() == 1 ? -1
-                                    : j), activeLayer, selected);
+                                    : j)));
                 }
             } else {
-                buildDrawableComponent(spatialDisplay, spatialEntity, geometry,
-                        -1, activeLayer, selected);
+                drawableComponents.add(buildDrawable(spatialEntity, geometry,
+                        -1));
             }
         }
 
         /*
-         * Add a text drawable if appropriate.
+         * Add a text drawable if appropriate. A drawable attributes object must
+         * be created if one was not created above (which will be the case if
+         * the entity is hatching-only).
          */
-        if (spatialEntity.getLabel() != null
-                && spatialEntity.getLabel().isEmpty() == false) {
-            TextDrawable text = buildText(spatialEntity,
-                    spatialDisplay.getActiveLayer());
-            spatialDisplay.addElement(text, spatialEntity, false);
+        if (hasNonEmptyLabel(spatialEntity)) {
+            if (createDrawableAttributes) {
+                PolygonDrawableAttributes drawingAttributes = new PolygonDrawableAttributes(
+                        (spatialEntity.getFillColor().getAlpha() > 0.0));
+                this.drawingAttributes = drawingAttributes;
+                drawingAttributes.setSizeScale(2);
+                drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
+                        .getLabel()));
+                drawingAttributes
+                        .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+            }
+            drawableComponents.add(buildText(spatialEntity,
+                    (createDrawableAttributes == false)));
         }
+
+        return drawableComponents;
+    }
+
+    /**
+     * Determine whether or not the specified entity has a non-empty label.
+     * 
+     * @param spatialEntity
+     *            Spatial entity to be checked.
+     * @return <code>true</code> if the entity has a non-empty label,
+     *         <code>false</code> otherwise.
+     */
+    private boolean hasNonEmptyLabel(
+            SpatialEntity<? extends IEntityIdentifier> spatialEntity) {
+        return ((spatialEntity.getLabel() != null) && (spatialEntity.getLabel()
+                .trim().isEmpty() == false));
+    }
+
+    /**
+     * Convert the newline-delimited text string into an array of substrings.
+     * 
+     * @param text
+     *            Text string, possibly holding newlines.
+     * @return
+     */
+    private String[] convertNewlinesToArray(String text) {
+        List<String> result = SPLITTER.splitToList(text.trim());
+        return result.toArray(new String[result.size()]);
     }
 
     /**
      * Build any hatched areas for the specified spatial entity.
      * 
-     * @param spatialDisplay
-     *            Spatial display for which the areas are to be created.
      * @param spatialEntity
      *            Entity that has hatched geometry.
-     * @param activeLayer
-     *            PGEN active layer.
+     * @return Hatched areas that were built.
      */
-    public void buildHatchedAreas(SpatialDisplay spatialDisplay,
-            SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Layer activeLayer) {
+    public List<AbstractDrawableComponent> buildHatchedAreas(
+            SpatialEntity<? extends IEntityIdentifier> spatialEntity) {
 
         /*
          * Build hatched areas if the entity has a hatch-style fill.
          */
         if (spatialEntity.getFillStyle() == FillStyle.HATCHED) {
-            buildHatchedAreas(spatialDisplay, spatialEntity,
-                    spatialEntity.getGeometry(), activeLayer);
+            List<AbstractDrawableComponent> hatchedAreas = new ArrayList<>();
+            buildHatchedAreas(spatialEntity, spatialEntity.getGeometry(),
+                    hatchedAreas);
+            return hatchedAreas;
+        } else {
+            return Collections.emptyList();
         }
     }
 
     /**
-     * Scan through the specified drawable components and amalgamate text
-     * components that use the same centroid coordinate, returning the text
-     * components that are to be removed as they are now superfluous. Note that
-     * any components returned have been removed by that point from the
-     * specified list.
-     * <p>
-     * This method is executed just prior to spatial display refresh. It looks
-     * through all drawable components for {@link TextDrawable} components. For
-     * each set of such components that use the same centroid coordinate, it
-     * takes the text string arrays from the components, places their string
-     * arrays into the first such component, sorts the strings by decreasing
-     * length, and puts together a list of the <code>HazardServicesText</code>
-     * components containing the now duplicate text strings to be returned and
-     * then removed by the caller.
-     * </p>
+     * Build an amalgamated text drawable that combines all the specified source
+     * text drawables into one.
      * 
-     * @param drawableComponents
-     *            Spatial display drawable components.
-     * @return Text components that are now superfluous and must be removed.
+     * @param sourceTextDrawables
+     *            Source text drawables to be amalgamated; must be a non-empty
+     *            list.
+     * @return Amalgamated text drawable.
      */
-    public Collection<AbstractDrawableComponent> amalgamateTextComponents(
-            List<AbstractDrawableComponent> drawableComponents) {
-
-        /*
-         * Put together a map of coordinates to lists of text components, so
-         * that the ones that share coordinates may be grouped together.
-         */
-        Map<Coordinate, List<TextDrawable>> drawablesForCoordinates = new HashMap<>();
-        for (AbstractDrawableComponent component : drawableComponents) {
-            if ((component instanceof TextDrawable)
-                    && (component instanceof TextDrawable)) {
-                TextDrawable textComponent = (TextDrawable) component;
-                Coordinate coordinate = textComponent.getPosition();
-                List<TextDrawable> componentList = drawablesForCoordinates
-                        .get(coordinate);
-                if (componentList == null) {
-                    componentList = new ArrayList<>();
-                    drawablesForCoordinates.put(coordinate, componentList);
+    public TextDrawable buildAmalgamatedText(
+            List<TextDrawable> sourceTextDrawables) {
+        TextDrawable amalgamatedTextDrawable = new TextDrawable(
+                sourceTextDrawables.get(sourceTextDrawables.size() - 1));
+        Set<String> labels = new LinkedHashSet<>(sourceTextDrawables.size(),
+                1.0f);
+        for (TextDrawable sourceTextDrawable : sourceTextDrawables) {
+            String[] labelArray = sourceTextDrawable.getText();
+            for (String label : labelArray) {
+                if (label != null) {
+                    labels.add(label);
                 }
-                componentList.add(textComponent);
             }
         }
-
-        /*
-         * For each list of text components sharing a common coordinate, combine
-         * them into a single multi-line text component, and remember the others
-         * so that they may be returned as those that need deletion.
-         */
-        Set<AbstractDrawableComponent> superfluousComponents = new HashSet<>();
-        for (Map.Entry<Coordinate, List<TextDrawable>> entry : drawablesForCoordinates
-                .entrySet()) {
-
-            /*
-             * Do nothing if only one component has this coordinate.
-             */
-            List<TextDrawable> componentList = entry.getValue();
-            if (componentList.size() == 1) {
-                continue;
-            }
-
-            /*
-             * Add the text strings from any components after the first one to
-             * the first one, making the latter multi-line, and remove any
-             * subsequent ones from the original list, as well as tracking them
-             * as superfluous.
-             */
-            TextDrawable firstTextComponent = null;
-            List<String> textStringList = new ArrayList<>();
-            String[] textStringArray = null;
-            for (int j = 0; j < componentList.size(); j++) {
-                TextDrawable currentTextComponent = componentList.get(j);
-                textStringArray = currentTextComponent.getText();
-                if ((textStringArray != null) && (textStringArray.length > 0)) {
-                    for (int k = 0; k < textStringArray.length; k++) {
-                        String currentArrayString = textStringArray[k];
-                        if ((currentArrayString != null)
-                                && (textStringList.contains(currentArrayString) == false)) {
-                            textStringList.add(currentArrayString);
-                        }
-                    }
-                }
-                if (j == 0) {
-                    firstTextComponent = currentTextComponent;
-                } else {
-                    superfluousComponents.add(currentTextComponent);
-                    drawableComponents.remove(currentTextComponent);
-                }
-            }
-
-            Collections.sort(textStringList, DECREASING_LENGTH_COMPARATOR);
-            String[] textSetStringArray = textStringList
-                    .toArray(new String[textStringList.size()]);
-            firstTextComponent.setText(textSetStringArray);
-        }
-        return superfluousComponents;
+        List<String> labelsList = new ArrayList<>(labels);
+        Collections.reverse(labelsList);
+        amalgamatedTextDrawable.setText(labels.toArray(new String[labelsList
+                .size()]));
+        return amalgamatedTextDrawable;
     }
 
     // Private Methods
@@ -355,8 +329,6 @@ public class DrawableBuilder {
     /**
      * Build a single drawable component for the specified spatial entity.
      * 
-     * @param spatialDisplay
-     *            Spatial display for which the components are to be built.
      * @param spatialEntity
      *            Spatial entity for which the components are to be built. The
      *            entity's geometry may consist of a single point, line, or
@@ -372,54 +344,45 @@ public class DrawableBuilder {
      *            there are no sub-geometries and <code>geometry</code> is the
      *            same as the spatial entity's geometry, this must be
      *            <code>-1</code>.
-     * @param activeLayer
-     *            PGEN active layer.
-     * @param selected
-     *            Flag indicating that this entity is part of a hazard event
-     *            that is selected.
+     * @return Drawable component that was built.
      */
-    private void buildDrawableComponent(SpatialDisplay spatialDisplay,
+    private AbstractDrawableComponent buildDrawable(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex, Layer activeLayer,
-            boolean selected) {
-
+            Geometry geometry, int geometryIndex) {
         Class<?> geometryClass = geometry.getClass();
-
         AbstractDrawableComponent drawableComponent = null;
         if (geometryClass.equals(Point.class)) {
             drawableComponent = buildPoint(spatialEntity, geometry,
-                    geometryIndex, activeLayer);
+                    geometryIndex);
         } else if (geometryClass.equals(LineString.class)) {
             drawableComponent = buildLine(spatialEntity, geometry,
-                    geometryIndex, activeLayer);
+                    geometryIndex);
         } else {
             drawableComponent = buildPolygon(spatialEntity, geometry,
-                    geometryIndex, activeLayer);
+                    geometryIndex);
         }
-        spatialDisplay.addElement(drawableComponent, spatialEntity, selected);
+        return drawableComponent;
     }
 
     /**
      * Build any hatched areas for any part of the specified geometry that is
      * polygonal.
      * 
-     * @param spatialDisplay
-     *            Spatial display for which the areas are to be created.
      * @param spatialEntity
      *            Entity of which this geometry is a part.
      * @param geometry
      *            Geometry for which to build the hatched areas.
-     * @param activeLayer
-     *            PGEN active layer.
+     * @param hatchedAreas
+     *            List to which to add any hatched areas that are built.
      */
-    private void buildHatchedAreas(SpatialDisplay spatialDisplay,
+    private void buildHatchedAreas(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, Layer activeLayer) {
+            Geometry geometry, List<AbstractDrawableComponent> hatchedAreas) {
         if (geometry instanceof GeometryCollection) {
             GeometryCollection geometryCollection = (GeometryCollection) geometry;
             for (int j = 0; j < geometryCollection.getNumGeometries(); j++) {
-                buildHatchedAreas(spatialDisplay, spatialEntity,
-                        geometryCollection.getGeometryN(j), activeLayer);
+                buildHatchedAreas(spatialEntity,
+                        geometryCollection.getGeometryN(j), hatchedAreas);
             }
         } else if (geometry instanceof Polygonal) {
             drawingAttributes = new PolygonDrawableAttributes(false);
@@ -427,10 +390,9 @@ public class DrawableBuilder {
             Color color = getColor(spatialEntity.getFillColor());
             drawingAttributes.setColors(new Color[] { color, color });
             drawingAttributes.setDottedLineStyle();
-            AbstractDrawableComponent hatchedArea = new MultiPointDrawable(
-                    spatialEntity.getIdentifier(), drawingAttributes,
-                    (Geometry) geometry.clone(), activeLayer);
-            spatialDisplay.addHatchedArea(hatchedArea);
+            hatchedAreas.add(new MultiPointDrawable(spatialEntity
+                    .getIdentifier(), drawingAttributes, (Geometry) geometry
+                    .clone()));
         }
     }
 
@@ -446,13 +408,11 @@ public class DrawableBuilder {
      *            Index of the geometry within the spatial entity's geometry if
      *            the latter is a geometry collection, otherwise <code>-1</code>
      *            .
-     * @param activeLayer
-     *            PGEN active layer.
      * @return Point drawable that was built.
      */
     private AbstractDrawableComponent buildPoint(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex, Layer activeLayer) {
+            Geometry geometry, int geometryIndex) {
         DECollection collectionComponent = new DECollection();
 
         /*
@@ -480,26 +440,24 @@ public class DrawableBuilder {
          * an unfilled border around the inner one.
          */
         if (innerSymbol == null) {
-            collectionComponent.add(buildOuterPoint(spatialEntity, activeLayer,
-                    outerSymbol, borderColor, location, geometryIndex,
-                    outerDiameter));
+            collectionComponent.add(buildOuterPoint(spatialEntity, outerSymbol,
+                    borderColor, location, geometryIndex, outerDiameter));
             innerDiameter -= spatialEntity.getBorderThickness() * 2.0;
             AbstractDrawableComponent innerPoint = buildInnerPoint(
-                    spatialEntity, activeLayer, outerSymbol, fillColor,
-                    location, geometryIndex, innerDiameter);
+                    spatialEntity, outerSymbol, fillColor, location,
+                    geometryIndex, innerDiameter);
             if (innerPoint != null) {
                 collectionComponent.add(innerPoint);
             }
         } else {
             AbstractDrawableComponent innerPoint = buildInnerPoint(
-                    spatialEntity, activeLayer, innerSymbol, fillColor,
-                    location, geometryIndex, innerDiameter);
+                    spatialEntity, innerSymbol, fillColor, location,
+                    geometryIndex, innerDiameter);
             if (innerPoint != null) {
                 collectionComponent.add(innerPoint);
             }
-            collectionComponent.add(buildOuterPoint(spatialEntity, activeLayer,
-                    outerSymbol, borderColor, location, geometryIndex,
-                    outerDiameter));
+            collectionComponent.add(buildOuterPoint(spatialEntity, outerSymbol,
+                    borderColor, location, geometryIndex, outerDiameter));
         }
         return collectionComponent;
     }
@@ -510,8 +468,6 @@ public class DrawableBuilder {
      * 
      * @param spatialEntity
      *            Spatial entity for which the point is being created.
-     * @param activeLayer
-     *            PGEN active layer.
      * @param symbol
      *            PGEN symbol identifier, indicating what symbol should be
      *            drawn.
@@ -528,8 +484,8 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildOuterPoint(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Layer activeLayer, String symbol, Color color, Coordinate location,
-            int geometryIndex, double sizeScale) {
+            String symbol, Color color, Coordinate location, int geometryIndex,
+            double sizeScale) {
         SymbolDrawableAttributes drawingAttributes = new SymbolDrawableAttributes(
                 SymbolDrawableAttributes.Element.OUTER);
         this.drawingAttributes = drawingAttributes;
@@ -537,9 +493,9 @@ public class DrawableBuilder {
         drawingAttributes.setLineWidth((float) spatialEntity
                 .getBorderThickness());
         drawingAttributes.setColors(new Color[] { color, color });
-        if (spatialEntity.getLabel() != null) {
-            drawingAttributes
-                    .setLabel(new String[] { spatialEntity.getLabel() });
+        if (hasNonEmptyLabel(spatialEntity)) {
+            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
+                    .getLabel()));
         }
         drawingAttributes.setSizeScale(sizeScale);
         drawingAttributes
@@ -547,7 +503,7 @@ public class DrawableBuilder {
         drawingAttributes.setGeometryIndex(geometryIndex);
         SymbolDrawable outerPoint = new SymbolDrawable(
                 spatialEntity.getIdentifier(), drawingAttributes, symbol,
-                location, activeLayer);
+                location);
         outerPoint
                 .setMovable((spatialEntity.getDragCapability() != DragCapability.NONE)
                         && ((geometryIndex == -1) || spatialEntity
@@ -561,8 +517,6 @@ public class DrawableBuilder {
      * 
      * @param spatialEntity
      *            Spatial entity for which the point is being created.
-     * @param activeLayer
-     *            PGEN active layer.
      * @param symbol
      *            PGEN symbol identifier, indicating what symbol should be
      *            drawn.
@@ -579,8 +533,8 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildInnerPoint(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Layer activeLayer, String symbol, Color color, Coordinate location,
-            int geometryIndex, double sizeScale) {
+            String symbol, Color color, Coordinate location, int geometryIndex,
+            double sizeScale) {
         if (sizeScale > 0.0) {
             SymbolDrawableAttributes drawingAttributes = new SymbolDrawableAttributes(
                     SymbolDrawableAttributes.Element.INNER);
@@ -592,7 +546,7 @@ public class DrawableBuilder {
             drawingAttributes.setGeometryIndex(geometryIndex);
             SymbolDrawable innerPoint = new SymbolDrawable(
                     spatialEntity.getIdentifier(), drawingAttributes, symbol,
-                    location, activeLayer);
+                    location);
             innerPoint.setMovable(false);
             return innerPoint;
         }
@@ -610,13 +564,11 @@ public class DrawableBuilder {
      *            Index of the geometry within the spatial entity's geometry if
      *            the latter is a geometry collection, otherwise <code>-1</code>
      *            .
-     * @param activeLayer
-     *            PGEN active layer.
      * @return Line drawable that was built.
      */
     private AbstractDrawableComponent buildLine(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex, Layer activeLayer) {
+            Geometry geometry, int geometryIndex) {
         MultiPointDrawable drawableComponent = null;
         LineDrawableAttributes drawingAttributes = new LineDrawableAttributes();
         this.drawingAttributes = drawingAttributes;
@@ -633,16 +585,16 @@ public class DrawableBuilder {
         Color color = getColor(spatialEntity.getBorderColor());
         drawingAttributes.setColors(new Color[] { color, color });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
-        if (spatialEntity.getLabel() != null) {
-            drawingAttributes
-                    .setLabel(new String[] { spatialEntity.getLabel() });
+        if (hasNonEmptyLabel(spatialEntity)) {
+            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
+                    .getLabel()));
         }
         drawingAttributes
                 .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
         drawableComponent = new MultiPointDrawable(
                 spatialEntity.getIdentifier(), drawingAttributes,
-                (Geometry) geometry.clone(), activeLayer);
+                (Geometry) geometry.clone());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setEditable((dragCapability == DragCapability.PART)
                 || (dragCapability == DragCapability.ALL));
@@ -663,13 +615,11 @@ public class DrawableBuilder {
      *            Index of the geometry within the spatial entity's geometry if
      *            the latter is a geometry collection, otherwise <code>-1</code>
      *            .
-     * @param activeLayer
-     *            PGEN active layer.
      * @return Polygon drawable that was built.
      */
     private AbstractDrawableComponent buildPolygon(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex, Layer activeLayer) {
+            Geometry geometry, int geometryIndex) {
         MultiPointDrawable drawableComponent = null;
         PolygonDrawableAttributes drawingAttributes = new PolygonDrawableAttributes(
                 (spatialEntity.getFillColor().getAlpha() > 0.0));
@@ -688,16 +638,16 @@ public class DrawableBuilder {
         Color fillColor = getColor(spatialEntity.getFillColor());
         drawingAttributes.setColors(new Color[] { borderColor, fillColor });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
-        if (spatialEntity.getLabel() != null) {
-            drawingAttributes
-                    .setLabel(new String[] { spatialEntity.getLabel() });
+        if (hasNonEmptyLabel(spatialEntity)) {
+            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
+                    .getLabel()));
         }
         drawingAttributes
                 .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
         drawableComponent = new MultiPointDrawable(
                 spatialEntity.getIdentifier(), drawingAttributes,
-                (Geometry) geometry.clone(), activeLayer);
+                (Geometry) geometry.clone());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setEditable((dragCapability == DragCapability.PART)
                 || (dragCapability == DragCapability.ALL));
@@ -711,18 +661,20 @@ public class DrawableBuilder {
      * 
      * @param spatialEntity
      *            Spatial entity whose label the text represents.
-     * @param activeLayer
-     *            PGEN active layer.
+     * @param combinable
+     *            Flag indicating whether or not the text drawable should be
+     *            capable of being combined with other text drawables when they
+     *            occupy the same location.
      * @return Text drawable that was built.
      */
     private TextDrawable buildText(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Layer activeLayer) {
+            boolean combinable) {
         Point centerPoint = spatialEntity.getGeometry().getCentroid();
         return new TextDrawable(spatialEntity.getIdentifier(),
-                drawingAttributes, (float) spatialEntity.getTextSize(),
+                drawingAttributes, spatialEntity.getTextSize(),
                 getColor(spatialEntity.getTextColor()),
-                centerPoint.getCoordinate(), activeLayer);
+                centerPoint.getCoordinate(), combinable);
     }
 
     /**

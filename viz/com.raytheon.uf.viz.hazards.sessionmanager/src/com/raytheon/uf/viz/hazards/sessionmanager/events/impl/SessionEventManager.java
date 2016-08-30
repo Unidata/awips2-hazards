@@ -125,6 +125,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModif
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
@@ -397,6 +398,12 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      passed in (which is the app builder) more likely. Also added
  *                                      implementation of new temporary method from interface that indicates
  *                                      whether or not the manager has been shut down.
+ * Aug 18, 2016   19537    Chris.Golden Added originator to sortEvents() method so that notifications of
+ *                                      ordering changes could be posted. Also changed use of selected
+ *                                      events modified notifications to include the identifiers of the
+ *                                      events that experienced a selection state change. Also added checks
+ *                                      to ensure that notifications do not go out about hazard events that
+ *                                      are not currently being managed by the session event manager.
  * </pre>
  * 
  * @author bsteffen
@@ -759,7 +766,7 @@ public class SessionEventManager implements
             throw new IllegalStateException("cannot change type of event "
                     + event.getEventID());
         }
-        event.addHazardAttribute(ATTR_HAZARD_CATEGORY, category);
+        event.addHazardAttribute(ATTR_HAZARD_CATEGORY, category, originator);
         event.setHazardType(null, null, null, Originator.OTHER);
     }
 
@@ -1173,7 +1180,8 @@ public class SessionEventManager implements
                 HAZARD_EVENT_SELECTED))) {
             notificationSender
                     .postNotificationAsync(new SessionSelectedEventsModified(
-                            this, change.getOriginator()));
+                            this, Sets.newHashSet(change.getEvent()
+                                    .getEventID()), change.getOriginator()));
         }
         updateTimeBoundariesForEvents(change.getEvent(), false);
         updateDurationChoicesForEvent(change.getEvent(), false);
@@ -1196,7 +1204,8 @@ public class SessionEventManager implements
                 HAZARD_EVENT_SELECTED))) {
             notificationSender
                     .postNotificationAsync(new SessionSelectedEventsModified(
-                            this, change.getOriginator()));
+                            this, Sets.newHashSet(change.getEvent()
+                                    .getEventID()), change.getOriginator()));
         }
         updateSavedTimesForEventIfIssued(change.getEvent(), true);
         updateTimeBoundariesForEvents(change.getEvent(), true);
@@ -1575,11 +1584,14 @@ public class SessionEventManager implements
 
         /*
          * Fire off a notification that the metadata may have changed for this
-         * event.
+         * event if this event is currently one of the session events (it may
+         * not be if it has not yet been added).
          */
-        notificationSender
-                .postNotificationAsync(new SessionEventMetadataModified(this,
-                        event, Originator.OTHER));
+        if (events.contains(event)) {
+            notificationSender
+                    .postNotificationAsync(new SessionEventMetadataModified(
+                            this, event, Originator.OTHER));
+        }
 
         /*
          * Get a copy of the current attributes of the hazard event, so that
@@ -1755,7 +1767,8 @@ public class SessionEventManager implements
                 && getEvents().contains(change.getEvent())) {
             notificationSender
                     .postNotificationAsync(new SessionSelectedEventsModified(
-                            this, change.getOriginator()));
+                            this, Sets.newHashSet(change.getEvent()
+                                    .getEventID()), change.getOriginator()));
             updateConflictingEventsForSelectedEventIdentifiers(
                     change.getEvent(), false);
         }
@@ -2049,7 +2062,7 @@ public class SessionEventManager implements
             changed = identifiersOfEventsAllowingUntilFurtherNotice
                     .remove(event.getEventID());
         }
-        if (changed) {
+        if (changed && events.contains(event)) {
             notificationSender
                     .postNotificationAsync(new SessionEventAllowUntilFurtherNoticeModified(
                             this, event, Originator.OTHER));
@@ -2127,28 +2140,41 @@ public class SessionEventManager implements
     }
 
     private void loadEventsForSettings(ObservedSettings settings) {
-        HazardEventQueryRequest queryRequest = new HazardEventQueryRequest();
-        Set<String> visibleSites = configManager.getSettingsValue(
-                SETTING_HAZARD_SITES, settings);
 
-        String configSiteID = configManager.getSiteID();
+        /*
+         * Create the query to be used to get the events for the current
+         * settings.
+         */
+        HazardEventQueryRequest queryRequest = new HazardEventQueryRequest();
 
         /*
          * If the settings file has not been overridden for the site, add the
-         * currently configured site to the list of visible sites.
+         * currently configured site to the list of visible sites, and include
+         * visible sites as part of the query filter.
          */
+        Set<String> visibleSites = configManager.getSettingsValue(
+                SETTING_HAZARD_SITES, settings);
         if (visibleSites == null) {
             visibleSites = new HashSet<>(1);
         }
+        String configSiteID = configManager.getSiteID();
         if (visibleSites.contains(configSiteID) == false) {
             visibleSites = new HashSet<>(visibleSites);
             visibleSites.add(configSiteID);
             settings.setVisibleSites(visibleSites);
         }
+
+        /*
+         * Include visible types in the query filter.
+         */
         Set<String> visibleTypes = settings.getVisibleTypes();
         if (visibleTypes == null || visibleTypes.isEmpty()) {
             return;
         }
+
+        /*
+         * Include visible statuses in the query filter.
+         */
         Set<String> visibleStatuses = settings.getVisibleStatuses();
         if (visibleStatuses == null || visibleStatuses.isEmpty()) {
             return;
@@ -2158,13 +2184,28 @@ public class SessionEventManager implements
             statuses.add(HazardStatus.valueOf(state.toUpperCase()));
         }
 
+        /*
+         * Add the filters to the query, and make the request.
+         */
         queryRequest.and(HazardConstants.SITE_ID, visibleSites)
                 .and(HazardConstants.PHEN_SIG, visibleTypes)
                 .and(HazardConstants.HAZARD_EVENT_STATUS, statuses);
-
         Map<String, HazardHistoryList> eventsMap = dbManager
                 .query(queryRequest);
 
+        /*
+         * Get the identifiers of the events that were selected before this
+         * change.
+         */
+        Set<String> oldSelectedEventIds = getEventIdentifiers(getSelectedEvents());
+
+        /*
+         * Iterate through the events, adding any that were not part of the
+         * event list before.
+         * 
+         * TODO: Why does this not remove events that were previously part of
+         * the event list, but no longer make it through the filters?
+         */
         synchronized (events) {
             for (Entry<String, HazardHistoryList> entry : eventsMap.entrySet()) {
                 HazardHistoryList list = entry.getValue();
@@ -2188,25 +2229,39 @@ public class SessionEventManager implements
         }
 
         /*
-         * Compile the list of events that are now selected, and get their
-         * identifiers, and ensure they are not in the list of modified events.
-         * Then send these off as a notification of selection change.
+         * Get the identifiers of the now selected events, and ensure they are
+         * not in the list of modified events.
          */
-        List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
-        Set<String> eventIds = new HashSet<>(selectedEvents.size(), 1.0f);
-        for (ObservedHazardEvent event : selectedEvents) {
-            eventIds.add(event.getEventID());
-        }
+        Set<String> selectedEventIds = getEventIdentifiers(getSelectedEvents());
         Iterator<String> iter = eventModifications.iterator();
         while (iter.hasNext()) {
             String identifier = iter.next();
-            if (eventIds.contains(identifier) == false) {
+            if (selectedEventIds.contains(identifier) == false) {
                 iter.remove();
             }
         }
-        notificationSender
-                .postNotificationAsync(new SessionSelectedEventsModified(this,
-                        Originator.OTHER));
+
+        /*
+         * Determine which events changed selection state and send out a
+         * notification of this change.
+         */
+        Set<String> changedSelectionStateEventIds = Sets.symmetricDifference(
+                oldSelectedEventIds, selectedEventIds);
+        if (changedSelectionStateEventIds.isEmpty() == false) {
+            notificationSender
+                    .postNotificationAsync(new SessionSelectedEventsModified(
+                            this, changedSelectionStateEventIds,
+                            Originator.OTHER));
+        }
+    }
+
+    private Set<String> getEventIdentifiers(
+            Collection<ObservedHazardEvent> events) {
+        Set<String> eventIdentifiers = new HashSet<>(events.size(), 1.0f);
+        for (ObservedHazardEvent event : events) {
+            eventIdentifiers.add(event.getEventID());
+        }
+        return eventIdentifiers;
     }
 
     @Override
@@ -2407,6 +2462,10 @@ public class SessionEventManager implements
             }
             events.add(oevent);
         }
+
+        notificationSender.postNotificationAsync(new SessionEventAdded(this,
+                oevent, originator));
+
         oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, false, false,
                 originator);
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, false, false,
@@ -2421,9 +2480,6 @@ public class SessionEventManager implements
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, true);
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
         updateSavedTimesForEventIfIssued(oevent, false);
-
-        notificationSender.postNotificationAsync(new SessionEventAdded(this,
-                oevent, originator));
 
         /*
          * Create the event metadata for the new event.
@@ -2507,10 +2563,14 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void sortEvents(Comparator<ObservedHazardEvent> comparator) {
+    public void sortEvents(Comparator<ObservedHazardEvent> comparator,
+            IOriginator originator) {
         synchronized (events) {
             Collections.sort(events, comparator);
         }
+        notificationSender
+                .postNotificationAsync(new SessionEventsOrderingModified(this,
+                        originator));
     }
 
     @Override
@@ -2543,7 +2603,9 @@ public class SessionEventManager implements
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
                 (ObservedHazardEvent) event, false);
         ensureEventEndTimeUntilFurtherNoticeAppropriate(event, false);
-        notificationSender.postNotificationAsync(notification);
+        if (events.contains(event)) {
+            notificationSender.postNotificationAsync(notification);
+        }
     }
 
     /**
@@ -2561,7 +2623,9 @@ public class SessionEventManager implements
             SessionEventAttributesModified notification) {
         IHazardEvent event = notification.getEvent();
         addModification(event.getEventID(), notification.getOriginator());
-        notificationSender.postNotificationAsync(notification);
+        if (events.contains(notification.getEvent())) {
+            notificationSender.postNotificationAsync(notification);
+        }
     }
 
     /**
@@ -2620,7 +2684,9 @@ public class SessionEventManager implements
 
         addModification(notification.getEvent().getEventID(),
                 notification.getOriginator());
-        notificationSender.postNotificationAsync(notification);
+        if (events.contains(notification.getEvent())) {
+            notificationSender.postNotificationAsync(notification);
+        }
         updateConflictingEventsForSelectedEventIdentifiers(
                 notification.getEvent(), false);
     }
@@ -2965,10 +3031,12 @@ public class SessionEventManager implements
                 .getEventID())) == false) {
             endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
                     endTimeRange);
-            notificationSender
-                    .postNotificationAsync(new SessionEventsTimeRangeBoundariesModified(
-                            this, Sets.newHashSet(event.getEventID()),
-                            Originator.OTHER));
+            if (events.contains(event)) {
+                notificationSender
+                        .postNotificationAsync(new SessionEventsTimeRangeBoundariesModified(
+                                this, Sets.newHashSet(event.getEventID()),
+                                Originator.OTHER));
+            }
         }
     }
 

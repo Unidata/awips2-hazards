@@ -23,6 +23,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jun 15, 2016   19537    Chris.Golden Initial creation.
+ * Aug 28, 2016   19537    Chris.Golden Added toString() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -80,5 +81,11 @@ public class HazardEventHatchingEntityIdentifier extends
     public int hashCode() {
         return (int) (((ugcIdentifier == null ? 0L : (long) ugcIdentifier
                 .hashCode()) + super.hashCode()) % Integer.MAX_VALUE);
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + " (hatching = \"" + getUgcIdentifier()
+                + "\")";
     }
 }

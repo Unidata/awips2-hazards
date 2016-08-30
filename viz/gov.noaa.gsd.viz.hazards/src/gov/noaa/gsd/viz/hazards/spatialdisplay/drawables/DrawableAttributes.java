@@ -17,6 +17,7 @@ import gov.noaa.nws.ncep.ui.pgen.display.ILine;
 import java.awt.Color;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * This is the base class for most of the Hazard Services renderables.

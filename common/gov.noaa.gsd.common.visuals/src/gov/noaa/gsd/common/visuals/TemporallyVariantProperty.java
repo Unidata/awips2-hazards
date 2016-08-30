@@ -72,7 +72,7 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
      */
     private RangeMap<Date, P> propertiesForTimeRanges = null;
 
-    // Package Constructors
+    // Package-Private Constructors
 
     /**
      * Construct a standard instance.
@@ -166,7 +166,7 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
         return (int) (hashCode % Integer.MAX_VALUE);
     }
 
-    // Package Methods
+    // Package-Private Methods
 
     /**
      * Add the specified property value for the specified time range.
@@ -217,7 +217,7 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
 
     /**
      * Get the default property value specified at
-     * {@link #TemporallyVariantProperty(Object) creation time}.
+     * {@link #TemporallyVariantProperty(Serializable) creation time}.
      * 
      * @return Default property value, or <code>null</code> if there is no
      *         default.
@@ -228,7 +228,7 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
 
     /**
      * Get the time-range-bound property values (those added via
-     * {@link #addPropertyForTimeRange(Range, Object)} in the form of an
+     * {@link #addPropertyForTimeRange(Range, Serializable)} in the form of an
      * unmodifiable mapping of time ranges to property values.
      * 
      * @return Map of time ranges to property values.

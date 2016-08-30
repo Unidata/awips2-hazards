@@ -40,7 +40,7 @@ import com.vividsolutions.jts.io.WKBWriter;
  * different visual characteristics or geometries at different times. To get a
  * concrete representation of a visual feature at a particular point in time,
  * the
- * {@link #getStateAtTime(SpatialEntity, IIdentifierGenerator, boolean, Date, Color, double, BorderStyle, double, double, double, int)}
+ * {@link #getStateAtTime(SpatialEntity, Object, boolean, Date, Color, double, BorderStyle, double, String, double, double, double, double, int)}
  * method is used to generate a {@link SpatialEntity} if appropriate.
  * 
  * <pre>
@@ -89,7 +89,7 @@ public class VisualFeature implements Serializable {
      */
     private static final long serialVersionUID = 9083255877893928066L;
 
-    // Package Private Static Classes
+    // Package-Private Static Classes
 
     /**
      * Serializable color.
@@ -870,7 +870,7 @@ public class VisualFeature implements Serializable {
         }
     }
 
-    // Package Constructors
+    // Package-Private Constructors
 
     /**
      * Construct a standard instance.
@@ -1451,7 +1451,7 @@ public class VisualFeature implements Serializable {
         return stringBuilder.toString();
     }
 
-    // Package Methods
+    // Package-Private Methods
 
     /**
      * Get the list of visual features to be treated as templates for this
@@ -1803,9 +1803,14 @@ public class VisualFeature implements Serializable {
     }
 
     /**
-     * Set the flag indicating whether or not the feature is rotatable.
+     * Set the flag indicating whether or not, if {@link #geometry} holds a
+     * collection of multiple geometries, any {@link Puntal} sub-geometries
+     * within that collection are draggable. If <code>false</code>, this
+     * overrides any capabilities specified in {@link #dragCapability} for such
+     * points, but has no effect on a geometry consisting of a single
+     * <code>Puntal</code> object.
      * 
-     * @param rotatable
+     * @param multiGeometryPointsDraggable
      *            New value; may be <code>null</code>.
      */
     void setMultiGeometryPointsDraggable(
@@ -1999,8 +2004,8 @@ public class VisualFeature implements Serializable {
      *            Property fetcher to be used.
      * @param time
      *            Time for which to get the property.
-     * @param defaultValue
-     *            Default value.
+     * @param defaultProperty
+     *            Default property.
      */
     private <P> P getValue(IPropertyFetcher<P> propertyFetcher, Date time,
             P defaultProperty) {

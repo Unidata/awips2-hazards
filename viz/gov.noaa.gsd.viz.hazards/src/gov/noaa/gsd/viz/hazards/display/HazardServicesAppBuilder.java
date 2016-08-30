@@ -336,9 +336,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     // Private Variables
 
     /**
-     * Event bus, configured to have one each dispatcher and handler thread;
-     * previously, with two or more of either, it was possible for out-of-order
-     * reception by handlers of asynchronously-posted messages to occur.
+     * Event bus.
      */
     private final BoundedReceptionEventBus<Object> eventBus = new BoundedReceptionEventBus<>(
             RUNNABLE_ASYNC_SCHEDULER);

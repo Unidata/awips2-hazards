@@ -46,6 +46,10 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      to avoid allowing dragging of their point
  *                                      sub-geometries even if drag capability
  *                                      would otherwise allow it.
+ * Aug 24, 2016   19537    Chris.Golden Fixed bug causing spatial entity to be
+ *                                      needlessly recreated by build() method
+ *                                      due to wrong return type for getTextSize().
+ *                                      Also added toString() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -456,6 +460,11 @@ public class SpatialEntity<I> {
                     : 0L)) % Integer.MAX_VALUE);
     }
 
+    @Override
+    public String toString() {
+        return getIdentifier().toString();
+    }
+
     /**
      * Get the identifier.
      * 
@@ -570,7 +579,7 @@ public class SpatialEntity<I> {
      * 
      * @return Text size.
      */
-    public double getTextSize() {
+    public int getTextSize() {
         return textSize;
     }
 

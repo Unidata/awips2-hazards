@@ -197,7 +197,7 @@ public class VisualFeaturesListJsonConverter {
      */
     public static final String TIMESTAMP_FORMAT_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
 
-    // Package Static Constants
+    // Package-Private Static Constants
 
     /**
      * Type of a boolean.
@@ -336,7 +336,7 @@ public class VisualFeaturesListJsonConverter {
         CONVERTER.registerModule(module);
     };
 
-    // Package Static Variables
+    // Package-Private Static Variables
 
     /**
      * Date formatter used for parsing timestamp strings into dates. It is

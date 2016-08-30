@@ -8,11 +8,11 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.nws.ncep.ui.pgen.elements.Layer;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
 
+import com.google.common.base.Joiner;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
@@ -35,6 +35,12 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
  * Jul 25, 2016 19537      Chris.Golden        Renamed, and removed unneeded member
  *                                             data and methods.
+ * Aug 22, 2016 19537      Chris.Golden        Removed unneeded layer constructor
+ *                                             parameter. Also added new combinable
+ *                                             flag to constructor. Added ability to
+ *                                             recalculate the location when the
+ *                                             zoom changes. Also added toString()
+ *                                             method.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -54,26 +60,68 @@ public class TextDrawable extends Text implements IDrawable {
 
     private final int geometryIndex;
 
+    private final boolean combinable;
+
+    private final TextPositioner textPositioner;
+
+    private final Coordinate baseLocation;
+
     // Public Constructors
 
+    /**
+     * Construct a standard instance.
+     * 
+     * @param identifier
+     *            Identifier.
+     * @param attributes
+     *            Drawable attributes.
+     * @param pointSize
+     *            Text point size.
+     * @param color
+     *            Text color.
+     * @param location
+     *            Location of the text.
+     * @param combinable
+     *            Flag indicating whether or not the drawable may be combined
+     *            with others of the same type when they occupy the same
+     *            location.
+     */
     public TextDrawable(IEntityIdentifier identifier,
-            DrawableAttributes drawingAttributes, float pointSize, Color color,
-            Coordinate location, Layer activeLayer) {
+            DrawableAttributes attributes, float pointSize, Color color,
+            Coordinate location, boolean combinable) {
         this.identifier = identifier;
-        this.geometryIndex = drawingAttributes.getGeometryIndex();
+        this.geometryIndex = attributes.getGeometryIndex();
+        this.combinable = combinable;
+        this.textPositioner = attributes.getTextPosition();
+        this.baseLocation = location;
         setPgenType(TEXT);
-        setParent(activeLayer);
-        setText(drawingAttributes.getLabel());
+        setText(attributes.getLabel());
         setColors(new Color[] { color });
         setFontSize(pointSize);
         setStyle(FontStyle.BOLD);
+        setLocation(textPositioner.getLabelPosition(baseLocation));
+    }
 
-        /*
-         * Update the position of this text object relative to the centroid of
-         * the hazard area.
-         */
-        setLocation(drawingAttributes.getTextPosition().getLabelPosition(
-                location));
+    /**
+     * Construct a copy of the specified instance. Note that any member fields
+     * of the copy reference the same objects as do the corresponding member
+     * fields of the original (that is, this creates a shallow copy).
+     * 
+     * @param original
+     *            Instance to be copied.
+     */
+    public TextDrawable(TextDrawable original) {
+        this.identifier = original.identifier;
+        this.geometryIndex = original.geometryIndex;
+        this.combinable = original.combinable;
+        this.textPositioner = original.textPositioner;
+        this.baseLocation = original.baseLocation;
+        setPgenType(TEXT);
+        setText(original.getText());
+        setColors(original.getColors());
+        setFontSize(original.getFontSize());
+        setStyle(original.getStyle());
+        setLocation(original.getLocation());
     }
 
     // Public Methods
@@ -121,5 +169,36 @@ public class TextDrawable extends Text implements IDrawable {
     @Override
     public int getGeometryIndex() {
         return geometryIndex;
+    }
+
+    @Override
+    public String toString() {
+        return getIdentifier() + " (text: \""
+                + Joiner.on("\\n").join(getText()) + "\")";
+    }
+
+    /**
+     * Determine whether or not the drawable may be combined with others that
+     * are themselves combinable if they occupy the same location.
+     * 
+     * @return <code>true</code> if the drawable may be combined with others
+     *         sharing the same location, <code>false</code> otherwise.
+     */
+    public boolean isCombinable() {
+        return combinable;
+    }
+
+    /**
+     * Handle a change in zoom level by changing the location if necessary.
+     * 
+     * @return <code>true</code> if the zoom change resulted in a location
+     *         change, <code>false</code> otherwise.
+     */
+    public boolean handleZoomChange() {
+        if (textPositioner.isCentered() == false) {
+            setLocation(textPositioner.getLabelPosition(baseLocation));
+            return true;
+        }
+        return false;
     }
 }

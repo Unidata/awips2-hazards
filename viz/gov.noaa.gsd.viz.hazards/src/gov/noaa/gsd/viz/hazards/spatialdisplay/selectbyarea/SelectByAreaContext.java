@@ -16,8 +16,8 @@ import java.util.Set;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
- * Description: Information about the an entity needed to allow the user to
- * modify its geometry using select-by-area.
+ * Description: Information about the modification of a geometry via
+ * select-by-area.
  * 
  * <pre>
  * 
@@ -35,13 +35,13 @@ public class SelectByAreaContext {
     // Private Variables
 
     /**
-     * Identifier of the entity that is to be edited using select-by-area; if
+     * Identifier of the entity being edited using select-by-area; if
      * <code>null</code>, a new geometry is to be created.
      */
     private final IEntityIdentifier identifier;
 
     /**
-     * Select-by-area geometries previously selected for the entity.
+     * Select-by-area geometries selected for the entity.
      */
     private final Set<Geometry> selectedGeometries;
 
@@ -61,12 +61,10 @@ public class SelectByAreaContext {
      * Construct a standard instance.
      * 
      * @param identifier
-     *            Identifier of the entity that is to be edited using
-     *            select-by-area; if <code>null</code>, a new geometry is to be
-     *            created.
+     *            Identifier of the entity being edited using select-by-area; if
+     *            <code>null</code>, a new geometry is to be created.
      * @param selectedGeometries
-     *            Select-by-area geometries previously selected for entity, if
-     *            any.
+     *            Select-by-area geometries selected for the entity, if any.
      * @param databaseTableName
      *            Database table name.
      * @param legend
@@ -84,7 +82,7 @@ public class SelectByAreaContext {
     // Public Methods
 
     /**
-     * Get the identifier of the entity that is to be edited using
+     * Get the identifier of the entity that is being edited using
      * select-by-area, if editing is occurring.
      * 
      * @return Identifier; if <code>null</code>, no entity is being edited, and
@@ -95,9 +93,9 @@ public class SelectByAreaContext {
     }
 
     /**
-     * Get the select-by-area geometries previously selected for the entity.
+     * Get the select-by-area geometries selected for the entity.
      * 
-     * @return Select-by-area geometries previously selected for the entity.
+     * @return Select-by-area geometries selected for the entity.
      */
     public Set<Geometry> getSelectedGeometries() {
         return selectedGeometries;

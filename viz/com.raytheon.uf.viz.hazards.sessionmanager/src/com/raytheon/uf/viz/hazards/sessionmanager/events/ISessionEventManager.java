@@ -48,7 +48,6 @@ import com.vividsolutions.jts.geom.Geometry;
  * May 21, 2013 1257       bsteffen    Initial creation
  * Oct 22, 2013 1463       blawrence   Added methods for hazard conflict
  *                                     detection.
- *  
  * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
  * Nov 29, 2013 2378       blawrenc    Added methods for proposing,
  *                                     issuing and ending hazard 
@@ -96,6 +95,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 15, 2016 18376      Chris.Golden Added temporary method isShutDown() to allow the session
  *                                      hazard event notification listener to know whether or not
  *                                      to forward on notifications.
+ * Aug 18, 2016 19537      Chris.Golden Added originator to sortEvents() method.
  * </pre>
  * 
  * @author bsteffen
@@ -364,8 +364,9 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * SEND_SELECTED_BACK or SEND_SELECTED_TO_FRONT
      * 
      * @param comparator
+     * @param originator
      */
-    public void sortEvents(Comparator<E> comparator);
+    public void sortEvents(Comparator<E> comparator, IOriginator originator);
 
     /**
      * Checks all events for conflicts.

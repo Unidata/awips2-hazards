@@ -18,18 +18,20 @@ import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.common.visuals.SymbolShape;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventHatchingEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventVisualFeatureEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityIdentifier;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,8 +69,8 @@ import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.Polygonal;
 
 /**
- * Description: Manager for spatial entities within the {@link SpatialPresenter}
- * .
+ * Description: Manager for {@link SpatialEntity} instances within the
+ * {@link SpatialPresenter} .
  * 
  * <pre>
  * 
@@ -86,6 +88,11 @@ import com.vividsolutions.jts.geom.Polygonal;
  * Aug 15, 2016   18376    Chris.Golden Added code to make garbage
  *                                      collection of the session manager
  *                                      more likely.
+ * Aug 23, 2016   19537    Chris.Golden Continued extensive spatial display
+ *                                      refactor, including changing the
+ *                                      code to reuse spatial entities that
+ *                                      do not need to be updated, thus
+ *                                      avoiding many unnecessary redraws.
  * </pre>
  * 
  * @author Chris.Golden
@@ -93,7 +100,203 @@ import com.vividsolutions.jts.geom.Polygonal;
  */
 class SpatialEntityManager {
 
+    // Package-Private Enumerated Types
+
+    /**
+     * Action to be taken with regard to display of a hazard event.
+     */
+    enum EventDisplayChange {
+        NONE, ADD_OR_REPLACE, REMOVE
+    };
+
+    // Private Static Classes
+
+    /**
+     * Encapsulation of the result of a spatial entity creation attempt for a
+     * hazard event.
+     */
+    private static class CreationResult {
+
+        // Private Variables
+
+        /**
+         * Flag indicating whether or not the creation attempt resulted in one
+         * or more spatial entities being created or reused.
+         */
+        private final boolean spatialEntitiesCreatedOrReused;
+
+        /**
+         * Map of spatial entity types to flags indicating whether or not all
+         * the spatial entities created or reused for those types were reused;
+         * if <code>spatialEntitiesCreatedOrReused</code> is <code>false</code>,
+         * this will be <code>null</code>.
+         */
+        private final Map<SpatialEntityType, Boolean> reusedForTypes;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param spatialEntitiesCreatedOrReused
+         *            Flag indicating whether or not the creation attempt
+         *            resulted in one or more spatial entities being created or
+         *            reused.
+         * @param reusedForTypes
+         *            Map of spatial entity types to flags indicating whether or
+         *            not all the spatial entities created or reused for those
+         *            types were reused; if
+         *            <code>spatialEntitiesCreatedOrReused</code> is
+         *            <code>false</code>, this will be <code>null</code>.
+         */
+        public CreationResult(boolean spatialEntitiesCreatedOrReused,
+                Map<SpatialEntityType, Boolean> reusedForTypes) {
+            this.spatialEntitiesCreatedOrReused = spatialEntitiesCreatedOrReused;
+            this.reusedForTypes = reusedForTypes;
+        }
+    }
+
+    /**
+     * Created or reused spatial entity and a flag indicating whether or not
+     * said entity was reused (as opposed to created).
+     */
+    private static class CreatedSpatialEntity {
+
+        // Private Variables
+
+        /**
+         * Created or reused spatial entities.
+         */
+        private final SpatialEntity<? extends IHazardEventEntityIdentifier> spatialEntity;
+
+        /**
+         * Flag indicating whether or not <code>spatialEntity</code> was reused
+         * instead of created.
+         */
+        private final boolean reused;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param spatialEntity
+         *            Created or reused spatial entity.
+         * @param reused
+         *            Flag indicating whether or not <code>spatialEntity</code>
+         *            was reused instead of created.
+         */
+        public CreatedSpatialEntity(
+                SpatialEntity<? extends IHazardEventEntityIdentifier> spatialEntity,
+                boolean reused) {
+            this.spatialEntity = spatialEntity;
+            this.reused = reused;
+        }
+    }
+
+    /**
+     * List of created or reused spatial entities and a flag indicating whether
+     * or not all the entities in the list were reused (as opposed to created).
+     */
+    private static class CreatedSpatialEntities {
+
+        // Private Variables
+
+        /**
+         * List of created or reused spatial entities.
+         */
+        private final List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities;
+
+        /**
+         * Flag indicating whether or not all the entities in
+         * <code>spatialEntities</code> were reused instead of created.
+         */
+        private final boolean allReused;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param spatialEntities
+         *            List of created or reused spatial entities.
+         * @param allReused
+         *            Flag indicating whether or not all the entities in
+         *            <code>spatialEntities</code> were reused instead of
+         *            created.
+         */
+        public CreatedSpatialEntities(
+                List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities,
+                boolean allReused) {
+            this.spatialEntities = spatialEntities;
+            this.allReused = allReused;
+        }
+    }
+
+    /**
+     * Encapsulation of a sublist of spatial entities, including its position
+     * and size within a list.
+     */
+    private static class Sublist {
+
+        // Private Variables
+
+        /**
+         * Index of the sublist's starting point in the list.
+         */
+        private final int index;
+
+        /**
+         * Number of elements in the sublist.
+         */
+        private final int size;
+
+        /**
+         * Sublist.
+         */
+        private final List<SpatialEntity<? extends IHazardEventEntityIdentifier>> list;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param index
+         *            Index of the sublist's starting point in the list.
+         * @param size
+         *            Number of elements in the list.
+         */
+        public Sublist(
+                List<SpatialEntity<? extends IHazardEventEntityIdentifier>> list,
+                int index, int size) {
+            this.list = list;
+            this.index = index;
+            this.size = size;
+        }
+    }
+
     // Private Static Constants
+
+    /**
+     * Set of spatial entity types associated with hazard events.
+     */
+    private static final EnumSet<SpatialEntityType> HAZARD_EVENT_SPATIAL_ENTITY_TYPES = EnumSet
+            .of(SpatialEntityType.HATCHING, SpatialEntityType.UNSELECTED,
+                    SpatialEntityType.SELECTED);
+
+    /**
+     * Empty created spatial entities.
+     */
+    private static final CreatedSpatialEntities EMPTY_CREATED_SPATIAL_ENTITIES = new CreatedSpatialEntities(
+            Collections
+                    .<SpatialEntity<? extends IHazardEventEntityIdentifier>> emptyList(),
+            false);
+
+    /**
+     * Empty creation result.
+     */
+    private static final CreationResult EMPTY_CREATION_RESULT = new CreationResult(
+            false, null);
 
     /**
      * Standard diameter in pixels of a hazard event point shape.
@@ -148,11 +351,7 @@ class SpatialEntityManager {
 
     /**
      * View associated with the presenter using this manager.
-     * 
-     * @deprecated Should be replaced by a {@link IListStateChanger} in the
-     *             future.
      */
-    @Deprecated
     private ISpatialView<?, ?> view;
 
     /**
@@ -172,66 +371,57 @@ class SpatialEntityManager {
     private GeoMapUtilities geoMapUtilities;
 
     /**
-     * Overall list of spatial entities.
+     * List of hatching spatial entities.
      */
-    private final List<SpatialEntity<? extends IEntityIdentifier>> spatialEntities = new ArrayList<>();
+    private final List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingSpatialEntities = new ArrayList<>(
+            SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                    .get(SpatialEntityType.HATCHING));
+
+    /**
+     * List of unselected spatial entities.
+     */
+    private final List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedSpatialEntities = new ArrayList<>(
+            SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                    .get(SpatialEntityType.UNSELECTED));
+
+    /**
+     * List of selected spatial entities.
+     */
+    private final List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedSpatialEntities = new ArrayList<>(
+            SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                    .get(SpatialEntityType.SELECTED));
+
+    /**
+     * List of spatial entities generated from the visual features within the
+     * list provided to the last invocation of
+     * {@link #updateEntitiesForToolVisualFeatures(VisualFeaturesList, ToolType, String)}
+     * .
+     */
+    private final List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> toolSpatialEntities = new ArrayList<>(
+            SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                    .get(SpatialEntityType.TOOL));
+
+    /**
+     * Map associating spatial entity types with the lists of spatial entities
+     * of those types.
+     */
+    private final Map<SpatialEntityType, List<? extends SpatialEntity<? extends IEntityIdentifier>>> spatialEntitiesForTypes = new EnumMap<>(
+            SpatialEntityType.class);
+
+    /**
+     * Map associating spatial entity types with maps that in turn pair each
+     * hazard event that is currently showing at least one spatial entity of
+     * that type with the index of its first such entity within the
+     * corresponding list in {@link #spatialEntitiesForTypes}. Note that there
+     * is no entry in this map for {@link SpatialEntityType#TOOL}.
+     */
+    private final Map<SpatialEntityType, Map<String, Integer>> indicesForEventsForTypes = new EnumMap<>(
+            SpatialEntityType.class);
 
     /**
      * Map of identifiers to spatial entities.
      */
     private final Map<IEntityIdentifier, SpatialEntity<? extends IEntityIdentifier>> spatialEntitiesForIdentifiers = new HashMap<>();
-
-    /**
-     * Map of event identifiers to lists of spatial entities representing those
-     * hazard events.
-     */
-    private final Map<String, List<SpatialEntity<? extends IHazardEventEntityIdentifier>>> spatialEntitiesForEventIdentifiers = new HashMap<>();
-
-    /**
-     * List of spatial entities, if any, generated from the visual features
-     * within {@link #toolVisualFeatures}.
-     */
-    private final List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> toolSpatialEntities = new ArrayList<>();
-
-    /**
-     * Index within {@link spatialEntities} of the first non-hatching spatial
-     * entity associated with an unselected hazard event.
-     */
-    private int unselectedEventStartIndex;
-
-    /**
-     * Index within {@link spatialEntities} of the first non-hatching spatial
-     * entity associated with a selected hazard event.
-     */
-    private int selectedEventStartIndex;
-
-    /**
-     * Index within {@link spatialEntities} of the first spatial entity
-     * generated from one of the visual features found in
-     * {@link #toolVisualFeatures}.
-     */
-    private int toolVisualFeatureStartIndex;
-
-    /**
-     * Map pairing each hazard event that is currently showing at least one
-     * hatching spatial entity with the index of its first such entity within
-     * {@link #spatialEntities}.
-     */
-    private final Map<String, Integer> hatchingIndicesForEvents = new HashMap<>();
-
-    /**
-     * Map pairing each hazard event that is currently unselected and visible
-     * with the index of its first non-hatching spatial entity within
-     * {@link #spatialEntities}.
-     */
-    private final Map<String, Integer> unselectedIndicesForEvents = new HashMap<>();
-
-    /**
-     * Map pairing each hazard event that is currently selected and visible with
-     * the index of its first non-hatching spatial entity within
-     * {@link #spatialEntities}.
-     */
-    private final Map<String, Integer> selectedIndicesForEvents = new HashMap<>();
 
     /**
      * Identifiers of currently selected spatial entities.
@@ -256,6 +446,20 @@ class SpatialEntityManager {
         this.geoMapUtilities = new GeoMapUtilities(
                 sessionManager.getConfigurationManager());
         this.selectedEventIdentifiers = selectedEventIdentifiers;
+        spatialEntitiesForTypes.put(SpatialEntityType.HATCHING,
+                hatchingSpatialEntities);
+        spatialEntitiesForTypes.put(SpatialEntityType.UNSELECTED,
+                unselectedSpatialEntities);
+        spatialEntitiesForTypes.put(SpatialEntityType.SELECTED,
+                selectedSpatialEntities);
+        spatialEntitiesForTypes
+                .put(SpatialEntityType.TOOL, toolSpatialEntities);
+        indicesForEventsForTypes.put(SpatialEntityType.HATCHING,
+                new HashMap<String, Integer>());
+        indicesForEventsForTypes.put(SpatialEntityType.UNSELECTED,
+                new HashMap<String, Integer>());
+        indicesForEventsForTypes.put(SpatialEntityType.SELECTED,
+                new HashMap<String, Integer>());
     }
 
     // Package-Private Methods
@@ -268,6 +472,15 @@ class SpatialEntityManager {
      */
     void setView(ISpatialView<?, ?> view) {
         this.view = view;
+    }
+
+    /**
+     * Get an unmodifiable view of the selected spatial entity identifiers.
+     * 
+     * @return Unmodifiable view of the selected spatial entity identifiers.
+     */
+    Set<IEntityIdentifier> getSelectedSpatialEntityIdentifiers() {
+        return Collections.unmodifiableSet(selectedSpatialEntityIdentifiers);
     }
 
     /**
@@ -299,142 +512,121 @@ class SpatialEntityManager {
             /*
              * Create the spatial entities for the event, if any.
              */
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingSpatialEntities = new ArrayList<>();
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedSpatialEntities = new ArrayList<>();
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedSpatialEntities = new ArrayList<>();
+            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingEntities = new ArrayList<>();
+            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedEntities = new ArrayList<>();
+            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedEntities = new ArrayList<>();
             SelectedTime selectedRange = sessionManager.getTimeManager()
                     .getSelectedTime();
             Date selectedTime = getSelectedTimeForVisualFeatures();
             if (createSpatialEntitiesForEvent((ObservedHazardEvent) event,
-                    hatchingSpatialEntities, unselectedSpatialEntities,
-                    selectedSpatialEntities, selectedRange, selectedTime,
-                    sessionManager.getConfigurationManager().getHazardTypes(),
-                    sessionManager.areHatchedAreasDisplayed()) == false) {
+                    hatchingEntities, unselectedEntities, selectedEntities,
+                    selectedRange, selectedTime, sessionManager
+                            .getConfigurationManager().getHazardTypes(),
+                    sessionManager.areHatchedAreasDisplayed()).spatialEntitiesCreatedOrReused == false) {
                 return;
             }
 
             /*
-             * Create a range map to hold the ranges of indices that must be
-             * offset as a result of this addition.
+             * Add each list of generated spatial entities to the list of the
+             * appropriate type of spatial entities for all events.
              */
-            RangeMap<Integer, Integer> offsetsForIndices = TreeRangeMap
-                    .create();
-
-            /*
-             * If hatching spatial entities were generated, find the index where
-             * they should be inserted.
-             */
-            int hatchingInsertionIndex = -1;
-            if (hatchingSpatialEntities.isEmpty() == false) {
-
-                /*
-                 * Get the insertion index; if -1, the entities are to be
-                 * appended to the list. If not, then add an entry to the
-                 * offsets-for-indices range map indicating that for any index
-                 * greater than or equal to the insertion index, offsetting
-                 * should occur in order to keep said indices relevant after the
-                 * insertion.
-                 */
-                hatchingInsertionIndex = getInsertionIndexForHatchingEntities(
-                        events, eventIndex);
-                if (hatchingInsertionIndex != -1) {
-                    offsetsForIndices.put(
-                            Range.atLeast(hatchingInsertionIndex),
-                            hatchingSpatialEntities.size());
-                }
-            }
-
-            /*
-             * If non-hatching spatial entities were generated, find the index
-             * where they should be inserted.
-             */
-            int nonHatchingInsertionIndex = -1;
-            if ((unselectedSpatialEntities.isEmpty() == false)
-                    || (selectedSpatialEntities.isEmpty() == false)) {
-
-                /*
-                 * Get the insertion index; if -1, the entities are to be
-                 * appended to the list. If not, then adjust the insertion index
-                 * to take into account any hatching entities that are being
-                 * added as well. Then add an entry to the offsets-for-indices
-                 * range map indicating that for any index greater than or equal
-                 * to the insertion index, offsetting should occur in order to
-                 * keep said indices relevant after the insertion.
-                 */
-                nonHatchingInsertionIndex = getInsertionIndexForNonHatchingEntities(
-                        events, eventIndex);
-                if (nonHatchingInsertionIndex != -1) {
-                    if (hatchingInsertionIndex != -1) {
-                        nonHatchingInsertionIndex += hatchingSpatialEntities
-                                .size();
-                    }
-                    offsetsForIndices.put(
-                            Range.atLeast(nonHatchingInsertionIndex),
-                            hatchingSpatialEntities.size()
-                                    + unselectedSpatialEntities.size()
-                                    + selectedSpatialEntities.size());
-                }
-            }
-
-            /*
-             * Update the recorded spatial entity indices.
-             */
-            updateRecordedEntityIndices(offsetsForIndices);
-
-            /*
-             * Add an entry to each index-for-event map for which one is
-             * appropriate for the new event.
-             */
-            if (hatchingSpatialEntities.isEmpty() == false) {
-                hatchingIndicesForEvents.put(event.getEventID(),
-                        (hatchingInsertionIndex == -1 ? spatialEntities.size()
-                                : hatchingInsertionIndex));
-            }
-            if (unselectedSpatialEntities.isEmpty() == false) {
-                unselectedIndicesForEvents.put(
-                        event.getEventID(),
-                        (nonHatchingInsertionIndex == -1 ? spatialEntities
-                                .size() + hatchingSpatialEntities.size()
-                                : nonHatchingInsertionIndex));
-            }
-            if (selectedSpatialEntities.isEmpty() == false) {
-                selectedIndicesForEvents.put(
-                        event.getEventID(),
-                        (nonHatchingInsertionIndex == -1 ? spatialEntities
-                                .size() + hatchingSpatialEntities.size()
-                                : nonHatchingInsertionIndex));
-            }
-
-            /*
-             * Insert the hatching and non-hatching spatial entities into the
-             * list.
-             */
-            if (hatchingSpatialEntities.isEmpty() == false) {
-                if (hatchingInsertionIndex == -1) {
-                    addSpatialEntities(hatchingSpatialEntities);
-                } else {
-                    insertSpatialEntities(hatchingInsertionIndex,
-                            hatchingSpatialEntities);
-                }
-            }
-            if ((unselectedSpatialEntities.isEmpty() == false)
-                    || (selectedSpatialEntities.isEmpty() == false)) {
-                if (nonHatchingInsertionIndex == -1) {
-                    addSpatialEntities(unselectedSpatialEntities.isEmpty() ? selectedSpatialEntities
-                            : unselectedSpatialEntities);
-                } else {
-                    insertSpatialEntities(
-                            nonHatchingInsertionIndex,
-                            unselectedSpatialEntities.isEmpty() ? selectedSpatialEntities
-                                    : unselectedSpatialEntities);
-                }
-            }
+            boolean changed = addEventSpatialEntities(
+                    SpatialEntityType.HATCHING, hatchingEntities, events,
+                    eventIndex);
+            changed |= addEventSpatialEntities(SpatialEntityType.UNSELECTED,
+                    unselectedEntities, events, eventIndex);
+            changed |= addEventSpatialEntities(SpatialEntityType.SELECTED,
+                    selectedEntities, events, eventIndex);
 
             /*
              * Tell the view about the change.
              */
-            view.drawSpatialEntities(spatialEntities,
-                    selectedSpatialEntityIdentifiers);
+            if (changed) {
+                view.refresh();
+            }
+        }
+    }
+
+    /**
+     * Replace spatial entities for the specified event with updated ones.
+     * 
+     * @param event
+     *            Event for which to replace spatial entities.
+     * @param indexMayHaveChanged
+     *            Flag indicating whether or not the event's position in the
+     *            events list may have changed.
+     * @param forceReplacement
+     *            Flag indicating whether or not replacement should be forced,
+     *            even if the new and old spatial entities are identical.
+     */
+    void replaceEntitiesForEvent(IHazardEvent event,
+            boolean indexMayHaveChanged, boolean forceReplacement) {
+
+        /*
+         * Find the event within the list of events that may be visible in the
+         * spatial display, and create spatial entities for it if it is found.
+         */
+        List<ObservedHazardEvent> events = sessionManager.getEventManager()
+                .getCheckedEvents();
+        int eventIndex = events.indexOf(event);
+        CreationResult creationResult = null;
+        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingEntities = null;
+        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedEntities = null;
+        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedEntities = null;
+        if (eventIndex != -1) {
+
+            /*
+             * Create the updated spatial entities for the event, if any.
+             */
+            hatchingEntities = new ArrayList<>();
+            unselectedEntities = new ArrayList<>();
+            selectedEntities = new ArrayList<>();
+            SelectedTime selectedRange = sessionManager.getTimeManager()
+                    .getSelectedTime();
+            Date selectedTime = getSelectedTimeForVisualFeatures();
+            creationResult = createSpatialEntitiesForEvent(
+                    (ObservedHazardEvent) event, hatchingEntities,
+                    unselectedEntities, selectedEntities, selectedRange,
+                    selectedTime, sessionManager.getConfigurationManager()
+                            .getHazardTypes(),
+                    sessionManager.areHatchedAreasDisplayed());
+        }
+
+        /*
+         * If entities were created, replace the old entities with the new ones;
+         * otherwise, treat it as a removal of the event's existing entities, if
+         * any.
+         */
+        if ((creationResult != null)
+                && creationResult.spatialEntitiesCreatedOrReused) {
+
+            /*
+             * For each type of spatial entity associated with events, replace
+             * any that were associated with the event in the past with new
+             * ones.
+             */
+            String eventIdentifier = event.getEventID();
+            replaceEventSpatialEntities(SpatialEntityType.HATCHING,
+                    hatchingEntities, events, eventIndex, eventIdentifier,
+                    indexMayHaveChanged,
+                    ((forceReplacement == false) && Boolean.TRUE
+                            .equals(creationResult.reusedForTypes
+                                    .get(SpatialEntityType.HATCHING))));
+            replaceEventSpatialEntities(SpatialEntityType.UNSELECTED,
+                    unselectedEntities, events, eventIndex, eventIdentifier,
+                    indexMayHaveChanged,
+                    ((forceReplacement == false) && Boolean.TRUE
+                            .equals(creationResult.reusedForTypes
+                                    .get(SpatialEntityType.UNSELECTED))));
+            replaceEventSpatialEntities(SpatialEntityType.SELECTED,
+                    selectedEntities, events, eventIndex, eventIdentifier,
+                    indexMayHaveChanged,
+                    ((forceReplacement == false) && Boolean.TRUE
+                            .equals(creationResult.reusedForTypes
+                                    .get(SpatialEntityType.SELECTED))));
+            view.refresh();
+        } else {
+            removeEntitiesForEvent(event);
         }
     }
 
@@ -445,94 +637,23 @@ class SpatialEntityManager {
      *            Event for which to remove spatial entities.
      */
     void removeEntitiesForEvent(IHazardEvent event) {
+
+        /*
+         * Remove any spatial entities associated with the event.
+         */
         String eventIdentifier = event.getEventID();
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> entities = spatialEntitiesForEventIdentifiers
-                .get(eventIdentifier);
-        if ((entities != null) && (entities.isEmpty() == false)) {
+        boolean changed = removeEventSpatialEntities(
+                SpatialEntityType.HATCHING, eventIdentifier);
+        changed |= removeEventSpatialEntities(SpatialEntityType.UNSELECTED,
+                eventIdentifier);
+        changed |= removeEventSpatialEntities(SpatialEntityType.SELECTED,
+                eventIdentifier);
 
-            /*
-             * Create a range map to hold the ranges of indices that must be
-             * offset as a result of this removal.
-             */
-            RangeMap<Integer, Integer> offsetsForIndices = TreeRangeMap
-                    .create();
-
-            /*
-             * If there are hatching entities, determine how many there are and
-             * add an entry to the range map to offset any following indices
-             * appropriately.
-             */
-            int hatchingCount = 0;
-            int hatchingIndex = -1;
-            for (SpatialEntity<? extends IHazardEventEntityIdentifier> entity : entities) {
-                if (entity.getIdentifier().getClass()
-                        .equals(HazardEventHatchingEntityIdentifier.class) == false) {
-                    break;
-                }
-                hatchingCount++;
-            }
-            if (hatchingCount > 0) {
-                hatchingIndex = hatchingIndicesForEvents.get(eventIdentifier);
-                offsetsForIndices.put(
-                        Range.atLeast(hatchingIndex + hatchingCount),
-                        hatchingCount * -1);
-            }
-
-            /*
-             * If there are non-hatching entities, determine how many there are
-             * and add an entry to the range map to offset any following indices
-             * appropriately.
-             */
-            boolean selected = selectedIndicesForEvents
-                    .containsKey(eventIdentifier);
-            int nonHatchingIndex = (selected ? selectedIndicesForEvents
-                    : unselectedIndicesForEvents).get(eventIdentifier);
-            int nonHatchingCount = entities.size() - hatchingCount;
-            if (nonHatchingCount > 0) {
-                offsetsForIndices.put(
-                        Range.atLeast(nonHatchingIndex + entities.size()),
-                        entities.size() * -1);
-            }
-
-            /*
-             * Update the recorded spatial entity indices.
-             */
-            updateRecordedEntityIndices(offsetsForIndices);
-
-            /*
-             * Remove the entries from each index-for-event map for which one
-             * was recorded.
-             */
-            if (hatchingCount > 0) {
-                hatchingIndicesForEvents.remove(eventIdentifier);
-            }
-            (selected ? selectedIndicesForEvents : unselectedIndicesForEvents)
-                    .remove(eventIdentifier);
-
-            /*
-             * Remove any associations between the hazard event and its spatial
-             * entities.
-             */
-            disassociateSpatialEntitiesFromHazardEvent(eventIdentifier);
-
-            /*
-             * Remove both the hatching and non-hatching spatial entities from
-             * the list, doing the non-hatching first so that the starting
-             * non-hatching index is accurate, since the hatching ones have not
-             * been removed from below it in the list yet.
-             */
-            if (nonHatchingCount > 0) {
-                removeSpatialEntities(nonHatchingIndex, nonHatchingCount);
-            }
-            if (hatchingCount > 0) {
-                removeSpatialEntities(hatchingIndex, hatchingCount);
-            }
-
-            /*
-             * Tell the view about the change.
-             */
-            view.drawSpatialEntities(spatialEntities,
-                    selectedSpatialEntityIdentifiers);
+        /*
+         * Tell the view about the change.
+         */
+        if (changed) {
+            view.refresh();
         }
     }
 
@@ -554,33 +675,12 @@ class SpatialEntityManager {
             String toolIdentifier) {
 
         /*
-         * Generate the new spatial entities.
+         * Generate the new spatial entities, and tell the view about the
+         * change.
          */
-        int lastToolSpatialEntityCount = toolSpatialEntities.size();
-        addSpatialEntitiesForToolVisualFeatures(toolVisualFeatures, toolType,
-                toolIdentifier, getSelectedTimeForVisualFeatures());
-
-        /*
-         * If there were tool spatial entities before and some have been
-         * generated now, replace the old ones with the new ones; otherwise, if
-         * there were tool spatial entities before, remove the old ones;
-         * finally, if there were no old ones but new ones were generated, add
-         * the new ones.
-         */
-        if (lastToolSpatialEntityCount > 0) {
-            if (toolSpatialEntities.size() > 0) {
-                replaceSpatialEntities(toolVisualFeatureStartIndex,
-                        lastToolSpatialEntityCount, toolSpatialEntities);
-            } else {
-                removeSpatialEntities(toolVisualFeatureStartIndex,
-                        lastToolSpatialEntityCount);
-            }
-            view.drawSpatialEntities(spatialEntities,
-                    selectedSpatialEntityIdentifiers);
-        } else if (toolSpatialEntities.size() > 0) {
-            addSpatialEntities(toolSpatialEntities);
-            view.drawSpatialEntities(spatialEntities,
-                    selectedSpatialEntityIdentifiers);
+        if (replaceToolSpatialEntities(toolVisualFeatures, toolType,
+                toolIdentifier, getSelectedTimeForVisualFeatures())) {
+            view.refresh();
         }
     }
 
@@ -602,87 +702,142 @@ class SpatialEntityManager {
             ToolType toolType, String toolIdentifier) {
 
         /*
-         * Clear the associations of hazard events with spatial entities, of
-         * spatial entity identifiers with spatial entities, and the listing of
-         * tool spatial entities.
-         */
-        spatialEntitiesForIdentifiers.clear();
-        spatialEntitiesForEventIdentifiers.clear();
-        toolSpatialEntities.clear();
-
-        /*
          * Iterate through the hazard events, compiling lists of spatial
          * entities from all events that either have no visual features, but
          * whose time ranges intersect the current selected time range, or if
          * they have visual features, that are visible at the current selected
          * time range's start time.
          */
-        selectedSpatialEntityIdentifiers.clear();
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingSpatialEntities = new ArrayList<>();
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedSpatialEntities = new ArrayList<>();
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedSpatialEntities = new ArrayList<>();
         SelectedTime selectedRange = sessionManager.getTimeManager()
                 .getSelectedTime();
         Date selectedTime = getSelectedTimeForVisualFeatures();
         HazardTypes hazardTypes = sessionManager.getConfigurationManager()
                 .getHazardTypes();
         boolean hatching = sessionManager.areHatchedAreasDisplayed();
+        Map<SpatialEntityType, List<SpatialEntity<? extends IHazardEventEntityIdentifier>>> newSpatialEntitiesForTypes = new EnumMap<>(
+                SpatialEntityType.class);
+        for (SpatialEntityType type : HAZARD_EVENT_SPATIAL_ENTITY_TYPES) {
+            newSpatialEntitiesForTypes
+                    .put(type,
+                            new ArrayList<SpatialEntity<? extends IHazardEventEntityIdentifier>>(
+                                    SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                                            .get(type)));
+        }
         for (ObservedHazardEvent event : sessionManager.getEventManager()
                 .getCheckedEvents()) {
-            createSpatialEntitiesForEvent(event, hatchingSpatialEntities,
-                    unselectedSpatialEntities, selectedSpatialEntities,
+            createSpatialEntitiesForEvent(event,
+                    newSpatialEntitiesForTypes.get(SpatialEntityType.HATCHING),
+                    newSpatialEntitiesForTypes
+                            .get(SpatialEntityType.UNSELECTED),
+                    newSpatialEntitiesForTypes.get(SpatialEntityType.SELECTED),
                     selectedRange, selectedTime, hazardTypes, hatching);
         }
 
         /*
-         * If any spatial-information-collecting visual features are currently
-         * in existence for a tool, iterate through them, creating spatial
-         * entities for any that are visible at the selected time, and add them
-         * to the list of selected spatial entities.
+         * Repopulate the selected spatial entity identifiers record.
          */
-        if (toolVisualFeatures.isEmpty() == false) {
-            addSpatialEntitiesForToolVisualFeatures(toolVisualFeatures,
-                    toolType, toolIdentifier, selectedTime);
+        selectedSpatialEntityIdentifiers.clear();
+        for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : newSpatialEntitiesForTypes
+                .get(SpatialEntityType.SELECTED)) {
+            selectedSpatialEntityIdentifiers.add(spatialEntity.getIdentifier());
         }
 
         /*
-         * Remember the index for each of the following: The first unselected
-         * event spatial entity, the first selected event spatial entity, and
-         * the first tool visual feature spatial entity. Any that are not found
-         * in the spatial entities are recorded as -1.
+         * Associate the spatial entities with their identifiers, and remember
+         * the starting indices for each hazard event for each of the types of
+         * spatial entity that may be associated with that event. Also mark any
+         * type that has new spatial entities as having changed.
          */
-        unselectedEventStartIndex = (unselectedSpatialEntities.isEmpty() ? -1
-                : hatchingSpatialEntities.size());
-        selectedEventStartIndex = (selectedSpatialEntities.isEmpty() ? -1
-                : unselectedSpatialEntities.size()
-                        + hatchingSpatialEntities.size());
-        toolVisualFeatureStartIndex = (toolSpatialEntities.isEmpty() ? -1
-                : selectedSpatialEntities.size()
-                        + unselectedSpatialEntities.size()
-                        + hatchingSpatialEntities.size());
+        Set<SpatialEntityType> changedEntityTypes = EnumSet
+                .noneOf(SpatialEntityType.class);
+        spatialEntitiesForIdentifiers.clear();
+        for (Map.Entry<SpatialEntityType, List<SpatialEntity<? extends IHazardEventEntityIdentifier>>> entry : newSpatialEntitiesForTypes
+                .entrySet()) {
+            repopulateEntityAssociationsAndIndicesForEvents(entry.getKey(),
+                    entry.getValue());
+            if (doListsHoldSameReferences(
+                    spatialEntitiesForTypes.get(entry.getKey()),
+                    entry.getValue()) == false) {
+                changedEntityTypes.add(entry.getKey());
+            }
+        }
 
         /*
-         * Remember the starting indices for each hazard event for each of the
-         * following: its first hatching spatial entity, its first unselected
-         * spatial entity, and its first selected spatial entity.
+         * For any hazard-event-related spatial entity types that have changed,
+         * set the associated list to hold the new spatial entities.
          */
-        repopulateEntityIndicesForEventsMap(hatchingSpatialEntities,
-                hatchingIndicesForEvents, 0);
-        repopulateEntityIndicesForEventsMap(unselectedSpatialEntities,
-                unselectedIndicesForEvents, unselectedEventStartIndex);
-        repopulateEntityIndicesForEventsMap(selectedSpatialEntities,
-                selectedIndicesForEvents, selectedEventStartIndex);
+        for (SpatialEntityType type : changedEntityTypes) {
+            setSpatialEntities(type, newSpatialEntitiesForTypes.get(type));
+        }
 
         /*
-         * Concatenate the lists together into one, and have the view draw them.
+         * If any spatial-information-collecting visual features are currently
+         * in existence for a tool, create spatial entities for the specified
+         * visual features as appropriate, and if at least one is created, mark
+         * the tool-related spatial entity type as changed.
          */
-        spatialEntities.clear();
-        spatialEntities.addAll(hatchingSpatialEntities);
-        spatialEntities.addAll(unselectedSpatialEntities);
-        spatialEntities.addAll(selectedSpatialEntities);
-        spatialEntities.addAll(toolSpatialEntities);
-        view.drawSpatialEntities(spatialEntities,
-                selectedSpatialEntityIdentifiers);
+        if (replaceToolSpatialEntities(toolVisualFeatures, toolType,
+                toolIdentifier, selectedTime)) {
+            changedEntityTypes.add(SpatialEntityType.TOOL);
+        }
+
+        /*
+         * Tell the view to redraw if something changed..
+         */
+        if (changedEntityTypes.isEmpty() == false) {
+            view.refresh();
+        }
+    }
+
+    /**
+     * Determine what action must be taken with regard to creating or removing
+     * the spatial features for the specified hazard event given the specified
+     * selected time change.
+     * 
+     * @param event
+     *            Event to be checked.
+     * @param oldTime
+     *            Old selected time.
+     * @param newTime
+     *            New selected time.
+     * @return Action that must be taken to show, hide, or regenerate the
+     *         spatial entities for the hazard event, if any.
+     */
+    EventDisplayChange getSpatialEntityActionForEventWithChangedSelectedTime(
+            ObservedHazardEvent event, SelectedTime oldTime,
+            SelectedTime newTime) {
+
+        /*
+         * If there is no previous selected time, addition may be required.
+         */
+        if (oldTime == null) {
+            return EventDisplayChange.ADD_OR_REPLACE;
+        }
+
+        /*
+         * Visual features may require changes as a result of any change to the
+         * lower bound of the selected time.
+         */
+        VisualFeaturesList visualFeatures = event.getVisualFeatures();
+        if ((visualFeatures != null)
+                && (visualFeatures.isEmpty() == false)
+                && isChangedSelectedTimeAffectingVisualFeatures(oldTime,
+                        newTime)) {
+            return EventDisplayChange.ADD_OR_REPLACE;
+        }
+
+        /*
+         * Determine whether or not the event would be showing within the old
+         * selected time and the new selected time, and compare the results,
+         * returning the appropriate action.
+         */
+        boolean inOldTime = oldTime.intersects(event.getStartTime().getTime(),
+                event.getEndTime().getTime());
+        boolean inNewTime = newTime.intersects(event.getStartTime().getTime(),
+                event.getEndTime().getTime());
+        return (inOldTime == inNewTime ? EventDisplayChange.NONE
+                : (inOldTime ? EventDisplayChange.REMOVE
+                        : EventDisplayChange.ADD_OR_REPLACE));
     }
 
     /**
@@ -698,10 +853,29 @@ class SpatialEntityManager {
      */
     SpatialEntity<? extends IEntityIdentifier> getFirstPolygonalSpatialEntityForEvent(
             String eventIdentifier) {
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities = spatialEntitiesForEventIdentifiers
-                .get(eventIdentifier);
+
+        /*
+         * Determine which list of spatial entities, the one of selected or the
+         * one of unselected, contains entities for this event; if neither does,
+         * return nothing.
+         */
+        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities = (indicesForEventsForTypes
+                .get(SpatialEntityType.UNSELECTED).containsKey(eventIdentifier) ? unselectedSpatialEntities
+                : (indicesForEventsForTypes.get(SpatialEntityType.SELECTED)
+                        .containsKey(eventIdentifier) ? selectedSpatialEntities
+                        : null));
         if (spatialEntities != null) {
+
+            /*
+             * Iterate through all entities in the list that go with this hazard
+             * event, finding the first one that is or contains a polygon; if no
+             * such entity is found for this hazard event, return nothing.
+             */
             for (SpatialEntity<? extends IHazardEventEntityIdentifier> spatialEntity : spatialEntities) {
+                if (spatialEntity.getIdentifier().getEventIdentifier()
+                        .equals(eventIdentifier) == false) {
+                    break;
+                }
                 if (isOrContainsPolygon(spatialEntity.getGeometry())) {
                     return spatialEntity;
                 }
@@ -710,127 +884,689 @@ class SpatialEntityManager {
         return null;
     }
 
+    /**
+     * Determine whether or not the specified selected time change should affect
+     * the generation of spatial entities from visual features.
+     * <p>
+     * TODO: If visual features are ever altered to not key off of the lower
+     * bound of the selected time only, this will need changing.
+     * </p>
+     * 
+     * @param oldTime
+     *            Old selected time.
+     * @param newTime
+     *            New selected time.
+     * @return <code>true</code> if the selected time change affects the
+     *         generation of spatial entities from visual features,
+     *         <code>false</code> otherwise.
+     */
+    boolean isChangedSelectedTimeAffectingVisualFeatures(SelectedTime oldTime,
+            SelectedTime newTime) {
+        return ((oldTime == null) || (oldTime.getLowerBound() != newTime
+                .getLowerBound()));
+    }
+
     // Private Methods
 
     /**
-     * Determine whether the specified geometry is polygonal, or contains a
-     * nested geometry that is polygonal.
+     * Get the position and size of the sublist of spatial entities associated
+     * with the specified event identifier within the specified entities list,
+     * using the specified map to find the starting index.
      * 
-     * @param geometry
-     *            Geometry to be checked.
-     * @return <code>true</code> if the geometry is or contains a polygon,
-     *         <code>false</code> otherwise.
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param indicesForEvents
+     *            Map of event identifiers to the starting indices of any
+     *            spatial entities associated with them in
+     *            <code>spatialEntities</code>; <code>eventIdentifier</code> may
+     *            or may not have a valid entry within this map.
+     * @param spatialEntities
+     *            List of spatial entities from which to get the position and
+     *            size of the sublist, if any.
+     * @return Position and size of the sublist, or <code>null</code> if there
+     *         are no spatial entities within the list for this hazard event.
      */
-    private boolean isOrContainsPolygon(Geometry geometry) {
-        if (geometry instanceof Polygonal) {
-            return true;
-        } else if (geometry instanceof GeometryCollection) {
-            for (int j = 0; j < geometry.getNumGeometries(); j++) {
-                if (isOrContainsPolygon(geometry.getGeometryN(j))) {
-                    return true;
+    private Sublist getEventEntitySublistWithinList(
+            String eventIdentifier,
+            Map<String, Integer> indicesForEvents,
+            List<? extends SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities) {
+        if (indicesForEvents.containsKey(eventIdentifier)) {
+            int count = 0;
+            int startIndex = indicesForEvents.get(eventIdentifier);
+            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> sublist = new ArrayList<>();
+            for (int j = startIndex; j < spatialEntities.size(); j++) {
+                if (spatialEntities.get(j).getIdentifier().getEventIdentifier()
+                        .equals(eventIdentifier) == false) {
+                    break;
                 }
+                sublist.add(spatialEntities.get(j));
+                count++;
             }
+            return new Sublist(sublist, startIndex, count);
+        }
+        return null;
+    }
+
+    /**
+     * Get a range map holding the specified index and offset, indicating that
+     * indices at or beyond this one should be offset by the specified amount.
+     * 
+     * @param index
+     *            Index from which point onward to apply the offset.
+     * @param offset
+     *            Offset.
+     * @return Range map holding the specified index and offset.
+     */
+    private RangeMap<Integer, Integer> getOffsetsForIndicesRangeMap(int index,
+            int offset) {
+        RangeMap<Integer, Integer> offsetsForIndices = TreeRangeMap.create();
+        offsetsForIndices.put(Range.atLeast(index), offset);
+        return offsetsForIndices;
+    }
+
+    /**
+     * For the specified type of spatial entity and using the specified list,
+     * clear and repopulate the map associating event identifiers with the
+     * indices of those events' first spatial entity in the specified list, as
+     * well as repopulating the association of spatial entities with
+     * identifiers.
+     * 
+     * @param type
+     *            Type of spatial entities for which repopulation is required.
+     *            Must be any value besides <code>null</code> or
+     *            {@link SpatialEntityType#TOOL}, the latter because events are
+     *            not associated with tool spatial entities.
+     * @param spatialEntities
+     *            Spatial entities to be used for this type.
+     */
+    private void repopulateEntityAssociationsAndIndicesForEvents(
+            SpatialEntityType type,
+            List<? extends SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities) {
+        Map<String, Integer> indicesForEvents = indicesForEventsForTypes
+                .get(type);
+        indicesForEvents.clear();
+        for (int j = 0; j < spatialEntities.size(); j++) {
+            SpatialEntity<? extends IHazardEventEntityIdentifier> spatialEntity = spatialEntities
+                    .get(j);
+            IHazardEventEntityIdentifier identifier = spatialEntity
+                    .getIdentifier();
+            spatialEntitiesForIdentifiers.put(identifier, spatialEntity);
+            String eventIdentifier = identifier.getEventIdentifier();
+            if (indicesForEvents.containsKey(eventIdentifier) == false) {
+                indicesForEvents.put(eventIdentifier, j);
+            }
+        }
+    }
+
+    /**
+     * Add the specified spatial entities of the specified type, generated for
+     * the hazard event at the specified index of the specified event list, to
+     * the records.
+     * 
+     * @param type
+     *            Type of spatial entities to be added. Must be any value
+     *            besides <code>null</code> or {@link SpatialEntityType#TOOL},
+     *            the latter because events are not associated with tool spatial
+     *            entities.
+     * @param spatialEntities
+     *            Spatial entities to be added; may be an empty list.
+     * @param events
+     *            List of hazard events.
+     * @param eventIndex
+     *            Index of the event in <code>events</code> for which the
+     *            spatial entities were generated.
+     * @return <code>true</code> if an addition was made, that is, the entities
+     *         list was not empty, <code>false</code> otherwise.
+     */
+    private <E extends SpatialEntity<? extends IEntityIdentifier>> boolean addEventSpatialEntities(
+            SpatialEntityType type, List<E> spatialEntities,
+            List<ObservedHazardEvent> events, int eventIndex) {
+        if (spatialEntities.isEmpty() == false) {
+
+            /*
+             * Get the insertion index; if -1, the entities are to be appended
+             * to the list. If not, then offset any following indices in the
+             * hatching records to keep said indices relevant after the
+             * insertion.
+             */
+            int insertionIndex = getInsertionIndexForEntities(type, events,
+                    eventIndex);
+            Map<String, Integer> indicesForEvents = indicesForEventsForTypes
+                    .get(type);
+            if (insertionIndex != -1) {
+                RangeMap<Integer, Integer> offsetsForIndices = getOffsetsForIndicesRangeMap(
+                        insertionIndex, spatialEntities.size());
+                updateEntityIndicesMap(offsetsForIndices, indicesForEvents);
+            }
+
+            /*
+             * Make an index entry for these hatching entities, make
+             * associations, and add or insert the spatial entities as
+             * appropriate.
+             */
+            indicesForEvents.put(events.get(eventIndex).getEventID(),
+                    (insertionIndex == -1 ? spatialEntitiesForTypes.get(type)
+                            .size() : insertionIndex));
+            if (createAssociationsOfIdentifiersWithEntities(type,
+                    spatialEntities)) {
+                selectedSpatialEntityIdentifiersChanged();
+            }
+            if (insertionIndex == -1) {
+                addSpatialEntities(type, spatialEntities);
+            } else {
+                insertSpatialEntities(type, insertionIndex, spatialEntities);
+            }
+            return true;
         }
         return false;
     }
 
     /**
-     * Clear and repopulate the specified map associating in each case an event
-     * identifier with the index of that event's first spatial entity in the
-     * specified list, offset as specified.
+     * Replace all spatial entities of the specified type associated with the
+     * specified hazard event with the specified entities, generated for the
+     * hazard event at the specified index of the specified event list, to the
+     * records.
      * 
-     * @param entities
-     *            List from which to draw the information.
-     * @param entityIndicesForEvents
-     *            Map to be repopulated.
-     * @param offset
-     *            Amount by which to offset each recorded index.
+     * @param type
+     *            Type of spatial entities to be replaced. Must be any value
+     *            besides <code>null</code> or {@link SpatialEntityType#TOOL},
+     *            the latter because events are not associated with tool spatial
+     *            entities.
+     * @param spatialEntities
+     *            Spatial entities to be used as replacements; may be an empty
+     *            list.
+     * @param events
+     *            List of hazard events.
+     * @param eventIndex
+     *            Index of the event in <code>events</code> for which the
+     *            spatial entities were generated.
+     * @param eventIdentifier
+     *            Identifier of the event for which to replace spatial entities.
+     * @param indexMayHaveChanged
+     *            Flag indicating whether or not the index at which the old
+     *            spatial entities are found, if any, may be different from the
+     *            index at which the new spatial entities should be found
+     *            (because the event changed its position in the event list).
+     * @param checkForReuse
+     *            Flag indicating whether or not the replacement spatial
+     *            entities are the same as the ones being replaced, including
+     *            their order and total number. If nothing has changed, then
+     *            nothing will need replacement.
+     * @return <code>true</code> if a replacement was made, that is, the
+     *         entities list was not empty (and at least one entity changed)
+     *         and/or there were existing entities of this type for this event
+     *         that were removed, <code>false</code> otherwise.
      */
-    private void repopulateEntityIndicesForEventsMap(
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> entities,
-            Map<String, Integer> entityIndicesForEvents, int offset) {
-        entityIndicesForEvents.clear();
-        for (int j = 0; j < entities.size(); j++) {
-            String eventIdentifier = entities.get(j).getIdentifier()
-                    .getEventIdentifier();
-            if (entityIndicesForEvents.containsKey(eventIdentifier) == false) {
-                entityIndicesForEvents.put(eventIdentifier, j + offset);
+    @SuppressWarnings("unchecked")
+    private <E extends SpatialEntity<? extends IHazardEventEntityIdentifier>> boolean replaceEventSpatialEntities(
+            SpatialEntityType type, List<E> spatialEntities,
+            List<ObservedHazardEvent> events, int eventIndex,
+            String eventIdentifier, boolean indexMayHaveChanged,
+            boolean checkForReuse) {
+
+        /*
+         * Get the sublist of entities within the main list for entities of this
+         * type that is to be removed and replaced, if any.
+         */
+        boolean changed = true;
+        Map<String, Integer> indicesForEvents = indicesForEventsForTypes
+                .get(type);
+        Sublist sublist = getEventEntitySublistWithinList(
+                eventIdentifier,
+                indicesForEvents,
+                (List<? extends SpatialEntity<? extends IHazardEventEntityIdentifier>>) spatialEntitiesForTypes
+                        .get(type));
+
+        /*
+         * If there is a sublist to replace and there are new entities, replace
+         * the old ones with the new ones; otherwise, if there are no old ones
+         * but there are new ones, insert the new ones; otherwise, if there are
+         * old ones but not new ones, remove the old ones; and finally, if there
+         * are neither new nor old ones, nothing will have changed.
+         */
+        if ((sublist != null) && (spatialEntities.isEmpty() == false)) {
+
+            /*
+             * Get the index at which the new entities are to be inserted, which
+             * may differ from where the old entities were placed.
+             */
+            int newIndex = (indexMayHaveChanged ? getInsertionIndexForEntities(
+                    type, events, eventIndex) : sublist.index);
+
+            /*
+             * If the insertion index has not changed, check for reuse should
+             * occur, and the new and old lists hold exactly the same entities
+             * in the same order, do nothing more, as no entities need
+             * replacement (because all entities that were provided are being
+             * reused, and no entities are being removed).
+             */
+            if (checkForReuse && (sublist.index == newIndex)
+                    && doListsHoldSameReferences(sublist.list, spatialEntities)) {
+                return false;
+            }
+
+            /*
+             * Get the offsets for the old indices, which are more complicated
+             * if the old and new insertion points are different. Then offset
+             * any indices as appropriate.
+             */
+            RangeMap<Integer, Integer> offsetsForIndices = null;
+            if (sublist.index != newIndex) {
+                offsetsForIndices = TreeRangeMap.create();
+                if (sublist.index + sublist.size < newIndex) {
+                    offsetsForIndices.put(
+                            Range.atLeast(sublist.index + sublist.size),
+                            sublist.size * -1);
+                    offsetsForIndices.put(Range.atLeast(newIndex),
+                            spatialEntities.size() - sublist.size);
+                } else {
+                    offsetsForIndices.put(Range.atLeast(newIndex),
+                            spatialEntities.size());
+                    offsetsForIndices.put(
+                            Range.atLeast(sublist.index + sublist.size),
+                            spatialEntities.size() - sublist.size);
+                }
+            } else {
+                if (spatialEntities.size() != sublist.size) {
+                    offsetsForIndices = getOffsetsForIndicesRangeMap(
+                            sublist.index + sublist.size,
+                            spatialEntities.size() - sublist.size);
+                }
+            }
+            if (offsetsForIndices != null) {
+                updateEntityIndicesMap(offsetsForIndices, indicesForEvents);
+            }
+
+            /*
+             * Remove the old associations of entity identifiers with their
+             * entities, and put in the new ones.
+             */
+            boolean selectionSetChanged = removeAssociationsOfIdentifiersWithEntities(
+                    type, sublist.list);
+            selectionSetChanged |= createAssociationsOfIdentifiersWithEntities(
+                    type, spatialEntities);
+            if (selectionSetChanged) {
+                selectedSpatialEntityIdentifiersChanged();
+            }
+
+            /*
+             * If the new and old insertion indices for this event's spatial
+             * entities are not the same, remove the old entities, and then
+             * insert the new ones. Otherwise, just replace the old ones with
+             * the new ones.
+             */
+            if (sublist.index != newIndex) {
+                removeSpatialEntities(type, sublist.index, sublist.size);
+                if (newIndex == -1) {
+                    addSpatialEntities(type, spatialEntities);
+                } else {
+                    insertSpatialEntities(type, newIndex, spatialEntities);
+                }
+            } else {
+                replaceSpatialEntities(type, sublist.index, sublist.size,
+                        spatialEntities);
+            }
+
+        } else if (spatialEntities.isEmpty() == false) {
+            addEventSpatialEntities(type, spatialEntities, events, eventIndex);
+
+        } else if (sublist != null) {
+            removeEventSpatialEntities(type, eventIdentifier, sublist,
+                    indicesForEvents);
+
+        } else {
+            changed = false;
+        }
+
+        return changed;
+    }
+
+    /**
+     * Remove all spatial entities of the specified type associated with the
+     * specified hazard event from the records.
+     * 
+     * @param type
+     *            Type of spatial entities to be removed. Must be any value
+     *            besides <code>null</code> or {@link SpatialEntityType#TOOL},
+     *            the latter because events are not associated with tool spatial
+     *            entities.
+     * @param eventIdentifier
+     *            Identifier of the event for which to remove spatial entities.
+     * @return <code>true</code> if one or more entities were removed,
+     *         <code>false</code> otherwise.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean removeEventSpatialEntities(SpatialEntityType type,
+            String eventIdentifier) {
+
+        /*
+         * Get information about the sublist of entities associated with this
+         * event that are to be removed, if any.
+         */
+        Map<String, Integer> indicesForEvents = indicesForEventsForTypes
+                .get(type);
+        Sublist sublist = getEventEntitySublistWithinList(
+                eventIdentifier,
+                indicesForEvents,
+                (List<? extends SpatialEntity<? extends IHazardEventEntityIdentifier>>) spatialEntitiesForTypes
+                        .get(type));
+
+        /*
+         * If a sublist is found, remove all its elements.
+         */
+        if (sublist != null) {
+            removeEventSpatialEntities(type, eventIdentifier, sublist,
+                    indicesForEvents);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove the specified spatial entities sublist of the specified type
+     * associated with the specified hazard event from the records.
+     * 
+     * @param type
+     *            Type of spatial entities to be removed. Must be any value
+     *            besides <code>null</code> or {@link SpatialEntityType#TOOL},
+     *            the latter because events are not associated with tool spatial
+     *            entities.
+     * @param eventIdentifier
+     *            Identifier of the event for which to remove spatial entities.
+     * @param sublist
+     *            Information about the sublist of spatial entities to be
+     *            removed from the main list; must not be <code>null</code>.
+     * @param indicesForEvents
+     *            Map of event identifiers to spatial entity indices that is to
+     *            be updated with new offsets as appropriate.
+     */
+    private void removeEventSpatialEntities(SpatialEntityType type,
+            String eventIdentifier, Sublist sublist,
+            Map<String, Integer> indicesForEvents) {
+        RangeMap<Integer, Integer> offsetsForIndices = getOffsetsForIndicesRangeMap(
+                sublist.index + sublist.size, sublist.size * -1);
+        updateEntityIndicesMap(offsetsForIndices, indicesForEvents);
+        indicesForEvents.remove(eventIdentifier);
+        if (removeAssociationsOfIdentifiersWithEntities(type, sublist.list)) {
+            selectedSpatialEntityIdentifiersChanged();
+        }
+        removeSpatialEntities(type, sublist.index, sublist.size);
+    }
+
+    /**
+     * Replace any existing spatial entities representing visual features
+     * created by tools for the collection of spatial information from the user
+     * with ones created from the specified visual features list.
+     * 
+     * @param visualFeaturesList
+     *            List of visual features provided by a tool for the collection
+     *            of spatial information from the user, from which spatial
+     *            entities are to be generated.
+     * @param toolType
+     *            Type of the tool that generated the visual features.
+     * @param toolIdentifier
+     *            Identifier of the tool that generated the visual features.
+     * @param selectedTime
+     *            Current selected time, needed to generate the spatial entities
+     *            since the visual features may have temporally variant (and
+     *            thus dependent upon the selected time) properties.
+     * @return <code>true</code> if a change in spatial entities occurred,
+     *         <code>false</code> otherwise.
+     */
+    @SuppressWarnings("unchecked")
+    private boolean replaceToolSpatialEntities(
+            VisualFeaturesList visualFeaturesList, final ToolType toolType,
+            final String toolIdentifier, Date selectedTime) {
+
+        /*
+         * Remove records of previous tool spatial entities, except for the
+         * associations between the previous entities and their identifiers;
+         * these may only be removed now if there are no new visual features for
+         * tools. If the latter is not the case, then the old spatial entities
+         * may need to be reused, and thus the associations are only removed
+         * after the calls to getStateAtTime() below.
+         */
+        boolean changed = false;
+        List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> oldToolSpatialEntities = new ArrayList<>(
+                toolSpatialEntities);
+        if (toolSpatialEntities.isEmpty() == false) {
+            clearSpatialEntities(SpatialEntityType.TOOL);
+            if (visualFeaturesList == null) {
+                removeAssociationsOfIdentifiersWithEntities(
+                        SpatialEntityType.TOOL, toolSpatialEntities);
+            }
+            changed = true;
+        }
+
+        /*
+         * Round the selected time down to the nearest minute.
+         */
+        selectedTime = DateUtils.truncate(selectedTime, Calendar.MINUTE);
+
+        /*
+         * If there are visual features in the list, iterate through them,
+         * creating spatial entities for any that are visible at the selected
+         * time.
+         */
+        List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> addedSpatialEntities = null;
+        if (visualFeaturesList != null) {
+
+            /*
+             * Iterate through the visual features, adding spatial entities
+             * generated for each in turn to the provided list. Any spatial
+             * entities that are marked as "topmost" in the z-ordering are added
+             * to another list.
+             * 
+             * TODO: If visual features are ever altered to not key off of the
+             * lower bound of the selected time only, this will need changing.
+             */
+            List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> topmostSpatialEntities = null;
+            for (VisualFeature visualFeature : visualFeaturesList) {
+                ToolVisualFeatureEntityIdentifier identifier = new ToolVisualFeatureEntityIdentifier(
+                        toolType, toolIdentifier, visualFeature.getIdentifier());
+                SpatialEntity<ToolVisualFeatureEntityIdentifier> entity = visualFeature
+                        .getStateAtTime(
+                                (SpatialEntity<ToolVisualFeatureEntityIdentifier>) spatialEntitiesForIdentifiers
+                                        .get(identifier), identifier,
+                                selectedTime);
+                if (entity != null) {
+                    if (entity.isTopmost()) {
+                        if (topmostSpatialEntities == null) {
+                            topmostSpatialEntities = new ArrayList<>();
+                        }
+                        topmostSpatialEntities.add(entity);
+                    } else {
+                        if (addedSpatialEntities == null) {
+                            addedSpatialEntities = new ArrayList<>();
+                        }
+                        addedSpatialEntities.add(entity);
+                    }
+                }
+            }
+
+            /*
+             * If at least one topmost spatial entity was generated, append all
+             * topmost ones to the main list so that the former end up drawn
+             * last, and thus staying on the top of the z-order. (If no non-
+             * topmost spatial entities were created, just use the topmost list
+             * as the total list).
+             */
+            if (topmostSpatialEntities != null) {
+                if (addedSpatialEntities == null) {
+                    addedSpatialEntities = topmostSpatialEntities;
+                } else {
+                    addedSpatialEntities.addAll(topmostSpatialEntities);
+                }
+            }
+
+            /*
+             * If there were tool spatial entities before this invocation,
+             * remove any associations between them and their identifiers. This
+             * was not done earlier (at the top of this method) because these
+             * associations were needed in order to reuse old spatial entities
+             * when calling getStateAtTime() above.
+             */
+            if (changed) {
+                removeAssociationsOfIdentifiersWithEntities(
+                        SpatialEntityType.TOOL, toolSpatialEntities);
+            }
+
+            /*
+             * If spatial entities were generated, associate them with the tool.
+             * Determine whether a change occurred by comparing the new list
+             * with the old one.
+             */
+            if (addedSpatialEntities != null) {
+                createAssociationsOfIdentifiersWithEntities(
+                        SpatialEntityType.TOOL, addedSpatialEntities);
+                addSpatialEntities(SpatialEntityType.TOOL, addedSpatialEntities);
+                changed = (doListsHoldSameReferences(oldToolSpatialEntities,
+                        toolSpatialEntities) == false);
             }
         }
+        return changed;
     }
 
     /**
-     * Add the specified spatial entities to the end of the list.
+     * Determine whether or not the two specified lists hold the same references
+     * for their elements, in the same order.
      * 
+     * @param first
+     *            First list to be compared.
+     * @param second
+     *            Second list to be compared.
+     * @return <code>true</code> if the two lists hold the same references in
+     *         the same order, <code>false</code> otherwise.
+     */
+    private boolean doListsHoldSameReferences(List<?> first, List<?> second) {
+        if (first.size() != second.size()) {
+            return false;
+        }
+        for (int j = 0; j < first.size(); j++) {
+            if (first.get(j) != second.get(j)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Clear the spatial entities list associated with the specified type.
+     * 
+     * @param type
+     *            Type of spatial entities to be cleared.
+     */
+    private void clearSpatialEntities(SpatialEntityType type) {
+        spatialEntitiesForTypes.get(type).clear();
+        view.getSpatialEntitiesChanger().clear(type);
+    }
+
+    /**
+     * Set the spatial entities list associated with the specified type to have
+     * the specified contents.
+     * 
+     * @param type
+     *            Type of spatial entities to be set.
+     * @param entities
+     *            Entities to be used as the contents of the list.
+     */
+    @SuppressWarnings("unchecked")
+    private <E extends SpatialEntity<? extends IEntityIdentifier>> void setSpatialEntities(
+            SpatialEntityType type, List<E> entities) {
+        List<E> spatialEntities = (List<E>) spatialEntitiesForTypes.get(type);
+        spatialEntities.clear();
+        spatialEntities.addAll(entities);
+        view.getSpatialEntitiesChanger().set(type, entities);
+    }
+
+    /**
+     * Add the specified spatial entities to the end of the list associated with
+     * the specified type.
+     * 
+     * @param type
+     *            Type of spatial entities to be added.
      * @param entities
      *            Entities to be added.
-     * @deprecated To be replaced by appropriate use of
-     *             {@link IListStateChanger} during refactor.
      */
-    @Deprecated
-    private void addSpatialEntities(
-            List<? extends SpatialEntity<? extends IEntityIdentifier>> entities) {
-        spatialEntities.addAll(entities);
+    @SuppressWarnings("unchecked")
+    private <E extends SpatialEntity<? extends IEntityIdentifier>> void addSpatialEntities(
+            SpatialEntityType type, List<E> entities) {
+        ((List<E>) spatialEntitiesForTypes.get(type)).addAll(entities);
+        view.getSpatialEntitiesChanger().addElements(type, entities);
     }
 
     /**
-     * Insert the specified spatial entities at the specified index.
+     * Insert the specified spatial entities into the list associated with the
+     * specified type at the specified index.
      * 
+     * @param type
+     *            Type of spatial entities to be inserted.
      * @param index
      *            Index at which to start the insertion.
      * @param entities
      *            Entities to be inserted.
-     * @deprecated To be replaced by appropriate use of
-     *             {@link IListStateChanger} during refactor.
      */
-    @Deprecated
-    private void insertSpatialEntities(int index,
-            List<? extends SpatialEntity<? extends IEntityIdentifier>> entities) {
+    @SuppressWarnings("unchecked")
+    private <E extends SpatialEntity<? extends IEntityIdentifier>> void insertSpatialEntities(
+            SpatialEntityType type, int index, List<E> entities) {
+        List<E> spatialEntities = (List<E>) spatialEntitiesForTypes.get(type);
         if (index == spatialEntities.size()) {
-            addSpatialEntities(entities);
+            addSpatialEntities(type, entities);
         } else {
-            for (int j = 0; j < entities.size(); j++) {
-                spatialEntities.add(index + j, entities.get(j));
-            }
+            spatialEntities.addAll(index, entities);
+            view.getSpatialEntitiesChanger().insertElements(type, index,
+                    entities);
         }
     }
 
     /**
      * Replace the specified number of spatial entities starting at the
-     * specified index with the specified entities.
+     * specified index in the list associated with the specified type with the
+     * specified entities.
      * 
+     * @param type
+     *            Type of spatial entities to be replaced.
      * @param index
      *            Index at which to start replacement.
      * @param count
      *            Number of entities to be removed.
      * @param entities
      *            Spatial entities to be inserted at <code>index</code>.
-     * @deprecated To be replaced by appropriate use of
-     *             {@link IListStateChanger} during refactor.
      */
-    @Deprecated
-    private void replaceSpatialEntities(int index, int count,
-            List<? extends SpatialEntity<? extends IEntityIdentifier>> entities) {
-        removeSpatialEntities(index, count);
-        insertSpatialEntities(index, entities);
+    private <E extends SpatialEntity<? extends IEntityIdentifier>> void replaceSpatialEntities(
+            SpatialEntityType type, int index, int count, List<E> entities) {
+        removeSpatialEntities(type, index, count);
+        insertSpatialEntities(type, index, entities);
     }
 
     /**
      * Remove the specified number of spatial entities starting at the specified
-     * index.
+     * index from the list associated with the specified type.
      * 
+     * @param type
+     *            Type of spatial entities to be removed.
      * @param index
      *            Index at which to start removal.
      * @param count
      *            Number of entities to be removed.
-     * @deprecated To be replaced by appropriate use of
-     *             {@link IListStateChanger} during refactor.
      */
-    @Deprecated
-    private void removeSpatialEntities(int index, int count) {
+    private void removeSpatialEntities(SpatialEntityType type, int index,
+            int count) {
+        List<? extends SpatialEntity<? extends IEntityIdentifier>> spatialEntities = spatialEntitiesForTypes
+                .get(type);
         for (int j = 0; j < count; j++) {
             spatialEntities.remove(index);
         }
+        view.getSpatialEntitiesChanger().removeElements(type, index, count);
+    }
+
+    /**
+     * Notify the view that the selected spatial entity identifiers set has
+     * changed.
+     */
+    private void selectedSpatialEntityIdentifiersChanged() {
+        view.getSelectedSpatialEntityIdentifiersChanger().setState(null,
+                selectedSpatialEntityIdentifiers);
     }
 
     /**
@@ -869,11 +1605,14 @@ class SpatialEntityManager {
      *            generating spatial entities from visual features.
      * @param hazardTypes
      *            Information about all possible hazard types.
-     * @paramm hatching Flag indicating whether or not hatching is to be shown.
-     * @return <code>true</code> if at least one entity was created,
-     *         <code>false</code> otherwise.
+     * @param hatching
+     *            Flag indicating whether or not hatching is to be shown.
+     * @return Creation result, indicating whether any spatial entities were
+     *         created (or reused) for the specified event, and if the former is
+     *         <code>true</code>, whether all the entities created or reused for
+     *         the different spatial entity types were reused.
      */
-    private boolean createSpatialEntitiesForEvent(
+    private CreationResult createSpatialEntitiesForEvent(
             ObservedHazardEvent event,
             List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingSpatialEntities,
             List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedSpatialEntities,
@@ -891,13 +1630,14 @@ class SpatialEntityManager {
          * time range, generate spatial entities for the event.
          */
         boolean created = false;
+        Map<SpatialEntityType, Boolean> reusedForTypes = null;
         VisualFeaturesList visualFeaturesList = event.getVisualFeatures();
         if ((visualFeaturesList != null) && visualFeaturesList.isEmpty()) {
             visualFeaturesList = null;
         }
-        if ((visualFeaturesList != null)
-                || selectedRange.intersects(event.getStartTime().getTime(),
-                        event.getEndTime().getTime())) {
+        boolean inTimeRange = selectedRange.intersects(event.getStartTime()
+                .getTime(), event.getEndTime().getTime());
+        if ((visualFeaturesList != null) || inTimeRange) {
 
             /*
              * Compile the various display properties that will be needed by any
@@ -919,22 +1659,27 @@ class SpatialEntityManager {
             String hazardLabel = getHazardLabel(event);
 
             /*
-             * If hatching is showing, determine whether or not this event
-             * requires it, and if so, create a spatial entity for it.
+             * If hatching is showing and the selected time is within the
+             * event's time range, determine whether or not this event requires
+             * hatching, and if so, create a spatial entity for it.
              */
-            if (hatching) {
+            if (hatching && inTimeRange) {
                 String hazardType = HazardEventUtilities.getHazardType(event);
                 if (hazardType != null) {
                     HazardTypeEntry hazardTypeEntry = hazardTypes
                             .get(hazardType);
                     if (hazardTypeEntry.getHatchingStyle() != HatchingStyle.NONE) {
-                        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> entities = createSpatialEntitiesForEventHatching(
+                        CreatedSpatialEntities entities = createSpatialEntitiesForEventHatching(
                                 event, hazardTypeEntry, hazardColor,
                                 HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_LENGTH,
                                 HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_DIRECTION,
                                 HAZARD_EVENT_FONT_POINT_SIZE);
-                        created = (entities.isEmpty() == false);
-                        hatchingSpatialEntities.addAll(entities);
+                        created = (entities.spatialEntities.isEmpty() == false);
+                        reusedForTypes = createAndPut(reusedForTypes,
+                                SpatialEntityType.HATCHING,
+                                (created && entities.allReused));
+                        hatchingSpatialEntities
+                                .addAll(entities.spatialEntities);
                     }
                 }
             }
@@ -953,8 +1698,12 @@ class SpatialEntityManager {
                  * for unselected hazard events or selected hazard events,
                  * depending upon whether the event with which the entity is
                  * associated is selected or not.
+                 * 
+                 * TODO: If visual features are ever altered to not key off of
+                 * the lower bound of the selected time only, this will need
+                 * changing.
                  */
-                List<SpatialEntity<? extends IHazardEventEntityIdentifier>> entities = createSpatialEntitiesForEventVisualFeatures(
+                CreatedSpatialEntities entities = createSpatialEntitiesForEventVisualFeatures(
                         visualFeaturesList, eventIdentifier, selected,
                         selectedTime, hazardColor, hazardBorderWidth,
                         hazardBorderStyle, hazardPointDiameter, hazardLabel,
@@ -963,18 +1712,17 @@ class SpatialEntityManager {
                         HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_LENGTH,
                         HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_DIRECTION,
                         HAZARD_EVENT_FONT_POINT_SIZE);
-                if (selected) {
-                    for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : entities) {
-                        selectedSpatialEntityIdentifiers.add(spatialEntity
-                                .getIdentifier());
-                    }
-                    selectedSpatialEntities.addAll(entities);
-                } else {
-                    unselectedSpatialEntities.addAll(entities);
+                (selected ? selectedSpatialEntities : unselectedSpatialEntities)
+                        .addAll(entities.spatialEntities);
+                if (entities.spatialEntities.isEmpty() == false) {
+                    created = true;
+                    reusedForTypes = createAndPut(reusedForTypes,
+                            (selected ? SpatialEntityType.SELECTED
+                                    : SpatialEntityType.UNSELECTED),
+                            entities.allReused);
                 }
-                created |= (entities.isEmpty() == false);
             } else {
-                SpatialEntity<? extends IHazardEventEntityIdentifier> entity = createDefaultSpatialEntityForEvent(
+                CreatedSpatialEntity entity = createDefaultSpatialEntityForEvent(
                         event, hazardColor, hazardBorderWidth,
                         hazardBorderStyle, hazardPointDiameter, hazardLabel,
                         HAZARD_EVENT_SINGLE_POINT_TEXT_OFFSET_LENGTH,
@@ -984,16 +1732,42 @@ class SpatialEntityManager {
                         HAZARD_EVENT_FONT_POINT_SIZE,
                         eventManager.canEventAreaBeChanged(event));
                 if (selected) {
-                    selectedSpatialEntityIdentifiers
-                            .add(entity.getIdentifier());
-                    selectedSpatialEntities.add(entity);
+                    selectedSpatialEntities.add(entity.spatialEntity);
+                    reusedForTypes = createAndPut(reusedForTypes,
+                            SpatialEntityType.SELECTED, entity.reused);
                 } else {
-                    unselectedSpatialEntities.add(entity);
+                    unselectedSpatialEntities.add(entity.spatialEntity);
+                    reusedForTypes = createAndPut(reusedForTypes,
+                            SpatialEntityType.UNSELECTED, entity.reused);
                 }
                 created = true;
             }
         }
-        return created;
+        return (created == false ? EMPTY_CREATION_RESULT : new CreationResult(
+                created, reusedForTypes));
+    }
+
+    /**
+     * Create a map is one is not provided, and put the specified key-value pair
+     * into it.
+     * 
+     * @param map
+     *            Map into which to insert the key-value pair; if
+     *            <code>null</code>, a new map will be created.
+     * @param key
+     *            Key to insert.
+     * @param value
+     *            Value to insert.
+     * @return Map that was provided, or a new map if none was provided.
+     */
+    private Map<SpatialEntityType, Boolean> createAndPut(
+            Map<SpatialEntityType, Boolean> map, SpatialEntityType key,
+            Boolean value) {
+        if (map == null) {
+            map = new EnumMap<>(SpatialEntityType.class);
+        }
+        map.put(key, value);
+        return map;
     }
 
     /**
@@ -1016,9 +1790,12 @@ class SpatialEntityManager {
      *            generated text entities from the centroid of a hatching shape.
      * @param hazardTextPointSize
      *            Point size of the font for any text entities.
-     * @return List of spatial entities created; may be an empty list.
+     * @return List of spatial entities created, and flag indicating whether or
+     *         not all the entities in the list were reused instead of created;
+     *         may be an empty list.
      */
-    private List<SpatialEntity<? extends IHazardEventEntityIdentifier>> createSpatialEntitiesForEventHatching(
+    @SuppressWarnings("unchecked")
+    private CreatedSpatialEntities createSpatialEntitiesForEventHatching(
             IHazardEvent event, HazardTypeEntry hazardTypeEntry,
             Color hazardColor, double textOffsetLength,
             double textOffsetDirection, int hazardTextPointSize) {
@@ -1038,7 +1815,8 @@ class SpatialEntityManager {
          * Iterate through the mapping entries, handling each one's geometry in
          * turn if appropriate.
          */
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities = new ArrayList<>();
+        boolean allReused = true;
+        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities = null;
         for (Map.Entry<String, IGeometryData> entry : geometryDataForUgcs
                 .entrySet()) {
 
@@ -1052,32 +1830,39 @@ class SpatialEntityManager {
                 /*
                  * If the hatching is WarnGen-style, show a label indicating the
                  * significance of the event.
-                 * 
-                 * TODO: This was removed for Redmine issue #3628 -- not sure
-                 * why. Determine the reason and uncomment the check or delete
-                 * the commented out code.
                  */
                 String significance = event.getSignificance();
-                boolean showLabel = false;
-                // boolean showLabel = ((hazardTypeEntry.getHatchingStyle() ==
-                // HatchingStyle.WARNGEN)
-                // && (significance != null) && (significance.isEmpty() ==
-                // false));
+                boolean showLabel = ((hazardTypeEntry.getHatchingStyle() == HatchingStyle.WARNGEN)
+                        && (significance != null) && (significance.isEmpty() == false));
+
+                /*
+                 * Build the spatial entity, reusing any previously built entity
+                 * with the same identifier for efficiency's sake if this build
+                 * requires no changes.
+                 */
                 HazardEventHatchingEntityIdentifier identifier = new HazardEventHatchingEntityIdentifier(
                         event.getEventID(), entry.getKey());
+                SpatialEntity<HazardEventHatchingEntityIdentifier> oldEntity = (SpatialEntity<HazardEventHatchingEntityIdentifier>) spatialEntitiesForIdentifiers
+                        .get(identifier);
                 SpatialEntity<HazardEventHatchingEntityIdentifier> entity = SpatialEntity
-                        .build(null, identifier, geometryData.getGeometry(),
-                                null, hazardColor, 0.0, BorderStyle.SOLID,
-                                FillStyle.HATCHED, 0.0, null,
-                                (showLabel ? significance : null), 0.0, 0.0,
-                                textOffsetLength, textOffsetDirection,
+                        .build(oldEntity, identifier,
+                                geometryData.getGeometry(), null, hazardColor,
+                                0.0, BorderStyle.SOLID, FillStyle.HATCHED, 0.0,
+                                null, (showLabel ? significance : null), 0.0,
+                                0.0, textOffsetLength, textOffsetDirection,
                                 hazardTextPointSize, hazardColor,
                                 DragCapability.NONE, false, false, false, false);
+                if (spatialEntities == null) {
+                    spatialEntities = new ArrayList<>();
+                }
                 spatialEntities.add(entity);
-                associateSpatialEntityWithHazardEvent(entity);
+                if (oldEntity != entity) {
+                    allReused = false;
+                }
             }
         }
-        return spatialEntities;
+        return (spatialEntities == null ? EMPTY_CREATED_SPATIAL_ENTITIES
+                : new CreatedSpatialEntities(spatialEntities, allReused));
     }
 
     /**
@@ -1119,9 +1904,11 @@ class SpatialEntityManager {
      * @param editable
      *            Flag indicating whether or not the entity is to be editable or
      *            movable.
-     * @return Spatial entity that was added.
+     * @return Spatial entity created or reused, and flag indicating whether or
+     *         not said entity was reused instead of created.
      */
-    private SpatialEntity<? extends IHazardEventEntityIdentifier> createDefaultSpatialEntityForEvent(
+    @SuppressWarnings("unchecked")
+    private CreatedSpatialEntity createDefaultSpatialEntityForEvent(
             IHazardEvent event, Color hazardColor, double hazardBorderWidth,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
             String hazardLabel, double hazardSinglePointTextOffsetLength,
@@ -1131,8 +1918,10 @@ class SpatialEntityManager {
             int hazardTextPointSize, boolean editable) {
         IHazardEventEntityIdentifier identifier = new HazardEventEntityIdentifier(
                 event.getEventID());
-        SpatialEntity<? extends IHazardEventEntityIdentifier> spatialEntity = SpatialEntity
-                .build(null, identifier, getProcessedBaseGeometry(event),
+        SpatialEntity<IHazardEventEntityIdentifier> oldEntity = (SpatialEntity<IHazardEventEntityIdentifier>) spatialEntitiesForIdentifiers
+                .get(identifier);
+        SpatialEntity<? extends IHazardEventEntityIdentifier> entity = SpatialEntity
+                .build(oldEntity, identifier, getProcessedBaseGeometry(event),
                         hazardColor, TRANSPARENT_COLOR, hazardBorderWidth,
                         hazardBorderStyle, FillStyle.SOLID,
                         hazardPointDiameter, SymbolShape.CIRCLE, hazardLabel,
@@ -1143,8 +1932,7 @@ class SpatialEntityManager {
                         hazardTextPointSize, hazardColor,
                         (editable ? DragCapability.ALL : DragCapability.NONE),
                         false, editable, editable, false);
-        associateSpatialEntityWithHazardEvent(spatialEntity);
-        return spatialEntity;
+        return new CreatedSpatialEntity(entity, (entity == oldEntity));
     }
 
     /**
@@ -1195,9 +1983,12 @@ class SpatialEntityManager {
      *            latter is a line or polygon.
      * @param hazardTextPointSize
      *            Point size of the font for any text label.
-     * @return Spatial entities that were added; may be an empty list.
+     * @return List of spatial entities created, and flag indicating whether or
+     *         not all the entities in the list were reused instead of created;
+     *         may be an empty list.
      */
-    private List<SpatialEntity<? extends IHazardEventEntityIdentifier>> createSpatialEntitiesForEventVisualFeatures(
+    @SuppressWarnings("unchecked")
+    private CreatedSpatialEntities createSpatialEntitiesForEventVisualFeatures(
             VisualFeaturesList visualFeaturesList,
             final String eventIdentifier, boolean selected, Date selectedTime,
             Color hazardColor, double hazardBorderWidth,
@@ -1212,6 +2003,8 @@ class SpatialEntityManager {
          * creating spatial entities for any that are visible at the selected
          * time.
          */
+        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> addedSpatialEntities = null;
+        boolean allReused = true;
         if (visualFeaturesList != null) {
 
             /*
@@ -1225,14 +2018,14 @@ class SpatialEntityManager {
              * entities that are marked as "topmost" in the z-ordering are added
              * to another list.
              */
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> addedSpatialEntities = new ArrayList<>(
-                    visualFeaturesList.size());
             List<SpatialEntity<? extends IHazardEventEntityIdentifier>> topmostSpatialEntities = null;
             for (VisualFeature visualFeature : visualFeaturesList) {
                 HazardEventVisualFeatureEntityIdentifier identifier = new HazardEventVisualFeatureEntityIdentifier(
                         eventIdentifier, visualFeature.getIdentifier());
+                SpatialEntity<HazardEventVisualFeatureEntityIdentifier> oldEntity = (SpatialEntity<HazardEventVisualFeatureEntityIdentifier>) spatialEntitiesForIdentifiers
+                        .get(identifier);
                 SpatialEntity<? extends IHazardEventEntityIdentifier> entity = visualFeature
-                        .getStateAtTime(null, identifier, selected,
+                        .getStateAtTime(oldEntity, identifier, selected,
                                 selectedTime, hazardColor, hazardBorderWidth,
                                 hazardBorderStyle, hazardPointDiameter,
                                 hazardLabel, hazardSinglePointTextOffsetLength,
@@ -1241,12 +2034,19 @@ class SpatialEntityManager {
                                 hazardMultiPointTextOffsetDirection,
                                 hazardTextPointSize);
                 if (entity != null) {
+                    if (entity != oldEntity) {
+                        allReused = false;
+                    }
                     if (entity.isTopmost()) {
                         if (topmostSpatialEntities == null) {
                             topmostSpatialEntities = new ArrayList<>();
                         }
                         topmostSpatialEntities.add(entity);
                     } else {
+                        if (addedSpatialEntities == null) {
+                            addedSpatialEntities = new ArrayList<>(
+                                    visualFeaturesList.size());
+                        }
                         addedSpatialEntities.add(entity);
                     }
                 }
@@ -1258,116 +2058,28 @@ class SpatialEntityManager {
              * last, and thus staying on the top of the z-order.
              */
             if (topmostSpatialEntities != null) {
-                addedSpatialEntities.addAll(topmostSpatialEntities);
-            }
-
-            /*
-             * Associate each entity that was created with its hazard event.
-             */
-            associateSpatialEntitiesWithHazardEvent(addedSpatialEntities);
-
-            return addedSpatialEntities;
-        }
-        return Collections.emptyList();
-    }
-
-    /**
-     * Add spatial entities for visual features that have been created by tools
-     * for the collection of spatial information from the user.
-     * 
-     * @param visualFeaturesList
-     *            List of visual features provided by a tool for the collection
-     *            of spatial information from the user, from which spatial
-     *            entities are to be generated.
-     * @param toolType
-     *            Type of the tool that generated the visual features.
-     * @param toolIdentifier
-     *            Identifier of the tool that generated the visual features.
-     * @param selectedTime
-     *            Current selected time, needed to generate the spatial entities
-     *            since the visual features may have temporally variant (and
-     *            thus dependent upon the selected time) properties.
-     */
-    private void addSpatialEntitiesForToolVisualFeatures(
-            VisualFeaturesList visualFeaturesList, final ToolType toolType,
-            final String toolIdentifier, Date selectedTime) {
-
-        /*
-         * Remove records of previous tool spatial entities.
-         */
-        if (toolSpatialEntities.isEmpty() == false) {
-            disassociateSpatialEntitiesWithTool();
-        }
-
-        /*
-         * Round the selected time down to the nearest minute.
-         */
-        selectedTime = DateUtils.truncate(selectedTime, Calendar.MINUTE);
-
-        /*
-         * If there are visual features in the list, iterate through them,
-         * creating spatial entities for any that are visible at the selected
-         * time.
-         */
-        if (visualFeaturesList != null) {
-
-            /*
-             * Iterate through the visual features, adding spatial entities
-             * generated for each in turn to the provided list. Any spatial
-             * entities that are marked as "topmost" in the z-ordering are added
-             * to another list.
-             */
-            List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> addedSpatialEntities = null;
-            List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> topmostSpatialEntities = null;
-            for (VisualFeature visualFeature : visualFeaturesList) {
-                ToolVisualFeatureEntityIdentifier identifier = new ToolVisualFeatureEntityIdentifier(
-                        toolType, toolIdentifier, visualFeature.getIdentifier());
-                SpatialEntity<ToolVisualFeatureEntityIdentifier> entity = visualFeature
-                        .getStateAtTime(null, identifier, selectedTime);
-                if (entity != null) {
-                    if (entity.isTopmost()) {
-                        if (topmostSpatialEntities == null) {
-                            topmostSpatialEntities = new ArrayList<>();
-                        }
-                        topmostSpatialEntities.add(entity);
-                    } else {
-                        if (addedSpatialEntities == null) {
-                            addedSpatialEntities = new ArrayList<>();
-                        }
-                        addedSpatialEntities.add(entity);
-                    }
-                }
-            }
-
-            /*
-             * If at least one topmost spatial entity was generated, append all
-             * topmost ones to the main list so that the former end up drawn
-             * last, and thus staying on the top of the z-order. (If no non-
-             * topmost spatial entities were created, just use the topmost list
-             * as the total list).
-             */
-            if (topmostSpatialEntities != null) {
                 if (addedSpatialEntities == null) {
                     addedSpatialEntities = topmostSpatialEntities;
                 } else {
                     addedSpatialEntities.addAll(topmostSpatialEntities);
                 }
             }
-
-            /*
-             * If spatial entities were generated, associate them with the tool.
-             */
-            if (addedSpatialEntities != null) {
-                associateSpatialEntitiesWithTool(addedSpatialEntities);
-            }
         }
+        return (addedSpatialEntities == null ? EMPTY_CREATED_SPATIAL_ENTITIES
+                : new CreatedSpatialEntities(addedSpatialEntities, allReused));
     }
 
     /**
-     * Get the index of the point within {@link spatialEntities} at which to
-     * insert hatching spatial entities for the event at the specified index
-     * within the specified events list.
+     * Get the index of the point within the spatial entities list associated
+     * with the specified type within {@link #spatialEntitiesForTypes} at which
+     * to insert spatial entities for the event at the specified index within
+     * the specified events list.
      * 
+     * @param type
+     *            Type of spatial entities for which insertion is required. Must
+     *            be any non-null value besides {@link SpatialEntityType#TOOL},
+     *            the latter because events are not associated with tool spatial
+     *            entities.
      * @param events
      *            List of events.
      * @param eventIndex
@@ -1376,128 +2088,26 @@ class SpatialEntityManager {
      * @return Index of the insertion point, or <code>-1</code> if the entities
      *         should instead be appended.
      */
-    private int getInsertionIndexForHatchingEntities(
+    private int getInsertionIndexForEntities(SpatialEntityType type,
             List<ObservedHazardEvent> events, int eventIndex) {
 
         /*
-         * The index at which to insert the hatching entities is the one where
-         * hatching entities reside for the next event after this one that has
-         * hatching.
+         * The index at which to insert the entities is the one where entities
+         * of this type reside for the next event after this one. If none is
+         * found, then return -1, indicating that the entities are to be added
+         * at the end of the list.
          */
+        Map<String, Integer> indicesForEvents = indicesForEventsForTypes
+                .get(type);
         int nextEntityIndex = -1;
         for (int j = eventIndex + 1; j < events.size(); j++) {
             String eventIdentifier = events.get(j).getEventID();
-            if (hatchingIndicesForEvents.containsKey(eventIdentifier)) {
-                nextEntityIndex = hatchingIndicesForEvents.get(eventIdentifier);
+            if (indicesForEvents.containsKey(eventIdentifier)) {
+                nextEntityIndex = indicesForEvents.get(eventIdentifier);
                 break;
             }
         }
-
-        /*
-         * If no insertion index was found, the hatching entities are to be
-         * placed after all other hatching entities.
-         */
-        if (nextEntityIndex == -1) {
-            nextEntityIndex = (unselectedEventStartIndex == -1 ? (selectedEventStartIndex == -1 ? toolVisualFeatureStartIndex
-                    : selectedEventStartIndex)
-                    : unselectedEventStartIndex);
-        }
         return nextEntityIndex;
-    }
-
-    /**
-     * Get the index of the point within {@link spatialEntities} at which to
-     * insert non-hatching spatial entities for the event at the specified index
-     * within the specified events list.
-     * 
-     * @param events
-     *            List of events.
-     * @param eventIndex
-     *            Index of the event within <code>events</code> for which
-     *            non-hatching spatial entities are to be inserted.
-     * @return Index of the insertion point, or <code>-1</code> if the entities
-     *         should instead be appended.
-     */
-    private int getInsertionIndexForNonHatchingEntities(
-            List<ObservedHazardEvent> events, int eventIndex) {
-
-        /*
-         * Determine whether or not the event is selected, and then iterate
-         * through all events following it in the list of events in order to
-         * find the first event that is currently visible and has the same
-         * selection state, and record said event's index.
-         */
-        boolean selected = selectedEventIdentifiers.contains(events.get(
-                eventIndex).getEventID());
-        int nextEntityIndex = -1;
-        for (int j = eventIndex + 1; j < events.size(); j++) {
-            String eventIdentifier = events.get(j).getEventID();
-            if ((selectedEventIdentifiers.contains(eventIdentifier) == selected)
-                    && ((selected && selectedIndicesForEvents
-                            .containsKey(eventIdentifier)) || ((selected == false) && unselectedIndicesForEvents
-                            .containsKey(eventIdentifier)))) {
-                if (selected) {
-                    nextEntityIndex = selectedIndicesForEvents
-                            .get(eventIdentifier);
-                } else {
-                    nextEntityIndex = unselectedIndicesForEvents
-                            .get(eventIdentifier);
-                }
-                break;
-            }
-        }
-
-        /*
-         * If no visible event that is to follow this one in the z-order was
-         * found above, use the index that indicated the start of the tool
-         * visual features if the new event is selected (since this event is at
-         * the top of the selected events in the z-order), or the start of the
-         * selected events if the new event is not (since this event is at the
-         * top of the unselected events in the z-order).
-         */
-        if (nextEntityIndex == -1) {
-            if (selected) {
-                nextEntityIndex = toolVisualFeatureStartIndex;
-            } else {
-                nextEntityIndex = (selectedEventStartIndex == -1 ? toolVisualFeatureStartIndex
-                        : selectedEventStartIndex);
-            }
-        }
-        return nextEntityIndex;
-    }
-
-    /**
-     * Update the various recorded spatial entity indices (
-     * {@link #unselectedEventStartIndex}, {@link #selectedEventStartIndex},
-     * {@link #toolVisualFeatureStartIndex}, {@link #hatchingIndicesForEvents},
-     * {@link #unselectedIndicesForEvents}, and
-     * {@link #selectedIndicesForEvents}) by offsetting them as specified.
-     * <p>
-     * As an example, suppose the range map provided as a parameter associates
-     * all values between 3 and 9 inclusive with -2, and all values 10 and above
-     * with 4. Using these parameters will cause this method to alter some
-     * indices recorded in the abovementioned member variables. Any recorded
-     * index with a value between 3 and 9 inclusive will have -2 added to it,
-     * while any such index with a value of 10 or greater will have 4 added to
-     * it.
-     * </p>
-     * 
-     * @param offsetsForIndices
-     *            Range map pairing ranges of indices with the offsets that
-     *            should be applied to them. Not all indices will have entries
-     *            within this range map.
-     */
-    private void updateRecordedEntityIndices(
-            RangeMap<Integer, Integer> offsetsForIndices) {
-        updateEntityIndicesMap(offsetsForIndices, hatchingIndicesForEvents);
-        unselectedEventStartIndex = updateEntityIndex(offsetsForIndices,
-                unselectedEventStartIndex);
-        updateEntityIndicesMap(offsetsForIndices, unselectedIndicesForEvents);
-        selectedEventStartIndex = updateEntityIndex(offsetsForIndices,
-                selectedEventStartIndex);
-        updateEntityIndicesMap(offsetsForIndices, selectedIndicesForEvents);
-        toolVisualFeatureStartIndex = updateEntityIndex(offsetsForIndices,
-                toolVisualFeatureStartIndex);
     }
 
     /**
@@ -1533,164 +2143,108 @@ class SpatialEntityManager {
     }
 
     /**
-     * Update the the specified index by offsetting it as specified.
-     * <p>
-     * As an example, suppose the range map provided as a parameter associates
-     * all values between 3 and 9 inclusive with -2, and all values 10 and above
-     * with 4. Using these parameters will cause this method to add -2 to the
-     * provided index if it is between 3 and 9 inclusive, or 4 if it is 10 or
-     * above.
+     * Create associations between the specified spatial entity identifiers and
+     * their entities, as well as adding the entities to the selected set if
+     * they are of the appropriate type.
      * 
-     * @param offsetsForIndices
-     *            Range map pairing ranges of indices with the offsets that
-     *            should be applied to them. Not all indices will have entries
-     *            within this range map.
-     * @param index
-     *            Index to be updated.
-     * @return Updated index.
-     */
-    private int updateEntityIndex(RangeMap<Integer, Integer> offsetsForIndices,
-            int index) {
-        Integer offset = offsetsForIndices.get(index);
-        return (offset != null ? index + offset : index);
-    }
-
-    /**
-     * Associate the specified spatial entity with the hazard event provided by
-     * its identifier.
-     * 
-     * @param entity
-     *            Spatial entity to be associated with a hazard event.
-     */
-    private void associateSpatialEntityWithHazardEvent(
-            SpatialEntity<? extends IHazardEventEntityIdentifier> entity) {
-
-        /*
-         * See if the hazard event already has a list of entities associated
-         * with it; if not, create one.
-         */
-        IHazardEventEntityIdentifier identifier = entity.getIdentifier();
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> list = spatialEntitiesForEventIdentifiers
-                .get(identifier.getEventIdentifier());
-        if (list == null) {
-            list = new ArrayList<>();
-            spatialEntitiesForEventIdentifiers.put(
-                    identifier.getEventIdentifier(), list);
-        }
-
-        /*
-         * Add this entity to the list.
-         */
-        list.add(entity);
-
-        /*
-         * Associate this entity with its identifier.
-         */
-        spatialEntitiesForIdentifiers.put(identifier, entity);
-    }
-
-    /**
-     * Associate the specified spatial entities with the hazard event provided
-     * by their identifiers. Note that it is assumed they all represent the same
-     * hazard event.
-     * 
+     * @param type
+     *            Type of spatial entities for which to create associations; if
+     *            {@link SpatialEntityType#SELECTED}, they will be added to the
+     *            selected set as well.
      * @param entities
-     *            Spatial entities to be associated with a hazard event.
+     *            Spatial entities for which to create associations.
+     * @return <code>true</code> if a change was made to the selected spatial
+     *         entity identifiers record, <code>false</code> otherwise.
      */
-    private void associateSpatialEntitiesWithHazardEvent(
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> entities) {
-
-        /*
-         * If there are no entities, do nothing.
-         */
-        if (entities.isEmpty()) {
-            return;
-        }
-
-        /*
-         * Get the event identifier of the first entity (since it is assumed
-         * that they all have the same event identifier), and see if the hazard
-         * event already has a list of entities associated with it. If it does,
-         * add these entities to the list; if not, create a list holding these
-         * entities.
-         */
-        String eventIdentifier = entities.iterator().next().getIdentifier()
-                .getEventIdentifier();
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> list = spatialEntitiesForEventIdentifiers
-                .get(eventIdentifier);
-        if (list == null) {
-            list = new ArrayList<>(entities);
-            spatialEntitiesForEventIdentifiers.put(eventIdentifier, list);
-        } else {
-            list.addAll(entities);
-        }
-
-        /*
-         * Associate the entities with their identifiers.
-         */
-        for (SpatialEntity<? extends IHazardEventEntityIdentifier> entity : entities) {
-            spatialEntitiesForIdentifiers.put(entity.getIdentifier(), entity);
-        }
-    }
-
-    /**
-     * Remove any spatial entities associated with the specified hazard event,
-     * disassociating them in the process.
-     * 
-     * @param eventIdentifier
-     *            Hazard event identifier.
-     */
-    private void disassociateSpatialEntitiesFromHazardEvent(
-            String eventIdentifier) {
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> list = spatialEntitiesForEventIdentifiers
-                .remove(eventIdentifier);
-        if (list != null) {
-            for (SpatialEntity<? extends IHazardEventEntityIdentifier> entity : list) {
-                spatialEntitiesForIdentifiers.remove(entity.getIdentifier());
+    private boolean createAssociationsOfIdentifiersWithEntities(
+            SpatialEntityType type,
+            List<? extends SpatialEntity<? extends IEntityIdentifier>> entities) {
+        if (entities != null) {
+            for (SpatialEntity<? extends IEntityIdentifier> entity : entities) {
+                spatialEntitiesForIdentifiers.put(entity.getIdentifier(),
+                        entity);
+            }
+            if (type == SpatialEntityType.SELECTED) {
+                for (SpatialEntity<? extends IEntityIdentifier> entity : entities) {
+                    selectedSpatialEntityIdentifiers
+                            .add(entity.getIdentifier());
+                }
+                return (entities.isEmpty() == false);
             }
         }
+        return false;
     }
 
     /**
-     * Associate the specified spatial entities with the tool currently
-     * attempting to gather spatial information from the user.
+     * Remove any associations between the specified entity identifiers and
+     * their entities, as well as records of the former being selected if they
+     * are of the appropriate type.
      * 
+     * @param type
+     *            Type of spatial entities for which to remove associations; if
+     *            {@link SpatialEntityType#SELECTED}, any records of them as
+     *            selected will be removed as well.
      * @param entities
-     *            Entities to be associated.
+     *            Spatial entities for which to remove associations.
+     * @return <code>true</code> if a change was made to the selected spatial
+     *         entity identifiers record, <code>false</code> otherwise.
      */
-    private void associateSpatialEntitiesWithTool(
-            List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> entities) {
-
-        /*
-         * Add all the entities to the list of tool-related spatial entities.
-         */
-        toolSpatialEntities.addAll(entities);
-
-        /*
-         * Associate the entities with their identifiers.
-         */
-        for (SpatialEntity<ToolVisualFeatureEntityIdentifier> entity : entities) {
-            spatialEntitiesForIdentifiers.put(entity.getIdentifier(), entity);
+    private boolean removeAssociationsOfIdentifiersWithEntities(
+            SpatialEntityType type,
+            List<? extends SpatialEntity<? extends IEntityIdentifier>> entities) {
+        if (entities != null) {
+            for (SpatialEntity<? extends IEntityIdentifier> entity : entities) {
+                spatialEntitiesForIdentifiers.remove(entity.getIdentifier());
+            }
+            if (type == SpatialEntityType.SELECTED) {
+                for (SpatialEntity<? extends IEntityIdentifier> entity : entities) {
+                    selectedSpatialEntityIdentifiers.remove(entity
+                            .getIdentifier());
+                }
+                return (entities.isEmpty() == false);
+            }
         }
+        return false;
     }
 
     /**
-     * Disassociate any old tool spatial entities with whatever tool was
-     * previously attempting to gather spatial information from the user.
+     * Get the label to be displayed for the specified hazard event.
+     * 
+     * @param event
+     *            Hazard event for which to get the displayable label.
+     * @return Label to be displayed.
      */
-    private void disassociateSpatialEntitiesWithTool() {
-
-        /*
-         * Disassociate the entities with their identifiers.
-         */
-        for (SpatialEntity<ToolVisualFeatureEntityIdentifier> entity : toolSpatialEntities) {
-            spatialEntitiesForIdentifiers.remove(entity.getIdentifier());
+    private String getHazardLabel(IHazardEvent event) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(event.getDisplayEventID());
+        String hazardType = HazardEventUtilities.getHazardType(event);
+        if (hazardType != null) {
+            sb.append(" ");
+            sb.append(hazardType);
         }
+        return sb.toString();
+    }
 
-        /*
-         * Remove the entities.
-         */
-        toolSpatialEntities.clear();
+    /**
+     * Determine whether the specified geometry is polygonal, or contains a
+     * nested geometry that is polygonal.
+     * 
+     * @param geometry
+     *            Geometry to be checked.
+     * @return <code>true</code> if the geometry is or contains a polygon,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isOrContainsPolygon(Geometry geometry) {
+        if (geometry instanceof Polygonal) {
+            return true;
+        } else if (geometry instanceof GeometryCollection) {
+            for (int j = 0; j < geometry.getNumGeometries(); j++) {
+                if (isOrContainsPolygon(geometry.getGeometryN(j))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -1912,7 +2466,7 @@ class SpatialEntityManager {
      *            Polygon to have holes pruned out.
      * @return Polygon with the holes pruned out after three iterations.
      */
-    protected Geometry getPolygonWithHolesPruned(Polygon polygon) {
+    private Geometry getPolygonWithHolesPruned(Polygon polygon) {
         return HazardEventGeometryAggregator.deholePolygon(polygon,
                 geometryFactory);
     }
@@ -1934,23 +2488,5 @@ class SpatialEntityManager {
                     .getGeometryN(j)));
         }
         return newGeometries;
-    }
-
-    /**
-     * Get the label to be displayed for the specified hazard event.
-     * 
-     * @param event
-     *            Hazard event for which to get the displayable label.
-     * @return Label to be displayed.
-     */
-    private String getHazardLabel(IHazardEvent event) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(event.getDisplayEventID());
-        String hazardType = HazardEventUtilities.getHazardType(event);
-        if (hazardType != null) {
-            sb.append(" ");
-            sb.append(hazardType);
-        }
-        return sb.toString();
     }
 }

@@ -8,19 +8,39 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.common.visuals.SpatialEntity;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Toggle;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Interface describing the methods that must be implemented by a class that
  * functions as a spatial display view, managed by a spatial presenter.
+ * <p>
+ * The view interacts with the associated presenter via widget abstractions such
+ * as {@link IStateChangeHandler}, {@link IListStateChangeHandler}, etc, as per
+ * the standard Hazard Services MVP practice.
+ * </p>
+ * <p>
+ * The view responds to changes in hazard events, tool-specified visual
+ * features, etc. and turns all visual elements into {@link SpatialEntity}
+ * instances. These are then passed to the {@link ISpatialView} for actual
+ * display.
+ * </p>
  * 
  * <pre>
  * 
@@ -47,6 +67,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 25, 2016 19537      Chris.Golden      Removed a number of methods that got
  *                                           refactored away as the move toward MVP
  *                                           compliance continues.
+ * Aug 23, 2016 19537      Chris.Golden      Continued spatial display refactor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,20 +86,80 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param presenter
      *            Presenter managing this view.
+     * @param selectedSpatialEntityIdentifiers
+     *            Unmodifiable view of the selected spatial entity identifiers.
+     *            This will be kept up to date by the presenter.
      */
-    public void initialize(SpatialPresenter presenter);
+    public void initialize(SpatialPresenter presenter,
+            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers);
 
     /**
-     * Draw spatial entities on the view.
+     * Get the selected spatial entity identifiers state changer.
      * 
-     * @param spatialEntities
-     *            Spatial entities.
-     * @param selectedSpatialEntityIdentifiers
-     *            Identifiers of spatial entities that are currently selected.
+     * @return Selected spatial entity identifiers state changer.
      */
-    public void drawSpatialEntities(
-            List<SpatialEntity<? extends IEntityIdentifier>> spatialEntities,
-            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers);
+    public IStateChanger<Object, Set<IEntityIdentifier>> getSelectedSpatialEntityIdentifiersChanger();
+
+    /**
+     * Get the spatial entities list state changer.
+     * 
+     * @return Spatial entities list state changer.
+     */
+    public IListStateChanger<SpatialEntityType, SpatialEntity<? extends IEntityIdentifier>> getSpatialEntitiesChanger();
+
+    /**
+     * Get the create shape command invoker.
+     * 
+     * @return Create shape command invoker.
+     */
+    public ICommandInvoker<Geometry> getCreateShapeInvoker();
+
+    /**
+     * Get the modify entity geometry command invoker.
+     * 
+     * @return Modify entity geometry command invoker.
+     */
+    public ICommandInvoker<EntityGeometryModificationContext> getModifyGeometryInvoker();
+
+    /**
+     * Get the load select-by-area command invoker.
+     * 
+     * @return Load select-by-area command invoker.
+     */
+    public ICommandInvoker<SelectByAreaContext> getSelectByAreaInvoker();
+
+    /**
+     * Get the select location command invoker.
+     * 
+     * @return Select location command invoker.
+     */
+    public ICommandInvoker<Coordinate> getSelectLocationInvoker();
+
+    /**
+     * Get the gage action command invoker.
+     * 
+     * @return Gage action command invoker.
+     */
+    public ICommandInvoker<String> getGageActionInvoker();
+
+    /**
+     * Get the toggle state changer.
+     * 
+     * @return Toggle state changer.
+     */
+    public IStateChanger<Toggle, Boolean> getToggleChanger();
+
+    /**
+     * Get the miscellaneous command invoker.
+     * 
+     * @return Miscellaneous command invoker.
+     */
+    public ICommandInvoker<Command> getCommandInvoker();
+
+    /**
+     * Refresh the display.
+     */
+    public void refresh();
 
     /**
      * Recenter and rezoom the display to the specified location if the display
@@ -110,40 +191,11 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
             SelectByAreaContext context);
 
     /**
-     * Set the enabled state of the undo action.
-     * 
-     * @param enable
-     *            Flag indicating whether or not undo should be enabled.
-     */
-    public void setUndoEnabled(final Boolean enable);
-
-    /**
-     * Set the enabled state of the redo action.
-     * 
-     * @param enable
-     *            Flag indicating whether or not redo should be enabled.
-     */
-    public void setRedoEnabled(final Boolean enable);
-
-    /**
      * Set the enabled state of the edit polygon buttons.
      * 
      * @param enable
      *            Flag indicating whether or not edit polygon buttons should be
      *            enabled.
      */
-    public void setEditMultiPointGeometryEnabled(final Boolean enable);
-
-    /**
-     * Set the enabled and checked state of the add new geometry to selected
-     * toggle button.
-     * 
-     * @param enable
-     *            Flag indicating whether or not the button should be enabled.
-     * @param check
-     *            Flag indicating whether or not the button should be checked
-     *            (selected).
-     */
-    public void setAddNewGeometryToSelectedToggleState(boolean enable,
-            boolean check);
+    public void setEditMultiPointGeometryEnabled(boolean enable);
 }

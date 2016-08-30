@@ -81,7 +81,7 @@ class VisualFeaturesListJsonSerializer {
          * 
          * @param value
          *            Property value to be serialized.
-         * @param jsonGenerator
+         * @param generator
          *            JSON generator into which to serialize the property value.
          * @param identifier
          *            Identifier of the visual feature to which this property
@@ -593,7 +593,7 @@ class VisualFeaturesListJsonSerializer {
         }
     };
 
-    // Package Static Methods
+    // Package-Private Static Methods
 
     /**
      * Serialize the specified visual features list as JSON using the specified

@@ -12,6 +12,9 @@ package gov.noaa.gsd.viz.hazards.display.test;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Date;
 import java.util.List;
@@ -35,6 +38,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
  * Mar 16, 2016 15676      Chris.Golden      Changed to work with latest spatial view.
  * Mar 24, 2016 15676      Chris.Golden      Ditto.
+ * Aug 23, 2016 19537      Chris.Golden      Ditto again.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -44,7 +48,8 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class SpatialViewForTesting implements ISpatialView {
 
     @Override
-    public void initialize(SpatialPresenter presenter) {
+    public void initialize(SpatialPresenter presenter,
+            Set selectedSpatialEntityIdentifiers) {
     }
 
     @Override
@@ -61,33 +66,8 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void setUndoEnabled(Boolean undoFlag) {
-    }
-
-    @Override
-    public void setRedoEnabled(Boolean redoFlag) {
-    }
-
-    @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView#
-     * setEditEventGeometryEnabled(java.lang.Boolean)
-     */
-    @Override
-    public void setEditMultiPointGeometryEnabled(Boolean enabled) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void drawSpatialEntities(List spatialEntities,
-            Set selectedEventIdentifiers) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -97,13 +77,65 @@ public class SpatialViewForTesting implements ISpatialView {
     }
 
     @Override
-    public void setAddNewGeometryToSelectedToggleState(boolean enable,
-            boolean check) {
+    public void centerAndZoomDisplay(List hull, Coordinate center) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void centerAndZoomDisplay(List hull, Coordinate center) {
+    public void refresh() {
+
+        /*
+         * No action.
+         */
+    }
+
+    @Override
+    public IStateChanger getSelectedSpatialEntityIdentifiersChanger() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public IListStateChanger getSpatialEntitiesChanger() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ICommandInvoker getSelectByAreaInvoker() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public IStateChanger getToggleChanger() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ICommandInvoker getCommandInvoker() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setEditMultiPointGeometryEnabled(boolean enable) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ICommandInvoker getCreateShapeInvoker() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ICommandInvoker getModifyGeometryInvoker() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ICommandInvoker getSelectLocationInvoker() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ICommandInvoker getGageActionInvoker() {
         throw new UnsupportedOperationException();
     }
 }

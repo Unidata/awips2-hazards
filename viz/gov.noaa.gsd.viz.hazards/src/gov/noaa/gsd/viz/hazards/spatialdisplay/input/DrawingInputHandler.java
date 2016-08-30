@@ -39,6 +39,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 05, 2016   19537    Chris.Golden Initial creation.
+ * Aug 28, 2016   19537    Chris.Golden Changed to build drawables
+ *                                      without a PGEN layer.
  * </pre>
  * 
  * @author Chris.Golden
@@ -213,26 +215,25 @@ public class DrawingInputHandler extends BaseInputHandler {
         if (location != null) {
             ghostPoints.add(location);
         }
-        AbstractDrawableComponent ghost = getDrawableFactory()
-                .create(DrawableType.LINE, getDrawingAttributes(), "Line",
-                        "LINE_SOLID", ghostPoints,
-                        getSpatialDisplay().getActiveLayer());
+        AbstractDrawableComponent ghost = getDrawableFactory().create(
+                DrawableType.LINE, getDrawingAttributes(), "Line",
+                "LINE_SOLID", ghostPoints, null);
         ((Line) ghost).setLinePoints(ghostPoints);
-        getSpatialDisplay().setGhostOfElementBeingEdited(ghost);
+        getSpatialDisplay().setGhostOfDrawableBeingEdited(ghost);
     }
 
     /**
-     * Hid any visible ghost drawable.
+     * Hide any visible ghost drawable.
      */
     protected final void hideGhost() {
-        getSpatialDisplay().removeGhostOfElementBeingEdited();
+        getSpatialDisplay().setGhostOfDrawableBeingEdited(null);
     }
 
     /**
      * Add the specified point to the points list if it is not the same as the
      * previous point (if the list is not empty).
      * 
-     * @param loc
+     * @param point
      *            New point to be added.
      * @return <code>true</code> if the point was added, <code>false</code> if
      *         it was found to be identical to the previous point and skipped.

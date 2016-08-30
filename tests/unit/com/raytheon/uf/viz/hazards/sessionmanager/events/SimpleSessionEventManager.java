@@ -147,7 +147,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void sortEvents(Comparator<ObservedHazardEvent> comparator) {
+    public void sortEvents(Comparator<ObservedHazardEvent> comparator,
+            IOriginator originator) {
         Collections.sort(events, comparator);
     }
 
@@ -381,6 +382,12 @@ public class SimpleSessionEventManager implements
 
     @Override
     public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    @Deprecated
+    public boolean isShutDown() {
         throw new UnsupportedOperationException();
     }
 }

@@ -21,6 +21,9 @@ package gov.noaa.gsd.viz.mvp.widgets;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 14, 2016   15676    Chris.Golden Initial creation.
+ * Aug 22, 2016   19537    Chris.Golden Removed selection-related method,
+ *                                      as it has nothing to do with the
+ *                                      list changer widget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -29,18 +32,6 @@ package gov.noaa.gsd.viz.mvp.widgets;
 public interface IListStateChangeHandler<I, E> {
 
     // Public Methods
-
-    /**
-     * Receive notification that the specified list element was selected.
-     * 
-     * @param identifier
-     *            Identifier of the list from which an element was selected.
-     *            This may be <code>null</code> if this object only handles one
-     *            particular list's changes.
-     * @param element
-     *            Element that was selected.
-     */
-    public void listElementSelected(I identifier, E element);
 
     /**
      * Receive notification that the specified list element was changed in some

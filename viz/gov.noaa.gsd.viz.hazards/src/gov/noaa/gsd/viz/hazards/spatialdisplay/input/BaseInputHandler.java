@@ -10,16 +10,11 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.raytheon.viz.ui.input.InputAdapter;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-
 
 /**
  * Description: Base class from which to derive input handlers for various
@@ -31,6 +26,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 05, 2016   19537    Chris.Golden Initial creation.
+ * Aug 28, 2016   19537    Chris.Golden Removed unneeded methods.
  * </pre>
  * 
  * @author Chris.Golden+
@@ -90,37 +86,5 @@ public abstract class BaseInputHandler extends InputAdapter {
         AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
                 .getInstance().getActiveEditor());
         return editor.translateClick(x, y);
-    }
-
-    /**
-     * Get the identifier for the specified drawable element.
-     * 
-     * @param drawable
-     *            Drawable for which to fetch the identifier.
-     * @return Identifier, or <code>null</code> if the specified drawable is not
-     *         a {@link IDrawable}.
-     */
-    protected final IEntityIdentifier getIdentifierFromDrawable(
-            AbstractDrawableComponent drawable) {
-        if (drawable instanceof IDrawable) {
-            return ((IDrawable) drawable).getIdentifier();
-        }
-        return null;
-    }
-
-    /**
-     * Get the geometry for the specified drawable element.
-     * 
-     * @param drawable
-     *            Drawable for which to fetch the geometry.
-     * @return Geometry, or <code>null</code> if the specified drawable is not a
-     *         {@link IDrawable}.
-     */
-    protected final Geometry getGeometryFromDrawable(
-            AbstractDrawableComponent drawable) {
-        if (drawable instanceof IDrawable) {
-            return ((IDrawable) drawable).getGeometry();
-        }
-        return null;
     }
 }

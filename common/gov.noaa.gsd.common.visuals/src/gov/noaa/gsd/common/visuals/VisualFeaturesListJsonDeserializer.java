@@ -750,7 +750,7 @@ class VisualFeaturesListJsonDeserializer {
         }
     };
 
-    // Package Static Methods
+    // Package-Private Static Methods
 
     /**
      * Deserialize the next node in the specified JSON parser as a visual

@@ -292,7 +292,8 @@ public class HazardEventGeometryAggregator {
      * over the polygon expanding any interior rings and merging rings back in.
      * 
      * @param g
-     * @return
+     *            Geometry to be de-holed.
+     * @return De-holed geometry.
      */
     private Geometry deholeGeometry(Geometry g) {
 
@@ -350,10 +351,6 @@ public class HazardEventGeometryAggregator {
     /**
      * Determine whether given geometries are within distance params for
      * combining.
-     * 
-     * @param geo1
-     * @param geo2
-     * @return
      */
     private boolean withInDistance(Geometry geo1, Geometry geo2) {
         // Determine if two geometries are within the required distance from

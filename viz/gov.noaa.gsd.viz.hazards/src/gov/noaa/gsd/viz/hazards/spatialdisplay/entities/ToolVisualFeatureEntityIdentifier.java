@@ -26,6 +26,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jun 15, 2016   19537    Chris.Golden Initial creation.
+ * Aug 28, 2016   19537    Chris.Golden Added toString() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -114,5 +115,11 @@ public class ToolVisualFeatureEntityIdentifier implements
                 + (toolIdentifier == null ? 0L : (long) toolIdentifier
                         .hashCode()) + (visualFeatureIdentifier == null ? 0L
                     : (long) visualFeatureIdentifier.hashCode())) % Integer.MAX_VALUE);
+    }
+
+    @Override
+    public String toString() {
+        return getToolIdentifier() + " (visual feature = \""
+                + getVisualFeatureIdentifier() + "\")";
     }
 }

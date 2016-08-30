@@ -18,7 +18,6 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
@@ -39,6 +38,14 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 05, 2016   19537    Chris.Golden Initial creation.
+ * Aug 28, 2016   19537    Chris.Golden Changed to build drawables
+ *                                      without a PGEN layer. Also
+ *                                      altered to work with new
+ *                                      spatial display method names,
+ *                                      and moved code that didn't
+ *                                      belong here for searching
+ *                                      through drawables into the
+ *                                      drawable manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -206,10 +213,9 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
             Coordinate[] points = getPointsOfSelectionShape();
             AbstractDrawableComponent ghost = drawableFactory.create(
                     DrawableType.LINE, drawingAttributes, "Line",
-                    "LINE_DASHED_2", points, getSpatialDisplay()
-                            .getActiveLayer());
+                    "LINE_DASHED_2", points, null);
             ((Line) ghost).setLinePoints(Lists.newArrayList(points));
-            getSpatialDisplay().setGhostOfElementBeingEdited(ghost);
+            getSpatialDisplay().setGhostOfDrawableBeingEdited(ghost);
             getSpatialDisplay().issueRefresh();
         }
         return true;
@@ -240,7 +246,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
          */
         if (selectionByShape) {
             finishSelectionByShape(location);
-        } else if (getSpatialDisplay().getElementBeingEdited() == null) {
+        } else if (getSpatialDisplay().getDrawableBeingEdited() == null) {
             toggleSelectionOfDrawables(location, x, y);
         }
         return true;
@@ -339,15 +345,8 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
              * which drawables intersect with the selection shape.
              */
             selectedDrawables.clear();
-            Iterator<AbstractDrawableComponent> iterator = getSpatialDisplay()
-                    .getActiveLayer().getComponentIterator();
-            while (iterator.hasNext()) {
-                AbstractDrawableComponent component = iterator.next();
-                Geometry geometry = getGeometryFromDrawable(component);
-                if ((geometry != null) && selectionShape.intersects(geometry)) {
-                    selectedDrawables.add(component);
-                }
-            }
+            selectedDrawables.addAll(getSpatialDisplay()
+                    .getIntersectingDrawables(selectionShape));
 
             /*
              * Tell the spatial display which drawables the user is attempting
@@ -378,7 +377,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
      * Clear any shape that is being drawn.
      */
     private void clearAnyShape() {
-        getSpatialDisplay().removeGhostOfElementBeingEdited();
+        getSpatialDisplay().setGhostOfDrawableBeingEdited(null);
         handleSelectionByShapeReset();
         startPixelLocation = null;
         selectionByShape = false;
@@ -399,7 +398,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
         /*
          * Remove the ghost element, and reset.
          */
-        getSpatialDisplay().removeGhostOfElementBeingEdited();
+        getSpatialDisplay().setGhostOfDrawableBeingEdited(null);
         handleSelectionByShapeReset();
         startPixelLocation = null;
 
@@ -413,7 +412,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
          * selection state of each.
          */
         for (AbstractDrawableComponent drawable : getSpatialDisplay()
-                .getContainingComponents(location, x, y)) {
+                .getContainingDrawables(location, x, y)) {
             if (selectedDrawables.contains(drawable)) {
                 selectedDrawables.remove(drawable);
             } else {

@@ -28,6 +28,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jun 23, 2016 19537      Chris.Golden      Revamped completely to allow flexible text
  *                                           positioning (arbitrary angle and offset).
  * Jul 25, 2016 19537      Chris.Golden      Moved to different package.
+ * Aug 27, 2016 19537      Chris.Golden      Added isCentered() method.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -110,7 +111,8 @@ public class TextPositioner {
          * 
          * @param angle
          *            Angle.
-         * @apram offset Offset.
+         * @param offset
+         *            Offset.
          */
         public CacheKey(double angle, double offset) {
             this.angle = angle;
@@ -209,6 +211,16 @@ public class TextPositioner {
     }
 
     // Public Methods
+
+    /**
+     * Determine whether or not the positioner centers text.
+     * 
+     * @return <code>true</code> if the positioner centers text,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isCentered() {
+        return ((xOffset == 0) && (yOffset == 0));
+    }
 
     /**
      * Get a label's position relative to a point on the display.
