@@ -22,7 +22,7 @@ import Domains
 
 class AviationUtils:
     def getGeometryType(self, hazardEvent):        
-        for g in hazardEvent.getGeometry():
+        for g in hazardEvent.getFlattenedGeometry():
             geomType = g.geom_type           
         
         return geomType    
@@ -33,7 +33,7 @@ class AviationUtils:
         if trigger == 'modification':
             pass
         else:
-            hazGeometry = hazardEvent.getGeometry()
+            hazGeometry = hazardEvent.getFlattenedGeometry()
             for g in hazGeometry.geoms:
                 vertices = shapely.geometry.base.dump_coords(g)
         
@@ -179,7 +179,7 @@ class AviationUtils:
         if trigger == 'modification':
             pass
         else:
-            for g in hazardEvent.getGeometry().geoms:
+            for g in hazardEvent.getFlattenedGeometry().geoms:
                 vertices = shapely.geometry.base.dump_coords(g)
                 
         if geomType == 'Polygon':

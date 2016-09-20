@@ -111,7 +111,6 @@ class Recommender(RecommenderTemplate.Recommender):
         """
         @return: A dialog definition to solicit user input before running tool
         """        
-#===============================================================================
         return None
 
     def execute(self, eventSet, dialogInputMap, visualFeatures):
@@ -498,7 +497,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #             LogUtils.logMessage( '[3] Adding NEW event', newRec, ' to mergedEvents')
 #             recommendedEvent = self.makeHazardEvent(newRec, recommendedEventsDict[newRec], currentTime)
 #             
-#             recGeom = recommendedEvent.getGeometry()
+#             recGeom = recommendedEvent.getFlattenedGeometry()
 #             intersects = False
 #                 
 #             #########  FIXME ###############
@@ -513,7 +512,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #             
 #             ### Logic to ignore any automated events that spatially overlap a manually drawn event
 #             for manEvt in manualCurrentEvents:
-#                 manGeom = manEvt.getGeometry()
+#                 manGeom = manEvt.getFlattenedGeometry()
 #                 LogUtils.logMessage('MAN:', type(manGeom))
 #                 LogUtils.logMessage( 'AUTO:', type(recGeom))
 #                 #if recGeom.intersects(manGeom):
@@ -574,7 +573,7 @@ class Recommender(RecommenderTemplate.Recommender):
                         overlap = True
                         break
                     polygon = loads(recommendedEventValues.get('polygons'))
-                    if GeometryFactory.createPolygon(polygon).overlaps(event.getGeometry()):
+                    if GeometryFactory.createPolygon(polygon).overlaps(event.getFlattenedGeometry()):
                         overlap = True
                         break
             if not overlap:

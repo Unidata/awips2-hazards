@@ -9,6 +9,9 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import gov.noaa.gsd.common.utilities.JtsJsonConversionModule;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -29,8 +32,6 @@ import org.codehaus.jackson.map.module.SimpleModule;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.raytheon.uf.common.colormap.Color;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * Description: Class providing methods allowing the conversion of
@@ -54,6 +55,8 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jul 25, 2016   19537    Chris.Golden Added support for new fill style and
  *                                      allow-drag-of-points-in-multi-geometries
  *                                      flag.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries
+ *                                      now used by visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,8 +159,8 @@ public class VisualFeaturesListJsonConverter {
     /**
      * Key for the flag in a JSON object representing a visual feature that
      * indicates whether or not, if a visual feature's geometry is a collection
-     * of multiple geometries, any {@link Puntal} sub-geometries within that
-     * collection are draggable.
+     * of multiple geometries, any point sub-geometries within that collection
+     * are draggable.
      */
     public static final String KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE = "multiGeometryPointsDraggable";
 
@@ -234,7 +237,8 @@ public class VisualFeaturesListJsonConverter {
     /**
      * Type of a geometry.
      */
-    static final TypeToken<?> TYPE_GEOMETRY = TypeToken.of(Geometry.class);
+    static final TypeToken<?> TYPE_GEOMETRY = TypeToken
+            .of(IAdvancedGeometry.class);
 
     /**
      * Type of a border style.
@@ -334,6 +338,12 @@ public class VisualFeaturesListJsonConverter {
                     }
                 });
         CONVERTER.registerModule(module);
+
+        /*
+         * Configure the converter to serialize and deserialize objects expected
+         * to be of type Geometry using custom routines.
+         */
+        CONVERTER.registerModule(JtsJsonConversionModule.getInstance());
     };
 
     // Package-Private Static Variables

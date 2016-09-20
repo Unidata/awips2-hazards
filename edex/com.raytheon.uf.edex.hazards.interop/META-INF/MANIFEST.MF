@@ -28,5 +28,6 @@ Require-Bundle: com.raytheon.uf.common.status,
  com.raytheon.uf.common.activetable;bundle-version="1.14.0",
  org.apache.commons.lang;bundle-version="2.3.0",
  org.apache.commons.cxf;bundle-version="2.7.11",
- com.raytheon.uf.edex.registry.ebxml;bundle-version="1.14.0"
+ com.raytheon.uf.edex.registry.ebxml;bundle-version="1.14.0",
+ gov.noaa.gsd.common.utilities;bundle-version="1.0.0"
 Export-Package: com.raytheon.uf.edex.hazards.interop.gfe

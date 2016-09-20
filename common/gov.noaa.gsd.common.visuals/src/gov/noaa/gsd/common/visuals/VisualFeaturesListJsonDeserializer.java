@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
 
 import java.io.IOException;
@@ -43,9 +45,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKTReader;
 
 /**
  * Description: Helper class for {@link VisualFeaturesListJsonConverter}
@@ -78,6 +77,8 @@ import com.vividsolutions.jts.io.WKTReader;
  * Jul 25, 2016   19537    Chris.Golden Added support for new fill style and
  *                                      allow-drag-of-points-in-multi-geometries
  *                                      flag.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries
+ *                                      now used by visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -203,6 +204,12 @@ class VisualFeaturesListJsonDeserializer {
     private static final String COLOR_KEY_ALPHA = "alpha";
 
     /**
+     * One of the keys always found a JSON object representing an advanced
+     * geometry.
+     */
+    private static final String CLASS_KEY = "class";
+
+    /**
      * Epoch timestamp matching expression.
      */
     private static final Pattern EPOCH_TIMESTAMP_PATTERN = Pattern
@@ -233,11 +240,12 @@ class VisualFeaturesListJsonDeserializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_GEOMETRY,
-                    new IPropertyDeserializer<Geometry>() {
+                    new IPropertyDeserializer<IAdvancedGeometry>() {
 
                         @Override
-                        public Geometry deserializeProperty(JsonNode node,
-                                String identifier) throws JsonParseException {
+                        public IAdvancedGeometry deserializeProperty(
+                                JsonNode node, String identifier)
+                                throws JsonParseException {
                             return deserializeGeometry(
                                     node,
                                     identifier,
@@ -500,11 +508,11 @@ class VisualFeaturesListJsonDeserializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_GEOMETRY,
-                    new IPropertyAssigner<Geometry>() {
+                    new IPropertyAssigner<IAdvancedGeometry>() {
 
                         @Override
                         public void assignPropertyValue(
-                                TemporallyVariantProperty<Geometry> value,
+                                TemporallyVariantProperty<IAdvancedGeometry> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setGeometry(value);
                         }
@@ -682,21 +690,6 @@ class VisualFeaturesListJsonDeserializer {
                     }).build();
 
     // Private Static Variables
-
-    /**
-     * Well-Known Text reader, used for deserializing geometries. It is
-     * thread-local because <code>WKTReader</code> is not explicitly declared to
-     * be thread-safe. This class's static methods may be called simultaneously
-     * by multiple threads, and each thread must be able to deserialize
-     * geometries separately in order to avoid cross-thread pollution.
-     */
-    private static final ThreadLocal<WKTReader> wktReader = new ThreadLocal<WKTReader>() {
-
-        @Override
-        protected WKTReader initialValue() {
-            return new WKTReader();
-        }
-    };
 
     /**
      * Set of visual feature identifiers that are being deserialized. This is
@@ -965,9 +958,12 @@ class VisualFeaturesListJsonDeserializer {
                         (IPropertyAssigner<SerializableColor>) assigner);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_GEOMETRY)) {
-                deserializeAndAssignProperty(node, visualFeature, name,
-                        (IPropertyDeserializer<Geometry>) deserializer,
-                        (IPropertyAssigner<Geometry>) assigner);
+                deserializeAndAssignProperty(
+                        node,
+                        visualFeature,
+                        name,
+                        (IPropertyDeserializer<IAdvancedGeometry>) deserializer,
+                        (IPropertyAssigner<IAdvancedGeometry>) assigner);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_BORDER_STYLE)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
@@ -1256,7 +1252,8 @@ class VisualFeaturesListJsonDeserializer {
          */
         String identifier = visualFeature.getIdentifier();
         TemporallyVariantProperty<P> property = null;
-        if ((node instanceof ObjectNode) && (node.has(COLOR_KEY_RED) == false)) {
+        if ((node instanceof ObjectNode) && (node.has(COLOR_KEY_RED) == false)
+                && (node.has(CLASS_KEY) == false)) {
 
             /*
              * Create the temporally variant property object with the default
@@ -1656,16 +1653,15 @@ class VisualFeaturesListJsonDeserializer {
      * @throws JsonParseException
      *             If an error occurs during deserialization.
      */
-    private static Geometry deserializeGeometry(JsonNode node,
+    private static IAdvancedGeometry deserializeGeometry(JsonNode node,
             String identifier, String propertyName) throws JsonParseException {
-        Geometry geometry;
+        IAdvancedGeometry geometry;
         try {
-            geometry = wktReader.get().read(
-                    VisualFeaturesListJsonConverter.CONVERTER.readValue(node,
-                            String.class));
-        } catch (IOException | ParseException e) {
+            geometry = JsonConverter
+                    .fromJsonNode(node, IAdvancedGeometry.class);
+        } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
-                    "geometry in Well-Known Text format", node, e);
+                    "advanced geometry", node, e);
         }
         if (geometry.isValid() == false) {
             throw createValueDeserializationException(identifier, propertyName,

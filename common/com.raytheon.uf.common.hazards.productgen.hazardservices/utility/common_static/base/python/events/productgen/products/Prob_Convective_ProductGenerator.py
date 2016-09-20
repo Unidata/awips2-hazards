@@ -275,7 +275,7 @@ class Product(Prob_Generator.Product):
 #         #Here's the query we'd be going for:
 #         #  SELECT countyname FROM mapdata.county WHERE the_geom && ST_SetSrid('BOX3D(-96.963120 41.692394, -96.508260 42.128302)'::box3d,4326)
 #
-#         geometry = hazardEvent.getGeometry()
+#         geometry = hazardEvent.getFlattenedGeometry()
 #         columns = ['countyname']
 #         print "Prob_Convective_ProductGenerator", geometry
 #         self.flush()

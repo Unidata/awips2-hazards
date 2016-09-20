@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.common.visuals.VisualFeaturesListJsonConverter;
@@ -106,8 +107,10 @@ public class StormTrackFunctionalTest extends
                 }
             }
             lastPoint.setGeometry(new Date(sessionManager.getTimeManager()
-                    .getSelectedTime().getLowerBound()), new GeometryFactory()
-                    .createPoint(new Coordinate(-98.76, 40.29)));
+                    .getSelectedTime().getLowerBound()),
+                    AdvancedGeometryUtilities.createGeometryWrapper(
+                            new GeometryFactory().createPoint(new Coordinate(
+                                    -98.76, 40.29)), 0));
             event.setVisualFeature(lastPoint, UIOriginator.SPATIAL_DISPLAY);
             stepCompleted();
             step = Steps.MODIFY_TOOL;

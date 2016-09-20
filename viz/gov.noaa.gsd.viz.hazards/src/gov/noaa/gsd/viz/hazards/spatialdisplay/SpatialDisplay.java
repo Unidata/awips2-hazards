@@ -7,6 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
@@ -95,7 +99,6 @@ import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.operation.valid.IsValidOp;
 import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
 
 /**
@@ -200,6 +203,7 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        that represent spatial entities that have changed. Also
  *                                        added code to cancel edits when a drawable is updated by the
  *                                        system while the user is changing it.
+ * Sep 12, 2016 15934      Chris.Golden   Changed to work with advanced geometries.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1114,7 +1118,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             AbstractDrawableComponent drawable, boolean multipleSelection) {
         if (drawable instanceof IDrawable) {
             spatialView.handleUserSingleSpatialEntitySelection(
-                    ((IDrawable) drawable).getIdentifier(), multipleSelection);
+                    ((IDrawable<?>) drawable).getIdentifier(),
+                    multipleSelection);
         }
     }
 
@@ -1132,7 +1137,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 1.0f);
         for (AbstractDrawableComponent drawable : drawables) {
             if (drawable instanceof IDrawable) {
-                identifiers.add(((IDrawable) drawable).getIdentifier());
+                identifiers.add(((IDrawable<?>) drawable).getIdentifier());
             }
         }
         spatialView.handleUserMultipleSpatialEntitiesSelection(identifiers);
@@ -1147,11 +1152,11 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            New geometry to be used by the drawable.
      */
     public void handleUserModificationOfDrawable(
-            AbstractDrawableComponent drawable, Geometry geometry) {
+            AbstractDrawableComponent drawable, IAdvancedGeometry geometry) {
         issueRefresh();
         if (drawable instanceof IDrawable) {
             spatialView.handleUserModificationOfSpatialEntity(
-                    ((IDrawable) drawable).getIdentifier(), geometry);
+                    ((IDrawable<?>) drawable).getIdentifier(), geometry);
         }
     }
 
@@ -1177,8 +1182,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      */
     public void handleUserCreationOfPointShape(Coordinate location,
             SequencePosition sequencePosition) {
-        spatialView.handleUserCreationOfShape(geometryFactory
-                .createPoint(location));
+        spatialView
+                .handleUserCreationOfShape(AdvancedGeometryUtilities
+                        .createGeometryWrapper(
+                                geometryFactory.createPoint(location), 0));
 
         /*
          * If this is the first point drawn in a sequence of points, tell the
@@ -1414,11 +1421,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            {@link Geometry#isValid()} method.
      * @return True if the geometry is valid, false otherwise.
      */
-    public boolean checkGeometryValidity(Geometry geometry) {
+    public boolean checkGeometryValidity(IAdvancedGeometry geometry) {
         if (geometry.isValid() == false) {
-            IsValidOp op = new IsValidOp(geometry);
             statusHandler.warn("Invalid geometry: "
-                    + op.getValidationError().getMessage()
+                    + geometry.getValidityProblemDescription()
                     + ". Geometry modification ignored.");
             return false;
         }
@@ -1457,8 +1463,9 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Try using the geometry associated with the drawable.
              */
-            IDrawable shape = ((IDrawable) selectedDrawable);
-            Coordinate[] coordinates = shape.getGeometry().getCoordinates();
+            IDrawable<?> shape = ((IDrawable<?>) selectedDrawable);
+            Coordinate[] coordinates = ((GeometryWrapper) shape.getGeometry())
+                    .getGeometry().getCoordinates();
 
             /*
              * For polygons in which the last coordinate is not equal to the
@@ -1556,19 +1563,20 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                  * Close the points if they describe a a polygon, create the
                  * modified geometry, and use it.
                  */
-                IDrawable entityShape = (IDrawable) selectedDrawable;
+                IDrawable<?> entityShape = (IDrawable<?>) selectedDrawable;
                 List<Coordinate> coordsAsList = Lists
                         .newArrayList(newCoordinates);
                 if (entityShape.getGeometry().getClass() == Polygon.class) {
                     Utilities.closeCoordinatesIfNecessary(coordsAsList);
                 }
-                Geometry modifiedGeometry = buildModifiedGeometry(entityShape,
-                        coordsAsList);
+                IAdvancedGeometry modifiedGeometry = buildModifiedGeometry(
+                        entityShape, coordsAsList);
 
                 handleUserModificationOfDrawable(selectedDrawable,
                         modifiedGeometry);
-                useAsHandlebarPoints(Lists.newArrayList(modifiedGeometry
-                        .getCoordinates()));
+                useAsHandlebarPoints(Lists
+                        .newArrayList(AdvancedGeometryUtilities.getJtsGeometry(
+                                modifiedGeometry).getCoordinates()));
                 issueRefresh();
                 return minPosition;
             }
@@ -1622,14 +1630,16 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 /*
                  * Create the modified geometry and use it.
                  */
-                IDrawable entityShape = (IDrawable) info.getDrawable();
-                Geometry modifiedGeometry = buildModifiedGeometry(entityShape,
-                        coordinates);
+                IDrawable<?> entityShape = (IDrawable<?>) info.getDrawable();
+                IAdvancedGeometry modifiedGeometry = buildModifiedGeometry(
+                        entityShape, coordinates);
                 if (checkGeometryValidity(modifiedGeometry)) {
                     handleUserModificationOfDrawable(info.getDrawable(),
                             modifiedGeometry);
-                    useAsHandlebarPoints(Lists.newArrayList(modifiedGeometry
-                            .getCoordinates()));
+                    useAsHandlebarPoints(Lists
+                            .newArrayList(AdvancedGeometryUtilities
+                                    .getJtsGeometry(modifiedGeometry)
+                                    .getCoordinates()));
                     issueRefresh();
                     return true;
                 } else {
@@ -1650,13 +1660,14 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            List of coordinates specifying the new geometry's vertices.
      * @return Modified geometry.
      */
-    public Geometry buildModifiedGeometry(IDrawable origShape,
+    public IAdvancedGeometry buildModifiedGeometry(IDrawable<?> origShape,
             List<Coordinate> coords) {
 
         /*
          * Create the new geometry.
          */
-        Geometry geometry = translateCoordinatesToGeometry(origShape, coords);
+        IAdvancedGeometry geometry = translateCoordinatesToGeometry(origShape,
+                coords);
 
         /*
          * If the geometry being replaced is not the whole geometry of the
@@ -1665,22 +1676,24 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * geometries as before for all other indices, and the new geometry at
          * its index.
          */
-        int newIndex = origShape.getGeometryIndex();
         SpatialEntity<? extends IEntityIdentifier> spatialEntity = drawableManager
                 .getAssociatedSpatialEntity((AbstractDrawableComponent) origShape);
-        Geometry originalGeometry = spatialEntity.getGeometry();
+        IAdvancedGeometry originalGeometry = spatialEntity.getGeometry();
+        int newIndex = origShape.getGeometryIndex();
         if ((newIndex == -1)
-                && (originalGeometry instanceof GeometryCollection)) {
+                && (originalGeometry instanceof AdvancedGeometryCollection)) {
             newIndex = 0;
         }
         if (newIndex != -1) {
-            Geometry[] newGeometries = new Geometry[originalGeometry
-                    .getNumGeometries()];
-            for (int j = 0; j < newGeometries.length; j++) {
-                newGeometries[j] = (j == newIndex ? geometry : originalGeometry
-                        .getGeometryN(j));
+            AdvancedGeometryCollection collection = (AdvancedGeometryCollection) originalGeometry;
+            List<IAdvancedGeometry> newGeometries = new ArrayList<>(collection
+                    .getChildren().size());
+            for (int j = 0; j < collection.getChildren().size(); j++) {
+                newGeometries.add(j == newIndex ? geometry : collection
+                        .getChildren().get(j));
             }
-            geometry = geometryFactory.createGeometryCollection(newGeometries);
+            geometry = AdvancedGeometryUtilities
+                    .createCollection(newGeometries);
         }
         return geometry;
     }
@@ -1955,7 +1968,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         if (containingDrawables.size() == 1) {
             AbstractDrawableComponent drawable = containingDrawables.get(0);
             if (drawable instanceof IDrawable) {
-                return ((IDrawable) drawable).getIdentifier();
+                return ((IDrawable<?>) drawable).getIdentifier();
             }
         }
         return null;
@@ -1983,7 +1996,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      * @return <code>true</code> if the drawable is a polygon,
      *         <code>false</code> otherwise.
      */
-    private boolean isPolygon(IDrawable drawable) {
+    private boolean isPolygon(IDrawable<?> drawable) {
         return ((drawable instanceof MultiPointDrawable) && ((MultiPointDrawable) drawable)
                 .isClosedLine());
     }
@@ -1999,8 +2012,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            List of coordinates making up the new geometry.
      * @return Geometry.
      */
-    private Geometry translateCoordinatesToGeometry(IDrawable originalShape,
-            List<Coordinate> coordinates) {
+    private IAdvancedGeometry translateCoordinatesToGeometry(
+            IDrawable<?> originalShape, List<Coordinate> coordinates) {
         Coordinate[] coordinatesAsArray = coordinates
                 .toArray(new Coordinate[coordinates.size()]);
         Geometry result;
@@ -2015,7 +2028,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             throw new IllegalArgumentException("Unexpected geometry "
                     + originalShape.getClass());
         }
-        return result;
+        return AdvancedGeometryUtilities.createGeometryWrapper(result, 0);
     }
 
     /**
@@ -2060,7 +2073,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         /*
          * Create the entity for the path or polygon.
          */
-        spatialView.handleUserCreationOfShape(newGeometry);
+        spatialView.handleUserCreationOfShape(AdvancedGeometryUtilities
+                .createGeometryWrapper(newGeometry, 0));
     }
 
     /**
@@ -2118,7 +2132,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         if (selectedPolygon == null) {
             return;
         }
-        Geometry geometry = selectedPolygon.getGeometry();
+        Geometry geometry = selectedPolygon.getGeometry().getGeometry();
         Polygon polygon = getFirstPolygon(geometry);
         if (polygon != null) {
             Coordinate[] origCoordinatesAsArray = polygon.getCoordinates();
@@ -2165,11 +2179,11 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (newCoordinates.size() >= 3) {
                 Utilities.closeCoordinatesIfNecessary(newCoordinates);
-                Geometry newGeometry = geometryFactory
-                        .createPolygon(geometryFactory
-                                .createLinearRing(newCoordinates
+                IAdvancedGeometry newGeometry = AdvancedGeometryUtilities
+                        .createGeometryWrapper(geometryFactory.createPolygon(
+                                geometryFactory.createLinearRing(newCoordinates
                                         .toArray(new Coordinate[newCoordinates
-                                                .size()])), null);
+                                                .size()])), null), 0);
                 if (checkGeometryValidity(newGeometry)) {
                     handleUserModificationOfDrawable(selectedPolygon,
                             newGeometry);

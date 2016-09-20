@@ -49,6 +49,9 @@
 #                                                 time to a datetime. Also added ability to
 #                                                 set product geometry, to mirror earlier
 #                                                 change in IHazardEvent.java.
+#    09/02/16       15934          Chris.Golden   Changed to include methods handling
+#                                                 advanced geometries in place of JTS
+#                                                 and shapely geometries.
 # 
 #
 
@@ -58,6 +61,15 @@ from shapely import wkt
 from Event import Event
 
 import TimeUtils
+
+from shapely.geometry.base import BaseGeometry
+
+import AdvancedGeometry
+
+from AdvancedGeometryHandler import pyAdvancedGeometryToJavaAdvancedGeometry, javaAdvancedGeometryToPyAdvancedGeometry
+JUtil.registerPythonToJava(pyAdvancedGeometryToJavaAdvancedGeometry)
+JUtil.registerJavaToPython(javaAdvancedGeometryToPyAdvancedGeometry)
+
 from VisualFeatures import VisualFeatures
 from VisualFeaturesHandler import pyVisualFeaturesToJavaVisualFeatures, javaVisualFeaturesToPyVisualFeatures
 
@@ -175,15 +187,33 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def setWorkStation(self, workStation):
         self.jobj.setWorkStation(workStation)
 
+    # Get the geometry. The returned geometry will be of type
+    # AdvancedGeometry.
     def getGeometry(self):
         return JUtil.javaObjToPyVal(self.jobj.getGeometry())
+
+    # Get the flattened geometry, a shapely version of the geometry
+    # that replaces any curves with simulated curves made up of
+    # straight line segments.
+    def getFlattenedGeometry(self):
+        return JUtil.javaObjToPyVal(self.jobj.getFlattenedGeometry())
     
     def getProductGeometry(self):
         return JUtil.javaObjToPyVal(self.jobj.getProductGeometry())
-    
+
+    # Set the geometry to that specified. Note that the parameter
+    # may either be a Java subclass of IAdvancedGeometry, a
+    # Python AdvancedGeometry. or a Python shapely geometry.
     def setGeometry(self, geometry):
-        if geometry is not None :
-            self.jobj.setGeometry(JUtil.pyValToJavaObj(geometry))
+        
+        # Convert any shapely geometries to AdvancedGeometry.
+        if issubclass(type(geometry), BaseGeometry):
+            geometry = AdvancedGeometry.createShapelyWrapper(geometry, 0)
+            
+        # Use the advanced geometry's wrapped Java object.
+        if isinstance(geometry, AdvancedGeometry.AdvancedGeometry):
+            geometry = geometry.getWrappedJavaObject()
+        self.jobj.setGeometry(geometry)
     
     def setProductGeometry(self, geometry):
         if geometry is not None :
@@ -292,10 +322,7 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setHazardMode(javaClass.getHazardMode().name())
         else :
             self.setHazardMode(None)
-        if javaClass.getGeometry() is not None :
-            self.setGeometry(wkt.loads(javaClass.getGeometry().toText()))
-        else :
-            self.setGeometry(None)
+        self.setGeometry(javaClass.getGeometry())
         if javaClass.getProductGeometry() is not None :
             self.setProductGeometry(wkt.loads(javaClass.getProductGeometry().toText()))
         else :
@@ -322,6 +349,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getStartTime()
         elif lowerKey == 'geometry' or lowerKey == 'geom':
             return self.getGeometry()
+        elif lowerKey == 'flattenedgeometry':
+            return self.getFlattenedGeometry()
         elif lowerKey == 'mode' or lowerKey == 'hazardmode':
             return self.getHazardMode()
         elif lowerKey == 'eventid':

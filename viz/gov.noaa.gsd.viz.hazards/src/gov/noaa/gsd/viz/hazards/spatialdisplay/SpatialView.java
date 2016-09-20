@@ -8,6 +8,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
@@ -136,6 +137,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 23, 2016 19537      Chris.Golden      Continued extensive spatial display refactor,
  *                                           including the use of MVP widgets and delegates
  *                                           to decouple the presenter and view.
+ * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -717,22 +719,22 @@ public class SpatialView implements
     /**
      * Create shape command invocation handler.
      */
-    private ICommandInvocationHandler<Geometry> createShapeInvocationHandler;
+    private ICommandInvocationHandler<IAdvancedGeometry> createShapeInvocationHandler;
 
     /**
      * Create shape command invoker.
      */
-    private final ICommandInvoker<Geometry> createShapeInvoker = new ICommandInvoker<Geometry>() {
+    private final ICommandInvoker<IAdvancedGeometry> createShapeInvoker = new ICommandInvoker<IAdvancedGeometry>() {
 
         @Override
-        public void setEnabled(Geometry identifier, boolean enable) {
+        public void setEnabled(IAdvancedGeometry identifier, boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot change enabled state of create shape");
         }
 
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler<Geometry> handler) {
+                ICommandInvocationHandler<IAdvancedGeometry> handler) {
             createShapeInvocationHandler = handler;
         }
     };
@@ -740,7 +742,7 @@ public class SpatialView implements
     /**
      * Create shape command invoker delegate.
      */
-    private final ICommandInvoker<Geometry> createShapeInvokerDelegate = new CommandInvokerDelegate<>(
+    private final ICommandInvoker<IAdvancedGeometry> createShapeInvokerDelegate = new CommandInvokerDelegate<>(
             new BasicWidgetDelegateHelper<>(createShapeInvoker),
             RUNNABLE_ASYNC_SCHEDULER);
 
@@ -1106,7 +1108,7 @@ public class SpatialView implements
     }
 
     @Override
-    public ICommandInvoker<Geometry> getCreateShapeInvoker() {
+    public ICommandInvoker<IAdvancedGeometry> getCreateShapeInvoker() {
         return createShapeInvokerDelegate;
     }
 
@@ -1521,7 +1523,7 @@ public class SpatialView implements
      *            New geometry to be used by the spatial entity.
      */
     void handleUserModificationOfSpatialEntity(IEntityIdentifier identifier,
-            Geometry geometry) {
+            IAdvancedGeometry geometry) {
         if (modifyGeometryInvocationHandler != null) {
             modifyGeometryInvocationHandler
                     .commandInvoked(new EntityGeometryModificationContext(
@@ -1550,7 +1552,7 @@ public class SpatialView implements
      * @param geometry
      *            New multi-point shape that was created.
      */
-    void handleUserCreationOfShape(Geometry geometry) {
+    void handleUserCreationOfShape(IAdvancedGeometry geometry) {
         if (createShapeInvocationHandler != null) {
             createShapeInvocationHandler.commandInvoked(geometry);
         }

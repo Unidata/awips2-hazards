@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,7 +40,6 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.ValueType;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardAttribute;
 import com.raytheon.uf.common.registry.ebxml.slots.SlotConverter;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * 
@@ -57,6 +58,12 @@ import com.vividsolutions.jts.geom.Geometry;
  * Apr 23, 2016   18094    Chris.Golden  Changed to avoid performing any slot
  *                                       conversion on attributes that are not
  *                                       capable of such conversions.
+ * Sep 03, 2016   15934    Chris.Golden  Removed geometry-related code, since
+ *                                       Geometry objects should never be
+ *                                       encountered by this converter, given
+ *                                       that HazardAttribute preprocesses
+ *                                       any Geometry objects and turns them
+ *                                       into Well-Known Text (WKT).
  * </pre>
  * 
  * @author bphillip
@@ -78,23 +85,32 @@ public class HazardAttributeSlotConverter implements SlotConverter {
         Set<HazardAttribute> attributes = (Set<HazardAttribute>) slotValue;
         List<SlotType> slotList = new ArrayList<SlotType>(attributes.size());
 
+        /*
+         * Handle each attribute separately.
+         */
         for (HazardAttribute attr : attributes) {
+
+            /*
+             * Do nothing with this attribute if it is not slottable.
+             */
             if (attr.isSlottable() == false) {
                 continue;
             }
+
+            /*
+             * Slot non-collection-or-map types in the usual way, and handle
+             * collections and maps differently.
+             */
             Class<?> valueType = attr.getValueType();
             if (valueType == null) {
-                ValueType val = getValueType(attr.getValue());
+                ValueType val = getValueType(attr.getValueObject() instanceof IAdvancedGeometry ? attr
+                        .getValueObject() : attr.getValue());
                 SlotType slot = new SlotType(attr.getKey(), val);
                 slotList.add(slot);
             } else {
                 Object valueObject = attr.getValueObject();
                 if (valueObject != null) {
-                    if (Geometry.class.isAssignableFrom(valueType)) {
-                        ValueType val = getValueType(valueObject);
-                        SlotType slot = new SlotType(attr.getKey(), val);
-                        slotList.add(slot);
-                    } else if (HashMap.class.isAssignableFrom(valueType)) {
+                    if (HashMap.class.isAssignableFrom(valueType)) {
                         HashMap<String, Object> map = (HashMap<String, Object>) valueObject;
                         for (Entry<String, Object> entry : map.entrySet()) {
                             ValueType val = getValueType(entry.getKey() + "="
@@ -173,8 +189,6 @@ public class HazardAttributeSlotConverter implements SlotConverter {
             retVal = new IntegerValueType(new BigInteger(String.valueOf(value)));
         } else if (value instanceof Integer) {
             retVal = new IntegerValueType((Integer) value);
-        } else if (value instanceof Geometry) {
-            retVal = new StringValueType(((Geometry) value).toText());
         } else {
             retVal = new StringValueType(value.toString());
         }

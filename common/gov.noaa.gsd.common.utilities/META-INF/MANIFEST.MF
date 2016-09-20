@@ -9,7 +9,10 @@ Bundle-ClassPath: gson-2.1.jar,
  .
 Require-Bundle: com.google.guava;bundle-version="1.0.0",
  org.codehaus.jackson;bundle-version="1.7.3",
- org.apache.commons.lang;bundle-version="2.3.0"
+ org.apache.commons.lang;bundle-version="2.3.0",
+ com.raytheon.uf.common.registry.ebxml;bundle-version="1.14.0",
+ com.raytheon.uf.common.serialization;bundle-version="1.15.1",
+ com.raytheon.uf.common.status;bundle-version="1.15.0"
 Export-Package: com.google.gson;
   uses:="com.google.gson.internal,
    new com.google.gson,
@@ -19,6 +22,7 @@ Export-Package: com.google.gson;
  com.google.gson.reflect,
  gov.noaa.gsd.common.utilities;uses:="org.joda.time",
  gov.noaa.gsd.common.utilities.collect,
+ gov.noaa.gsd.common.utilities.geometry,
  org.joda.time;
   uses:="org.joda.time.base,
    org.joda.time.field,
@@ -31,3 +35,7 @@ Export-Package: com.google.gson;
  org.joda.time.field;uses:="org.joda.time",
  org.joda.time.format;uses:="org.joda.time",
  org.joda.time.tz
+Import-Package: com.vividsolutions.jts.geom,
+ com.vividsolutions.jts.io,
+ com.vividsolutions.jts.operation.valid,
+ oasis.names.tc.ebxml.regrep.xsd.rim.v4

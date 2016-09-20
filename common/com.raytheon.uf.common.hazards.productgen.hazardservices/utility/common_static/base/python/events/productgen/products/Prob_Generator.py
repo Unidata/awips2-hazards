@@ -969,7 +969,7 @@ class Product(ProductTemplate.Product):
         self._productSegment.canVtecRecord = canVtecRecord
 
     def _prepareLocationsAffected(self, hazardEvent):
-        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'], 'warngenloc', constraints={'cwa' : self._siteID},
+        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'].asShapely(), 'warngenloc', constraints={'cwa' : self._siteID},
                                                 sortBy=['warngenlev', 'population'], maxResults=20)
         return locations
 
@@ -1019,7 +1019,7 @@ class Product(ProductTemplate.Product):
             for identifier in attributeValue:
                 additionalInfoText = ''
                 if identifier == 'listOfDrainages':
-                    drainages = SpatialQuery.retrievePoints(event['geometry'], 'ffmp_basins', constraints={'cwa' : self._siteID},
+                    drainages = SpatialQuery.retrievePoints(event['geometry'].asShapely(), 'ffmp_basins', constraints={'cwa' : self._siteID},
                                                             sortBy=['streamname'], locationField='streamname')
                     drainages = self._tpc.formatDelimitedList(set(drainages))
                     productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
@@ -1345,7 +1345,7 @@ class Product(ProductTemplate.Product):
             the geometry and ugcs since the current polygon is incorrect for this segment.
         '''
         # Geometry/UGCs for the EXA/EXB hazard
-        geometry = hazardEvent.getGeometry().difference(prevHazardEvent.getGeometry())
+        geometry = hazardEvent.getFlattenedGeometry().difference(prevHazardEvent.getFlattenedGeometry())
         prevUGCs = set(prevAttributes.get('ugcs'))
         currentUGCs = set(attributes.get('ugcs'))
         ugcs = list(currentUGCs.difference(prevUGCs))
@@ -1388,7 +1388,7 @@ class Product(ProductTemplate.Product):
         hazardEvent.setHazardAttributes(attributes)
 
         # Update the geometry as well
-        hazardEvent.setGeometry(GeometryFactory.createCollection([prevHazardEvent.getGeometry()]))
+        hazardEvent.setGeometry(GeometryFactory.createCollection([prevHazardEvent.getFlattenedGeometry()]))
 
         # Call the original method with the updated hazardEvent to get the hazard dictionary.
         return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)

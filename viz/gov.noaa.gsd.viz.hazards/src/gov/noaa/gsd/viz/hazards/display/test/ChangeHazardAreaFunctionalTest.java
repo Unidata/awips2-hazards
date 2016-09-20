@@ -219,7 +219,7 @@ public class ChangeHazardAreaFunctionalTest extends
     private void handleCompletedIssuance() {
 
         ObservedHazardEvent event = autoTestUtilities.getSelectedEvent();
-        Geometry geometry = event.getGeometry();
+        Geometry geometry = event.getFlattenedGeometry();
         Coordinate[] coordinates = geometry.getCoordinates();
         Coordinate modifiedPoint = coordinates[1];
 

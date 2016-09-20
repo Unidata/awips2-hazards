@@ -20,7 +20,9 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -28,6 +30,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -40,6 +44,7 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -107,6 +112,14 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                       slottable. Finally, changed the validity
  *                                       check to allow collections/maps with null
  *                                       entries.
+ * Sep 03, 2016   15934    Chris.Golden  Changed substitution of Well-Known-Text
+ *                                       for Geometry code to be generalized, so
+ *                                       that other substitutions could be added
+ *                                       easily in the future. Also added the
+ *                                       ability to substitute JSON strings for
+ *                                       IAdvancedGeometry objects, so that these
+ *                                       new advanced geometries may be used as
+ *                                       attribute values or components thereof.
  * </pre>
  * 
  * @author mnash
@@ -128,10 +141,104 @@ public class HazardAttribute implements IValidator, Serializable {
      * {@link #postprocessValuesAfterDeserialization(Object)}.
      */
     private enum Substitution {
-        GEOMETRY, SET
+
+        GEOMETRY(Geometry.class), ADVANCED_GEOMETRY(IAdvancedGeometry.class), SET(
+                Set.class);
+
+        // Private Static Constants
+
+        /**
+         * Map of types to instances.
+         */
+        private static final Map<Class<?>, Substitution> INSTANCES_FOR_TYPES;
+        static {
+            Map<Class<?>, Substitution> map = new HashMap<>();
+            for (Substitution value : values()) {
+                map.put(value.getType(), value);
+            }
+            INSTANCES_FOR_TYPES = ImmutableMap.copyOf(map);
+        }
+
+        // Private Variables
+
+        /**
+         * Type to which this substitution applies for instances of said type
+         * (and instances of subclasses).
+         */
+        private final Class<?> type;
+
+        // Public Static Methods
+
+        /**
+         * Get the types that require substitution.
+         * 
+         * @return Types that require substitution.
+         */
+        public static Set<Class<?>> getTypesRequiringSubstitution() {
+            return INSTANCES_FOR_TYPES.keySet();
+        }
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param type
+         *            Type to which this substitution applies.
+         */
+        private Substitution(Class<?> type) {
+            this.type = type;
+        }
+
+        // Public Methods
+
+        /**
+         * Get the type to which this substitution applies for instances of said
+         * type (and instances of subclasses).
+         * 
+         * @return Type.
+         */
+        public Class<?> getType() {
+            return type;
+        }
     };
 
     // Private Interfaces
+
+    /**
+     * Interface describing the method that must be implemented in order for a
+     * class to act as a preprocessor for leaf-type (that is, not {@link Map} or
+     * {@link Collection}) substitutable objects that are to be converted to
+     * strings before serialization.
+     */
+    private interface IPreprocessor {
+
+        /**
+         * Preprocess the specified object.
+         * 
+         * @param object
+         *            Object to be preprocessed.
+         * @return Resulting string.
+         */
+        public String preprocess(Object object);
+    }
+
+    /**
+     * Interface describing the method that must be implemented in order for a
+     * class to act as a postprocessor for substitutable objects that are to be
+     * converted to their appropriate types after deserialization.
+     */
+    private interface IPostprocessor {
+
+        /**
+         * Postprocess the specified object.
+         * 
+         * @param object
+         *            Object to be postprocessed.
+         * @return Resulting object.
+         */
+        public Object postprocess(Object object);
+    }
 
     /**
      * Interface describing the method that must be implemented in order for a
@@ -177,12 +284,98 @@ public class HazardAttribute implements IValidator, Serializable {
     private static final String VALUE_END_TAG = "</value>";
 
     /**
-     * JSON converter. This object is thread-safe, as stated <a
-     * href="http://wiki.fasterxml.com/JacksonFAQ#Data_Binding.2C_general"
-     * >here</a>, as long as it is not configured during serialization or
-     * deserialization.
+     * Substitutions applying to {@link Map} subclasses.
      */
-    private static final JsonConverter JSON_CONVERTER = new JsonConverter();
+    private static final EnumSet<Substitution> SUBSTITUTABLE_MAPS = EnumSet
+            .noneOf(Substitution.class);
+
+    /**
+     * Substitutions applying to {@link Collection} subclasses.
+     */
+    private static final EnumSet<Substitution> SUBSTITUTABLE_COLLECTIONS = EnumSet
+            .of(Substitution.SET);
+
+    /**
+     * Substitutions applying to types other than subclasses of {@link Map} or
+     * {@link Collection}.
+     */
+    private static final EnumSet<Substitution> SUBSTITUTABLE_LEAF_OBJECTS = EnumSet
+            .complementOf(SUBSTITUTABLE_COLLECTIONS);
+
+    /**
+     * Map pairing substitutables found in {@link #SUBSTITUTABLE_LEAF_OBJECTS}
+     * with their preprocessors. Note that those found in
+     * {@link #SUBSTITUTABLE_COLLECTIONS} and {@link #SUBSTITUTABLE_MAPS} do not
+     * require entries, since all collections and maps are converted to
+     * {@link ArrayList} and {@link HashMap} instances, respectively.
+     */
+    private static final Map<Substitution, IPreprocessor> PREPROCESSORS_FOR_SUBSTITUTIONS;
+    static {
+        Map<Substitution, IPreprocessor> map = new HashMap<>(2, 1.0f);
+        map.put(Substitution.GEOMETRY, new IPreprocessor() {
+
+            @Override
+            public String preprocess(Object object) {
+                return object.toString();
+            }
+        });
+        map.put(Substitution.ADVANCED_GEOMETRY, new IPreprocessor() {
+
+            @Override
+            public String preprocess(Object object) {
+                try {
+                    return JsonConverter.toJson(object);
+                } catch (IOException e) {
+                    throw new IllegalStateException(
+                            "could not marshal object of type IAdvancedGeometry to JSON",
+                            e);
+                }
+            }
+        });
+        PREPROCESSORS_FOR_SUBSTITUTIONS = ImmutableMap.copyOf(map);
+    }
+
+    /**
+     * Map pairing all substitutables with their postprocessors.
+     */
+    private static final Map<Substitution, IPostprocessor> POSTPROCESSORS_FOR_SUBSTITUTIONS;
+    static {
+        Map<Substitution, IPostprocessor> map = new HashMap<>(3, 1.0f);
+        map.put(Substitution.GEOMETRY, new IPostprocessor() {
+
+            @Override
+            public Object postprocess(Object object) {
+                try {
+                    return WKT_READER.get().read((String) object);
+                } catch (ParseException e) {
+                    throw new IllegalStateException(
+                            "could not unmarshal Well-Known-Text to Geometry",
+                            e);
+                }
+            }
+        });
+        map.put(Substitution.ADVANCED_GEOMETRY, new IPostprocessor() {
+
+            @Override
+            public Object postprocess(Object object) {
+                try {
+                    return JsonConverter.fromJson((String) object,
+                            IAdvancedGeometry.class);
+                } catch (IOException e) {
+                    throw new IllegalStateException(
+                            "could not unmarshal JSON to IAdvancedGeometry", e);
+                }
+            }
+        });
+        map.put(Substitution.SET, new IPostprocessor() {
+
+            @Override
+            public Object postprocess(Object object) {
+                return new HashSet<Object>((Collection<?>) object);
+            }
+        });
+        POSTPROCESSORS_FOR_SUBSTITUTIONS = ImmutableMap.copyOf(map);
+    }
 
     /**
      * Well-Known-Text reader, used for deserializing {@link Geometry} objects.
@@ -295,6 +488,43 @@ public class HazardAttribute implements IValidator, Serializable {
     private Class<? extends Object> collectionValueType;
 
     /**
+     * Map pairing substitution types with list of paths to objects of those
+     * types in the original {@link #value}.
+     * <p>
+     * Each path is a string consisting of substrings and/or integers separated
+     * by newlines (avoiding the use of a nested list in order to make
+     * serialization easier); each substring is a key into a {@link Map},
+     * whereas each integer is the index into a {@link List}. As an example, the
+     * path:<code><pre>     foo
+     *     3
+     *     bar</pre></code> indicates that the top-level value is a
+     * <code>Map</code>, and that its key "foo" is associated with a
+     * <code>List</code> as a value; the 3rd element within the list is a nested
+     * <code>Map</code>; and the object found as the value associated with the
+     * key "bar" in this map was originally of the type with which this
+     * substitution is associated.
+     * </p>
+     * <p>
+     * TODO: Make this a list of lists of strings and indices (perhaps the
+     * sublist should have generic parameter of <code>Serializable</code>)
+     * instead of a list of strings; the latter was done only because it aided
+     * in serialization.
+     * </p>
+     * <p>
+     * TODO: This map is currently not serialized into XML due to problems with
+     * doing so with lists nested within a map; instead, the map is populated by
+     * {@link #getPathsToInstancesFor()} before it is used. This is clumsy; the
+     * lists used as values within the map (e.g. {@link #pathsToSets}) should
+     * not be member variables themselves, but rather should simply be
+     * components of this map, with this map being serialized and deserialized
+     * correctly. When there is time to figure out how to do this, make it so.
+     * </p>
+     */
+    @XmlTransient
+    private final EnumMap<Substitution, List<String>> pathsToInstancesForSubstitutables = new EnumMap<>(
+            Substitution.class);
+
+    /**
      * List of paths to {@link Set} objects in the original {@link #value}. Each
      * path is a string consisting of substrings and/or integers separated by
      * newlines (avoiding the use of a nested list in order to make
@@ -312,6 +542,12 @@ public class HazardAttribute implements IValidator, Serializable {
      * sublist should have generic parameter of <code>Serializable</code>)
      * instead of a list of strings; the latter was done only because it aided
      * in serialization.
+     * </p>
+     * <p>
+     * TODO: This should not be a member variable; it should simply be
+     * serialized and deserialized as part of
+     * {@link #pathsToInstancesForSubstitutables}, if serialization and
+     * deserialization of the latter becomes possible.
      * </p>
      */
     @DynamicSerializeElement
@@ -335,10 +571,45 @@ public class HazardAttribute implements IValidator, Serializable {
      * instead of a list of strings; the latter was done only because it aided
      * in serialization.
      * </p>
+     * <p>
+     * TODO: This should not be a member variable; it should simply be
+     * serialized and deserialized as part of
+     * {@link #pathsToInstancesForSubstitutables}, if serialization and
+     * deserialization of the latter becomes possible.
+     * </p>
      */
     @DynamicSerializeElement
     @XmlElement
     private final List<String> pathsToGeometries = new ArrayList<>();
+
+    /**
+     * List of paths to {@link IAdvancedGeometry} objects in the original
+     * {@link #value}. Each path is a string consisting of substrings and/or
+     * integers separated by newlines (avoiding the use of a nested list in
+     * order to make serialization easier); each substring is a key into a
+     * {@link Map}, whereas each integer is the index into a {@link List}. As an
+     * example, the path: <code><pre>     20
+     *     baz</pre></code> indicates that the top-level value is a
+     * <code>List</code>; that the 20th element in said list is a
+     * <code>Map</code>; and the {@link String} found as the value associated
+     * with the key "baz" in this map was originally an
+     * <code>IAdvancedGeometry</code>.
+     * <p>
+     * TODO: Make this a list of lists of strings and indices (perhaps the
+     * sublist should have generic parameter of <code>Serializable</code>)
+     * instead of a list of strings; the latter was done only because it aided
+     * in serialization.
+     * </p>
+     * <p>
+     * TODO: This should not be a member variable; it should simply be
+     * serialized and deserialized as part of
+     * {@link #pathsToInstancesForSubstitutables}, if serialization and
+     * deserialization of the latter becomes possible.
+     * </p>
+     */
+    @DynamicSerializeElement
+    @XmlElement
+    private final List<String> pathsToAdvancedGeometries = new ArrayList<>();
 
     // Public Constructors
 
@@ -398,7 +669,7 @@ public class HazardAttribute implements IValidator, Serializable {
                 }
             } else {
                 try {
-                    result = JSON_CONVERTER.fromJson((String) value);
+                    result = JsonConverter.fromJson((String) value);
                 } catch (Exception e) {
                     throw new IllegalStateException(
                             "internal error while deserializing JSON", e);
@@ -407,9 +678,9 @@ public class HazardAttribute implements IValidator, Serializable {
         }
 
         /*
-         * Perform any substitutions of geometries for strings, and/or sets for
-         * lists, that are needed, then return the result.
+         * Perform any substitutions needed, then return the result.
          */
+        ensurePathsToInstancesForSubstitutablesIsPopulated();
         return postprocessValueAfterDeserialization(result);
     }
 
@@ -524,7 +795,6 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Get the paths to any sets.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as the property being fetched is internal state.
@@ -538,7 +808,6 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Get the paths to any geometries.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as the property being fetched is internal state.
@@ -551,8 +820,20 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
-     * Set the hazard event identifier.
+     * Get the paths to any advanced geometries.
+     * <p>
+     * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
+     * outside this class, as the property being fetched is internal state.
+     * </p>
      * 
+     * @return Paths to any advanced geometries.
+     */
+    public List<String> getPathsToAdvancedGeometries() {
+        return pathsToAdvancedGeometries;
+    }
+
+    /**
+     * Set the hazard event identifier.
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as setting this property may leave the object in an
@@ -568,7 +849,6 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Set the attribute key.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as setting this property may leave the object in an
@@ -584,7 +864,6 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Set the attribute value.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; would otherwise be private, as
      * setting this property outside this class may leave the object in an
@@ -609,7 +888,6 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Set the paths to any sets.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as setting this property may leave the object in an
@@ -626,7 +904,6 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Set the paths to any geometries.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as setting this property may leave the object in an
@@ -642,6 +919,23 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
+     * Set the paths to any advanced geometries.
+     * <p>
+     * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
+     * outside this class, as setting this property may leave the object in an
+     * undefined state.
+     * </p>
+     * 
+     * @param pathsToAdvancedGeometries
+     *            New paths to any advanced geometries.
+     */
+    public void setPathsToAdvancedGeometries(
+            List<String> pathsToAdvancedGeometries) {
+        this.pathsToAdvancedGeometries.clear();
+        this.pathsToAdvancedGeometries.addAll(pathsToAdvancedGeometries);
+    }
+
+    /**
      * Get the value type.
      * 
      * @return Value type.
@@ -652,7 +946,6 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Set the value type.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as setting this property may leave the object in an
@@ -670,7 +963,6 @@ public class HazardAttribute implements IValidator, Serializable {
      * Get the type of the values within the collection or map that comprises
      * the attribute value, if the latter is the case and if the attribute is
      * slottable.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as the property being fetched is internal state.
@@ -687,7 +979,6 @@ public class HazardAttribute implements IValidator, Serializable {
     /**
      * Set the type of the values within the collection or map that comprises
      * the attribute value, if the latter is the case.
-     * 
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
      * outside this class, as setting this property may leave the object in an
@@ -721,19 +1012,41 @@ public class HazardAttribute implements IValidator, Serializable {
     // Private Methods
 
     /**
+     * Ensure that the paths-to-instances-for-substitutables map has been
+     * populated.
+     * <p>
+     * TODO: This method can be removed once the variable is properly serialized
+     * and deserialized; see the description of
+     * {@link #pathsToInstancesForSubstitutables}.
+     * </p>
+     */
+    private void ensurePathsToInstancesForSubstitutablesIsPopulated() {
+        if (pathsToInstancesForSubstitutables.isEmpty()) {
+            pathsToInstancesForSubstitutables
+                    .put(Substitution.SET, pathsToSets);
+            pathsToInstancesForSubstitutables.put(Substitution.GEOMETRY,
+                    pathsToGeometries);
+            pathsToInstancesForSubstitutables.put(
+                    Substitution.ADVANCED_GEOMETRY, pathsToAdvancedGeometries);
+        }
+    }
+
+    /**
      * Convert the value to something serializable.
      */
     private void convertValue() {
 
         /*
-         * If the value is or contains any Set or Geometry objects, replace
-         * them, making a note of their positions so that they can be restored
-         * when unmarshalling.
+         * If the value is or contains any objects requiring substitution,
+         * replace them, making a note of their positions so that they can be
+         * restored when unmarshalling.
          */
-        pathsToSets.clear();
-        pathsToGeometries.clear();
-        if (isValueTypeOrContainingType(value, Set.class)
-                || isValueTypeOrContainingType(value, Geometry.class)) {
+        ensurePathsToInstancesForSubstitutablesIsPopulated();
+        for (List<String> pathsToInstances : pathsToInstancesForSubstitutables
+                .values()) {
+            pathsToInstances.clear();
+        }
+        if (isValueTypeRequiringSubstitution(value)) {
             value = preprocessValueForSerialization(value,
                     new ArrayDeque<Serializable>());
         }
@@ -768,41 +1081,49 @@ public class HazardAttribute implements IValidator, Serializable {
         } else {
             valueType = value.getClass();
             collectionValueType = null;
-            value = JSON_CONVERTER.toJson(value);
+            try {
+                value = JsonConverter.toJson(value);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "failed to serialize object of type " + valueType, e);
+            }
         }
     }
 
     /**
-     * Determine whether the specified value is of the specified type, or
-     * contains at some level an object of the specified type\.
+     * Determine whether the specified value is of a type that requires
+     * substitution, or contains at some level an object that requires
+     * substitution.
      * 
      * @param value
      *            Value to be checked.
-     * @param typeClass
-     *            Class of the type to be found.
-     * @return True if the value is of the specified type or contains an object
-     *         of that type, false otherwise.
+     * @return <code>true</code> if the value requires substitution, or contains
+     *         an object that requires substitution, <code>false</code>
+     *         otherwise.
      */
-    private boolean isValueTypeOrContainingType(Object value, Class<?> typeClass) {
+    private boolean isValueTypeRequiringSubstitution(Object value) {
 
         /*
-         * If the value is of the specified type, return true; otherwise, if the
-         * value is a map or collection, recursively determine if the value
-         * contains any objects of the specified type; otherwise, just return
-         * false.
+         * If the value is one of the types requiring substitution, return true;
+         * otherwise, if the value is a map or collection, recursively determine
+         * if the value contains any objects with types requiring substitution;
+         * otherwise, just return false.
          */
-        if (typeClass.isAssignableFrom(value.getClass())) {
-            return true;
-        } else if (value instanceof Map) {
+        for (Class<?> type : Substitution.getTypesRequiringSubstitution()) {
+            if (type.isAssignableFrom(value.getClass())) {
+                return true;
+            }
+        }
+        if (value instanceof Map) {
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
-                if (isValueTypeOrContainingType(entry.getValue(), typeClass)) {
+                if (isValueTypeRequiringSubstitution(entry.getValue())) {
                     return true;
                 }
             }
             return false;
         } else if (value instanceof Collection) {
             for (Object element : (Collection<?>) value) {
-                if (isValueTypeOrContainingType(element, typeClass)) {
+                if (isValueTypeRequiringSubstitution(element)) {
                     return true;
                 }
             }
@@ -814,18 +1135,13 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Convert the specified object into something serializable via JSON,
-     * returning said serializable object. The latter will have any {@link Set}
-     * objects in the original replaced with {@link List} objects, as well as
-     * any {@link Geometry} objects replaced with {@link String} objects
-     * providing the geometry in <a
-     * href="https://en.wikipedia.org/wiki/Well-known_text">Well-Known Text</a>
-     * format. This method also makes note of any <code>Set</code> it replaces
-     * in the {@link #pathsToSets} list, and likewise any <code>Geometry</code>
-     * it replaces is noted in the {@link #pathsToGeometries} list.
+     * returning said serializable object. All objects that are to have strings
+     * substituted for them have this done here. This method also makes note of
+     * the paths to any substituted values in the appropriate list within
+     * {@link #pathsToInstancesForSubstitutables}.
      * 
      * @param value
-     *            Value to be converted. If not a collection or map, it must be
-     *            {@link Serializable}.
+     *            Value to be converted.
      * @param path
      *            Path within the top-level value to this value.
      * @return Converted value.
@@ -834,12 +1150,16 @@ public class HazardAttribute implements IValidator, Serializable {
             Deque<Serializable> path) {
 
         /*
-         * If the value is a map or a collection, copy it (recording its path if
-         * it is a set); if a geometry, record its path and replace it; if none
-         * of the above, then just assume the value is serializable and return
-         * it.
+         * If the value is a map or a collection, copy it, making a note of its
+         * path if it is a substitutable; otherwise, handle it as a leaf object.
          */
         if (value instanceof Map) {
+
+            /*
+             * Record the path if the value is of a type that is a substitutable
+             * map.
+             */
+            recordPathIfValueTypeInSet(value, path, SUBSTITUTABLE_MAPS);
 
             /*
              * Make a copy with serializable as the value type generic
@@ -859,11 +1179,10 @@ public class HazardAttribute implements IValidator, Serializable {
         } else if (value instanceof Collection) {
 
             /*
-             * If the value is a set, make a note of its path.
+             * Record the path if the value is of a type that is a substitutable
+             * collection.
              */
-            if (value instanceof Set) {
-                pathsToSets.add(convertPathToString(path));
-            }
+            recordPathIfValueTypeInSet(value, path, SUBSTITUTABLE_COLLECTIONS);
 
             /*
              * Make a copy with serializable as the element type generic
@@ -879,23 +1198,21 @@ public class HazardAttribute implements IValidator, Serializable {
                 path.pop();
             }
             return copy;
-        } else if (value instanceof Geometry) {
-
-            /*
-             * Make a note of the geometry's path and then convert it to
-             * Well-Known Text format.
-             */
-            pathsToGeometries.add(convertPathToString(path));
-            return value.toString();
         } else {
 
             /*
-             * Assume anything else is already serializable.
+             * If the value needs substitution, return the string version;
+             * otherwise, assume it is serializable.
              */
+            String convertedValue = recordPathAndConvertIfValueTypeInSet(value,
+                    path, SUBSTITUTABLE_LEAF_OBJECTS);
+            if (convertedValue != null) {
+                return convertedValue;
+            }
             try {
                 return (Serializable) value;
             } catch (Exception e) {
-                throw new IllegalArgumentException("Value \"" + value
+                throw new IllegalArgumentException("value \"" + value
                         + "\" of type " + value.getClass()
                         + " not serializable");
             }
@@ -903,12 +1220,62 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
+     * Record the path of the specified value if its type is one of the types
+     * associated with the specified substitutions, or a subclass of one of
+     * those types.
+     * 
+     * @param value
+     *            Value to be checked.
+     * @param path
+     *            Path to be recorded if the value is one of those associated
+     *            with the substitutions.
+     * @param substitutions
+     *            Substitutions with the types for which to check.
+     */
+    private void recordPathIfValueTypeInSet(Object value,
+            Deque<Serializable> path, EnumSet<Substitution> substitutions) {
+        for (Substitution substitution : substitutions) {
+            if (substitution.getType().isAssignableFrom(value.getClass())) {
+                pathsToInstancesForSubstitutables.get(substitution).add(
+                        convertPathToString(path));
+                break;
+            }
+        }
+    }
+
+    /**
+     * Record the path of the specified value if its type is one of the types
+     * associated with the specified substitutions, or a subclass of one of
+     * those types, and convert the value to a string.
+     * 
+     * @param value
+     *            Value to be checked and possibly converted.
+     * @param path
+     *            Path to be recorded if the value is one of those associated
+     *            with the substitutions.
+     * @param substitutions
+     *            Substitutions with the types for which to check.
+     * @return String holding the converted value, or <code>null</code> if the
+     *         value is not one that requires preprocessing.
+     */
+    private String recordPathAndConvertIfValueTypeInSet(Object value,
+            Deque<Serializable> path, EnumSet<Substitution> substitutions) {
+        for (Substitution substitution : substitutions) {
+            if (substitution.getType().isAssignableFrom(value.getClass())) {
+                pathsToInstancesForSubstitutables.get(substitution).add(
+                        convertPathToString(path));
+                return PREPROCESSORS_FOR_SUBSTITUTIONS.get(substitution)
+                        .preprocess(value);
+            }
+        }
+        return null;
+    }
+
+    /**
      * Process the specified object and/or any nested objects (if the object is
-     * a {@link Map} or {@link List}) by replacing any <code>List</code>
-     * instance that was used as a stand-in for a {@link Set} for serialization
-     * purposes with a <code>Set</code>, and likewise by replacing any
-     * {@link String} that was used as a stand-in for a {@link Geometry} for
-     * serialization purposes with a <code>Geometry</code>.
+     * a {@link Map} or {@link List}) by reversing any substitutions, using the
+     * paths found in {@link #pathsToInstancesForSubstitutables} to determine
+     * which strings need to be converted to what type of objects.
      * 
      * @param value
      *            Value to be converted.
@@ -923,15 +1290,14 @@ public class HazardAttribute implements IValidator, Serializable {
 
             /*
              * Get the paths list appropriate to the substitution to be
-             * performed, and reverse it. The latter is done because, when
-             * replacing lists with sets, it is imperative that the most nested
-             * ones are replaced first, since the sets have no inherent ordering
-             * and thus the indices found within the paths would be useless with
-             * them.
+             * performed, and reverse it. The latter is done because, if
+             * replacing collections, it is imperative that the most nested ones
+             * are replaced first, since the replacements may have no inherent
+             * ordering (e.g. sets) and thus the indices found within the paths
+             * would be useless with them.
              */
             List<String> paths = new ArrayList<>(
-                    substitution == Substitution.GEOMETRY ? pathsToGeometries
-                            : pathsToSets);
+                    pathsToInstancesForSubstitutables.get(substitution));
             Collections.reverse(paths);
 
             /*
@@ -955,11 +1321,7 @@ public class HazardAttribute implements IValidator, Serializable {
      *            Value in which the substitution is to take place, either of
      *            the value itself or of a nested object.
      * @param type
-     *            Type of substitution to be performed. If
-     *            {@link Substitution#GEOMETRY}, then a {@link String} in
-     *            Well-Known Text format will be replaced with a
-     *            {@link Geometry}; otherwise, a {@link List} will be replaced
-     *            with a {@link Set}.
+     *            Type of substitution to be performed.
      * @param path
      *            Path to the object upon which to perform the substitution; the
      *            level that this method is to examine is provided by
@@ -974,28 +1336,15 @@ public class HazardAttribute implements IValidator, Serializable {
             String[] path, int index) {
 
         /*
-         * If the index is past the end of the list, then the value that was
-         * passed in is the object for which a substitution is to be made.
-         * Otherwise, the passed-in value is a container in which the object for
-         * which a substitution must be made resides, either directly or at some
-         * arbitrarily nested depth.
+         * If the index into the path is past the end of the path array, then
+         * the value that was passed in is the object for which a substitution
+         * is to be made. Otherwise, the passed-in value is a container in which
+         * the object for which a substitution must be made resides, either
+         * directly or at some arbitrarily nested depth.
          */
         if (index == path.length) {
-
-            /*
-             * If the substitution is for geometry, turn the string into the
-             * geometry; otherwise, turn the list into a set.
-             */
-            if (type == Substitution.GEOMETRY) {
-                try {
-                    return WKT_READER.get().read((String) value);
-                } catch (ParseException e) {
-                    throw new IllegalStateException(
-                            "could not unmarshal Well-Known-Text geometry", e);
-                }
-            } else {
-                return new HashSet<Object>((Collection<?>) value);
-            }
+            return POSTPROCESSORS_FOR_SUBSTITUTIONS.get(type)
+                    .postprocess(value);
         } else {
 
             /*
@@ -1035,11 +1384,12 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Convert the specified path into a string. A path is a list of strings
-     * and/or integers, identical to what would result from taking a path string
-     * from {@link #pathToSets} or {@link #pathToGeometries} and breaking it
-     * into a list at the newlines. The returned string, obviously, is exactly
-     * what is found within <code>pathToSets</code> and
-     * <code>pathToGeometries</code>.
+     * and/or integers, semantically identical to what would result from taking
+     * a path string from one of the lists in
+     * {@link #pathsToInstancesForSubstitutables} and breaking it into a list at
+     * the newlines. The returned string, obviously, is exactly what is found as
+     * elements in the lists within
+     * <code>pathsToInstancesForSubstitutables</code>.
      * 
      * @param path
      *            Path to be converted.
@@ -1054,15 +1404,15 @@ public class HazardAttribute implements IValidator, Serializable {
     /**
      * Determine whether the current value is "slottable", meaning that it can
      * have one or more slot entries written for it. It is considered to be so
-     * if it is a simple type (<code>String</code>, <code>Integer</code>,
-     * <code>Boolean</code>, etc.), or a <code>Map</code> or
-     * <code>Collection</code> that contains only one of the abovementioned
-     * simple types (and is not empty). So, for example, a <code>List</code>
-     * holding <code>String</code> objects exclusively is considered slottable,
-     * but one holding other collections, or holding one <code>String</code> and
-     * one <code>Integer</code>, is not.
+     * if it is a simple type ({@link String}, {@link Integer}, {@link Boolean},
+     * etc.), or a {@link Map} or {@link Collection} that contains only one of
+     * the abovementioned simple types (and is not empty). So, for example, a
+     * {@link List} holding <code>String</code> objects exclusively is
+     * considered slottable, but one holding other collections, or holding one
+     * <code>String</code> and one <code>Integer</code>, is not.
      * 
-     * @return True if the current value is slottable, false otherwise.
+     * @return <code>true</code> if the current value is slottable,
+     *         <code>false</code> otherwise.
      */
     private boolean isValueObjectSlottable() {
 
@@ -1121,11 +1471,12 @@ public class HazardAttribute implements IValidator, Serializable {
 
     /**
      * Determine whether the specified value is valid. It is considered to be so
-     * if it is a simple type (<code>String</code>, <code>Integer</code>,
-     * <code>Boolean</code>, etc.), or a <code>Geometry</code>, or a
-     * <code>Map</code> or <code>Collection</code> that contains only the
-     * abovementioned simple types, <code>Geometry</code> instances, and/or
-     * nested maps or collections which in turn must follow the same rules.
+     * if it is a simple type ({@link String}, {@link Integer}, {@link Boolean},
+     * etc.), or an instance of one of the types associated with the
+     * substitutions in {@link #SUBSTITUTABLE_LEAF_OBJECTS}, or a {@link Map} or
+     * {@link Collection} that contains only the abovementioned simple types
+     * and/or substitution types, and/or nested maps or collections which in
+     * turn must follow the same rules.
      * 
      * @param value
      *            Value to be checked.
@@ -1154,9 +1505,17 @@ public class HazardAttribute implements IValidator, Serializable {
 
         /*
          * Since the value is not a map or collection, see if it is a simple
-         * type.
+         * type or one of the leaf types that may be substituted.
          */
-        return ((getSimpleType(value) != null) || (value instanceof Geometry));
+        if (getSimpleType(value) != null) {
+            return true;
+        }
+        for (Substitution substitution : SUBSTITUTABLE_LEAF_OBJECTS) {
+            if (substitution.getType().isAssignableFrom(value.getClass())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

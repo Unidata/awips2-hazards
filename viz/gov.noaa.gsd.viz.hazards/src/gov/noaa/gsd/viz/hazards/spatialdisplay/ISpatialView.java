@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
@@ -25,7 +26,6 @@ import java.util.List;
 import java.util.Set;
 
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Interface describing the methods that must be implemented by a class that
@@ -68,6 +68,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           refactored away as the move toward MVP
  *                                           compliance continues.
  * Aug 23, 2016 19537      Chris.Golden      Continued spatial display refactor.
+ * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -112,7 +113,7 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @return Create shape command invoker.
      */
-    public ICommandInvoker<Geometry> getCreateShapeInvoker();
+    public ICommandInvoker<IAdvancedGeometry> getCreateShapeInvoker();
 
     /**
      * Get the modify entity geometry command invoker.

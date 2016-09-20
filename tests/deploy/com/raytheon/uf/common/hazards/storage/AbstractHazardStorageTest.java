@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -41,7 +42,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardQueryBuilder;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -128,7 +128,8 @@ public abstract class AbstractHazardStorageTest {
 
         GeometryFactory factory = new GeometryFactory();
         Geometry geometry = factory.createPoint(coordinate);
-        createdEvent.setGeometry(geometry);
+        createdEvent.setGeometry(AdvancedGeometryUtilities
+                .createGeometryWrapper(geometry, 0));
         return createdEvent;
     }
 
@@ -170,7 +171,8 @@ public abstract class AbstractHazardStorageTest {
     public void testByGeometry() {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager
-                .getByGeometry(createdEvent.getGeometry());
+                .getByGeometry(AdvancedGeometryUtilities
+                        .getJtsGeometry(createdEvent.getGeometry()));
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {

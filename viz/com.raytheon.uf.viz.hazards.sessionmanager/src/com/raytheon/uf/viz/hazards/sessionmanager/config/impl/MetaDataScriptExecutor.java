@@ -29,6 +29,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 19, 2014    4243    Chris.Golden Initial creation.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with JsonConverter
+ *                                      static methods.
  * </pre>
  * 
  * @author Chris.Golden
@@ -112,9 +114,8 @@ public class MetaDataScriptExecutor extends
         script.set(HAZARD_EVENT, hazardEvent);
         script.set(ENVIRONMENTAL_DICT, environment);
         String result = (String) script.getValue(INVOKE_FUNCTION);
-        JsonConverter converter = new JsonConverter();
         try {
-            return converter.fromJson(result);
+            return JsonConverter.fromJson(result);
         } catch (Exception e) {
             statusHandler.error("Could not get hazard metadata.", e);
             return null;

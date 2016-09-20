@@ -20,6 +20,8 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
  * further licensing information.
  **/
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -51,6 +53,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jul 25, 2016   19537    Chris.Golden Made deholePolygon() static and
  *                                      package-private, as it is needed
  *                                      in the spatial display components.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
+ *                                      geometries.
  * </pre>
  * 
  * @author dhladky
@@ -105,7 +109,7 @@ public class HazardEventGeometryAggregator {
             if (baseEvent.getGeometry() instanceof GeometryCollection) {
 
                 GeometryCollection geoCollection = (GeometryCollection) baseEvent
-                        .getGeometry();
+                        .getFlattenedGeometry();
 
                 for (int i = 0; i < geoCollection.getNumGeometries(); i++) {
                     if (geoCollection.getGeometryN(i) instanceof Polygon) {
@@ -159,7 +163,8 @@ public class HazardEventGeometryAggregator {
                         HazardEvent event = new HazardEvent(baseEvent);
                         // attempt to clean up the geometries
                         aggrGeom = deholeGeometry(aggrGeom);
-                        event.setGeometry(aggrGeom);
+                        event.setGeometry(AdvancedGeometryUtilities
+                                .createGeometryWrapper(aggrGeom, 0));
                         list.add(event);
                     }
 

@@ -11,6 +11,10 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.BorderStyle;
 import gov.noaa.gsd.common.visuals.DragCapability;
 import gov.noaa.gsd.common.visuals.FillStyle;
@@ -40,7 +44,6 @@ import java.util.Set;
 
 import org.apache.commons.lang.time.DateUtils;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
@@ -64,7 +67,6 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
-import com.vividsolutions.jts.geom.MultiPolygon;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.Polygonal;
 
@@ -93,6 +95,8 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      code to reuse spatial entities that
  *                                      do not need to be updated, thus
  *                                      avoiding many unnecessary redraws.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
+ *                                      geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -859,11 +863,19 @@ class SpatialEntityManager {
          * one of unselected, contains entities for this event; if neither does,
          * return nothing.
          */
-        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities = (indicesForEventsForTypes
-                .get(SpatialEntityType.UNSELECTED).containsKey(eventIdentifier) ? unselectedSpatialEntities
-                : (indicesForEventsForTypes.get(SpatialEntityType.SELECTED)
-                        .containsKey(eventIdentifier) ? selectedSpatialEntities
-                        : null));
+        List<SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities = null;
+        int index = -1;
+        if (indicesForEventsForTypes.get(SpatialEntityType.UNSELECTED)
+                .containsKey(eventIdentifier)) {
+            spatialEntities = unselectedSpatialEntities;
+            index = indicesForEventsForTypes.get(SpatialEntityType.UNSELECTED)
+                    .get(eventIdentifier);
+        } else if (indicesForEventsForTypes.get(SpatialEntityType.SELECTED)
+                .containsKey(eventIdentifier)) {
+            spatialEntities = selectedSpatialEntities;
+            index = indicesForEventsForTypes.get(SpatialEntityType.SELECTED)
+                    .get(eventIdentifier);
+        }
         if (spatialEntities != null) {
 
             /*
@@ -871,13 +883,27 @@ class SpatialEntityManager {
              * event, finding the first one that is or contains a polygon; if no
              * such entity is found for this hazard event, return nothing.
              */
-            for (SpatialEntity<? extends IHazardEventEntityIdentifier> spatialEntity : spatialEntities) {
+            for (int j = index; j < spatialEntities.size(); j++) {
+                SpatialEntity<? extends IHazardEventEntityIdentifier> spatialEntity = spatialEntities
+                        .get(j);
                 if (spatialEntity.getIdentifier().getEventIdentifier()
                         .equals(eventIdentifier) == false) {
                     break;
                 }
-                if (isOrContainsPolygon(spatialEntity.getGeometry())) {
+                IAdvancedGeometry geometry = spatialEntity.getGeometry();
+                if ((geometry instanceof GeometryWrapper)
+                        && isOrContainsPolygon(((GeometryWrapper) geometry)
+                                .getGeometry())) {
                     return spatialEntity;
+                } else if (geometry instanceof AdvancedGeometryCollection) {
+                    for (IAdvancedGeometry subGeometry : ((AdvancedGeometryCollection) geometry)
+                            .getChildren()) {
+                        if ((subGeometry instanceof GeometryWrapper)
+                                && isOrContainsPolygon(((GeometryWrapper) subGeometry)
+                                        .getGeometry())) {
+                            return spatialEntity;
+                        }
+                    }
                 }
             }
         }
@@ -1845,11 +1871,13 @@ class SpatialEntityManager {
                 SpatialEntity<HazardEventHatchingEntityIdentifier> oldEntity = (SpatialEntity<HazardEventHatchingEntityIdentifier>) spatialEntitiesForIdentifiers
                         .get(identifier);
                 SpatialEntity<HazardEventHatchingEntityIdentifier> entity = SpatialEntity
-                        .build(oldEntity, identifier,
-                                geometryData.getGeometry(), null, hazardColor,
-                                0.0, BorderStyle.SOLID, FillStyle.HATCHED, 0.0,
-                                null, (showLabel ? significance : null), 0.0,
-                                0.0, textOffsetLength, textOffsetDirection,
+                        .build(oldEntity, identifier, AdvancedGeometryUtilities
+                                .createGeometryWrapper(
+                                        geometryData.getGeometry(), 0), null,
+                                hazardColor, 0.0, BorderStyle.SOLID,
+                                FillStyle.HATCHED, 0.0, null,
+                                (showLabel ? significance : null), 0.0, 0.0,
+                                textOffsetLength, textOffsetDirection,
                                 hazardTextPointSize, hazardColor,
                                 DragCapability.NONE, false, false, false, false);
                 if (spatialEntities == null) {
@@ -2248,20 +2276,19 @@ class SpatialEntityManager {
     }
 
     /**
-     * Get the processed base geometry for the specified hazard event. The
-     * result is guaranteed to have no nested geometry collections, that is, it
-     * may itself be a geometry collection, but its component geometries will
-     * not be.
+     * Get the processed base geometry for the specified hazard event. It is
+     * assumed that the base geometry has no nested geometry collections, that
+     * is, it may itself be a geometry collection, but its component geometries
+     * are not.
      * <p>
-     * TODO: Flattening any nested geometry collections, and simplifying the
-     * geometry to boot, may be something that should be done when setting the
-     * hazard event's geometry, not each time the event is rendered in the
-     * display. Should this algorithm therefore be moved? It seems wasteful to
-     * do it each time spatial entities are regenerated for a hazard event, and
-     * also it means that any such spatial entities that the user modifies to
-     * modify the base geometry will result in the hazard event's base geometry
-     * being overwritten with the flattened simplified geometry anyway, which is
-     * problematic.
+     * TODO: Simplifying the geometry may be something that should be done when
+     * setting the hazard event's geometry, not each time the event is rendered
+     * in the display. Should this algorithm therefore be moved? It seems
+     * wasteful to do it each time spatial entities are regenerated for a hazard
+     * event, and also it means that any such spatial entities that the user
+     * modifies to modify the base geometry will result in the hazard event's
+     * base geometry being overwritten with the simplified geometry anyway,
+     * which is problematic.
      * </p>
      * 
      * @param event
@@ -2272,157 +2299,74 @@ class SpatialEntityManager {
      *         geometry is not to be shown, and is then processed to remove
      *         undesirable characteristics.
      */
-    private Geometry getProcessedBaseGeometry(IHazardEvent event) {
+    private IAdvancedGeometry getProcessedBaseGeometry(IHazardEvent event) {
 
         /*
          * Get either the standard geometry, or the product geometry if the
          * high-resolution geometry is not to be shown.
          */
-        Geometry geometry = (HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE.equals(event
-                .getHazardAttribute(VISIBLE_GEOMETRY)) ? event.getGeometry()
-                : event.getProductGeometry());
+        IAdvancedGeometry geometry = (HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE
+                .equals(event.getHazardAttribute(VISIBLE_GEOMETRY)) ? event
+                .getGeometry() : AdvancedGeometryUtilities
+                .createGeometryWrapper(event.getProductGeometry(), 0));
 
         /*
-         * If this is a multi-polygon, process it to Otherwise, if this is some
-         * other type of geometry collection, iterate through it, flattening it
-         * down to be a collection of non-collections (in case it has nested
-         * collections) and further processing the sub-geometries as necessary.
-         * Finally, if this is a polygon, process it as appropriate.
+         * Compile a list of polygons for the geometry if it is a collection.
          */
-        if (geometry instanceof MultiPolygon) {
+        AdvancedGeometryCollection collection = (geometry instanceof AdvancedGeometryCollection ? (AdvancedGeometryCollection) geometry
+                : null);
+        List<Polygon> polygons = null;
+        if (collection != null) {
+            for (IAdvancedGeometry subGeometry : collection.getChildren()) {
+                if (subGeometry instanceof GeometryWrapper) {
+                    Geometry subBaseGeometry = ((GeometryWrapper) subGeometry)
+                            .getGeometry();
+                    if (subBaseGeometry instanceof Polygon) {
+                        if (polygons == null) {
+                            polygons = new ArrayList<>(collection.getChildren()
+                                    .size());
+                        }
+                        polygons.add((Polygon) subBaseGeometry);
+                    }
+                }
+            }
+        }
+
+        /*
+         * If this geometry is made up entirely of polygons, prune it.
+         * Otherwise, if it is a polygon, remove any holes from it.
+         */
+        if ((polygons != null)
+                && (polygons.size() == collection.getChildren().size())) {
 
             /*
              * For each polygon with the multi-polygon, attempt to prune out
              * holes.
              */
-            MultiPolygon multiPolygon = (MultiPolygon) geometry;
-            geometry = geometryFactory.createGeometryCollection(
-                    getPrunedPolygonsFromMultiPolygon(multiPolygon).toArray(
-                            new Geometry[multiPolygon.getNumGeometries()]))
-                    .buffer(0);
+            Geometry newGeometry = geometryFactory.createGeometryCollection(
+                    getPrunedPolygons(polygons).toArray(
+                            new Geometry[polygons.size()])).buffer(0);
+            geometry = AdvancedGeometryUtilities.createGeometryWrapper(
+                    newGeometry, 0);
 
-        } else if (geometry instanceof GeometryCollection) {
-            List<Geometry> newGeometries = null;
-            GeometryCollection geometryCollection = (GeometryCollection) geometry;
-            for (int j = 0; j < geometryCollection.getNumGeometries(); j++) {
-
-                /*
-                 * If this sub-geometry is a multi-polygon, flatten it and prune
-                 * its component polygons; if the sub-geometry is another type
-                 * of geometry collection, flatten it; if it is a polygon,
-                 * further process it.
-                 */
-                Geometry subGeometry = geometryCollection.getGeometryN(j);
-                List<Geometry> newSubGeometries = getProcessedGeometry(subGeometry);
+        } else if (geometry instanceof GeometryWrapper) {
+            GeometryWrapper wrapper = (GeometryWrapper) geometry;
+            Geometry baseGeometry = wrapper.getGeometry();
+            if (baseGeometry instanceof Polygon) {
 
                 /*
-                 * If a change has been made to this sub-geometry, and a list of
-                 * new geometries has not already been built, do so now,
-                 * retroactively copying any sub-geometries from previous
-                 * iterations into it. This would occur if, for example, the
-                 * first three sub-geometries were found to be unneeding of any
-                 * processing, but this sub-geometry is a collection.
+                 * Remove any holes in the polygon.
                  */
-                if ((newSubGeometries != null) && (newGeometries == null)) {
-                    newGeometries = new ArrayList<>();
-                    for (int k = 0; k < j; k++) {
-                        newGeometries.add(geometryCollection.getGeometryN(k));
-                    }
-                }
-
-                /*
-                 * If a new geometries list exists, add any new sub-geometries
-                 * created above, or if no list of new sub-geometries was
-                 * created, just add this sub-geometry to it.
-                 */
-                if (newGeometries != null) {
-                    if (newSubGeometries != null) {
-                        newGeometries.addAll(newSubGeometries);
-                    } else {
-                        newGeometries.add(subGeometry);
-                    }
-                }
+                geometry = AdvancedGeometryUtilities.createGeometryWrapper(
+                        getPolygonWithHolesRemoved((Polygon) baseGeometry),
+                        wrapper.getRotation());
             }
-
-            /*
-             * If a list of new geometries was created, turn it into a geometry
-             * collection.
-             */
-            if (newGeometries != null) {
-                geometry = geometryFactory
-                        .createGeometryCollection(newGeometries
-                                .toArray(new Geometry[newGeometries.size()]));
-            }
-
-        } else if (geometry instanceof Polygon) {
-
-            /*
-             * Remove any holes in the polygon.
-             */
-            geometry = getPolygonWithHolesRemoved((Polygon) geometry);
         }
 
         /*
          * Return the result.
          */
         return geometry;
-    }
-
-    /**
-     * Process the specified geometry, flattening it so that any sub-geometries
-     * (including nested ones) are turned into a list, and return a list of
-     * component geometries.
-     * 
-     * @param geometry
-     *            Geometry to be processed.
-     * @return List of component geometries of the specified flattened geometry,
-     *         processed as appropriate.
-     */
-    private List<Geometry> getProcessedGeometry(Geometry geometry) {
-
-        /*
-         * If this geometry is a multi-polygon, flatten it and prune its
-         * component polygons, then return the result; if the geometry is
-         * another type of geometry collection, recursively flatten and process
-         * it; and if it is a polygon, process it as appropriate. In all three
-         * cases, return the resulting list of one or more geometries.
-         */
-        if (geometry instanceof MultiPolygon) {
-            return getPrunedPolygonsFromMultiPolygon((MultiPolygon) geometry);
-
-        } else if (geometry instanceof GeometryCollection) {
-
-            /*
-             * Iterate through the component sub-geometries, recursively
-             * processing each in turn, and adding the resulting sub-lists of
-             * geometries, or the original sub-geometries when no processing is
-             * needed, to a list of new geometries. Then return the latter.
-             */
-            GeometryCollection geometryCollection = (GeometryCollection) geometry;
-            List<Geometry> newGeometries = new ArrayList<>();
-            for (int j = 0; j < geometryCollection.getNumGeometries(); j++) {
-                Geometry subGeometry = geometryCollection.getGeometryN(j);
-                List<Geometry> newSubGeometries = getProcessedGeometry(subGeometry);
-                if (newSubGeometries != null) {
-                    newGeometries.addAll(newSubGeometries);
-                } else {
-                    newGeometries.add(subGeometry);
-                }
-            }
-            return newGeometries;
-
-        } else if (geometry instanceof Polygon) {
-
-            /*
-             * Remove any holes in the polygon; if this results in changes,
-             * return it.
-             */
-            Geometry newPolygon = getPolygonWithHolesRemoved((Polygon) geometry);
-            if (newPolygon != geometry) {
-                return Lists.<Geometry> newArrayList(newPolygon);
-            }
-        }
-        return null;
     }
 
     /**
@@ -2451,6 +2395,21 @@ class SpatialEntityManager {
     }
 
     /**
+     * Prune each of the specified polygons of holes within reason.
+     * 
+     * @param polygons
+     *            Polygons to be pruned.
+     * @return Polygons with holes pruned out of them within reason.
+     */
+    private List<Geometry> getPrunedPolygons(List<Polygon> polygons) {
+        List<Geometry> newGeometries = new ArrayList<>(polygons.size());
+        for (Polygon polygon : polygons) {
+            newGeometries.add(getPolygonWithHolesPruned(polygon));
+        }
+        return newGeometries;
+    }
+
+    /**
      * Attempt to remove interior holes from a polygon. Up to three passes are
      * made over the polygon, each one expanding any interior rings and merging
      * rings back in.
@@ -2469,24 +2428,5 @@ class SpatialEntityManager {
     private Geometry getPolygonWithHolesPruned(Polygon polygon) {
         return HazardEventGeometryAggregator.deholePolygon(polygon,
                 geometryFactory);
-    }
-
-    /**
-     * Get the polygon sub-geometries of the specified multi-polygon, with each
-     * of the former pruned of holes within reason.
-     * 
-     * @param multiPolygon
-     *            Multi-polygon from which to extract the polygons.
-     * @return Polygons with holes pruned out of them within reason.
-     */
-    private List<Geometry> getPrunedPolygonsFromMultiPolygon(
-            MultiPolygon multiPolygon) {
-        List<Geometry> newGeometries = new ArrayList<>(
-                multiPolygon.getNumGeometries());
-        for (int j = 0; j < multiPolygon.getNumGeometries(); j++) {
-            newGeometries.add(getPolygonWithHolesPruned((Polygon) multiPolygon
-                    .getGeometryN(j)));
-        }
-        return newGeometries;
     }
 }

@@ -21,6 +21,7 @@ from PointTrack import *
 from GeneralConstants import *
 import TrackToolCommon
 import TimeUtils
+import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 import GeometryFactory
 import EventFactory
@@ -61,7 +62,9 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         # the storm track already exists.
         if str(eventSet.getAttributes().get("trigger")) in ["none", "hazardTypeFirst"]:
             centerPointLatLon = eventSet.getAttributes().get("centerPointLatLon")
-            centerPoint = GeometryFactory.createPoint([float(str(centerPointLatLon.get("lon"))), float(str(centerPointLatLon.get("lat")))])
+            centerPoint = GeometryFactory.createPoint([float(str(centerPointLatLon.get("lon"))),
+                                                       float(str(centerPointLatLon.get("lat")))])
+            centerPoint = AdvancedGeometry.createShapelyWrapper(centerPoint, 0)
             eventType = eventSet.getAttributes().get("eventType")
             if eventType is not None:
                 label = "Drag to " + str(eventType) + " location"
@@ -222,7 +225,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
 
         # Get the point that the storm dot was dragged to, and the selected
         # time in milliseconds.
-        draggedPoint = visualFeatures[0]["geometry"]
+        draggedPoint = visualFeatures[0]["geometry"].asShapely()[0]
         draggedPointTime = sessionAttributes.get("selectedTime")
 
         # Call method that sets the initial motion of the weather event. This
@@ -383,7 +386,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
 
         # Get the new location of the point that was dragged, and its identifier,
         # which is also an epoch time in milliseconds.
-        draggedPoint = visualFeature["geometry"].values()[0]
+        draggedPoint = visualFeature["geometry"].values()[0].asShapely()[0]
         draggedPointTime = long(visualFeature["identifier"])
 
         # Filter our shape list to remove any points that do not match a frame,
@@ -865,7 +868,8 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         hazardPolygon = forJavaObj.get("hazardPolygon")
         if hazardPolygon is None:
             return False
-        hazardEvent.setGeometry(GeometryFactory.createPolygon(hazardPolygon))
+        hazardEvent.setGeometry(AdvancedGeometry.
+                                createShapelyWrapper(GeometryFactory.createPolygon(hazardPolygon), 0))
         return True
 
     def updateLabelVisualFeature(self, visualFeatures, geometry):
@@ -879,7 +883,9 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         '''
 
         labelFeature = self.getVisualFeature("label", visualFeatures)
-        labelFeature["geometry"] = { labelFeature["geometry"].keys()[0]: geometry.centroid }
+        labelFeature["geometry"] = { labelFeature["geometry"].keys()[0]:
+                                    AdvancedGeometry.createShapelyWrapper(geometry.
+                                                                          asShapely()[0].centroid, 0) }
 
     def getVisualFeature(self, identifier, visualFeatures):
         '''
@@ -953,7 +959,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
                 point = {
                          "identifier": str(point["pointID"]),
                          "startTime": TimeUtils.roundEpochTimeMilliseconds(float(point["pointID"])),
-                         "geometry": GeometryFactory.createPoint(point["point"]),
+                         "geometry": AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPoint(point["point"]), 0),
                          "shape": "star" if point["pointID"] in pivotTimes else "circle"
                          }
                 if earliestVisibility is None:
@@ -1013,7 +1019,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
                                   "dragCapability": "none", 
                                   "geometry": {
                                                (earliestVisibility, latestVisibility - 60000): \
-                                               GeometryFactory.createLineString(trackLineCoordinates)
+                                               AdvancedGeometry.createShapelyWrapper(GeometryFactory.createLineString(trackLineCoordinates), 0)
                                                }
                                   }
                 visualFeatures.append(stormTrackLine)
@@ -1064,7 +1070,10 @@ class Recommender(TrackToolCommon.TrackToolCommon):
                             "dragCapability": "none",
                             "topmost": True,
                             "geometry": {
-                                         (earliestVisibility, latestVisibility - 60000): hazardEvent.getGeometry().centroid
+                                         (earliestVisibility, latestVisibility - 60000):
+                                         AdvancedGeometry.createShapelyWrapper(hazardEvent.
+                                                                               getFlattenedGeometry()[0].
+                                                                               centroid, 0)
                                          }
                             }
             visualFeatures.append(labelFeature)

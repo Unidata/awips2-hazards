@@ -17,6 +17,7 @@ import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
 import gov.noaa.gsd.viz.hazards.jsonutilities.DeprecatedEvent;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -111,6 +112,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           the preceding registering for notification
  *                                           was done by the session manager, not this
  *                                           object).
+ * Sep 12, 2016   15934    Chris.Golden      Changed to work with new version of
+ *                                           JsonConverter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -137,11 +140,6 @@ public class ConsolePresenter extends
     private static final String RIVER_MILE = "riverMile";
 
     // Private Variables
-
-    /**
-     * JSON converter.
-     */
-    private final JsonConverter jsonConverter = new JsonConverter();
 
     /**
      * Map of hazard event identifiers to allowable start time ranges.
@@ -286,6 +284,14 @@ public class ConsolePresenter extends
         endTimeBoundariesForEventIds = getModel().getEventManager()
                 .getEndTimeBoundariesForEventIds();
         ISessionTimeManager timeManager = getModel().getTimeManager();
+        String filterConfigJson = null;
+        try {
+            filterConfigJson = JsonConverter.toJson(getModel()
+                    .getConfigurationManager().getFilterConfig());
+        } catch (IOException e) {
+            statusHandler.error(
+                    "Could not serialize filter configuration to JSON.", e);
+        }
         view.initialize(this, new Date(timeManager.getSelectedTime()
                 .getLowerBound()), timeManager.getCurrentTime(), getModel()
                 .getConfigurationManager().getSettings()
@@ -293,8 +299,7 @@ public class ConsolePresenter extends
                 startTimeBoundariesForEventIds, endTimeBoundariesForEventIds,
                 getModel().getConfigurationManager().getSettings(), getModel()
                         .getConfigurationManager().getAvailableSettings(),
-                jsonConverter.toJson(getModel().getConfigurationManager()
-                        .getFilterConfig()), getModel().getAlertsManager()
+                filterConfigJson, getModel().getAlertsManager()
                         .getActiveAlerts(), getModel().getEventManager()
                         .getEventIdsAllowingUntilFurtherNotice(),
                 temporalControlsInToolBar);
@@ -322,7 +327,13 @@ public class ConsolePresenter extends
         List<Dict> result = new ArrayList<>();
         Iterator<ObservedHazardEvent> eventsIterator = currentEvents.iterator();
         for (DeprecatedEvent event : jsonEvents) {
-            Dict dict = Dict.getInstance(jsonConverter.toJson(event));
+            Dict dict = null;
+            try {
+                dict = Dict.getInstance(JsonConverter.toJson(event));
+            } catch (IOException e) {
+                statusHandler.error("Could not serialize event as JSON.", e);
+                continue;
+            }
 
             /*
              * Longs are being converted to doubles unintentionally by this

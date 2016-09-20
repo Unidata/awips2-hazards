@@ -108,7 +108,7 @@ class Product(HydroGenerator.Product):
             print '\tType: ', type(k)
             print '\tAttrs:', k.getHazardAttributes()
             print '\tPhen:', k.getPhenomenon(), k.getSubType()
-            hazGeometry = k.getGeometry()
+            hazGeometry = k.getFlattenedGeometry()
             print '\tGeom:', hazGeometry
             for g in hazGeometry.geoms:
                 print shapely.geometry.base.dump_coords(g)
@@ -212,7 +212,7 @@ class Product(HydroGenerator.Product):
         self._determineTimeRanges(hazardEvent)
         
         slatlon = ''
-        hazGeometry = hazardEvent.getGeometry()
+        hazGeometry = hazardEvent.getFlattenedGeometry()
         for g in hazGeometry.geoms:
              pointsList = shapely.geometry.base.dump_coords(g)
              for pt in pointsList:

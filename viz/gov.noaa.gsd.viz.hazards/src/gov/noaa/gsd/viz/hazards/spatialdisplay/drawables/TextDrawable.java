@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
@@ -14,7 +15,6 @@ import java.awt.Color;
 
 import com.google.common.base.Joiner;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Text label drawable in the spatial display.
@@ -41,11 +41,13 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                             recalculate the location when the
  *                                             zoom changes. Also added toString()
  *                                             method.
+ * Sep 12, 2016 15934      Chris.Golden        Changed to work with advanced
+ *                                             geometries.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class TextDrawable extends Text implements IDrawable {
+public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
 
     // Private Static Constants
 
@@ -137,7 +139,7 @@ public class TextDrawable extends Text implements IDrawable {
     }
 
     @Override
-    public Geometry getGeometry() {
+    public IAdvancedGeometry getGeometry() {
         return null;
     }
 

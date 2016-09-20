@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
 
 import java.io.IOException;
@@ -27,8 +28,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.WKTWriter;
 
 /**
  * Description: Helper class for {@link VisualFeaturesListJsonConverter}
@@ -59,6 +58,8 @@ import com.vividsolutions.jts.io.WKTWriter;
  * Jul 25, 2016   19537    Chris.Golden Added support for new fill style and
  *                                      allow-drag-of-points-in-multi-geometries
  *                                      flag.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries
+ *                                      now used by visual features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -136,10 +137,10 @@ class VisualFeaturesListJsonSerializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_GEOMETRY,
-                    new IPropertySerializer<Geometry>() {
+                    new IPropertySerializer<IAdvancedGeometry>() {
 
                         @Override
-                        public void serializeProperty(Geometry value,
+                        public void serializeProperty(IAdvancedGeometry value,
                                 JsonGenerator generator, String identifier)
                                 throws JsonGenerationException {
                             serializeGeometry(
@@ -413,10 +414,10 @@ class VisualFeaturesListJsonSerializer {
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_GEOMETRY,
-                    new IPropertyFetcher<Geometry>() {
+                    new IPropertyFetcher<IAdvancedGeometry>() {
 
                         @Override
-                        public TemporallyVariantProperty<Geometry> fetchPropertyValue(
+                        public TemporallyVariantProperty<IAdvancedGeometry> fetchPropertyValue(
                                 VisualFeature visualFeature) {
                             return visualFeature.getGeometry();
                         }
@@ -576,23 +577,6 @@ class VisualFeaturesListJsonSerializer {
                         }
                     }).build();
 
-    // Private Static Variables
-
-    /**
-     * Well-Known Text writer, used for serializing geometries. It is
-     * thread-local because <code>WKTWriter</code> is not explicitly declared to
-     * be thread-safe. This class's static methods may be called simultaneously
-     * by multiple threads, and each thread must be able to serialize geometries
-     * separately in order to avoid cross-thread pollution.
-     */
-    private static final ThreadLocal<WKTWriter> wktWriter = new ThreadLocal<WKTWriter>() {
-
-        @Override
-        protected WKTWriter initialValue() {
-            return new WKTWriter();
-        }
-    };
-
     // Package-Private Static Methods
 
     /**
@@ -689,8 +673,8 @@ class VisualFeaturesListJsonSerializer {
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_GEOMETRY)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
-                        (IPropertyFetcher<Geometry>) fetcher,
-                        (IPropertySerializer<Geometry>) serializer);
+                        (IPropertyFetcher<IAdvancedGeometry>) fetcher,
+                        (IPropertySerializer<IAdvancedGeometry>) serializer);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_BORDER_STYLE)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
@@ -1048,11 +1032,11 @@ class VisualFeaturesListJsonSerializer {
      * @throws JsonGenerationException
      *             If an error occurs during serialization.
      */
-    private static void serializeGeometry(Geometry value,
+    private static void serializeGeometry(IAdvancedGeometry value,
             JsonGenerator generator, String identifier, String propertyName)
             throws JsonGenerationException {
         try {
-            generator.writeString(wktWriter.get().write(value));
+            generator.writeObject(value);
         } catch (IOException e) {
             throw createValueSerializationException(value, identifier,
                     propertyName, e);

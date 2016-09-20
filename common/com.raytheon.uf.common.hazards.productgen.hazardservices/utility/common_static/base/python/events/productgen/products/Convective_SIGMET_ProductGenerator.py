@@ -156,7 +156,7 @@ class Product(HydroGenerator.Product):
         return True
     
     def _geometry(self, hazardEvent):        
-        for g in hazardEvent.getGeometry().geoms:
+        for g in hazardEvent.getFlattenedGeometry().geoms:
             geometry = shapely.geometry.base.dump_coords(g)
         
         return geometry

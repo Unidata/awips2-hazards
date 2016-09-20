@@ -11,6 +11,7 @@ import shapely
 from shapely.geometry import Polygon
 from inspect import currentframe, getframeinfo
 import os, sys
+import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 import Domains
 import AviationUtils
@@ -139,7 +140,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 # Get feature polygon
                 polyDict = feature["geometry"]
                 for timeBounds, geometry in polyDict.iteritems():
-                    featurePoly = geometry
+                    featurePoly = geometry.asShapely()
                     vertices = shapely.geometry.base.dump_coords(featurePoly)
                     if any(isinstance(i, list) for i in vertices):
                         vertices = vertices[0]
@@ -168,11 +169,14 @@ class Recommender(RecommenderTemplate.Recommender):
                 basePoly = GeometryFactory.createPoint(basePoly)
             elif self._originalGeomType == 'LineString':
                 basePoly = GeometryFactory.createLineString(basePoly)
+            basePoly = AdvancedGeometry.createShapelyWrapper(basePoly, 0)
             event.setGeometry(basePoly)        
         else:
             poly = GeometryFactory.createPolygon(VOR_points)
-            basePoly = GeometryFactory.createPolygon(vertices)
+            basePoly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(vertices), 0)
             event.setGeometry(basePoly)
+        
+        poly = AdvancedGeometry.createShapelyWrapper(poly, 0)
         
         if self._originalGeomType != 'Polygon':       
             borderColorHazard = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 }
@@ -222,7 +226,7 @@ class Recommender(RecommenderTemplate.Recommender):
         return       
         
     def _getVertices(self, hazardEvent):
-        for g in hazardEvent.getGeometry().geoms:
+        for g in hazardEvent.getFlattenedGeometry().geoms:
             vertices = shapely.geometry.base.dump_coords(g)     
         
         return vertices 
@@ -233,14 +237,12 @@ class Recommender(RecommenderTemplate.Recommender):
         eventID = event.getEventID()
         selectedFeatures = []
         
-        poly = GeometryFactory.createPolygon(points)        
+        poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(points), 0)        
         
         if self._originalGeomType == 'Point':
             basePoly = event.get('originalGeometry')
-            basePoly = basePoly[0]
         elif self._originalGeomType == 'LineString':
             basePoly = event.getGeometry()
-            basePoly = basePoly[0]                          
         else:
             basePoly = event.getGeometry()
                 

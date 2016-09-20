@@ -46,6 +46,7 @@
     Sep 01, 2015    9590    Robert.Blum Removed metadata from the product dictionary.
     Sep 09, 2015   10263    Robert.Blum Changes to set the previousForecastCategory correctly.
     Jun 23, 2016   19537    Chris.Golden Changed to use UTC when converting epoch time to datetime.
+    Sep 16, 2016   15934    Chris.Golden Changed to work with new advanced geometries in hazard events.
 '''
 
 import ProductTemplate
@@ -167,7 +168,7 @@ class ProductSegmentGroup(object):
         print 'geoType: ', self.geoType, 'mapType: ', self.mapType, 'segmented: ', self.segmented, 'etn: ', self.etn, 'actions: ', self.actions
         print 'productSegments: ', len(self.productSegments)
         for productSegment in self.productSegments:
-            print productSegment.str()
+            productSegment.str()
 
 class Product(ProductTemplate.Product):
 
@@ -998,7 +999,7 @@ class Product(ProductTemplate.Product):
         self._productSegment.canVtecRecord = canVtecRecord
 
     def _prepareLocationsAffected(self, hazardEvent):
-        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'], 'warngenloc', constraints={'cwa' : self._siteID},
+        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'].asShapely(), 'warngenloc', constraints={'cwa' : self._siteID},
                                                 sortBy=['warngenlev', 'population'], maxResults=20)
         return locations
 
@@ -1048,7 +1049,7 @@ class Product(ProductTemplate.Product):
             for identifier in attributeValue:
                 additionalInfoText = ''
                 if identifier == 'listOfDrainages':
-                    drainages = SpatialQuery.retrievePoints(event['geometry'], 'ffmp_basins', constraints={'cwa' : self._siteID},
+                    drainages = SpatialQuery.retrievePoints(event['geometry'].asShapely(), 'ffmp_basins', constraints={'cwa' : self._siteID},
                                                             sortBy=['streamname'], locationField='streamname')
                     drainages = self._tpc.formatDelimitedList(set(drainages))
                     productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
@@ -1378,7 +1379,7 @@ class Product(ProductTemplate.Product):
             the geometry and ugcs since the current polygon is incorrect for this segment.
         '''
         # Geometry/UGCs for the EXA/EXB hazard
-        geometry = hazardEvent.getGeometry().difference(prevHazardEvent.getGeometry())
+        geometry = hazardEvent.getFlattenedGeometry().difference(prevHazardEvent.getFlattenedGeometry())
         prevUGCs = set(prevAttributes.get('ugcs'))
         currentUGCs = set(attributes.get('ugcs'))
         ugcs = list(currentUGCs.difference(prevUGCs))
@@ -1421,7 +1422,7 @@ class Product(ProductTemplate.Product):
         hazardEvent.setHazardAttributes(attributes)
 
         # Update the geometry as well
-        hazardEvent.setGeometry(GeometryFactory.createCollection([prevHazardEvent.getGeometry()]))
+        hazardEvent.setGeometry(GeometryFactory.createCollection([prevHazardEvent.getFlattenedGeometry()]))
 
         # Call the original method with the updated hazardEvent to get the hazard dictionary.
         return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)

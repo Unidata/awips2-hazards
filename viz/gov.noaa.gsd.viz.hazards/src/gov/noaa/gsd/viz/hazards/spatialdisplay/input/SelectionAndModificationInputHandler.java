@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.InputHandlerType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.MutableDrawableInfo;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
@@ -33,7 +34,6 @@ import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
@@ -60,6 +60,7 @@ import com.vividsolutions.jts.geom.Point;
  *                                      NullPointerException in some cases.
  *                                      Changed code to work with new names of
  *                                      spatial display methods.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -221,7 +222,7 @@ public class SelectionAndModificationInputHandler extends
                  * there are symbols (including points), give them precedence.
                  */
                 for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                    IEntityIdentifier identifier = ((IDrawable) containingDrawable)
+                    IEntityIdentifier identifier = ((IDrawable<?>) containingDrawable)
                             .getIdentifier();
                     if (((drawable == null) || (containingDrawable instanceof SymbolDrawable))
                             && reactiveIdentifiers.contains(identifier)
@@ -522,7 +523,7 @@ public class SelectionAndModificationInputHandler extends
         Set<IEntityIdentifier> reactiveIdentifiers = new HashSet<>(
                 reactiveElements.size(), 1.0f);
         for (AbstractDrawableComponent reactiveElement : reactiveElements) {
-            reactiveIdentifiers.add(((IDrawable) reactiveElement)
+            reactiveIdentifiers.add(((IDrawable<?>) reactiveElement)
                     .getIdentifier());
         }
         return reactiveIdentifiers;
@@ -667,7 +668,7 @@ public class SelectionAndModificationInputHandler extends
             /*
              * Only move individual points if the shape allows editing.
              */
-            if (((IDrawable) editedElement).isEditable()) {
+            if (((IDrawable<?>) editedElement).isEditable()) {
                 vertexMoving = true;
 
                 /*
@@ -713,15 +714,15 @@ public class SelectionAndModificationInputHandler extends
         if (editedElement == null) {
             return;
         }
-        IDrawable originalShape = (IDrawable) editedElement;
+        IDrawable<?> originalShape = (IDrawable<?>) editedElement;
 
         /*
          * Create the new geometry for the drawable.
          */
         List<Coordinate> coordinates = (ghostDrawable instanceof MultiPointElement ? ((MultiPointElement) ghostDrawable)
                 .getPoints() : ((SinglePointElement) ghostDrawable).getPoints());
-        Geometry modifiedGeometry = getSpatialDisplay().buildModifiedGeometry(
-                originalShape, coordinates);
+        IAdvancedGeometry modifiedGeometry = getSpatialDisplay()
+                .buildModifiedGeometry(originalShape, coordinates);
 
         /*
          * Notify the spatial display of the change, reset the hover and editing
@@ -753,8 +754,8 @@ public class SelectionAndModificationInputHandler extends
                 .getDrawableBeingEdited();
         if (editedElement != null) {
             getSpatialDisplay().setDrawableBeingEdited(null);
-            IDrawable entityShape = (IDrawable) editedElement;
-            Geometry modifiedGeometry = getSpatialDisplay()
+            IDrawable<?> entityShape = (IDrawable<?>) editedElement;
+            IAdvancedGeometry modifiedGeometry = getSpatialDisplay()
                     .buildModifiedGeometry(entityShape,
                             editedElement.getPoints());
             getSpatialDisplay().setHoverDrawable(null);

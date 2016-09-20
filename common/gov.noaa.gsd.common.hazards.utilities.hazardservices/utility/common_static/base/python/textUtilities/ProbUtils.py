@@ -20,6 +20,7 @@ from collections import defaultdict
 from shutil import copy2
 import HazardDataAccess
 import TimeUtils, LogUtils
+import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 
 class ProbUtils(object):
@@ -167,6 +168,8 @@ class ProbUtils(object):
         '''
         Almost all of the code in this method is pulled from 
         Karstens' (NSSL) PHI Prototype tool code with some minor modifications
+        
+        swathPolygon: Array of swath polygons in the form of advanced geometries.
         '''        
         probability = np.zeros((len(y1), len(x1)))
 
@@ -175,6 +178,14 @@ class ProbUtils(object):
         x3, y3 = x2.flatten(), y2.flatten()
         pnts1 = np.vstack((x3,y3)).T
 
+        # Translate from advanced geometries to shapely ones. Note
+        # that the shapely objects that AdvancedGeometry.asShapely()
+        # returns are always geometry collections, so the 0th geometry
+        # is extracted.
+        advancedGeometries = swathPolygon
+        swathPolygon = []
+        for geometry in advancedGeometries:
+            swathPolygon.append(geometry.asShapely()[0])
         union = so.cascaded_union(swathPolygon)
         llLon = (math.floor(union.bounds[0] * 100) / 100.) - 0.01
         llLat = (math.floor(union.bounds[1] * 100) / 100.) - 0.01
@@ -562,7 +573,10 @@ class ProbUtils(object):
         self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)                
 
 
-    def _reducePolygon(self, initialPoly):   
+    def _reducePolygon(self, initialPoly): 
+        '''
+        initialPoly: Polygon in shapely form.
+        '''  
         numPoints = self._hazardPointLimit()
         tolerance = 0.001
         newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
@@ -573,6 +587,9 @@ class ProbUtils(object):
         return newPoly    
 
     def _relocatePolygon(self, newCentroid, initialPoly):
+        '''
+        initialPoly: Polygon in shapely form.
+        '''  
         if isinstance(initialPoly, shapely.geometry.collection.GeometryCollection):
             initialPoly = initialPoly.geoms[0]
         initialPoly_gglGeom = so.transform(self._c4326t3857, initialPoly)
@@ -593,6 +610,7 @@ class ProbUtils(object):
         '''
         polygonTuples is a list of tuples expected as:
         [(poly1, startTime1), (poly2, startTime2),,,,(polyN, startTimeN)]
+        with each poly being in advanced geometry form.
         '''
         meanU = None
         meanV = None
@@ -700,6 +718,13 @@ class ProbUtils(object):
         return numerator/denomenator
 
     def getBearing(self, poly1, poly2):
+        '''
+        poly1: First polygon in advanced geometry form.
+        poly2: Second polygon in advanced geometry form.
+        '''
+        poly1 = poly1.asShapely()
+        poly2 = poly2.asShapely()
+
         lat1 = poly1.centroid.y
         lon1 = poly1.centroid.x
         lat2 = poly2.centroid.y
@@ -716,7 +741,12 @@ class ProbUtils(object):
         """
         Calculate the great circle distance between two points 
         on the earth (specified in decimal degrees)
+        poly1: First polygon in advanced geometry form.
+        poly2: Second polygon in advanced geometry form.
         """
+        poly1 = poly1.asShapely()
+        poly2 = poly2.asShapely()
+        
         lat1 = poly1.centroid.y
         lon1 = poly1.centroid.x
         lat2 = poly2.centroid.y
@@ -796,6 +826,7 @@ class ProbUtils(object):
                 poly = downstreamPolys[0]
             else:
                 poly = event.getGeometry()
+        poly = poly.asShapely()
         if type(poly) is shapely.geometry.collection.GeometryCollection:
             poly = poly[0] 
                     
@@ -818,7 +849,7 @@ class ProbUtils(object):
                                                        speedVal, dirVal, spdUVal, dirUVal, 
                                                        timeDirection, presetMethod) 
             intervalPoly = self._reducePolygon(intervalPoly)
-            intervalPolys.append(intervalPoly)
+            intervalPolys.append(AdvancedGeometry.createShapelyWrapper(intervalPoly, 0))
             st = self._convertFeatureTime(eventSt_ms, secs)
             et = self._convertFeatureTime(eventSt_ms, secs+self._timeStep())
             intervalTimes.append((st, et))
@@ -832,6 +863,10 @@ class ProbUtils(object):
 
     def _getIntervalPoly(self, secs, totalSecs, poly, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
                          timeDirection, presetMethod):
+        '''
+        poly: Polygon in shapely form.
+        Returns an internval polygon in shapely form.
+        '''
         if timeDirection == 'upstream':
             presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
             dirValLast = dirVal
@@ -975,6 +1010,6 @@ class ProbUtils(object):
         self._buff = 1.
         self._lonPoints = 1200
         self._latPoints = 1000
-        self._initial_ulLat = 48.5
-        self._initial_ulLon = -89.0
+        self._initial_ulLat = 43.0
+        self._initial_ulLon = -104.00
     

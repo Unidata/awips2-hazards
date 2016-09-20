@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 import java.util.ArrayList;
@@ -302,7 +303,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public boolean isValidGeometryChange(Geometry geometry,
+    public boolean isValidGeometryChange(IAdvancedGeometry geometry,
             ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
         throw new UnsupportedOperationException();
     }
@@ -347,7 +348,7 @@ public class SimpleSessionEventManager implements
 
     @Override
     public boolean setEventGeometry(ObservedHazardEvent event,
-            Geometry geometry, IOriginator originator) {
+            IAdvancedGeometry geometry, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 

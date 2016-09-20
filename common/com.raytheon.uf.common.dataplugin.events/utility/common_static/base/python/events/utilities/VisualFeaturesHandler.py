@@ -18,12 +18,18 @@
 #    Date            Ticket#       Engineer        Description
 #    ------------    ----------    ------------    --------------------------
 #    Mar 01, 2016      15676       Chris.Golden    Initial Creation.
+#    Sep 12, 2016      15934       Chris.Golden    Changed for visual features
+#                                                  to use advanced geometries
+#                                                  instead of shapely/JTS ones.
 #
 
 import json
-from shapely.geometry.base import BaseGeometry
-from shapely import wkt
 
+from gov.noaa.gsd.common.utilities import JsonConverter
+from gov.noaa.gsd.common.utilities.geometry import IAdvancedGeometry
+
+import JUtil
+from AdvancedGeometry import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 from gov.noaa.gsd.common.visuals import VisualFeaturesList
 from gov.noaa.gsd.common.visuals import VisualFeaturesListJsonConverter
@@ -31,21 +37,23 @@ from com.raytheon.uf.common.python import PyJavaUtil
 
 
 # JSON encoder that handles dictionary values that are
-# shapely geometries, as well as dictionary keys that
-# are tuples.
+# AdvancedGeometry instances, as well as dictionary keys
+# that are tuples.
 class VisualFeaturesListJsonEncoder(json.JSONEncoder):
 
     # Perform pre-encoding for the specified object,
-    # converting shapely geometry objects to WKT strings,
-    # and converting dictionary keys that are tuples into
+    # converting AdvancedGeometry objects to JSON, and
+    # converting dictionary keys that are tuples into
     # strings in which the tuple elements are separated
     # by a single space (since tuples as dictionary keys
     # are not possible with JSON).
     def preEncode(self, object):
 
-        # Encode geometries in Well-Known Text format.
-        if issubclass(type(object), BaseGeometry):
-            return object.to_wkt()
+        # Encode AdvancedGeometries as dictionaries
+        # suitable for converting into JSON.
+        if isinstance(object, AdvancedGeometry):
+            return JUtil.javaObjToPyVal(JsonConverter.
+                                        toDictionary(object.getWrappedJavaObject()))
 
         # If the object is a dictionary, convert any keys
         # that are tuples into strings, and do any pre-
@@ -76,10 +84,11 @@ class VisualFeaturesListJsonEncoder(json.JSONEncoder):
                      self).encode(self.preEncode(object))
 
 
-# JSON decoder that converts WKT strings to shapely
-# geometries, and changes dictionary keys that are
-# strings consisting of two timestamps separated by
-# a space into two-element tuples.
+# JSON decoder that converts JSON strings associated
+# with the "geometry" key to AdvancedGeometry instances,
+# and changes dictionary keys that are strings
+# consisting of two timestamps separated by a space into
+# two-element tuples.
 class VisualFeaturesListJsonDecoder(json.JSONDecoder):
 
     # Initialize the instance.
@@ -88,12 +97,14 @@ class VisualFeaturesListJsonDecoder(json.JSONDecoder):
                                   *args, **kwargs)
 
     # If the key is "geometry", treat the specified
-    # object as a Well-Known Text formatted string
-    # and convert it to a geometry; otherwise, just
-    # return the object untouched.
-    def changeWktToGeometry(self, key, object):
+    # object as a dictionary to be converted to an
+    # AdvancedGeometry; otherwise, just return the
+    # object untouched.
+    def changeJsonToGeometry(self, key, object):
         if key == "geometry":
-            return wkt.loads(object)
+            return AdvancedGeometry(JsonConverter.
+                                    fromDictionary(JUtil.pyValToJavaObj(object),
+                                                   IAdvancedGeometry))
         return object
 
     # Handle conversions of dictionaries to objects.
@@ -105,27 +116,28 @@ class VisualFeaturesListJsonDecoder(json.JSONDecoder):
 
             # For any values in the dictionary that are
             # themselves dictionaries, and that are not
-            # color definitions, iterate through the
-            # keys, replacing any that are two elements
+            # color definitions or definitions including
+            # the Java class, iterate through the keys,
+            # replacing any that are two elements
             # separated by a space with tuples. Also,
             # for any values of the subdictionaries or
             # of the main dictionary itself which are
-            # Well-Known Text, convert them into
+            # JSONified geometries, convert them into
             # geometries.
             newDict = {}
             for key, value in dictionary.iteritems():
-                if isinstance(value, dict) and "red" not in value:
+                if isinstance(value, dict) and "red" not in value and "class" not in value:
                     newSubDict = {}
                     for subKey, subValue in value.iteritems():
                         keySubstrings = subKey.split(" ")
-                        subValue =  self.changeWktToGeometry(key, subValue)
+                        subValue =  self.changeJsonToGeometry(key, subValue)
                         if len(keySubstrings) == 2:
                             newSubDict[tuple(keySubstrings)] = subValue
                         else:
                             newSubDict[key] = subValue
                     newDict[key] = newSubDict
                 else:
-                    newDict[key] = self.changeWktToGeometry(key, value)
+                    newDict[key] = self.changeJsonToGeometry(key, value)
             return newDict
         return dictionary
 

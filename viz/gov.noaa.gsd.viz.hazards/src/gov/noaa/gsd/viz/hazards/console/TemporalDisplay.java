@@ -61,6 +61,7 @@ import gov.noaa.gsd.viz.widgets.MultiValueScale;
 import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
 
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -276,6 +277,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           helper.
  * Aug 15, 2016 18376      Chris.Golden      Added code to make garbage collection of the
  *                                           session manager more likely.
+ * Sep 12, 2016 15934      Chris.Golden      Changed to work with new version of
+ *                                           JsonConverter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1100,11 +1103,6 @@ class TemporalDisplay {
      * modification is scheduled to occur.
      */
     private boolean willNotifyOfSettingChange = false;
-
-    /**
-     * JSON converter.
-     */
-    private final JsonConverter jsonConverter = new JsonConverter();
 
     /**
      * List, in the order in which to apply them, of sorts that are currently in
@@ -2541,10 +2539,20 @@ class TemporalDisplay {
                                                             .getState();
                                                     SettingsView
                                                             .translateHazardCategoriesAndTypesToOldLists(settingsAsDict);
-                                                    Settings updatedSettings = jsonConverter.fromJson(
-                                                            settingsAsDict
-                                                                    .toJSONString(),
-                                                            Settings.class);
+                                                    Settings updatedSettings = null;
+                                                    try {
+                                                        updatedSettings = JsonConverter.fromJson(
+                                                                settingsAsDict
+                                                                        .toJSONString(),
+                                                                Settings.class);
+                                                    } catch (IOException e) {
+                                                        statusHandler
+                                                                .error(getClass()
+                                                                        .getName()
+                                                                        + ": Shouldn't happen: Error while "
+                                                                        + "deserializing settings from JSON.",
+                                                                        e);
+                                                    }
 
                                                     /*
                                                      * TODO: Once the console
@@ -2565,9 +2573,11 @@ class TemporalDisplay {
                                                      * per se so that it does
                                                      * react.
                                                      */
-                                                    TemporalDisplay.this.currentSettings
-                                                            .apply(updatedSettings,
-                                                                    UIOriginator.CONSOLE_HEADER_FILTER);
+                                                    if (updatedSettings != null) {
+                                                        TemporalDisplay.this.currentSettings
+                                                                .apply(updatedSettings,
+                                                                        UIOriginator.CONSOLE_HEADER_FILTER);
+                                                    }
                                                 }
                                             }));
 
@@ -2774,7 +2784,12 @@ class TemporalDisplay {
     }
 
     private String settingsAsJSON() {
-        return jsonConverter.toJson(currentSettings);
+        try {
+            return JsonConverter.toJson(currentSettings);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not serialize settings as JSON.",
+                    e);
+        }
     }
 
     /**

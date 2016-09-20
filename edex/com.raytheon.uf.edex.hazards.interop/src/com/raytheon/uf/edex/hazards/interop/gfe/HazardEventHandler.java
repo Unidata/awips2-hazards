@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.gfe;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -110,6 +112,8 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries now used in
+ *                                      hazard events.
  * </pre>
  * 
  * @author jsanchez
@@ -649,7 +653,8 @@ public class HazardEventHandler {
         hazardEvent.setSiteID(siteID);
 
         // geometry
-        hazardEvent.setGeometry(hazardMultiPolygon);
+        hazardEvent.setGeometry(AdvancedGeometryUtilities
+                .createGeometryWrapper(hazardMultiPolygon, 0));
 
         // phenomenon & significance (possibly subtype)
         String[] hazardTypeComponents = StringUtils.split(hazardType, ".");

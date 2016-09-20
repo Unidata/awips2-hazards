@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -81,7 +82,8 @@ public class SessionHazardNotificationListenerTest {
         IHazardEvent event = new BaseHazardEvent();
         event.setEventID(TEST_EVENT_ID);
         event.setPhenomenon(TEST_PHEN1);
-        event.setGeometry(geometryFactory.createPoint(new Coordinate()));
+        event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(
+                geometryFactory.createPoint(new Coordinate()), 0));
 
         return event;
     }

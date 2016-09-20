@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryAdapter;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometrySlotConverter;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
@@ -97,6 +101,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      visual features.
  * Jun 23, 2016 19537      Chris.Golden Changed to use new visual feature list
  *                                      method for visual feature replacement.
+ * Sep 12, 2016 15934      Chris.Golden Changed hazard events to use advanced
+ *                                      geometries instead of JTS geometries.
  * </pre>
  * 
  * @author mnash
@@ -200,14 +206,24 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private ProductClass hazardMode;
 
     /**
-     * The geometry coverage of the hazard
+     * The flattened geometry coverage of the hazard
      */
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = GeometryAdapter.class)
     @XmlAttribute
-    @SlotAttribute(HazardConstants.GEOMETRY)
+    @SlotAttribute(HazardConstants.FLATTENED_GEOMETRY)
     @SlotAttributeConverter(GeometrySlotConverter.class)
-    private Geometry geometry;
+    private Geometry flattenedGeometry;
+
+    /**
+     * The geometry coverage of the hazard.
+     */
+    @DynamicSerializeElement
+    @XmlJavaTypeAdapter(value = AdvancedGeometryAdapter.class)
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.GEOMETRY)
+    @SlotAttributeConverter(AdvancedGeometrySlotConverter.class)
+    private IAdvancedGeometry geometry;
 
     /**
      * Visual features list of the hazard.
@@ -246,7 +262,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private String workStation;
 
     /**
-     * Additional attributes of the hazard
+     * Additional attributes of the hazard.
      */
     @DynamicSerializeElement
     @XmlElement(name = "Attributes")
@@ -255,17 +271,17 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private Set<HazardAttribute> attributes = new HashSet<HazardAttribute>();
 
     /**
-     * Creates a new HazardEvent
+     * Construct a standard instance.
      */
     public HazardEvent() {
 
     }
 
     /**
-     * Creates a copy of the given hazard event
+     * Construct a copy instance.
      * 
      * @param event
-     *            The hazard event to copy
+     *            Hazard event to be copied.
      */
     public HazardEvent(IHazardEvent event) {
         this();
@@ -289,137 +305,79 @@ public class HazardEvent implements IHazardEvent, IValidator {
         }
     }
 
-    /**
-     * @return the siteID
-     */
     @Override
     public String getSiteID() {
         return siteID;
     }
 
-    /**
-     * @param siteID
-     *            the siteID to set
-     */
     @Override
     public void setSiteID(String site) {
         this.siteID = site;
     }
 
-    /**
-     * @return the eventID
-     */
     @Override
     public String getEventID() {
         return eventID;
     }
 
-    /**
-     * @param eventID
-     *            the eventID to set
-     */
     @Override
     public void setEventID(String eventId) {
         this.eventID = eventId;
     }
 
-    /**
-     * Return a filtered Event Id String
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil
-     * 
-     * @return the eventID using filtering from HazardServicesEventIdUtil
-     */
     @Override
     public String getDisplayEventID() {
         return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
     }
 
-    /**
-     * @return the uniqueID
-     */
     public String getUniqueID() {
         return uniqueID;
     }
 
-    /**
-     * @param uniqueID
-     *            the uniqueID to set
-     */
     public void setUniqueID(String uniqueID) {
         this.uniqueID = uniqueID;
     }
 
-    /**
-     * @return the status
-     */
     @Override
     public HazardStatus getStatus() {
         return status;
     }
 
-    /**
-     * @param status
-     *            the status to set
-     */
     @Override
     public void setStatus(HazardStatus state) {
         this.status = state;
     }
 
-    /**
-     * @return the phenomenon
-     */
     @Override
     public String getPhenomenon() {
         return phenomenon;
     }
 
-    /**
-     * @param phenomenon
-     *            the phenomenon to set
-     */
     @Override
     public void setPhenomenon(String phenomenon) {
         this.phenomenon = phenomenon;
     }
 
-    /**
-     * @return the significance
-     */
     @Override
     public String getSignificance() {
         return significance;
     }
 
-    /**
-     * @param significance
-     *            the significance to set
-     */
     @Override
     public void setSignificance(String significance) {
         this.significance = significance;
     }
 
-    /**
-     * @return subtype
-     */
     @Override
     public String getSubType() {
         return subType;
     }
 
-    /**
-     * @param subtype
-     */
     @Override
     public void setSubType(String subType) {
         this.subType = subType;
     }
 
-    /**
-     * @return hazardType e.g. FA.A or FF.W.Convective
-     */
     @Override
     public String getHazardType() {
         return HazardEventUtilities.getHazardType(this);
@@ -433,35 +391,21 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setSubType(subtype);
     }
 
-    /**
-     * @return the startTime
-     */
     @Override
     public Date getStartTime() {
         return startTime;
     }
 
-    /**
-     * @param startTime
-     *            the startTime to set
-     */
     @Override
     public void setStartTime(Date startTime) {
         this.startTime = new Date(startTime.getTime());
     }
 
-    /**
-     * @return the endTime
-     */
     @Override
     public Date getEndTime() {
         return endTime;
     }
 
-    /**
-     * @param endTime
-     *            the endTime to set
-     */
     @Override
     public void setEndTime(Date endTime) {
         this.endTime = new Date(endTime.getTime());
@@ -473,55 +417,51 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setEndTime(endTime);
     }
 
-    /**
-     * @return the creationTime
-     */
     @Override
     public Date getCreationTime() {
         return creationTime;
     }
 
-    /**
-     * @param creationTime
-     *            the creationTime to set
-     */
     @Override
     public void setCreationTime(Date creationTime) {
         this.creationTime = new Date(creationTime.getTime());
     }
 
-    /**
-     * @return the hazardType
-     */
     @Override
     public ProductClass getHazardMode() {
         return hazardMode;
     }
 
-    /**
-     * @param hazardType
-     *            the hazardType to set
-     */
     @Override
     public void setHazardMode(ProductClass hazardMode) {
         this.hazardMode = hazardMode;
     }
 
-    /**
-     * @return the geometry
-     */
     @Override
-    public Geometry getGeometry() {
+    public Geometry getFlattenedGeometry() {
+        return flattenedGeometry;
+    }
+
+    @Override
+    public IAdvancedGeometry getGeometry() {
         return geometry;
     }
 
     /**
-     * @param geometry
-     *            the geometry to set
+     * Set the flattened geometry to that specified. Needed for Thrift
+     * deserialization.
+     * 
+     * @param flattenedGeometry
+     *            Flattened geometry to be used.
      */
+    public void setFlattenedGeometry(Geometry flattenedGeometry) {
+        this.flattenedGeometry = flattenedGeometry;
+    }
+
     @Override
-    public void setGeometry(Geometry geometry) {
+    public void setGeometry(IAdvancedGeometry geometry) {
         this.geometry = geometry;
+        flattenedGeometry = AdvancedGeometryUtilities.getJtsGeometry(geometry);
     }
 
     @Override
@@ -548,9 +488,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         this.visualFeatures = visualFeatures;
     }
 
-    /**
-     * @return the hazardAttributes
-     */
     @Override
     public Map<String, Serializable> getHazardAttributes() {
         Map<String, Serializable> attrs = new HashMap<String, Serializable>();
@@ -562,12 +499,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         return attrs;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * addHazardAttribute(java.lang.String, java.io.Serializable)
-     */
     @Override
     public void addHazardAttribute(final String key, final Serializable value) {
 
@@ -591,23 +522,11 @@ public class HazardEvent implements IHazardEvent, IValidator {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * getHazardAttribute(java.lang.String)
-     */
     @Override
     public Serializable getHazardAttribute(String key) {
         return getHazardAttributes().get(key);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent#
-     * removeHazardAttribute(java.lang.String)
-     */
     @Override
     public void removeHazardAttribute(String key) {
         HazardAttribute attributeToRemove = null;
@@ -624,7 +543,9 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public boolean isValid() throws ValidationException {
-        // TODO: Determine validation strategy
+        /*
+         * TODO: Determine validation strategy.
+         */
         return true;
     }
 
@@ -650,11 +571,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         return builder.toString();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#hashCode()
-     */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -687,11 +603,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -827,10 +738,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         return attributes;
     }
 
-    /**
-     * @param attributes
-     *            the attributes to set
-     */
     public void setAttributes(Set<HazardAttribute> attributes) {
         this.attributes = attributes;
     }

@@ -10,10 +10,11 @@
 package gov.noaa.gsd.common.visuals;
 
 import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.Puntal;
 
 /**
  * Description: Spatial entity, instances of which provide arbitrary drawable,
@@ -21,15 +22,16 @@ import com.vividsolutions.jts.geom.Puntal;
  * parameter <code>I</code> provides the type of the entity's identifier.
  * <p>
  * Spatial entities may be created via the
- * {@link #build(SpatialEntity, Object, Geometry, Color, Color, double, BorderStyle, FillStyle, double, SymbolShape, String, double, double, double, double, int, Color, DragCapability, boolean, boolean, boolean, boolean)
+ * {@link #build(SpatialEntity, Object, IAdvancedGeometry, Color, Color, double, BorderStyle, FillStyle, double, SymbolShape, String, double, double, double, double, int, Color, DragCapability, boolean, boolean, boolean, boolean)
  * build()} static method, or using one of the {@link VisualFeature} class's
  * <code>getStateAtTime()</code> static methods.
  * </p>
  * <p>
  * Spatial entities are designed to be immutable, and should be used as such.
  * This means that care must be taken to avoid changing underlying component
- * objects that may at some level be mutable, such as {@link Geometry} and
- * {@link Color}.
+ * objects that may at some level be mutable, such as {@link Color}, and any
+ * subclass of {@link IAdvancedGeometry} that incorporates {@link Geometry}
+ * instances.
  * </p>
  * 
  * <pre>
@@ -50,6 +52,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      needlessly recreated by build() method
  *                                      due to wrong return type for getTextSize().
  *                                      Also added toString() method.
+ * Sep 12, 2016   15934    Chris.Golden Changed to use advanced geometries instead
+ *                                      of JTS geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -67,7 +71,7 @@ public class SpatialEntity<I> {
     /**
      * Geometry.
      */
-    private Geometry geometry;
+    private IAdvancedGeometry geometry;
 
     /**
      * Border color.
@@ -137,11 +141,10 @@ public class SpatialEntity<I> {
 
     /**
      * Flag indicating whether or not, if {@link #geometry} is a collection of
-     * multiple geometries, any {@link Puntal} sub-geometries within that
+     * multiple geometries, any sub-geometries that are points within that
      * collection are draggable. If <code>false</code>, this overrides any
      * capabilities specified in {@link #dragCapability} for such points, but
-     * has no effect on a <code>geometry</code> consisting of a single
-     * <code>Puntal</code> object.
+     * has no effect on a <code>geometry</code> consisting of a single point.
      */
     private boolean multiGeometryPointsDraggable;
 
@@ -217,12 +220,12 @@ public class SpatialEntity<I> {
      *            Drag capability to be used.
      * @param multiGeometryPointsDraggable
      *            Flag indicating whether or not, if <code>geometry</code> is a
-     *            collection of multiple geometries, any {@link Puntal}
-     *            sub-geometries within that collection are draggable. If
+     *            collection of multiple geometries, any sub-geometries that are
+     *            points within that collection are draggable. If
      *            <code>false</code>, this overrides any capabilities specified
      *            in <code>dragCapability</code> for such points, but has no
      *            effect on a <code>geometry</code> consisting of a single
-     *            <code>Puntal</code> object.
+     *            point.
      * @param rotatable
      *            Rotatable flag to be used.
      * @param scaleable
@@ -236,7 +239,7 @@ public class SpatialEntity<I> {
      *         created one.
      */
     public static <I> SpatialEntity<I> build(SpatialEntity<I> spatialEntity,
-            I identifier, Geometry geometry, Color borderColor,
+            I identifier, IAdvancedGeometry geometry, Color borderColor,
             Color fillColor, double borderThickness, BorderStyle borderStyle,
             FillStyle fillStyle, double diameter, SymbolShape symbolShape,
             String label, double singlePointTextOffsetLength,
@@ -293,7 +296,11 @@ public class SpatialEntity<I> {
         spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.getLabel()), label);
         spatialEntity.setLabel(label);
-        boolean pointGeometry = (geometry.getGeometryN(0) instanceof Puntal);
+        if (geometry instanceof AdvancedGeometryCollection) {
+            geometry = ((AdvancedGeometryCollection) geometry).getChildren()
+                    .get(0);
+        }
+        boolean pointGeometry = geometry.isPunctual();
         spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.getBorderColor()),
                 borderColor);
@@ -479,7 +486,7 @@ public class SpatialEntity<I> {
      * 
      * @return Geometry.
      */
-    public Geometry getGeometry() {
+    public IAdvancedGeometry getGeometry() {
         return geometry;
     }
 
@@ -603,15 +610,15 @@ public class SpatialEntity<I> {
 
     /**
      * Determine whether, if {@link #getGeometry()} yields a collection of
-     * multiple geometries, any {@link Puntal} sub-geometries within that
-     * collection are draggable.
+     * multiple geometries, any point sub-geometries within that collection are
+     * draggable.
      * 
-     * @return True if <code>Puntal</code> geometries within a multi-geometry
+     * @return <code>true</code> if point sub-geometries within a multi-geometry
      *         collection returned by <code>getGeometry()</code> are draggable,
-     *         false otherwise. If the latter, this overrides any capabilities
-     *         specified in {@link #getDragCapability()} for such points, but
-     *         has no effect on a geometry consisting of a single
-     *         <code>Puntal</code> object.
+     *         <code>false</code> otherwise. If the latter, this overrides any
+     *         capabilities specified in {@link #getDragCapability()} for such
+     *         points, but has no effect on a geometry consisting of a single
+     *         point.
      */
     public boolean isMultiGeometryPointsDraggable() {
         return multiGeometryPointsDraggable;
@@ -620,7 +627,8 @@ public class SpatialEntity<I> {
     /**
      * Determine whether the entity is rotatable.
      * 
-     * @return True if the entity is rotatable, otherwise false.
+     * @return <code>true</code> if the entity is rotatable, otherwise
+     *         <code>false</code>.
      */
     public boolean isRotatable() {
         return rotatable;
@@ -629,7 +637,8 @@ public class SpatialEntity<I> {
     /**
      * Determine whether the entity is scaleable.
      * 
-     * @return True if the entity is scaleable, otherwise false.
+     * @return <code>true</code> if the entity is scaleable, otherwise
+     *         <code>false</code>.
      */
     public boolean isScaleable() {
         return scaleable;
@@ -638,7 +647,8 @@ public class SpatialEntity<I> {
     /**
      * Determine whether the entity is topmost.
      * 
-     * @return True if the entity is topmost, otherwise false.
+     * @return <code>true</code> if the entity is topmost, otherwise
+     *         <code>false</code>.
      */
     public boolean isTopmost() {
         return topmost;
@@ -652,7 +662,7 @@ public class SpatialEntity<I> {
      * @param geometry
      *            New value.
      */
-    private void setGeometry(Geometry geometry) {
+    private void setGeometry(IAdvancedGeometry geometry) {
         this.geometry = geometry;
     }
 
@@ -789,16 +799,15 @@ public class SpatialEntity<I> {
 
     /**
      * Set the flag indicating whether, if {@link #getGeometry()} yields a
-     * collection of multiple geometries, any {@link Puntal} sub-geometries
-     * within that collection are draggable.
+     * collection of multiple geometries, any point sub-geometries within that
+     * collection are draggable.
      * 
      * @param multiGeometryPointsDraggable
-     *            Flag indicating whether or not <code>Puntal</code> geometries
-     *            within a geometry collection are draggable. If
-     *            <code>false</code>, this overrides any capabilities specified
-     *            in {@link #getDragCapability()} for such points, but has no
-     *            effect on a geometry consisting of a single
-     *            <code>Puntal</code> object.
+     *            Flag indicating whether or not point sub-geometries within a
+     *            geometry collection are draggable. If <code>false</code>, this
+     *            overrides any capabilities specified in
+     *            {@link #getDragCapability()} for such points, but has no
+     *            effect on a geometry consisting of a single point.
      */
     private void setMultiGeometryPointsDraggable(
             boolean multiGeometryPointsDraggable) {

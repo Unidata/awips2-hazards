@@ -9,9 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import java.util.ArrayList;
-import java.util.List;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.VizApp;
@@ -22,10 +23,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryExceptio
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * Description: Builder of hazard events from various geometries.
@@ -43,6 +41,9 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      that are newly created.
  * Jul 25, 2016 19537      Chris.Golden Added extensive comments and cleaned up, removing
  *                                      unneeded methods.
+ * Sep 12, 2016 15934      Chris.Golden Folded functionality back into the spatial
+ *                                      presenter, leaving only deprecated methods being
+ *                                      used by obsolete auto-tests.
  * </pre>
  * 
  * @author Dan Schaffer
@@ -89,32 +90,11 @@ public class HazardEventBuilder {
     @Deprecated
     public IHazardEvent buildPolygonHazardEvent(Coordinate[] coordinates)
             throws InvalidGeometryException {
-        Geometry geometry = geometryFactory.createPolygon(
-                geometryFactory.createLinearRing(coordinates), null);
+        IAdvancedGeometry geometry = AdvancedGeometryUtilities
+                .createGeometryWrapper(geometryFactory.createPolygon(
+                        geometryFactory.createLinearRing(coordinates), null), 0);
 
         checkValidity(geometry);
-
-        return finishHazardEventBuild(geometry);
-    }
-
-    /**
-     * Build a hazard event based upon the specified geometry.
-     * 
-     * @param geometry
-     *            Geometry upon which to base the new hazard event.
-     * @param checkGeometryValidity
-     *            Flag indicating whether or not the geometry's validity is to
-     *            be checked.
-     * @return New hazard event.
-     * @throws InvalidGeometryException
-     *             If the geometry was found to be invalid.
-     */
-    public IHazardEvent buildHazardEvent(Geometry geometry,
-            boolean checkGeometryValidity) throws InvalidGeometryException {
-
-        if (checkGeometryValidity) {
-            checkValidity(geometry);
-        }
 
         return finishHazardEventBuild(geometry);
     }
@@ -131,7 +111,10 @@ public class HazardEventBuilder {
      * @param originator
      *            Originator of this addition.
      * @return Resulting new event from the event manager.
+     * @deprecated Only used by auto-test utilities, which are not being
+     *             maintained at this time.
      */
+    @Deprecated
     public ObservedHazardEvent addEvent(IHazardEvent event,
             IOriginator originator) {
 
@@ -141,35 +124,31 @@ public class HazardEventBuilder {
         event.setUserName(LocalizationManager.getInstance().getCurrentUser());
         event.setWorkStation(VizApp.getHostName());
 
-        ObservedSettings settings = sessionManager.getConfigurationManager()
-                .getSettings();
-
         /*
          * If the geometry is to be added to the selected hazard, do this and do
          * nothing with the new event.
          */
-        if ((Boolean.TRUE.equals(settings.getAddGeometryToSelected()))
+        if ((Boolean.TRUE.equals(sessionManager.getConfigurationManager()
+                .getSettings().getAddGeometryToSelected()))
                 && (event.getHazardType() == null)
                 && (sessionManager.getEventManager().getSelectedEvents().size() == 1)) {
+
             ObservedHazardEvent existingEvent = sessionManager
                     .getEventManager().getSelectedEvents().iterator().next();
-            Geometry existingGeometries = existingEvent.getGeometry();
-            List<Geometry> geometryList = new ArrayList<>();
 
-            for (int i = 0; i < existingGeometries.getNumGeometries(); ++i) {
-                geometryList.add(existingGeometries.getGeometryN(i));
-            }
+            IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
+            IAdvancedGeometry newGeometries = event.getGeometry();
 
-            Geometry newGeometries = event.getGeometry();
+            existingEvent.setGeometry(AdvancedGeometryUtilities
+                    .createCollection(existingGeometries, newGeometries));
 
-            for (int i = 0; i < newGeometries.getNumGeometries(); ++i) {
-                geometryList.add(newGeometries.getGeometryN(i));
-            }
-
-            GeometryCollection geometryCollection = geometryFactory
-                    .createGeometryCollection(geometryList
-                            .toArray(new Geometry[geometryList.size()]));
-            existingEvent.setGeometry(geometryCollection);
+            /*
+             * Remove the context menu contribution key so that the now-modified
+             * hazard event will not allow the use of select-by-area to modify
+             * its geometry.
+             */
+            existingEvent
+                    .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
             return existingEvent;
         }
 
@@ -186,12 +165,11 @@ public class HazardEventBuilder {
      * @throws InvalidGeometryException
      *             If the geometry is invalid.
      */
-    private void checkValidity(Geometry geometry)
+    private void checkValidity(IAdvancedGeometry geometry)
             throws InvalidGeometryException {
-        if (!geometry.isValid()) {
-            IsValidOp op = new IsValidOp(geometry);
+        if (geometry.isValid() == false) {
             throw new InvalidGeometryException("invalid geometry: "
-                    + op.getValidationError().getMessage());
+                    + geometry.getValidityProblemDescription());
         }
     }
 
@@ -202,7 +180,7 @@ public class HazardEventBuilder {
      *            Geometry to be used by the hazard event.
      * @return New hazard event.
      */
-    private IHazardEvent finishHazardEventBuild(Geometry geometry) {
+    private IHazardEvent finishHazardEventBuild(IAdvancedGeometry geometry) {
         IHazardEvent event = new BaseHazardEvent();
         event.setGeometry(geometry);
         event.setCreationTime(sessionManager.getTimeManager().getCurrentTime());

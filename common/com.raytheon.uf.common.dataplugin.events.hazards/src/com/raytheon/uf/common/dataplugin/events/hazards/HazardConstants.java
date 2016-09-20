@@ -98,6 +98,7 @@ import com.google.common.collect.ImmutableMap;
  * Jul 27, 2016 19924     Chris.Golden  Changed recommmender-related data layer update constants
  *                                      to reflect the fact that now all data times are wanted,
  *                                      not just the latest one.
+ * Aug 31, 2016 15934     Chris.Golden  Added constant related to advanced geometries.
  * </pre>
  * 
  * @author mnash
@@ -553,6 +554,8 @@ public final class HazardConstants {
     public static final String LOW_RESOLUTION_GEOMETRY_IS_VISIBLE = "lowResolutionGeometryIsVisible";
 
     public static final String LOW_RESOLUTION_GEOMETRY = "lowResolutionGeometry";
+
+    public static final String FLATTENED_GEOMETRY = "flattenedGeometry";
 
     public static final String VISUAL_FEATURES = "visualFeatures";
 

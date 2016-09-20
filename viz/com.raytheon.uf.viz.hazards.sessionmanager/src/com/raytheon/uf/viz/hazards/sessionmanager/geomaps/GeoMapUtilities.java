@@ -107,6 +107,8 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  *                                      of UGC+geometry identifiers to the geometries, so
  *                                      that this information may be used when generating
  *                                      hatching polygons within the spatial presenter.
+ * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries now used
+ *                                      by hazard events.
  * </pre>
  * 
  * @author blawrenc
@@ -267,7 +269,7 @@ public class GeoMapUtilities {
                 mapdataTable);
         mapDataRequest.addIdentifier(HazardConstants.GEOMETRY_FIELD_IDENTIFIER,
                 "the_geom");
-        if (!cwa.equals("National")) {
+        if (!cwa.equals(HazardConstants.NATIONAL)) {
             mapDataRequest.addIdentifier(
                     HazardConstants.IN_LOCATION_IDENTIFIER, "true");
             mapDataRequest.addIdentifier(
@@ -389,7 +391,7 @@ public class GeoMapUtilities {
                 } else if (hazardArea.get(ugc).equals(HAZARD_AREA_INTERSECTION)) {
                     Geometry mappingGeometry = mappingData.getGeometry();
                     GeometryCollection asCollection = (GeometryCollection) hazardEvent
-                            .getGeometry();
+                            .getFlattenedGeometry();
                     for (int geometryIndex = 0; geometryIndex < asCollection
                             .getNumGeometries(); geometryIndex++) {
                         Geometry geometry = asCollection
@@ -436,7 +438,7 @@ public class GeoMapUtilities {
             cwaGeometry = buildCWAGeometry();
         }
 
-        Geometry hazardGeometry = hazardEvent.getGeometry();
+        Geometry hazardGeometry = hazardEvent.getFlattenedGeometry();
 
         List<Geometry> intersectedGeometries = new ArrayList<>(
                 hazardGeometry.getNumGeometries());
@@ -558,7 +560,8 @@ public class GeoMapUtilities {
     public Set<IGeometryData> getIntersectingMapGeometries(
             IHazardEvent hazardEvent) {
         Set<IGeometryData> mapGeometryData = getMapGeometries(hazardEvent);
-        return extractMapGeometries(mapGeometryData, hazardEvent.getGeometry(),
+        return extractMapGeometries(mapGeometryData,
+                hazardEvent.getFlattenedGeometry(),
                 MapGeometryExtractionApproach.INTERSECTION);
     }
 
@@ -766,7 +769,7 @@ public class GeoMapUtilities {
             double inclusionAreaInSqKm) {
         Set<IGeometryData> result = Sets.newHashSet();
 
-        Geometry geometry = hazardEvent.getGeometry();
+        Geometry geometry = hazardEvent.getFlattenedGeometry();
         for (IGeometryData geoData : geometryData) {
 
             Geometry mapGeometry = geoData.getGeometry();

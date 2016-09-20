@@ -17,6 +17,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.L
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
@@ -29,7 +31,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
-import gov.noaa.gsd.viz.hazards.utilities.HazardEventBuilder;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
@@ -61,11 +62,14 @@ import org.eclipse.jface.action.IContributionItem;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -73,7 +77,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
@@ -190,6 +193,7 @@ import com.vividsolutions.jts.geom.Point;
  *                                           force "redraw entire display" approach with a much more
  *                                           fine-grained scheme of rebuilding spatial entities only
  *                                           when they may have changed.
+ * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -292,10 +296,10 @@ public class SpatialPresenter extends
      * Create shape command invocation handler. The identifier is the geometry
      * to be created.
      */
-    private final ICommandInvocationHandler<Geometry> createShapeInvocationHandler = new ICommandInvocationHandler<Geometry>() {
+    private final ICommandInvocationHandler<IAdvancedGeometry> createShapeInvocationHandler = new ICommandInvocationHandler<IAdvancedGeometry>() {
 
         @Override
-        public void commandInvoked(Geometry identifier) {
+        public void commandInvoked(IAdvancedGeometry identifier) {
             handleUserShapeCreation(identifier);
         }
     };
@@ -413,11 +417,6 @@ public class SpatialPresenter extends
     private final Set<String> selectedEventIdentifiers = new HashSet<>();
 
     /**
-     * Hazard event builder.
-     */
-    private final HazardEventBuilder hazardEventBuilder;
-
-    /**
      * Type of the tool attempting to collect information via the visual
      * features within {@link #toolVisualFeatures}; if the latter is empty, this
      * is irrelevant.
@@ -489,7 +488,6 @@ public class SpatialPresenter extends
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
         this.displayHandler = displayDisposedHandler;
-        this.hazardEventBuilder = new HazardEventBuilder(model);
         this.spatialEntityManager = new SpatialEntityManager(model,
                 Collections.unmodifiableSet(selectedEventIdentifiers));
     }
@@ -1098,27 +1096,8 @@ public class SpatialPresenter extends
      * @param geometry
      *            New geometry that has been created.
      */
-    private void handleUserShapeCreation(Geometry geometry) {
-
-        /*
-         * Create the event.
-         */
-        IHazardEvent hazardEvent = null;
-        try {
-            hazardEvent = hazardEventBuilder.buildHazardEvent(geometry, true);
-        } catch (InvalidGeometryException e) {
-            statusHandler.handle(
-                    Priority.WARN,
-                    "Error creating new hazard event based on "
-                            + geometry.getClass().getSimpleName() + ": "
-                            + e.getMessage(), e);
-            return;
-        }
-
-        /*
-         * Add the created event.
-         */
-        hazardEventBuilder.addEvent(hazardEvent, this);
+    private IHazardEvent handleUserShapeCreation(IAdvancedGeometry geometry) {
+        return buildHazardEvent(geometry, true);
     }
 
     /**
@@ -1249,10 +1228,12 @@ public class SpatialPresenter extends
          * Merge the provided geometries into one to determine what the new
          * geometry is.
          */
-        Geometry newGeometry = geometryFactory.createMultiPolygon(null);
+        Geometry newBaseGeometry = geometryFactory.createMultiPolygon(null);
         for (Geometry geometry : context.getSelectedGeometries()) {
-            newGeometry = newGeometry.union(geometry);
+            newBaseGeometry = newBaseGeometry.union(geometry);
         }
+        IAdvancedGeometry newGeometry = AdvancedGeometryUtilities
+                .createGeometryWrapper(newBaseGeometry, 0);
 
         /*
          * If this is a modification of an existing spatial entity, assume it is
@@ -1273,20 +1254,11 @@ public class SpatialPresenter extends
             /*
              * Create the event.
              */
-            IHazardEvent hazardEvent = null;
-            try {
-                hazardEvent = hazardEventBuilder.buildHazardEvent(newGeometry,
-                        false);
-            } catch (InvalidGeometryException e) {
-                statusHandler.handle(Priority.ERROR,
-                        "Error creating new hazard event based on "
-                                + newGeometry.getClass().getSimpleName() + ": "
-                                + e.getMessage()
-                                + " (should never happen because geometries"
-                                + "created by select-by-area are to not be "
-                                + "checked for validity)", e);
+            IHazardEvent hazardEvent = buildHazardEvent(newGeometry, false);
+            if (hazardEvent == null) {
                 return;
             }
+            eventIdentifier = hazardEvent.getEventID();
 
             /*
              * Store the database table name and the legend of the
@@ -1303,13 +1275,6 @@ public class SpatialPresenter extends
                     .addHazardAttribute(
                             HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
                             Lists.newArrayList(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
-
-            /*
-             * Add the event to the model.
-             */
-            ObservedHazardEvent observedHazardEvent = hazardEventBuilder
-                    .addEvent(hazardEvent, UIOriginator.SPATIAL_DISPLAY);
-            eventIdentifier = observedHazardEvent.getEventID();
         }
 
         selectByAreaGeometriesForEventIdentifiers.put(eventIdentifier,
@@ -1533,6 +1498,85 @@ public class SpatialPresenter extends
     }
 
     /**
+     * Build a hazard event around the specified geometry.
+     * 
+     * @param geometry
+     *            Geometry with which to build the event.
+     * @param checkValidity
+     *            Flag indicating whether or not to check the geometry for
+     *            validity.
+     * @return Hazard event, or <code>null</code> if the geometry was checked
+     *         and found to be invalid.
+     */
+    private IHazardEvent buildHazardEvent(IAdvancedGeometry geometry,
+            boolean checkValidity) {
+        if (checkValidity && (geometry.isValid() == false)) {
+            statusHandler.handle(
+                    Priority.WARN,
+                    "Invalid geometry: "
+                            + geometry.getValidityProblemDescription()
+                            + "; new geometry will not be used.");
+            return null;
+        }
+        IHazardEvent hazardEvent = new BaseHazardEvent();
+        hazardEvent.setGeometry(geometry);
+        hazardEvent.setCreationTime(getModel().getTimeManager()
+                .getCurrentTime());
+        return addEvent(hazardEvent);
+    }
+
+    /**
+     * Add the specified hazard event to the event manager, or add its geometry
+     * to an already selected event if appropriate.
+     * 
+     * @param event
+     *            Event to be added.
+     * @param originator
+     *            Originator of this addition.
+     * @return Resulting new (or if adding geometry to selected, existingt)
+     *         event from the event manager.
+     */
+    private ObservedHazardEvent addEvent(IHazardEvent event) {
+
+        /*
+         * Update the event user and workstation based on who created the event.
+         */
+        event.setUserName(LocalizationManager.getInstance().getCurrentUser());
+        event.setWorkStation(VizApp.getHostName());
+
+        /*
+         * If the geometry is to be added to the selected hazard, do this and do
+         * nothing with the new event.
+         */
+        if ((Boolean.TRUE.equals(getModel().getConfigurationManager()
+                .getSettings().getAddGeometryToSelected()))
+                && (event.getHazardType() == null)
+                && (getModel().getEventManager().getSelectedEvents().size() == 1)) {
+
+            ObservedHazardEvent existingEvent = getModel().getEventManager()
+                    .getSelectedEvents().iterator().next();
+
+            IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
+            IAdvancedGeometry newGeometries = event.getGeometry();
+
+            existingEvent.setGeometry(AdvancedGeometryUtilities
+                    .createCollection(existingGeometries, newGeometries));
+
+            /*
+             * Remove the context menu contribution key so that the now-modified
+             * hazard event will not allow the use of select-by-area to modify
+             * its geometry.
+             */
+            existingEvent
+                    .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+            return existingEvent;
+        }
+
+        return getModel().getEventManager().addEvent(event,
+                UIOriginator.SPATIAL_DISPLAY);
+    }
+
+    /**
      * Center and zoom the display given the currently selected hazard events.
      */
     private void updateCenteringAndZoomLevel() {
@@ -1543,7 +1587,7 @@ public class SpatialPresenter extends
         if (!selectedEvents.isEmpty()) {
             List<Geometry> geometriesOfSelected = new ArrayList<>();
             for (ObservedHazardEvent selectedEvent : selectedEvents) {
-                geometriesOfSelected.add(selectedEvent.getGeometry());
+                geometriesOfSelected.add(selectedEvent.getFlattenedGeometry());
             }
             Geometry[] asArray = new Geometry[geometriesOfSelected.size()];
             GeometryCollection geometryCollection = geometryFactory

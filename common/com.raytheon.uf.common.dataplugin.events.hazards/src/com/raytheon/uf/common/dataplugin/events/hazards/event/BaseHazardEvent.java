@@ -21,6 +21,8 @@ package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -32,12 +34,7 @@ import java.util.Map;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKTReader;
 
 /**
  * An {@link IHazardEvent} that has no storage annotations, rather, it can be
@@ -69,6 +66,8 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                      visual features.
  * Jun 23, 2016 19537      Chris.Golden Changed to use new visual feature list
  *                                      method for visual feature replacement.
+ * Sep 12, 2016 15934      Chris.Golden Changed hazard events to use advanced
+ *                                      geometries instead of JTS geometries.
  * </pre>
  * 
  * @author mnash
@@ -76,14 +75,14 @@ import com.vividsolutions.jts.io.WKTReader;
  */
 
 public class BaseHazardEvent implements IHazardEvent {
-    private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(BaseHazardEvent.class);
 
     private Date startTime;
 
     private Date endTime;
 
-    private Geometry geometry;
+    private Geometry flattenedGeometry;
+
+    private IAdvancedGeometry geometry;
 
     private VisualFeaturesList visualFeatures;
 
@@ -109,9 +108,6 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private Map<String, Serializable> attributes;
 
-    /**
-     * 
-     */
     public BaseHazardEvent() {
         attributes = new HashMap<String, Serializable>();
         attributes.put(VISIBLE_GEOMETRY, HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE);
@@ -149,19 +145,13 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public Geometry getGeometry() {
-        return geometry;
+    public Geometry getFlattenedGeometry() {
+        return flattenedGeometry;
     }
 
-    @Deprecated
-    public void setGeometry(String geom) {
-        WKTReader reader = new WKTReader();
-        try {
-            setGeometry(reader.read(geom));
-        } catch (ParseException e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Unable to read in geometry text", e);
-        }
+    @Override
+    public IAdvancedGeometry getGeometry() {
+        return geometry;
     }
 
     @Override
@@ -195,13 +185,6 @@ public class BaseHazardEvent implements IHazardEvent {
         this.eventId = uuid;
     }
 
-    /**
-     * Return a filtered Event Id String
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil
-     * 
-     * @return the eventID using filtering from HazardServicesEventIdUtil
-     */
     @Override
     public String getDisplayEventID() {
         return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
@@ -292,8 +275,9 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public void setGeometry(Geometry geom) {
-        this.geometry = geom;
+    public void setGeometry(IAdvancedGeometry geometry) {
+        this.geometry = geometry;
+        flattenedGeometry = AdvancedGeometryUtilities.getJtsGeometry(geometry);
     }
 
     @Override
@@ -363,11 +347,6 @@ public class BaseHazardEvent implements IHazardEvent {
         return attributes.get(key);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#hashCode()
-     */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -397,11 +376,6 @@ public class BaseHazardEvent implements IHazardEvent {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -507,12 +481,18 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public void setInsertTime(Date date) {
-        // TODO No-op
+
+        /*
+         * TODO No-op
+         */
     }
 
     @Override
     public Date getInsertTime() {
-        // TODO No-op
+
+        /*
+         * TODO No-op
+         */
         return null;
     }
 

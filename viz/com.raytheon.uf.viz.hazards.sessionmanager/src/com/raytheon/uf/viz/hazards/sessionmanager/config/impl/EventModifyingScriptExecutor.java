@@ -12,6 +12,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 import gov.noaa.gsd.common.utilities.JsonConverter;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
@@ -34,6 +35,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
  * ------------ ---------- ------------ --------------------------
  * Aug 20, 2014    4243    Chris.Golden Initial creation.
  * Sep 16, 2014    4753    Chris.Golden Changed to include mutable properties.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with JsonConverter
+ *                                      static methods.
  * </pre>
  * 
  * @author Chris.Golden
@@ -155,15 +158,19 @@ public class EventModifyingScriptExecutor extends
         script.run(scriptFile);
         script.set(HAZARD_EVENT, hazardEvent);
         script.set(FUNCTION_NAME, functionName);
-        JsonConverter converter = new JsonConverter();
-        script.set(EXTRA_DATA, converter.toJson(mutableProperties));
+        try {
+            script.set(EXTRA_DATA, JsonConverter.toJson(mutableProperties));
+        } catch (IOException e) {
+            statusHandler.error("Could not serialize mutable properties.", e);
+            return null;
+        }
         IHazardEvent result = (IHazardEvent) script.getValue(INVOKE_FUNCTION);
         String jsonData = (result == null ? null : (String) result
                 .getHazardAttribute(ConfigScriptFactory.EXTRA_DATA_ATTRIBUTE));
         Map<String, Map<String, Object>> modifiedMutableProperties = null;
         try {
             modifiedMutableProperties = (Map<String, Map<String, Object>>) (jsonData == null ? Collections
-                    .emptyMap() : converter.fromJson(jsonData));
+                    .emptyMap() : JsonConverter.fromJson(jsonData));
         } catch (Exception e) {
             statusHandler.error(
                     "Could not get convert mutable properties from JSON.", e);

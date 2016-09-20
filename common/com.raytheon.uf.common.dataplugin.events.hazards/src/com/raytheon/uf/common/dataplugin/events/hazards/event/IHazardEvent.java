@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -33,8 +34,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
- * Interface for use with both {@link PracticeHazardEvent} and
- * {@link HazardEvent}
+ * Interface describing the methods that must be implemented by a class that
+ * represents a hazard event.
  * 
  * <pre>
  * 
@@ -60,6 +61,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      replaced by visibility constraints
  *                                      based upon selection state to individual
  *                                      visual features.
+ * Sep 12, 2016 15934      Chris.Golden Changed hazard events to use advanced
+ *                                      geometries instead of JTS geometries.
  * </pre>
  * 
  * @author mnash
@@ -77,26 +80,27 @@ public interface IHazardEvent extends IEvent {
         }
     };
 
-    public Geometry getGeometry();
+    public Geometry getFlattenedGeometry();
 
     public Geometry getProductGeometry();
 
+    public IAdvancedGeometry getGeometry();
+
+    /**
+     * Get the visual feature with the specified identifier.
+     * 
+     * @param identifier
+     *            Identifier of the visual feature.
+     * @return Visual feature with this identifier.
+     */
     public VisualFeature getVisualFeature(String identifier);
 
     /**
-     * Replace the visual feature with the same identifier as the specified
-     * visual feature with the latter.
+     * Get the list of visual features.
      * 
-     * @param visualFeature
-     *            New visual feature.
-     * @return True if the new visual feature replaced the old one, false if no
-     *         visual feature with the given identifier was found.
+     * @return List of visual features.
      */
-    public boolean setVisualFeature(VisualFeature visualFeature);
-
     public VisualFeaturesList getVisualFeatures();
-
-    public void setVisualFeatures(VisualFeaturesList visualFeatures);
 
     public String getSiteID();
 
@@ -151,7 +155,26 @@ public interface IHazardEvent extends IEvent {
 
     public void setTimeRange(Date startTime, Date endTime);
 
-    public void setGeometry(Geometry geom);
+    public void setGeometry(IAdvancedGeometry geometry);
+
+    /**
+     * Replace the visual feature with the same identifier as the specified
+     * visual feature with the latter.
+     * 
+     * @param visualFeature
+     *            New visual feature.
+     * @return True if the new visual feature replaced the old one, false if no
+     *         visual feature with the given identifier was found.
+     */
+    public boolean setVisualFeature(VisualFeature visualFeature);
+
+    /**
+     * Set the list of visual features to that specified.
+     * 
+     * @param visualFeatures
+     *            New list of visual features.
+     */
+    public void setVisualFeatures(VisualFeaturesList visualFeatures);
 
     public void setProductGeometry(Geometry geom);
 

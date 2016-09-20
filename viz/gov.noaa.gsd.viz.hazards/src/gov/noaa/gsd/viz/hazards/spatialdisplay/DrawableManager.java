@@ -9,11 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.DrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.MultiPointDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.TextDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.PgenRangeRecord;
@@ -89,6 +92,11 @@ import com.vividsolutions.jts.geom.Point;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 27, 2016   19537    Chris.Golden Initial creation.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
+ *                                      geometries. Also added hit-testing
+ *                                      code that buffers points being
+ *                                      tested so as to make them easier to
+ *                                      match.
  * </pre>
  * 
  * @author Chris.Golden
@@ -596,6 +604,13 @@ class DrawableManager {
     private final Set<Coordinate> locationsNeedingUpdate = new HashSet<>();
 
     /**
+     * Hit-testable geometries for drawables. These are cached here for any
+     * drawable that requires a hit-test geometry that differs from its standard
+     * geometry.
+     */
+    private final Map<IDrawable<?>, Geometry> hitTestableGeometriesForDrawables = new IdentityHashMap<>();
+
+    /**
      * Drawables representing hatched areas. A set is used instead of a list as
      * the performance is better when removing an item.
      */
@@ -934,9 +949,10 @@ class DrawableManager {
             /*
              * For each drawable, remove the association it has with this
              * spatial entity, remove it from the reactive set if found within
-             * it, and remove any associated renderings. Then further process it
-             * if it is being used as the hover drawable and/or edited drawable,
-             * and/or if it has been combined with other drawables.
+             * it, remove any associated renderings, and remove any associated
+             * hit-testable geometries. Then further process it if it is being
+             * used as the hover drawable and/or edited drawable, and/or if it
+             * has been combined with other drawables.
              */
             for (AbstractDrawableComponent drawable : drawables) {
 
@@ -949,6 +965,7 @@ class DrawableManager {
                  */
                 spatialEntitiesForDrawables.remove(drawable);
                 reactiveDrawables.remove(drawable);
+                hitTestableGeometriesForDrawables.remove(drawable);
                 removeRenderingForDrawable(drawable);
                 renderHatchedAreas |= hatchedAreas.remove(drawable);
 
@@ -1094,7 +1111,7 @@ class DrawableManager {
         List<AbstractDrawableComponent> intersectingDrawables = new ArrayList<>();
         while (iterator.hasNext()) {
             AbstractDrawableComponent drawable = iterator.next();
-            Geometry drawableGeometry = ((IDrawable) drawable).getGeometry();
+            Geometry drawableGeometry = getHitTestGeometry((IDrawable<?>) drawable);
             if ((drawableGeometry != null)
                     && geometry.intersects(drawableGeometry)) {
                 intersectingDrawables.add(drawable);
@@ -1143,7 +1160,7 @@ class DrawableManager {
             for (AbstractDrawableComponent selectedDrawable : reactiveDrawables) {
                 if (isDrawableEditable(selectedDrawable)
                         || isDrawableMovable(selectedDrawable)) {
-                    reactiveIdentifiers.add(((IDrawable) selectedDrawable)
+                    reactiveIdentifiers.add(((IDrawable<?>) selectedDrawable)
                             .getIdentifier());
                 }
             }
@@ -1156,7 +1173,7 @@ class DrawableManager {
                     location, x, y);
             for (AbstractDrawableComponent containingDrawable : containingDrawables) {
                 if (reactiveIdentifiers
-                        .contains(((IDrawable) containingDrawable)
+                        .contains(((IDrawable<?>) containingDrawable)
                                 .getIdentifier())
                         && (isDrawableEditable(containingDrawable) || isDrawableMovable(containingDrawable))) {
                     drawable = containingDrawable;
@@ -1171,7 +1188,7 @@ class DrawableManager {
                 AbstractDrawableComponent nearestDrawable = getNearestDrawable(location);
                 if ((nearestDrawable != null)
                         && reactiveIdentifiers
-                                .contains(((IDrawable) nearestDrawable)
+                                .contains(((IDrawable<?>) nearestDrawable)
                                         .getIdentifier())
                         && (isDrawableEditable(nearestDrawable) || isDrawableMovable(nearestDrawable))) {
                     drawable = nearestDrawable;
@@ -1195,8 +1212,8 @@ class DrawableManager {
                      * determine the distance between the line string and the
                      * given point.
                      */
-                    Coordinate[] shapeCoords = ((IDrawable) drawable)
-                            .getGeometry().getCoordinates();
+                    Coordinate[] shapeCoords = ((GeometryWrapper) ((IDrawable<?>) drawable)
+                            .getGeometry()).getGeometry().getCoordinates();
                     Coordinate[] shapeScreenCoords = new Coordinate[shapeCoords.length];
                     for (int i = 0; i < shapeCoords.length; ++i) {
                         double[] coords = editor
@@ -1269,30 +1286,30 @@ class DrawableManager {
         Iterator<AbstractDrawableComponent> iterator = getDrawablesIterator();
 
         /*
-         * Check each of the hazard polygons. Normally, there will not be too
-         * many of these. However, this could be made more efficient by using a
-         * tree and storing/resusing the geometries.
+         * Iterate through the drawables, checking each in turn.
          */
-        Point clickPoint = geometryFactory.createPoint(point);
-        Geometry clickPointWithSlop = clickPoint
-                .buffer(getTranslatedHitTestSlopDistance(point, x, y));
+        Geometry clickPointWithSlop = getClickPointWithSlop(
+                geometryFactory.createPoint(point), x, y);
+        if (clickPointWithSlop == null) {
+            return Collections.emptyList();
+        }
 
         List<AbstractDrawableComponent> containingDrawables = new ArrayList<>();
 
         while (iterator.hasNext()) {
-            AbstractDrawableComponent comp = iterator.next();
+            AbstractDrawableComponent drawable = iterator.next();
 
             /*
-             * Skip labels (PGEN text objects). These are not selectable for
-             * now.
+             * Skip labels, as they are not selectable.
              */
-            if (comp instanceof IDrawable) {
-                Geometry p = ((IDrawable) comp).getGeometry();
+            if ((drawable instanceof IDrawable)
+                    && (drawable instanceof TextDrawable == false)) {
+                Geometry drawableGeometry = getHitTestGeometry((IDrawable<?>) drawable);
 
-                if (p != null) {
+                if (drawableGeometry != null) {
                     boolean contains = false;
-                    if (p instanceof GeometryCollection) {
-                        GeometryCollection geometryCollection = (GeometryCollection) p;
+                    if (drawableGeometry instanceof GeometryCollection) {
+                        GeometryCollection geometryCollection = (GeometryCollection) drawableGeometry;
                         for (int j = 0; j < geometryCollection
                                 .getNumGeometries(); j++) {
                             Geometry geometry = geometryCollection
@@ -1303,10 +1320,11 @@ class DrawableManager {
                             }
                         }
                     } else {
-                        contains = clickPointWithSlop.intersects(p);
+                        contains = clickPointWithSlop
+                                .intersects(drawableGeometry);
                     }
                     if (contains) {
-                        containingDrawables.add(comp);
+                        containingDrawables.add(drawable);
                     }
                 }
             }
@@ -1341,9 +1359,9 @@ class DrawableManager {
     boolean isDrawableEditable(AbstractDrawableComponent drawable) {
         if (drawable instanceof DECollection) {
             DECollection deCollection = (DECollection) drawable;
-            ((IDrawable) deCollection.getItemAt(0)).isEditable();
+            ((IDrawable<?>) deCollection.getItemAt(0)).isEditable();
         }
-        return ((IDrawable) drawable).isEditable();
+        return ((IDrawable<?>) drawable).isEditable();
     }
 
     /**
@@ -1357,9 +1375,9 @@ class DrawableManager {
     boolean isDrawableMovable(AbstractDrawableComponent drawable) {
         if (drawable instanceof DECollection) {
             DECollection deCollection = (DECollection) drawable;
-            return ((IDrawable) deCollection.getItemAt(0)).isMovable();
+            return ((IDrawable<?>) deCollection.getItemAt(0)).isMovable();
         }
-        return ((IDrawable) drawable).isMovable();
+        return ((IDrawable<?>) drawable).isMovable();
     }
 
     /**
@@ -1519,10 +1537,10 @@ class DrawableManager {
         AbstractDrawableComponent closestSymbol = null;
 
         while (iterator.hasNext()) {
-            AbstractDrawableComponent comp = iterator.next();
+            AbstractDrawableComponent drawable = iterator.next();
 
-            if (comp instanceof TextDrawable == false) {
-                Geometry p = ((IDrawable) comp).getGeometry();
+            if (drawable instanceof TextDrawable == false) {
+                Geometry p = getHitTestGeometry((IDrawable<?>) drawable);
 
                 if (p != null) {
 
@@ -1542,7 +1560,7 @@ class DrawableManager {
 
                         if (distance < minDist) {
                             minDist = distance;
-                            closestSymbol = comp;
+                            closestSymbol = drawable;
                         }
                     }
                 }
@@ -1557,21 +1575,55 @@ class DrawableManager {
     }
 
     /**
+     * Get the hit-testable geometry for the specified drawable.
+     * 
+     * @param drawable
+     *            Drawable for which to get the hit-testable geometry.
+     * @return Hit-testable geometry, or <code>null</code> if the geometry is
+     *         outside the display bounds.
+     */
+    private Geometry getHitTestGeometry(IDrawable<?> drawable) {
+        if (drawable instanceof SymbolDrawable) {
+            Geometry geometry = hitTestableGeometriesForDrawables.get(drawable);
+            if (geometry == null) {
+                Coordinate coordinate = AdvancedGeometryUtilities
+                        .getCentroid(drawable.getGeometry());
+                double[] screenCoords = ((AbstractEditor) VizWorkbenchManager
+                        .getInstance().getActiveEditor())
+                        .translateInverseClick(coordinate);
+                if (screenCoords == null) {
+                    return null;
+                }
+                geometry = getClickPointWithSlop(
+                        geometryFactory.createPoint(coordinate),
+                        (int) (screenCoords[0] + 0.5),
+                        (int) (screenCoords[1] + 0.5));
+                if (geometry != null) {
+                    hitTestableGeometriesForDrawables.put(drawable, geometry);
+                }
+            }
+            return geometry;
+        }
+        return AdvancedGeometryUtilities.getJtsGeometry(drawable.getGeometry());
+    }
+
+    /**
      * Given the specified point in both geographic coordinates and in pixel
      * coordinates, determine a distance in geographic space that suffices as
      * "slop" area for hit tests for geometries that are difficult to hit (one-
-     * and two-dimensional entities).
+     * and two-dimensional entities), and create a geometry encapsulating this
+     * distance around the point.
      * 
-     * @param loc
-     *            Geographic coordinates of point being tested.
+     * @param point
+     *            Geographical coordinates of point being tested.
      * @param x
      *            Pixel X coordinate of point being tested.
      * @param y
      *            Pixel Y coordinate of point being tested.
-     * @return Distance in geographic space that suffices as "slop" area, or
-     *         <code>0.0</code> if the distance could not be calculated.
+     * @return Click point with slop buffering, or <code>null</code> if it was
+     *         not possible to calculate it.
      */
-    private double getTranslatedHitTestSlopDistance(Coordinate loc, int x, int y) {
+    private Geometry getClickPointWithSlop(Point point, int x, int y) {
 
         /*
          * Find the editor.
@@ -1582,10 +1634,11 @@ class DrawableManager {
         /*
          * Try creating a pixel point at the "slop" distance from the original
          * pixel point in each of the four cardinal directions; for each one,
-         * see if this yields a translatable point, and if so, return the
-         * distance between that point and the original geographic point. If
-         * this fails, return 0.
+         * see if this yields a translatable point, and if so, return a geometry
+         * resulting from buffering the point by that distance. If not, return
+         * nothing.
          */
+        Coordinate loc = point.getCoordinate();
         Coordinate offsetLoc = null;
         for (int j = 0; j < 4; j++) {
             offsetLoc = editor
@@ -1597,11 +1650,12 @@ class DrawableManager {
                                     + (SpatialDisplay.SLOP_DISTANCE_PIXELS * (((j + 1) % 2) * (j == 0 ? 1
                                             : -1))));
             if (offsetLoc != null) {
-                return Math.sqrt(Math.pow(loc.x - offsetLoc.x, 2.0)
-                        + Math.pow(loc.y - offsetLoc.y, 2.0));
+                return point.buffer(Math.sqrt(Math
+                        .pow(loc.x - offsetLoc.x, 2.0)
+                        + Math.pow(loc.y - offsetLoc.y, 2.0)));
             }
         }
-        return 0.0;
+        return null;
     }
 
     /**
@@ -2059,6 +2113,11 @@ class DrawableManager {
     private void adjustDrawablesSensitiveToZoom() {
 
         /*
+         * Clear any hit-testable geometries that were recorded previously.
+         */
+        hitTestableGeometriesForDrawables.clear();
+
+        /*
          * Iterate through all text drawables associated directly with spatial
          * entities, notifying each one of the zoom change and, if this results
          * in a change in location, remove its associated rendering. Make a note
@@ -2191,15 +2250,14 @@ class DrawableManager {
                         if ((hatchedArea instanceof MultiPointDrawable)
                                 && ((MultiPointDrawable) hatchedArea)
                                         .isClosedLine()) {
-                            MultiPointDrawable hazardServicesPolygon = (MultiPointDrawable) hatchedArea;
-                            Color[] colors = hazardServicesPolygon.getColors();
+                            MultiPointDrawable polygon = (MultiPointDrawable) hatchedArea;
+                            Color[] colors = polygon.getColors();
                             JTSGeometryData data = groupCompiler
                                     .createGeometryData();
                             data.setGeometryColor(new RGB(colors[0].getRed(),
                                     colors[0].getGreen(), colors[0].getBlue()));
-                            groupCompiler.handle(
-                                    (Geometry) hazardServicesPolygon
-                                            .getGeometry().clone(), data);
+                            groupCompiler.handle((Geometry) polygon
+                                    .getGeometry().getGeometry().clone(), data);
                         }
                     }
 
@@ -2273,7 +2331,7 @@ class DrawableManager {
             PaintProperties paintProperties) throws VizException {
         if (hoverDrawable != null) {
             if ((hoverDrawable instanceof IDrawable)
-                    && ((IDrawable) hoverDrawable).isEditable()) {
+                    && ((IDrawable<?>) hoverDrawable).isEditable()) {
                 if (handleBarPoints.isEmpty() == false) {
                     target.drawPoints(handleBarPoints,
                             HANDLE_BAR_COLOR.getRGB(), PointStyle.DISC,

@@ -71,5 +71,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.raytheon.uf.common.dataquery"/>
 	<classpathentry kind="lib" path="/org.jep/jep-3.4.1.jar" sourcepath="/org.jep/jep.src-3.4.1.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/gov.noaa.gsd.common.visuals"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/org.codehaus.jackson"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

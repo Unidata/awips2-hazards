@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.gfe;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -69,9 +71,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                   GridParmInfo.
  * Apr 08, 2014  3357      bkowal    Updated to use the new interoperability tables.
  * Dec 04, 2014  2826      dgilling  Remove unneeded methods.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * Aug 13, 2015 8836       Chris.Cody  Changes for a configurable Event Id
- * 
+ * May 29, 2015  6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 13, 2015  8836      Chris.Cody  Changes for a configurable Event Id
+ * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries
+ *                                      now used in hazard events.
  * </pre>
  * 
  * @author mnash
@@ -397,13 +400,14 @@ public class GFEHazardsCreator {
             }
         }
         event.setHazardMode(value);
-        event.setGeometry(geom);
+        event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(geom,
+                0));
 
         try {
             // This is here for interoperability, but it does not conform to a
             // HS Event ID
-            event.setEventID(HazardServicesClient.getHazardEventServices(practice)
-                    .requestEventId(rec.getXxxid()));
+            event.setEventID(HazardServicesClient.getHazardEventServices(
+                    practice).requestEventId(rec.getXxxid()));
         } catch (Exception e) {
             throw new RuntimeException("Unable to generate hazard event id", e);
         }

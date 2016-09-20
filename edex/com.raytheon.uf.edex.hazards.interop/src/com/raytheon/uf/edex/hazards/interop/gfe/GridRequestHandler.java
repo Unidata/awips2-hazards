@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.hazards.interop.gfe;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -64,8 +65,9 @@ import com.raytheon.uf.common.time.TimeRange;
  * Apr 08, 2014 3357       bkowal       No longer attempt to save to the Official
  *                                      DB for practice mode.
  * Jan 19, 2014 4840       rferrel      Log error when exception getting GFE Record.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * May 29, 2015 6895       Ben.Phillippe Refactored Hazard Service data access
+ * Sep 14, 2016 15934      Chris.Golden Fixed errors caused when no inventories
+ *                                      for the current site can be found.
  * </pre>
  * 
  * @author jsanchez
@@ -73,7 +75,7 @@ import com.raytheon.uf.common.time.TimeRange;
  */
 
 public class GridRequestHandler {
-    
+
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(GridRequestHandler.class);
 
@@ -86,17 +88,17 @@ public class GridRequestHandler {
 
     public static final String PRACTICE_PARM_ID_FORMAT = PARM_ID_PREFIX_FORMAT
             + "_Prac_" + PARM_ID_SUFFIX_FORMAT;
-    
+
     private String requestRoute;
 
-    public GridRequestHandler(){
-        
+    public GridRequestHandler() {
+
     }
-    
-    public GridRequestHandler(String requestRoute){
+
+    public GridRequestHandler(String requestRoute) {
         this.requestRoute = requestRoute;
     }
-    
+
     /**
      * Retrieves the GridParmInfo for the siteID.
      * 
@@ -105,8 +107,8 @@ public class GridRequestHandler {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    public GridParmInfo requestGridParmInfo(String siteID,
-            String parmIDFormat) throws Exception {
+    public GridParmInfo requestGridParmInfo(String siteID, String parmIDFormat)
+            throws Exception {
         GetGridParmInfoRequest gridParmInfoRequest = new GetGridParmInfoRequest();
         gridParmInfoRequest.setParmIds(Arrays.asList(new ParmID[] { new ParmID(
                 String.format(parmIDFormat, siteID)) }));
@@ -150,9 +152,11 @@ public class GridRequestHandler {
         List<GFERecord> records = new ArrayList<GFERecord>();
         List<TimeRange> inventoryTimeRanges = getGridInventory(parmID);
         List<TimeRange> intersectingTimeRanges = new ArrayList<TimeRange>();
-        for (TimeRange inventoryTimeRange : inventoryTimeRanges) {
-            if (timeRange.overlaps(inventoryTimeRange)) {
-                intersectingTimeRanges.add(inventoryTimeRange);
+        if (inventoryTimeRanges != null) {
+            for (TimeRange inventoryTimeRange : inventoryTimeRanges) {
+                if (timeRange.overlaps(inventoryTimeRange)) {
+                    intersectingTimeRanges.add(inventoryTimeRange);
+                }
             }
         }
         Map<TimeRange, List<GridDataHistory>> histories = getGridHistory(parmID
@@ -189,16 +193,19 @@ public class GridRequestHandler {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    private Map<TimeRange, List<GridDataHistory>> getGridHistory(
-            String siteID, ParmID parmID, List<TimeRange> timeRanges)
-            throws Exception {
-        GetGridHistoryRequest request = new GetGridHistoryRequest();
-        request.setParmID(parmID);
-        request.setTimeRanges(timeRanges);
-        ServerResponse<?> sr = makeRequest(siteID, request);
-        Map<TimeRange, List<GridDataHistory>> histories = (Map<TimeRange, List<GridDataHistory>>) sr
-                .getPayload();
-        return histories;
+    private Map<TimeRange, List<GridDataHistory>> getGridHistory(String siteID,
+            ParmID parmID, List<TimeRange> timeRanges) throws Exception {
+        try {
+            GetGridHistoryRequest request = new GetGridHistoryRequest();
+            request.setParmID(parmID);
+            request.setTimeRanges(timeRanges);
+            ServerResponse<?> sr = makeRequest(siteID, request);
+            Map<TimeRange, List<GridDataHistory>> histories = (Map<TimeRange, List<GridDataHistory>>) sr
+                    .getPayload();
+            return histories;
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
     }
 
     /**
@@ -208,24 +215,28 @@ public class GridRequestHandler {
      * @throws Exception
      */
     @SuppressWarnings("unchecked")
-    public List<TimeRange> getGridInventory(ParmID parmID)
-            throws Exception {
+    public List<TimeRange> getGridInventory(ParmID parmID) throws Exception {
         GetGridInventoryRequest request = new GetGridInventoryRequest();
         request.setParmIds(Arrays.asList(new ParmID[] { parmID }));
-        ServerResponse<Map<ParmID, List<TimeRange>>> response = (ServerResponse<Map<ParmID, List<TimeRange>>>) makeRequest(
-                parmID.getDbId().getSiteId(), request);
-        Map<ParmID, List<TimeRange>> map = response.getPayload();
-        return map.get(parmID);
+        try {
+            ServerResponse<Map<ParmID, List<TimeRange>>> response = (ServerResponse<Map<ParmID, List<TimeRange>>>) makeRequest(
+                    parmID.getDbId().getSiteId(), request);
+            Map<ParmID, List<TimeRange>> map = response.getPayload();
+            return map.get(parmID);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
     private ServerResponse<?> makeRequest(String siteID,
             AbstractGfeRequest request) throws Exception {
         request.setSiteID(siteID);
         request.setWorkstationID(new WsId(null, null, "CAVE"));
-        if(requestRoute == null){
+        if (requestRoute == null) {
             return (ServerResponse<?>) RequestRouter.route(request);
-        }else{
-            return (ServerResponse<?>) RequestRouter.route(request, requestRoute);    
+        } else {
+            return (ServerResponse<?>) RequestRouter.route(request,
+                    requestRoute);
         }
     }
 
@@ -239,9 +250,8 @@ public class GridRequestHandler {
      * @param replacementTimeRange
      * @throws Exception
      */
-    public void store(List<GFERecord> records,
-            GridParmInfo gridParmInfo, TimeRange replacementTimeRange,
-            boolean practice) throws Exception {
+    public void store(List<GFERecord> records, GridParmInfo gridParmInfo,
+            TimeRange replacementTimeRange, boolean practice) throws Exception {
         saveToForecastDB(gridParmInfo, records, replacementTimeRange);
         if (practice == false) {
             saveToOfficialDB(gridParmInfo, replacementTimeRange);
@@ -255,9 +265,9 @@ public class GridRequestHandler {
      * @return
      * @throws Exception
      */
-    private ServerResponse<?> saveToForecastDB(
-            GridParmInfo gridParmInfo, List<GFERecord> records,
-            TimeRange replacementTimeRange) throws Exception {
+    private ServerResponse<?> saveToForecastDB(GridParmInfo gridParmInfo,
+            List<GFERecord> records, TimeRange replacementTimeRange)
+            throws Exception {
         ParmID parmID = gridParmInfo.getParmID();
         String siteID = parmID.getDbId().getSiteId();
         // Make a request to lock the time range of the grid. Otherwise, the
@@ -313,5 +323,5 @@ public class GridRequestHandler {
         }
         return adjacentTimeRanges;
     }
-    
+
 }

@@ -18,6 +18,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -59,8 +61,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * A hazard event which notifies the SessionEventManager whenever fields are
@@ -134,6 +134,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      visual features.
  * Jun 23, 2016 19537      Chris.Golden Changed to use new constructor for visual
  *                                      feature change notification.
+ * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries
+ *                                      now used by hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -180,8 +182,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
      */
     private volatile Boolean modified = false;
 
-    private final GeometryFactory geometryFactory = new GeometryFactory();
-
     @Override
     public Date getStartTime() {
         return delegate.getStartTime();
@@ -193,8 +193,13 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public Geometry getGeometry() {
+    public IAdvancedGeometry getGeometry() {
         return delegate.getGeometry();
+    }
+
+    @Override
+    public Geometry getFlattenedGeometry() {
+        return delegate.getFlattenedGeometry();
     }
 
     @Override
@@ -308,32 +313,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         return (newObj.equals(oldObj) == false);
     }
 
-    private final boolean changed(Geometry newObj, Geometry oldObj) {
-        if (newObj == null) {
-            if (oldObj == null) {
-                return false;
-            }
-        } else if (newObj instanceof GeometryCollection) {
-            if (oldObj instanceof GeometryCollection) {
-                int size = newObj.getNumGeometries();
-                if (size != oldObj.getNumGeometries()) {
-                    return true;
-                }
-                for (int j = 0; j < size; j++) {
-                    if (newObj.getGeometryN(j).equalsExact(
-                            oldObj.getGeometryN(j)) == false) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-            return true;
-        } else if (newObj.equalsExact(oldObj)) {
-            return false;
-        }
-        return true;
-    }
-
     @Override
     public Map<String, Serializable> getHazardAttributes() {
         Map<String, Serializable> attr = delegate.getHazardAttributes();
@@ -410,8 +389,15 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     }
 
     @Override
-    public void setGeometry(Geometry geom) {
-        setGeometry(geom, true, Originator.OTHER);
+    public void setGeometry(IAdvancedGeometry geometry) {
+        setGeometry(geometry, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setProductGeometry(Geometry geometry) {
+        geometry = AdvancedGeometryUtilities
+                .getJtsGeometryAsCollection(geometry);
+        delegate.setProductGeometry(geometry);
     }
 
     @Override
@@ -510,8 +496,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         setTimeRange(startTime, endTime, true, originator);
     }
 
-    public void setGeometry(Geometry geom, IOriginator originator) {
-        setGeometry(geom, true, originator);
+    public void setGeometry(IAdvancedGeometry geometry, IOriginator originator) {
+        setGeometry(geometry, true, originator);
     }
 
     public boolean setVisualFeature(VisualFeature visualFeature,
@@ -710,21 +696,29 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         }
     }
 
-    protected void setGeometry(Geometry geom, boolean notify,
+    /**
+     * Set the geometry to be that specified.
+     * 
+     * @param geometry
+     *            New geometry.
+     * @param notify
+     *            Flag indicating whether or not to send out a notification of
+     *            any change that results.
+     * @param originator
+     *            Originator of the change.
+     */
+    protected void setGeometry(IAdvancedGeometry geometry, boolean notify,
             IOriginator originator) {
-        geom = toCollectionAsNecessary(geom);
-        if (changed(getGeometry(), geom)) {
-            pushToStack("setGeometry", Geometry.class, getGeometry());
-            delegate.setGeometry(geom);
+        if (changed(getGeometry(), geometry)) {
+            pushToStack("setGeometry", IAdvancedGeometry.class, getGeometry());
+            delegate.setGeometry(geometry);
 
             if (notify) {
                 eventManager
                         .hazardEventModified(new SessionEventGeometryModified(
                                 eventManager, this, originator));
             }
-
         }
-
     }
 
     /**
@@ -865,24 +859,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
             }
         }
         return changedIdentifiers;
-    }
-
-    private Geometry toCollectionAsNecessary(Geometry geom) {
-        /*
-         * Make sure that geometries are GeometryCollections throughout
-         */
-        if (!(geom instanceof GeometryCollection)) {
-            geom = geometryFactory
-                    .createGeometryCollection(new Geometry[] { geom });
-        }
-        return geom;
-
-    }
-
-    @Override
-    public void setProductGeometry(Geometry geom) {
-        geom = toCollectionAsNecessary(geom);
-        delegate.setProductGeometry(geom);
     }
 
     protected void setHazardMode(ProductClass mode, boolean notify,

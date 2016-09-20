@@ -9,11 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 
 import java.util.Date;
-
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Description: Information about the modification of an entity's geometry.
@@ -24,6 +23,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 29, 2016   19537    Chris.Golden Initial creation.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
+ *                                      geometries.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,7 +42,7 @@ public class EntityGeometryModificationContext {
     /**
      * New geometry for the entity.
      */
-    private final Geometry geometry;
+    private final IAdvancedGeometry geometry;
 
     /**
      * Selected time for which this change occurred.
@@ -61,7 +62,7 @@ public class EntityGeometryModificationContext {
      *            Selected time for which this change occurred.
      */
     public EntityGeometryModificationContext(IEntityIdentifier identifier,
-            Geometry geometry, Date selectedTime) {
+            IAdvancedGeometry geometry, Date selectedTime) {
         this.identifier = identifier;
         this.geometry = geometry;
         this.selectedTime = selectedTime;
@@ -83,7 +84,7 @@ public class EntityGeometryModificationContext {
      * 
      * @return New geometry to be used for the entity.
      */
-    public Geometry getGeometry() {
+    public IAdvancedGeometry getGeometry() {
         return geometry;
     }
 

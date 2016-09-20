@@ -38,6 +38,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.R
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
@@ -151,7 +153,6 @@ import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
-import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
  * Implementation of ISessionEventManager
@@ -404,6 +405,10 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      events that experienced a selection state change. Also added checks
  *                                      to ensure that notifications do not go out about hazard events that
  *                                      are not currently being managed by the session event manager.
+ * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries now used by hazard events.
+ *                                      Also removed code that was redundant from addEvent() that added
+ *                                      a geometry to an existing event, since this is not the job of the
+ *                                      session manager and was already being done by the spatial presenter.
  * </pre>
  * 
  * @author bsteffen
@@ -982,7 +987,7 @@ public class SessionEventManager implements
 
     @Override
     public boolean setEventGeometry(ObservedHazardEvent event,
-            Geometry geometry, IOriginator originator) {
+            IAdvancedGeometry geometry, IOriginator originator) {
 
         /*
          * If the geometry change is valid and the user confirms (if necessary),
@@ -2324,53 +2329,6 @@ public class SessionEventManager implements
             }
         }
 
-        /*
-         * Verify that the hazard was not created server-side to fulfill
-         * interoperability requirements.
-         */
-        if ((event.getStatus() == null
-                || event.getStatus() == HazardStatus.PENDING || event
-                .getStatus() == HazardStatus.POTENTIAL)
-                && event.getHazardAttributes().containsKey(
-                        HazardConstants.GFE_INTEROPERABILITY) == false) {
-
-            /*
-             * Can only add geometry to selected if the hazard type is empty.
-             */
-            if ((Boolean.TRUE.equals(configManager.getSettings()
-                    .getAddGeometryToSelected()))
-                    && (event.getHazardType() == null)
-                    && (getSelectedEvents().size() == 1)) {
-                ObservedHazardEvent existingEvent = getSelectedEvents()
-                        .iterator().next();
-                Geometry existingGeometries = existingEvent.getGeometry();
-                List<Geometry> geometryList = new ArrayList<>();
-
-                for (int i = 0; i < existingGeometries.getNumGeometries(); ++i) {
-                    geometryList.add(existingGeometries.getGeometryN(i));
-                }
-
-                Geometry newGeometries = oevent.getGeometry();
-
-                for (int i = 0; i < newGeometries.getNumGeometries(); ++i) {
-                    geometryList.add(newGeometries.getGeometryN(i));
-                }
-
-                GeometryCollection geometryCollection = geometryFactory
-                        .createGeometryCollection(geometryList
-                                .toArray(new Geometry[geometryList.size()]));
-
-                /*
-                 * Combine the geometryCollection together!
-                 */
-                Geometry geom = geometryCollection.union();
-                existingEvent.setGeometry(geom);
-                existingEvent
-                        .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
-                return existingEvent;
-            }
-        }
-
         ObservedSettings settings = configManager.getSettings();
 
         Set<String> visibleSites = configManager.getSettingsValue(
@@ -3523,7 +3481,8 @@ public class SessionEventManager implements
 
             Map<IHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
                     eventToCheck, eventToCheck.getStartTime(),
-                    eventToCheck.getEndTime(), eventToCheck.getGeometry(),
+                    eventToCheck.getEndTime(),
+                    eventToCheck.getFlattenedGeometry(),
                     HazardEventUtilities.getHazardType(eventToCheck));
 
             if (!conflictingHazards.isEmpty()) {
@@ -3556,7 +3515,8 @@ public class SessionEventManager implements
 
             Map<IHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
                     eventToCheck, eventToCheck.getStartTime(),
-                    eventToCheck.getEndTime(), eventToCheck.getGeometry(),
+                    eventToCheck.getEndTime(),
+                    eventToCheck.getFlattenedGeometry(),
                     HazardEventUtilities.getHazardType(eventToCheck));
 
             if (!conflictingHazards.isEmpty()) {
@@ -4086,13 +4046,12 @@ public class SessionEventManager implements
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean isValidGeometryChange(Geometry geometry,
+    public boolean isValidGeometryChange(IAdvancedGeometry geometry,
             ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
-        if (checkGeometryValidity && !geometry.isValid()) {
-            IsValidOp op = new IsValidOp(geometry);
-            statusHandler.warn("Invalid Geometry: "
-                    + op.getValidationError().getMessage()
-                    + ": Geometry modification undone");
+        if (checkGeometryValidity && (geometry.isValid() == false)) {
+            statusHandler.warn("Invalid geometry: "
+                    + geometry.getValidityProblemDescription()
+                    + "; geometry modification undone.");
             return false;
         }
         if (hasEverBeenIssued(hazardEvent)) {
@@ -4229,12 +4188,13 @@ public class SessionEventManager implements
             Map<String, IGeometryData> allUGCs = geoMapUtilities
                     .getUgcsGeometryDataMapping(mapDBtableName, mapGeometryData);
 
-            Geometry hazardEventGeometry = hazardEvent.getGeometry();
+            Geometry hazardEventBaseGeometry = hazardEvent
+                    .getFlattenedGeometry();
 
-            Geometry modifiedHazardGeometry = hazardEventGeometry;
+            Geometry modifiedHazardBaseGeometry = hazardEventBaseGeometry;
             if (geoMapUtilities.isPointBasedHatching(hazardEvent) == false) {
-                GeometryCollection asGeometryCollection = (GeometryCollection) hazardEventGeometry;
-                modifiedHazardGeometry = geoMapUtilities
+                GeometryCollection asGeometryCollection = (GeometryCollection) hazardEventBaseGeometry;
+                modifiedHazardBaseGeometry = geoMapUtilities
                         .asUnion(asGeometryCollection);
             }
 
@@ -4246,30 +4206,33 @@ public class SessionEventManager implements
                 String hazardArea = hazardAreas.get(enclosingUGC);
                 if (geoMapUtilities.isWarngenHatching(hazardEvent)) {
                     warngenHatchingAddRemove(hazardAreas, locationAsGeometry,
-                            modifiedHazardGeometry, enclosingUGC, hazardArea);
+                            modifiedHazardBaseGeometry, enclosingUGC,
+                            hazardArea);
                     if (!(hazardAreas.values().contains(HAZARD_AREA_ALL) || hazardAreas
                             .values().contains(HAZARD_AREA_INTERSECTION))) {
                         statusHandler.warn(EMPTY_GEOMETRY_ERROR);
                         return;
                     }
                     if (hazardAreas.get(enclosingUGC) == HazardConstants.HAZARD_AREA_NONE) {
-                        modifiedHazardGeometry = modifiedHazardGeometry
+                        modifiedHazardBaseGeometry = modifiedHazardBaseGeometry
                                 .difference(enclosingUgcGeometry);
                     } else {
-                        modifiedHazardGeometry = modifiedHazardGeometry
+                        modifiedHazardBaseGeometry = modifiedHazardBaseGeometry
                                 .union(enclosingUgcGeometry);
                     }
-                    if (isValidGeometryChange(modifiedHazardGeometry,
+                    if (isValidGeometryChange(
+                            AdvancedGeometryUtilities.createGeometryWrapper(
+                                    modifiedHazardBaseGeometry, 0),
                             hazardEvent, true) == false) {
                         return;
                     }
                 } else if (geoMapUtilities.isPointBasedHatching(hazardEvent)) {
                     pointBasedAddRemove(hazardAreas, enclosingUGC, hazardArea);
                 } else {
-                    modifiedHazardGeometry = gfeHatchingAddRemove(hazardAreas,
-                            modifiedHazardGeometry, enclosingUGC,
-                            enclosingUgcGeometry, hazardArea);
-                    if (modifiedHazardGeometry.isEmpty()) {
+                    modifiedHazardBaseGeometry = gfeHatchingAddRemove(
+                            hazardAreas, modifiedHazardBaseGeometry,
+                            enclosingUGC, enclosingUgcGeometry, hazardArea);
+                    if (modifiedHazardBaseGeometry.isEmpty()) {
                         statusHandler.warn(EMPTY_GEOMETRY_ERROR);
                         return;
                     }
@@ -4278,8 +4241,10 @@ public class SessionEventManager implements
 
             }
 
-            hazardEventGeometry = modifiedHazardGeometry;
-            hazardEvent.setGeometry(hazardEventGeometry, originator);
+            hazardEventBaseGeometry = modifiedHazardBaseGeometry;
+            hazardEvent.setGeometry(AdvancedGeometryUtilities
+                    .createGeometryWrapper(hazardEventBaseGeometry, 0),
+                    originator);
             hazardEvent.addHazardAttribute(HAZARD_AREA,
                     (Serializable) hazardAreas, true, originator);
         } catch (TopologyException e) {
@@ -4306,14 +4271,15 @@ public class SessionEventManager implements
         /*
          * By default, just set the low res to the high res
          */
-        Geometry result = selectedEvent.getGeometry();
+        Geometry result = selectedEvent.getFlattenedGeometry();
 
         if (isLowResComputationNeeded(selectedEvent, hazardType)) {
-            // No clipping for National and for non-hatching
-            if (configManager.getSiteID().equals("National")
-                    || geoMapUtilities.isNonHatching(selectedEvent)) {
-                result = selectedEvent.getGeometry();
-            } else {
+
+            /*
+             * No clipping for National and for non-hatching.
+             */
+            if ((configManager.getSiteID().equals(HazardConstants.NATIONAL) == false)
+                    && (geoMapUtilities.isNonHatching(selectedEvent) == false)) {
                 if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
                     result = geoMapUtilities.warngenClipping(selectedEvent,
                             hazardType);
@@ -4321,7 +4287,6 @@ public class SessionEventManager implements
                     if (!result.isEmpty()) {
                         result = addGoosenecksAsNecessary(result);
                     }
-
                 } else {
                     result = geoMapUtilities.gfeClipping(selectedEvent);
                 }

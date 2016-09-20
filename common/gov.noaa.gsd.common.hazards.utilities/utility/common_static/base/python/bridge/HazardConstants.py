@@ -17,6 +17,7 @@
     Oct 29, 2014     5070   mpduff               Added SITE_CFG_ROOT for move of SiteCFG.py
     Apr 07, 2015     7271   Chris.Golden         Added reference to new missing value
                                                  constant.
+    Sep 02, 2016    15934   Chris.Golden         Added linear unit constants.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -57,6 +58,13 @@ EXPIRATION_TIME = "expirationTime"
 
 # Session State
 SELECTED_TIME_MS = "selectedTimeMS"
+
+# Linear units
+LINEAR_UNITS_FEET = "feet"
+LINEAR_UNITS_MILES = "miles"
+LINEAR_UNITS_NAUTICAL_MILES = "nauticalMiles"
+LINEAR_UNITS_KILOMETERS = "kilometers"
+LINEAR_UNITS_METERS = "meters"
 
 # Meta Data
 CAUSES = "causes"

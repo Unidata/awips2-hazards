@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 import java.util.Collection;
@@ -96,6 +97,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      hazard event notification listener to know whether or not
  *                                      to forward on notifications.
  * Aug 18, 2016 19537      Chris.Golden Added originator to sortEvents() method.
+ * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries now used by
+ *                                      hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -208,7 +211,7 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            Originator of this change.
      * @return True if the new geometry is now in use, false if it was rejected.
      */
-    public boolean setEventGeometry(E event, Geometry geometry,
+    public boolean setEventGeometry(E event, IAdvancedGeometry geometry,
             IOriginator originator);
 
     /**
@@ -614,8 +617,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     /**
      * Determine whether the specified hazard event may accept the specified
      * geometry as its new geometry. It is assumed that the geometry is valid,
-     * i.e. {@link Geometry#isValid()} returns <code>true</code>, if this method
-     * is told not to check geometry validity.
+     * i.e. {@link IAdvancedGeometry#isValid()} returns <code>true</code>, if
+     * this method is told not to check geometry validity.
      * 
      * @param geometry
      *            Geometry to be used.
@@ -627,8 +630,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return True if the geometry of the given hazard event can be modified to
      *         the given geometry, false otherwise,.
      */
-    public boolean isValidGeometryChange(Geometry geometry, E hazardEvent,
-            boolean checkGeometryValidity);
+    public boolean isValidGeometryChange(IAdvancedGeometry geometry,
+            E hazardEvent, boolean checkGeometryValidity);
 
     /**
      * Find the UGC enclosing the given location. If that UGC is included in the

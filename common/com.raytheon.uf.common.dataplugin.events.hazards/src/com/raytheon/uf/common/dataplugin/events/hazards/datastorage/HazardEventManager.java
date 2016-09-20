@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -53,9 +55,12 @@ import com.vividsolutions.jts.geom.Geometry;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Oct 5, 2012            mnash     Initial creation
- * Nov  04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Oct 5, 2012            mnash         Initial creation
+ * Nov 04, 2013   2182    Dan Schaffer  Started refactoring
+ * May 29, 2015   6895    Ben.Phillippe Refactored Hazard Service data access
+ * Sep 14, 2016  15934    Chris.Golden  Changed to handle advanced geometries
+ *                                      now used by hazard events in place of
+ *                                      JTS geometries.
  * 
  * </pre>
  * 
@@ -211,7 +216,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public Map<String, HazardHistoryList> getByGeometry(Geometry geometry) {
         return this.query(new HazardEventQueryRequest().and(
-                HazardConstants.GEOMETRY, geometry));
+                HazardConstants.GEOMETRY,
+                AdvancedGeometryUtilities.createGeometryWrapper(geometry, 0)));
     }
 
     @Override

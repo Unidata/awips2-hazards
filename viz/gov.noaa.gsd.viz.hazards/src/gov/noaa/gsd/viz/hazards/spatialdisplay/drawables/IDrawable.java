@@ -7,15 +7,16 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
-
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * 
  * Description: Interface describing the methods that must be implemented by all
- * drawables used within the spatial display.
+ * drawables used within the spatial display. The generic parameter
+ * <code>G</code> provides the geometry type that is associated with
+ * implementing subclasses.
  * 
  * <pre>
  * 
@@ -30,12 +31,14 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
  * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
  * Jul 25, 2016 19537      Chris.Golden        Renamed.
+ * Sep 12, 2016 15934      Chris.Golden        Changed to work with advanced
+ *                                             geometries.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public interface IDrawable {
+public interface IDrawable<G extends IAdvancedGeometry> {
 
     /**
      * Get the identifier.
@@ -45,12 +48,12 @@ public interface IDrawable {
     public IEntityIdentifier getIdentifier();
 
     /**
-     * Returns the geometry version of this shape. All shapes have an associated
-     * JTS geometries.
+     * Returns the geometry version of this shape.
      * 
-     * @return Geometry representing this shape.
+     * @return Geometry representing this shape, or <code>null</code> if no
+     *         geometry is associated with it.
      */
-    public Geometry getGeometry();
+    public G getGeometry();
 
     /**
      * Get the index of the sub-geometry this shape represents within the

@@ -7,23 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.nws.ncep.ui.pgen.display.SymbolImageUtil;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
-
-import java.util.List;
-
-import org.eclipse.swt.graphics.Rectangle;
-
-import com.google.common.collect.Lists;
-import com.raytheon.uf.viz.core.IDisplayPane;
-import com.raytheon.uf.viz.core.IExtent;
-import com.raytheon.viz.ui.VizWorkbenchManager;
-import com.raytheon.viz.ui.editor.AbstractEditor;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LinearRing;
 
 /**
  * Single-lat-lon-location symbol drawable.
@@ -44,17 +31,26 @@ import com.vividsolutions.jts.geom.LinearRing;
  * Aug 22, 2016 19537      Chris.Golden        Removed unneeded layer constructor
  *                                             parameter. Also added toString()
  *                                             method.
+ * Sep 12, 2016 15934      Chris.Golden        Changed to work with advanced
+ *                                             geometries. Also removed code that
+ *                                             was designed to make the drawable's
+ *                                             geometry a polygon so that hit tests
+ *                                             could be done using it; hit testing
+ *                                             is the job of the spatial display, not
+ *                                             the individual drawables, which merely
+ *                                             supply their true geometries.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class SymbolDrawable extends Symbol implements IDrawable {
+public class SymbolDrawable extends Symbol implements
+        IDrawable<GeometryWrapper> {
 
     private final IEntityIdentifier identifier;
 
     private boolean movable = true;
 
-    private Geometry geometry = null;
+    private GeometryWrapper geometry = null;
 
     private final int geometryIndex;
 
@@ -67,21 +63,21 @@ public class SymbolDrawable extends Symbol implements IDrawable {
      *            Attributes controlling the appearance of this symbol.
      * @param pgenType
      *            The PGEN type of this symbol, indicating the symbol geometry.
-     * @param location
-     *            Lat-lon location of this symbol.
+     * @param geometry
+     *            Point geometry for this symbol.
      */
     public SymbolDrawable(IEntityIdentifier identifier,
             DrawableAttributes drawingAttributes, String pgenType,
-            Coordinate location) {
+            GeometryWrapper geometry) {
         this.identifier = identifier;
+        this.geometry = geometry;
         this.geometryIndex = drawingAttributes.getGeometryIndex();
-        setLocation(location);
+        setLocation(AdvancedGeometryUtilities.getCentroid(geometry));
         setPgenCategory(pgenType);
         setPgenType(pgenType);
         setColors(drawingAttributes.getColors());
         setLineWidth(drawingAttributes.getLineWidth());
         setSizeScale(drawingAttributes.getSizeScale());
-        updateEnclosingGeometry();
     }
 
     // Public Methods
@@ -92,7 +88,7 @@ public class SymbolDrawable extends Symbol implements IDrawable {
     }
 
     @Override
-    public Geometry getGeometry() {
+    public GeometryWrapper getGeometry() {
         return geometry;
     }
 
@@ -124,75 +120,5 @@ public class SymbolDrawable extends Symbol implements IDrawable {
     @Override
     public String toString() {
         return getIdentifier() + " (symbol = \"" + getPgenType() + "\")";
-    }
-
-    // Private Methods
-
-    /**
-     * Update the geometry, which represents the selectable area associated with
-     * this symbol.
-     */
-    private void updateEnclosingGeometry() {
-
-        /*
-         * Build the enclosing geometry for selection purposes.
-         */
-        double deviceScale;// = 0.3713365;
-        double symbolScale = 0.03;
-
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-        IDisplayPane displayPane = editor.getActiveDisplayPane();
-        displayPane.getBounds();
-        displayPane.getRenderableDisplay().getView();
-
-        IExtent pe = displayPane.getRenderableDisplay().getView().getExtent();
-        deviceScale = pe.getHeight() / 300.0;
-
-        /*
-         * Set the screen to pixel ratio.
-         */
-        Rectangle bounds = displayPane.getBounds();
-
-        double screenToWorldRatio = bounds.width / pe.getWidth();
-        double sfactor = this.getSizeScale() * screenToWorldRatio * deviceScale
-                * symbolScale;
-        double imageSize = SymbolImageUtil.INITIAL_IMAGE_SIZE
-                * Math.ceil(sfactor);
-
-        imageSize /= 2;
-
-        /*
-         * Translate the center point to screen pixels.
-         */
-        double[] centerPointPixels = editor.translateInverseClick(this
-                .getLocation());
-        double lowerY = centerPointPixels[1] - imageSize;
-        double upperY = centerPointPixels[1] + imageSize;
-        double lowerX = centerPointPixels[0] - imageSize;
-        double upperX = centerPointPixels[0] + imageSize;
-
-        GeometryFactory gf = new GeometryFactory();
-
-        List<Coordinate> drawnPoints = Lists.newArrayList();
-        drawnPoints.add(editor.translateClick(lowerX, lowerY));
-        drawnPoints.add(editor.translateClick(upperX, lowerY));
-        drawnPoints.add(editor.translateClick(upperX, upperY));
-        drawnPoints.add(editor.translateClick(lowerX, upperY));
-        drawnPoints.add(drawnPoints.get(0));
-
-        /*
-         * Do not attempt to draw anything that is outside of the grid extent of
-         * the display. Typically, translateClick() will return null for a point
-         * that is outside of its grid extent. This seems to be mainly a problem
-         * in the GFE perspective.
-         */
-        if (!drawnPoints.contains(null)) {
-            LinearRing ls = gf.createLinearRing(drawnPoints
-                    .toArray(new Coordinate[0]));
-            geometry = gf.createPolygon(ls, null);
-        } else {
-            geometry = null;
-        }
     }
 }

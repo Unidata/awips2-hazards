@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.warngen;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
@@ -46,7 +48,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Dec 04, 2014 2826       dgilling     Revert previous change, remove unneeded methods.
  * Dec 15, 2014 2826       dgilling     Code cleanup, re-factor.
  * Jan 23, 2015 2826       dgilling     Refactor based on AbstractLegacyAppInteropSrv.
- * 
+ * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries now used in
+ *                                      hazard events.
  * </pre>
  * 
  * @author mnash
@@ -107,9 +110,10 @@ public final class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
     @Override
     protected IHazardEvent addAppSpecificHazardAttributes(IHazardEvent event,
             AbstractWarningRecord warningRecord, IHazardEventManager manager) {
-        event.setGeometry(new GeometryFactory()
-                .createGeometryCollection(new Geometry[] { warningRecord
-                        .getGeometry() }));
+        event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(
+                new GeometryFactory()
+                        .createGeometryCollection(new Geometry[] { warningRecord
+                                .getGeometry() }), 0));
 
         String floodSeverity = warningRecord.getFloodSeverity();
         if (floodSeverity != null) {

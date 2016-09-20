@@ -5,6 +5,7 @@ import datetime, math
 import EventFactory, EventSetFactory, GeometryFactory
 import RecommenderTemplate
 import TimeUtils
+import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 from ProbUtils import ProbUtils
 import logging, UFStatusHandler
@@ -524,7 +525,7 @@ class Recommender(RecommenderTemplate.Recommender):
          
     def _setEventGeometry(self, event, polygon):
         polygon = self._probUtils._reducePolygon(polygon)
-        event.setGeometry(polygon)
+        event.setGeometry(AdvancedGeometry.createShapelyWrapper(polygon, 0))
 
     ##############################################
     # Upstream / Downstream set up               #
@@ -656,7 +657,7 @@ class Recommender(RecommenderTemplate.Recommender):
             poly = motionVectorPolys[i]
             st, et = motionVectorTimes[i]
             motionVectorTuples.append((poly, st, et))
-            print 'SR motionVector Poly, startTime:', poly.centroid, st
+            print 'SR motionVector Poly, startTime:', poly.asShapely().centroid, st
             self.flush()
             
         #print "SR motionVectorTuples", len(motionVectorTuples)
@@ -738,7 +739,11 @@ class Recommender(RecommenderTemplate.Recommender):
         if not downstreamPolys:
             return
         downstreamTimes = event.get('downstreamTimes')
-        geometry = event.getGeometry() 
+        
+        # TODO: This should probably just be event.getGeometry() once ellipses
+        # are handled by this recommender. Right now, it is flattened so that
+        # any ellipse, etc. is treated as a polygon.
+        geometry = event.getFlattenedGeometry()
         
         features = []
         # Downstream Polygons, Track Points, Relocated Downstream 
@@ -769,7 +774,7 @@ class Recommender(RecommenderTemplate.Recommender):
             features.append(downstreamFeature)
                
             # Track Points 
-            centroid = poly.centroid
+            centroid = poly.asShapely().centroid
             color = self._probUtils._getInterpolatedProbTrendColor(event, i, numIntervals)
             trackPointFeature = {
               "identifier": "swathRec_trackPoint_"+str(polySt_ms),
@@ -780,7 +785,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "geometry": {
                   (upstreamSt_ms,
                    TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
-                   centroid
+                   AdvancedGeometry.createShapelyWrapper(centroid, 0)
                }
             }
             features.append(trackPointFeature)
@@ -805,7 +810,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   "textSize": "eventType",
                   "dragCapability": dragCapability, 
                   "geometry": {
-                      (polySt_ms, polyEnd): relocatedPoly
+                      (polySt_ms, polyEnd): AdvancedGeometry.createShapelyWrapper(relocatedPoly, 0)
                        }
                 }
                 features.append(relocatedFeature)
@@ -819,7 +824,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   "fillColor": { "red": 1, "green": 1, "blue": 1},
                   "diameter": 6,
                    "geometry": {
-                      (polySt_ms, polyEnd): centroid
+                      (polySt_ms, polyEnd): AdvancedGeometry.createShapelyWrapper(centroid, 0)
                        }
                 }
                features.append(centroidFeature)
@@ -827,6 +832,10 @@ class Recommender(RecommenderTemplate.Recommender):
         return features
 
     def _swathFeature(self, event, upstreamSt_ms, downstreamPolys):
+        advancedGeometries = downstreamPolys
+        downstreamPolys = []
+        for geometry in advancedGeometries:
+            downstreamPolys.append(geometry.asShapely())
         envelope = shapely.ops.cascaded_union(downstreamPolys)
         swath = {
               "identifier": "swathRec_swath",
@@ -837,7 +846,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "geometry": {
                   (upstreamSt_ms,
                    TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
-                   envelope
+                   AdvancedGeometry.createShapelyWrapper(envelope, 0)
                }
               }
         return swath
@@ -848,8 +857,8 @@ class Recommender(RecommenderTemplate.Recommender):
         features = []
         for i in range(len(motionVectorTimes)):
             st, et = motionVectorTimes[i]
-            poly = motionVectorPolys[i]                        
-            centroid = poly.centroid
+            poly = motionVectorPolys[i].asShapely()                        
+            centroid = AdvancedGeometry.createShapelyWrapper(poly.centroid, 0)
             feature = {
               "identifier": "swathRec_motionVector_"+str(st),
               "visibilityConstraints": "selected",
@@ -903,7 +912,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     "geometry": {
                         (upstreamSt_ms,
                         #(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), 
-                         TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())): poly
+                         TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
+                                 AdvancedGeometry.createShapelyWrapper(poly, 0)
                     }
                 }
                 gridFeatures.append(gridPreviewPoly)
@@ -1087,7 +1097,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 print '=== ... ==='
             if eventLevel >= 3:
                 print '=== geometry ==='
-                pprint.pprint(event.getGeometry())
+                pprint.pprint(event.getFlattenedGeometry())
                 print '=== ... ==='
             self.flush()
                 

@@ -7,6 +7,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.BorderStyle;
 import gov.noaa.gsd.common.visuals.DragCapability;
 import gov.noaa.gsd.common.visuals.FillStyle;
@@ -30,11 +34,6 @@ import java.util.Set;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygonal;
 
 /**
  * 
@@ -101,6 +100,7 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      Also added ability to break spatial entity label
  *                                      text into different lines, using newline
  *                                      characters as delimiters.
+ * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -207,14 +207,14 @@ public class DrawableBuilder {
              * create a single drawable component for the entire geometry.
              */
             createDrawableAttributes = false;
-            Geometry geometry = spatialEntity.getGeometry();
-            if (geometry instanceof GeometryCollection) {
-                GeometryCollection geometryCollection = (GeometryCollection) geometry;
-                for (int j = 0; j < geometryCollection.getNumGeometries(); j++) {
+            IAdvancedGeometry geometry = spatialEntity.getGeometry();
+            if (geometry instanceof AdvancedGeometryCollection) {
+                List<IAdvancedGeometry> subGeometries = ((AdvancedGeometryCollection) geometry)
+                        .getChildren();
+                for (int j = 0; j < subGeometries.size(); j++) {
                     drawableComponents.add(buildDrawable(spatialEntity,
-                            geometryCollection.getGeometryN(j),
-                            (geometryCollection.getNumGeometries() == 1 ? -1
-                                    : j)));
+                            subGeometries.get(j),
+                            (subGeometries.size() == 1 ? -1 : j)));
                 }
             } else {
                 drawableComponents.add(buildDrawable(spatialEntity, geometry,
@@ -348,18 +348,22 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildDrawable(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex) {
-        Class<?> geometryClass = geometry.getClass();
+            IAdvancedGeometry geometry, int geometryIndex) {
         AbstractDrawableComponent drawableComponent = null;
-        if (geometryClass.equals(Point.class)) {
-            drawableComponent = buildPoint(spatialEntity, geometry,
-                    geometryIndex);
-        } else if (geometryClass.equals(LineString.class)) {
-            drawableComponent = buildLine(spatialEntity, geometry,
-                    geometryIndex);
+        if (geometry.isPotentiallyCurved()) {
+
+            /*
+             * TODO: Create ellipse.
+             */
+        } else if (geometry.isPunctual()) {
+            drawableComponent = buildPoint(spatialEntity,
+                    (GeometryWrapper) geometry, geometryIndex);
+        } else if (geometry.isLineal()) {
+            drawableComponent = buildLine(spatialEntity,
+                    (GeometryWrapper) geometry, geometryIndex);
         } else {
-            drawableComponent = buildPolygon(spatialEntity, geometry,
-                    geometryIndex);
+            drawableComponent = buildPolygon(spatialEntity,
+                    (GeometryWrapper) geometry, geometryIndex);
         }
         return drawableComponent;
     }
@@ -377,22 +381,29 @@ public class DrawableBuilder {
      */
     private void buildHatchedAreas(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, List<AbstractDrawableComponent> hatchedAreas) {
-        if (geometry instanceof GeometryCollection) {
-            GeometryCollection geometryCollection = (GeometryCollection) geometry;
-            for (int j = 0; j < geometryCollection.getNumGeometries(); j++) {
-                buildHatchedAreas(spatialEntity,
-                        geometryCollection.getGeometryN(j), hatchedAreas);
+            IAdvancedGeometry geometry,
+            List<AbstractDrawableComponent> hatchedAreas) {
+        if (geometry instanceof AdvancedGeometryCollection) {
+            AdvancedGeometryCollection geometryCollection = (AdvancedGeometryCollection) geometry;
+            for (IAdvancedGeometry child : geometryCollection.getChildren()) {
+                buildHatchedAreas(spatialEntity, child, hatchedAreas);
             }
-        } else if (geometry instanceof Polygonal) {
+        } else if (geometry.isPolygonal()) {
             drawingAttributes = new PolygonDrawableAttributes(false);
             drawingAttributes.setLineWidth(1);
             Color color = getColor(spatialEntity.getFillColor());
             drawingAttributes.setColors(new Color[] { color, color });
             drawingAttributes.setDottedLineStyle();
-            hatchedAreas.add(new MultiPointDrawable(spatialEntity
-                    .getIdentifier(), drawingAttributes, (Geometry) geometry
-                    .clone()));
+            if (geometry.isPotentiallyCurved()) {
+
+                /*
+                 * TODO: Create ellipse.
+                 */
+            } else {
+                hatchedAreas.add(new MultiPointDrawable(spatialEntity
+                        .getIdentifier(), drawingAttributes,
+                        (GeometryWrapper) geometry.copyOf()));
+            }
         }
     }
 
@@ -412,7 +423,7 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildPoint(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex) {
+            GeometryWrapper geometry, int geometryIndex) {
         DECollection collectionComponent = new DECollection();
 
         /*
@@ -427,7 +438,6 @@ public class DrawableBuilder {
                 * PGEN_SIZE_MULTIPLIERS_FOR_VISUAL_FEATURE_SYMBOLS
                         .get(spatialEntity.getSymbolShape());
         double innerDiameter = outerDiameter;
-        Coordinate location = geometry.getCoordinate();
         Color borderColor = getColor(spatialEntity.getBorderColor());
         Color fillColor = (spatialEntity.getFillColor().getAlpha() == 0.0f ? Color.BLACK
                 : getColor(spatialEntity.getFillColor()));
@@ -441,23 +451,23 @@ public class DrawableBuilder {
          */
         if (innerSymbol == null) {
             collectionComponent.add(buildOuterPoint(spatialEntity, outerSymbol,
-                    borderColor, location, geometryIndex, outerDiameter));
+                    borderColor, geometry, geometryIndex, outerDiameter));
             innerDiameter -= spatialEntity.getBorderThickness() * 2.0;
             AbstractDrawableComponent innerPoint = buildInnerPoint(
-                    spatialEntity, outerSymbol, fillColor, location,
+                    spatialEntity, outerSymbol, fillColor, geometry,
                     geometryIndex, innerDiameter);
             if (innerPoint != null) {
                 collectionComponent.add(innerPoint);
             }
         } else {
             AbstractDrawableComponent innerPoint = buildInnerPoint(
-                    spatialEntity, innerSymbol, fillColor, location,
+                    spatialEntity, innerSymbol, fillColor, geometry,
                     geometryIndex, innerDiameter);
             if (innerPoint != null) {
                 collectionComponent.add(innerPoint);
             }
             collectionComponent.add(buildOuterPoint(spatialEntity, outerSymbol,
-                    borderColor, location, geometryIndex, outerDiameter));
+                    borderColor, geometry, geometryIndex, outerDiameter));
         }
         return collectionComponent;
     }
@@ -473,8 +483,8 @@ public class DrawableBuilder {
      *            drawn.
      * @param color
      *            Color of the point border to be built.
-     * @param location
-     *            Point's location.
+     * @param geometry
+     *            Geometry of the point.
      * @param geometryIndex
      *            Index of the point within the spatial entity's geometry if the
      *            latter is a geometry collection, otherwise <code>-1</code> .
@@ -484,8 +494,8 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildOuterPoint(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            String symbol, Color color, Coordinate location, int geometryIndex,
-            double sizeScale) {
+            String symbol, Color color, GeometryWrapper geometry,
+            int geometryIndex, double sizeScale) {
         SymbolDrawableAttributes drawingAttributes = new SymbolDrawableAttributes(
                 SymbolDrawableAttributes.Element.OUTER);
         this.drawingAttributes = drawingAttributes;
@@ -503,7 +513,7 @@ public class DrawableBuilder {
         drawingAttributes.setGeometryIndex(geometryIndex);
         SymbolDrawable outerPoint = new SymbolDrawable(
                 spatialEntity.getIdentifier(), drawingAttributes, symbol,
-                location);
+                geometry);
         outerPoint
                 .setMovable((spatialEntity.getDragCapability() != DragCapability.NONE)
                         && ((geometryIndex == -1) || spatialEntity
@@ -522,8 +532,8 @@ public class DrawableBuilder {
      *            drawn.
      * @param color
      *            Color of the point fill to be built.
-     * @param location
-     *            Point's location.
+     * @param geometry
+     *            Geometry of the point.
      * @param geometryIndex
      *            Index of the point within the spatial entity's geometry if the
      *            latter is a geometry collection, otherwise <code>-1</code> .
@@ -533,8 +543,8 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildInnerPoint(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            String symbol, Color color, Coordinate location, int geometryIndex,
-            double sizeScale) {
+            String symbol, Color color, GeometryWrapper geometry,
+            int geometryIndex, double sizeScale) {
         if (sizeScale > 0.0) {
             SymbolDrawableAttributes drawingAttributes = new SymbolDrawableAttributes(
                     SymbolDrawableAttributes.Element.INNER);
@@ -546,7 +556,7 @@ public class DrawableBuilder {
             drawingAttributes.setGeometryIndex(geometryIndex);
             SymbolDrawable innerPoint = new SymbolDrawable(
                     spatialEntity.getIdentifier(), drawingAttributes, symbol,
-                    location);
+                    geometry);
             innerPoint.setMovable(false);
             return innerPoint;
         }
@@ -568,7 +578,7 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildLine(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex) {
+            GeometryWrapper geometry, int geometryIndex) {
         MultiPointDrawable drawableComponent = null;
         LineDrawableAttributes drawingAttributes = new LineDrawableAttributes();
         this.drawingAttributes = drawingAttributes;
@@ -594,7 +604,7 @@ public class DrawableBuilder {
         drawingAttributes.setGeometryIndex(geometryIndex);
         drawableComponent = new MultiPointDrawable(
                 spatialEntity.getIdentifier(), drawingAttributes,
-                (Geometry) geometry.clone());
+                (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setEditable((dragCapability == DragCapability.PART)
                 || (dragCapability == DragCapability.ALL));
@@ -619,7 +629,7 @@ public class DrawableBuilder {
      */
     private AbstractDrawableComponent buildPolygon(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
-            Geometry geometry, int geometryIndex) {
+            GeometryWrapper geometry, int geometryIndex) {
         MultiPointDrawable drawableComponent = null;
         PolygonDrawableAttributes drawingAttributes = new PolygonDrawableAttributes(
                 (spatialEntity.getFillColor().getAlpha() > 0.0));
@@ -647,7 +657,7 @@ public class DrawableBuilder {
         drawingAttributes.setGeometryIndex(geometryIndex);
         drawableComponent = new MultiPointDrawable(
                 spatialEntity.getIdentifier(), drawingAttributes,
-                (Geometry) geometry.clone());
+                (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setEditable((dragCapability == DragCapability.PART)
                 || (dragCapability == DragCapability.ALL));
@@ -670,11 +680,11 @@ public class DrawableBuilder {
     private TextDrawable buildText(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
             boolean combinable) {
-        Point centerPoint = spatialEntity.getGeometry().getCentroid();
+        Coordinate centroid = AdvancedGeometryUtilities
+                .getCentroid(spatialEntity.getGeometry());
         return new TextDrawable(spatialEntity.getIdentifier(),
                 drawingAttributes, spatialEntity.getTextSize(),
-                getColor(spatialEntity.getTextColor()),
-                centerPoint.getCoordinate(), combinable);
+                getColor(spatialEntity.getTextColor()), centroid, combinable);
     }
 
     /**

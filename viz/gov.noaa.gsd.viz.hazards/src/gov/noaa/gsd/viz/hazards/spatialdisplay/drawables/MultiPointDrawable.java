@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
@@ -19,7 +20,6 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Description: Multi-point drawable shape base class.
@@ -41,12 +41,15 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 22, 2016 19537      Chris.Golden        Removed unneeded layer constructor
  *                                             parameter. Also added toString()
  *                                             method.
+ * Sep 12, 2016 15934      Chris.Golden        Changed to work with advanced
+ *                                             geometries.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class MultiPointDrawable extends Line implements IDrawable {
+public class MultiPointDrawable extends Line implements
+        IDrawable<GeometryWrapper> {
 
     // Private Static Constants
 
@@ -75,7 +78,7 @@ public class MultiPointDrawable extends Line implements IDrawable {
     /**
      * Geometry of this drawable.
      */
-    private final Geometry geometry;
+    private final GeometryWrapper geometry;
 
     /**
      * Index of the sub-geometry this shape represents within the overall
@@ -98,11 +101,12 @@ public class MultiPointDrawable extends Line implements IDrawable {
      *            Geometry.
      */
     public MultiPointDrawable(IEntityIdentifier identifier,
-            DrawableAttributes attributes, Geometry geometry) {
+            DrawableAttributes attributes, GeometryWrapper geometry) {
         this.identifier = identifier;
         this.geometryIndex = attributes.getGeometryIndex();
         this.geometry = geometry;
-        List<Coordinate> points = Lists.newArrayList(geometry.getCoordinates());
+        List<Coordinate> points = Lists.newArrayList(geometry.getGeometry()
+                .getCoordinates());
         setLinePoints(points);
         update(attributes);
         setPgenCategory(LINE);
@@ -117,7 +121,7 @@ public class MultiPointDrawable extends Line implements IDrawable {
     }
 
     @Override
-    public Geometry getGeometry() {
+    public GeometryWrapper getGeometry() {
         return geometry;
     }
 

@@ -10,6 +10,7 @@
 package gov.noaa.gsd.common.visuals;
 
 import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -24,11 +25,6 @@ import com.google.common.collect.Range;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.Puntal;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKBReader;
-import com.vividsolutions.jts.io.WKBWriter;
 
 /**
  * Description: Visual feature, instances of which provide arbitrary drawable,
@@ -73,6 +69,13 @@ import com.vividsolutions.jts.io.WKBWriter;
  *                                      to avoid allowing dragging of their
  *                                      point sub-geometries even if drag
  *                                      capability would otherwise allow it.
+ * Sep 12, 2016   15934    Chris.Golden Changed to use advanced geometries instead
+ *                                      of JTS geometries. Also removed custom
+ *                                      serialization/deserialization methods, as
+ *                                      they are unneeded now that advanced
+ *                                      geometries are being used (since it was
+ *                                      the JTS geometries' presence that had
+ *                                      necessitated their inclusion previously).
  * </pre>
  * 
  * @author Chris.Golden
@@ -217,95 +220,6 @@ public class VisualFeature implements Serializable {
         P getPropertyValue(VisualFeature visualFeature, Date time);
     }
 
-    /**
-     * Serializable array of bytes.
-     */
-    private class SerializableBytes implements Serializable {
-
-        // Private Static Constants
-
-        /**
-         * Serialization version UID.
-         */
-        private static final long serialVersionUID = -5954561615947845039L;
-
-        // Private Variables
-
-        /**
-         * Array of bytes.
-         */
-        private byte[] bytes;
-
-        // Public Constructors
-
-        /**
-         * Construct an instance.
-         */
-        public SerializableBytes(byte[] bytes) {
-            this.bytes = bytes;
-        }
-
-        // Public Methods
-
-        /**
-         * Get the underlying byte array.
-         * 
-         * @return Byte array.
-         */
-        public byte[] getBytes() {
-            return bytes;
-        }
-
-        // Private Methods
-
-        /**
-         * Write out the object for serialization purposes. The length of the
-         * byte array is written, then the array itself if not zero-length.
-         * 
-         * @param stream
-         *            Stream to which to write out the object.
-         * @throws IOException
-         *             If the object cannot be written out.
-         */
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            if ((bytes == null) || (bytes.length == 0)) {
-                stream.writeInt(0);
-            } else {
-                stream.writeInt(bytes.length);
-                stream.write(bytes);
-            }
-        }
-
-        /**
-         * Read in the object for deserialization purposes. The length of the
-         * byte array is read, then the array itself if the length is not zero.
-         * 
-         * @param stream
-         *            Stream from which to read in the object.
-         * @throws IOException
-         *             If the object cannot be read in.
-         * @throws ClassNotFoundException
-         *             If the class of a serialized object cannot be found.
-         */
-        private void readObject(ObjectInputStream stream) throws IOException,
-                ClassNotFoundException {
-
-            /*
-             * Read in the length needed, and then if it is greater than zero,
-             * read in the bytes. Multiple passes may be needed to read in the
-             * entire buffer, as the stream's read() methods are not guaranteed
-             * to return all the bytes in one pass.
-             */
-            int length = stream.readInt();
-            bytes = new byte[length];
-            if (length > 0) {
-                for (int count = 0, thisCount = 0; count < length; count += thisCount) {
-                    thisCount = stream.read(bytes, count, length - count);
-                }
-            }
-        }
-    }
-
     // Public Static Constants
 
     /**
@@ -398,8 +312,8 @@ public class VisualFeature implements Serializable {
     public static final DragCapability DEFAULT_DRAG_CAPABILITY = DragCapability.NONE;
 
     /**
-     * Default draggable flag for {@link Puntal} geometries that are part of
-     * collections of multiple geometries.
+     * Default draggable flag for point geometries that are part of collections
+     * of multiple geometries.
      */
     public static final boolean DEFAULT_MULTI_GEOMETRY_POINTS_DRAGGABLE = true;
 
@@ -423,11 +337,12 @@ public class VisualFeature implements Serializable {
     /**
      * Geometry property fetcher.
      */
-    private static final IPropertyFetcher<Geometry> GEOMETRY_FETCHER = new IPropertyFetcher<Geometry>() {
+    private static final IPropertyFetcher<IAdvancedGeometry> GEOMETRY_FETCHER = new IPropertyFetcher<IAdvancedGeometry>() {
 
         @Override
-        public Geometry getPropertyValue(VisualFeature visualFeature, Date time) {
-            TemporallyVariantProperty<Geometry> property = visualFeature
+        public IAdvancedGeometry getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<IAdvancedGeometry> property = visualFeature
                     .getGeometry();
             return (property == null ? null : property.getProperty(time));
         }
@@ -660,44 +575,12 @@ public class VisualFeature implements Serializable {
         }
     };
 
-    // Private Static Variables
-
-    /**
-     * Well-Known Binary reader, used for deserializing geometries. It is
-     * thread-local because <code>WKBReader</code> is not explicitly declared to
-     * be thread-safe. This class's static methods may be called simultaneously
-     * by multiple threads, and each thread must be able to deserialize
-     * geometries separately in order to avoid cross-thread pollution.
-     */
-    private static final ThreadLocal<WKBReader> wkbReader = new ThreadLocal<WKBReader>() {
-
-        @Override
-        protected WKBReader initialValue() {
-            return new WKBReader();
-        }
-    };
-
-    /**
-     * Well-Known Binary writer, used for serializing geometries. It is
-     * thread-local because <code>WKBWriter</code> is not explicitly declared to
-     * be thread-safe. This class's static methods may be called simultaneously
-     * by multiple threads, and each thread must be able to serialize geometries
-     * separately in order to avoid cross-thread pollution.
-     */
-    private static final ThreadLocal<WKBWriter> wkbWriter = new ThreadLocal<WKBWriter>() {
-
-        @Override
-        protected WKBWriter initialValue() {
-            return new WKBWriter();
-        }
-    };
-
     // Private Variables
 
     /**
      * Identifier of this feature.
      */
-    private String identifier;
+    private final String identifier;
 
     /**
      * Visibility constraints.
@@ -723,7 +606,7 @@ public class VisualFeature implements Serializable {
     /**
      * Geometry; may be <code>null</code>.
      */
-    private TemporallyVariantProperty<Geometry> geometry;
+    private TemporallyVariantProperty<IAdvancedGeometry> geometry;
 
     /**
      * Border color; may be <code>null</code>.
@@ -799,11 +682,11 @@ public class VisualFeature implements Serializable {
 
     /**
      * Flag indicating whether or not, if {@link #geometry} is a collection of
-     * multiple geometries, any {@link Puntal} sub-geometries within that
-     * collection are draggable. If <code>false</code>, this overrides any
-     * capabilities specified in {@link #dragCapability} for such points, but
-     * has no effect on a <code>geometry</code> consisting of a single
-     * <code>Puntal</code> object. May be <code>null</code>.
+     * multiple geometries, any point sub-geometries within that collection are
+     * draggable. If <code>false</code>, this overrides any capabilities
+     * specified in {@link #dragCapability} for such points, but has no effect
+     * on a <code>geometry</code> consisting of a single point. May be
+     * <code>null</code>.
      */
     private TemporallyVariantProperty<Boolean> multiGeometryPointsDraggable;
 
@@ -863,7 +746,7 @@ public class VisualFeature implements Serializable {
          */
         this.geometry = new TemporallyVariantProperty<>(
                 original.geometry.getDefaultProperty());
-        for (Map.Entry<Range<Date>, Geometry> entry : original.geometry
+        for (Map.Entry<Range<Date>, IAdvancedGeometry> entry : original.geometry
                 .getPropertiesForTimeRanges().entrySet()) {
             this.geometry.addPropertyForTimeRange(entry.getKey(),
                     entry.getValue());
@@ -960,7 +843,7 @@ public class VisualFeature implements Serializable {
      * @return Geometry that applies for the specified time, or
      *         <code>null</code> if none applies.
      */
-    public Geometry getGeometry(Date time) {
+    public IAdvancedGeometry getGeometry(Date time) {
         return getValue(GEOMETRY_FETCHER, time, null);
     }
 
@@ -1131,17 +1014,17 @@ public class VisualFeature implements Serializable {
 
     /**
      * Determine whether, if {@link #getGeometry(Date)} yields a collection of
-     * multiple geometries, any {@link Puntal} sub-geometries within that
-     * collection are draggable for the specified time.
+     * multiple geometries, any point sub-geometries within that collection are
+     * draggable for the specified time.
      * 
      * @param time
      *            Time for which to check.
-     * @return True if <code>Puntal</code> geometries within a multi-geometry
+     * @return <code>true</code> if point sub-geometries within a multi-geometry
      *         collection returned by <code>getGeometry()</code> are draggable,
-     *         false otherwise. If the latter, this overrides any capabilities
-     *         specified in {@link #getDragCapability(Date)} for such points,
-     *         but has no effect on a geometry consisting of a single
-     *         <code>Puntal</code> object.
+     *         <code>false</code> otherwise. If the latter, this overrides any
+     *         capabilities specified in {@link #getDragCapability(Date)} for
+     *         such points, but has no effect on a geometry consisting of a
+     *         single point.
      */
     public boolean isMultiGeometryPointsDraggable(Date time) {
         return getValue(MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER, time,
@@ -1288,7 +1171,7 @@ public class VisualFeature implements Serializable {
         /*
          * If the geometry at this time is not visible create nothing.
          */
-        Geometry geometry = getGeometry(time);
+        IAdvancedGeometry geometry = getGeometry(time);
         if (geometry == null) {
             return null;
         }
@@ -1364,7 +1247,7 @@ public class VisualFeature implements Serializable {
         /*
          * If the geometry at this time is not visible create nothing.
          */
-        Geometry geometry = getGeometry(time);
+        IAdvancedGeometry geometry = getGeometry(time);
         if (geometry == null) {
             return null;
         }
@@ -1406,7 +1289,7 @@ public class VisualFeature implements Serializable {
      *         latter will occur if <code>time</code> does not fall within a
      *         time range for which a geometry has already been defined.
      */
-    public boolean setGeometry(Date time, Geometry geometry) {
+    public boolean setGeometry(Date time, IAdvancedGeometry geometry) {
         return this.geometry.addPropertyForTimeRangeEncompassingTime(time,
                 geometry);
     }
@@ -1423,7 +1306,7 @@ public class VisualFeature implements Serializable {
             if (geometry.getDefaultProperty() != null) {
                 stringBuilder.append("always visible");
             } else {
-                Map<Range<Date>, Geometry> geometriesForTimeRanges = geometry
+                Map<Range<Date>, IAdvancedGeometry> geometriesForTimeRanges = geometry
                         .getPropertiesForTimeRanges();
                 if (geometriesForTimeRanges.isEmpty()) {
                     never = true;
@@ -1469,7 +1352,7 @@ public class VisualFeature implements Serializable {
      * 
      * @return Geometry; may be <code>null</code>.
      */
-    TemporallyVariantProperty<Geometry> getGeometry() {
+    TemporallyVariantProperty<IAdvancedGeometry> getGeometry() {
         return geometry;
     }
 
@@ -1593,17 +1476,15 @@ public class VisualFeature implements Serializable {
 
     /**
      * Get the flag indicating whether, if {@link #getGeometry(Date)} yields a
-     * collection of multiple geometries, any {@link Puntal} sub-geometries
-     * within that collection are draggable for the specified time.
+     * collection of multiple geometries, any point sub-geometries within that
+     * collection are draggable for the specified time.
      * 
-     * @return Flag indicating whether or not <code>Puntal</code> geometries
-     *         within a multi-geometry collection returned by
-     *         <code>getGeometry()</code> are draggable. If the latter, this
-     *         overrides any capabilities specified in
-     *         {@link #getDragCapability(Date)} for such points, but has no
-     *         effect on a geometry consisting of a single <code>Puntal</code>
-     *         object. whether or not the feature is rotatable. May be
-     *         <code>null</code>.
+     * @return Flag indicating whether or not point sub-geometries within a
+     *         multi-geometry collection returned by <code>getGeometry()</code>
+     *         are draggable. If the latter, this overrides any capabilities
+     *         specified in {@link #getDragCapability(Date)} for such points,
+     *         but has no effect on a geometry consisting of a single point. May
+     *         be <code>null</code>.
      */
     TemporallyVariantProperty<Boolean> getMultiGeometryPointsDraggable() {
         return multiGeometryPointsDraggable;
@@ -1665,7 +1546,7 @@ public class VisualFeature implements Serializable {
      * @param geometry
      *            New value; may be <code>null</code>.
      */
-    void setGeometry(TemporallyVariantProperty<Geometry> geometry) {
+    void setGeometry(TemporallyVariantProperty<IAdvancedGeometry> geometry) {
         this.geometry = geometry;
     }
 
@@ -1804,11 +1685,10 @@ public class VisualFeature implements Serializable {
 
     /**
      * Set the flag indicating whether or not, if {@link #geometry} holds a
-     * collection of multiple geometries, any {@link Puntal} sub-geometries
-     * within that collection are draggable. If <code>false</code>, this
-     * overrides any capabilities specified in {@link #dragCapability} for such
-     * points, but has no effect on a geometry consisting of a single
-     * <code>Puntal</code> object.
+     * collection of multiple geometries, any point sub-geometries within that
+     * collection are draggable. If <code>false</code>, this overrides any
+     * capabilities specified in {@link #dragCapability} for such points, but
+     * has no effect on a geometry consisting of a single point.
      * 
      * @param multiGeometryPointsDraggable
      *            New value; may be <code>null</code>.
@@ -1849,151 +1729,6 @@ public class VisualFeature implements Serializable {
     }
 
     // Private Methods
-
-    /**
-     * Write out the object for serialization purposes. This is required because
-     * the {@link Geometry} objects found within {@link #geometry} cannot easily
-     * be deserialized (sometimes resulting in
-     * <code>ClassNotFoundException</code> being thrown).
-     * 
-     * @param stream
-     *            Stream to which to write out the object.
-     * @throws IOException
-     *             If the object cannot be written out.
-     */
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-
-        /*
-         * Perform standard serialization for most of the components of this
-         * object.
-         */
-        stream.writeObject(identifier);
-        stream.writeObject(visibilityConstraints);
-        stream.writeObject(templates);
-        stream.writeObject(borderColor);
-        stream.writeObject(fillColor);
-        stream.writeObject(borderThickness);
-        stream.writeObject(borderStyle);
-        stream.writeObject(fillStyle);
-        stream.writeObject(diameter);
-        stream.writeObject(symbolShape);
-        stream.writeObject(label);
-        stream.writeObject(textOffsetLength);
-        stream.writeObject(textOffsetDirection);
-        stream.writeObject(textSize);
-        stream.writeObject(textColor);
-        stream.writeObject(dragCapability);
-        stream.writeObject(multiGeometryPointsDraggable);
-        stream.writeObject(rotatable);
-        stream.writeObject(scaleable);
-        stream.writeObject(topmost);
-
-        /*
-         * Convert all Geometry objects to arrays of bytes in Well-Known Binary
-         * format, then write out the resulting container object.
-         */
-        if (geometry == null) {
-            stream.writeObject(null);
-        } else {
-            WKBWriter writer = wkbWriter.get();
-            Geometry defaultGeom = geometry.getDefaultProperty();
-            SerializableBytes bytes = null;
-            if (defaultGeom != null) {
-                bytes = new SerializableBytes(writer.write(defaultGeom));
-            }
-            TemporallyVariantProperty<SerializableBytes> semiSerializedGeometry = new TemporallyVariantProperty<>(
-                    bytes);
-            for (Map.Entry<Range<Date>, Geometry> entry : geometry
-                    .getPropertiesForTimeRanges().entrySet()) {
-                semiSerializedGeometry.addPropertyForTimeRange(entry.getKey(),
-                        new SerializableBytes(writer.write(entry.getValue())));
-            }
-            stream.writeObject(semiSerializedGeometry);
-        }
-    }
-
-    /**
-     * Read in the object for deserialization purposes. This is required because
-     * the {@link Geometry} objects found within {@link #geometry} cannot easily
-     * be deserialized (sometimes resulting in
-     * <code>ClassNotFoundException</code> being thrown).
-     * 
-     * @param stream
-     *            Stream from which to read in the object.
-     * @throws IOException
-     *             If the object cannot be read in.
-     * @throws ClassNotFoundException
-     *             If the class of a serialized object cannot be found.
-     */
-    @SuppressWarnings("unchecked")
-    private void readObject(ObjectInputStream stream) throws IOException,
-            ClassNotFoundException {
-
-        /*
-         * Perform standard deserialization for most of the components of this
-         * object.
-         */
-        identifier = (String) stream.readObject();
-        visibilityConstraints = (VisibilityConstraints) stream.readObject();
-        templates = (TemporallyVariantProperty<ImmutableList<VisualFeature>>) stream
-                .readObject();
-        borderColor = (TemporallyVariantProperty<SerializableColor>) stream
-                .readObject();
-        fillColor = (TemporallyVariantProperty<SerializableColor>) stream
-                .readObject();
-        borderThickness = (TemporallyVariantProperty<Double>) stream
-                .readObject();
-        borderStyle = (TemporallyVariantProperty<BorderStyle>) stream
-                .readObject();
-        fillStyle = (TemporallyVariantProperty<FillStyle>) stream.readObject();
-        diameter = (TemporallyVariantProperty<Double>) stream.readObject();
-        symbolShape = (TemporallyVariantProperty<SymbolShape>) stream
-                .readObject();
-        label = (TemporallyVariantProperty<String>) stream.readObject();
-        textOffsetLength = (TemporallyVariantProperty<Double>) stream
-                .readObject();
-        textOffsetDirection = (TemporallyVariantProperty<Double>) stream
-                .readObject();
-        textSize = (TemporallyVariantProperty<Integer>) stream.readObject();
-        textColor = (TemporallyVariantProperty<SerializableColor>) stream
-                .readObject();
-        dragCapability = (TemporallyVariantProperty<DragCapability>) stream
-                .readObject();
-        multiGeometryPointsDraggable = (TemporallyVariantProperty<Boolean>) stream
-                .readObject();
-        rotatable = (TemporallyVariantProperty<Boolean>) stream.readObject();
-        scaleable = (TemporallyVariantProperty<Boolean>) stream.readObject();
-        topmost = (TemporallyVariantProperty<Boolean>) stream.readObject();
-
-        /*
-         * Read in the container object holding the geometries in Well-Known
-         * Binary format, then convert the latter to Geometry objects in a new
-         * container object.
-         */
-        TemporallyVariantProperty<SerializableBytes> semiSerializedGeometry = (TemporallyVariantProperty<SerializableBytes>) stream
-                .readObject();
-        if (semiSerializedGeometry == null) {
-            geometry = null;
-        } else {
-            try {
-                WKBReader reader = wkbReader.get();
-                SerializableBytes bytes = semiSerializedGeometry
-                        .getDefaultProperty();
-                Geometry defaultGeom = null;
-                if (bytes != null) {
-                    defaultGeom = reader.read(bytes.getBytes());
-                }
-                geometry = new TemporallyVariantProperty<>(defaultGeom);
-                for (Map.Entry<Range<Date>, SerializableBytes> entry : semiSerializedGeometry
-                        .getPropertiesForTimeRanges().entrySet()) {
-                    geometry.addPropertyForTimeRange(entry.getKey(),
-                            reader.read(entry.getValue().getBytes()));
-                }
-            } catch (ParseException e) {
-                throw new IOException("could not read in geometry", e);
-            }
-        }
-    }
 
     /**
      * Get a property value using the specified fetcher, checking first this

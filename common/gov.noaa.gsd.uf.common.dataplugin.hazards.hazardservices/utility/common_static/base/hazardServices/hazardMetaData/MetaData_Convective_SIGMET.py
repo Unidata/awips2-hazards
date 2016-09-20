@@ -10,6 +10,7 @@ import shapely
 import time, datetime
 from EventSet import EventSet
 import GeometryFactory
+import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 import AviationUtils
 
@@ -65,7 +66,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         
         selectedFeatures = []
         
-        poly = GeometryFactory.createPolygon(VOR_points)
+        poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(VOR_points), 0)
         
         basePoly = hazardEvent.getGeometry()
                 

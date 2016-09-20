@@ -28,6 +28,7 @@ from scipy.io import netcdf
 import TimeUtils
 from SwathRecommender import Recommender as SwathRecommender
 from ProbUtils import ProbUtils
+import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 import JUtil
      
@@ -179,6 +180,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     poly = GeometryFactory.createPolygon(polyTupleDict[tuple])                       
             else:
                 poly = GeometryFactory.createPolygon(polyTupleDict[tuple])
+            
+            poly = AdvancedGeometry.createShapelyWrapper(poly, 0)
                 
             ### Should match PHI Prototype Tool
             colorFill =  {
