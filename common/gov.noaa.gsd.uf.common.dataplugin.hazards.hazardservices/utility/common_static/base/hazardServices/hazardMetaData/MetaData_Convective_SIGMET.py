@@ -10,9 +10,9 @@ import shapely
 import time, datetime
 from EventSet import EventSet
 import GeometryFactory
-import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 import AviationUtils
+import AdvancedGeometry
 
 ######
 TABLEFILE = '/home/nathan.hardin/Desktop/snap.tbl'
@@ -25,15 +25,19 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         sys.stderr.writelines(['Calling SIGMET.Convective', '\n'])
         
         self._setTimeRange(hazardEvent)
-        geomType = AviationUtils.AviationUtils().getGeometryType(hazardEvent)
-        hazardEvent.set('originalGeomType', geomType)
+        self._geomType = AviationUtils.AviationUtils().getGeometryType(hazardEvent)
+        hazardEvent.set('originalGeomType', self._geomType)
         
         trigger = 'generation'
         
-        convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(hazardEvent,[],geomType,trigger)
+        convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(hazardEvent,[],self._geomType,trigger)
         
-        boundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,geomType,TABLEFILE,[],trigger)
-        if geomType == 'Polygon':
+        #startTime = time.time()
+        boundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,self._geomType,TABLEFILE,[],trigger)
+        #elapsedTime = time.time() - startTime
+        #print "elapsedTime: ", elapsedTime
+        
+        if self._geomType == 'Polygon':
             self._addVisualFeatures(hazardEvent)
                          
         self.flush()
@@ -43,7 +47,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
        
         metaData = [
                         self.getAdvisoryType(advisoryType),
-                        self.getConvectiveSigmetInputs(geomType, convectiveSigmetDomain, convectiveSigmetModifiers),
+                        self.getConvectiveSigmetInputs(self._geomType, convectiveSigmetDomain, convectiveSigmetModifiers),
                    ]
 
         return  {
@@ -58,26 +62,61 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)    
     
     def _addVisualFeatures(self, hazardEvent):
-        startTime = TimeUtils.roundDatetime(hazardEvent.getStartTime())
+        #startTime = TimeUtils.roundDatetime(hazardEvent.getStartTime())
+        startTime = hazardEvent.getStartTime().replace(second=0, microsecond=0)
+        startTime = startTime - datetime.timedelta(hours=2)
         endTime = TimeUtils.roundDatetime(hazardEvent.getEndTime())
         
         VOR_points = hazardEvent.getHazardAttributes().get('VOR_points')
         eventID = hazardEvent.getEventID()
         
+        polygonArea = AviationUtils.AviationUtils().polygonArea(hazardEvent, self._geomType, None)
+        domain = hazardEvent.getHazardAttributes().get('convectiveSigmetDomain')
+        direction = hazardEvent.getHazardAttributes().get('convectiveSigmetDirection')
+        speed = hazardEvent.getHazardAttributes().get('convectiveSigmetSpeed')
+        cloudTop = hazardEvent.getHazardAttributes().get('convectiveSigmetCloudTop')
+        cloudTopText = hazardEvent.getHazardAttributes().get('convectiveSigmetCloudTopText')        
+        
+        status = hazardEvent.getStatus()
+        if status == 'ISSUED':
+            area = str(polygonArea) + "sq mi"
+            numberStr = hazardEvent.getHazardAttributes().get('convectiveSigmetNumberStr')
+            number = "\n" + numberStr + domain[0]
+        
+            if cloudTop == 'topsAbove':
+                tops = "\nAbove FL450"
+            elif cloudTop == 'topsTo':
+                tops = "\nTo FL" + str(cloudTopText)
+            
+            motion = "\n" + str(direction)+"@"+str(speed)+"kts"
+            label = number + area + tops + motion
+        else:
+            area = str(polygonArea) + "sq mi"
+            if cloudTop == 'topsAbove':
+                tops = "\nAbove FL450"
+            elif cloudTop == 'topsTo':
+                tops = "\nTo FL" + str(cloudTopText)
+            else:
+                tops = "\nN/A"
+            
+            motion = "\n" + str(direction)+"@"+str(speed)+"kts"                        
+            label = area + tops + motion
+            
         selectedFeatures = []
         
         poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(VOR_points), 0)
         
         basePoly = hazardEvent.getGeometry()
                 
-        fillColor = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 0.5 }
-        borderColor = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }
+        fillColor = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 0.0 }
+        borderColor = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }
                     
         VORPoly = {
             "identifier": "VORPreview_" + eventID,
             "visibilityConstraints": "always",
-            "borderColor": borderColor,
+            "borderColor": "eventType",
             "fillColor": fillColor,
+            "label": label,
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
             }
@@ -87,7 +126,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
             "identifier": "basePreview_" + eventID,
             "visibilityConstraints": "selected",
             "dragCapability": "all",
-            "borderColor": "eventType",
+            "borderColor": borderColor, #"eventType",
             "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
@@ -96,13 +135,13 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
 
         selectedFeatures.append(basePoly)
         selectedFeatures.append(VORPoly)
-         
+        
         hazardEvent.setVisualFeatures(VisualFeatures(selectedFeatures))    
         
         return True    
     
     def _setTimeRange(self, hazardEvent):
-        startTime = hazardEvent.getStartTime()
+        startTime = hazardEvent.getStartTime().replace(second=0,microsecond=0)
         startTimeHour = hazardEvent.getStartTime().hour
         startTimeMinute = hazardEvent.getStartTime().minute
         
@@ -120,4 +159,15 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         hazardEvent.setStartTime(newStart)
         hazardEvent.setEndTime(newEnd)
         
-        return                            
+        return  
+    
+## # Interdependency script entry point.
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    
+    AMChanges = MetaData_AIRMET_SIGMET.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    
+    import sys
+    sys.stderr.writelines( ['Hello World [SIGMET] !\n'])
+                    
+    sys.stderr.writelines(['AMChanges: ', str(AMChanges), '\n'])
+    return AMChanges                              

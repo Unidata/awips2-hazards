@@ -35,7 +35,7 @@ import JUtil
 from KeyInfo import KeyInfo as PythonKeyInfo
 
 def pyKeyInfoToJavaKeyInfo(val):
-    if isinstance(val, KeyInfo) == False:
+    if isinstance(val, PythonKeyInfo) == False:
             return False, val
     return True, val.toJavaObj()
 

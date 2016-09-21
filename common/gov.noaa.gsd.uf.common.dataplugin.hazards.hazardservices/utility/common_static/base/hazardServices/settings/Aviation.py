@@ -17,7 +17,10 @@
 Aviation = {
     "settingsID" : "Aviation",
 #    "perspectiveIDs" : [],    
-    "perspectiveIDs" :  [],
+    "perspectiveIDs" :  ["com.raytheon.viz.hydro.HydroPerspective",
+                        "com.raytheon.viz.mpe.ui.MPEPerspective",
+                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
+                        "com.raytheon.viz.ui.GFEPerspective"],
     "displayName": "Aviation", #"Aviation",
     "possibleSites": ["National"],
     "visibleSites": ["National"],    
@@ -160,12 +163,24 @@ Aviation = {
         },
     },
     "toolbarTools": [
-#        {
-#            "toolName": "ConvectiveRecommender",
-#            "displayName": "Convective Recommender (PHI)",
-#            "toolType": "RECOMMENDER",
-#            "visible":True,
-#        }
+        {
+            "toolName": "UpdateTimesTool",
+            "displayName": "Update times to next hour",
+            "toolType": "RECOMMENDER",
+            "visible":True,
+        },
+        {
+            "toolName": "CopyMetaDataTool",
+            "displayName": "Copy metadata from event",
+            "toolType": "RECOMMENDER",
+            "visible":True,
+        },
+        {
+            "toolName": "PasteMetaDataTool",
+            "displayName": "Paste metadata to new event",
+            "toolType": "RECOMMENDER",
+            "visible":True,
+        }                                          
     ],
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "ALWAYS_FULL"

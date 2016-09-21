@@ -1,10 +1,12 @@
 import shapely
 import EventFactory, EventSetFactory, GeometryFactory
+import AdvancedGeometry
 '''
 Utility for Aviation Products
 '''
 import numpy as np
 import datetime, math
+from math import sin, cos, sqrt, atan2, radians, pi
 import time
 import shapely.ops as so
 import os, sys
@@ -21,11 +23,246 @@ from VisualFeatures import VisualFeatures
 import Domains
 
 class AviationUtils:
+        
     def getGeometryType(self, hazardEvent):        
         for g in hazardEvent.getFlattenedGeometry():
             geomType = g.geom_type           
         
-        return geomType    
+        return geomType
+    
+    def updateVisualFeatures(self, event, vertices, polyPoints):
+        startTime = event.getStartTime().replace(second=0, microsecond=0)
+        startTime = startTime - datetime.timedelta(hours=2)
+        endTime = TimeUtils.roundDatetime(event.getEndTime())
+        
+        self._originalGeomType = event.get('originalGeomType')
+        self._width = event.get('convectiveSigmetWidth')
+
+        polygonArea = self.polygonArea(event, self._originalGeomType, self._width)
+        label = self._createLabel(event, polygonArea)
+        
+        eventID = event.getEventID()
+        selectedFeatures = []
+        VOR_points = event.getHazardAttributes().get('VOR_points')
+               
+        if self._originalGeomType != 'Polygon':
+            poly = GeometryFactory.createPolygon(polyPoints)
+            basePoly = vertices
+            if self._originalGeomType == 'Point':
+                basePoly = GeometryFactory.createPoint(basePoly)
+            elif self._originalGeomType == 'LineString':
+                basePoly = GeometryFactory.createLineString(basePoly)
+            basePoly = AdvancedGeometry.createShapelyWrapper(basePoly, 0)
+            event.setGeometry(basePoly)        
+        else:
+            poly = GeometryFactory.createPolygon(VOR_points)
+            basePoly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(vertices), 0)
+            event.setGeometry(basePoly)
+            
+        poly = AdvancedGeometry.createShapelyWrapper(poly, 0)
+        
+        if self._originalGeomType != 'Polygon':       
+            borderColorHazard = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 } #yellow
+            fillColorHazard = {"red": 1, "green": 1, "blue": 1, "alpha": 0}
+            borderColorBase = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 } #white
+            fillColorBase = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 0.0 }
+            hazardPolyVisibility = "always"
+            basePolyVisibility = "selected"
+            hazardPolyLabel = label
+            basePolyLabel = ""
+        else:
+            borderColorHazard = "eventType"
+            fillColorHazard = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 0.0 }
+            borderColorBase = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 } #yellow
+            fillColorBase = {"red": 1, "green": 1, "blue": 1, "alpha": 0}
+            hazardPolyVisibility = "selected"
+            basePolyVisibility = "always"
+            hazardPolyLabel = ""
+            basePolyLabel = label        
+        
+        hazardEventPoly = {
+            "identifier": "hazardEventPolygon_" + eventID,
+            "visibilityConstraints": hazardPolyVisibility,
+            "diameter": "eventType",
+            "borderColor": borderColorHazard,
+            "fillColor": fillColorHazard,
+            "label": hazardPolyLabel,
+            "geometry": {
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
+            }
+        }
+        
+        basePoly = {
+            "identifier": "basePreview_" + eventID,
+            "visibilityConstraints": basePolyVisibility,
+            "dragCapability": "all",
+            "borderThickness": "eventType",
+            "diameter": "eventType",
+            "borderColor": borderColorBase,
+            "fillColor": fillColorBase,
+            "label": basePolyLabel,
+            "geometry": {
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
+            }
+        }                    
+
+        selectedFeatures.append(basePoly)                      
+        selectedFeatures.append(hazardEventPoly)            
+        event.setVisualFeatures(VisualFeatures(selectedFeatures))
+
+        return True
+    
+    def _createLabel(self, event, polygonArea):
+        domain = event.getHazardAttributes().get('convectiveSigmetDomain')
+        direction = event.getHazardAttributes().get('convectiveSigmetDirection')
+        speed = event.getHazardAttributes().get('convectiveSigmetSpeed')
+        cloudTop = event.getHazardAttributes().get('convectiveSigmetCloudTop')
+        cloudTopText = event.getHazardAttributes().get('convectiveSigmetCloudTopText')
+        status = event.getStatus()
+        
+        if status == 'ISSUED':
+            area = str(polygonArea) + "sq mi"
+            numberStr = event.getHazardAttributes().get('convectiveSigmetNumberStr')
+            number = "\n" + numberStr + domain[0]
+        
+            if cloudTop == 'topsAbove':
+                tops = "\nAbove FL450"
+            elif cloudTop == 'topsTo':
+                tops = "\nTo FL" + str(cloudTopText)
+            else:
+                tops = "\nN/A"                
+            
+            motion = "\n" + str(direction)+"@"+str(speed)+"kts"
+            label = number + area + tops + motion
+        else:
+            area = str(polygonArea) + "sq mi"
+            if cloudTop == 'topsAbove':
+                tops = "\nAbove FL450"
+            elif cloudTop == 'topsTo':
+                tops = "\nTo FL" + str(cloudTopText)
+            
+            motion = "\n" + str(direction)+"@"+str(speed)+"kts"                        
+            label = area + tops + motion       
+        
+        return label         
+    
+    def polygonArea(self, hazardEvent, geomType, width):
+        hazGeometry = hazardEvent.getFlattenedGeometry()
+        try:
+            for g in hazGeometry.geoms:
+                    vertices = shapely.geometry.base.dump_coords(g)
+        except AttributeError:
+            vertices = shapely.geometry.base.dump_coords(hazGeometry)
+        
+        if geomType == 'Point':
+            polygonArea = pi * width**2
+        elif geomType == 'LineString':
+            width = width*1.15078
+            polygonArea = 0
+            for i in range(0, len(vertices)-1):
+                lat1 = radians(vertices[i][1])
+                lat2 = radians(vertices[i+1][1])
+                lon1 = radians(vertices[i][0])
+                lon2 = radians(vertices[i+1][0])
+
+                dlon = lon2 - lon1
+                dlat = lat2 - lat1
+                a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+                c = 2 * atan2(sqrt(a), sqrt(1-a))
+                d = 3961 * c 
+                polygonArea = polygonArea + d*width
+        elif geomType == 'Polygon':
+            polygonArea = 0
+            if len(vertices) >= 3:
+                for i in range(0, len(vertices)-1):
+                    area = radians(vertices[i+1][0] - vertices[i][0]) * (2 + sin(radians(vertices[i][1])) + sin(radians(vertices[i+1][1])))
+                    polygonArea = polygonArea + area
+
+            polygonArea = abs(polygonArea * 6378137.0 * 6378137.0 / 2.0)
+            polygonArea = polygonArea * 3.861e-7
+        
+        polygonArea = int(round(polygonArea))
+        return polygonArea
+    
+    def lineToPolygon(self, vertices, width):
+        leftBuffer = [] 
+        rightBuffer = []
+        # Compute for start point
+        bearing = self.gc_bearing(vertices[0],vertices[1])
+        leftBuffer.append(self.gc_destination(vertices[0],width,(bearing-90.0)))
+        rightBuffer.append(self.gc_destination(vertices[0],width,(bearing+90.0)))
+        # Compute distance from points in middle of line
+        for n in range(1,len(vertices)-1):
+            b_1to2 = self.gc_bearing(vertices[n-1],vertices[n])
+            b_2to3 = self.gc_bearing(vertices[n],vertices[n+1])
+            theta = (b_2to3-b_1to2)/2.0
+            bearing = b_1to2 + theta
+            D = width / math.sin(math.radians(theta+90.0))
+            leftBuffer.append(self.gc_destination(vertices[n],D,(bearing-90.0)))
+            rightBuffer.append(self.gc_destination(vertices[n],D,(bearing+90.0)))
+            # Compute for end point, right and left reversed for different direction
+        bearing = self.gc_bearing(vertices[-1],vertices[-2])
+        leftBuffer.append(self.gc_destination(vertices[-1],width,(bearing+90.0)))
+        rightBuffer.append(self.gc_destination(vertices[-1],width,(bearing-90.0)))
+        # Construct final corridor by combining both sides 
+        poly = leftBuffer + rightBuffer[::-1] + [leftBuffer[0]]  
+
+        return poly
+    
+    def pointToPolygon(self, vertices, width):
+        buffer = []
+        if len(vertices) == 1:
+            width = width/2
+            for bearing in range(0,360,15):
+                loc = self.gc_destination(vertices[0],width,bearing)
+                buffer.append((round(loc[0],2),round(loc[1],3)))
+            poly = buffer
+            
+        return poly                
+                 
+    def createPolygon(self,vertices,width,originalGeomType):
+        vertices = [x[::-1] for x in vertices]
+        width = float(width) * 1.852  # convert Nautical Miles to KM
+        
+        if originalGeomType == 'Point':
+            poly = self.pointToPolygon(vertices,width)
+        elif originalGeomType == 'LineString':
+            poly = self.lineToPolygon(vertices,width)
+                
+        poly = [x[::-1] for x in poly]    
+
+        return poly 
+
+    def gc_bearing(self,latlong_1, latlong_2):
+        lat1, lon1 = latlong_1
+        lat2, lon2 = latlong_2
+        rlat1, rlon1 = math.radians(lat1), math.radians(lon1)
+        rlat2, rlon2 = math.radians(lat2), math.radians(lon2)
+        dLat = math.radians(lat2 - lat1)
+        dLon = math.radians(lon2 - lon1)
+
+        y = math.sin(dLon) * math.cos(rlat2)
+        x = math.cos(rlat1) * math.sin(rlat2) - \
+            math.sin(rlat1) * math.cos(rlat2) * math.cos(dLon)
+        bearing = math.degrees(math.atan2(y,x))
+        return bearing
+
+    def gc_destination(self,latlong_1, dist, bearing):
+        R = 6378.137 # earth radius in km
+        lat1, lon1 = latlong_1
+        rlat1, rlon1 = math.radians(lat1), math.radians(lon1)
+        d = dist
+        bearing = math.radians(bearing)
+
+        rlat2 = math.asin(math.sin(rlat1) * math.cos(d/R) + \
+          math.cos(rlat1) * math.sin(d/R) * math.cos(bearing))
+        rlon2 = rlon1 + math.atan2(math.sin(bearing) * math.sin(d/R) * math.cos(rlat1), \
+          math.cos(d/R) - math.sin(rlat1) * math.sin(rlat2))
+        lat2 = math.degrees(rlat2)
+        lon2 = math.degrees(rlon2)
+        if lon2 > 180.: lon2 = lon2 - 360.
+        latlong_2 = (lat2, lon2)
+        return latlong_2           
     
     def selectDomain(self, hazardEvent, vertices, geomType, trigger):
         domains = Domains.AviationDomains
@@ -114,8 +351,7 @@ class AviationUtils:
                 convectiveSigmetAreas = domain[0]
             else:
                 import operator
-                convectiveSigmetAreas = max(sumDict.iteritems(), key=operator.itemgetter(1))[0]    
-                
+                convectiveSigmetAreas = max(sumDict.iteritems(), key=operator.itemgetter(1))[0]            
         hazardEvent.set('convectiveSigmetDomain', convectiveSigmetAreas)                              
         
         return convectiveSigmetAreas        
@@ -129,7 +365,8 @@ class AviationUtils:
         per_row = []
         with open(TABLEFILE, 'r') as fr:
             for line in fr:
-                per_row.append(line.split())
+                if not line.startswith("!"):
+                    per_row.append(line.split())
 
         lats = []
         lons = []
@@ -148,11 +385,12 @@ class AviationUtils:
         
         headerLines = 4
 
-        for x in range(headerLines, len(per_row)):
-            stid.append(per_row[x][0])
-            lats.append(per_row[x][5])
-            lons.append(per_row[x][6])
-            names.append(per_row[x][2])
+        #for x in range(headerLines, len(per_row)):
+        for row in per_row:
+            stid.append(row[0])
+            lats.append(row[5])
+            lons.append(row[6])
+            names.append(row[2])
 
         # add decimal points 
         latNew = []
@@ -183,7 +421,7 @@ class AviationUtils:
                 vertices = shapely.geometry.base.dump_coords(g)
                 
         if geomType == 'Polygon':
-            vertices = self._reducePolygon(vertices, geomType)
+            vertices = self._reducePolygon(vertices, geomType, 6)
             vertices = shapely.geometry.base.dump_coords(vertices)
             
         for vertice in vertices:
@@ -204,14 +442,16 @@ class AviationUtils:
         selectedVisualFeatures = []
             
         boundingStatement = boundingStatement[:-1]
+        #print "Bounding statement contains numbers? ", any(char.isdigit() for char in boundingStatement)
+        
         hazardEvent.set('boundingStatement', boundingStatement)
         
         return boundingStatement
     
-    def _reducePolygon(self, vertices, geomType):
+    def _reducePolygon(self, vertices, geomType, numPoints):
         initialPoly = GeometryFactory.createPolygon(vertices)
           
-        numPoints = 6
+        #numPoints = 6
         tolerance = 0.001
         newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
         while len(newPoly.exterior.coords) > numPoints:

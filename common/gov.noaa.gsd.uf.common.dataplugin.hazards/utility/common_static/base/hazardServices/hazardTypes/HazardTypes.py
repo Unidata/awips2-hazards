@@ -2032,7 +2032,7 @@ HazardTypes = {
               'hazardConflictList': [],
               'ugcType': 'zone',
               'ugcLabel': 'name',
-              'inclusionFractionTest': True,
+              'inclusionFractionTest': False,
               'inclusionFraction': 0.1,
               'defaultDuration': 6 * HOURS, #6 hours
               'durationIncrement': 60,
@@ -2048,9 +2048,10 @@ HazardTypes = {
               'hazardConflictList': [],
               'ugcType': 'zone',
               'ugcLabel': 'name',
-              'inclusionFractionTest': True,
+              'inclusionFractionTest': False,
               'inclusionFraction': 0.1,
-              'defaultDuration': 2 * HOURS, #6 hours
+              'defaultDuration': 2 * HOURS,
+              "durationChoiceList": [ "2 hrs"],
               'durationIncrement': 60,
               'modifyRecommenders': {
                                      'LineAndPointTool': [ 'geometry', 'visualFeature' ]

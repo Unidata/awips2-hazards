@@ -9,6 +9,47 @@ import Domains
 
 OUTPUTDIR = '/scratch/convectiveSigmetTesting'
 
+
+# ZCZC MKCSIGE ALL 261755
+# WSUS31 KKCI 261755
+# SIGE /n/x1eMKCE WST
+# MKCE WST 261755
+# CONVECTIVE SIGMET 1E
+# VALID UNTIL 1955Z
+# NC 
+# FROM 20SSE RDU
+# ISOL SEV D40 NM TS MOV FROM 11010KT. TOPS ABV FL450.
+# HAIL TO 1 IN...WIND GUSTS TO 50 KTS POSS.
+# 
+# NNNN
+# 
+# ZCZC MKCSIGC ALL 261755
+# WSUS32 KKCI 261755
+# SIGC /n/x1eMKCC WST
+# MKCC WST 261755
+# CONVECTIVE SIGMET 06C
+# VALID UNTIL 1955Z
+# SD ND 
+# FROM 50S MOT-40WSW DPR-40SSE ABR-60SE GFK-50S MOT
+# INTSF AREA EMBD TS MOV FROM 05010KT. TOPS TO FL420.
+# 
+# CONVECTIVE SIGMET 07C
+# VALID UNTIL 1955Z
+# KS OK 
+# FROM 40S SLN-20WSW OKC
+# LINE SEV 20 NM WIDE TS MOV FROM 35030KT. TOPS ABV FL450.
+# HAIL TO 1 IN...WIND GUSTS TO 50 KTS POSS.
+# 
+# NNNN
+# 
+# ZCZC MKCSIGW ALL 261755
+# WSUS33 KKCI 261755
+# SIGW /n/x1eMKCW WST
+# MKCW WST 261755
+# CONVECTIVE SIGMET...NONE
+# 
+# NNNN
+
 class Format(Legacy_Hydro_Formatter.Format):
 
     def initialize(self):
@@ -73,8 +114,6 @@ class Format(Legacy_Hydro_Formatter.Format):
         self._convectiveSigmetModifierStr = eventDictParts.get('modifier','')
         self._hazardMotionStr = eventDictParts.get('motion','MOV LTL.')
         self._convectiveSigmetCloudTopStr = eventDictParts.get('cloudTop','TOPS ABV FL450.')
-        self._startTime = eventDictParts.get('startTime','DDHHMM')
-        self._endTime = eventDictParts.get('endTime','DDHHMM')      
         self._startDate = eventDictParts.get('startDate','YYYYMMDD_HHmm')               
         self._endDate = eventDictParts.get('endDate','YYYYMMDD_HHmm')
         self._vertices = eventDictParts.get('geometry',None)
@@ -98,7 +137,27 @@ class Format(Legacy_Hydro_Formatter.Format):
         self._lineLength = 68  # line length
         
         if eventDictParts.get('specialTime') is not None:
-            self._specialTime = eventDictParts.get('specialTime')          
+            self._specialTime = eventDictParts.get('specialTime')
+            
+        self._setValidTimes(eventDict)
+        
+    def _setValidTimes(self, eventDict):
+        eventDictParts = eventDict.get('parts')
+        self._startTime = eventDictParts.get('startTime','DDHHMM')
+        self._endTime = eventDictParts.get('endTime','HHMM')
+        
+        min = int(self._startTime[4:])
+        hr = int(self._startTime[2:4]) - 1
+        
+        if min > 55:
+            self._startTime = self._startTime[:4] + '55'
+            self._endTime = self._endTime[:2] + '55'
+        if min < 55:
+            hr = int(self._startTime[2:4]) - 1
+            self._startTime = self._startTime[:2] + str(hr) + '55'
+            self._endTime = str(hr + 2) + '55'
+        
+        return self._startTime, self._endTime                                
                     
     def _assembleProduct(self, eventDicts, fcstList, domains):                       
         fcstDict = self._createFcstDict(eventDicts, fcstList, domains)                             
@@ -170,6 +229,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                 self._all, timeStr)            
             header = '%s%s %s %s\n' % (header, domain.wmoHeader(), self._fullStationID,
                 timeStr)
+            header = '%s%s %s%s%s %s\n' % (header, domain.pil(), "/n/x1e", self._productLoc, domain.abbrev(), 'WST')
             header = '%s%s%s %s %s' % (header, self._productLoc, domain.abbrev(),
                 self._productIdentifier, timeStr)
             headerDict[domain.domainName()] = header       
@@ -200,11 +260,11 @@ class Format(Legacy_Hydro_Formatter.Format):
         fcst = fcst + 'VALID UNTIL ' + self._endTime + 'Z\n'
         fcst = '%s%s\n' % (fcst, self._statesListStr)
         fcst = '%s%s\n' % (fcst, self._boundingStatement)
-        fcst = '%s%s%s %s%s %s' % (fcst, self._convectiveSigmetModifierStr, self._convectiveSigmetModeStr, self._hazardEmbeddedStr,
-            self._hazardMotionStr, self._convectiveSigmetCloudTopStr)
+        fcst = '%s%s%s %s%s%s %s' % (fcst, self._convectiveSigmetModifierStr, self._convectiveSigmetModeStr, self._hazardEmbeddedStr,
+            'TS ', self._hazardMotionStr, self._convectiveSigmetCloudTopStr)
         
         if len(self._convectiveSigmetAdditionalHazardsStr):
-            fcst = '%s %s' % (fcst, self._convectiveSigmetAdditionalHazardsStr)
+            fcst = '%s\n%s' % (fcst, self._convectiveSigmetAdditionalHazardsStr)
         
         fcst = fcst.replace("_", " ")       
         

@@ -11,7 +11,7 @@ import Legacy_Hydro_Formatter
 from collections import OrderedDict
 import Domains
 
-OUTPUTDIR = '/scratch/convectiveSigmetTesting'
+OUTPUTDIR = '/scratch/convectiveSigmetTesting' 
 
 # <?xml version="1.0" ?>
 # <iwxxm-us:SIGMET gml:id="sigmet-conv-MKCE-2E-20150421855Z" status="NORMAL" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:iwxxm="http://icao.int/iwxxm/1.1" xmlns:iwxxm-us="http://nws.weather.gov/schemas/IWXXM-US/1.0/Release" xmlns:metce="http://def.wmo.int/metce/2013" xmlns:om="http://www.opengis.net/om/2.0" xmlns:saf="http://icao.int/saf/1.1" xmlns:sams="http://www.opengis.net/samplingSpatial/2.0" xmlns:sf="http://www.opengis.net/sampling/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://nws.weather.gov/schemas/IWXXM-US/1.0/Release http://nws.weather.gov/schemas/IWXXM-US/1.0/Release/schemas/usSigmet.xsd">
