@@ -18,12 +18,8 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
-import gov.noaa.nws.ncep.ui.pgen.elements.MultiPointElement;
-import gov.noaa.nws.ncep.ui.pgen.elements.SinglePointElement;
 
 import java.awt.Color;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -61,6 +57,13 @@ import com.vividsolutions.jts.geom.Point;
  *                                      Changed code to work with new names of
  *                                      spatial display methods.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries.
+ * Sep 23, 2016   15934    Chris.Golden Simplified code for vertex and shape
+ *                                      moving edits so that it no longer
+ *                                      requires a copy of the pre-edit points
+ *                                      to be kept around in case of reversion.
+ *                                      Also added ability to move advanced
+ *                                      geometries that are not simply a list
+ *                                      of coordinates.
  * </pre>
  * 
  * @author Chris.Golden
@@ -72,7 +75,7 @@ public class SelectionAndModificationInputHandler extends
     // Private Static Constants
 
     /**
-     * Colors for the ghost element.
+     * Colors for the ghost drawable.
      */
     Color[] GHOST_COLORS = new Color[] { Color.WHITE, Color.WHITE };
 
@@ -81,23 +84,17 @@ public class SelectionAndModificationInputHandler extends
     /**
      * Coordinate of the previous cursor location.
      */
-    protected Coordinate previousLocation = null;
-
-    /**
-     * Coordinates from multi-point shape prior to the current edit, if any edit
-     * is in progress.
-     */
-    List<Coordinate> preEditPoints = null;
+    private Coordinate previousLocation;
 
     /**
      * Ghost drawable.
      */
-    AbstractDrawableComponent ghostDrawable = null;
+    private AbstractDrawableComponent ghostDrawable;
 
     /**
-     * Selected point.
+     * Last point in lat-lon coordinates used in an ongoing shape move.
      */
-    Coordinate selectedPoint = null;
+    private Coordinate lastMoveLocation;
 
     /**
      * Index of the line or polygon vertex over which the mouse is hovering; if
@@ -108,15 +105,15 @@ public class SelectionAndModificationInputHandler extends
     /**
      * Flag indicating if a move of a line or polygon vertex is in progress.
      */
-    private boolean vertexMoving = false;
+    private boolean vertexMoving;
 
     /**
      * Flag indicating whether or not to allow panning.
      */
-    private boolean allowPanning = false;
+    private boolean allowPanning;
 
     /**
-     * Drawable element under a mouse-down.
+     * Drawable under a mouse-down.
      */
     private AbstractDrawableComponent drawableUnderMouseDown;
 
@@ -262,9 +259,9 @@ public class SelectionAndModificationInputHandler extends
 
                 /*
                  * If something was found to be editable, but nothing was set
-                 * for the drawable element under the mouse down, set the latter
-                 * to the former. This way, if nothing occurs except for a mouse
-                 * up, an unselected element may be selected by the click.
+                 * for the drawable under the mouse down, set the latter to the
+                 * former. This way, if nothing occurs except for a mouse up, an
+                 * unselected drawable may be selected by the click.
                  */
                 if (drawableUnderMouseDown == null) {
                     drawableUnderMouseDown = drawable;
@@ -275,7 +272,16 @@ public class SelectionAndModificationInputHandler extends
                  */
                 allowPanning = (drawable == null);
 
+                /*
+                 * Set the editable drawable to that found above.
+                 */
                 getSpatialDisplay().setDrawableBeingEdited(drawable);
+
+                /*
+                 * This may end up being a shape move; in case it is, remember
+                 * the starting position.
+                 */
+                lastMoveLocation = new Coordinate(location);
             }
         } else if (button == 2) {
             allowPanning = true;
@@ -370,11 +376,11 @@ public class SelectionAndModificationInputHandler extends
         /*
          * If the drawable being edited is not reactive, allow panning.
          */
-        AbstractDrawableComponent editedElement = getSpatialDisplay()
+        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
                 .getDrawableBeingEdited();
-        if ((editedElement != null)
+        if ((editedDrawable != null)
                 && (getSpatialDisplay().getReactiveDrawables().contains(
-                        editedElement) == false)) {
+                        editedDrawable) == false)) {
             allowPanning = true;
         }
 
@@ -383,7 +389,7 @@ public class SelectionAndModificationInputHandler extends
          * is one to move.
          */
         if (allowPanning == false) {
-            handleShapeMove(location, x, y);
+            handleShapeMove(location);
             return true;
         } else {
             return false;
@@ -405,8 +411,8 @@ public class SelectionAndModificationInputHandler extends
          * selected; if the middle button, add or delete a vertex if the
          * something was being edited; otherwise, if a vertex was moving, finish
          * the move; otherwise, if a whole drawable was being moved, finish the
-         * move; otherwise, if an unselected element is under the mouse and the
-         * mouse did not move, select that element).
+         * move; otherwise, if an unselected drawable is under the mouse and the
+         * mouse did not move, select that drawable).
          */
         boolean result = true;
         boolean updateMouseCursor = true;
@@ -475,14 +481,14 @@ public class SelectionAndModificationInputHandler extends
                 .getMutableDrawableInfoUnderPoint(x, y);
 
         /*
-         * If there is no mutable drawable here, remove any hover element, and
+         * If there is no mutable drawable here, remove any hover drawable, and
          * set the cursor to be standard. Otherwise, if the drawable is
-         * editable, use it for the hover element, and set the cursor according
+         * editable, use it for the hover drawable, and set the cursor according
          * to whether the mouse is over a vertex, not over a vertex but near the
          * edge of the drawable, or far from the edge. Also record the vertex if
          * one is under the mouse. Finally, if there is a movable but uneditable
          * drawable under the mouse, set the cursor to indicate this and remove
-         * any hover element.
+         * any hover drawable.
          */
         if (mutableDrawableInfo.getDrawable() == null) {
             getSpatialDisplay().setHoverDrawable(null);
@@ -518,12 +524,12 @@ public class SelectionAndModificationInputHandler extends
      * @return Set of reactive drawable identifiers.
      */
     private Set<IEntityIdentifier> getReactiveDrawableIdentifiers() {
-        Set<AbstractDrawableComponent> reactiveElements = getSpatialDisplay()
+        Set<AbstractDrawableComponent> reactiveDrawables = getSpatialDisplay()
                 .getReactiveDrawables();
         Set<IEntityIdentifier> reactiveIdentifiers = new HashSet<>(
-                reactiveElements.size(), 1.0f);
-        for (AbstractDrawableComponent reactiveElement : reactiveElements) {
-            reactiveIdentifiers.add(((IDrawable<?>) reactiveElement)
+                reactiveDrawables.size(), 1.0f);
+        for (AbstractDrawableComponent reactiveDrawable : reactiveDrawables) {
+            reactiveIdentifiers.add(((IDrawable<?>) reactiveDrawable)
                     .getIdentifier());
         }
         return reactiveIdentifiers;
@@ -534,43 +540,39 @@ public class SelectionAndModificationInputHandler extends
      * 
      * @param location
      *            New location in world coordinates.
-     * @param x
-     *            Pixel X coordinate.
-     * @param y
-     *            Pixel Y coordinate.
      */
-    private void handleShapeMove(Coordinate location, int x, int y) {
-        AbstractDrawableComponent editedElement = getSpatialDisplay()
+    private void handleShapeMove(Coordinate location) {
+        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
                 .getDrawableBeingEdited();
-        if (editedElement != null) {
-            if (getSpatialDisplay().isDrawableMovable(editedElement)) {
+        if (editedDrawable != null) {
+            if (getSpatialDisplay().isDrawableMovable(editedDrawable)) {
 
                 /*
                  * If nothing is being dragged yet, determine whether or not the
-                 * drag point is close enough to the edited element, and if so,
+                 * drag point is close enough to the edited drawable, and if so,
                  * begin the drag.
                  */
                 if (ghostDrawable == null) {
-                    GeometryFactory gf = new GeometryFactory();
-                    Point clickPoint = gf.createPoint(location);
+                    GeometryFactory geometryFactory = new GeometryFactory();
+                    Point clickPoint = geometryFactory.createPoint(location);
 
                     /*
                      * Get the distance between the point and the edited
-                     * element.
+                     * drawable.
                      */
                     double distance;
-                    if (editedElement instanceof SymbolDrawable) {
-                        Point centroid = gf.createPoint(editedElement
-                                .getPoints().get(0));
+                    if (editedDrawable instanceof SymbolDrawable) {
+                        Point centroid = geometryFactory
+                                .createPoint(editedDrawable.getPoints().get(0));
                         distance = centroid.distance(clickPoint);
                     } else {
 
                         /*
-                         * Make a copy of the points from the edited element so
+                         * Make a copy of the points from the edited drawable so
                          * that they may be turned into a path for checking
                          * distance.
                          */
-                        List<Coordinate> drawnPoints = editedElement
+                        List<Coordinate> drawnPoints = editedDrawable
                                 .getPoints();
                         Coordinate[] drawnPointsCopy = new Coordinate[drawnPoints
                                 .size() + 1];
@@ -582,19 +584,18 @@ public class SelectionAndModificationInputHandler extends
                          * Create a line string and get the distance between it
                          * and the point.
                          */
-                        LineString ls = gf.createLineString(drawnPointsCopy);
-                        distance = ls.distance(clickPoint);
+                        LineString lineString = geometryFactory
+                                .createLineString(drawnPointsCopy);
+                        distance = lineString.distance(clickPoint);
                     }
 
                     /*
                      * If the distance is small enough, set the selected point
-                     * and copy the edited element to be the ghost.
+                     * and copy the edited drawable to be the ghost.
                      */
                     if (distance < SpatialDisplay.SLOP_DISTANCE_PIXELS) {
-                        selectedPoint = new Coordinate(clickPoint.getX(),
-                                clickPoint.getY());
-                        ghostDrawable = getSpatialDisplay()
-                                .getDrawableBeingEdited().copy();
+                        createGhostDrawable(getSpatialDisplay()
+                                .getDrawableBeingEdited());
                     }
                 }
 
@@ -602,45 +603,21 @@ public class SelectionAndModificationInputHandler extends
                  * Get the new position of the ghost drawable.
                  */
                 if (ghostDrawable != null) {
-                    AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                            .getInstance().getActiveEditor());
-                    double[] pixelCoordinates = editor
-                            .translateInverseClick(selectedPoint);
-                    double deltaX = x - pixelCoordinates[0];
-                    double deltaY = y - pixelCoordinates[1];
 
                     /*
-                     * If this the beginning of the edit, copy the points first
-                     * so that the edit can be reverted if necessary.
+                     * Get the offset between the last position during the move
+                     * of the click point and the current one. Also remember the
+                     * current position for next time.
                      */
-                    List<Coordinate> points = editedElement.getPoints();
-                    if (preEditPoints == null) {
-                        preEditPoints = new ArrayList<>(points);
-                    }
+                    double deltaX = location.x - lastMoveLocation.x;
+                    double deltaY = location.y - lastMoveLocation.y;
+                    lastMoveLocation.x = location.x;
+                    lastMoveLocation.y = location.y;
 
                     /*
-                     * Calculate coordinates of the ghost drawable.
+                     * Offset the ghost drawable.
                      */
-                    for (int j = 0; j < points.size(); j++) {
-                        pixelCoordinates = editor
-                                .translateInverseClick(editedElement
-                                        .getPoints().get(j));
-                        pixelCoordinates[0] += deltaX;
-                        pixelCoordinates[1] += deltaY;
-                        Coordinate point = editor.translateClick(
-                                pixelCoordinates[0], pixelCoordinates[1]);
-                        if (point == null) {
-                            continue;
-                        }
-                        ghostDrawable.getPoints().get(j).x = point.x;
-                        ghostDrawable.getPoints().get(j).y = point.y;
-
-                    }
-
-                    /*
-                     * Set the ghost color.
-                     */
-                    ghostDrawable.setColors(GHOST_COLORS);
+                    ((IDrawable<?>) ghostDrawable).offsetBy(deltaX, deltaY);
 
                     /*
                      * Set the ghost and hover drawables to be the same.
@@ -661,43 +638,40 @@ public class SelectionAndModificationInputHandler extends
      *            New location in world coordinates.
      */
     private void handleVertexMove(Coordinate location) {
-        AbstractDrawableComponent editedElement = getSpatialDisplay()
+        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
                 .getDrawableBeingEdited();
-        if (editedElement != null) {
+        if ((editedDrawable != null)
+                && ((IDrawable<?>) editedDrawable).isEditable()) {
 
             /*
-             * Only move individual points if the shape allows editing.
+             * If this is the beginning of the vertex move, make a note of it,
+             * and copy the drawable being edited to be used as a ghost. The
+             * ghost is the one that will actually be changed.
              */
-            if (((IDrawable<?>) editedElement).isEditable()) {
+            if (ghostDrawable == null) {
                 vertexMoving = true;
-
-                /*
-                 * Replace the previous coordinate with the new one, copying
-                 * them first in case the change being made now gets reverted
-                 * later. If this is a polygon, the last point must be the same
-                 * as the first, so ensure that this is the case if the first
-                 * point is the one being moved. (The last point is never the
-                 * one being moved for polygons.)
-                 */
-                List<Coordinate> points = editedElement.getPoints();
-                if (preEditPoints == null) {
-                    preEditPoints = new ArrayList<>(points);
-                }
-                points.set(vertexIndexUnderMouse, location);
-                if (getSpatialDisplay().isPolygon(editedElement)
-                        && (vertexIndexUnderMouse == 0)) {
-                    points.set(points.size() - 1, location);
-                }
-
-                /*
-                 * Update the ghost drawable and the handlbar points.
-                 */
-                ghostDrawable = editedElement.copy();
-                getSpatialDisplay()
-                        .setGhostOfDrawableBeingEdited(ghostDrawable);
-                getSpatialDisplay().useAsHandlebarPoints(points);
-                getSpatialDisplay().issueRefresh();
+                createGhostDrawable(editedDrawable);
             }
+
+            /*
+             * Replace the previous coordinate with the new one. If this is a
+             * polygon, the last point must be the same as the first, so ensure
+             * that this is the case if the first point is the one being moved.
+             * (The last point is never the one being moved for polygons.)
+             */
+            List<Coordinate> points = ghostDrawable.getPoints();
+            points.set(vertexIndexUnderMouse, location);
+            if (getSpatialDisplay().isPolygon(ghostDrawable)
+                    && (vertexIndexUnderMouse == 0)) {
+                points.set(points.size() - 1, location);
+            }
+
+            /*
+             * Update the ghost drawable and the handlbar points.
+             */
+            getSpatialDisplay().setGhostOfDrawableBeingEdited(ghostDrawable);
+            getSpatialDisplay().useAsHandlebarPoints(points);
+            getSpatialDisplay().issueRefresh();
         }
     }
 
@@ -709,31 +683,28 @@ public class SelectionAndModificationInputHandler extends
         /*
          * Get the drawable being edited.
          */
-        AbstractDrawableComponent editedElement = getSpatialDisplay()
+        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
                 .getDrawableBeingEdited();
-        if (editedElement == null) {
+        if (editedDrawable == null) {
             return;
         }
-        IDrawable<?> originalShape = (IDrawable<?>) editedElement;
+        IDrawable<?> originalShape = (IDrawable<?>) editedDrawable;
 
         /*
          * Create the new geometry for the drawable.
          */
-        List<Coordinate> coordinates = (ghostDrawable instanceof MultiPointElement ? ((MultiPointElement) ghostDrawable)
-                .getPoints() : ((SinglePointElement) ghostDrawable).getPoints());
         IAdvancedGeometry modifiedGeometry = getSpatialDisplay()
-                .buildModifiedGeometry(originalShape, coordinates);
+                .buildModifiedGeometry(originalShape,
+                        ((IDrawable<?>) ghostDrawable).getGeometry());
 
         /*
          * Notify the spatial display of the change, reset the hover and editing
          * drawables, and refresh the display.
          */
-        getSpatialDisplay().handleUserModificationOfDrawable(editedElement,
+        getSpatialDisplay().handleUserModificationOfDrawable(editedDrawable,
                 modifiedGeometry);
         getSpatialDisplay().setHoverDrawable(null);
-        getSpatialDisplay().setDrawableBeingEdited(null);
         getSpatialDisplay().issueRefresh();
-        preEditPoints = null;
     }
 
     /**
@@ -748,36 +719,30 @@ public class SelectionAndModificationInputHandler extends
         vertexMoving = false;
 
         /*
-         * If there is an element being edited, complete the edit.
+         * If there is an drawable being edited, complete the edit.
          */
-        AbstractDrawableComponent editedElement = getSpatialDisplay()
+        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
                 .getDrawableBeingEdited();
-        if (editedElement != null) {
-            getSpatialDisplay().setDrawableBeingEdited(null);
-            IDrawable<?> entityShape = (IDrawable<?>) editedElement;
+        if (ghostDrawable != null) {
+            IDrawable<?> entityShape = (IDrawable<?>) editedDrawable;
             IAdvancedGeometry modifiedGeometry = getSpatialDisplay()
                     .buildModifiedGeometry(entityShape,
-                            editedElement.getPoints());
+                            ghostDrawable.getPoints());
             getSpatialDisplay().setHoverDrawable(null);
 
             /*
              * If the newly moved vertex results in a valid geometry, use the
              * latter as a modified geometry for the spatial entity; otherwise,
-             * reset the drawable's points to be what they were prior to the
-             * edit.
+             * simply refresh the display.
              */
             if (getSpatialDisplay().checkGeometryValidity(modifiedGeometry)) {
                 getSpatialDisplay().handleUserModificationOfDrawable(
-                        editedElement, modifiedGeometry);
+                        editedDrawable, modifiedGeometry);
             } else {
-                List<Coordinate> editedElementPoints = editedElement
-                        .getPoints();
-                editedElementPoints.clear();
-                editedElementPoints.addAll(preEditPoints);
                 getSpatialDisplay().issueRefresh();
             }
+            ghostDrawable = null;
         }
-        preEditPoints = null;
     }
 
     /**
@@ -799,22 +764,22 @@ public class SelectionAndModificationInputHandler extends
     }
 
     /**
+     * Create a ghost drawable of the specified drawable.
+     * 
+     * @param drawableBeingEdited
+     *            Drawable that is being edited which needs a ghost.
+     */
+    private void createGhostDrawable(
+            AbstractDrawableComponent drawableBeingEdited) {
+        ghostDrawable = ((IDrawable<?>) drawableBeingEdited).copyOf();
+        ghostDrawable.setColors(GHOST_COLORS);
+    }
+
+    /**
      * Finish up whatever selection or modification operation is in process.
      */
     private void finalizeMouseHandling() {
         getSpatialDisplay().setGhostOfDrawableBeingEdited(null);
-
-        if (preEditPoints != null) {
-            DrawableElement drawableBeingEdited = getSpatialDisplay()
-                    .getDrawableBeingEdited();
-            if (drawableBeingEdited != null) {
-                List<Coordinate> editedElementPoints = drawableBeingEdited
-                        .getPoints();
-                editedElementPoints.clear();
-                editedElementPoints.addAll(preEditPoints);
-            }
-            preEditPoints = null;
-        }
 
         getSpatialDisplay().setDrawableBeingEdited(null);
         ghostDrawable = null;

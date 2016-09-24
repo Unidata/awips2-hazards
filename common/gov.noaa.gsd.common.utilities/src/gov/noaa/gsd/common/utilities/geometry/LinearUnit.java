@@ -25,6 +25,12 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 31, 2016   15934    Chris.Golden Initial creation.
+ * Sep 21, 2016   15934    Chris.Golden Added new method to calculate the
+ *                                      distance between two lat-lon points
+ *                                      using a given unit, and corrected the
+ *                                      method used to calculate an offset
+ *                                      lat-lon point (it was yielding results
+ *                                      with incorrect signs in some cases).
  * </pre>
  * 
  * @author Chris.Golden
@@ -109,10 +115,53 @@ public enum LinearUnit {
     }
 
     /**
+     * Get the distance between the specified latitude-longitude coordinates.
+     * 
+     * @param firstCoordinate
+     *            First coordinate.
+     * @param secondCoordinate
+     *            Second coordinate.
+     * @return Distance measured in this unit between the coordinates.
+     */
+    public double getDistanceBetween(Coordinate firstCoordinate,
+            Coordinate secondCoordinate) {
+
+        /*
+         * This algorithm is taken from:
+         * 
+         * http://williams.best.vwh.net/avform.htm#Dist
+         * 
+         * It is the second version, which has less rounding error for short
+         * distances.
+         */
+
+        /*
+         * Convert the latitudes and longitudes to radians.
+         */
+        double firstLonRadians = Math.toRadians(firstCoordinate.x);
+        double firstLatRadians = Math.toRadians(firstCoordinate.y);
+        double secondLonRadians = Math.toRadians(secondCoordinate.x);
+        double secondLatRadians = Math.toRadians(secondCoordinate.y);
+
+        /*
+         * Perform the conversion, converting back from radians.
+         */
+        return earthRadius
+                * 2.0
+                * Math.asin(Math.sqrt(Math.pow(
+                        Math.sin((firstLatRadians - secondLatRadians) / 2.0),
+                        2.0)
+                        + (Math.cos(firstLatRadians)
+                                * Math.cos(secondLatRadians) * Math.pow(
+                                Math.sin((firstLonRadians - secondLonRadians) / 2.0),
+                                2.0))));
+    }
+
+    /**
      * Get the latitude-longitude coordinate resulting from offsetting the
      * specified latitude-longitude by the offset with the specified magnitude
-     * (measured in this unit) and direction (measured in degrees, with
-     * <code>0</code> being east, <code>90</code> being north, etc.
+     * (measured in this unit) and direction (measured in radians, with
+     * <code>0</code> being east, <code>PI / 2</code> being north, etc.
      * 
      * @param coordinate
      *            Latitude-longitude coordinate from which to offset.
@@ -127,42 +176,67 @@ public enum LinearUnit {
             double magnitude, double direction) {
 
         /*
-         * This algorithm is taken from:
+         * This algorithm is taken from the function
+         * Point_At_Distance_And_Bearing() from the Javascript page:
          * 
-         * http://williams.best.vwh.net/avform.htm#LL
+         * http://www.gpsvisualizer.com/calculators.js
          * 
-         * It is the more general version, which should work for cases where the
-         * longitudinal distance is of any size.
+         * Which in turn was adapted from the "Sprong" algorithm written by Dale
+         * Bickel at the FCC.
          */
 
         /*
-         * Convert the latitude, longitude, and distance to radians.
+         * Eastern half of circle is true, western half is false.
+         */
+        boolean isEastern = ((direction <= Math.PI * 0.5) || (direction >= Math.PI * 1.5));
+
+        /*
+         * Convert the direction from the original scheme to one in which 0
+         * degrees is north, 90 degrees is west, etc.
+         */
+        direction = (direction + (1.5 * Math.PI)) % (Math.PI * 2.0);
+
+        /*
+         * Convert the latitude and longitude to radians.
          */
         double lonRadians = Math.toRadians(coordinate.x);
         double latRadians = Math.toRadians(coordinate.y);
+
+        /*
+         * Perform the meat of the calculation.
+         */
+        double bb = (Math.PI / 2.0) - latRadians;
         double magnitudeRadians = magnitude / earthRadius;
 
-        /*
-         * Calculate the sines and cosines that will be used at least twice
-         * apiece.
-         */
-        double sineLatRadians = Math.sin(latRadians);
-        double cosineLatRadians = Math.cos(latRadians);
-        double sineMagnitudeRadians = Math.sin(magnitudeRadians);
+        double sineBb = Math.sin(bb);
+        double cosineBb = Math.cos(bb);
         double cosineMagnitudeRadians = Math.cos(magnitudeRadians);
 
-        /*
-         * Perform the conversion.
-         */
-        double newLatRadians = (Math.asin(sineLatRadians
-                * cosineMagnitudeRadians) + (cosineLatRadians
-                * sineMagnitudeRadians * Math.cos(direction)));
-        double lonDistanceRadians = Math.atan2(
-                Math.sin(direction) * sineMagnitudeRadians * cosineLatRadians,
-                cosineMagnitudeRadians
-                        - (sineLatRadians * Math.sin(newLatRadians)));
-        double newLonRadians = ((lonRadians - lonDistanceRadians + Math.PI) % 2.0 * Math.PI)
-                - Math.PI;
+        double cosineAa = (cosineBb * cosineMagnitudeRadians)
+                + (sineBb * Math.sin(magnitudeRadians) * Math.cos(direction));
+        if (cosineAa < -1.0) {
+            cosineAa = -1.0;
+        } else if (cosineAa > 1) {
+            cosineAa = 1.0;
+        }
+        double aa = (cosineAa == 1.0 ? 0.0 : Math.acos(cosineAa));
+
+        double cosineC = (cosineMagnitudeRadians - (cosineAa * cosineBb))
+                / (Math.sin(aa) * sineBb);
+        if (cosineC < -1.0) {
+            cosineC = -1.0;
+        } else if (cosineC > 1.0) {
+            cosineC = 1.0;
+        }
+        double c = (cosineC == 1.0 ? 0.0 : Math.acos(cosineC));
+
+        double newLatRadians = (Math.PI / 2.0) - aa;
+        double newLonRadians = lonRadians + (c * (isEastern ? 1.0 : -1.0));
+        if (newLonRadians > Math.PI) {
+            newLonRadians -= 2.0 * Math.PI;
+        } else if (newLonRadians < Math.PI * -1.0) {
+            newLonRadians += 2.0 * Math.PI;
+        }
 
         /*
          * Return the result, converted back to degrees.

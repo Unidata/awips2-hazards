@@ -15,12 +15,8 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.DrawableAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.LineDrawableAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PolygonDrawableAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawableAttributes;
-import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
-import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,8 +35,14 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 05, 2016   19537    Chris.Golden Initial creation.
- * Aug 28, 2016   19537    Chris.Golden Changed to build drawables
- *                                      without a PGEN layer.
+ * Aug 28, 2016   19537    Chris.Golden Changed to build drawables without a
+ *                                      PGEN layer.
+ * Sep 21, 2016   15934    Chris.Golden Extracted incremental-drawing elements
+ *                                      to put in new interim subclass
+ *                                      IncrementalDrawingInputHandler, thus
+ *                                      allowing this class to be the super-
+ *                                      class of the new ScalingDrawingInput-
+ *                                      Handler.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,16 +51,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 public class DrawingInputHandler extends BaseInputHandler {
 
     // Private Variables
-
-    /**
-     * List of world coordinates that are part of the shape being drawn.
-     * <p>
-     * Note that this is an <code>ArrayList</code> instead of a
-     * <code>List</code> because PGEN's
-     * {@link DrawableElementFactory#create(DrawableType, gov.noaa.nws.ncep.ui.pgen.display.IAttribute, String, String, ArrayList, AbstractDrawableComponent)}
-     * method requires an <code>ArrayList</code>.
-     */
-    private final ArrayList<Coordinate> points = new ArrayList<>();
 
     /**
      * Shape type to be drawn.
@@ -71,8 +63,7 @@ public class DrawingInputHandler extends BaseInputHandler {
     private final Map<GeometryType, DrawableAttributes> drawingAttributesForShapeTypes = new HashMap<>();
 
     /**
-     * Drawable element factory, used to create linear and polygonal ghost
-     * shapes while drawing.
+     * Drawable element factory, used to create ghost shapes while drawing.
      */
     private final DrawableElementFactory drawableFactory = new DrawableElementFactory();
 
@@ -93,11 +84,6 @@ public class DrawingInputHandler extends BaseInputHandler {
     @Override
     public void reset() {
         getSpatialDisplay().setCursor(CursorTypes.DRAW_CURSOR);
-        if (points.isEmpty() == false) {
-            points.clear();
-            hideGhost();
-            getSpatialDisplay().issueRefresh();
-        }
     }
 
     @Override
@@ -129,15 +115,6 @@ public class DrawingInputHandler extends BaseInputHandler {
     }
 
     // Protected Methods
-
-    /**
-     * Get the points placed during the ongoing drawing operation.
-     * 
-     * @return Points placed during the ongoing drawing operation.
-     */
-    protected final ArrayList<Coordinate> getPoints() {
-        return points;
-    }
 
     /**
      * Get the current shape type.
@@ -199,52 +176,5 @@ public class DrawingInputHandler extends BaseInputHandler {
          * Get the world location.
          */
         return translatePixelToWorld(x, y);
-    }
-
-    /**
-     * Show a ghost drawable providing a visual indicator of the shape drawn so
-     * far.
-     * 
-     * @param location
-     *            Point to add to the end of the list of points for the purposes
-     *            of creating the ghost drawable; if <code>null</code>, no extra
-     *            point is added.
-     */
-    protected final void showGhost(Coordinate location) {
-        ArrayList<Coordinate> ghostPoints = new ArrayList<>(points);
-        if (location != null) {
-            ghostPoints.add(location);
-        }
-        AbstractDrawableComponent ghost = getDrawableFactory().create(
-                DrawableType.LINE, getDrawingAttributes(), "Line",
-                "LINE_SOLID", ghostPoints, null);
-        ((Line) ghost).setLinePoints(ghostPoints);
-        getSpatialDisplay().setGhostOfDrawableBeingEdited(ghost);
-    }
-
-    /**
-     * Hide any visible ghost drawable.
-     */
-    protected final void hideGhost() {
-        getSpatialDisplay().setGhostOfDrawableBeingEdited(null);
-    }
-
-    /**
-     * Add the specified point to the points list if it is not the same as the
-     * previous point (if the list is not empty).
-     * 
-     * @param point
-     *            New point to be added.
-     * @return <code>true</code> if the point was added, <code>false</code> if
-     *         it was found to be identical to the previous point and skipped.
-     */
-    protected final boolean addPointIfNotIdenticalToPreviousPoint(
-            Coordinate point) {
-        if (points.isEmpty()
-                || (points.get(points.size() - 1).equals(point) == false)) {
-            points.add(point);
-            return true;
-        }
-        return false;
     }
 }

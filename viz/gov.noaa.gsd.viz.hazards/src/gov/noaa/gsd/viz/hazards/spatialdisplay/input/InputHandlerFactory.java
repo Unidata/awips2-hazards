@@ -27,16 +27,18 @@ import com.vividsolutions.jts.geom.Geometry;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Feb 28, 2013            Bryon.Lawrence      Initial creation
- * Jul 15, 2013      585   Chris.Golden        Changed so that various handlers
- *                                             are no longer singletons.
- * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
- * Jan  7, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards
- * Jun 23, 2016 19537      Chris.Golden        Removed storm-track-specific code.
- * Jul 25, 2016 19537      Chris.Golden        Renamed and completely revamped to work with new
- *                                             mouse handlers.
+ * Date         Ticket#    Engineer       Description
+ * ------------ ---------- -------------- --------------------------
+ * Feb 28, 2013            Bryon.Lawrence Initial creation
+ * Jul 15, 2013     585    Chris.Golden   Changed so that various handlers
+ *                                        are no longer singletons.
+ * Aug  9, 2013    1921    Dan Schaffer   Support of replacement of JSON with POJOs.
+ * Jan  7, 2015    4959    Dan Schaffer   Ability to right click to add/remove UGCs
+ *                                        from hazards.
+ * Jun 23, 2016   19537    Chris.Golden   Removed storm-track-specific code.
+ * Jul 25, 2016   19537    Chris.Golden   Renamed and completely revamped to work with
+ *                                        new mouse handlers.
+ * Sep 21, 2016   15934    Chris.Golden   Changed to support ellipse drawing.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -102,6 +104,9 @@ public class InputHandlerFactory {
                 break;
             case FREEHAND_DRAWING:
                 handler = new FreehandDrawingInputHandler(spatialDisplay);
+                break;
+            case ELLIPSE_DRAWING:
+                handler = new EllipseDrawingInputHandler(spatialDisplay);
                 break;
             default:
                 statusHandler

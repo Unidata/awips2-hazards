@@ -16,7 +16,7 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.MultiPointDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.input.BaseInputHandler;
@@ -204,6 +204,10 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        added code to cancel edits when a drawable is updated by the
  *                                        system while the user is changing it.
  * Sep 12, 2016 15934      Chris.Golden   Changed to work with advanced geometries.
+ * Sep 21, 2016 15934      Chris.Golden   Replaced MultiPointDrawable with new PathDrawable, and
+ *                                        added support for ellipse drawing. Also added a new
+ *                                        buildModifiedGeometry() method that takes advanced geometry
+ *                                        instead of a list of points.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -332,6 +336,12 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     static final String LAYER_NAME = "Hazard Services";
 
     // Private Static Constants
+
+    /**
+     * Distance tolerance used for topology preserving simplification of paths
+     * and polygons.
+     */
+    private static final double SIMPLIFIER_DISTANCE_TOLERANCE = 0.0001;
 
     /**
      * Default map scale name. Does not match any valid scale name. This is by
@@ -1172,6 +1182,12 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
     /**
      * Handle the user creation of a point shape.
+     * <p>
+     * TODO: When the deprecated method
+     * {@link #handleUserMultiPointDrawingActionComplete(GeometryType, List)} is
+     * removed, the <code>location</code> parameter should be turned into an
+     * {@link IAdvancedGeometry} for consistency's sake.
+     * </p>
      * 
      * @param location
      *            Location at which the point is to be created.
@@ -1218,13 +1234,36 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            {@link GeometryType#LINE} or {@link GeometryType#POLYGON}.
      * @param points
      *            List of coordinates making up the shape.
+     * @deprecated When
+     *             {@link #handleUserDrawingActionComplete(IAdvancedGeometry)}
+     *             is used for creation of points, lines, and polygons, and when
+     *             multi-vertex edits are removed (the latter once improved
+     *             editing tools are added), this method should be removed.
+     *             There is no reason for the spatial display to be used to turn
+     *             a list of points into a geometry.
      */
+    @Deprecated
     public void handleUserMultiPointDrawingActionComplete(
             GeometryType shapeType, List<Coordinate> points) {
         if (spatialView.isDrawingOfNewShapeInProgress()) {
             handleUserDrawNewShapeCompletion(shapeType, points);
         } else {
             handleUserMultiVertexEditCompletion(points);
+        }
+        spatialView.handleUserResetOfInputMode();
+        issueRefresh();
+    }
+
+    /**
+     * Handle the completion of a drawing action creating a geometry.
+     * 
+     * @param geometry
+     *            Geometry that was created; may be <code>null</code> if the
+     *            creation edit was canceled.
+     */
+    public void handleUserDrawingActionComplete(IAdvancedGeometry geometry) {
+        if (geometry != null) {
+            spatialView.handleUserCreationOfShape(geometry);
         }
         spatialView.handleUserResetOfInputMode();
         issueRefresh();
@@ -1651,23 +1690,17 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
-     * Build a modified geometry from the specified coordinates for the
-     * specified original shape.
+     * Build a modified geometry using the specified geometry for the specified
+     * original shape.
      * 
      * @param origShape
      *            Original shape to be modified.
-     * @param coords
-     *            List of coordinates specifying the new geometry's vertices.
+     * @param geometry
+     *            Geometry to be used for the modification.
      * @return Modified geometry.
      */
     public IAdvancedGeometry buildModifiedGeometry(IDrawable<?> origShape,
-            List<Coordinate> coords) {
-
-        /*
-         * Create the new geometry.
-         */
-        IAdvancedGeometry geometry = translateCoordinatesToGeometry(origShape,
-                coords);
+            IAdvancedGeometry geometry) {
 
         /*
          * If the geometry being replaced is not the whole geometry of the
@@ -1696,6 +1729,23 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                     .createCollection(newGeometries);
         }
         return geometry;
+    }
+
+    /**
+     * Build a modified geometry from the specified coordinates for the
+     * specified original shape.
+     * 
+     * @param origShape
+     *            Original shape to be modified.
+     * @param coords
+     *            List of coordinates specifying the new geometry's vertices.
+     * @return Modified geometry.
+     */
+    public IAdvancedGeometry buildModifiedGeometry(IDrawable<?> origShape,
+            List<Coordinate> coords) {
+        IAdvancedGeometry geometry = translateCoordinatesToGeometry(origShape,
+                coords);
+        return buildModifiedGeometry(origShape, geometry);
     }
 
     // Protected Methods
@@ -1997,7 +2047,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *         <code>false</code> otherwise.
      */
     private boolean isPolygon(IDrawable<?> drawable) {
-        return ((drawable instanceof MultiPointDrawable) && ((MultiPointDrawable) drawable)
+        return ((drawable instanceof PathDrawable) && ((PathDrawable) drawable)
                 .isClosedLine());
     }
 
@@ -2020,7 +2070,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         if (isPolygon(originalShape)) {
             result = geometryFactory.createPolygon(
                     geometryFactory.createLinearRing(coordinatesAsArray), null);
-        } else if (originalShape.getClass() == MultiPointDrawable.class) {
+        } else if (originalShape.getClass() == PathDrawable.class) {
             result = geometryFactory.createLineString(coordinatesAsArray);
         } else if (originalShape.getClass() == SymbolDrawable.class) {
             result = geometryFactory.createPoint(coordinatesAsArray[0]);
@@ -2061,13 +2111,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             LinearRing linearRing = geometryFactory.createLinearRing(points
                     .toArray(new Coordinate[points.size()]));
             Geometry polygon = geometryFactory.createPolygon(linearRing, null);
-            newGeometry = TopologyPreservingSimplifier
-                    .simplify(polygon, 0.0001);
+            newGeometry = TopologyPreservingSimplifier.simplify(polygon,
+                    SIMPLIFIER_DISTANCE_TOLERANCE);
         } else {
             LineString lineString = geometryFactory.createLineString(points
                     .toArray(new Coordinate[points.size()]));
             newGeometry = TopologyPreservingSimplifier.simplify(lineString,
-                    0.0001);
+                    SIMPLIFIER_DISTANCE_TOLERANCE);
         }
 
         /*
@@ -2127,7 +2177,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            Latitude-longitude points making up the path to be applied.
      */
     private void handleUserMultiVertexEditCompletion(List<Coordinate> points) {
-        MultiPointDrawable selectedPolygon = drawableManager
+        PathDrawable selectedPolygon = drawableManager
                 .getFirstReactivePolygon();
         if (selectedPolygon == null) {
             return;

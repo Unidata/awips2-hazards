@@ -10,7 +10,10 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
+
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 /**
  * Single-lat-lon-location symbol drawable.
@@ -39,6 +42,10 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
  *                                             is the job of the spatial display, not
  *                                             the individual drawables, which merely
  *                                             supply their true geometries.
+ * Sep 21, 2016 15934      Chris.Golden        Added support for resizable and
+ *                                             rotatable flags. Also added methods to
+ *                                             allow copying and translation
+ *                                             (offsetting by deltas).
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -46,13 +53,32 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 public class SymbolDrawable extends Symbol implements
         IDrawable<GeometryWrapper> {
 
+    // Private Variables
+
+    /**
+     * Identifier of the entity that this shape represents in whole or in part.
+     */
     private final IEntityIdentifier identifier;
 
-    private boolean movable = true;
+    /**
+     * Geometry of this drawable.
+     */
+    private GeometryWrapper geometry;
 
-    private GeometryWrapper geometry = null;
-
+    /**
+     * Index of the sub-geometry this shape represents within the overall
+     * geometry represented by this shape's {@link DECollection}, or
+     * <code>-1</code> if this shape does not represent a sub-geometry (or if it
+     * does, but it is the only sub-geometry within a collection).
+     */
     private final int geometryIndex;
+
+    /**
+     * Flag indicating whether or not this shape is movable.
+     */
+    private boolean movable = false;
+
+    // Public Constructors
 
     /**
      * Creates a symbol.
@@ -75,9 +101,29 @@ public class SymbolDrawable extends Symbol implements
         setLocation(AdvancedGeometryUtilities.getCentroid(geometry));
         setPgenCategory(pgenType);
         setPgenType(pgenType);
-        setColors(drawingAttributes.getColors());
-        setLineWidth(drawingAttributes.getLineWidth());
-        setSizeScale(drawingAttributes.getSizeScale());
+        this.setColors(drawingAttributes.getColors());
+        this.setLineWidth(drawingAttributes.getLineWidth());
+        this.setSizeScale(drawingAttributes.getSizeScale());
+    }
+
+    // Protected Constructors
+
+    /**
+     * Construct a copy instance. This is intended to be used by implementations
+     * of {@link #copyOf()}.
+     * 
+     * @param other
+     *            Drawable being copied.
+     */
+    protected SymbolDrawable(SymbolDrawable other) {
+        this.identifier = other.identifier;
+        this.geometry = other.geometry.copyOf();
+        this.geometryIndex = other.geometryIndex;
+        this.movable = other.movable;
+        setLocation(AdvancedGeometryUtilities.getCentroid(geometry));
+        setPgenCategory(other.pgenType);
+        setPgenType(other.pgenType);
+        update(other);
     }
 
     // Public Methods
@@ -103,6 +149,26 @@ public class SymbolDrawable extends Symbol implements
     }
 
     @Override
+    public boolean isResizable() {
+        return false;
+    }
+
+    @Override
+    public void setResizable(boolean resizable) {
+        throw new UnsupportedOperationException("symbols cannot be resizable");
+    }
+
+    @Override
+    public boolean isRotatable() {
+        return false;
+    }
+
+    @Override
+    public void setRotatable(boolean rotatable) {
+        throw new UnsupportedOperationException("symbols cannot be rotatable");
+    }
+
+    @Override
     public boolean isMovable() {
         return movable;
     }
@@ -120,5 +186,20 @@ public class SymbolDrawable extends Symbol implements
     @Override
     public String toString() {
         return getIdentifier() + " (symbol = \"" + getPgenType() + "\")";
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <D extends IDrawable<?>> D copyOf() {
+        return (D) new SymbolDrawable(this);
+    }
+
+    @Override
+    public void offsetBy(double x, double y) {
+        this.geometry = new GeometryWrapper(AffineTransformation
+                .translationInstance(x, y).transform(
+                        getGeometry().getGeometry()), getGeometry()
+                .getRotation());
+        setLocation(AdvancedGeometryUtilities.getCentroid(geometry));
     }
 }

@@ -9,13 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
-import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
-import java.awt.Color;
 import java.util.List;
 
 import com.google.common.collect.Lists;
@@ -27,29 +26,33 @@ import com.vividsolutions.jts.geom.Coordinate;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 23, 2013   1264      daniel.s.schaffer  Initial creation
- * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
- * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
- * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
- * Jul 25, 2016 19537      Chris.Golden        Renamed, and removed unneeded member
- *                                             data and methods. Also changed to
- *                                             be concrete (not abstract) class, as
- *                                             no subclasses for lines and polygons
- *                                             are needed.
- * Aug 22, 2016 19537      Chris.Golden        Removed unneeded layer constructor
- *                                             parameter. Also added toString()
- *                                             method.
- * Sep 12, 2016 15934      Chris.Golden        Changed to work with advanced
- *                                             geometries.
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Aug 23, 2013  1264      Dan Schaffer  Initial creation.
+ * Feb 09, 2015  6260      Dan Schaffer  Fixed bugs in multi-polygon handling
+ * Mar 16, 2016 15676      Chris.Golden  Added code to support visual features.
+ * Mar 26, 2016 15676      Chris.Golden  Added visual feature identifier.
+ * Jul 25, 2016 19537      Chris.Golden  Renamed, and removed unneeded member
+ *                                       data and methods. Also changed to
+ *                                       be concrete (not abstract) class, as
+ *                                       no subclasses for lines and polygons
+ *                                       are needed.
+ * Aug 22, 2016 19537      Chris.Golden  Removed unneeded layer constructor
+ *                                       parameter. Also added toString()
+ *                                       method.
+ * Sep 12, 2016 15934      Chris.Golden  Changed to work with advanced
+ *                                       geometries.
+ * Sep 20, 2016 15934      Chris.Golden  Made into abstract base class for
+ *                                       path and ellipse drawables. Also
+ *                                       added methods to allow copying and
+ *                                       translation (offsetting by deltas).
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class MultiPointDrawable extends Line implements
-        IDrawable<GeometryWrapper> {
+public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
+        Line implements IDrawable<G> {
 
     // Private Static Constants
 
@@ -66,19 +69,9 @@ public class MultiPointDrawable extends Line implements
     private final IEntityIdentifier identifier;
 
     /**
-     * Flag indicating whether or not this shape is editable,
-     */
-    private boolean editable = true;
-
-    /**
-     * Flag indicating whether or not this shape is movable,
-     */
-    private boolean movable = true;
-
-    /**
      * Geometry of this drawable.
      */
-    private final GeometryWrapper geometry;
+    private G geometry;
 
     /**
      * Index of the sub-geometry this shape represents within the overall
@@ -87,6 +80,11 @@ public class MultiPointDrawable extends Line implements
      * does, but it is the only sub-geometry within a collection).
      */
     private final int geometryIndex;
+
+    /**
+     * Flag indicating whether or not this shape is movable,
+     */
+    private boolean movable;
 
     // Public Constructors
 
@@ -101,16 +99,34 @@ public class MultiPointDrawable extends Line implements
      *            Geometry.
      */
     public MultiPointDrawable(IEntityIdentifier identifier,
-            DrawableAttributes attributes, GeometryWrapper geometry) {
+            DrawableAttributes attributes, G geometry) {
         this.identifier = identifier;
         this.geometryIndex = attributes.getGeometryIndex();
         this.geometry = geometry;
-        List<Coordinate> points = Lists.newArrayList(geometry.getGeometry()
-                .getCoordinates());
-        setLinePoints(points);
         update(attributes);
         setPgenCategory(LINE);
         setPgenType(attributes.getLineStyle().toString());
+        setGeometry(geometry);
+    }
+
+    // Protected Constructors
+
+    /**
+     * Construct a copy instance. This is intended to be used by implementations
+     * of {@link #copyOf()}.
+     * 
+     * @param other
+     *            Drawable being copied.
+     */
+    @SuppressWarnings("unchecked")
+    protected MultiPointDrawable(MultiPointDrawable<G> other) {
+        this.identifier = other.identifier;
+        this.geometryIndex = other.geometryIndex;
+        this.movable = other.movable;
+        update(other);
+        setPgenCategory(LINE);
+        setPgenType(other.pgenType);
+        setGeometry((G) other.geometry.copyOf());
     }
 
     // Public Methods
@@ -121,19 +137,27 @@ public class MultiPointDrawable extends Line implements
     }
 
     @Override
-    public GeometryWrapper getGeometry() {
+    public G getGeometry() {
         return geometry;
     }
 
     @Override
-    public boolean isEditable() {
-        return editable;
-    }
+    public abstract boolean isEditable();
 
     @Override
-    public void setEditable(boolean editable) {
-        this.editable = editable;
-    }
+    public abstract void setEditable(boolean editable);
+
+    @Override
+    public abstract boolean isResizable();
+
+    @Override
+    public abstract void setResizable(boolean resizable);
+
+    @Override
+    public abstract boolean isRotatable();
+
+    @Override
+    public abstract void setRotatable(boolean rotatable);
 
     @Override
     public boolean isMovable() {
@@ -150,27 +174,18 @@ public class MultiPointDrawable extends Line implements
         return geometryIndex;
     }
 
-    /*
-     * Overridden to ensure that colors' alpha components are copied as well, as
-     * the superclass does not do this; it only copies the RGB components of the
-     * colors.
-     */
-    @Override
-    public DrawableElement copy() {
-        Line copy = (Line) super.copy();
-        Color[] colors = new Color[getColors().length];
-        for (int j = 0; j < getColors().length; j++) {
-            colors[j] = new Color(getColors()[j].getRed(),
-                    getColors()[j].getGreen(), getColors()[j].getBlue(),
-                    getColors()[j].getAlpha());
-        }
-        copy.setColors(colors);
-        return copy;
-    }
+    // Protected Methods
 
-    @Override
-    public String toString() {
-        return getIdentifier() + " (" + (isClosedLine() ? "polygon" : "line")
-                + ")";
+    /**
+     * Set the geometry to that specified.
+     * 
+     * @param geometry
+     *            New geometry to be used.
+     */
+    protected void setGeometry(G geometry) {
+        this.geometry = geometry;
+        List<Coordinate> points = Lists.newArrayList(AdvancedGeometryUtilities
+                .getJtsGeometry(geometry).getCoordinates());
+        setLinePoints(points);
     }
 }

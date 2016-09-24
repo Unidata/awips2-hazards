@@ -68,6 +68,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      method for visual feature replacement.
  * Sep 12, 2016 15934      Chris.Golden Changed hazard events to use advanced
  *                                      geometries instead of JTS geometries.
+ * Sep 21, 2016 15934      Chris.Golden Changed to work with new version of
+ *                                      AdvancedGeometryUtilities.
  * </pre>
  * 
  * @author mnash
@@ -277,7 +279,8 @@ public class BaseHazardEvent implements IHazardEvent {
     @Override
     public void setGeometry(IAdvancedGeometry geometry) {
         this.geometry = geometry;
-        flattenedGeometry = AdvancedGeometryUtilities.getJtsGeometry(geometry);
+        this.flattenedGeometry = AdvancedGeometryUtilities
+                .getJtsGeometryAsCollection(geometry);
     }
 
     @Override

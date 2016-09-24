@@ -57,4 +57,3 @@ EOL
   endif
     
 endif
-perl ~/FACETs/PHIConfig/NewConfig/PHI_configuration/phi_config.pl

@@ -29,6 +29,8 @@ import GeometryHandler
 #    Date            Ticket#       Engineer        Description
 #    ------------    ----------    ------------    --------------------------
 #    Sep 13, 2016      15934       Chris.Golden    Initial creation.
+#    Sep 21, 2016      15934       Chris.Golden    Changed to work with new version
+#                                                  of AdvancedGeometryUtilities.
 #
 class AdvancedGeometry(object):
     
@@ -99,7 +101,8 @@ class AdvancedGeometry(object):
         line segments.
         @return Shapely version of the geometry.
         '''
-        return GeometryHandler.jtsToShapely(AdvancedGeometryUtilities.getJtsGeometry(self._javaObject))[1]        
+        return GeometryHandler.jtsToShapely(AdvancedGeometryUtilities.
+                                            getJtsGeometryAsCollection(self._javaObject))[1]        
 
     def getWrappedJavaObject(self):
         '''

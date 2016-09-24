@@ -15,7 +15,7 @@ import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.DrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.MultiPointDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.TextDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
@@ -97,6 +97,8 @@ import com.vividsolutions.jts.geom.Point;
  *                                      code that buffers points being
  *                                      tested so as to make them easier to
  *                                      match.
+ * Sep 21, 2016   15934    Chris.Golden Replaced MultiPointDrawable with new
+ *                                      PathDrawable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1389,7 +1391,7 @@ class DrawableManager {
      *         <code>false</code> otherwise.
      */
     boolean isPolygon(AbstractDrawableComponent drawable) {
-        return ((drawable instanceof MultiPointDrawable) && ((MultiPointDrawable) drawable)
+        return ((drawable instanceof PathDrawable) && ((PathDrawable) drawable)
                 .isClosedLine());
     }
 
@@ -1412,11 +1414,11 @@ class DrawableManager {
      * @return First reactive polygon drawable, or <code>null</code> if none are
      *         found.
      */
-    MultiPointDrawable getFirstReactivePolygon() {
+    PathDrawable getFirstReactivePolygon() {
         for (AbstractDrawableComponent drawable : reactiveDrawables) {
-            if ((drawable instanceof MultiPointDrawable)
-                    && ((MultiPointDrawable) drawable).isClosedLine()) {
-                return (MultiPointDrawable) drawable;
+            if ((drawable instanceof PathDrawable)
+                    && ((PathDrawable) drawable).isClosedLine()) {
+                return (PathDrawable) drawable;
             }
         }
         return null;
@@ -1540,14 +1542,14 @@ class DrawableManager {
             AbstractDrawableComponent drawable = iterator.next();
 
             if (drawable instanceof TextDrawable == false) {
-                Geometry p = getHitTestGeometry((IDrawable<?>) drawable);
+                Geometry geometry = getHitTestGeometry((IDrawable<?>) drawable);
 
-                if (p != null) {
+                if (geometry != null) {
 
                     /*
                      * Convert the polygon vertices into pixels
                      */
-                    Coordinate[] coords = p.getCoordinates();
+                    Coordinate[] coords = geometry.getCoordinates();
 
                     for (int i = 0; i < coords.length; ++i) {
                         screenCoord = editor.translateInverseClick(coords[i]);
@@ -2247,10 +2249,9 @@ class DrawableManager {
 
                 try {
                     for (AbstractDrawableComponent hatchedArea : hatchedAreas) {
-                        if ((hatchedArea instanceof MultiPointDrawable)
-                                && ((MultiPointDrawable) hatchedArea)
-                                        .isClosedLine()) {
-                            MultiPointDrawable polygon = (MultiPointDrawable) hatchedArea;
+                        if ((hatchedArea instanceof PathDrawable)
+                                && ((PathDrawable) hatchedArea).isClosedLine()) {
+                            PathDrawable polygon = (PathDrawable) hatchedArea;
                             Color[] colors = polygon.getColors();
                             JTSGeometryData data = groupCompiler
                                     .createGeometryData();

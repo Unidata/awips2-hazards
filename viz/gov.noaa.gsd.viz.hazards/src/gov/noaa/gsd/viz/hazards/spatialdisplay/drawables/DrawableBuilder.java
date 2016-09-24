@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.Ellipse;
 import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.BorderStyle;
@@ -101,6 +102,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      text into different lines, using newline
  *                                      characters as delimiters.
  * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries.
+ * Sep 21, 2016 15934      Chris.Golden Added support for ellipse drawing.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -351,10 +353,8 @@ public class DrawableBuilder {
             IAdvancedGeometry geometry, int geometryIndex) {
         AbstractDrawableComponent drawableComponent = null;
         if (geometry.isPotentiallyCurved()) {
-
-            /*
-             * TODO: Create ellipse.
-             */
+            drawableComponent = buildEllipse(spatialEntity, (Ellipse) geometry,
+                    geometryIndex);
         } else if (geometry.isPunctual()) {
             drawableComponent = buildPoint(spatialEntity,
                     (GeometryWrapper) geometry, geometryIndex);
@@ -395,13 +395,12 @@ public class DrawableBuilder {
             drawingAttributes.setColors(new Color[] { color, color });
             drawingAttributes.setDottedLineStyle();
             if (geometry.isPotentiallyCurved()) {
-
-                /*
-                 * TODO: Create ellipse.
-                 */
+                hatchedAreas.add(new EllipseDrawable(spatialEntity
+                        .getIdentifier(), drawingAttributes, (Ellipse) geometry
+                        .copyOf()));
             } else {
-                hatchedAreas.add(new MultiPointDrawable(spatialEntity
-                        .getIdentifier(), drawingAttributes,
+                hatchedAreas.add(new PathDrawable(
+                        spatialEntity.getIdentifier(), drawingAttributes,
                         (GeometryWrapper) geometry.copyOf()));
             }
         }
@@ -579,7 +578,7 @@ public class DrawableBuilder {
     private AbstractDrawableComponent buildLine(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
             GeometryWrapper geometry, int geometryIndex) {
-        MultiPointDrawable drawableComponent = null;
+        PathDrawable drawableComponent = null;
         LineDrawableAttributes drawingAttributes = new LineDrawableAttributes();
         this.drawingAttributes = drawingAttributes;
         drawingAttributes.setSizeScale(2);
@@ -602,9 +601,8 @@ public class DrawableBuilder {
         drawingAttributes
                 .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
-        drawableComponent = new MultiPointDrawable(
-                spatialEntity.getIdentifier(), drawingAttributes,
-                (GeometryWrapper) geometry.copyOf());
+        drawableComponent = new PathDrawable(spatialEntity.getIdentifier(),
+                drawingAttributes, (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setEditable((dragCapability == DragCapability.PART)
                 || (dragCapability == DragCapability.ALL));
@@ -630,7 +628,7 @@ public class DrawableBuilder {
     private AbstractDrawableComponent buildPolygon(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
             GeometryWrapper geometry, int geometryIndex) {
-        MultiPointDrawable drawableComponent = null;
+        PathDrawable drawableComponent = null;
         PolygonDrawableAttributes drawingAttributes = new PolygonDrawableAttributes(
                 (spatialEntity.getFillColor().getAlpha() > 0.0));
         this.drawingAttributes = drawingAttributes;
@@ -655,14 +653,65 @@ public class DrawableBuilder {
         drawingAttributes
                 .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
-        drawableComponent = new MultiPointDrawable(
-                spatialEntity.getIdentifier(), drawingAttributes,
-                (GeometryWrapper) geometry.copyOf());
+        drawableComponent = new PathDrawable(spatialEntity.getIdentifier(),
+                drawingAttributes, (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setEditable((dragCapability == DragCapability.PART)
                 || (dragCapability == DragCapability.ALL));
         drawableComponent.setMovable((dragCapability == DragCapability.WHOLE)
                 || (dragCapability == DragCapability.ALL));
+        return drawableComponent;
+    }
+
+    /**
+     * Build an ellipse drawable for the specified spatial entity and geometry.
+     * 
+     * @param spatialEntity
+     *            Spatial entity that the ellipse represents (in whole or in
+     *            part).
+     * @param geometry
+     *            Geometry of the ellipse to be created.
+     * @param geometryIndex
+     *            Index of the geometry within the spatial entity's geometry if
+     *            the latter is a geometry collection, otherwise <code>-1</code>
+     *            .
+     * @return Ellipse drawable that was built.
+     */
+    private AbstractDrawableComponent buildEllipse(
+            SpatialEntity<? extends IEntityIdentifier> spatialEntity,
+            Ellipse geometry, int geometryIndex) {
+        EllipseDrawable drawableComponent = null;
+        PolygonDrawableAttributes drawingAttributes = new PolygonDrawableAttributes(
+                (spatialEntity.getFillColor().getAlpha() > 0.0));
+        this.drawingAttributes = drawingAttributes;
+        drawingAttributes.setSizeScale(2);
+        if (spatialEntity.getBorderStyle() == BorderStyle.SOLID) {
+            drawingAttributes.setSolidLineStyle();
+        } else if (spatialEntity.getBorderStyle() == BorderStyle.DASHED) {
+            drawingAttributes.setDashedLineStyle();
+        } else {
+            drawingAttributes.setDottedLineStyle();
+        }
+        drawingAttributes.setLineWidth((float) spatialEntity
+                .getBorderThickness());
+        Color borderColor = getColor(spatialEntity.getBorderColor());
+        Color fillColor = getColor(spatialEntity.getFillColor());
+        drawingAttributes.setColors(new Color[] { borderColor, fillColor });
+        drawingAttributes.setFillPattern(FillPattern.SOLID);
+        if (hasNonEmptyLabel(spatialEntity)) {
+            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
+                    .getLabel()));
+        }
+        drawingAttributes
+                .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+        drawingAttributes.setGeometryIndex(geometryIndex);
+        drawableComponent = new EllipseDrawable(spatialEntity.getIdentifier(),
+                drawingAttributes, (Ellipse) geometry.copyOf());
+        DragCapability dragCapability = spatialEntity.getDragCapability();
+        drawableComponent.setMovable((dragCapability == DragCapability.WHOLE)
+                || (dragCapability == DragCapability.ALL));
+        drawableComponent.setResizable(spatialEntity.isScaleable());
+        drawableComponent.setRotatable(spatialEntity.isRotatable());
         return drawableComponent;
     }
 

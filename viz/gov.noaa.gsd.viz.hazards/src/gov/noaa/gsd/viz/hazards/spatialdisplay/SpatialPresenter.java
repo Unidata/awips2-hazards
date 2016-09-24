@@ -194,6 +194,8 @@ import com.vividsolutions.jts.geom.Point;
  *                                           fine-grained scheme of rebuilding spatial entities only
  *                                           when they may have changed.
  * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
+ * Sep 23, 2016 15934      Chris.Golden      Fixed bug that caused geometries added to the selected
+ *                                           hazard event to not trigger a hazard area recalculation.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1559,8 +1561,11 @@ public class SpatialPresenter extends
             IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
             IAdvancedGeometry newGeometries = event.getGeometry();
 
-            existingEvent.setGeometry(AdvancedGeometryUtilities
-                    .createCollection(existingGeometries, newGeometries));
+            getModel().getEventManager().setEventGeometry(
+                    existingEvent,
+                    AdvancedGeometryUtilities.createCollection(
+                            existingGeometries, newGeometries),
+                    UIOriginator.SPATIAL_DISPLAY);
 
             /*
              * Remove the context menu contribution key so that the now-modified

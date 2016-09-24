@@ -30,6 +30,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 08, 2016   15934    Chris.Golden Initial creation.
+ * Sep 21, 2016   15934    Chris.Golden Changed to provide more flexibility in
+ *                                      terms of JTS geometries having the option
+ *                                      of being wrapped in a GeometryCollection,
+ *                                      instead of the latter being mandatory.
  * </pre>
  * 
  * @author Chris.Golden
@@ -94,27 +98,29 @@ public class AdvancedGeometryUtilities {
      *         provided.
      */
     public static Geometry getJtsGeometry(IAdvancedGeometry advancedGeometry) {
+        return (advancedGeometry == null ? null : advancedGeometry.asGeometry(
+                GEOMETRY_FACTORY.get(), LAT_LON_FLATTENING_MAXIMUM_DEVIATION,
+                LAT_LON_FLATTENING_RECURSION_LIMIT_FOR_GEOMETRY));
+    }
 
-        /*
-         * Do nothing if no advanced geometry was supplied.
-         */
-        if (advancedGeometry == null) {
-            return null;
-        }
-
-        /*
-         * Get the geometry from the advanced geometry.
-         */
-        Geometry geometry = advancedGeometry.asGeometry(GEOMETRY_FACTORY.get(),
-                LAT_LON_FLATTENING_MAXIMUM_DEVIATION,
-                LAT_LON_FLATTENING_RECURSION_LIMIT_FOR_GEOMETRY);
-
-        /*
-         * Make sure that geometry is a GeometryCollection.
-         * 
-         * TODO: Why is this necessary?
-         */
-        return getJtsGeometryAsCollection(geometry);
+    /**
+     * Get a JTS geometry from the specified advanced geometry. The result is
+     * always a {@link GeometryCollection}, even if it only holds one
+     * {@link Geometry}.
+     * <p>
+     * TODO: Why is it necessary to return a collection? Hazard Services code
+     * seems to assume in many places that all {@link Geometry} objects are
+     * collections.
+     * </p>
+     * 
+     * @param advancedGeometry
+     *            Advanced geometry from which to generate the geometry.
+     * @return JTS geometry collection, or <code>null</code> if no advanced
+     *         geometry was provided.
+     */
+    public static Geometry getJtsGeometryAsCollection(
+            IAdvancedGeometry advancedGeometry) {
+        return getJtsGeometryAsCollection(getJtsGeometry(advancedGeometry));
     }
 
     /**
@@ -139,9 +145,13 @@ public class AdvancedGeometryUtilities {
      * 
      * @param geometry
      *            Geometry to be checked.
-     * @return Geometry as a collection, if it was not already so.
+     * @return Geometry as a collection, if it was not already so, or
+     *         <code>null</code> if no geometry was specified.
      */
     public static Geometry getJtsGeometryAsCollection(Geometry geometry) {
+        if (geometry == null) {
+            return null;
+        }
         if (geometry instanceof GeometryCollection == false) {
             return GEOMETRY_FACTORY.get().createGeometryCollection(
                     new Geometry[] { geometry });

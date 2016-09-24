@@ -138,6 +138,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           including the use of MVP widgets and delegates
  *                                           to decouple the presenter and view.
  * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
+ * Sep 21, 2016 15934      Chris.Golden      Added support for ellipse drawing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -214,7 +215,8 @@ public class SpatialView implements
         SELECT_OR_MODIFY("Select event", "moveAndSelect.png"), DRAW_POINT(
                 "Draw points", "drawPoint.png"), DRAW_LINE("Draw path",
                 "drawPath.png"), DRAW_POLYGON("Draw polygon", "drawPolygon.png"), DRAW_FREEHAND_POLYGON(
-                "Draw freehand polygon", "drawFreehandPolygon.png"), EDIT_POLYGON(
+                "Draw freehand polygon", "drawFreehandPolygon.png"), DRAW_ELLIPSE(
+                "Draw ellipse", "drawEllipse.png"), EDIT_POLYGON(
                 "Edit polygon", "editPolygon.png"), EDIT_FREEHAND_POLYGON(
                 "Edit polygon freehand", "editPolygonFreeHand.png");
 
@@ -319,6 +321,7 @@ public class SpatialView implements
             case DRAW_LINE:
             case DRAW_POINT:
             case DRAW_FREEHAND_POLYGON:
+            case DRAW_ELLIPSE:
                 drawingOfNewShapeInProgress = true;
                 break;
             default:
@@ -366,6 +369,10 @@ public class SpatialView implements
                         .setCurrentInputHandlerToDrawing(
                                 InputHandlerType.FREEHAND_DRAWING,
                                 GeometryType.POLYGON);
+                break;
+            case DRAW_ELLIPSE:
+                spatialDisplay.setCurrentInputHandlerToDrawing(
+                        InputHandlerType.ELLIPSE_DRAWING, GeometryType.POLYGON);
                 break;
             case EDIT_POLYGON:
                 spatialDisplay.setCurrentInputHandlerToDrawing(
@@ -1365,6 +1372,10 @@ public class SpatialView implements
                     InputMode.DRAW_FREEHAND_POLYGON);
             actionsForInputModes.put(InputMode.DRAW_FREEHAND_POLYGON,
                     drawFreehandPolygonChoiceAction);
+            InputModeAction drawEllipseChoiceAction = new InputModeAction(
+                    InputMode.DRAW_ELLIPSE);
+            actionsForInputModes.put(InputMode.DRAW_ELLIPSE,
+                    drawEllipseChoiceAction);
             InputModeAction drawVertexPathChoiceAction = new InputModeAction(
                     InputMode.DRAW_LINE);
             actionsForInputModes.put(InputMode.DRAW_LINE,
@@ -1409,7 +1420,7 @@ public class SpatialView implements
                     new SeparatorAction(), moveAndSelectChoiceAction,
                     drawVertexBasedPolygonChoiceAction,
                     drawVertexPathChoiceAction, drawPointChoiceAction,
-                    drawFreehandPolygonChoiceAction,
+                    drawFreehandPolygonChoiceAction, drawEllipseChoiceAction,
                     editVertexBasedPolygonChoiceAction,
                     editFreehandVertexBasedPolygonChoiceAction,
                     selectByAreaMapsPulldownAction, new SeparatorAction(),

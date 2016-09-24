@@ -9,6 +9,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
@@ -43,6 +44,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             method.
  * Sep 12, 2016 15934      Chris.Golden        Changed to work with advanced
  *                                             geometries.
+ * Sep 21, 2016 15934      Chris.Golden        Added support for resizable and
+ *                                             rotatable flags. Also added methods
+ *                                             to allow copying and translation
+ *                                             (offsetting by deltas).
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -58,14 +63,35 @@ public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
 
     // Private Variables
 
+    /**
+     * Identifier of the entity that this shape represents in whole or in part.
+     */
     private final IEntityIdentifier identifier;
 
+    /**
+     * Index of the sub-geometry this shape represents within the overall
+     * geometry represented by this shape's {@link DECollection}, or
+     * <code>-1</code> if this shape does not represent a sub-geometry (or if it
+     * does, but it is the only sub-geometry within a collection).
+     */
     private final int geometryIndex;
 
+    /**
+     * Flag indicating whether or not the drawable is combinable with others of
+     * the same type.
+     */
     private final boolean combinable;
 
+    /**
+     * Text positioner for calculating the final location from the
+     * {@link #baseLocation}.
+     */
     private final TextPositioner textPositioner;
 
+    /**
+     * Base location, from which the final location is calculated by applying
+     * the {@link #textPositioner}.
+     */
     private final Coordinate baseLocation;
 
     // Public Constructors
@@ -155,7 +181,27 @@ public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
 
     @Override
     public void setEditable(boolean editable) {
-        throw new UnsupportedOperationException("text is not editable");
+        throw new UnsupportedOperationException("text cannot be editable");
+    }
+
+    @Override
+    public boolean isResizable() {
+        return false;
+    }
+
+    @Override
+    public void setResizable(boolean resizable) {
+        throw new UnsupportedOperationException("text cannot be resizable");
+    }
+
+    @Override
+    public boolean isRotatable() {
+        return false;
+    }
+
+    @Override
+    public void setRotatable(boolean rotatable) {
+        throw new UnsupportedOperationException("text cannot be rotatable");
     }
 
     @Override
@@ -165,7 +211,7 @@ public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
 
     @Override
     public void setMovable(boolean movable) {
-        throw new UnsupportedOperationException("text is not movable.");
+        throw new UnsupportedOperationException("text cannot be movable.");
     }
 
     @Override
@@ -202,5 +248,18 @@ public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
             return true;
         }
         return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <D extends IDrawable<?>> D copyOf() {
+        return (D) new TextDrawable(this);
+    }
+
+    @Override
+    public void offsetBy(double x, double y) {
+        this.baseLocation.x += x;
+        this.baseLocation.y += y;
+        setLocation(textPositioner.getLabelPosition(baseLocation));
     }
 }

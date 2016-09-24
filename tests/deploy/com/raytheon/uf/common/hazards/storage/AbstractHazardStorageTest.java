@@ -172,7 +172,7 @@ public abstract class AbstractHazardStorageTest {
         IHazardEvent createdEvent = storeEvent();
         Map<String, HazardHistoryList> list = manager
                 .getByGeometry(AdvancedGeometryUtilities
-                        .getJtsGeometry(createdEvent.getGeometry()));
+                        .getJtsGeometryAsCollection(createdEvent.getGeometry()));
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {

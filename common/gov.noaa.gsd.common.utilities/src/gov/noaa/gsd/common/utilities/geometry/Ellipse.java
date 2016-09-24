@@ -32,6 +32,12 @@ import com.vividsolutions.jts.geom.LineSegment;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 31, 2016   15934    Chris.Golden Initial creation.
+ * Sep 21, 2016   15934    Chris.Golden Corrected bugs in the use of the width
+ *                                      and height (the formula used by the
+ *                                      getRadius() method expects horizontal
+ *                                      and vertical radii, not diameters, thus
+ *                                      they need to each by divided by 2), as
+ *                                      well as the rotation.
  * </pre>
  * 
  * @author Chris.Golden
@@ -325,9 +331,10 @@ public class Ellipse implements IRotatable {
      * @return Radius of the ellipse.
      */
     private double getRadius(double angleRadians) {
-        return (width * height)
-                / Math.sqrt(Math.pow(Math.sin(angleRadians) * width, 2.0)
-                        + Math.pow(Math.cos(angleRadians) * height, 2.0));
+        return (width * height / 4.0)
+                / Math.sqrt(Math.pow(Math.sin(angleRadians) * (width / 2.0),
+                        2.0)
+                        + Math.pow(Math.cos(angleRadians) * (height / 2.0), 2.0));
     }
 
     /**
@@ -347,7 +354,7 @@ public class Ellipse implements IRotatable {
          * circumferential point rotated around the center point into position.
          */
         return units.getLatLonOffsetBy(centerPoint, getRadius(angleRadians),
-                (angleRadians + (2.0 * Math.PI) - rotationRadians)
+                (angleRadians + (2.0 * Math.PI) + rotationRadians)
                         % (2.0 * Math.PI));
     }
 

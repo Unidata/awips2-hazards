@@ -27,12 +27,13 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ------------ --------------------------
  * Jul 05, 2016   19537    Chris.Golden Initial creation (adapted from the old
  *                                      FreeHandHazardDrawingAction inner class).
+ * Sep 21, 2016   15934    Chris.Golden Changed to use new superclass.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class FreehandDrawingInputHandler extends DrawingInputHandler {
+public class FreehandDrawingInputHandler extends IncrementalDrawingInputHandler {
 
     // Public Constructors
 

@@ -33,6 +33,10 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
  * Jul 25, 2016 19537      Chris.Golden        Renamed.
  * Sep 12, 2016 15934      Chris.Golden        Changed to work with advanced
  *                                             geometries.
+ * Sep 20, 2016 15934      Chris.Golden        Changed to include methods required
+ *                                             for curved geometries, as well as
+ *                                             methods to allow copying and
+ *                                             translation (offsetting by deltas).
  * </pre>
  * 
  * @author bryon.lawrence
@@ -83,6 +87,38 @@ public interface IDrawable<G extends IAdvancedGeometry> {
     public void setEditable(boolean editable);
 
     /**
+     * Determine whether or not the shape is resizable.
+     * 
+     * @return <code>true</code> if the user can resize this shape,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isResizable();
+
+    /**
+     * Set the resizable status of this shape.
+     * 
+     * @param editable
+     *            Flag indicating whether or not this shape is resizable.
+     */
+    public void setResizable(boolean resizable);
+
+    /**
+     * Determine whether or not the shape is rotatable.
+     * 
+     * @return <code>true</code> if the user can rotate this shape,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isRotatable();
+
+    /**
+     * Set the rotatable status of this shape.
+     * 
+     * @param rotatable
+     *            Flag indicating whether or not this shape is rotatable.
+     */
+    public void setRotatable(boolean rotatable);
+
+    /**
      * Determine whether or not the shape is editable.
      * 
      * @return <code>true</code> if the user can move this shape,
@@ -97,4 +133,23 @@ public interface IDrawable<G extends IAdvancedGeometry> {
      *            Flag indicating whether or not this shape is movable.
      */
     public void setMovable(boolean movable);
+
+    /**
+     * Get a copy of this shape in which the backing {@link IAdvancedGeometry}
+     * is copied, not just a reference to the original drawable's geometry.
+     * 
+     * @return Copy of this shape.
+     */
+    public <D extends IDrawable<?>> D copyOf();
+
+    /**
+     * Offset this drawable by the specified deltas. This offsets the backing
+     * {@link IAdvancedGeometry} as well.
+     * 
+     * @param x
+     *            Longitudinal offset.
+     * @param y
+     *            Latitudinal offset.
+     */
+    public void offsetBy(double x, double y);
 }
