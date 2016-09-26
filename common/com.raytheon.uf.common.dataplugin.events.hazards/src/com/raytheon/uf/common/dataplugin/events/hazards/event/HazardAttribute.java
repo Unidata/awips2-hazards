@@ -120,6 +120,10 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                       IAdvancedGeometry objects, so that these
  *                                       new advanced geometries may be used as
  *                                       attribute values or components thereof.
+ * Sep 26, 2016   22556    Chris.Golden  Added code to change Date objects into
+ *                                       long integers prior to serialization,
+ *                                       and then change them back following
+ *                                       deserialization.
  * </pre>
  * 
  * @author mnash
@@ -136,14 +140,14 @@ public class HazardAttribute implements IValidator, Serializable {
     // Private Enumerated Types
 
     /**
-     * Type of substitution to be done when postprocessing a value after it has
-     * been deserialized within
-     * {@link #postprocessValuesAfterDeserialization(Object)}.
+     * Type of substitution to be done when preprocessing a value before it has
+     * been serialized, or postprocessing a value after it has been
+     * deserialized.
      */
     private enum Substitution {
 
-        GEOMETRY(Geometry.class), ADVANCED_GEOMETRY(IAdvancedGeometry.class), SET(
-                Set.class);
+        GEOMETRY(Geometry.class), ADVANCED_GEOMETRY(IAdvancedGeometry.class), DATE(
+                Date.class), SET(Set.class);
 
         // Private Static Constants
 
@@ -332,6 +336,13 @@ public class HazardAttribute implements IValidator, Serializable {
                 }
             }
         });
+        map.put(Substitution.DATE, new IPreprocessor() {
+
+            @Override
+            public String preprocess(Object object) {
+                return Long.toString(((Date) object).getTime());
+            }
+        });
         PREPROCESSORS_FOR_SUBSTITUTIONS = ImmutableMap.copyOf(map);
     }
 
@@ -365,6 +376,13 @@ public class HazardAttribute implements IValidator, Serializable {
                     throw new IllegalStateException(
                             "could not unmarshal JSON to IAdvancedGeometry", e);
                 }
+            }
+        });
+        map.put(Substitution.DATE, new IPostprocessor() {
+
+            @Override
+            public Object postprocess(Object object) {
+                return new Date(Long.parseLong((String) object));
             }
         });
         map.put(Substitution.SET, new IPostprocessor() {
@@ -437,13 +455,6 @@ public class HazardAttribute implements IValidator, Serializable {
             @Override
             public Object deserialize(String string) {
                 return Double.parseDouble(string);
-            }
-        });
-        map.put(Date.class, new IDeserializer() {
-
-            @Override
-            public Object deserialize(String string) {
-                return new Date(Long.parseLong(string));
             }
         });
         DESERIALIZERS_FOR_SIMPLE_TYPES = ImmutableMap.copyOf(map);
@@ -610,6 +621,56 @@ public class HazardAttribute implements IValidator, Serializable {
     @DynamicSerializeElement
     @XmlElement
     private final List<String> pathsToAdvancedGeometries = new ArrayList<>();
+
+    /**
+     * List of paths to {@link Date} objects in the original {@link #value}.
+     * Each path is a string consisting of substrings and/or integers separated
+     * by newlines (avoiding the use of a nested list in order to make
+     * serialization easier); each substring is a key into a {@link Map},
+     * whereas each integer is the index into a {@link List}. As an example, the
+     * path: <code><pre>     20
+     *     baz</pre></code> indicates that the top-level value is a
+     * <code>List</code>; that the 20th element in said list is a
+     * <code>Map</code>; and the {@link String} found as the value associated
+     * with the key "baz" in this map was originally a <code>Date</code>.
+     * <p>
+     * TODO: Make this a list of lists of strings and indices (perhaps the
+     * sublist should have generic parameter of <code>Serializable</code>)
+     * instead of a list of strings; the latter was done only because it aided
+     * in serialization.
+     * </p>
+     * <p>
+     * TODO: This should not be a member variable; it should simply be
+     * serialized and deserialized as part of
+     * {@link #pathsToInstancesForSubstitutables}, if serialization and
+     * deserialization of the latter becomes possible.
+     * </p>
+     */
+    @DynamicSerializeElement
+    @XmlElement
+    private final List<String> pathsToDates = new ArrayList<>();
+
+    // Public Static Methods
+
+    /**
+     * Determine whether or not the specified object has a type that is one of
+     * the non-collection-or-map classes requiring preprocessing before
+     * serialization and then postprocessing following deserialization.
+     * 
+     * @param object
+     *            Object to be checked.
+     * @return <code>true</code> if the specified object must be preprocessed
+     *         and postprocessed around serialization/deserialization,
+     *         <code>false</code> otherwise.
+     */
+    public static boolean isSubstitutedBeforeSerialization(Object object) {
+        for (Substitution substitution : SUBSTITUTABLE_LEAF_OBJECTS) {
+            if (substitution.getType().isAssignableFrom(object.getClass())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     // Public Constructors
 
@@ -833,6 +894,19 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
+     * Get the paths to any dates.
+     * <p>
+     * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
+     * outside this class, as the property being fetched is internal state.
+     * </p>
+     * 
+     * @return Paths to any dates.
+     */
+    public List<String> getPathsToDates() {
+        return pathsToDates;
+    }
+
+    /**
      * Set the hazard event identifier.
      * <p>
      * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
@@ -936,6 +1010,22 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
+     * Set the paths to any dates.
+     * <p>
+     * <strong>NOTE</strong>: Required for JAXB; should not be used elsewhere
+     * outside this class, as setting this property may leave the object in an
+     * undefined state.
+     * </p>
+     * 
+     * @param pathsToDates
+     *            New paths to any dates.
+     */
+    public void setPathsToDates(List<String> pathsToDates) {
+        this.pathsToDates.clear();
+        this.pathsToDates.addAll(pathsToDates);
+    }
+
+    /**
      * Get the value type.
      * 
      * @return Value type.
@@ -1028,6 +1118,8 @@ public class HazardAttribute implements IValidator, Serializable {
                     pathsToGeometries);
             pathsToInstancesForSubstitutables.put(
                     Substitution.ADVANCED_GEOMETRY, pathsToAdvancedGeometries);
+            pathsToInstancesForSubstitutables.put(Substitution.DATE,
+                    pathsToDates);
         }
     }
 

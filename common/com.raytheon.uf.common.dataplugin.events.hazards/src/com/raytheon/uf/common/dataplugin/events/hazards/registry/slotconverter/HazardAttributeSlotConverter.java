@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter;
 
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,6 +62,11 @@ import com.raytheon.uf.common.registry.ebxml.slots.SlotConverter;
  *                                       that HazardAttribute preprocesses
  *                                       any Geometry objects and turns them
  *                                       into Well-Known Text (WKT).
+ * Sep 26, 2016   22556    Chris.Golden  Improved slot conversion process to
+ *                                       work nicely with any values that are
+ *                                       pre- and postprocessed around
+ *                                       serialization/deserialization within
+ *                                       a hazard attribute.
  * </pre>
  * 
  * @author bphillip
@@ -103,8 +106,10 @@ public class HazardAttributeSlotConverter implements SlotConverter {
              */
             Class<?> valueType = attr.getValueType();
             if (valueType == null) {
-                ValueType val = getValueType(attr.getValueObject() instanceof IAdvancedGeometry ? attr
-                        .getValueObject() : attr.getValue());
+                Object valueObject = attr.getValueObject();
+                ValueType val = getValueType(HazardAttribute
+                        .isSubstitutedBeforeSerialization(valueObject) ? valueObject
+                        : attr.getValue());
                 SlotType slot = new SlotType(attr.getKey(), val);
                 slotList.add(slot);
             } else {
