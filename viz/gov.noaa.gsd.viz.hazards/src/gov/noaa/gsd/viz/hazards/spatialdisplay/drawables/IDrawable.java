@@ -7,9 +7,20 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ScaleManipulationPoint.Direction;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
+import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
+
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * 
@@ -24,9 +35,9 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 03, 2012            bryon.lawrence      Initial creation
- * Jul 18, 2013   1264     Chris.Golden        Added support for drawing lines and
+ * Jul 18, 2013  1264      Chris.Golden        Added support for drawing lines and
  *                                             points.
- * Feb 09, 2015 6260       Dan Schaffer        Fixed bugs in multi-polygon handling
+ * Feb 09, 2015  6260      Dan Schaffer        Fixed bugs in multi-polygon handling
  * Mar 16, 2016 15676      Chris.Golden        Added code to support visual features.
  * Mar 26, 2016 15676      Chris.Golden        Added visual feature identifier.
  * Jun 23, 2016 19537      Chris.Golden        Changed to use better identifiers.
@@ -37,12 +48,137 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
  *                                             for curved geometries, as well as
  *                                             methods to allow copying and
  *                                             translation (offsetting by deltas).
+ * Sep 29, 2016 15928      Chris.Golden        Added Utilities static class, as well
+ *                                             as new methods to be implemented.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public interface IDrawable<G extends IAdvancedGeometry> {
+
+    // Public Static Classes
+
+    /**
+     * Utilities class, with methods that may be used to perform common
+     * operations on implementors of the enclosing interface.
+     */
+    public static class Utilities {
+
+        // Public Methods
+
+        /**
+         * Change the opacity of the specified drawable by the specified
+         * multiplier.
+         * 
+         * @param drawable
+         *            Drawable that will have its colors' opacities altered.
+         * @param multiplier
+         *            Number by which to multiply the drawable's colors'
+         *            opacities.
+         */
+        public static void changeOpacity(DrawableElement drawable,
+                double multiplier) {
+            Color[] colors = drawable.getColors();
+            Color[] newColors = new Color[colors.length];
+            for (int j = 0; j < colors.length; j++) {
+                newColors[j] = new Color(colors[j].getRed(),
+                        colors[j].getGreen(), colors[j].getBlue(),
+                        (int) (colors[j].getAlpha() * multiplier));
+            }
+            drawable.setColors(newColors);
+        }
+
+        /**
+         * Given the specified geometry with the specified rotatability and
+         * scaleability, get the manipulation points along the bounding box of
+         * the geometry, if any. If the geometry is neither rotatable nor
+         * scaleable, an empty list will be returned. If rotatable but not
+         * scaleable, four corner points of the bounding box will be returned,
+         * each for rotation. Otherwise, eight points (the four corner points,
+         * and the four midpoints between adjacent pairs of corner points) will
+         * be returned, with all points being for scaling except for the first
+         * one, which will be for rotation if the geometry is rotatable and for
+         * scaling if it is not.
+         * 
+         * @param drawable
+         *            Drawable for which the manipulation points are desired.
+         * @return Manipulation points.
+         */
+        public static List<ManipulationPoint> getBoundingBoxManipulationPoints(
+                IDrawable<?> drawable) {
+
+            /*
+             * If neither rotatable or resizable, return an empty list.
+             */
+            if ((drawable.isRotatable() == false)
+                    && (drawable.isResizable() == false)) {
+                return Collections.emptyList();
+            }
+
+            /*
+             * Get the corner points.
+             */
+            IAdvancedGeometry geometry = drawable.getGeometry();
+            List<Coordinate> cornerPoints = AdvancedGeometryUtilities
+                    .getBoundingBoxCornerPoints(geometry);
+
+            /*
+             * Get the center point of the bounding box.
+             */
+            Coordinate center = AdvancedGeometryUtilities
+                    .getJtsGeometry(geometry).getEnvelopeInternal().centre();
+
+            /*
+             * Create the manipulation points based on the corner points.
+             * Midpoints are needed between the corner points if resizable.
+             */
+            List<ManipulationPoint> manipulationPoints = new ArrayList<>(
+                    cornerPoints.size() * (drawable.isResizable() ? 2 : 1));
+            for (int j = 0; j < cornerPoints.size(); j++) {
+
+                /*
+                 * Create a manipulation point for this corner point. If only
+                 * rotatable, or if scaleable as well but this is the first
+                 * point, make it a rotation point; otherwise, make it a scale
+                 * point.
+                 */
+                Coordinate thisPoint = cornerPoints.get(j);
+                if (drawable.isRotatable()
+                        && ((drawable.isResizable() == false) || (j == 0))) {
+                    manipulationPoints.add(new RotationManipulationPoint(
+                            (AbstractDrawableComponent) drawable, thisPoint,
+                            center));
+                } else {
+                    manipulationPoints.add(new ScaleManipulationPoint(
+                            (AbstractDrawableComponent) drawable, thisPoint,
+                            center, (j == 0 ? Direction.SOUTHEAST
+                                    : (j == 1 ? Direction.NORTHEAST
+                                            : (j == 2 ? Direction.NORTHWEST
+                                                    : Direction.SOUTHWEST)))));
+                }
+
+                /*
+                 * If resizable, create a scale point at the midpoint between
+                 * this corner point and the next.
+                 */
+                if (drawable.isResizable()) {
+                    Coordinate nextPoint = cornerPoints.get((j + 1)
+                            % cornerPoints.size());
+                    manipulationPoints.add(new ScaleManipulationPoint(
+                            (AbstractDrawableComponent) drawable,
+                            new Coordinate((thisPoint.x + nextPoint.x) / 2.0,
+                                    (thisPoint.y + nextPoint.y) / 2.0), center,
+                            (j == 0 ? Direction.EAST
+                                    : (j == 1 ? Direction.NORTH
+                                            : (j == 2 ? Direction.WEST
+                                                    : Direction.SOUTH)))));
+                }
+            }
+
+            return manipulationPoints;
+        }
+    }
 
     /**
      * Get the identifier.
@@ -143,6 +279,18 @@ public interface IDrawable<G extends IAdvancedGeometry> {
     public <D extends IDrawable<?>> D copyOf();
 
     /**
+     * Get a copy of this shape similar to {@link #copyOf()}, but with visual
+     * cues indicating that it is highlit.
+     * 
+     * @param active
+     *            Flag indicating whether or not the highlit copy is for an
+     *            active original. The copy will be more obviously highlit if
+     *            this is <code>true</code>.
+     * @return Copy of this shape.
+     */
+    public <D extends IDrawable<?>> D highlitCopyOf(boolean active);
+
+    /**
      * Offset this drawable by the specified deltas. This offsets the backing
      * {@link IAdvancedGeometry} as well.
      * 
@@ -152,4 +300,12 @@ public interface IDrawable<G extends IAdvancedGeometry> {
      *            Latitudinal offset.
      */
     public void offsetBy(double x, double y);
+
+    /**
+     * Get the manipulation points for this drawable. These are the points that
+     * may be manipulated by the user in some way.
+     * 
+     * @return Manipulation points for this drawable.
+     */
+    public List<ManipulationPoint> getManipulationPoints();
 }

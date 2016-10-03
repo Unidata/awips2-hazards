@@ -13,6 +13,9 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 
+import java.util.Collections;
+import java.util.List;
+
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 /**
@@ -46,6 +49,8 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                             rotatable flags. Also added methods to
  *                                             allow copying and translation
  *                                             (offsetting by deltas).
+ * Sep 29, 2016 15928      Chris.Golden        Added offsetBy() method and use of
+ *                                             manipulation points.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -194,6 +199,17 @@ public class SymbolDrawable extends Symbol implements
         return (D) new SymbolDrawable(this);
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <D extends IDrawable<?>> D highlitCopyOf(boolean active) {
+        SymbolDrawable drawable = copyOf();
+        if (active == false) {
+            Utilities.changeOpacity(drawable, 0.65);
+        }
+        drawable.setSizeScale(drawable.getSizeScale() * (active ? 1.2f : 1.5f));
+        return (D) drawable;
+    }
+
     @Override
     public void offsetBy(double x, double y) {
         this.geometry = new GeometryWrapper(AffineTransformation
@@ -201,5 +217,10 @@ public class SymbolDrawable extends Symbol implements
                         getGeometry().getGeometry()), getGeometry()
                 .getRotation());
         setLocation(AdvancedGeometryUtilities.getCentroid(geometry));
+    }
+
+    @Override
+    public List<ManipulationPoint> getManipulationPoints() {
+        return Collections.emptyList();
     }
 }

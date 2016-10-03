@@ -97,6 +97,10 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      avoiding many unnecessary redraws.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
  *                                      geometries.
+ * Sep 27, 2016   15928    Chris.Golden Changed spatial entity creation to
+ *                                      only mark the entities as rotatable
+ *                                      and/or scaleable if they are
+ *                                      selected.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1748,6 +1752,7 @@ class SpatialEntityManager {
                             entities.allReused);
                 }
             } else {
+                boolean editable = eventManager.canEventAreaBeChanged(event);
                 CreatedSpatialEntity entity = createDefaultSpatialEntityForEvent(
                         event, hazardColor, hazardBorderWidth,
                         hazardBorderStyle, hazardPointDiameter, hazardLabel,
@@ -1755,8 +1760,8 @@ class SpatialEntityManager {
                         HAZARD_EVENT_SINGLE_POINT_TEXT_OFFSET_DIRECTION,
                         HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_LENGTH,
                         HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_DIRECTION,
-                        HAZARD_EVENT_FONT_POINT_SIZE,
-                        eventManager.canEventAreaBeChanged(event));
+                        HAZARD_EVENT_FONT_POINT_SIZE, editable,
+                        (editable && selected), (editable && selected));
                 if (selected) {
                     selectedSpatialEntities.add(entity.spatialEntity);
                     reusedForTypes = createAndPut(reusedForTypes,
@@ -1932,6 +1937,10 @@ class SpatialEntityManager {
      * @param editable
      *            Flag indicating whether or not the entity is to be editable or
      *            movable.
+     * @param rotatable
+     *            Flag indicating whether or not the entity is to be rotatable.
+     * @param scaleable
+     *            Flag indicating whether or not the entity is to be scaleable.
      * @return Spatial entity created or reused, and flag indicating whether or
      *         not said entity was reused instead of created.
      */
@@ -1943,7 +1952,8 @@ class SpatialEntityManager {
             double hazardSinglePointTextOffsetDirection,
             double hazardMultiPointTextOffsetLength,
             double hazardMultiPointTextOffsetDirection,
-            int hazardTextPointSize, boolean editable) {
+            int hazardTextPointSize, boolean editable, boolean rotatable,
+            boolean scaleable) {
         IHazardEventEntityIdentifier identifier = new HazardEventEntityIdentifier(
                 event.getEventID());
         SpatialEntity<IHazardEventEntityIdentifier> oldEntity = (SpatialEntity<IHazardEventEntityIdentifier>) spatialEntitiesForIdentifiers
@@ -1959,7 +1969,7 @@ class SpatialEntityManager {
                         hazardMultiPointTextOffsetDirection,
                         hazardTextPointSize, hazardColor,
                         (editable ? DragCapability.ALL : DragCapability.NONE),
-                        false, editable, editable, false);
+                        false, rotatable, scaleable, false);
         return new CreatedSpatialEntity(entity, (entity == oldEntity));
     }
 
@@ -2181,8 +2191,8 @@ class SpatialEntityManager {
      *            selected set as well.
      * @param entities
      *            Spatial entities for which to create associations.
-     * @return <code>true</code> if a change was made to the selected spatial
-     *         entity identifiers record, <code>false</code> otherwise.
+     * @return <code>true</code> if associations were created,
+     *         <code>false</code> otherwise.
      */
     private boolean createAssociationsOfIdentifiersWithEntities(
             SpatialEntityType type,
@@ -2197,8 +2207,8 @@ class SpatialEntityManager {
                     selectedSpatialEntityIdentifiers
                             .add(entity.getIdentifier());
                 }
-                return (entities.isEmpty() == false);
             }
+            return (entities.isEmpty() == false);
         }
         return false;
     }
@@ -2214,8 +2224,8 @@ class SpatialEntityManager {
      *            selected will be removed as well.
      * @param entities
      *            Spatial entities for which to remove associations.
-     * @return <code>true</code> if a change was made to the selected spatial
-     *         entity identifiers record, <code>false</code> otherwise.
+     * @return <code>true</code> if associations were removed,
+     *         <code>false</code> otherwise.
      */
     private boolean removeAssociationsOfIdentifiersWithEntities(
             SpatialEntityType type,
@@ -2229,8 +2239,8 @@ class SpatialEntityManager {
                     selectedSpatialEntityIdentifiers.remove(entity
                             .getIdentifier());
                 }
-                return (entities.isEmpty() == false);
             }
+            return (entities.isEmpty() == false);
         }
         return false;
     }

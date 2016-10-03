@@ -91,6 +91,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      the configuration manager, but the work of
  *                                      tracking data layer changes is done by the
  *                                      app builder where it belongs.
+ * Sep 27, 2016 15928      Chris.Golden Changed line thickness for hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -245,7 +246,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param selected
      * @return
      */
-    public int getBorderWidth(IHazardEvent event, boolean selected);
+    public double getBorderWidth(IHazardEvent event, boolean selected);
 
     /**
      * Get the border style to use when displaying an event.

@@ -15,6 +15,8 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.google.common.collect.Lists;
@@ -46,6 +48,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                       path and ellipse drawables. Also
  *                                       added methods to allow copying and
  *                                       translation (offsetting by deltas).
+ * Sep 29, 2016 15928      Chris.Golden  Moved resizability and rotatability
+ *                                       into this base class. Added use of
+ *                                       manipulation points.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -86,6 +91,27 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
      */
     private boolean movable;
 
+    /**
+     * Flag indicating whether or not this shape is resizable,
+     */
+    private boolean resizable;
+
+    /**
+     * Flag indicating whether or not this shape is rotatable,
+     */
+    private boolean rotatable;
+
+    /**
+     * Manipulation points.
+     */
+    private final List<ManipulationPoint> manipulationPoints = new ArrayList<>();
+
+    /**
+     * Read-only view of {@link #manipulationPoints}.
+     */
+    private final List<ManipulationPoint> readOnlyManipulationPoints = Collections
+            .unmodifiableList(manipulationPoints);
+
     // Public Constructors
 
     /**
@@ -123,6 +149,8 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
         this.identifier = other.identifier;
         this.geometryIndex = other.geometryIndex;
         this.movable = other.movable;
+        this.resizable = other.resizable;
+        this.rotatable = other.rotatable;
         update(other);
         setPgenCategory(LINE);
         setPgenType(other.pgenType);
@@ -141,23 +169,19 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
         return geometry;
     }
 
-    @Override
-    public abstract boolean isEditable();
-
-    @Override
-    public abstract void setEditable(boolean editable);
-
-    @Override
-    public abstract boolean isResizable();
-
-    @Override
-    public abstract void setResizable(boolean resizable);
-
-    @Override
-    public abstract boolean isRotatable();
-
-    @Override
-    public abstract void setRotatable(boolean rotatable);
+    /**
+     * Set the geometry to that specified.
+     * 
+     * @param geometry
+     *            New geometry to be used.
+     */
+    public void setGeometry(G geometry) {
+        this.geometry = geometry;
+        List<Coordinate> points = Lists.newArrayList(AdvancedGeometryUtilities
+                .getJtsGeometry(geometry).getCoordinates());
+        setLinePoints(points);
+        updateManipulationPoints();
+    }
 
     @Override
     public boolean isMovable() {
@@ -170,22 +194,71 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
     }
 
     @Override
+    public abstract boolean isEditable();
+
+    @Override
+    public abstract void setEditable(boolean editable);
+
+    @Override
+    public boolean isResizable() {
+        return resizable;
+    }
+
+    @Override
+    public void setResizable(boolean resizable) {
+        this.resizable = resizable;
+        updateManipulationPoints();
+    }
+
+    @Override
+    public boolean isRotatable() {
+        return rotatable;
+    }
+
+    @Override
+    public void setRotatable(boolean rotatable) {
+        this.rotatable = rotatable;
+        updateManipulationPoints();
+    }
+
+    @Override
     public int getGeometryIndex() {
         return geometryIndex;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <D extends IDrawable<?>> D highlitCopyOf(boolean active) {
+        MultiPointDrawable<?> drawable = copyOf();
+        if (active == false) {
+            Utilities.changeOpacity(drawable, 0.60);
+        }
+        drawable.setLineWidth(drawable.getLineWidth() * (active ? 1.7f : 3.5f));
+        return (D) drawable;
+    }
+
+    @Override
+    public List<ManipulationPoint> getManipulationPoints() {
+        return readOnlyManipulationPoints;
     }
 
     // Protected Methods
 
     /**
-     * Set the geometry to that specified.
+     * Set the manipulation points to those specified.
      * 
-     * @param geometry
-     *            New geometry to be used.
+     * @param manipulationPoints
+     *            New manipulation points.
      */
-    protected void setGeometry(G geometry) {
-        this.geometry = geometry;
-        List<Coordinate> points = Lists.newArrayList(AdvancedGeometryUtilities
-                .getJtsGeometry(geometry).getCoordinates());
-        setLinePoints(points);
+    protected void updateManipulationPoints() {
+        this.manipulationPoints.clear();
+        this.manipulationPoints.addAll(getUpdatedManipulationPoints());
     }
+
+    /**
+     * Get the updated manipulation points, if any.
+     * 
+     * @return Updated manipulation points; may be an empty list.
+     */
+    protected abstract List<ManipulationPoint> getUpdatedManipulationPoints();
 }

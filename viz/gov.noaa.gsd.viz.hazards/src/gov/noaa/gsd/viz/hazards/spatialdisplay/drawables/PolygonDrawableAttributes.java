@@ -45,7 +45,8 @@ public class PolygonDrawableAttributes extends DrawableAttributes {
 
     /**
      * The size scale for polygons governs the size of the line style pattern
-     * elements if it does not have a solid outline.
+     * elements if it does not have a solid outline, at least for the dashed
+     * line style (for the dotted line style, it appears to have no effect).
      */
     @Override
     public double getSizeScale() {
@@ -55,7 +56,8 @@ public class PolygonDrawableAttributes extends DrawableAttributes {
     /**
      * Set the size scale. Note that the size scale for polygons governs the
      * size of the line style pattern elements if it does not have a solid
-     * outline.
+     * outline, at least for the dashed line style (for the dotted line style,
+     * it appears to have no effect).
      * 
      * @param sizeScale
      *            New size scale.

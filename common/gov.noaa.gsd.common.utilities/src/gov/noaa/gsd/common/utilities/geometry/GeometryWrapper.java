@@ -25,6 +25,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.geom.Puntal;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
@@ -39,6 +40,10 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 02, 2016   15934    Chris.Golden Initial creation.
+ * Sep 29, 2016   15928    Chris.Golden Made scaleable, switched to use rotation
+ *                                      angles in radians, added methods to get
+ *                                      rotated or scaled copies, and added
+ *                                      calculation of center point.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,7 +51,7 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  */
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = AdvancedGeometrySerializationAdapter.class)
-public class GeometryWrapper implements IRotatable {
+public class GeometryWrapper implements IRotatable, IScaleable {
 
     // Private Classes
 
@@ -188,7 +193,17 @@ public class GeometryWrapper implements IRotatable {
     private Geometry geometry;
 
     /**
-     * Rotation in counterclockwise degrees.
+     * Center point of the bounding box of the shape, around which any rotation
+     * is done.
+     * <p>
+     * <strong>NOTE</strong>: This field would be declared <code>final</code> if
+     * it did not need to be altered by {@link #readObject(ObjectInputStream)}.
+     * </p>
+     */
+    private Coordinate centerPoint;
+
+    /**
+     * Rotation in counterclockwise radians.
      * <p>
      * <strong>NOTE</strong>: This field would be declared <code>final</code> if
      * it did not need to be altered by {@link #readObject(ObjectInputStream)}.
@@ -204,7 +219,7 @@ public class GeometryWrapper implements IRotatable {
      * @param geometry
      *            Geometry defining the shape; cannot be <code>null</code>.
      * @param rotation
-     *            Rotation in counterclockwise degrees.
+     *            Rotation in counterclockwise radians.
      */
     @JsonCreator
     public GeometryWrapper(@JsonProperty("geometry") Geometry geometry,
@@ -214,7 +229,40 @@ public class GeometryWrapper implements IRotatable {
         /*
          * Ensure rotation is between 0 (inclusive) and 360 (exclusive).
          */
-        this.rotation = ((rotation % 360.0) + 360.0) % 360.0;
+        this.rotation = (rotation + (2.0 * Math.PI)) % (2.0 * Math.PI);
+
+        /*
+         * Unrotate the geometry around an arbitrary point to get its bounding
+         * box with sides parallel to the X and Y axes, then take the center
+         * point of the bounding box and rotate it back around the same point to
+         * get the center point.
+         */
+        Coordinate firstPoint = geometry.getCoordinate();
+        Geometry unrotatedGeometry = AffineTransformation.rotationInstance(
+                rotation * -1.0, firstPoint.x, firstPoint.y)
+                .transform(geometry);
+        centerPoint = unrotatedGeometry.getEnvelopeInternal().centre();
+        AffineTransformation.rotationInstance(rotation, firstPoint.x,
+                firstPoint.y).transform(centerPoint, centerPoint);
+    }
+
+    // Private Constructors
+
+    /**
+     * Construct a standard instance, with the center point explictly specified
+     * instead of being calculated by the constructor.
+     * 
+     * @param geometry
+     *            Geometry defining the shape; cannot be <code>null</code>.
+     * @param rotation
+     *            Rotation in counterclockwise radians; must be in the range
+     *            <code>[0, 2 * Pi)</code>.
+     */
+    private GeometryWrapper(Geometry geometry, Coordinate centerPoint,
+            double rotation) {
+        this.geometry = geometry;
+        this.centerPoint = centerPoint;
+        this.rotation = rotation;
     }
 
     // Public Methods
@@ -226,6 +274,11 @@ public class GeometryWrapper implements IRotatable {
      */
     public Geometry getGeometry() {
         return geometry;
+    }
+
+    @Override
+    public Coordinate getCenterPoint() {
+        return new Coordinate(centerPoint);
     }
 
     @Override
@@ -253,7 +306,73 @@ public class GeometryWrapper implements IRotatable {
     @SuppressWarnings("unchecked")
     @Override
     public <G extends IAdvancedGeometry> G copyOf() {
-        return (G) new GeometryWrapper((Geometry) geometry.clone(), rotation);
+        return (G) new GeometryWrapper((Geometry) geometry.clone(),
+                new Coordinate(centerPoint), rotation);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <G extends IRotatable> G rotatedCopyOf(double delta) {
+
+        /*
+         * Just return a straight copy if no delta was given.
+         */
+        if (delta == 0.0) {
+            return copyOf();
+        }
+
+        /*
+         * Rotate the geometry by the specified delta.
+         */
+        Geometry geometry = AffineTransformation.rotationInstance(delta,
+                centerPoint.x, centerPoint.y).transform(getGeometry());
+
+        /*
+         * Return a new instance with the rotated geometry and the altered
+         * rotation angle.
+         */
+        return (G) new GeometryWrapper(geometry, new Coordinate(centerPoint),
+                (rotation + delta + (2.0 * Math.PI) % (2.0 * Math.PI)));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <G extends IScaleable> G scaledCopyOf(double horizontalMultiplier,
+            double verticalMultiplier) {
+
+        /*
+         * Sanity check the parameters.
+         */
+        if ((horizontalMultiplier <= 0.0) || (verticalMultiplier <= 0.0)) {
+            throw new IllegalArgumentException(
+                    "scale multipliers must be positive numbers");
+        }
+
+        /*
+         * Just return a straight copy if no change in scale was specified.
+         */
+        if ((horizontalMultiplier == 1.0) && (verticalMultiplier == 1.0)) {
+            return copyOf();
+        }
+
+        /*
+         * Compose a transform that unrotates the geometry, centers the geometry
+         * on the origin, applies the scaling (which is always centered on the
+         * origin, thus the translation), recenters the geometry on its actual
+         * center point, and rotates it back to the original rotation.
+         */
+        AffineTransformation transformer = AffineTransformation
+                .rotationInstance(rotation * -1.0, centerPoint.x, centerPoint.y);
+        transformer.translate(centerPoint.x * -1.0, centerPoint.y * -1.0);
+        transformer.scale(horizontalMultiplier, verticalMultiplier);
+        transformer.translate(centerPoint.x, centerPoint.y);
+        transformer.rotate(rotation, centerPoint.x, centerPoint.y);
+
+        /*
+         * Return a new instance with the transformed geometry.
+         */
+        return (G) new GeometryWrapper(transformer.transform(geometry),
+                new Coordinate(centerPoint), rotation);
     }
 
     @Override
@@ -326,6 +445,7 @@ public class GeometryWrapper implements IRotatable {
     private void writeObject(ObjectOutputStream stream) throws IOException {
         stream.writeObject(new SerializableBytes(WKB_WRITER.get().write(
                 geometry)));
+        stream.writeObject(centerPoint);
         stream.writeDouble(rotation);
     }
 
@@ -350,6 +470,7 @@ public class GeometryWrapper implements IRotatable {
         } catch (ParseException e) {
             throw new IOException("could not read in geometry", e);
         }
+        centerPoint = (Coordinate) stream.readObject();
         rotation = stream.readDouble();
     }
 }

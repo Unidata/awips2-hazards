@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
 import gov.noaa.nws.ncep.ui.pgen.PgenRangeRecord;
 import gov.noaa.nws.ncep.ui.pgen.PgenUtil;
 import gov.noaa.nws.ncep.ui.pgen.contours.ContourCircle;
@@ -84,6 +86,8 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.LinearRing;
+import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.linearref.LengthIndexedLine;
 import com.vividsolutions.jts.linearref.LengthLocationMap;
 import com.vividsolutions.jts.linearref.LinearLocation;
@@ -93,7 +97,13 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
  * Description: Copy of the {@link DisplayElementFactory}, with functionality
  * unneeded by the spatial display stripped out, and generating any line
  * displayables with their color's alpha component honored (meaning lines may be
- * translucent).
+ * translucent). This version also handles {@link Polygon} isntances that have
+ * one or more holes in them properly; the original created the fill displayable
+ * for any such polygon correctly (i.e. the fill retained the holes), but
+ * created the edge displayables for all the {@link LinearRing} components as a
+ * single displayable, which in practice meant that the holes and the exterior
+ * ring were connected visually by line segments. This version creates one edge
+ * displayable per linear ring.
  * 
  * <pre>
  * 
@@ -105,6 +115,21 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
  *                                      for line style patterns that are
  *                                      filled (e.g. filled circles), and
  *                                      for polygon fills.
+ * Sep 29, 2016   15928    Chris.Golden Added code when creating
+ *                                      displayables for ILines that, if
+ *                                      the ILine is a PathDrawable and
+ *                                      has a polygon with one or more
+ *                                      holes in it for its geometry,
+ *                                      creates the fill the standard PGEN
+ *                                      way, but creates the displayables
+ *                                      for the edges as one per linear
+ *                                      ring. This is because the PGEN
+ *                                      way, constructing a single
+ *                                      displayable holding all the points
+ *                                      of all the linear rings, causes
+ *                                      the edge to include lines between
+ *                                      the exterior ring and any interior
+ *                                      rings (holes).
  * </pre>
  * 
  * @author Chris.Golden
@@ -407,6 +432,7 @@ public class PgenDisplayElementFactory {
             }
 
             if (geo != null && geo.getNumGeometries() > 1) {
+
                 for (int ii = 0; ii < geo.getNumGeometries(); ii++) {
                     Geometry geo1 = geo.getGeometryN(ii);
                     double[][] pixels = PgenUtil.latlonToPixel(
@@ -414,8 +440,26 @@ public class PgenDisplayElementFactory {
                     double[][] smoothpts;
                     float density;
 
+                    /*
+                     * For Hazard Services: If there are individual ring
+                     * coordinate arrays, convert their lat/lons to pixel
+                     * coordinates.
+                     */
+                    List<double[][]> ringPixels = null;
+                    if ((geo1 instanceof Polygon)
+                            && (((Polygon) geo1).getNumInteriorRing() > 0)) {
+                        List<Coordinate[]> rings = AdvancedGeometryUtilities
+                                .getCoordinates(geo1);
+                        ringPixels = new ArrayList<>(rings.size());
+                        for (Coordinate[] coordinates : rings) {
+                            ringPixels.add(PgenUtil.latlonToPixel(coordinates,
+                                    (IMapDescriptor) descriptor));
+                        }
+                    }
+
                     // Apply parametric smoothing on pixel coordinates, if
                     // required
+                    List<double[][]> ringSmoothPixels = null;
                     if (line.getSmoothFactor() > 0) {
                         float devScale = 50.0f;
                         if (line.getSmoothFactor() == 1) {
@@ -425,12 +469,31 @@ public class PgenDisplayElementFactory {
                         }
                         smoothpts = CurveFitter.fitParametricCurve(pixels,
                                 density);
+
+                        /*
+                         * For Hazard Services: If there are individual ring
+                         * coordinate arrays, smooth them.
+                         */
+                        if (ringPixels != null) {
+                            ringSmoothPixels = new ArrayList<>(
+                                    ringPixels.size());
+                            for (double[][] ring : ringPixels) {
+                                ringSmoothPixels.add(CurveFitter
+                                        .fitParametricCurve(ring, density));
+                            }
+                        }
                     } else {
                         smoothpts = pixels;
+
+                        /*
+                         * For Hazard Services: If there are individual ring
+                         * coordinate arrays, use them as the smoothed arrays.
+                         */
+                        ringSmoothPixels = ringPixels;
                     }
 
                     list.addAll(createDisplayElementsForLines(line, smoothpts,
-                            paintProperties));
+                            ringSmoothPixels, paintProperties));
 
                 }
 
@@ -1063,9 +1126,36 @@ public class PgenDisplayElementFactory {
         Coordinate[] pts = line.getLinePoints();
 
         /*
+         * For Hazard Services: Get the lat/lon coordinates of the different
+         * rings if the geometry is a polygon and has one or more holes in it.
+         */
+        List<Coordinate[]> rings = null;
+        if (line instanceof PathDrawable) {
+            Geometry geometry = ((PathDrawable) line).getGeometry()
+                    .getGeometry();
+            if ((geometry instanceof Polygon)
+                    && (((Polygon) geometry).getNumInteriorRing() > 0)) {
+                rings = AdvancedGeometryUtilities.getCoordinates(geometry);
+            }
+        }
+
+        /*
          * convert lat/lon coordinates to pixel coordinates
          */
         pixels = PgenUtil.latlonToPixel(pts, (IMapDescriptor) descriptor);
+
+        /*
+         * For Hazard Services: If there are individual ring coordinate arrays,
+         * convert their lat/lons to pixel coordinates.
+         */
+        List<double[][]> ringPixels = null;
+        if (rings != null) {
+            ringPixels = new ArrayList<>(rings.size());
+            for (Coordinate[] coordinates : rings) {
+                ringPixels.add(PgenUtil.latlonToPixel(coordinates,
+                        (IMapDescriptor) descriptor));
+            }
+        }
 
         /*
          * If line is closed, make sure last point is same as first point
@@ -1077,6 +1167,7 @@ public class PgenDisplayElementFactory {
         /*
          * Apply parametric smoothing on pixel coordinates, if required
          */
+        List<double[][]> ringSmoothPixels = null;
         if (line.getSmoothFactor() > 0) {
             float devScale = 50.0f;
             if (line.getSmoothFactor() == 1) {
@@ -1085,12 +1176,30 @@ public class PgenDisplayElementFactory {
                 density = devScale / 5.0f;
             }
             smoothpts = CurveFitter.fitParametricCurve(pixels, density);
+
+            /*
+             * For Hazard Services: If there are individual ring coordinate
+             * arrays, smooth them.
+             */
+            if (ringPixels != null) {
+                ringSmoothPixels = new ArrayList<>(ringPixels.size());
+                for (double[][] ring : ringPixels) {
+                    ringSmoothPixels.add(CurveFitter.fitParametricCurve(ring,
+                            density));
+                }
+            }
         } else {
             smoothpts = pixels;
+
+            /*
+             * For Hazard Services: If there are individual ring coordinate
+             * arrays, use them as the smoothed arrays.
+             */
+            ringSmoothPixels = ringPixels;
         }
 
         list.addAll(createDisplayElementsForLines(line, smoothpts,
-                paintProperties));
+                ringSmoothPixels, paintProperties));
 
         /*
          * Draw labels for contour lines.
@@ -1179,13 +1288,18 @@ public class PgenDisplayElementFactory {
      * @param line
      *            Line for which to create displayables.
      * @param smoothPoints
-     *            Points, smoothed if appropriate, for the line.
+     *            List of points, smoothed if appropriate, for the line.
+     * @param ringSmoothPoints
+     *            List of lists of points, smoothed if appropriate, for the
+     *            individual linear rings of the polygon, if the line holds a
+     *            polygon with one or more holes in it.
      * @param paintProperties
      *            Paint properties associated with the target.
      * @return List of displayables.
      */
     private List<IDisplayable> createDisplayElementsForLines(ILine line,
-            double[][] smoothPoints, PaintProperties paintProperties) {
+            double[][] smoothPoints, List<double[][]> ringSmoothPoints,
+            PaintProperties paintProperties) {
 
         float drawLineWidth = line.getLineWidth();
         double drawSizeScale = line.getSizeScale();
@@ -1251,9 +1365,10 @@ public class PgenDisplayElementFactory {
 
         ArrayList<IDisplayable> list = new ArrayList<IDisplayable>();
 
-        list.addAll(createDisplayElementsFromPoints(smoothPoints, dspClr,
-                pattern, scaleType, getDisplayFillMode(line.isFilled()),
-                drawLineWidth, paintProperties));
+        list.addAll(createDisplayElementsFromPoints(smoothPoints,
+                ringSmoothPoints, dspClr, pattern, scaleType,
+                getDisplayFillMode(line.isFilled()), drawLineWidth,
+                paintProperties));
         // ((ILine) de).getLineWidth(), isCCFP, ccfp, paintProps));
 
         /*
@@ -1270,8 +1385,15 @@ public class PgenDisplayElementFactory {
      * points of a line.
      * 
      * @param points
-     *            Points, smoothed if appropriate, for which to create the
-     *            displayables.
+     *            List of points, smoothed if appropriate, for which to create
+     *            the displayables.
+     * @param ringPoints
+     *            List of lists of points, smoothed if appropriate, for the
+     *            individual linear rings of the polygon, if the line holds a
+     *            polygon with one or more holes in it. When not
+     *            <code>null</code>, these are used to create the edge
+     *            displayables, and the <code>points</code> list is used to
+     *            create the fill displayables.
      * @param displayColors
      *            Colors to use.
      * @param pattern
@@ -1287,9 +1409,9 @@ public class PgenDisplayElementFactory {
      * @return List of displayables.
      */
     private List<IDisplayable> createDisplayElementsFromPoints(
-            double[][] points, Color[] displayColors, LinePattern pattern,
-            ScaleType scaleType, Boolean isFilled, float lineWidth,
-            PaintProperties paintProperties) {
+            double[][] points, List<double[][]> ringPoints,
+            Color[] displayColors, LinePattern pattern, ScaleType scaleType,
+            Boolean isFilled, float lineWidth, PaintProperties paintProperties) {
 
         ArrayList<IDisplayable> list = new ArrayList<IDisplayable>();
         wireframeShapes = new IWireframeShape[displayColors.length];
@@ -1348,9 +1470,35 @@ public class PgenDisplayElementFactory {
             }
         }
         if ((pattern != null) && (pattern.getNumSegments() > 0)) {
-            handleLinePattern(pattern, points, scaleType);
+
+            /*
+             * For Hazard Services: If multiple linear rings of points have been
+             * provided, handle the line pattern for each one in turn. Otherwise
+             * simply handle the line pattern for the points as a whole, as per
+             * the original code.
+             */
+            if (ringPoints != null) {
+                for (double[][] ring : ringPoints) {
+                    handleLinePattern(pattern, ring, scaleType);
+                }
+            } else {
+                handleLinePattern(pattern, points, scaleType);
+            }
         } else {
-            wireframeShapes[0].addLineSegment(points);
+
+            /*
+             * For Hazard Services: If multiple linear rings of points have been
+             * provided, add a line segment for each one in turn. Otherwise
+             * simply add a line segment for the points as a whole, as per the
+             * original code.
+             */
+            if (ringPoints != null) {
+                for (double[][] ring : ringPoints) {
+                    wireframeShapes[0].addLineSegment(ring);
+                }
+            } else {
+                wireframeShapes[0].addLineSegment(points);
+            }
         }
 
         if (isFilled) {

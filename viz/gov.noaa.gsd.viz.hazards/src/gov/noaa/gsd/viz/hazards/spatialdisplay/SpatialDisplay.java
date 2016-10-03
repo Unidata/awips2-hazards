@@ -16,13 +16,13 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.VertexManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.input.BaseInputHandler;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.input.InputHandlerFactory;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 import gov.noaa.nws.ncep.ui.pgen.display.LinePatternManager;
@@ -59,7 +59,6 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
@@ -208,6 +207,11 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        added support for ellipse drawing. Also added a new
  *                                        buildModifiedGeometry() method that takes advanced geometry
  *                                        instead of a list of points.
+ * Sep 29, 2016 15928      Chris.Golden   Added ability to use correct cursor for different
+ *                                        manipulation points. Changed to have handlebars only show up
+ *                                        for active (selected) spatial entities, and to have unselected
+ *                                        ones glow subtly when the mouse passes over them. Also changed
+ *                                        to disallow editing of unselected ones.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -228,11 +232,16 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     /**
      * Types of cursors.
      */
-    public static enum CursorTypes {
+    public static enum CursorType {
 
         MOVE_SHAPE_CURSOR(SWT.CURSOR_SIZEALL), MOVE_VERTEX_CURSOR(
-                SWT.CURSOR_HAND), ARROW_CURSOR(SWT.CURSOR_ARROW), DRAW_CURSOR(
-                SWT.CURSOR_CROSS), WAIT_CURSOR(SWT.CURSOR_WAIT);
+                SWT.CURSOR_HAND), ROTATE_CURSOR(SWT.CURSOR_CROSS), ARROW_CURSOR(
+                SWT.CURSOR_ARROW), DRAW_CURSOR(SWT.CURSOR_CROSS), WAIT_CURSOR(
+                SWT.CURSOR_WAIT), SCALE_DOWN_AND_RIGHT(SWT.CURSOR_SIZESE), SCALE_RIGHT(
+                SWT.CURSOR_SIZEE), SCALE_UP_AND_RIGHT(SWT.CURSOR_SIZENE), SCALE_UP(
+                SWT.CURSOR_SIZEN), SCALE_UP_AND_LEFT(SWT.CURSOR_SIZENW), SCALE_LEFT(
+                SWT.CURSOR_SIZEW), SCALE_DOWN_AND_LEFT(SWT.CURSOR_SIZESW), SCALE_DOWN(
+                SWT.CURSOR_SIZES);
 
         // Private Variables
 
@@ -249,7 +258,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * @param swtType
          *            SWT type of cursor.
          */
-        private CursorTypes(int swtType) {
+        private CursorType(int swtType) {
             this.swtType = swtType;
         }
 
@@ -414,7 +423,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         public void clear(SpatialEntityType identifier) {
 
             /*
-             * Clear the appropriate list, and repopulate the reactive entity
+             * Clear the appropriate list, and repopulate the active entity
              * identifiers set if necessary.
              */
             List<SpatialEntity<? extends IEntityIdentifier>> spatialEntities = spatialEntitiesForTypes
@@ -422,7 +431,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             List<SpatialEntity<? extends IEntityIdentifier>> removedEntities = new ArrayList<>(
                     spatialEntities);
             spatialEntities.clear();
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Remove any drawables associated with the removed spatial
@@ -441,7 +450,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Clear the appropriate list and set its contents to be those
-             * specified, and repopulate the reactive entity identifiers set if
+             * specified, and repopulate the active entity identifiers set if
              * necessary.
              */
             List<SpatialEntity<? extends IEntityIdentifier>> spatialEntities = spatialEntitiesForTypes
@@ -450,7 +459,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                     spatialEntities);
             spatialEntities.clear();
             spatialEntities.addAll(elements);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Replace any drawables associated with the removed spatial
@@ -468,10 +477,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Append the specified spatial entity to the appropriate list, and
-             * repopulate the reactive entity identifiers set if necessary.
+             * repopulate the active entity identifiers set if necessary.
              */
             spatialEntitiesForTypes.get(identifier).add(element);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Create any drawables needed for the new spatial entity.
@@ -486,10 +495,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Append the specified spatial entities to the appropriate list,
-             * and repopulate the reactive entity identifiers set if necessary.
+             * and repopulate the active entity identifiers set if necessary.
              */
             spatialEntitiesForTypes.get(identifier).addAll(elements);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Create any drawables needed for the new spatial entities.
@@ -503,10 +512,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Insert the specified spatial entity into the appropriate list,
-             * and repopulate the reactive entity identifiers set if necessary.
+             * and repopulate the active entity identifiers set if necessary.
              */
             spatialEntitiesForTypes.get(identifier).add(index, element);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Create any drawables needed for the new spatial entity.
@@ -522,10 +531,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Insert the specified spatial entities into the appropriate list,
-             * and repopulate the reactive entity identifiers set if necessary.
+             * and repopulate the active entity identifiers set if necessary.
              */
             insertSpatialEntities(identifier, index, elements);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Create any drawables needed for the new spatial entities.
@@ -540,11 +549,11 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Remove the specified spatial entity from the appropriate list and
              * replace it with the specified new spatial entity, then repopulate
-             * the reactive entity identifiers set if necessary.
+             * the active entity identifiers set if necessary.
              */
             SpatialEntity<? extends IEntityIdentifier> removedEntity = spatialEntitiesForTypes
                     .get(identifier).set(index, element);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Replace any drawables associated with the removed spatial entity
@@ -566,14 +575,14 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Remove the specified spatial entities from the appropriate list
              * and replace them with the specified new spatial entities, then
-             * repopulate the reactive entity identifiers set if necessary.
+             * repopulate the active entity identifiers set if necessary.
              */
             List<SpatialEntity<? extends IEntityIdentifier>> removedEntities = new ArrayList<>(
                     spatialEntitiesForTypes.get(identifier).subList(index,
                             index + count));
             removeSpatialEntities(identifier, index, count);
             insertSpatialEntities(identifier, index, elements);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Replace any drawables associated with the removed spatial
@@ -590,11 +599,11 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Remove the specified spatial entity from the appropriate list and
-             * repopulate the reactive entity identifiers set if necessary.
+             * repopulate the active entity identifiers set if necessary.
              */
             SpatialEntity<? extends IEntityIdentifier> removedEntity = spatialEntitiesForTypes
                     .get(identifier).remove(index);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Remove any drawables associated with the removed spatial entity.
@@ -610,13 +619,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Remove the specified spatial entities from the appropriate list
-             * and repopulate the reactive entity identifiers set if necessary.
+             * and repopulate the active entity identifiers set if necessary.
              */
             List<SpatialEntity<? extends IEntityIdentifier>> removedEntities = new ArrayList<>(
                     spatialEntitiesForTypes.get(identifier).subList(index,
                             index + count));
             removeSpatialEntities(identifier, index, count);
-            repopulateReactiveSpatialEntityIdentifiers(identifier);
+            repopulateActiveSpatialEntityIdentifiers(identifier);
 
             /*
              * Remove any drawables associated with the removed spatial
@@ -637,19 +646,20 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     };
 
     /**
-     * Currently reactive spatial entity identifiers. Reactive entities are
-     * those that are either selected or are tool-based entities, and thus
-     * should indicate they are movable, editable, etc. via visual cues when
-     * moused over.
+     * Currently active spatial entity identifiers. Active entities are those
+     * that are either selected or are tool-based entities, and thus should
+     * indicate they are movable, editable, etc. via visual cues when moused
+     * over, and should also allow moving, editing, etc. if the user clicks and
+     * drags them.
      */
-    private final Set<IEntityIdentifier> reactiveSpatialEntityIdentifiers = new HashSet<>();
+    private final Set<IEntityIdentifier> activeSpatialEntityIdentifiers = new HashSet<>();
 
     /**
-     * Unmodifiable view of the currently reactive spatial entity identifiers
-     * found in {@link #reactiveSpatialEntityIdentifiers}.
+     * Unmodifiable view of the currently active spatial entity identifiers
+     * found in {@link #activeSpatialEntityIdentifiers}.
      */
-    private final Set<IEntityIdentifier> readOnlyReactiveSpatialEntityIdentifiers = Collections
-            .unmodifiableSet(reactiveSpatialEntityIdentifiers);
+    private final Set<IEntityIdentifier> readOnlyActiveSpatialEntityIdentifiers = Collections
+            .unmodifiableSet(activeSpatialEntityIdentifiers);
 
     /**
      * Drawable manager assisting this spatial display.
@@ -682,8 +692,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     /**
      * Map of cursor types to the corresponding cursors.
      */
-    private final Map<CursorTypes, Cursor> cursorsForCursorTypes = Maps
-            .newEnumMap(CursorTypes.class);
+    private final Map<CursorType, Cursor> cursorsForCursorTypes = Maps
+            .newEnumMap(CursorType.class);
 
     /**
      * Input handler factory.
@@ -697,6 +707,12 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     private BaseInputHandler inputHandler = null;
 
     /**
+     * Flag indicating whether or not visual cues indicating reactive and active
+     * drawables should be updated at the next display refresh.
+     */
+    private boolean visualCuesNeedUpdating;
+
+    /**
      * Spatial view that manages this object.
      */
     private SpatialView spatialView;
@@ -708,11 +724,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      * lifetime of this object.
      */
     private volatile boolean perspectiveChanging;
-
-    /**
-     * Geometry factory, used for creating points during hit-testing.
-     */
-    private final GeometryFactory geometryFactory;
 
     /**
      * Current map scale factor, necessary for adjusting to map scale (not zoom)
@@ -810,7 +821,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * Create objects necessary for drawing and time-tracking.
          */
         drawableManager = new DrawableManager(this);
-        geometryFactory = new GeometryFactory();
         dataTimes = new ArrayList<>();
 
         /*
@@ -840,7 +850,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                  * Create the cursors that will be used on the display.
                  */
                 Display display = Display.getDefault();
-                for (CursorTypes cursor : CursorTypes.values()) {
+                for (CursorType cursor : CursorType.values()) {
                     cursorsForCursorTypes.put(cursor,
                             display.getSystemCursor(cursor.getSwtType()));
                 }
@@ -900,8 +910,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * vertex is a possibility; if the latter, adding a vertex is possible.
          * In either of those cases, add a menu item.
          */
-        MutableDrawableInfo info = getMutableDrawableInfoUnderPoint(x, y);
-        if (info.getVertexIndex() != -1) {
+        MutableDrawableInfo info = getMutableDrawableInfoUnderPoint(x, y, true);
+        if (info.getManipulationPoint() instanceof VertexManipulationPoint) {
 
             /*
              * Ensure there are at least three points left for paths, or five
@@ -919,7 +929,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                     }
                 });
             }
-        } else if (info.isCloseToEdge()) {
+        } else if (info.getEdgeIndex() > -1) {
             actions.add(new Action(HazardConstants.CONTEXT_MENU_ADD_VERTEX) {
                 @Override
                 public void run() {
@@ -1163,11 +1173,12 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      */
     public void handleUserModificationOfDrawable(
             AbstractDrawableComponent drawable, IAdvancedGeometry geometry) {
-        issueRefresh();
         if (drawable instanceof IDrawable) {
             spatialView.handleUserModificationOfSpatialEntity(
                     ((IDrawable<?>) drawable).getIdentifier(), geometry);
         }
+        visualCuesNeedUpdatingAtNextRefresh();
+        issueRefresh();
     }
 
     /**
@@ -1198,10 +1209,9 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      */
     public void handleUserCreationOfPointShape(Coordinate location,
             SequencePosition sequencePosition) {
-        spatialView
-                .handleUserCreationOfShape(AdvancedGeometryUtilities
-                        .createGeometryWrapper(
-                                geometryFactory.createPoint(location), 0));
+        spatialView.handleUserCreationOfShape(AdvancedGeometryUtilities
+                .createGeometryWrapper(AdvancedGeometryUtilities
+                        .getGeometryFactory().createPoint(location), 0));
 
         /*
          * If this is the first point drawn in a sequence of points, tell the
@@ -1251,6 +1261,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             handleUserMultiVertexEditCompletion(points);
         }
         spatialView.handleUserResetOfInputMode();
+        visualCuesNeedUpdatingAtNextRefresh();
         issueRefresh();
     }
 
@@ -1266,6 +1277,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             spatialView.handleUserCreationOfShape(geometry);
         }
         spatialView.handleUserResetOfInputMode();
+        visualCuesNeedUpdatingAtNextRefresh();
         issueRefresh();
     }
 
@@ -1293,6 +1305,15 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      */
     public void handleUserResetOfInputMode() {
         spatialView.handleUserResetOfInputMode();
+    }
+
+    /**
+     * Make note of the fact that the next display refresh should include a
+     * notification to the current mouse handler that drawables have changed, so
+     * that it may update any visual cues it wishes in response.
+     */
+    public void visualCuesNeedUpdatingAtNextRefresh() {
+        visualCuesNeedUpdating = true;
     }
 
     /**
@@ -1325,25 +1346,61 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
-     * Get the drawable over which the cursor is currently hovering.
+     * Update any bounding box drawable associated with the specified drawable
+     * to bound the specified modified drawable.
      * 
-     * @return Drawable over which the cursor is currently hovering, or
-     *         <code>null</code> if it is not hovering over any selected
-     *         drawable.
+     * @param associatedDrawable
+     *            Drawable with which the bounding box drawable to be updated is
+     *            associated.
+     * @param modifiedDrawable
+     *            Modified version of <code>drawable</code> that is to be used
+     *            to generate any new bounding box.
      */
-    public AbstractDrawableComponent getHoverDrawable() {
-        return drawableManager.getHoverDrawable();
+    public void updateBoundingBoxDrawable(
+            AbstractDrawableComponent associatedDrawable,
+            AbstractDrawableComponent modifiedDrawable) {
+        drawableManager.updateBoundingBoxDrawable(associatedDrawable,
+                modifiedDrawable);
     }
 
     /**
-     * Set the drawable over which the cursor is currently hovering.
+     * Get the highlit drawable.
+     * 
+     * @return Highlit drawable, or <code>null</code> if there is none.
+     */
+    public AbstractDrawableComponent getHighlitDrawable() {
+        return drawableManager.getHighlitDrawable();
+    }
+
+    /**
+     * Set the highlit drawable.
      * 
      * @param drawable
-     *            New hover drawable.
+     *            New highlit drawable.
+     * @param active
+     *            Flag indicating whether or not the drawable that is to be
+     *            highlit is currently active.
      */
-    public void setHoverDrawable(AbstractDrawableComponent drawable) {
-        drawableManager.setHoverDrawable(drawable);
-        issueRefresh();
+    public void setHighlitDrawable(AbstractDrawableComponent drawable,
+            boolean active) {
+        drawableManager.setHighlitDrawable(drawable, active);
+    }
+
+    /**
+     * Clear any recorded highlit drawable.
+     */
+    public void clearHighlitDrawable() {
+        drawableManager.clearHighlitDrawable();
+    }
+
+    /**
+     * Set the handlebar points to those specified.
+     * 
+     * @param points
+     *            Points to be used.
+     */
+    public void setHandlebarPoints(List<ManipulationPoint> points) {
+        drawableManager.setHandlebarPoints(points);
     }
 
     /**
@@ -1375,18 +1432,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
-     * Determine whether or not the drawable is editable.
-     * 
-     * @param drawable
-     *            Drawable to be checked.
-     * @return <code>true</code> if the drawable is editable, <code>false</code>
-     *         otherwise.
-     */
-    public boolean isDrawableEditable(AbstractDrawableComponent drawable) {
-        return drawableManager.isDrawableEditable(drawable);
-    }
-
-    /**
      * Determine whether or not the drawable is movable.
      * 
      * @param drawable
@@ -1399,6 +1444,55 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
+     * Determine whether or not the drawable is editable.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is editable, <code>false</code>
+     *         otherwise.
+     */
+    public boolean isDrawableEditable(AbstractDrawableComponent drawable) {
+        return drawableManager.isDrawableEditable(drawable);
+    }
+
+    /**
+     * Determine whether or not the drawable is rotatable.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is rotatable,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isDrawableRotatable(AbstractDrawableComponent drawable) {
+        return drawableManager.isDrawableRotatable(drawable);
+    }
+
+    /**
+     * Determine whether or not the drawable is resizable.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is resizable,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isDrawableResizable(AbstractDrawableComponent drawable) {
+        return drawableManager.isDrawableResizable(drawable);
+    }
+
+    /**
+     * Determine whether or not the specified drawable is modifiable (that is,
+     * movable, editable, resizable, and/or rotatable).
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is modifiable,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isDrawableModifiable(AbstractDrawableComponent drawable) {
+        return drawableManager.isDrawableModifiable(drawable);
+    }
+
+    /**
      * Get the mutable drawable, and if editable and with a vertex nearby, the
      * index of said vertex under the specified point.
      * 
@@ -1406,6 +1500,9 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            Pixel X coordinate.
      * @param y
      *            Pixel Y coordinate.
+     * @param activeOnly
+     *            Flag indicating whether or not only active mutable drawables
+     *            should be considered.
      * @return Information including the drawable and vertex index if an
      *         editable drawable is under the point and said drawable has a
      *         vertex that lies under the point as well; drawable and
@@ -1415,8 +1512,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *         drawable and the drawable is editable; and an empty object if no
      *         mutable drawable lies under the point.
      */
-    public MutableDrawableInfo getMutableDrawableInfoUnderPoint(int x, int y) {
-        return drawableManager.getMutableDrawableInfoUnderPoint(x, y);
+    public MutableDrawableInfo getMutableDrawableInfoUnderPoint(int x, int y,
+            boolean activeOnly) {
+        return drawableManager.getMutableDrawableInfoUnderPoint(x, y,
+                activeOnly);
     }
 
     /**
@@ -1432,6 +1531,16 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
+     * Get the identifiers of active spatial entities. The resulting set is
+     * unmodifiable.
+     * 
+     * @return Identifiers of active spatial entities.
+     */
+    public Set<IEntityIdentifier> getActiveSpatialEntityIdentifiers() {
+        return readOnlyActiveSpatialEntityIdentifiers;
+    }
+
+    /**
      * Get the reactive drawables, that is, those that may react when moused
      * over to indicate that they are editable, movable, etc.
      * 
@@ -1439,16 +1548,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      */
     public Set<AbstractDrawableComponent> getReactiveDrawables() {
         return drawableManager.getReactiveDrawables();
-    }
-
-    /**
-     * Rebuild handlebar points from the specified points.
-     * 
-     * @param points
-     *            Points from which to rebuild handlebar points.
-     */
-    public void useAsHandlebarPoints(List<Coordinate> points) {
-        drawableManager.useAsHandlebarPoints(points);
     }
 
     /**
@@ -1476,7 +1575,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      * @param cursorType
      *            Type of cursor to set.
      */
-    public void setCursor(CursorTypes cursorType) {
+    public void setCursor(CursorType cursorType) {
         Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                 .getShell();
         shell.setCursor(cursorsForCursorTypes.get(cursorType));
@@ -1489,30 +1588,38 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *            Pixel X coordinate.
      * @param y
      *            Pixel Y coordinate.
-     * @return Index of the vertex added, or <code>-1</code> if no vertex was
-     *         added.
+     * @return Manipulation point representing the vertext that was created, or
+     *         <code>null</code> if no vertex was added.
      */
-    public int addVertex(int x, int y) {
+    public VertexManipulationPoint addVertex(int x, int y) {
         AbstractEditor editor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
-        AbstractDrawableComponent selectedDrawable = getHoverDrawable();
-        if (selectedDrawable != null) {
-            Coordinate pixelPoint = new Coordinate(x, y);
+        AbstractDrawableComponent selectedDrawable = getHighlitDrawable();
+        if ((selectedDrawable != null) && isDrawableEditable(selectedDrawable)) {
 
             /*
-             * Try using the geometry associated with the drawable.
+             * Get the index of the edge of the drawable that is close to or
+             * under the point; if there is no drawable with an edge that
+             * qualifies, do nothing more.
              */
-            IDrawable<?> shape = ((IDrawable<?>) selectedDrawable);
-            Coordinate[] coordinates = ((GeometryWrapper) shape.getGeometry())
-                    .getGeometry().getCoordinates();
+            int edgeIndex = getMutableDrawableInfoUnderPoint(x, y, true)
+                    .getEdgeIndex();
+            if (edgeIndex == -1) {
+                return null;
+            }
 
             /*
-             * For polygons in which the last coordinate is not equal to the
-             * first coordinate, ensure that the line segment connecting the
-             * last coordinate to the first is tested.
+             * Get the coordinates of the part of the geometry of the drawable
+             * to which the point was close. For a polygon, this may be the
+             * exterior shell, or one of the interior rings (if it has holes).
+             * For other geometries, only one group of coordinates is possible.
              */
-            boolean checkLastToFirst = (isPolygon(selectedDrawable) && (coordinates[0]
-                    .equals(coordinates[coordinates.length - 1]) == false));
+            IDrawable<?> drawable = (IDrawable<?>) selectedDrawable;
+            Geometry geometry = ((GeometryWrapper) drawable.getGeometry())
+                    .getGeometry();
+            List<Coordinate[]> overallCoordinates = AdvancedGeometryUtilities
+                    .getCoordinates(geometry);
+            Coordinate[] coordinates = overallCoordinates.get(edgeIndex);
 
             /*
              * Iterate through the line segments, in each case stretching from a
@@ -1523,7 +1630,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             double minDistance = Double.MAX_VALUE;
             int minPosition = Integer.MIN_VALUE;
             Coordinate colinearCoordinate = null;
-            for (int j = 1; j < coordinates.length + (checkLastToFirst ? 1 : 0); j++) {
+            Coordinate pixelPoint = new Coordinate(x, y);
+            for (int j = 1; j < coordinates.length; j++) {
 
                 /*
                  * Get the first segment coordinate in pixels.
@@ -1575,52 +1683,69 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * vertex.
              */
             if (colinearCoordinate != null) {
+
+                /*
+                 * Translate the new coordinate to lat-lon space, and create the
+                 * new coordinates array.
+                 */
+                Coordinate newCoordinate = editor.translateClick(
+                        colinearCoordinate.x, colinearCoordinate.y);
                 Coordinate[] newCoordinates = new Coordinate[coordinates.length + 1];
 
                 /*
-                 * Add the coordinates before the new point.
+                 * If the new coordinate is being added at the end of the array
+                 * and the drawable is a polygon, use the new coordinate at both
+                 * the beginning and the end of the array, and remove the last
+                 * point from the old array, since that was a duplicate of the
+                 * old first point (which is now the second point). Otherwise,
+                 * just add the point in the array at the appropriate point.
                  */
-                int k = 0;
-                for (k = 0; k < minPosition; k++) {
-                    newCoordinates[k] = coordinates[k];
+                if (isPolygon(selectedDrawable)
+                        && (minPosition == coordinates.length)) {
+                    newCoordinates[0] = newCoordinate;
+                    for (int j = 0; j < coordinates.length - 1; j++) {
+                        newCoordinates[j + 1] = coordinates[j];
+                    }
+                    newCoordinates[newCoordinates.length - 1] = (Coordinate) newCoordinate
+                            .clone();
+                    minPosition = 0;
+                } else {
+                    int j = 0;
+                    while (j < minPosition) {
+                        newCoordinates[j] = coordinates[j];
+                        j++;
+                    }
+                    newCoordinates[j] = newCoordinate;
+                    for (j++; j < newCoordinates.length; j++) {
+                        newCoordinates[j] = coordinates[j - 1];
+                    }
                 }
 
                 /*
-                 * Get the vertex being added and add it.
+                 * Replace the original coordinate array with the new one, and
+                 * create a geometry using the list of coordinate arrays.
                  */
-                newCoordinates[k] = editor.translateClick(colinearCoordinate.x,
-                        colinearCoordinate.y);
+                overallCoordinates.set(edgeIndex, newCoordinates);
+                IAdvancedGeometry modifiedGeometry = buildModifiedGeometryForSpatialEntity(
+                        drawable, overallCoordinates);
 
                 /*
-                 * Add the coordinates after the new point.
+                 * Modify the original drawable and refresh the display.
                  */
-                for (k += 1; k < newCoordinates.length; k++) {
-                    newCoordinates[k] = coordinates[k - 1];
-                }
-
-                /*
-                 * Close the points if they describe a a polygon, create the
-                 * modified geometry, and use it.
-                 */
-                IDrawable<?> entityShape = (IDrawable<?>) selectedDrawable;
-                List<Coordinate> coordsAsList = Lists
-                        .newArrayList(newCoordinates);
-                if (entityShape.getGeometry().getClass() == Polygon.class) {
-                    Utilities.closeCoordinatesIfNecessary(coordsAsList);
-                }
-                IAdvancedGeometry modifiedGeometry = buildModifiedGeometry(
-                        entityShape, coordsAsList);
-
                 handleUserModificationOfDrawable(selectedDrawable,
                         modifiedGeometry);
-                useAsHandlebarPoints(Lists
-                        .newArrayList(AdvancedGeometryUtilities.getJtsGeometry(
-                                modifiedGeometry).getCoordinates()));
+                visualCuesNeedUpdatingAtNextRefresh();
                 issueRefresh();
-                return minPosition;
+
+                /*
+                 * Return the manipulation point that encapsulates the new
+                 * vertex.
+                 */
+                return new VertexManipulationPoint(selectedDrawable,
+                        newCoordinate, edgeIndex, minPosition);
             }
         }
-        return -1;
+        return null;
     }
 
     /**
@@ -1639,8 +1764,23 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * Get the editable drawable under the point, if any, and remove its
          * vertex.
          */
-        MutableDrawableInfo info = this.getMutableDrawableInfoUnderPoint(x, y);
-        if ((info.getDrawable() != null) && (info.getVertexIndex() >= 0)) {
+        MutableDrawableInfo info = getMutableDrawableInfoUnderPoint(x, y, true);
+        if ((info.getDrawable() != null)
+                && (info.getManipulationPoint() instanceof VertexManipulationPoint)) {
+
+            /*
+             * Get the coordinates of the part of the geometry of the drawable
+             * in which the vertex is found. For a polygon, this may be the
+             * exterior shell, or one of the interior rings (if it has holes).
+             * For other geometries, only one group of coordinates is possible.
+             */
+            IDrawable<?> drawable = (IDrawable<?>) info.getDrawable();
+            Geometry geometry = ((GeometryWrapper) drawable.getGeometry())
+                    .getGeometry();
+            List<Coordinate[]> overallCoordinates = AdvancedGeometryUtilities
+                    .getCoordinates(geometry);
+            Coordinate[] coordinates = overallCoordinates.get(info
+                    .getEdgeIndex());
 
             /*
              * Ensure there are at least three points left for paths, or five
@@ -1648,40 +1788,61 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * be identical to the first point, so they need four points at a
              * minimum).
              */
-            List<Coordinate> coordinates = new ArrayList<>(info.getDrawable()
-                    .getPoints());
             boolean isPolygon = isPolygon(info.getDrawable());
-            if (coordinates.size() > (isPolygon ? 4 : 2)) {
+            if (coordinates.length > (isPolygon ? 4 : 2)) {
 
                 /*
                  * Remove the coordinate at the appropriate index. If the first
-                 * coordinate was removed and the shape is a polygon, remove the
-                 * last one as well, since the last is always a copy of the
-                 * first, and then close the polygon, which will add a copy of
-                 * the new first point at the end.
+                 * or last coordinate was removed and the shape is a polygon,
+                 * copy the second-to-last coordinate to be the new first
+                 * coordinate, and use the rest except for the last of the old
+                 * coordinates, so that the old second-to-last coordinate is now
+                 * both the first and the last. Otherwise, just copy the
+                 * coordinates other than the one to be removed to the new
+                 * array.
                  */
-                coordinates.remove(info.getVertexIndex());
-                if (isPolygon && (info.getVertexIndex() == 0)) {
-                    coordinates.remove(coordinates.size() - 1);
-                    Utilities.closeCoordinatesIfNecessary(coordinates);
+                VertexManipulationPoint vertex = (VertexManipulationPoint) info
+                        .getManipulationPoint();
+                int vertexIndex = vertex.getVertexIndex();
+                Coordinate[] newCoordinates = new Coordinate[coordinates.length - 1];
+                if (isPolygon
+                        && ((vertexIndex == 0) || (vertexIndex == coordinates.length - 1))) {
+                    newCoordinates[0] = (Coordinate) coordinates[coordinates.length - 2]
+                            .clone();
+                    for (int j = 1; j < coordinates.length - 1; j++) {
+                        newCoordinates[j] = coordinates[j];
+                    }
+                } else {
+                    int j = 0;
+                    while (j < vertexIndex) {
+                        newCoordinates[j] = coordinates[j];
+                        j++;
+                    }
+                    for (j++; j < coordinates.length; j++) {
+                        newCoordinates[j - 1] = coordinates[j];
+                    }
                 }
 
                 /*
-                 * Create the modified geometry and use it.
+                 * Replace the original coordinate array with the new one, and
+                 * create a geometry using the list of coordinate arrays.
                  */
-                IDrawable<?> entityShape = (IDrawable<?>) info.getDrawable();
-                IAdvancedGeometry modifiedGeometry = buildModifiedGeometry(
-                        entityShape, coordinates);
+                overallCoordinates.set(vertex.getLinearRingIndex(),
+                        newCoordinates);
+                IAdvancedGeometry modifiedGeometry = buildModifiedGeometryForSpatialEntity(
+                        drawable, overallCoordinates);
+
+                /*
+                 * If the geometry is valid, modify it and refresh the display.
+                 * Otherwise, just refresh.
+                 */
                 if (checkGeometryValidity(modifiedGeometry)) {
                     handleUserModificationOfDrawable(info.getDrawable(),
                             modifiedGeometry);
-                    useAsHandlebarPoints(Lists
-                            .newArrayList(AdvancedGeometryUtilities
-                                    .getJtsGeometry(modifiedGeometry)
-                                    .getCoordinates()));
                     issueRefresh();
                     return true;
                 } else {
+                    visualCuesNeedUpdatingAtNextRefresh();
                     issueRefresh();
                 }
             }
@@ -1690,17 +1851,17 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
-     * Build a modified geometry using the specified geometry for the specified
-     * original shape.
+     * Build a modified geometry using the specified geometry for the spatial
+     * entity associated with the specified drawable.
      * 
-     * @param origShape
-     *            Original shape to be modified.
+     * @param drawable
+     *            Original drawable to be modified.
      * @param geometry
      *            Geometry to be used for the modification.
      * @return Modified geometry.
      */
-    public IAdvancedGeometry buildModifiedGeometry(IDrawable<?> origShape,
-            IAdvancedGeometry geometry) {
+    public IAdvancedGeometry buildModifiedGeometryForSpatialEntity(
+            IDrawable<?> drawable, IAdvancedGeometry geometry) {
 
         /*
          * If the geometry being replaced is not the whole geometry of the
@@ -1710,9 +1871,9 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * its index.
          */
         SpatialEntity<? extends IEntityIdentifier> spatialEntity = drawableManager
-                .getAssociatedSpatialEntity((AbstractDrawableComponent) origShape);
+                .getAssociatedSpatialEntity((AbstractDrawableComponent) drawable);
         IAdvancedGeometry originalGeometry = spatialEntity.getGeometry();
-        int newIndex = origShape.getGeometryIndex();
+        int newIndex = drawable.getGeometryIndex();
         if ((newIndex == -1)
                 && (originalGeometry instanceof AdvancedGeometryCollection)) {
             newIndex = 0;
@@ -1732,20 +1893,49 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
-     * Build a modified geometry from the specified coordinates for the
-     * specified original shape.
+     * Build a modified geometry using the specified coordinates for the spatial
+     * entity associated with the specified drawable.
      * 
-     * @param origShape
-     *            Original shape to be modified.
-     * @param coords
-     *            List of coordinates specifying the new geometry's vertices.
+     * @param drawable
+     *            Original drawable, representing part or all of the spatial
+     *            entity for which the geometry is to be built.
+     * @param coordinates
+     *            List of arrays of coordinates. The list will hold one array if
+     *            the geometry being built is not a polygon, or is a polygon
+     *            without holes; it will hold more than one if the geometry
+     *            being built is a polygon with holes, with each one after the
+     *            first array describing one of the holes.
      * @return Modified geometry.
      */
-    public IAdvancedGeometry buildModifiedGeometry(IDrawable<?> origShape,
-            List<Coordinate> coords) {
-        IAdvancedGeometry geometry = translateCoordinatesToGeometry(origShape,
-                coords);
-        return buildModifiedGeometry(origShape, geometry);
+    public IAdvancedGeometry buildModifiedGeometryForSpatialEntity(
+            IDrawable<?> drawable, List<Coordinate[]> coordinates) {
+        IAdvancedGeometry geometry = buildModifiedGeometryForDrawable(drawable,
+                coordinates);
+        return buildModifiedGeometryForSpatialEntity(drawable, geometry);
+    }
+
+    /**
+     * Build a modified geometry using the specified coordinates to be used to
+     * modify the specified drawable. Note that this yields different results
+     * from {@link #buildModifiedGeometryForSpatialEntity(IDrawable, List)}, as
+     * the latter creates the geometry for an entire spatial entity, which might
+     * be associated with several drawables, whereas this method builds a
+     * geometry for just the specified drawable, which may only represent part
+     * of a spatial entity.
+     * 
+     * @param drawable
+     *            Original drawable to be modified.
+     * @param coordinates
+     *            List of arrays of coordinates. The list will hold one array if
+     *            the geometry being built is not a polygon, or is a polygon
+     *            without holes; it will hold more than one if the geometry
+     *            being built is a polygon with holes, with each one after the
+     *            first array describing one of the holes.
+     * @return Modified geometry.
+     */
+    public IAdvancedGeometry buildModifiedGeometryForDrawable(
+            IDrawable<?> drawable, List<Coordinate[]> coordinates) {
+        return createMultiPointGeometryFromCoordinates(drawable, coordinates);
     }
 
     // Protected Methods
@@ -1825,6 +2015,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     @Override
     protected void paintInternal(IGraphicsTarget target,
             PaintProperties paintProps) throws VizException {
+        if (visualCuesNeedUpdating) {
+            visualCuesNeedUpdating = false;
+            inputHandler.updateVisualCues();
+        }
         drawableManager.paint(target, paintProps,
                 checkForMapRescale(paintProps));
     }
@@ -1863,16 +2057,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      */
     IListStateChanger<SpatialEntityType, SpatialEntity<? extends IEntityIdentifier>> getSpatialEntitiesChanger() {
         return spatialEntitiesChanger;
-    }
-
-    /**
-     * Get the identifiers of reactive spatial entities. The resulting set is
-     * unmodifiable.
-     * 
-     * @return Identifiers of reactive spatial entities.
-     */
-    Set<IEntityIdentifier> getReactiveSpatialEntityIdentifiers() {
-        return readOnlyReactiveSpatialEntityIdentifiers;
     }
 
     /**
@@ -1933,28 +2117,28 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
-     * Repopulate the reactive spatial entity identifiers record if the
-     * specified type of entity that was changed is relevant. Said record is a
-     * combination of the currently selected entities and tool-related entities.
+     * Repopulate the active spatial entity identifiers record if the specified
+     * type of entity that was changed is relevant. Said record is a combination
+     * of the currently selected entities and tool-related entities.
      * 
      * @param type
      *            Type of spatial entities that changed; if
      *            {@link SpatialEntityType#TOOL}, repopulation will be done.
      */
-    void repopulateReactiveSpatialEntityIdentifiers(SpatialEntityType type) {
+    void repopulateActiveSpatialEntityIdentifiers(SpatialEntityType type) {
         if (type != SpatialEntityType.TOOL) {
             return;
         }
-        reactiveSpatialEntityIdentifiers.clear();
+        activeSpatialEntityIdentifiers.clear();
         Set<IEntityIdentifier> selectedSpatialEntityIdentifiers = spatialView
                 .getSelectedSpatialEntityIdentifiers();
         if (selectedSpatialEntityIdentifiers != null) {
-            reactiveSpatialEntityIdentifiers
+            activeSpatialEntityIdentifiers
                     .addAll(selectedSpatialEntityIdentifiers);
         }
         for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntitiesForTypes
                 .get(SpatialEntityType.TOOL)) {
-            reactiveSpatialEntityIdentifiers.add(spatialEntity.getIdentifier());
+            activeSpatialEntityIdentifiers.add(spatialEntity.getIdentifier());
         }
     }
 
@@ -2052,31 +2236,42 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     }
 
     /**
-     * Translate the specified coordinates to a geometry of the same type as the
-     * specified original shape.
+     * Creaet a geometry from the specified list of coordinate arrays, with the
+     * geometry being the same type as the specified original drawable.
      * 
-     * @param originalShape
-     *            Original shape, providing the type of geometry that the
+     * @param drawable
+     *            Original drawable, providing the type of geometry that the
      *            coordinates should form.
      * @param coordinates
-     *            List of coordinates making up the new geometry.
+     *            List of arrays of coordinates. The list will hold one array if
+     *            the geometry being built is not a polygon, or is a polygon
+     *            without holes; it will hold more than one if the geometry
+     *            being built is a polygon with holes, with each one after the
+     *            first array describing one of the holes.
      * @return Geometry.
      */
-    private IAdvancedGeometry translateCoordinatesToGeometry(
-            IDrawable<?> originalShape, List<Coordinate> coordinates) {
-        Coordinate[] coordinatesAsArray = coordinates
-                .toArray(new Coordinate[coordinates.size()]);
+    private IAdvancedGeometry createMultiPointGeometryFromCoordinates(
+            IDrawable<?> drawable, List<Coordinate[]> coordinates) {
         Geometry result;
-        if (isPolygon(originalShape)) {
-            result = geometryFactory.createPolygon(
-                    geometryFactory.createLinearRing(coordinatesAsArray), null);
-        } else if (originalShape.getClass() == PathDrawable.class) {
-            result = geometryFactory.createLineString(coordinatesAsArray);
-        } else if (originalShape.getClass() == SymbolDrawable.class) {
-            result = geometryFactory.createPoint(coordinatesAsArray[0]);
+        GeometryFactory geometryFactory = AdvancedGeometryUtilities
+                .getGeometryFactory();
+        if (isPolygon(drawable)) {
+            LinearRing exteriorRing = geometryFactory
+                    .createLinearRing(coordinates.get(0));
+            LinearRing[] interiorRings = (coordinates.size() > 1 ? new LinearRing[coordinates
+                    .size() - 1] : null);
+            if (interiorRings != null) {
+                for (int j = 0; j < coordinates.size() - 1; j++) {
+                    interiorRings[j] = geometryFactory
+                            .createLinearRing(coordinates.get(j + 1));
+                }
+            }
+            result = geometryFactory.createPolygon(exteriorRing, interiorRings);
+        } else if (drawable.getClass() == PathDrawable.class) {
+            result = geometryFactory.createLineString(coordinates.get(0));
         } else {
             throw new IllegalArgumentException("Unexpected geometry "
-                    + originalShape.getClass());
+                    + drawable.getClass());
         }
         return AdvancedGeometryUtilities.createGeometryWrapper(result, 0);
     }
@@ -2106,8 +2301,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * TODO: This may eventually need to be user-configurable.
          */
         Geometry newGeometry = null;
+        GeometryFactory geometryFactory = AdvancedGeometryUtilities
+                .getGeometryFactory();
         if (shapeType == GeometryType.POLYGON) {
-            Utilities.closeCoordinatesIfNecessary(points);
+            AdvancedGeometryUtilities.addDuplicateLastCoordinate(points);
             LinearRing linearRing = geometryFactory.createLinearRing(points
                     .toArray(new Coordinate[points.size()]));
             Geometry polygon = geometryFactory.createPolygon(linearRing, null);
@@ -2188,7 +2385,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             Coordinate[] origCoordinatesAsArray = polygon.getCoordinates();
             List<Coordinate> origCoordinates = new ArrayList<>(
                     Arrays.asList(origCoordinatesAsArray));
-            Utilities.removeDuplicateLastPointAsNecessary(origCoordinates);
+            AdvancedGeometryUtilities
+                    .removeDuplicateLastCoordinate(origCoordinates);
             int indexOfFirstPointToRemove = getIndexOfClosestPoint(
                     origCoordinates, points.get(0));
             int indexOfLastPointToRemove = getIndexOfClosestPoint(
@@ -2228,7 +2426,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * Only modify the geometry if the result is a polygon.
              */
             if (newCoordinates.size() >= 3) {
-                Utilities.closeCoordinatesIfNecessary(newCoordinates);
+                AdvancedGeometryUtilities
+                        .addDuplicateLastCoordinate(newCoordinates);
+                GeometryFactory geometryFactory = AdvancedGeometryUtilities
+                        .getGeometryFactory();
                 IAdvancedGeometry newGeometry = AdvancedGeometryUtilities
                         .createGeometryWrapper(geometryFactory.createPolygon(
                                 geometryFactory.createLinearRing(newCoordinates

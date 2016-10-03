@@ -9,8 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +34,8 @@ import com.vividsolutions.jts.geom.LinearRing;
  * Jul 05, 2016   19537    Chris.Golden Initial creation (adapted from the old
  *                                      FreeHandMultiSelectionAction inner
  *                                      class).
+ * Sep 29, 2016   15928    Chris.Golden Changed to work with new advanced
+ *                                      geometry utility methods.
  * </pre>
  * 
  * @author Chris.Golden
@@ -96,9 +98,11 @@ public class FreehandMultiSelectionInputHandler extends
 
     @Override
     protected Geometry getGeometryOfSelectionShape() {
-        Utilities.closeCoordinatesIfNecessary(points);
-        LinearRing linearRing = new GeometryFactory().createLinearRing(points
+        AdvancedGeometryUtilities.addDuplicateLastCoordinate(points);
+        GeometryFactory factory = AdvancedGeometryUtilities
+                .getGeometryFactory();
+        LinearRing linearRing = factory.createLinearRing(points
                 .toArray(new Coordinate[points.size()]));
-        return getGeometryFactory().createPolygon(linearRing, null);
+        return factory.createPolygon(linearRing, null);
     }
 }

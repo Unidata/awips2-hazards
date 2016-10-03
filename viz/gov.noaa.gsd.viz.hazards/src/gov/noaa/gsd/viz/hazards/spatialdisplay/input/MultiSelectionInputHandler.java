@@ -10,7 +10,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorTypes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PolygonDrawableAttributes;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
@@ -26,7 +26,6 @@ import org.eclipse.swt.widgets.Event;
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
 
 /**
  * Description: Base class from which to derive input handlers used for
@@ -46,6 +45,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      belong here for searching
  *                                      through drawables into the
  *                                      drawable manager.
+ * Sep 29, 2016   15928    Chris.Golden Added updating of visual
+ *                                      cues.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,11 +63,6 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
      * Drawable element factory, used to create the selection shape.
      */
     private final DrawableElementFactory drawableFactory = new DrawableElementFactory();
-
-    /**
-     * Geometry factory.
-     */
-    private final GeometryFactory geometryFactory = new GeometryFactory();
 
     /**
      * Drawing attributes for a selection shape, used to configure a drawable
@@ -117,7 +113,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
     @Override
     public void reset() {
         super.reset();
-        getSpatialDisplay().setCursor(CursorTypes.DRAW_CURSOR);
+        getSpatialDisplay().setCursor(CursorType.DRAW_CURSOR);
         clearAnyShape();
         selectedDrawables.clear();
         selectionByShape = false;
@@ -127,7 +123,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
     @Override
     public boolean handleMouseEnter(Event event) {
         super.handleMouseEnter(event);
-        getSpatialDisplay().setCursor(CursorTypes.DRAW_CURSOR);
+        getSpatialDisplay().setCursor(CursorType.DRAW_CURSOR);
         return handleMouseMove(event.x, event.y);
     }
 
@@ -216,6 +212,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
                     "LINE_DASHED_2", points, null);
             ((Line) ghost).setLinePoints(Lists.newArrayList(points));
             getSpatialDisplay().setGhostOfDrawableBeingEdited(ghost);
+            getSpatialDisplay().visualCuesNeedUpdatingAtNextRefresh();
             getSpatialDisplay().issueRefresh();
         }
         return true;
@@ -303,15 +300,6 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
      */
     protected abstract Geometry getGeometryOfSelectionShape();
 
-    /**
-     * Get the geometry factory.
-     * 
-     * @return Geometry factory.
-     */
-    protected final GeometryFactory getGeometryFactory() {
-        return geometryFactory;
-    }
-
     // Private Methods
 
     /**
@@ -365,6 +353,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
         /*
          * Get the spatial display to refresh.
          */
+        getSpatialDisplay().visualCuesNeedUpdatingAtNextRefresh();
         getSpatialDisplay().issueRefresh();
 
         /*
@@ -405,6 +394,7 @@ public abstract class MultiSelectionInputHandler extends NonDrawingInputHandler 
         /*
          * Get the spatial display to refresh.
          */
+        getSpatialDisplay().visualCuesNeedUpdatingAtNextRefresh();
         getSpatialDisplay().issueRefresh();
 
         /*

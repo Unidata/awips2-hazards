@@ -12,6 +12,8 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 import gov.noaa.gsd.common.utilities.geometry.Ellipse;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 
+import java.util.List;
+
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
@@ -23,24 +25,14 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer      Description
  * ------------ ---------- ------------- --------------------------
  * Sep 21, 2016   15934    Chris.Golden  Initial creation.
+ * Sep 29, 2016   15928    Chris.Golden  Added method to get manipulation
+ *                                       points.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class EllipseDrawable extends MultiPointDrawable<Ellipse> {
-
-    // Private Variables
-
-    /**
-     * Flag indicating whether or not this shape is resizable,
-     */
-    private boolean resizable;
-
-    /**
-     * Flag indicating whether or not this shape is rotatable,
-     */
-    private boolean rotatable;
 
     // Public Constructors
 
@@ -70,8 +62,6 @@ public class EllipseDrawable extends MultiPointDrawable<Ellipse> {
      */
     protected EllipseDrawable(EllipseDrawable other) {
         super(other);
-        this.resizable = other.resizable;
-        this.rotatable = other.rotatable;
     }
 
     // Public Methods
@@ -84,26 +74,6 @@ public class EllipseDrawable extends MultiPointDrawable<Ellipse> {
     @Override
     public void setEditable(boolean editable) {
         throw new UnsupportedOperationException("ellipses cannot be editable");
-    }
-
-    @Override
-    public boolean isResizable() {
-        return resizable;
-    }
-
-    @Override
-    public void setResizable(boolean resizable) {
-        this.resizable = resizable;
-    }
-
-    @Override
-    public boolean isRotatable() {
-        return rotatable;
-    }
-
-    @Override
-    public void setRotatable(boolean rotatable) {
-        this.rotatable = rotatable;
     }
 
     @Override
@@ -123,5 +93,12 @@ public class EllipseDrawable extends MultiPointDrawable<Ellipse> {
         setGeometry(new Ellipse(new Coordinate(centerPoint.x + x, centerPoint.y
                 + y), getGeometry().getWidth(), getGeometry().getHeight(),
                 getGeometry().getUnits(), getGeometry().getRotation()));
+    }
+
+    // Protected Methods
+
+    @Override
+    protected List<ManipulationPoint> getUpdatedManipulationPoints() {
+        return Utilities.getBoundingBoxManipulationPoints(this);
     }
 }

@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 
 import org.eclipse.swt.SWT;
@@ -99,6 +100,7 @@ public class RectangleMultiSelectionInputHandler extends
     @Override
     protected Geometry getGeometryOfSelectionShape() {
         Envelope envelope = new Envelope(anchorPoint, dragPoint);
-        return getGeometryFactory().toGeometry(envelope);
+        return AdvancedGeometryUtilities.getGeometryFactory().toGeometry(
+                envelope);
     }
 }

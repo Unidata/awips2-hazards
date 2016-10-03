@@ -38,6 +38,9 @@ import com.vividsolutions.jts.geom.LineSegment;
  *                                      and vertical radii, not diameters, thus
  *                                      they need to each by divided by 2), as
  *                                      well as the rotation.
+ * Sep 29, 2016   15928    Chris.Golden Made scaleable, switched to use rotation
+ *                                      angles in radians, and added methods to
+ *                                      get rotated or scaled copies.
  * </pre>
  * 
  * @author Chris.Golden
@@ -45,7 +48,7 @@ import com.vividsolutions.jts.geom.LineSegment;
  */
 @DynamicSerialize
 @DynamicSerializeTypeAdapter(factory = AdvancedGeometrySerializationAdapter.class)
-public class Ellipse implements IRotatable {
+public class Ellipse implements IRotatable, IScaleable {
 
     // Private Static Constants
 
@@ -91,14 +94,9 @@ public class Ellipse implements IRotatable {
     private final LinearUnit units;
 
     /**
-     * Rotation in counterclockwise degrees.
-     */
-    private final double rotation;
-
-    /**
      * Rotation in counterclockwise radians.
      */
-    private final double rotationRadians;
+    private final double rotation;
 
     // Public Constructors
 
@@ -116,7 +114,7 @@ public class Ellipse implements IRotatable {
      *            Units for <code>width</code> and <code>height</code>; must not
      *            be <code>null</code>.
      * @param rotation
-     *            Rotation in counterclockwise degrees.
+     *            Rotation in counterclockwise radians.
      */
     @JsonCreator
     public Ellipse(@JsonProperty("centerPoint") Coordinate centerPoint,
@@ -130,19 +128,14 @@ public class Ellipse implements IRotatable {
         this.units = units;
 
         /*
-         * Ensure rotation is between 0 (inclusive) and 360 (exclusive).
+         * Ensure rotation is between 0 (inclusive) and 2 * Pi (exclusive).
          */
-        this.rotation = ((rotation % 360.0) + 360.0) % 360.0;
-        this.rotationRadians = Math.toRadians(rotation);
+        this.rotation = (rotation + (2.0 * Math.PI)) % (2.0 * Math.PI);
     }
 
     // Public Methods
 
-    /**
-     * Get the center point of the ellipse as a latitude-longitude pair.
-     * 
-     * @return Center point.
-     */
+    @Override
     public Coordinate getCenterPoint() {
         return new Coordinate(centerPoint);
     }
@@ -205,6 +198,26 @@ public class Ellipse implements IRotatable {
     public <G extends IAdvancedGeometry> G copyOf() {
         return (G) new Ellipse(new Coordinate(centerPoint), width, height,
                 units, rotation);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <G extends IRotatable> G rotatedCopyOf(double delta) {
+        return (G) new Ellipse(new Coordinate(centerPoint), width, height,
+                units, (rotation + delta + (2.0 * Math.PI)) % (2.0 * Math.PI));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <G extends IScaleable> G scaledCopyOf(double horizontalMultiplier,
+            double verticalMultiplier) {
+        if ((horizontalMultiplier <= 0.0) || (verticalMultiplier <= 0.0)) {
+            throw new IllegalArgumentException(
+                    "scale multipliers must be positive numbers");
+        }
+        return (G) new Ellipse(new Coordinate(centerPoint), width
+                * horizontalMultiplier, height * verticalMultiplier, units,
+                rotation);
     }
 
     @Override
@@ -354,8 +367,7 @@ public class Ellipse implements IRotatable {
          * circumferential point rotated around the center point into position.
          */
         return units.getLatLonOffsetBy(centerPoint, getRadius(angleRadians),
-                (angleRadians + (2.0 * Math.PI) + rotationRadians)
-                        % (2.0 * Math.PI));
+                (angleRadians + rotation) % (2.0 * Math.PI));
     }
 
     /**

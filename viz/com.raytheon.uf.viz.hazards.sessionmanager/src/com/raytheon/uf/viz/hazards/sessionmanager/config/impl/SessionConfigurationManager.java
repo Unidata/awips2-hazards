@@ -242,6 +242,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      observers may be removed when shutting down,
  *                                      which will help with garbage collecting these
  *                                      class's instances.
+ * Sep 27, 2016 15928      Chris.Golden Changed line thickness for hazard events. Also
+ *                                      fixed unrelated bug in detection of metadata
+ *                                      refresh triggers in megawidget specifiers; code
+ *                                      changes from mid-August broke metadata refresh
+ *                                      if the value of the specifier parameter was
+ *                                      a boolean, for example, instead of a string.
  * </pre>
  * 
  * @author bsteffen
@@ -955,18 +961,24 @@ public class SessionConfigurationManager implements
          */
         if (object instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) object;
+
             /*
-             * if (map.containsKey(parameterName) &&
-             * map.containsKey(HazardConstants.FIELD_NAME)) {
+             * If the parameter name being looked for has a non-null value, and
+             * that value is either something other than a string, or it is a
+             * non-empty string, then treat it as found. (This is done so that
+             * an empty string or null as a value associated with this parameter
+             * will not be included.
              */
             Object parameterValue = map.get(parameterName);
-            if ((parameterValue instanceof String)
-                    && (((String) parameterValue).isEmpty() == false)
+            if ((parameterValue != null)
+                    && ((parameterValue instanceof String == false) || (((String) parameterValue)
+                            .isEmpty() == false))
                     && map.containsKey(HazardConstants.FIELD_NAME)) {
                 valuesForTriggerIdentifiers.put(
                         map.get(HazardConstants.FIELD_NAME).toString(),
                         (V) map.get(parameterName));
             }
+
             for (Object value : map.values()) {
                 addMegawidgetIdentifiersIncludingParameterToMap(value,
                         parameterName, valuesForTriggerIdentifiers);
@@ -1239,11 +1251,11 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    public int getBorderWidth(IHazardEvent event, boolean selected) {
+    public double getBorderWidth(IHazardEvent event, boolean selected) {
         if (selected) {
-            return 5;
+            return 3.5;
         } else {
-            return 3;
+            return 1.5;
         }
     }
 

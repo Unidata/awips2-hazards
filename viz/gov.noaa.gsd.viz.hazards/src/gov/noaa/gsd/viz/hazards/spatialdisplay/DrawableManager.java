@@ -10,14 +10,18 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.BoundingBoxDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.DrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.MultiPointDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.RotationManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.TextDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.VertexManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.PgenRangeRecord;
 import gov.noaa.nws.ncep.ui.pgen.PgenSession;
@@ -47,6 +51,7 @@ import gov.noaa.nws.ncep.ui.pgen.gfa.IGfa;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -78,7 +83,6 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 
@@ -99,12 +103,126 @@ import com.vividsolutions.jts.geom.Point;
  *                                      match.
  * Sep 21, 2016   15934    Chris.Golden Replaced MultiPointDrawable with new
  *                                      PathDrawable.
+ * Sep 29, 2016   15928    Chris.Golden Changed handlebars to allow for
+ *                                      different symbols and scales for
+ *                                      different functions (rotation versus
+ *                                      scaling versus vertex-moving). Added
+ *                                      bounding box drawable replacement
+ *                                      capability, so that bounding boxes
+ *                                      may be updated visually during an
+ *                                      edit by the mouse handlers. Added
+ *                                      dimmed look for drawables being edited
+ *                                      so that edited versions stand out 
+ *                                      more. Fixed bugs in detection of
+ *                                      drawables and their components under
+ *                                      the mouse cursor. Added ability to
+ *                                      handle polygons containing holes when
+ *                                      vertex editing.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 class DrawableManager {
+
+    // Private Enumerated Types
+
+    /**
+     * Renderers for types of handlebars. Each renderer has properties
+     * indicating how it is to paint its handlebars, and each also has a
+     * {@link HandlebarRenderer#render(List, IGraphicsTarget, PaintProperties)}
+     * method that given a list of locations in pixel space renders handlebars
+     * at those locations.
+     */
+    private enum HandlebarTypeRenderer {
+
+        MOVE_VERTEX(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK)
+                .getRGB(), Display.getCurrent().getSystemColor(SWT.COLOR_GRAY)
+                .getRGB(), 1.7f, 1.3f, PointStyle.DISC),
+
+        SCALE(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK).getRGB(),
+                Display.getCurrent().getSystemColor(SWT.COLOR_GRAY).getRGB(),
+                1.8f, 1.4f, PointStyle.DISC),
+
+        ROTATE(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK).getRGB(),
+                Display.getCurrent().getSystemColor(SWT.COLOR_GRAY).getRGB(),
+                2.5f, 2.0f, PointStyle.DISC);
+
+        // Private Variables
+
+        /**
+         * Border color.
+         */
+        private final RGB borderColor;
+
+        /**
+         * Fill color.
+         */
+        private final RGB fillColor;
+
+        /**
+         * Border magnification for symbol drawing.
+         */
+        private final float borderMagnification;
+
+        /**
+         * Fill magnification for symbol drawing.
+         */
+        private final float fillMagnification;
+
+        /**
+         * Symbol to be drawn.
+         */
+        private final PointStyle symbol;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param borderColor
+         *            Border color.
+         * @param fillColor
+         *            Fill color.
+         * @param borderMagnification
+         *            Border magnification for symbol drawing.
+         * @param fillMagnification
+         *            Fill magnification for symbol drawing.
+         * @param symbol
+         *            Symbol to be drawn.
+         */
+        private HandlebarTypeRenderer(RGB borderColor, RGB fillColor,
+                float borderMagnification, float fillMagnification,
+                PointStyle symbol) {
+            this.borderColor = borderColor;
+            this.fillColor = fillColor;
+            this.borderMagnification = borderMagnification;
+            this.fillMagnification = fillMagnification;
+            this.symbol = symbol;
+        }
+
+        // Public Methods
+
+        /**
+         * Render handlebars of this type at the specified locations.
+         * 
+         * @param points
+         *            Locations of the handlebars, each as an two-element array
+         *            holding the X and Y coordinates in pixel space.
+         * @param target
+         *            Graphics target to which to draw the handlebars.
+         * @param paintProperties
+         *            Paint properties to be used.
+         */
+        public void render(List<double[]> points, IGraphicsTarget target,
+                PaintProperties paintProperties) throws VizException {
+            if (points.isEmpty() == false) {
+                target.drawPoints(points, borderColor, symbol,
+                        borderMagnification);
+                target.drawPoints(points, fillColor, symbol, fillMagnification);
+            }
+        }
+    }
 
     // Private Classes
 
@@ -511,20 +629,9 @@ class DrawableManager {
             .getHandler(DrawableManager.class);
 
     /**
-     * Color of the hover drawable's handle bars.
-     */
-    private static final org.eclipse.swt.graphics.Color HANDLE_BAR_COLOR = Display
-            .getCurrent().getSystemColor(SWT.COLOR_GRAY);
-
-    /**
      * Pattern to be used for hatching fills.
      */
     private static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
-
-    /**
-     * Relative size of the handlebars drawn on selected hazards.
-     */
-    private static final float HANDLEBAR_MAGNIFICATION = 1.5f;
 
     // Private Variables
 
@@ -537,7 +644,8 @@ class DrawableManager {
      * Reactive drawables, that is, those drawables that when moused over may
      * indicate that they are movable, editable, etc.
      */
-    private final Set<AbstractDrawableComponent> reactiveDrawables = new HashSet<>();
+    private final Set<AbstractDrawableComponent> reactiveDrawables = Sets
+            .newIdentityHashSet();
 
     /**
      * Unmodifiable view of the reactive drawables contained by
@@ -620,26 +728,46 @@ class DrawableManager {
 
     /**
      * Drawable that is being created or modified; this one allows the changes
-     * to occur, while the original, preserved in {@link #drawableEdited}, is
-     * left as it was pre-edit until the edit is complete.
+     * to occur, while the original, preserved in {@link #drawableBeingEdited},
+     * is left as it was pre-edit until the edit is complete.
      */
     private AbstractDrawableComponent drawableEditedGhost;
 
     /**
      * Original version of drawable currently being edited in some way.
      */
-    private AbstractDrawableComponent drawableEdited;
+    private AbstractDrawableComponent drawableBeingEdited;
 
     /**
-     * Selected drawable over which the cursor is currently hovering, if any.
+     * Original colors of the {@link #drawableBeingEdited}, for restoration
+     * after editing is finished.
      */
-    private AbstractDrawableComponent hoverDrawable;
+    private Color[] originalColorsOfDrawableBeingEdited;
 
     /**
-     * Vertices of the current hover drawable converted to world pixels. This
-     * recomputed once per change in the hover drawable for efficiency.
+     * Drawable that is currently highlit, if any.
      */
-    private final List<double[]> handleBarPoints = new ArrayList<>();
+    private AbstractDrawableComponent highlitDrawable;
+
+    /**
+     * Version of {@link #highlitDrawable} that has been been given visual cues
+     * to make it look the part.
+     */
+    private AbstractDrawableComponent highlitDrawableForDrawing;
+
+    /**
+     * Flag indicating whether or not the current {@link #highlitDrawable} is
+     * active.
+     */
+    private boolean highlitDrawableActive;
+
+    /**
+     * Map of handlebar type renderers to lists of two-element arrays, each
+     * array holding an X,Y coordinate pair in pixel space where a handlebar of
+     * that type is rendered.
+     */
+    private final EnumMap<HandlebarTypeRenderer, List<double[]>> locationsForHandlebarTypeRenderers = new EnumMap<>(
+            HandlebarTypeRenderer.class);
 
     /**
      * Map of drawables to their renderings.
@@ -662,11 +790,6 @@ class DrawableManager {
     private final DisplayProperties displayProperties;
 
     /**
-     * Geometry factory, used for creating points during hit-testing.
-     */
-    private final GeometryFactory geometryFactory = new GeometryFactory();
-
-    /**
      * Builder for the various possible hazard geometries.
      */
     private final DrawableBuilder drawableBuilder = new DrawableBuilder();
@@ -684,6 +807,10 @@ class DrawableManager {
         displayProperties = new DisplayProperties();
         displayProperties.setLayerMonoColor(false);
         displayProperties.setLayerFilled(true);
+        for (HandlebarTypeRenderer renderer : HandlebarTypeRenderer.values()) {
+            locationsForHandlebarTypeRenderers.put(renderer,
+                    new ArrayList<double[]>());
+        }
     }
 
     // Package-Private Methods
@@ -837,15 +964,13 @@ class DrawableManager {
         }
 
         /*
-         * If the spatial entity is reactive, then mark each of its non-hatching
-         * drawables as such.
+         * Mark any non-text, non-hatching drawables as reactive, that is,
+         * willing to provide visual cues as to any mutable properties they have
+         * as the user passes the cursor over them.
          */
-        if (spatialDisplay.getReactiveSpatialEntityIdentifiers().contains(
-                spatialEntity.getIdentifier())) {
-            for (AbstractDrawableComponent drawable : otherDrawables) {
-                if (drawable.getClass().equals(TextDrawable.class) == false) {
-                    reactiveDrawables.add(drawable);
-                }
+        for (AbstractDrawableComponent drawable : otherDrawables) {
+            if (drawable.getClass().equals(TextDrawable.class) == false) {
+                reactiveDrawables.add(drawable);
             }
         }
         drawables.addAll(otherDrawables);
@@ -953,7 +1078,7 @@ class DrawableManager {
              * spatial entity, remove it from the reactive set if found within
              * it, remove any associated renderings, and remove any associated
              * hit-testable geometries. Then further process it if it is being
-             * used as the hover drawable and/or edited drawable, and/or if it
+             * used as the highlit drawable and/or edited drawable, and/or if it
              * has been combined with other drawables.
              */
             for (AbstractDrawableComponent drawable : drawables) {
@@ -992,12 +1117,14 @@ class DrawableManager {
                 }
 
                 /*
-                 * If this is the hover drawable, disassociate it from hovering.
+                 * If this is the highlit drawable, remove its highlit status.
                  * Then do the same for the drawable being edited, but if it was
-                 * being edited, reset the mouse handler.
+                 * being edited, set the result that will be returned to
+                 * indicate that the drawable being edited was removed.
                  */
-                if (getHoverDrawable() == drawable) {
-                    setHoverDrawable(null);
+                if (getHighlitDrawable() == drawable) {
+                    clearHighlitDrawable();
+                    setHandlebarPoints(null);
                 }
                 if (getDrawableBeingEdited() == drawable) {
                     setDrawableBeingEdited(null);
@@ -1026,6 +1153,74 @@ class DrawableManager {
     }
 
     /**
+     * Update any bounding box drawable associated with the specified drawable
+     * to bound the specified modified drawable.
+     * 
+     * @param associatedDrawable
+     *            Drawable with which the bounding box drawable to be updated is
+     *            associated.
+     * @param modifiedDrawable
+     *            Modified version of <code>drawable</code> that is to be used
+     *            to generate any new bounding box.
+     */
+    void updateBoundingBoxDrawable(
+            AbstractDrawableComponent associatedDrawable,
+            AbstractDrawableComponent modifiedDrawable) {
+
+        /*
+         * Get the spatial entity that is represented by the drawable with which
+         * the bounding box to be replaced is associated, and from it, get the
+         * list of drawables (including any such bounding box) that represents
+         * it visually.
+         */
+        SpatialEntity<? extends IEntityIdentifier> spatialEntity = spatialEntitiesForDrawables
+                .get(associatedDrawable);
+        List<AbstractDrawableComponent> drawables = drawablesForSpatialEntities
+                .get(spatialEntity);
+
+        /*
+         * Find the old bounding box, if there is one.
+         */
+        BoundingBoxDrawable boundingBoxDrawable = null;
+        int indexForBoundingBoxDrawableInsertion = -1;
+        for (int j = 0; j < drawables.size(); j++) {
+            AbstractDrawableComponent drawable = drawables.get(j);
+            if (drawable == associatedDrawable) {
+                indexForBoundingBoxDrawableInsertion = j + 1;
+            }
+            if ((drawable instanceof BoundingBoxDrawable)
+                    && (((BoundingBoxDrawable) drawable).getBoundedDrawable() == associatedDrawable)) {
+                boundingBoxDrawable = (BoundingBoxDrawable) drawable;
+                indexForBoundingBoxDrawableInsertion = j;
+                break;
+            }
+        }
+
+        /*
+         * If a bounding box was found, remove it.
+         */
+        if (boundingBoxDrawable != null) {
+            reactiveDrawables.remove(boundingBoxDrawable);
+            spatialEntitiesForDrawables.remove(boundingBoxDrawable);
+            drawables.remove(boundingBoxDrawable);
+        }
+
+        /*
+         * Create a new bounding box, if appropriate.
+         */
+        boundingBoxDrawable = (modifiedDrawable instanceof MultiPointDrawable ? drawableBuilder
+                .buildBoundingBoxDrawable(
+                        (MultiPointDrawable<?>) modifiedDrawable,
+                        (MultiPointDrawable<?>) associatedDrawable) : null);
+        if (boundingBoxDrawable != null) {
+            reactiveDrawables.add(boundingBoxDrawable);
+            spatialEntitiesForDrawables.put(boundingBoxDrawable, spatialEntity);
+            drawables.add(indexForBoundingBoxDrawableInsertion,
+                    boundingBoxDrawable);
+        }
+    }
+
+    /**
      * Set the ghost of the drawable being edited to that specified.
      * 
      * @param ghost
@@ -1041,7 +1236,8 @@ class DrawableManager {
      * @return Drawable currently being edited.
      */
     DrawableElement getDrawableBeingEdited() {
-        return (drawableEdited == null ? null : drawableEdited.getPrimaryDE());
+        return (drawableBeingEdited == null ? null : drawableBeingEdited
+                .getPrimaryDE());
     }
 
     /**
@@ -1051,52 +1247,125 @@ class DrawableManager {
      *            Drawable that is now being edited.
      */
     void setDrawableBeingEdited(AbstractDrawableComponent drawable) {
-        drawableEdited = drawable;
-    }
 
-    /**
-     * Get the drawable over which the cursor is currently hovering.
-     * 
-     * @return Drawable over which the cursor is currently hovering, or
-     *         <code>null</code> if it is not hovering over any selected
-     *         drawable.
-     */
-    AbstractDrawableComponent getHoverDrawable() {
-        return hoverDrawable;
-    }
-
-    /**
-     * Set the drawable over which the cursor is currently hovering.
-     * 
-     * @param drawable
-     *            New hover drawable.
-     */
-    void setHoverDrawable(AbstractDrawableComponent drawable) {
-        hoverDrawable = drawable;
+        if (drawableBeingEdited == drawable) {
+            return;
+        }
 
         /*
-         * Update the list of world pixels associated with this drawable.
+         * If the previous drawable being edited had its colors altered for the
+         * edit, set them back to what they were before the edit.
          */
-        List<Coordinate> points = null;
-        if (drawable != null) {
-            points = drawable.getPoints();
+        if (originalColorsOfDrawableBeingEdited != null) {
+            if (drawableBeingEdited != null) {
+                drawableBeingEdited
+                        .setColors(originalColorsOfDrawableBeingEdited);
+                removeRenderingForDrawable(drawableBeingEdited);
+            }
+            originalColorsOfDrawableBeingEdited = null;
         }
-        useAsHandlebarPoints(points);
+
+        /*
+         * Remember the new drawable being edited.
+         */
+        drawableBeingEdited = drawable;
+
+        /*
+         * If there is now a drawable being edited, record its colors, and then
+         * compile a new array of colors for it to use during the edit, which
+         * effectively dim it by increasing its transparency. This way, the
+         * ghost version of the the drawable becomes more prominent while the
+         * edit is ongoing.
+         */
+        if ((drawableBeingEdited != null)
+                && (drawableBeingEdited instanceof DrawableElement)) {
+            originalColorsOfDrawableBeingEdited = ((DrawableElement) drawableBeingEdited)
+                    .getColors();
+            Color[] colorsDuringEdit = new Color[originalColorsOfDrawableBeingEdited.length];
+            for (int j = 0; j < colorsDuringEdit.length; j++) {
+                colorsDuringEdit[j] = new Color(
+                        originalColorsOfDrawableBeingEdited[j].getRed(),
+                        originalColorsOfDrawableBeingEdited[j].getGreen(),
+                        originalColorsOfDrawableBeingEdited[j].getBlue(),
+                        (int) ((originalColorsOfDrawableBeingEdited[j]
+                                .getAlpha() * 0.5) + 0.5));
+            }
+            drawableBeingEdited.setColors(colorsDuringEdit);
+            removeRenderingForDrawable(drawableBeingEdited);
+        }
     }
 
     /**
-     * Rebuild handlebar points from the specified points.
+     * Get the highlit drawable, that is, the one over which the cursor is
+     * currently hovering, or the original drawable that is currently being
+     * edited.
+     * 
+     * @return Highlit drawable, or <code>null</code> if there is none.
+     */
+    AbstractDrawableComponent getHighlitDrawable() {
+        return highlitDrawable;
+    }
+
+    /**
+     * Set the highlit drawable.
+     * 
+     * @param drawable
+     *            New highlit drawable.
+     * @param active
+     *            Flag indicating whether or not the drawable that is to be
+     *            highlit is currently active.
+     */
+    void setHighlitDrawable(AbstractDrawableComponent drawable, boolean active) {
+        highlitDrawable = drawable;
+        highlitDrawableActive = active;
+
+        /*
+         * Create the copy of the highlit drawable that looks the part, to be
+         * used for actually painting the drawable.
+         */
+        highlitDrawableForDrawing = ((IDrawable<?>) highlitDrawable)
+                .highlitCopyOf(active);
+    }
+
+    /**
+     * Clear any recorded highlit drawable.
+     */
+    public void clearHighlitDrawable() {
+        highlitDrawable = null;
+    }
+
+    /**
+     * Set the handlebar points to those specified.
      * 
      * @param points
-     *            Points from which to rebuild handlebar points.
+     *            Points to be used.
      */
-    void useAsHandlebarPoints(List<Coordinate> points) {
-        handleBarPoints.clear();
+    void setHandlebarPoints(List<ManipulationPoint> points) {
+
+        /*
+         * Clear the lists of pixel-space locations for all handlebar types.
+         */
+        for (List<double[]> list : locationsForHandlebarTypeRenderers.values()) {
+            list.clear();
+        }
+
+        /*
+         * If manipulation points were specified, iterate through them,
+         * converting each in turn to pixel space and putting the result in the
+         * list associated with the handlebar type renderer appropriate to that
+         * type of manipulation point.
+         */
         if (points != null) {
-            for (Coordinate point : points) {
+            for (ManipulationPoint point : points) {
                 double[] pixelPoint = spatialDisplay.getDescriptor()
-                        .worldToPixel(new double[] { point.x, point.y });
-                handleBarPoints.add(pixelPoint);
+                        .worldToPixel(
+                                new double[] { point.getLocation().x,
+                                        point.getLocation().y });
+                locationsForHandlebarTypeRenderers
+                        .get(point instanceof VertexManipulationPoint ? HandlebarTypeRenderer.MOVE_VERTEX
+                                : (point instanceof RotationManipulationPoint ? HandlebarTypeRenderer.ROTATE
+                                        : HandlebarTypeRenderer.SCALE)).add(
+                                pixelPoint);
             }
         }
     }
@@ -1130,6 +1399,9 @@ class DrawableManager {
      *            Pixel X coordinate.
      * @param y
      *            Pixel Y coordinate.
+     * @param activeOnly
+     *            Flag indicating whether or not only active mutable drawables
+     *            should be considered.
      * @return Information including the drawable and vertex index if an
      *         editable drawable is under the point and said drawable has a
      *         vertex that lies under the point as well; drawable and
@@ -1139,9 +1411,11 @@ class DrawableManager {
      *         drawable and the drawable is editable; and an empty object if no
      *         mutable drawable lies under the point.
      */
-    MutableDrawableInfo getMutableDrawableInfoUnderPoint(int x, int y) {
-        boolean closeToEdge = false;
-        int vertexIndexUnderPoint = -1;
+    MutableDrawableInfo getMutableDrawableInfoUnderPoint(int x, int y,
+            boolean activeOnly) {
+        boolean active = false;
+        int edgeIndex = -1;
+        ManipulationPoint manipulationPoint = null;
         AbstractDrawableComponent drawable = null;
 
         /*
@@ -1154,32 +1428,52 @@ class DrawableManager {
 
             /*
              * Retrieve the currently reactive shapes, and from it compile a set
-             * of the identifiers that are currently reactive and which are
-             * editable.
+             * of the identifiers that are currently active and which are
+             * modifiable, and (if reactive ones are allowed as well) another
+             * set of ones that are currently reactive and modifiable.
              */
+            Set<IEntityIdentifier> activeIdentifiers = new HashSet<>(
+                    spatialDisplay.getActiveSpatialEntityIdentifiers().size(),
+                    1.0f);
             Set<IEntityIdentifier> reactiveIdentifiers = new HashSet<>(
-                    reactiveDrawables.size(), 1.0f);
-            for (AbstractDrawableComponent selectedDrawable : reactiveDrawables) {
-                if (isDrawableEditable(selectedDrawable)
-                        || isDrawableMovable(selectedDrawable)) {
-                    reactiveIdentifiers.add(((IDrawable<?>) selectedDrawable)
-                            .getIdentifier());
+                    (activeOnly ? 0 : reactiveDrawables.size()), 1.0f);
+            for (AbstractDrawableComponent reactiveDrawable : reactiveDrawables) {
+                if (isDrawableModifiable(reactiveDrawable)
+                        || isDrawableBoundingBox(reactiveDrawable)) {
+                    IEntityIdentifier identifier = ((IDrawable<?>) reactiveDrawable)
+                            .getIdentifier();
+                    if (spatialDisplay.getActiveSpatialEntityIdentifiers()
+                            .contains(identifier)) {
+                        activeIdentifiers.add(identifier);
+                    } else if (activeOnly == false) {
+                        reactiveIdentifiers.add(identifier);
+                    }
                 }
             }
 
             /*
              * First try to find a drawable that completely contains the click
-             * point. There could be several of these.
+             * point, giving precedence to active ones. There could be several
+             * of these.
              */
             List<AbstractDrawableComponent> containingDrawables = getContainingDrawables(
                     location, x, y);
             for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                if (reactiveIdentifiers
-                        .contains(((IDrawable<?>) containingDrawable)
-                                .getIdentifier())
-                        && (isDrawableEditable(containingDrawable) || isDrawableMovable(containingDrawable))) {
-                    drawable = containingDrawable;
-                    break;
+                if (isDrawableModifiable(containingDrawable)
+                        || isDrawableBoundingBox(containingDrawable)) {
+                    if (activeIdentifiers
+                            .contains(((IDrawable<?>) containingDrawable)
+                                    .getIdentifier())) {
+                        drawable = (containingDrawable instanceof BoundingBoxDrawable ? ((BoundingBoxDrawable) containingDrawable)
+                                .getBoundedDrawable() : containingDrawable);
+                        active = true;
+                        break;
+                    } else if ((drawable == null)
+                            && reactiveIdentifiers
+                                    .contains(((IDrawable<?>) containingDrawable)
+                                            .getIdentifier())) {
+                        drawable = containingDrawable;
+                    }
                 }
             }
 
@@ -1189,87 +1483,97 @@ class DrawableManager {
             if (drawable == null) {
                 AbstractDrawableComponent nearestDrawable = getNearestDrawable(location);
                 if ((nearestDrawable != null)
-                        && reactiveIdentifiers
+                        && (activeIdentifiers
                                 .contains(((IDrawable<?>) nearestDrawable)
-                                        .getIdentifier())
-                        && (isDrawableEditable(nearestDrawable) || isDrawableMovable(nearestDrawable))) {
-                    drawable = nearestDrawable;
+                                        .getIdentifier()) || reactiveIdentifiers
+                                .contains(((IDrawable<?>) nearestDrawable)
+                                        .getIdentifier()))
+                        && (isDrawableModifiable(nearestDrawable) || isDrawableBoundingBox(nearestDrawable))) {
+                    drawable = (nearestDrawable instanceof BoundingBoxDrawable ? ((BoundingBoxDrawable) nearestDrawable)
+                            .getBoundedDrawable() : nearestDrawable);
+                    active = activeIdentifiers
+                            .contains(((IDrawable<?>) drawable).getIdentifier());
                 }
             }
 
             /*
-             * If an drawable has been found, see if it can be moved, or if a
-             * vertex it contains can be moved, and proceed accordingly.
+             * If an drawable has been found, determine whether the point is
+             * close to its edge, and determine whether the point is close to
+             * one if its manipulation points.
              */
             if (drawable != null) {
-
-                /*
-                 * If the drawable is editable, a vertex may be able to be
-                 * moved.
-                 */
+                Coordinate mouseScreenLocation = new Coordinate(x, y);
                 if (isDrawableEditable(drawable)) {
 
                     /*
-                     * Create a line string with screen coordinates, and
-                     * determine the distance between the line string and the
-                     * given point.
+                     * Get the rings of coordinates making up the geometry, and
+                     * for each ring, see if the point is close to it.
                      */
-                    Coordinate[] shapeCoords = ((GeometryWrapper) ((IDrawable<?>) drawable)
-                            .getGeometry()).getGeometry().getCoordinates();
-                    Coordinate[] shapeScreenCoords = new Coordinate[shapeCoords.length];
-                    for (int i = 0; i < shapeCoords.length; ++i) {
-                        double[] coords = editor
-                                .translateInverseClick(shapeCoords[i]);
-                        shapeScreenCoords[i] = new Coordinate(coords[0],
-                                coords[1]);
-                    }
-                    LineString lineString = geometryFactory
-                            .createLineString(shapeScreenCoords);
-                    Coordinate mouseScreenCoord = new Coordinate(x, y);
-                    Point mouseScreenPoint = geometryFactory
-                            .createPoint(mouseScreenCoord);
-                    double dist = mouseScreenPoint.distance(lineString);
+                    List<Coordinate[]> coordinates = AdvancedGeometryUtilities
+                            .getCoordinates(AdvancedGeometryUtilities
+                                    .getJtsGeometry(((IDrawable<?>) drawable)
+                                            .getGeometry()));
+                    Point mouseScreenPoint = AdvancedGeometryUtilities
+                            .getGeometryFactory().createPoint(
+                                    mouseScreenLocation);
+                    for (int j = 0; j < coordinates.size(); j++) {
 
-                    /*
-                     * If the distance is small enough, change the cursor to
-                     * indicate drawing.
-                     */
-                    if (dist <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
-                        closeToEdge = true;
-                    }
+                        /*
+                         * Create a line string with screen coordinates, and
+                         * determine the distance between the line string and
+                         * the given point.
+                         */
+                        Coordinate[] ringCoordinates = coordinates.get(j);
+                        Coordinate[] screenCoordinates = new Coordinate[ringCoordinates.length];
+                        for (int k = 0; k < ringCoordinates.length; k++) {
+                            double[] coords = editor
+                                    .translateInverseClick(ringCoordinates[k]);
+                            screenCoordinates[k] = new Coordinate(coords[0],
+                                    coords[1]);
+                        }
+                        LineString lineString = AdvancedGeometryUtilities
+                                .getGeometryFactory().createLineString(
+                                        screenCoordinates);
+                        double distance = mouseScreenPoint.distance(lineString);
 
-                    /*
-                     * Determine whether or not the mouse position is close to
-                     * one of the hazard's vertices. Do not check the last
-                     * vertex if the shape is a polygon, since the first and
-                     * last vertices are always the same for such shapes. If it
-                     * is close enough, record the vertex, picking the one that
-                     * is closest.
-                     */
-                    List<Coordinate> coordList = drawable.getPoints();
-                    Coordinate coords[] = coordList
-                            .toArray(new Coordinate[coordList.size()]);
-                    double minDistance = Double.MAX_VALUE;
-                    int upperLimit = coords.length
-                            - (isPolygon(drawable) ? 1 : 0);
-                    for (int j = 0; (j < upperLimit) && (coords[j] != null); ++j) {
-                        double[] screen = editor
-                                .translateInverseClick(coords[j]);
-                        Coordinate vertexScreenCoord = new Coordinate(
-                                screen[0], screen[1]);
-                        dist = mouseScreenCoord.distance(vertexScreenCoord);
-                        if (dist <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
-                            if (dist < minDistance) {
-                                vertexIndexUnderPoint = j;
-                                minDistance = dist;
-                            }
+                        /*
+                         * If the distance is small enough, note that the cursor
+                         * is close to the edge of this ring of the drawable.
+                         */
+                        if (distance <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
+                            edgeIndex = j;
+                            break;
+                        }
+                    }
+                }
+
+                /*
+                 * Determine whether or not the mouse position is close to one
+                 * of the drawable's manipulation points. If it is close enough,
+                 * record the manipulation point, picking the one that is
+                 * closest.
+                 */
+                List<ManipulationPoint> manipulationPoints = ((IDrawable<?>) drawable)
+                        .getManipulationPoints();
+                double minDistance = Double.MAX_VALUE;
+                for (ManipulationPoint point : manipulationPoints) {
+                    double[] screen = editor.translateInverseClick(point
+                            .getLocation());
+                    Coordinate pixelLocation = new Coordinate(screen[0],
+                            screen[1]);
+                    double distance = mouseScreenLocation
+                            .distance(pixelLocation);
+                    if (distance <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
+                        if (distance < minDistance) {
+                            manipulationPoint = point;
+                            minDistance = distance;
                         }
                     }
                 }
             }
         }
-        return new MutableDrawableInfo(drawable, closeToEdge,
-                vertexIndexUnderPoint);
+        return new MutableDrawableInfo(drawable, active, edgeIndex,
+                manipulationPoint);
     }
 
     /**
@@ -1291,7 +1595,8 @@ class DrawableManager {
          * Iterate through the drawables, checking each in turn.
          */
         Geometry clickPointWithSlop = getClickPointWithSlop(
-                geometryFactory.createPoint(point), x, y);
+                AdvancedGeometryUtilities.getGeometryFactory().createPoint(
+                        point), x, y);
         if (clickPointWithSlop == null) {
             return Collections.emptyList();
         }
@@ -1351,22 +1656,6 @@ class DrawableManager {
     }
 
     /**
-     * Determine whether or not the specified drawable is editable.
-     * 
-     * @param drawable
-     *            Drawable to be checked.
-     * @return <code>true</code> if the drawable is editable, <code>false</code>
-     *         otherwise.
-     */
-    boolean isDrawableEditable(AbstractDrawableComponent drawable) {
-        if (drawable instanceof DECollection) {
-            DECollection deCollection = (DECollection) drawable;
-            ((IDrawable<?>) deCollection.getItemAt(0)).isEditable();
-        }
-        return ((IDrawable<?>) drawable).isEditable();
-    }
-
-    /**
      * Determine whether or not the specified drawable is movable.
      * 
      * @param drawable
@@ -1376,10 +1665,89 @@ class DrawableManager {
      */
     boolean isDrawableMovable(AbstractDrawableComponent drawable) {
         if (drawable instanceof DECollection) {
-            DECollection deCollection = (DECollection) drawable;
-            return ((IDrawable<?>) deCollection.getItemAt(0)).isMovable();
+            drawable = ((DECollection) drawable).getItemAt(0);
         }
         return ((IDrawable<?>) drawable).isMovable();
+    }
+
+    /**
+     * Determine whether or not the specified drawable is editable.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is editable, <code>false</code>
+     *         otherwise.
+     */
+    boolean isDrawableEditable(AbstractDrawableComponent drawable) {
+        if (drawable instanceof DECollection) {
+            drawable = ((DECollection) drawable).getItemAt(0);
+        }
+        return ((IDrawable<?>) drawable).isEditable();
+    }
+
+    /**
+     * Determine whether or not the specified drawable is rotatable.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is rotatable,
+     *         <code>false</code> otherwise.
+     */
+    boolean isDrawableRotatable(AbstractDrawableComponent drawable) {
+        if (drawable instanceof DECollection) {
+            drawable = ((DECollection) drawable).getItemAt(0);
+        }
+        return ((IDrawable<?>) drawable).isRotatable();
+    }
+
+    /**
+     * Determine whether or not the specified drawable is resizable.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is resizable,
+     *         <code>false</code> otherwise.
+     */
+    boolean isDrawableResizable(AbstractDrawableComponent drawable) {
+        if (drawable instanceof DECollection) {
+            drawable = ((DECollection) drawable).getItemAt(0);
+        }
+        return ((IDrawable<?>) drawable).isResizable();
+    }
+
+    /**
+     * Determine whether or not the specified drawable is modifiable (that is,
+     * movable, editable, resizable, and/or rotatable).
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is modifiable,
+     *         <code>false</code> otherwise.
+     */
+    boolean isDrawableModifiable(AbstractDrawableComponent drawable) {
+        if (drawable instanceof DECollection) {
+            drawable = ((DECollection) drawable).getItemAt(0);
+        }
+        IDrawable<?> castDrawable = (IDrawable<?>) drawable;
+        return (castDrawable.isMovable() || castDrawable.isRotatable()
+                || castDrawable.isResizable() || castDrawable.isEditable());
+    }
+
+    /**
+     * Determine whether or not the specified drawable is a bounding box for
+     * another drawable.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable is a bounding box for another
+     *         drawable, <code>false</code> otherwise.
+     */
+    boolean isDrawableBoundingBox(AbstractDrawableComponent drawable) {
+        if (drawable instanceof DECollection) {
+            DECollection deCollection = (DECollection) drawable;
+            return (deCollection.getItemAt(0) instanceof BoundingBoxDrawable);
+        }
+        return (drawable instanceof BoundingBoxDrawable);
     }
 
     /**
@@ -1416,7 +1784,7 @@ class DrawableManager {
      */
     PathDrawable getFirstReactivePolygon() {
         for (AbstractDrawableComponent drawable : reactiveDrawables) {
-            if ((drawable instanceof PathDrawable)
+            if ((drawable.getClass() == PathDrawable.class)
                     && ((PathDrawable) drawable).isClosedLine()) {
                 return (PathDrawable) drawable;
             }
@@ -1461,13 +1829,6 @@ class DrawableManager {
         createOrRecreateAmalgamatedTextDrawablesForLocationsNeedingUpdate();
 
         /*
-         * Paint the ghost of the drawable being edited, if any.
-         */
-        if (drawableEditedGhost != null) {
-            drawGhostOfDrawableBeingEdited(target, paintProperties);
-        }
-
-        /*
          * Iterate through the drawables, painting each in turn.
          */
         Iterator<AbstractDrawableComponent> drawablesIterator = getDrawablesIterator();
@@ -1479,11 +1840,17 @@ class DrawableManager {
              * that were amalgamated, draw the amalgamated one instead. If it is
              * not the last in the list, skip this drawable (as it should only
              * be drawn once, where the last of the drawables it is representing
-             * would be drawn).
+             * would be drawn). Also skip it if it is the highlit drawable and
+             * is active, as it will be rendered after this loop. (If it is the
+             * highlit drawable but is inactive, then it must be drawn here, as
+             * the post-loop rendering will simply place a subtler version of
+             * the drawable over the top of this one to indicate in a gentler
+             * way that the drawable is highlit.)
              */
             AbstractDrawableComponent drawable = getDrawableToBeRendered(drawablesIterator
                     .next());
-            if (drawable == null) {
+            if ((drawable == null)
+                    || ((drawable == highlitDrawable) && highlitDrawableActive)) {
                 continue;
             }
 
@@ -1495,9 +1862,23 @@ class DrawableManager {
         }
 
         /*
-         * Draw the hover drawable.
+         * Paint the highlit drawable, if any.
          */
-        drawHoverDrawable(target, paintProperties);
+        if (highlitDrawable != null) {
+            paint(highlitDrawableForDrawing, target, paintProperties);
+        }
+
+        /*
+         * Paint the ghost of the drawable being edited, if any.
+         */
+        if (drawableEditedGhost != null) {
+            paint(drawableEditedGhost, target, paintProperties);
+        }
+
+        /*
+         * Draw the handle bars.
+         */
+        drawHandlebars(target, paintProperties);
     }
 
     // Private Methods
@@ -1533,8 +1914,8 @@ class DrawableManager {
 
         Iterator<AbstractDrawableComponent> iterator = getDrawablesIterator();
 
-        Point clickScreenPoint = geometryFactory.createPoint(new Coordinate(
-                screenCoord[0], screenCoord[1]));
+        Point clickScreenPoint = AdvancedGeometryUtilities.getGeometryFactory()
+                .createPoint(new Coordinate(screenCoord[0], screenCoord[1]));
 
         AbstractDrawableComponent closestSymbol = null;
 
@@ -1547,15 +1928,16 @@ class DrawableManager {
                 if (geometry != null) {
 
                     /*
-                     * Convert the polygon vertices into pixels
+                     * Convert the polygon vertices into pixels.
                      */
                     Coordinate[] coords = geometry.getCoordinates();
 
                     for (int i = 0; i < coords.length; ++i) {
                         screenCoord = editor.translateInverseClick(coords[i]);
-                        Point geometryPoint = geometryFactory
-                                .createPoint(new Coordinate(screenCoord[0],
-                                        screenCoord[1]));
+                        Point geometryPoint = AdvancedGeometryUtilities
+                                .getGeometryFactory().createPoint(
+                                        new Coordinate(screenCoord[0],
+                                                screenCoord[1]));
 
                         double distance = clickScreenPoint
                                 .distance(geometryPoint);
@@ -1596,8 +1978,8 @@ class DrawableManager {
                 if (screenCoords == null) {
                     return null;
                 }
-                geometry = getClickPointWithSlop(
-                        geometryFactory.createPoint(coordinate),
+                geometry = getClickPointWithSlop(AdvancedGeometryUtilities
+                        .getGeometryFactory().createPoint(coordinate),
                         (int) (screenCoords[0] + 0.5),
                         (int) (screenCoords[1] + 0.5));
                 if (geometry != null) {
@@ -2290,20 +2672,19 @@ class DrawableManager {
     }
 
     /**
-     * Draw the ghost of an entity that is being created or modified. For
-     * instance, if an entity is moved, then the ghost of the entity is drawn to
-     * show where the entity will end up when dropped on the map.
+     * Paint the specified drawable.
      * 
+     * @param drawable
+     *            Drawable to be painted.
      * @param target
-     *            Target which will receive drawables.
+     *            Target onto which to render the drawable.
      * @param paintProperties
      *            Paint properties associated with the target.
      */
-    private void drawGhostOfDrawableBeingEdited(IGraphicsTarget target,
-            PaintProperties paintProperties) {
+    private void paint(AbstractDrawableComponent drawable,
+            IGraphicsTarget target, PaintProperties paintProperties) {
 
-        Iterator<DrawableElement> iterator = drawableEditedGhost
-                .createDEIterator();
+        Iterator<DrawableElement> iterator = drawable.createDEIterator();
 
         while (iterator.hasNext()) {
 
@@ -2328,16 +2709,13 @@ class DrawableManager {
      * @throws VizException
      *             If a viz problem occurred during drawing.
      */
-    private void drawHoverDrawable(IGraphicsTarget target,
+    private void drawHandlebars(IGraphicsTarget target,
             PaintProperties paintProperties) throws VizException {
-        if (hoverDrawable != null) {
-            if ((hoverDrawable instanceof IDrawable)
-                    && ((IDrawable<?>) hoverDrawable).isEditable()) {
-                if (handleBarPoints.isEmpty() == false) {
-                    target.drawPoints(handleBarPoints,
-                            HANDLE_BAR_COLOR.getRGB(), PointStyle.DISC,
-                            HANDLEBAR_MAGNIFICATION);
-                }
+        for (Map.Entry<HandlebarTypeRenderer, List<double[]>> entry : locationsForHandlebarTypeRenderers
+                .entrySet()) {
+            if (entry.getValue().isEmpty() == false) {
+                entry.getKey()
+                        .render(entry.getValue(), target, paintProperties);
             }
         }
     }

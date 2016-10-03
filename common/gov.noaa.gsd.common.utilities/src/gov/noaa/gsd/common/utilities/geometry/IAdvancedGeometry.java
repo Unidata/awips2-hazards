@@ -63,6 +63,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 31, 2016   15934    Chris.Golden Initial creation.
+ * Sep 29, 2016   15928    Chris.Golden Added method to retrieve center point.
  * </pre>
  * 
  * @author Chris.Golden
@@ -77,6 +78,16 @@ public interface IAdvancedGeometry extends Serializable {
      * @return Copy of the advanced geometry.
      */
     public <G extends IAdvancedGeometry> G copyOf();
+
+    /**
+     * Get the center point of the geometry in world coordinates. Note that the
+     * center is not necessarily the same as the centroid; it is the center of
+     * the geometry's bounding box.
+     * 
+     * @return Center point of the geometry in world coordinates.
+     */
+    @JsonIgnore
+    public Coordinate getCenterPoint();
 
     /**
      * Determine whether or not the geometry (or one or more of its component
