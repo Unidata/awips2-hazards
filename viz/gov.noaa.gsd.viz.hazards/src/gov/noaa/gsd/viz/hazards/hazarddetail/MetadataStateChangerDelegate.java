@@ -35,6 +35,11 @@ import java.util.Map;
  *                                      for.
  * Sep 16, 2014    4753    Chris.Golden Changed to allow setting of mutable
  *                                      properties.
+ * Oct 04, 2016   22736    Chris.Golden Added flag indicating whether or not
+ *                                      metadata has its interdependency script
+ *                                      reinitialize if unchanged, so that when
+ *                                      a hazard event is selected, it triggers
+ *                                      the reinitialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -66,13 +71,15 @@ class MetadataStateChangerDelegate
     @Override
     public void setMegawidgetSpecifierManager(final String eventIdentifier,
             final MegawidgetSpecifierManager specifierManager,
-            final Map<String, Serializable> metadataStates) {
+            final Map<String, Serializable> metadataStates,
+            final boolean reinitializeIfUnchanged) {
         runOrScheduleTask(new QualifiedPrincipalRunnableTask<String, String, IMetadataStateChanger>() {
 
             @Override
             public void run() {
                 getPrincipal().setMegawidgetSpecifierManager(eventIdentifier,
-                        specifierManager, metadataStates);
+                        specifierManager, metadataStates,
+                        reinitializeIfUnchanged);
             }
         });
     }

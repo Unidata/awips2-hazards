@@ -149,6 +149,8 @@ import com.google.common.collect.Maps;
  *                                           changes.
  * Aug 12, 2015    4123    Chris.Golden      Changed to work with latest version
  *                                           of megawidget manager listener.
+ * Oct 04, 2016   22736    Chris.Golden      Added method allowing an interdependency
+ *                                           script to be reinitialized explicitly.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1039,6 +1041,16 @@ public class MegawidgetManager {
      */
     public final SwtWrapperMegawidget getSwtWrapper(String identifier) {
         return swtWrappersForIdentifiers.get(identifier);
+    }
+
+    /**
+     * Run the side effects applier script, if any, as if it were being
+     * initialized.
+     */
+    public final void reinitializeSideEffectsApplierScript() {
+        if (sideEffectsApplier != null) {
+            applySideEffects(null, true);
+        }
     }
 
     // Protected Methods
