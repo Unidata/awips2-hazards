@@ -80,8 +80,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import net.engio.mbassy.bus.error.IPublicationErrorHandler;
@@ -272,6 +274,19 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug 19, 2016 16259      Chris.Golden        Changed event bus to use only one each of dispatcher and
  *                                             handler threads, so as to avoid messages arriving out
  *                                             of order.
+ * Oct 05, 2016 22870      Chris.Golden        Added support for event-driven tools triggered
+ *                                             by frame changes. This involves tracking which frame
+ *                                             changes are caused by H.S. asking for them, and which
+ *                                             originate with D2D (either because the user manipulated
+ *                                             D2D's frame index with the D2D toolbar buttons, etc., or
+ *                                             looping is on, or D2D loaded more frames and auto-
+ *                                             changed the index). Also fixed the choosing of a D2D
+ *                                             frame in response to a selected time change so that the
+ *                                             entire valid time range is considered when picking the
+ *                                             frame closest to (or containing) the selected time, not
+ *                                             just the end of said range. Also added refresh of the
+ *                                             spatial display when the frame is changed (without this,
+ *                                             the display does not always show the new frame).
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -596,23 +611,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private long currentFrameTime = Long.MIN_VALUE;
 
-    public boolean getUserAnswerToQuestion(String question) {
-        return questionAnswerer.getUserAnswerToQuestion(question);
-    }
-
     /**
-     * Warn the user. This delegates to the warner either created by the app
-     * builder or injected by the client.
-     * 
-     * @param title
-     *            The title of the warning
-     * @param warning
-     *            The warning message to convey to the user
-     * @return
+     * Queue of frame times that go with the frame index changes requested by
+     * Hazard Services, but not yet acknowledged by CAVE.
      */
-    public void warnUser(String title, String warning) {
-        warner.warnUser(title, warning);
-    }
+    private final Queue<Long> unacknowledgedFrameTimeChanges = new LinkedList<>();
 
     // Private Constructors
 
@@ -634,7 +637,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     // Methods
 
     /**
-     * Initializes an instance of the HazardServicesAppBuilder
+     * Initialize the instance.
      * 
      * @param spatialDisplay
      *            Tool layer to be used with this builder.
@@ -980,15 +983,38 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public void frameChanged(IDescriptor descriptor, DataTime oldTime,
             DataTime newTime) {
+
         if (spatialDisplay == null) {
             return;
         }
+
+        /*
+         * If a new time has been provided, record it and process it. Also
+         * trigger a frame change tool execution if the frame time change was
+         * not originally asked for by Hazard Services.
+         */
         FramesInfo framesInfo = frameContextProvider.getFramesInfo();
         if ((framesInfo != null) && (newTime != null)) {
             long newRefTime = newTime.getRefTime().getTime();
+            boolean changeDidNotOriginateHere = true;
+            if ((unacknowledgedFrameTimeChanges.isEmpty() == false)
+                    && (unacknowledgedFrameTimeChanges.peek() == newRefTime)) {
+                unacknowledgedFrameTimeChanges.remove();
+                changeDidNotOriginateHere = false;
+            }
             if (newRefTime != currentFrameTime) {
                 handleFrameChange();
                 currentFrameTime = newRefTime;
+                if (changeDidNotOriginateHere) {
+                    RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            sessionManager.getConfigurationManager()
+                                    .triggerFrameChangeDrivenTool();
+                        }
+                    });
+                }
             }
         }
     }
@@ -1031,7 +1057,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                                 SelectedTime timeRange = new SelectedTime(
                                         selectedTime, selectedTime + delta);
                                 timeManager.setSelectedTime(timeRange,
-                                        Originator.OTHER);
+                                        Originator.CAVE);
                             }
                         });
                     }
@@ -1043,6 +1069,31 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public void spatialDisplayDisposed() {
         dispose();
+    }
+
+    /**
+     * Ask the user a question and get an answer.
+     * 
+     * @param question
+     *            Question to be asked.
+     * @return Answer provided by the user.
+     */
+    public boolean getUserAnswerToQuestion(String question) {
+        return questionAnswerer.getUserAnswerToQuestion(question);
+    }
+
+    /**
+     * Warn the user. This delegates to the warner either created by the app
+     * builder or injected by the client.
+     * 
+     * @param title
+     *            The title of the warning
+     * @param warning
+     *            The warning message to convey to the user
+     * @return
+     */
+    public void warnUser(String title, String warning) {
+        warner.warnUser(title, warning);
     }
 
     /**
@@ -1487,6 +1538,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 .getSelectedTime().getLowerBound();
 
         /*
+         * If the originator was CAVE, then do not try to change the frame index
+         * in CAVE, as that would just be telling CAVE something it already
+         * knew.
+         */
+        if (change.getOriginator() == Originator.CAVE) {
+            return;
+        }
+
+        /*
          * Get the available data times from the frames, if any.
          */
         DataTime[] availableDataTimes = null;
@@ -1503,7 +1563,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
             /*
              * Iterate through the frames, looking for the smallest difference
-             * between each frame's time and the selected time.
+             * between each frame's valid time range and the selected time.
              */
             int frameIndex = 0;
             long diff;
@@ -1511,12 +1571,25 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             for (DataTime time : availableDataTimes) {
 
                 /*
-                 * If there is no difference, use this frame.
+                 * If the selected time falls within the valid time range for
+                 * this frame, this is the frame to use.
                  */
-                diff = Math.abs(time.getValidTime().getTimeInMillis()
-                        - selectedTimeMillis);
-                if (diff == 0) {
+                if ((selectedTimeMillis >= time.getRefTime().getTime())
+                        && (selectedTimeMillis <= time.getValidTimeAsDate()
+                                .getTime())) {
                     break;
+                }
+
+                /*
+                 * Determine the delta between the selected time and whichever
+                 * end of the valid time range of this frame is closest to the
+                 * selected time.
+                 */
+                if (selectedTimeMillis < time.getRefTime().getTime()) {
+                    diff = time.getRefTime().getTime() - selectedTimeMillis;
+                } else {
+                    diff = selectedTimeMillis
+                            - time.getValidTimeAsDate().getTime();
                 }
 
                 /*
@@ -1524,7 +1597,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                  * iteration is moving away from the closest difference; in that
                  * case, use the previous frame.
                  */
-                if (smallestDiff < diff) {
+                if (diff > smallestDiff) {
                     frameIndex--;
                     break;
                 }
@@ -1545,11 +1618,27 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             }
 
             /*
+             * If the chosen frame index is no different from what is already
+             * the current one, and if either the frame count is greater than 1,
+             * or the current frame's reference time is the same as the selected
+             * time, there is no need to change CAVE's frames info, so do
+             * nothing more.
+             */
+            if ((framesInfo.getFrameIndex() == frameIndex)
+                    && ((frameCount > 1) || (availableDataTimes[0].getRefTime()
+                            .getTime() == selectedTimeMillis))) {
+                return;
+            }
+
+            /*
              * If there is only one frame time, use it; otherwise, use the one
-             * that was chosen above.
+             * that was chosen above. Remember the requested time so that
+             * notifications from CAVE of this new frame time can be
+             * differentiated from frame changes not caused by Hazard Services.
              */
             FramesInfo newFramesInfo;
             if (availableDataTimes.length == 1) {
+                unacknowledgedFrameTimeChanges.add(selectedTimeMillis);
                 DataTime newDataTime = new DataTime(
                         new Date(selectedTimeMillis));
                 newFramesInfo = new FramesInfo(new DataTime[] { newDataTime },
@@ -1559,8 +1648,15 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 newFramesInfo = new FramesInfo(frameIndex);
                 currentFrameTime = availableDataTimes[frameIndex].getRefTime()
                         .getTime();
+                unacknowledgedFrameTimeChanges.add(currentFrameTime);
             }
             spatialDisplay.getDescriptor().setFramesInfo(newFramesInfo);
+
+            /*
+             * Refresh the spatial display; without this, the display's viz
+             * resources' visual representations are not always updated.
+             */
+            spatialDisplay.issueRefresh();
         }
     }
 
@@ -1746,6 +1842,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         SpatialDisplayResourceData spatialDisplayResourceData = (SpatialDisplayResourceData) spatialDisplay
                 .getResourceData();
         spatialDisplay.dispose();
+        unacknowledgedFrameTimeChanges.clear();
 
         // Create a new tool layer for the new perspective.
         try {

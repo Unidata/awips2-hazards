@@ -248,6 +248,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      changes from mid-August broke metadata refresh
  *                                      if the value of the specifier parameter was
  *                                      a boolean, for example, instead of a string.
+ * Oct 05, 2016 22870      Chris.Golden Added support for event-driven tools triggered
+ *                                      by frame changes.
  * </pre>
  * 
  * @author bsteffen
@@ -380,6 +382,8 @@ public class SessionConfigurationManager implements
 
     private Runnable dataLayerChangeTriggeredToolExecutor;
 
+    private Runnable frameChangeTriggeredToolExecutor;
+
     private boolean runRecommendersAtRegularIntervals;
 
     private final Map<LocalizationFile, ILocalizationFileObserver> observersForLocalizationFiles = new HashMap<>();
@@ -508,14 +512,18 @@ public class SessionConfigurationManager implements
                                         entry.getToolIdentifiers(),
                                         (entry.getTriggerType() == TriggerType.TIME_INTERVAL ? RecommenderExecutionContext
                                                 .getTimeIntervalContext()
-                                                : RecommenderExecutionContext
-                                                        .getDataLayerUpdateContext()));
+                                                : (entry.getTriggerType() == TriggerType.FRAME_CHANGE ? RecommenderExecutionContext
+                                                        .getFrameChangeContext()
+                                                        : RecommenderExecutionContext
+                                                                .getDataLayerUpdateContext())));
                     }
                 }
             };
             if (entry.getTriggerType() == TriggerType.TIME_INTERVAL) {
                 minuteIntervalsForEventDrivenToolExecutors.put(runnable,
                         entry.getIntervalMinutes());
+            } else if (entry.getTriggerType() == TriggerType.FRAME_CHANGE) {
+                frameChangeTriggeredToolExecutor = runnable;
             } else {
                 dataLayerChangeTriggeredToolExecutor = runnable;
             }
@@ -1210,6 +1218,17 @@ public class SessionConfigurationManager implements
          */
         if (dataLayerChangeTriggeredToolExecutor != null) {
             dataLayerChangeTriggeredToolExecutor.run();
+        }
+    }
+
+    @Override
+    public void triggerFrameChangeDrivenTool() {
+
+        /*
+         * Trigger the tool sequence if there is one to be triggered.
+         */
+        if (frameChangeTriggeredToolExecutor != null) {
+            frameChangeTriggeredToolExecutor.run();
         }
     }
 

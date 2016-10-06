@@ -92,6 +92,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      tracking data layer changes is done by the
  *                                      app builder where it belongs.
  * Sep 27, 2016 15928      Chris.Golden Changed line thickness for hazard events.
+ * Oct 05, 2016 22870      Chris.Golden Added support for event-driven tools triggered
+ *                                      by frame changes.
  * </pre>
  * 
  * @author bsteffen
@@ -425,6 +427,12 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * layer change.
      */
     public void triggerDataLayerChangeDrivenTool();
+
+    /**
+     * Trigger the appropriate tool sequence, if any, in response to a frame
+     * change.
+     */
+    public void triggerFrameChangeDrivenTool();
 
     /**
      * Execute any shutdown needed.

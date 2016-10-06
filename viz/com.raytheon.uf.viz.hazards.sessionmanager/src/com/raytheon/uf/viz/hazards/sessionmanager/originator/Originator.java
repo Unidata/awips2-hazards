@@ -31,11 +31,12 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  * ------------ ---------- ----------- --------------------------
  * Apr 1, 2014            mnash        Initial creation
  * May 13, 2016   15676   Chris.Golden Added "database" as an originator.
+ * Oct 05, 2016   22870   Chris.Golden Added "CAVE" as an originator.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
 public enum Originator implements IOriginator {
-    DATABASE, OTHER
+    DATABASE, CAVE, OTHER
 }

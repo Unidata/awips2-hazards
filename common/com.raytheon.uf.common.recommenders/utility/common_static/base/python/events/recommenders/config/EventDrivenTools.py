@@ -8,6 +8,13 @@
 #         TIME_INTERVAL     Triggered at regular intervals when the CAVE clock is ticking
 #                           forward.
 #
+#         FRAME_CHANGE      Triggered whenever the frame changes due to the user pressing
+#                           the step forward or back buttons, etc.
+#
+#                           Note that only one entry of this type may be present, though it
+#                           may of course run multiple tools in sequence. If more than one
+#                           is found, Hazard Service's behavior is undefined. 
+#
 #         DATA_LAYER_CHANGE In the D2D perspective, triggered whenever the Time Match Basis
 #                           (TMB) product changes (i.e. a new TMB is selected), or if the
 #                           TMB's data times themselves change.

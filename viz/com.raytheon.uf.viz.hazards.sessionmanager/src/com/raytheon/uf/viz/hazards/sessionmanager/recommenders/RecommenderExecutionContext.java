@@ -40,6 +40,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
  *                                      made the change that triggered it.
  * Apr 27, 2016   18266    Chris.Golden Added support for event-driven tools triggered
  *                                      by data layer changes.
+ * Oct 05, 2016   22870    Chris.Golden Added support for event-driven tools triggered
+ *                                      by frame changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -171,6 +173,16 @@ public class RecommenderExecutionContext {
      */
     public static RecommenderExecutionContext getTimeIntervalContext() {
         return new RecommenderExecutionContext(Trigger.TIME_INTERVAL,
+                RecommenderTriggerOrigin.OTHER, null, null, null);
+    }
+
+    /**
+     * Get a frame change trigger execution context.
+     * 
+     * @return Context.
+     */
+    public static RecommenderExecutionContext getFrameChangeContext() {
+        return new RecommenderExecutionContext(Trigger.FRAME_CHANGE,
                 RecommenderTriggerOrigin.OTHER, null, null, null);
     }
 
