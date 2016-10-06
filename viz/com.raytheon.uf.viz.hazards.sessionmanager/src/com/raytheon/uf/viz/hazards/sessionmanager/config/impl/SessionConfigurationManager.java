@@ -250,6 +250,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      a boolean, for example, instead of a string.
  * Oct 05, 2016 22870      Chris.Golden Added support for event-driven tools triggered
  *                                      by frame changes.
+ * Oct 06, 2016 22894      Chris.Golden Added method to get session attributes for a
+ *                                      hazard type.
  * </pre>
  * 
  * @author bsteffen
@@ -363,6 +365,8 @@ public class SessionConfigurationManager implements
     private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
 
     private Map<String, ImmutableList<String>> replaceByTypesForHazardTypes;
+
+    private Map<String, ImmutableList<String>> sessionAttributesForHazardTypes;
 
     private Map<String, String> typeFirstRecommendersForHazardTypes;
 
@@ -1520,6 +1524,27 @@ public class SessionConfigurationManager implements
         }
 
         return replaceByTypesForHazardTypes.get(hazardType);
+    }
+
+    @Override
+    public List<String> getSessionAttributes(String hazardType) {
+
+        /*
+         * If the session attributes for hazard types map has not yet been
+         * initialized, do so now.
+         */
+        if (sessionAttributesForHazardTypes == null) {
+            sessionAttributesForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                List<String> sessionAttributes = entry.getValue()
+                        .getSessionAttributes();
+                sessionAttributesForHazardTypes.put(entry.getKey(),
+                        ImmutableList.copyOf(sessionAttributes));
+            }
+        }
+
+        return sessionAttributesForHazardTypes.get(hazardType);
     }
 
     @Override

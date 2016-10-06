@@ -66,6 +66,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Apr 28, 2016 18267      Chris.Golden Added flag indicating whether
  *                                      or not start time is unrestricted.
  * Jun 23, 2016 19537      Chris.Golden Made hatching style an enum.
+ * Oct 06, 2016 22894      Chris.Golden Added sessionAttributes list.
  * </pre>
  * 
  * @author bsteffen
@@ -128,6 +129,8 @@ public class HazardTypeEntry {
     private boolean allowUntilFurtherNotice;
 
     private Map<String, List<String>> modifyRecommenders;
+
+    private String[] sessionAttributes;
 
     public Map<String, List<String>> getModifyRecommenders() {
         return modifyRecommenders;
@@ -446,6 +449,27 @@ public class HazardTypeEntry {
      */
     public void setPointBased(boolean pointBased) {
         this.pointBased = pointBased;
+    }
+
+    /**
+     * @return the sessionAttributes list.
+     */
+    public List<String> getSessionAttributes() {
+        if (sessionAttributes == null) {
+            return Collections.emptyList();
+        }
+        return Arrays.asList(sessionAttributes);
+    }
+
+    /**
+     * @param sessionAttributes
+     *            the sessionAttributes to set
+     */
+    public void setSessionAttributes(List<String> sessionAttributes) {
+        if (sessionAttributes != null) {
+            this.sessionAttributes = sessionAttributes
+                    .toArray(new String[sessionAttributes.size()]);
+        }
     }
 
 }

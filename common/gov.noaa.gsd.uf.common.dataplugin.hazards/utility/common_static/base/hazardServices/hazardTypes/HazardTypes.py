@@ -1,75 +1,74 @@
 # Note:   Booleans should not be prefixed with "is", i.e. isAllowAnyStartTime.  
 #         Otherwise the deserialization will fail.
 #
-#         expirationTime is a tuple (beforeMinutes, afterMinutes).  
-#                        This is set according to VTEC policy, so cannot be changed.
-#                        If a hazard event is issued within the (beforeMinutes, afterMinutes)
-#                        window around the hazard end time, then a VTEC EXP will be 
-#                        automatically generated.  
-#         hazardConflictList is a list of hazard types which conflict with the
-#                            given hazard type.
-#         ugcType represents the area type that a hazard geometry will
-#                         be translated into when the hazard is issued. For example,
-#                         A WS.W polygon will be translated into a collection of
-#                         zones in the associated WSW when issued. 
-#                         An FA.A will be translated into a 
-#                         collection of counties in the associated FFA when issued.
-#                         Some possible values include: county and zone. 
-#                         These are the names of the corresponding tables
-#                         in the maps db.
-#         ugcLabel The label field to associate with the ugcType. 
-#                          This corresponds to the label field associated with
-#                          the maps db table which backs the hatch area. If
-#                          hatch area is county, then label field does not apply.
-#    inclusionFractionTest True - perform inclusion test
-#                          False - do not perform inclusion test
-#                          If this attribute is omitted, then inclusion testing will not
-#                          be performed.
-#        inclusionFraction The minimum fraction a hazard polygon must cover a UGC
-#                          area before the UGC can be included in the UGC list.
-#        inclusionAreaTest True - perform inclusion test
-#                          False - do not perform inclusion test
-#                          If this attribute is omitted, then inclusion area testing will not
-#                          be performed.
-#      inclusionAreaInSqKM The minimum area a hazard polygon must cover a UGC
-#                          area before the UGC can be included in the UGC list.
+#             expirationTime Tuple specifying (beforeMinutes, afterMinutes).  
+#                            This is set according to VTEC policy, so cannot be changed.
+#                            If a hazard event is issued within the (beforeMinutes, afterMinutes)
+#                            window around the hazard end time, then a VTEC EXP will be 
+#                            automatically generated.  
+#         hazardConflictList List of hazard types which conflict with the given hazard type.
+#                    ugcType Represents the area type that a hazard geometry will
+#                            be translated into when the hazard is issued. For example,
+#                            A WS.W polygon will be translated into a collection of
+#                            zones in the associated WSW when issued. 
+#                            An FA.A will be translated into a 
+#                            collection of counties in the associated FFA when issued.
+#                            Some possible values include: county and zone. 
+#                            These are the names of the corresponding tables
+#                            in the maps db.
+#                   ugcLabel The label field to associate with the ugcType. 
+#                            This corresponds to the label field associated with
+#                            the maps db table which backs the hatch area. If
+#                            hatch area is county, then label field does not apply.
+#      inclusionFractionTest True - perform inclusion test
+#                            False - do not perform inclusion test
+#                            If this attribute is omitted, then inclusion testing will not
+#                            be performed.
+#          inclusionFraction The minimum fraction a hazard polygon must cover a UGC
+#                            area before the UGC can be included in the UGC list.
+#          inclusionAreaTest True - perform inclusion test
+#                            False - do not perform inclusion test
+#                            If this attribute is omitted, then inclusion area testing will not
+#                            be performed.
+#        inclusionAreaInSqKM The minimum area a hazard polygon must cover a UGC
+#                            area before the UGC can be included in the UGC list.
+# 
+#                            Note that if both inclusionFractionTest and inclusionAreaTest then 
+#                            both tests must pass for inclusion.
 #
-#                          Note that if both inclusionFractionTest and inclusionAreaTest then 
-#                          both tests must pass for inclusion.
-#
-#         hazardClipArea   The area, usually hsa or cwa, to restrict hazard geometries to.
-#         hazardPointLimit The maximum number of vertices allowed for the hazard type. Excluding
-#                          this field means that there is no point limit.
+#             hazardClipArea The area, usually hsa or cwa, to restrict hazard geometries to.
+#           hazardPointLimit The maximum number of vertices allowed for the hazard type. Excluding
+#                            this field means that there is no point limit.
 #         durationChoiceList Optional parameter. If not specified, the hazard type will use
-#                           an absolute time selector for hazard event end time. If it is
-#                           specified, it must be a list of one or more possible durations, 
-#                           each of the form "num days", "num hours", "num minutes", or any
-#                           combination of the three as long as it is ordered from largest
-#                           to smallest unit, i.e. "2 days, 4 hours" is fine, but "4 hours,
-#                           2 days" is not. The num must be a positive integer in each case.
-#                           The "day" unit may be represented by "d", "day", or "days"; the
-#                           "hour" unit by "h", "hr", "hrs", "hour", or "hours"; and the
-#                           "minute" unit by "m", "mn", "min", "mins", "minute", or "minutes".
-#                           Some examples of valid entries are "5 min", "20 minutes", "45m",
-#                           "1 hr", "1h 30m" "1 hour, 45 minutes", "4 hrs", "1 day", "1d 12h",
-#                           "2 days", "2 days, 240 minutes", and "3d 5h 20m".
-#         defaultDuration   represents the default time duration for this hazard upon
-#                           creation.  In milliseconds. (3600000 ms/hour, 60000 ms/minute)
-#         durationIncrement represents the increment when setting the duration directly. 
-#                           In minutes.
-#         allowUntilFurtherNotice if True, the endTime of the hazard and/or the fallBelow
-#                           time of the hazard can be set to "Until Further Notice".
-#                           If entry is absent, then allowUntilFurtherNotice is False.
-#                           Currently by policy only hazards in the FLW_FLS products use
-#                           "Until Further Notice"
-#         hatchingStyle     Either "NONE", "INTERSECTED_AREAS", or "WARNGEN". The latter
-#                           is characterized by the following:
-#                           *  When you add/remove UGCs the hatching changes but the polygon 
-#                              remains unchanged until you preview.
-#                           *  You will see W and Y symbols marking the area under threat.
-#                           Defaults to INTERSECTED_AREAS.
-#         hazardTypeFirstRecommender  Set the name of the recommender you want launched if the 
-#                                     forecaster opts for the Hazard Type First workflow 
+#                            an absolute time selector for hazard event end time. If it is
+#                            specified, it must be a list of one or more possible durations, 
+#                            each of the form "num days", "num hours", "num minutes", or any
+#                            combination of the three as long as it is ordered from largest
+#                            to smallest unit, i.e. "2 days, 4 hours" is fine, but "4 hours,
+#                            2 days" is not. The num must be a positive integer in each case.
+#                            The "day" unit may be represented by "d", "day", or "days"; the
+#                            "hour" unit by "h", "hr", "hrs", "hour", or "hours"; and the
+#                            "minute" unit by "m", "mn", "min", "mins", "minute", or "minutes".
+#                            Some examples of valid entries are "5 min", "20 minutes", "45m",
+#                            "1 hr", "1h 30m" "1 hour, 45 minutes", "4 hrs", "1 day", "1d 12h",
+#                            "2 days", "2 days, 240 minutes", and "3d 5h 20m".
+#            defaultDuration represents the default time duration for this hazard upon
+#                            creation.  In milliseconds. (3600000 ms/hour, 60000 ms/minute)
+#          durationIncrement represents the increment when setting the duration directly. 
+#                            In minutes.
+#    allowUntilFurtherNotice if True, the endTime of the hazard and/or the fallBelow
+#                            time of the hazard can be set to "Until Further Notice".
+#                            If entry is absent, then allowUntilFurtherNotice is False.
+#                            Currently by policy only hazards in the FLW_FLS products use
+#                            "Until Further Notice"
+#              hatchingStyle Either "NONE", "INTERSECTED_AREAS", or "WARNGEN". The latter
+#                            is characterized by the following:
+#                            *  When you add/remove UGCs the hatching changes but the polygon 
+#                               remains unchanged until you preview.
+#                            *  You will see W and Y symbols marking the area under threat.
+#                            Defaults to INTERSECTED_AREAS.
+# hazardTypeFirstRecommender Set the name of the recommender you want launched if the 
+#                            forecaster opts for the Hazard Type First workflow 
 #         modifyRecommenders Optional parameter. If specified, it provides a mapping of
 #                            the names of recommenders to lists of hazard attributes that
 #                            should trigger those recommenders to be run when any of the
@@ -81,32 +80,38 @@
 #                            "status".  (Note that any hazard event attributes that may be
 #                            specific to a hazard type, e.g. "cta", may be made triggers as
 #                            well within a hazard type's metadata generation script.) 
-#         startTimeIsCurrentTime: Affects unissued and issued; if true, start time is never
-#                                 editable by the user, and must be the current CAVE clock
-#                                 time.  Default is False.
-#         allowAnyStartTime:
-#                          Affects unissued and issued events; if true, start time can be
-#                          before, the same as, or later than the current time. If true and
-#                          "startTimeIsCurrentTime" is false, this overrules the latter.
-#                          Default is False.
-#         allowTimeExpand: Affects issued events only; if true, an event can have its end time
-#                          pulled right (made later than it was). Default is True.
-#         allowTimeShrink: Affects issued events only; if true, an event can have its end time
-#                          pulled left (made sooner than what it was). Default is True.
-#         requirePointId:  Indicates whether or not must have a "pointID" attribute value.
-#                          Default is False.
-#         pointBased:      Indicates whether or not the hazard type is point-based. Default is
-#                          False.
-#         allowTimeChange: Ignored by the GUI; used in VTEC processing
-#         allowAreaChange: Ignored by the GUI; used in VTEC processing
-#         combinableSegments:  
-#                          If False, hazard events are treated as separate ETN's i.e. they
-#                          are not combined into a single segment.  A hazard event can have multiple polygons if needed.
-#                          If True, Hazard Events can be combined into one segment.   
-#         includeAll:   If True, all events in the allowedHazard group need to be included when generating 
-#                       products e.g. ALL FF.A hazard events need to be included when creating an FFA product.
-#         allowOverlappingPolygons: If True, hazard events can contain multiple overlapping polygons.  
-#                       If False or not specified, overlapping polygons added to the event will be unioned with the existing polygons.
+#     startTimeIsCurrentTime Affects unissued and issued; if true, start time is never
+#                            editable by the user, and must be the current CAVE clock
+#                            time.  Default is False.
+#          allowAnyStartTime Affects unissued and issued events; if true, start time can be
+#                            before, the same as, or later than the current time. If true and
+#                            "startTimeIsCurrentTime" is false, this overrules the latter.
+#                            Default is False.
+#            allowTimeExpand Affects issued events only; if true, an event can have its end time
+#                            pulled right (made later than it was). Default is True.
+#            allowTimeShrink Affects issued events only; if true, an event can have its end time
+#                            pulled left (made sooner than what it was). Default is True.
+#             requirePointId Indicates whether or not must have a "pointID" attribute value.
+#                            Default is False.
+#                 pointBased Indicates whether or not the hazard type is point-based. Default is
+#                            False.
+#            allowTimeChange Ignored by the GUI; used in VTEC processing
+#            allowAreaChange Ignored by the GUI; used in VTEC processing
+#         combinableSegments If False, hazard events are treated as separate ETN's i.e. they
+#                            are not combined into a single segment.  A hazard event can have
+#                            multiple polygons if needed. If True, Hazard Events can be combined
+#                            into one segment.   
+#                 includeAll If True, all events in the allowedHazard group need to be included
+#                            when generating products e.g. ALL FF.A hazard events need to be
+#                            included when creating an FFA product.
+#   allowOverlappingPolygons If True, hazard events can contain multiple overlapping polygons.  
+#                            If False or not specified, overlapping polygons added to the event
+#                            will be unioned with the existing polygons.
+#          sessionAttributes If provided, must be a list of names of hazard attributes that are
+#                            to be stripped out of hazard events of this type before such events
+#                            are persisted. This allows recommenders, etc. to use hazard
+#                            attributes as session-scoped storage for information without having
+#                            such information pointlessly stored in the database.   
 
 HOURS = 3600000
 MINUTES = 60000
@@ -1991,6 +1996,7 @@ HazardTypes = {
               'allowAnyStartTime': True,
               'modifyRecommenders': modRecsDict,
               'allowOverlappingPolygons': True,
+              'sessionAttributes': [ "readOnly" ],
               },
     'Prob_Severe' : {
               'headline': 'Probabilistic Severe',
@@ -2018,6 +2024,7 @@ HazardTypes = {
               'allowAnyStartTime': True,
               'modifyRecommenders': modRecsDict,
               'allowOverlappingPolygons': True,
+              'sessionAttributes': [ "readOnly" ],
               },
     ################
     # Aviation Hazards

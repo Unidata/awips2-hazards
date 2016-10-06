@@ -409,6 +409,8 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      Also removed code that was redundant from addEvent() that added
  *                                      a geometry to an existing event, since this is not the job of the
  *                                      session manager and was already being done by the spatial presenter.
+ * Oct 06, 2016   22894    Chris.Golden Changed persist-event methods to remove any session attributes for
+ *                                      a hazard's type from that hazard event prior to persisting it.
  * </pre>
  * 
  * @author bsteffen
@@ -2657,13 +2659,7 @@ public class SessionEventManager implements
      */
     private void persistEvent(ObservedHazardEvent event) {
         try {
-            IHazardEvent dbEvent = dbManager.createEvent(event);
-            dbEvent.setVisualFeatures(null);
-            dbEvent.removeHazardAttribute(ATTR_ISSUED);
-            dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
-            dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
-            dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
-            dbManager.storeEvent(dbEvent);
+            dbManager.storeEvent(createEventCopyToBePersisted(event));
             scheduleExpirationTask(event);
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -4572,13 +4568,7 @@ public class SessionEventManager implements
              * Make a copy of the event of the right type, and strip out
              * whatever cannot or should not be saved.
              */
-            IHazardEvent dbEvent = dbManager.createEvent(event);
-            dbEvent.setVisualFeatures(null);
-            dbEvent.removeHazardAttribute(ATTR_ISSUED);
-            dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
-            dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
-            dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
-            dbEvents.add(dbEvent);
+            dbEvents.add(createEventCopyToBePersisted(event));
         }
 
         /*
@@ -4587,6 +4577,59 @@ public class SessionEventManager implements
         if (dbEvents.isEmpty() == false) {
             dbManager.storeEvents(dbEvents);
         }
+    }
+
+    /**
+     * Create a persistence-friendly copy of the specified event.
+     * 
+     * @param event
+     *            Event to be created.
+     * @return Persistence-friendly copy of the event.
+     */
+    private IHazardEvent createEventCopyToBePersisted(IHazardEvent event) {
+        IHazardEvent dbEvent = dbManager.createEvent(event);
+
+        /*
+         * TODO: Visual features should not need to be removed, but they cause
+         * thus-far-impossible-to-diagnose SOAP errors if there are too many of
+         * them of too great a size and they are persisted. So for now, they are
+         * being stripped out.
+         */
+        dbEvent.setVisualFeatures(null);
+
+        /*
+         * Strip out attributes as per this hazard type's configuration.
+         */
+        for (String sessionAttribute : configManager.getSessionAttributes(event
+                .getHazardType())) {
+            dbEvent.removeHazardAttribute(sessionAttribute);
+        }
+
+        /*
+         * Strip out other hard-coded attributes that should not be persisted.
+         * 
+         * TODO: The fact that the Java code is worrying about hazard attributes
+         * like this, and is using them instead of just keeping them in their
+         * map for the focal-point-configurable Python side to use, is not a
+         * good thing.
+         * 
+         * The map of hazard attributes that is part of each hazard event is
+         * meant to store attributes that only recommenders, metadata
+         * generators, product generators, and other tools use. The Java core's
+         * job with these generic attributes is to simply ensure they are kept
+         * associated with their hazard event, not to use them to store data of
+         * semantic value to the Java code.
+         * 
+         * Any attributes currently used by Java code should either be promoted
+         * to first-class fields within the hazard event, tracked elsewhere
+         * (e.g. selected and checked status should be tracked outside the
+         * events in the session event manager), or otherwise removed.
+         */
+        dbEvent.removeHazardAttribute(ATTR_ISSUED);
+        dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+        dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
+        dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
+        return dbEvent;
     }
 
     @Override
