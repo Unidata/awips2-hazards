@@ -46,6 +46,8 @@ from collections import OrderedDict
 from MapsDatabaseAccessor import MapsDatabaseAccessor
 import pprint
 from com.raytheon.uf.common.time import SimulatedTime
+from scipy import interpolate
+
 
 class MetaData(object):
 
@@ -2395,13 +2397,22 @@ class MetaData(object):
         return presets
         
 def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
-    
+   
     returnDict = {}
 
     def convectiveFilter(myIterable, prefix):
         return [tf for tf in myIterable if tf.startswith(prefix)]
 
     def updateProbtrend(convectiveProbTrendGraphVals, interp):
+
+        def concave(x, a, b):
+            b2 = np.ones(len(x))*b
+            return a*np.power(b2, x)
+        
+        def convex(x, a, b):
+            conc = concave(x, a, b)
+            return a-conc[::-1]
+        
         '''
         Logic taken from NSSL Prototype PHI tool http://www.nssl.noaa.gov/projects/facets/phi/prob_chart.js
         and 'pythonized'.  Probably a way to speed things up with numpy when there's time to refactor
@@ -2412,80 +2423,49 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                           'convectiveProbTrendExp2', 'convectiveProbTrendPlus5', 'convectiveProbTrendMinus5']:
             return convectiveProbTrendGraphVals
         
+        
         probs = [entry.get('y') for entry in convectiveProbTrendGraphVals]
+        times = [entry.get('x') for entry in convectiveProbTrendGraphVals]
         probsArr = np.array(probs)
+        maxValIdx = np.argmax(probsArr)
         firstVal = probsArr[0]
-        lastVal = probsArr[-1]
-        end = float(len(probsArr))
-        diff = (lastVal - firstVal) / len(probsArr)
-        newProbs = []
-        if(interp == 'convectiveProbTrendBell'):
-            maxVal = np.amax(probsArr)
-            hitMaxVal = False
-            end2 = float(np.argmax(probsArr))
-    
-        for i in range(len(probsArr)):
-            newVal = np.nan
-            if(i <= end):
-                if(interp == 'convectiveProbTrendLinear'):
-                    newVal = firstVal + (i * diff)
-    
-                elif(interp == 'convectiveProbTrendExp1'):
-                    disNorm = (i / end)
-                    newVal = ((lastVal - firstVal) * (disNorm * disNorm)) + firstVal
-    
-                elif(interp == 'convectiveProbTrendExp2'):
-                    disNorm = 1 - (i / end)
-                    newVal = ((firstVal - lastVal) * (disNorm * disNorm)) + lastVal
-    
-                elif(interp == 'convectiveProbTrendPlus5'):
-                    newVal = probsArr[i] + 5
-    
-                elif(interp == 'convectiveProbTrendMinus5'):
-                    newVal = probsArr[i] - 5
-    
-                elif(interp == 'convectiveProbTrendBell'):
-                    if(probsArr[i] == maxVal):
-                        hitMaxVal = True
-                        newVal = probsArr[i]
-    
-                    elif(hitMaxVal):
-                        disNorm = ((i - end2) / (end - end2))
-                        newVal = ((lastVal - maxVal) * (disNorm * disNorm)) + maxVal
-    
-                    else:
-                        disNorm = 1 - (i / end2)
-                        newVal = ((firstVal - maxVal) * (disNorm * disNorm)) + maxVal
-    
-                if(newVal > 100):
-                    newVal = 100
-    
-                if(newVal < 0):
-                    newVal = 0
-    
-                newProbs.append(newVal)
-                if(i == end):
-                    probDiff = newVal - newProbs[len(newProbs) - 2]
-    
-    
-            else:
-                newVal = newVal + probDiff
-                if(newVal > 100):
-                    newVal = 100
-    
-                if(newVal < 0):
-                    newVal = 0
-    
-                newProbs.append(newVal)
-                
-        if len(newProbs) == len(convectiveProbTrendGraphVals):
-            ### To satisfy end always ending at 0
-            newProbs[-1] = 0
-
-            for i in range(len(newProbs)):
-               convectiveProbTrendGraphVals[i]['y'] = newProbs[i]
-        else:
-            sys.stderr.write('New probs length does not match old probs length. No change')
+        lastVal = 0
+        maxVal =  probsArr[maxValIdx]
+        maxTime = times[maxValIdx]
+        
+        
+        if(interp == 'convectiveProbTrendLinear'):
+            newProbs = np.linspace(firstVal, lastVal, len(times))
+        elif(interp == 'convectiveProbTrendPlus5'):
+            newFirstVal = firstVal+5 if firstVal+5 < 100 else 100
+            newProbs = np.linspace(newFirstVal, lastVal, len(times))
+        elif(interp == 'convectiveProbTrendMinus5'):
+            newFirstVal = firstVal-5 if firstVal-5 > 0 else 0
+            newProbs = np.linspace(newFirstVal, lastVal, len(times))
+        elif(interp == 'convectiveProbTrendBell'):
+            xp = np.array([times[0], maxTime, times[-1]])
+            yp = np.array([firstVal,maxVal,lastVal])
+            f = interpolate.interp1d(xp, yp, kind='quadratic')
+            newProbs = f(times)
+            if np.any(newProbs>100):
+                mxIdx = np.argmax(newProbs)
+                newProbs[np.where(newProbs > 100)] = 99
+                newProbs[mxIdx] = 100
+                f = interpolate.interp1d(times, newProbs, kind='quadratic')
+                newProbs = f(times)
+            if np.isnan(np.sum(newProbs)):
+                print '\n=== First point is max. Drawing linear ===\n'
+                newProbs = np.linspace(firstVal, lastVal, len(times))
+        elif(interp == 'convectiveProbTrendExp1'):
+            newProbs = concave(times, firstVal, 0.8925)
+        elif(interp == 'convectiveProbTrendExp2'):
+            newProbs = convex(times, firstVal, 0.8925)
+            
+        newProbs[-1] = 0
+        for i in range(len(newProbs)):
+            convectiveProbTrendGraphVals[i]['y'] = newProbs[i]
+        #else:
+        #    sys.stderr.write('New probs length does not match old probs length. No change')
 
         return convectiveProbTrendGraphVals
 
@@ -2589,19 +2569,11 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             #===================================================================
 
             updatedProbTrend = updateProbtrend(probVals, trigger)
+        
             ### Set new state of GMW with updated trend
             returnDict['convectiveProbTrendGraph'] = {'values' : updatedProbTrend}
 
 
-            #===================================================================
-            # returnDict['convectiveProbTrendUndoValues'] = {"values": probVals}
-            # print 'Final...'
-            # print 'Graph:', returnDict['convectiveProbTrendGraph']
-            # print 'Undo:', returnDict['convectiveProbTrendUndoValues']
-            # print 'Redo:', returnDict['convectiveProbTrendRedoValues']
-            # sys.stdout.flush()
-            #===================================================================
-            
     return returnDict
 
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):

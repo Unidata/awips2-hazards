@@ -118,7 +118,6 @@ class Recommender(RecommenderTemplate.Recommender):
         for event in eventSet:
             changed = (self.removeVisualFeatures(event) or changed)
             if event.getHazardAttributes().get('showGrid') == True:
-                vsualFeatures = []
                 probGrid, lons, lats = ProbUtils().getProbGrid(event)
                 polyTupleDict = self.createPolygons(probGrid, lons, lats)
                 changed = (self.addVisualFeatures(event, polyTupleDict) or changed)
@@ -222,24 +221,26 @@ class Recommender(RecommenderTemplate.Recommender):
         prob = ['0', '20', '40', '60', '80']
         probIndex = [0.0, 20.0, 40.0, 60.0, 80.0]
         polyTupleDict = {}
-
+        polys = []
         for c in range(0,(len(CS.levels) - 1)):
             contourVal = CS.levels[c]
             coords = CS.collections[c].get_paths()
+            
+            for coord in coords:
+                v = coord.vertices
+                x = v[:,0]
+                y = v[:,1]
+                p = Polygon([(i[0], i[1]) for i in zip(x,y)])
+                if p.is_valid():
+                    polys.append(p)
+                elif p.buffer(0.2).is_valid():
+                    polys.append(p.buffer(0.2))
+                
+                
+                
+            if contourVal in probIndex:    
+                polyTupleDict[prob[c]] = GeometryFactory(polys, 'polygons')
 
-            if len(coords):
-                points = coords[0].vertices
-                
-                longitudes = []
-                latitudes = []
-                
-                for point in range(0, len(points)):
-                    longitudes.append(points[point][0])
-                    latitudes.append(points[point][1])
-                
-                if contourVal in probIndex:    
-                    polyTupleDict[prob[c]] = zip(longitudes, latitudes)
-                    
         return polyTupleDict
     
     def flush(self):

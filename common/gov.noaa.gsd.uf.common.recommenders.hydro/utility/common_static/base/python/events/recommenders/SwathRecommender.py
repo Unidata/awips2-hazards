@@ -448,7 +448,8 @@ class Recommender(RecommenderTemplate.Recommender):
         lastPoint = probVals[-1]
         if lastPoint["y"] != 0 or lastPoint["editable"]:
             probVals[-1] = { "x": lastPoint["x"], "y": 0, "editable": False }
-            event.set('convectiveProbTrendGraph', probVals)
+            
+        event.set('convectiveProbTrendGraph', probVals)
     
     def _updateConvectiveAttrs(self, event):
         convectiveAttrs = event.get('convectiveAttrs')
@@ -896,15 +897,9 @@ class Recommender(RecommenderTemplate.Recommender):
         polyTupleDict = self._createPolygons(probGrid, lons, lats)
                 
         # Generate and add preview-grid-related visual features        
-        for key in polyTupleDict: 
-            upperVal = str(int(key) + 20)
-            try:
-                poly = GeometryFactory.createPolygon(polyTupleDict[key],[polyTupleDict[upperVal]])
-            except KeyError:
-                poly = GeometryFactory.createPolygon(polyTupleDict[key])                       
-                
-            #print "SR previewGrid poly", type(poly)
-            #self.flush()                       
+        for key in sorted(polyTupleDict): 
+            poly = polyTupleDict[key]
+            
                                 
             ### Should match PHI Prototype Tool
             colorFill =  {
@@ -935,12 +930,11 @@ class Recommender(RecommenderTemplate.Recommender):
     def _createPolygons(self, probGrid, lons, lats):
         polyDict = {}
         
-        #probGrid, lons, lats = ProbUtils().getProbGrid(event)
-                
         levels = np.linspace(0,100,6)
 
         X, Y = np.meshgrid(lons, lats)
         plt.figure()
+        
         CS = plt.contour(X, Y, probGrid, levels=levels)
 
         prob = ['0', '20', '40', '60', '80']
@@ -951,19 +945,18 @@ class Recommender(RecommenderTemplate.Recommender):
             contourVal = CS.levels[c]
             coords = CS.collections[c].get_paths()
 
-            if len(coords):
-                points = coords[0].vertices
+            polygons = []
+            for coord in coords:
+                v = coord.vertices
+                x = v[:,0]
+                y = v[:,1]
+                poly = GeometryFactory.createPolygon([(i[0], i[1]) for i in zip(x,y)])
+                polygons.append(poly)
                 
-                longitudes = []
-                latitudes = []
+            mp = GeometryFactory.createMultiPolygon(polygons,'polygons')
+            if contourVal in probIndex and len(polygons):    
+                    polyTupleDict[prob[c]] = mp
                 
-                for point in range(0, len(points)):
-                    longitudes.append(points[point][0])
-                    latitudes.append(points[point][1])
-                
-                if contourVal in probIndex:    
-                    polyTupleDict[prob[c]] = zip(longitudes, latitudes)
-                    
         return polyTupleDict
         
     def _previousTimeVisualFeatures(self, event):    

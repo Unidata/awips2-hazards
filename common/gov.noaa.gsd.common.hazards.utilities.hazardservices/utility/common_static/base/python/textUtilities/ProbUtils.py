@@ -1000,6 +1000,6 @@ class ProbUtils(object):
         self._buff = 1.
         self._lonPoints = 1200
         self._latPoints = 1000
-        self._initial_ulLat = 43.0
-        self._initial_ulLon = -104.00
+        self._initial_ulLat = 46.0
+        self._initial_ulLon = -107.0
     
