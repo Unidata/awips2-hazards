@@ -31,13 +31,16 @@ import GeometryHandler
 #    Sep 13, 2016      15934       Chris.Golden    Initial creation.
 #    Sep 21, 2016      15934       Chris.Golden    Changed to work with new version
 #                                                  of AdvancedGeometryUtilities.
+#    Sep 29, 2016      15928       Chris.Golden    Minor changes to comments due to
+#                                                  switch to angles being specified
+#                                                  in radians, and to corrections.
 #
 class AdvancedGeometry(object):
     
     def __init__(self, javaObject):
         '''
-        @summary Construct an instance wrapping a Java Ellipse object.
-        @param javaObject Java Ellipse to be wrapped.
+        @summary Construct an instance wrapping a Java IAdvancedGeometry object.
+        @param javaObject Java IAdvancedGeometry instance to be wrapped.
         '''
         self._javaObject = javaObject
         
@@ -142,7 +145,7 @@ def createEllipse(x, y, width, height, units, rotation):
     @param units: Units in which width and height are specified; may
     be any of the LINEAR_UNITS_XXXX constants defined within the
     HazardConstants.py.
-    @param rotation: Rotation in counterclockwise degrees of the ellipse.
+    @param rotation: Rotation in counterclockwise radians of the ellipse.
     @return: Ellipse in Java IAdvancedGeometry form.
     '''
     return AdvancedGeometry(AdvancedGeometryUtilities.createEllipse(float(x), float(y),
@@ -154,7 +157,7 @@ def createShapelyWrapper(geometry, rotation):
     '''
     @summary Create a shapely wrapper object.
     @param geometry: Shapely geometry to be wrapped.
-    @param rotation: Rotation in counterclockwise degrees of the wrapped geometry.
+    @param rotation: Rotation in counterclockwise radians of the wrapped geometry.
     @return: Geometry wrapper in Java IAdvancedGeometry form.
     '''
     return AdvancedGeometry(AdvancedGeometryUtilities.createGeometryWrapper(GeometryHandler.

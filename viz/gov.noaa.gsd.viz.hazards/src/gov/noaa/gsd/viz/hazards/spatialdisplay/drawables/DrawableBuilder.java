@@ -35,6 +35,7 @@ import java.util.Set;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * 
@@ -103,6 +104,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      characters as delimiters.
  * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries.
  * Sep 21, 2016 15934      Chris.Golden Added support for ellipse drawing.
+ * Sep 29, 2016 15928      Chris.Golden Added method to create bounding box drawables
+ *                                      as necessary.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -121,6 +124,12 @@ public class DrawableBuilder {
     private static final String STAR = "STAR";
 
     private static final String FILLED_STAR = "FILLED_STAR";
+
+    /**
+     * Color to be used for bounding boxes drawn around other drawables.
+     */
+    private static final Color BOUNDING_BOX_COLOR = new Color(255, 255, 255,
+            180);
 
     /**
      * Splitter, used to break up text if it has newlines in it into an array of
@@ -324,6 +333,121 @@ public class DrawableBuilder {
         amalgamatedTextDrawable.setText(labels.toArray(new String[labelsList
                 .size()]));
         return amalgamatedTextDrawable;
+    }
+
+    /**
+     * Build a bounding box drawable, if one is appropriate, to bound the
+     * specified drawable.
+     * 
+     * @param drawable
+     *            Drawable for which to create a bounding box.
+     * @param associatedDrawable
+     *            Drawable with which to associate the bounding box. This will
+     *            generally be a reference to the same drawable that
+     *            <code>drawable</code> references, unless the bounding box is
+     *            being constructed for the geometry of a modified version of a
+     *            drawable, in which case the two parameters may be different.
+     * @return Bounding box drawable, or <code>null</code> if none is
+     *         appropriate.
+     */
+    public BoundingBoxDrawable buildBoundingBoxDrawable(
+            MultiPointDrawable<?> drawable,
+            MultiPointDrawable<?> associatedDrawable) {
+
+        /*
+         * If the drawable is rotatable and/or scaleable, create a bounding box
+         * drawable out of the manipulatable points.
+         */
+        if (associatedDrawable.isRotatable()
+                || associatedDrawable.isResizable()) {
+
+            /*
+             * Get the corner points of the bounding box.
+             */
+            List<Coordinate> cornerPoints = AdvancedGeometryUtilities
+                    .getBoundingBoxCornerPoints(drawable.getGeometry());
+
+            /*
+             * Because the bounding box has corner points in lat-lon
+             * coordinates, it must be created as a polygon with pseudo-curved
+             * edges in order to ensure that, when projected onto a flat
+             * surface, a curving latitude line (for example) is followed by the
+             * bounding box's horizontal sides if the box is not rotated. This
+             * means inserting a number of extra points between the corner
+             * points, with the number of points between each dependent upon the
+             * distance in lat-lon pseudo-units between those points. Thus,
+             * determine the distances in lat-lons between each pair of adjacent
+             * corner points.
+             */
+            List<Double> distancesBetweenCornerPoints = new ArrayList<>(
+                    cornerPoints.size());
+            double totalDistance = 0.0;
+            for (int j = 0; j < cornerPoints.size(); j++) {
+                double distance = cornerPoints.get(j).distance(
+                        cornerPoints.get((j + 1) % cornerPoints.size()));
+                totalDistance += distance;
+                distancesBetweenCornerPoints.add(distance);
+            }
+
+            /*
+             * Create the bounding box points list; size it to hold enough
+             * points to have one for each half a degree of lat-lon "distance",
+             * plus a repeat of the end point, plus some slop in case the fact
+             * that the distances are floating-point numbers causes one more
+             * point to be added on each side than is expected from looking at
+             * the total. Add the first point twice, once in the beginning and
+             * once at the end, in order to close the geometry.
+             */
+            List<Coordinate> boundingBoxPoints = new ArrayList<>(
+                    (int) ((totalDistance * 2.0) + 0.5) + 5);
+            for (int j = 0; j < cornerPoints.size() + 1; j++) {
+                Coordinate cornerPoint = cornerPoints.get(j
+                        % cornerPoints.size());
+                boundingBoxPoints.add(cornerPoint);
+                if (j < cornerPoints.size()) {
+                    Coordinate nextCornerPoint = cornerPoints.get((j + 1)
+                            % cornerPoints.size());
+                    int numInterimPoints = (int) ((distancesBetweenCornerPoints
+                            .get(j) * 2.0) + 0.5);
+                    if (numInterimPoints < 2) {
+                        numInterimPoints = 2;
+                    }
+                    double xIncrement = (nextCornerPoint.x - cornerPoint.x)
+                            / numInterimPoints;
+                    double yIncrement = (nextCornerPoint.y - cornerPoint.y)
+                            / numInterimPoints;
+                    for (int k = 1; k < numInterimPoints; k++) {
+                        boundingBoxPoints.add(new Coordinate(cornerPoint.x
+                                + (xIncrement * k), cornerPoint.y
+                                + (yIncrement * k)));
+                    }
+                }
+            }
+
+            /*
+             * Create the JTS geometry representing the bounding box.
+             */
+            Geometry boundingBox = AdvancedGeometryUtilities
+                    .getGeometryFactory().createPolygon(
+                            boundingBoxPoints
+                                    .toArray(new Coordinate[boundingBoxPoints
+                                            .size()]));
+
+            /*
+             * Create the drawable to be used as the bounding box.
+             */
+            PolygonDrawableAttributes boundingBoxAttributes = new PolygonDrawableAttributes(
+                    false);
+            boundingBoxAttributes.setLineWidth(2.5f);
+            boundingBoxAttributes.setDashedLineStyle();
+            boundingBoxAttributes.setSizeScale(1);
+            boundingBoxAttributes.setColors(new Color[] { BOUNDING_BOX_COLOR });
+            return new BoundingBoxDrawable(associatedDrawable,
+                    boundingBoxAttributes,
+                    (GeometryWrapper) AdvancedGeometryUtilities
+                            .createGeometryWrapper(boundingBox, 0));
+        }
+        return null;
     }
 
     // Private Methods
@@ -578,6 +702,10 @@ public class DrawableBuilder {
     private AbstractDrawableComponent buildLine(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
             GeometryWrapper geometry, int geometryIndex) {
+
+        /*
+         * Create the path drawable.
+         */
         PathDrawable drawableComponent = null;
         LineDrawableAttributes drawingAttributes = new LineDrawableAttributes();
         this.drawingAttributes = drawingAttributes;
@@ -604,11 +732,18 @@ public class DrawableBuilder {
         drawableComponent = new PathDrawable(spatialEntity.getIdentifier(),
                 drawingAttributes, (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
-        drawableComponent.setEditable((dragCapability == DragCapability.PART)
-                || (dragCapability == DragCapability.ALL));
         drawableComponent.setMovable((dragCapability == DragCapability.WHOLE)
                 || (dragCapability == DragCapability.ALL));
-        return drawableComponent;
+        drawableComponent.setEditable((dragCapability == DragCapability.PART)
+                || (dragCapability == DragCapability.ALL));
+        drawableComponent.setResizable(spatialEntity.isScaleable());
+        drawableComponent.setRotatable(spatialEntity.isRotatable());
+
+        /*
+         * Finish the creation of the line by building a bounding box for it if
+         * necessary as well.
+         */
+        return finishMultiPointShape(drawableComponent);
     }
 
     /**
@@ -628,6 +763,10 @@ public class DrawableBuilder {
     private AbstractDrawableComponent buildPolygon(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
             GeometryWrapper geometry, int geometryIndex) {
+
+        /*
+         * Create the polygon drawable.
+         */
         PathDrawable drawableComponent = null;
         PolygonDrawableAttributes drawingAttributes = new PolygonDrawableAttributes(
                 (spatialEntity.getFillColor().getAlpha() > 0.0));
@@ -656,11 +795,18 @@ public class DrawableBuilder {
         drawableComponent = new PathDrawable(spatialEntity.getIdentifier(),
                 drawingAttributes, (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
-        drawableComponent.setEditable((dragCapability == DragCapability.PART)
-                || (dragCapability == DragCapability.ALL));
         drawableComponent.setMovable((dragCapability == DragCapability.WHOLE)
                 || (dragCapability == DragCapability.ALL));
-        return drawableComponent;
+        drawableComponent.setEditable((dragCapability == DragCapability.PART)
+                || (dragCapability == DragCapability.ALL));
+        drawableComponent.setResizable(spatialEntity.isScaleable());
+        drawableComponent.setRotatable(spatialEntity.isRotatable());
+
+        /*
+         * Finish the creation of the polygon by building a bounding box for it
+         * if necessary as well.
+         */
+        return finishMultiPointShape(drawableComponent);
     }
 
     /**
@@ -680,6 +826,10 @@ public class DrawableBuilder {
     private AbstractDrawableComponent buildEllipse(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity,
             Ellipse geometry, int geometryIndex) {
+
+        /*
+         * Create the ellipse drawable.
+         */
         EllipseDrawable drawableComponent = null;
         PolygonDrawableAttributes drawingAttributes = new PolygonDrawableAttributes(
                 (spatialEntity.getFillColor().getAlpha() > 0.0));
@@ -712,7 +862,43 @@ public class DrawableBuilder {
                 || (dragCapability == DragCapability.ALL));
         drawableComponent.setResizable(spatialEntity.isScaleable());
         drawableComponent.setRotatable(spatialEntity.isRotatable());
-        return drawableComponent;
+
+        /*
+         * Finish the creation of the ellipse by building a bounding box for it
+         * if necessary as well.
+         */
+        return finishMultiPointShape(drawableComponent);
+    }
+
+    /**
+     * Finish building the specified multi-point drawable by putting a bounding
+     * box around it if appropriate.
+     * 
+     * @param drawable
+     *            Drawable to be finished.
+     * @return Completed drawable component; this may be a collection of
+     *         drawables.
+     */
+    private AbstractDrawableComponent finishMultiPointShape(
+            MultiPointDrawable<?> drawable) {
+
+        /*
+         * Create a bounding box drawable, if appropriate to this drawable.
+         */
+        BoundingBoxDrawable boundingComponent = buildBoundingBoxDrawable(
+                drawable, drawable);
+        if (boundingComponent != null) {
+
+            /*
+             * Create a collection drawable to hold the bounded drawable and the
+             * bounding box, and return that.
+             */
+            DECollection collectionComponent = new DECollection();
+            collectionComponent.add(drawable);
+            collectionComponent.add(boundingComponent);
+            return collectionComponent;
+        }
+        return drawable;
     }
 
     /**

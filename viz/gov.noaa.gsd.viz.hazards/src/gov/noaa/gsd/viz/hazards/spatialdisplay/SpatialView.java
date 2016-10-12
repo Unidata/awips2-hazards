@@ -139,6 +139,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           to decouple the presenter and view.
  * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
  * Sep 21, 2016 15934      Chris.Golden      Added support for ellipse drawing.
+ * Sep 29, 2016 15928      Chris.Golden      Added better refreshing to show handlebars
+ *                                           when an edit is completed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -689,12 +691,12 @@ public class SpatialView implements
             /*
              * Since the selected spatial entity identifiers set is an
              * unmodifiable view of what the presenter has, it does not need to
-             * be updated. However, the reactive entities need to be
-             * repopulated, since this invocation indicates that the selected
-             * ones have changed.
+             * be updated. However, the active entities need to be repopulated,
+             * since this invocation indicates that the selected ones have
+             * changed.
              */
             spatialDisplay
-                    .repopulateReactiveSpatialEntityIdentifiers(SpatialEntityType.TOOL);
+                    .repopulateActiveSpatialEntityIdentifiers(SpatialEntityType.TOOL);
         }
 
         @Override
@@ -1155,6 +1157,7 @@ public class SpatialView implements
 
             @Override
             public void run() {
+                spatialDisplay.visualCuesNeedUpdatingAtNextRefresh();
                 spatialDisplay.issueRefresh();
             }
         });
@@ -1213,8 +1216,8 @@ public class SpatialView implements
                             .getActiveEditorAs(AbstractEditor.class);
                     if ((abstractEditor != null)
                             && (perspectiveID.equals("GFE") == false)) {
-                        for (IDisplayPane pane : Arrays.asList(abstractEditor
-                                .getDisplayPanes())) {
+                        for (IDisplayPane pane : abstractEditor
+                                .getDisplayPanes()) {
                             IRenderableDisplay display = pane
                                     .getRenderableDisplay();
                             if (isHullWithinDisplay(hull, display) == false) {

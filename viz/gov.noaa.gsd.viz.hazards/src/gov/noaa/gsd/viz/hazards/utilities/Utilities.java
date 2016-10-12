@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.raytheon.uf.common.colormap.Color;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -27,7 +26,6 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: General utility methods specific to Hazard Services.
@@ -35,23 +33,25 @@ import com.vividsolutions.jts.geom.Coordinate;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            daniel.s.schaffer  Initial induction into repo
- * Aug 01, 2013            bryon.lawrence     Commented out the body of the 
- *                                            getHazardFillColor method until
- *                                            HAZARDS("HazardStyleRules.xml") is
- *                                            added to the StyleType enum in the
- *                                            baseline class StyleManager. Nobody
- *                                            calls this method at the moment. It 
- *                                            will always return white.
- * Aug 09, 2013    1936    Chris.Golden       Added console countdown timers.
- * Nov 04, 2013    2182    daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov 25, 2013    2336    Chris.Golden       Altered to handle new location of
- *                                            utility classes.
- * Nov 29, 2013    2380    Dan Schaffer       More consolidation to {@link HazardConstants}
- * Jan 26, 2015    5952    Dan Schaffer       Fix incorrect hazard area designation.
- * Jun 23, 2016   19537    Chris.Golden       Removed storm-track-specific code.
+ * Date         Ticket#    Engineer        Description
+ * ------------ ---------- --------------- --------------------------
+ * Apr 04, 2013            Dan Schaffer    Initial induction into repo
+ * Aug 01, 2013            bryon.lawrence  Commented out the body of the 
+ *                                         getHazardFillColor method until
+ *                                         HAZARDS("HazardStyleRules.xml") is
+ *                                         added to the StyleType enum in the
+ *                                         baseline class StyleManager. Nobody
+ *                                         calls this method at the moment. It 
+ *                                         will always return white.
+ * Aug 09, 2013    1936    Chris.Golden    Added console countdown timers.
+ * Nov 04, 2013    2182    Dan Schaffer    Started refactoring
+ * Nov 25, 2013    2336    Chris.Golden    Altered to handle new location of
+ *                                         utility classes.
+ * Nov 29, 2013    2380    Dan Schaffer    More consolidation to HazardConstants.
+ * Jan 26, 2015    5952    Dan Schaffer    Fix incorrect hazard area designation.
+ * Jun 23, 2016   19537    Chris.Golden    Removed storm-track-specific code.
+ * Sep 29, 2016   15928    Chris.Golden    Moved geometry manipulation methods
+ *                                         to AdvancedGeometryUtilities.
  * </pre>
  * 
  * @author daniel.s.schaffer
@@ -102,32 +102,6 @@ public class Utilities {
     }
 
     /**
-     * A polygon, must have a point at the end of its list of points that is the
-     * same as its first point.
-     */
-    public static void closeCoordinatesIfNecessary(List<Coordinate> coordinates) {
-        if (coordinates.size() > 0) {
-            Coordinate firstPoint = coordinates.get(0);
-            Coordinate lastPoint = coordinates.get(coordinates.size() - 1);
-            if (!firstPoint.equals(lastPoint)) {
-                Coordinate copy = (Coordinate) firstPoint.clone();
-                coordinates.add(copy);
-            }
-        }
-    }
-
-    public static void removeDuplicateLastPointAsNecessary(
-            List<Coordinate> coordinates) {
-        if (coordinates.size() > 0) {
-            Coordinate firstPoint = coordinates.get(0);
-            Coordinate lastPoint = coordinates.get(coordinates.size() - 1);
-            if (firstPoint.equals(lastPoint)) {
-                coordinates.remove(coordinates.size() - 1);
-            }
-        }
-    }
-
-    /**
      * Builds the JEP include path. This includes the paths to all of the python
      * resources that Hazard Services will need. This removes dependence from
      * the PYTHONPATH environment variable.
@@ -175,8 +149,10 @@ public class Utilities {
      */
     public static Color getContrastingColor(Color color) {
 
-        // Weight the components of the color by perceptive luminance; the human
-        // eye notices green more than the others.
+        /*
+         * Weight the components of the color by perceptive luminance; the human
+         * eye notices green more than the others.
+         */
         float component = (1f - ((RED_LUMINANCE_WEIGHT * color.getRed())
                 + (GREEN_LUMINANCE_WEIGHT * color.getGreen()) + (BLUE_LUMINANCE_WEIGHT * color
                 .getBlue())) < 0.5f ? 0f : 1f);

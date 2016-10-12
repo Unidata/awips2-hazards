@@ -10,7 +10,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorTypes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.DrawableAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.LineDrawableAttributes;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PolygonDrawableAttributes;
@@ -83,12 +83,12 @@ public class DrawingInputHandler extends BaseInputHandler {
 
     @Override
     public void reset() {
-        getSpatialDisplay().setCursor(CursorTypes.DRAW_CURSOR);
+        getSpatialDisplay().setCursor(CursorType.DRAW_CURSOR);
     }
 
     @Override
     public boolean handleMouseEnter(Event event) {
-        getSpatialDisplay().setCursor(CursorTypes.DRAW_CURSOR);
+        getSpatialDisplay().setCursor(CursorType.DRAW_CURSOR);
         return true;
     }
 

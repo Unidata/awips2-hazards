@@ -27,6 +27,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ------------ --------------------------
  * Jul 05, 2016   19537    Chris.Golden Initial creation.
  * Aug 28, 2016   19537    Chris.Golden Removed unneeded methods.
+ * Sep 29, 2016   15928    Chris.Golden Added method to update visual
+ *                                      cues.
  * </pre>
  * 
  * @author Chris.Golden+
@@ -60,6 +62,19 @@ public abstract class BaseInputHandler extends InputAdapter {
      * Subclasses should override this method to reinitialize member data.
      */
     public abstract void reset();
+
+    /**
+     * Update any visual cues related to reactive and/or active drawables if
+     * necessary in response to such drawables having changed in some way. This
+     * implementation does nothing; subclasses should override this method to
+     * update visual cues if necessary.
+     */
+    public void updateVisualCues() {
+
+        /*
+         * The base class does nothing.
+         */
+    }
 
     // Protected Methods
 

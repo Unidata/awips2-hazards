@@ -9,26 +9,28 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.InputHandlerType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.MutableDrawableInfo;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorTypes;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.MovementManipulationPoint;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.RotationManipulationPoint;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ScaleManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.VertexManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 
-import java.awt.Color;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 
-import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.viz.ui.VizWorkbenchManager;
-import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
@@ -64,48 +66,60 @@ import com.vividsolutions.jts.geom.Point;
  *                                      Also added ability to move advanced
  *                                      geometries that are not simply a list
  *                                      of coordinates.
+ * Sep 29, 2016   15928    Chris.Golden Added method to update visual cues.
+ *                                      Changed to use manipulation points in
+ *                                      determining what the drawable being
+ *                                      edited is on a mouse down. Refactored
+ *                                      the ability to move a drawable or a
+ *                                      drawable's vertex into new input
+ *                                      handler subclasses; such attempts are
+ *                                      now delegated to instances of those
+ *                                      classes. Added ability to use other
+ *                                      new input handlers for delegation of
+ *                                      rotating and resizing drawables.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SelectionAndModificationInputHandler extends
-        NonDrawingInputHandler {
-
-    // Private Static Constants
-
-    /**
-     * Colors for the ghost drawable.
-     */
-    Color[] GHOST_COLORS = new Color[] { Color.WHITE, Color.WHITE };
+        ModificationCapableInputHandler<ManipulationPoint> {
 
     // Private Variables
 
     /**
-     * Coordinate of the previous cursor location.
+     * SWT component that acts as the spatial display.
      */
-    private Coordinate previousLocation;
+    private Control spatialDisplayControl;
 
     /**
-     * Ghost drawable.
+     * Last X coordinate in display pixels recorded by the mouse event handling
+     * methods.
      */
-    private AbstractDrawableComponent ghostDrawable;
+    private int lastX;
 
     /**
-     * Last point in lat-lon coordinates used in an ongoing shape move.
+     * Last Y coordinate in display pixels recorded by the mouse event handling
+     * methods.
      */
-    private Coordinate lastMoveLocation;
+    private int lastY;
 
     /**
-     * Index of the line or polygon vertex over which the mouse is hovering; if
-     * <code>-1</code>, it is not over a vertex.
+     * Last point in lat-lon coordinates at which a mouse button was pressed.
      */
-    private int vertexIndexUnderMouse = -1;
+    private Coordinate lastButtonDownLocation;
 
     /**
-     * Flag indicating if a move of a line or polygon vertex is in progress.
+     * Flag indicating whether or not the active drawable, if any, is actually
+     * ready to be edited.
      */
-    private boolean vertexMoving;
+    private boolean active;
+
+    /**
+     * Flag indicating whether or not the drawable currently being edited is
+     * active.
+     */
+    private boolean editingDrawableActive;
 
     /**
      * Flag indicating whether or not to allow panning.
@@ -118,14 +132,14 @@ public class SelectionAndModificationInputHandler extends
     private AbstractDrawableComponent drawableUnderMouseDown;
 
     /**
-     * Multi-selection input handler currently being used as a delegate for this
+     * Specialist input handler currently being used as a delegate for this
      * handler.
      */
-    private MultiSelectionInputHandler multiSelectionInputHandler;
+    private BaseInputHandler specialistInputHandler;
 
     /**
-     * Input handler factory, used to create the multi-selection input handlers
-     * that may be used.
+     * Input handler factory, used to create the specialist input handlers that
+     * may be used.
      */
     private final InputHandlerFactory inputHandlerFactory;
 
@@ -147,9 +161,15 @@ public class SelectionAndModificationInputHandler extends
     @Override
     public void reset() {
         super.reset();
-        multiSelectionInputHandler = null;
-        finalizeMouseHandling();
-        getSpatialDisplay().setCursor(CursorTypes.ARROW_CURSOR);
+        specialistInputHandler = null;
+        getSpatialDisplay().setCursor(CursorType.ARROW_CURSOR);
+    }
+
+    @Override
+    public void updateVisualCues() {
+        if (isMouseOverSpatialDisplay()) {
+            updateMouseCursorAndRecordedVertexIndex(lastX, lastY);
+        }
     }
 
     @Override
@@ -160,8 +180,8 @@ public class SelectionAndModificationInputHandler extends
          * input handler exists, let it handle the event.
          */
         boolean consumed = super.handleKeyUp(key);
-        if (multiSelectionInputHandler != null) {
-            return multiSelectionInputHandler.handleKeyUp(key);
+        if (specialistInputHandler != null) {
+            return specialistInputHandler.handleKeyUp(key);
         }
         return consumed;
     }
@@ -170,13 +190,25 @@ public class SelectionAndModificationInputHandler extends
     public boolean handleMouseEnter(Event event) {
 
         /*
+         * Remember these cursor coordinates in case the last known mouse
+         * position is needed later.
+         */
+        lastX = event.x;
+        lastY = event.y;
+
+        /*
          * Let the superclass do what it needs to do, and then if a delegate
          * input handler exists, let it handle the event. Otherwise, treat this
-         * as a mouse move.
+         * as a mouse move. Also determine the spatial display control, so that
+         * when a check must be done to determine whether the cursor is over the
+         * display in the future, it will be possible to do this. (The latter is
+         * needed because overriding handleMouseExit() does nothing, as it is
+         * never called when the mouse exits the spatial display.)
          */
         super.handleMouseEnter(event);
-        if (multiSelectionInputHandler != null) {
-            return multiSelectionInputHandler.handleMouseEnter(event);
+        spatialDisplayControl = Display.getCurrent().getCursorControl();
+        if (specialistInputHandler != null) {
+            return specialistInputHandler.handleMouseEnter(event);
         }
         return handleMouseMove(event.x, event.y);
     }
@@ -185,10 +217,18 @@ public class SelectionAndModificationInputHandler extends
     public boolean handleMouseDown(int x, int y, int button) {
 
         /*
+         * Remember these cursor coordinates in case the last known mouse
+         * position is needed later.
+         */
+        lastX = x;
+        lastY = y;
+
+        /*
          * If a delegate input handler exists, let it handle the event.
          */
-        if (multiSelectionInputHandler != null) {
-            return multiSelectionInputHandler.handleMouseDown(x, y, button);
+        if ((specialistInputHandler != null)
+                && specialistInputHandler.handleMouseDown(x, y, button)) {
+            return true;
         }
 
         /*
@@ -201,70 +241,96 @@ public class SelectionAndModificationInputHandler extends
             if (location != null) {
 
                 /*
-                 * Retrieve a list of drawables which contain this mouse click
-                 * point, with the first drawable in the list being topmost.
+                 * Determine whether there is a drawable to be the one being
+                 * edited or not. If there is one with a manipulation point
+                 * under the mouse cursor, use it. Otherwise, look for one.
                  */
                 AbstractDrawableComponent drawable = null;
-                List<AbstractDrawableComponent> containingDrawables = getSpatialDisplay()
-                        .getContainingDrawables(location, x, y);
+                ManipulationPoint manipulationPoint = getManipulationPointUnderMouse();
+                if (manipulationPoint != null) {
+                    editingDrawableActive = true;
+                    drawable = manipulationPoint.getDrawable();
+                } else {
 
-                /*
-                 * Get the reactive drawable identifiers.
-                 */
-                Set<IEntityIdentifier> reactiveIdentifiers = getReactiveDrawableIdentifiers();
+                    /*
+                     * Retrieve a list of drawables which contain this mouse
+                     * click point, with the first drawable in the list being
+                     * topmost.
+                     */
+                    List<AbstractDrawableComponent> containingDrawables = getSpatialDisplay()
+                            .getContainingDrawables(location, x, y);
 
-                /*
-                 * If there is at least one containing drawable, make sure that
-                 * the topmost drawable is equal to one of the reactive ones. If
-                 * there are symbols (including points), give them precedence.
-                 */
-                for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                    IEntityIdentifier identifier = ((IDrawable<?>) containingDrawable)
-                            .getIdentifier();
-                    if (((drawable == null) || (containingDrawable instanceof SymbolDrawable))
-                            && reactiveIdentifiers.contains(identifier)
-                            && (getSpatialDisplay().isDrawableEditable(
-                                    containingDrawable) || getSpatialDisplay()
-                                    .isDrawableMovable(containingDrawable))) {
-                        drawable = containingDrawable;
-                        if (containingDrawable instanceof SymbolDrawable) {
+                    /*
+                     * Get the active and reactive drawable identifiers.
+                     */
+                    Set<IEntityIdentifier> activeIdentifiers = getSpatialDisplay()
+                            .getActiveSpatialEntityIdentifiers();
+                    Set<IEntityIdentifier> reactiveIdentifiers = getReactiveDrawableIdentifiers();
+
+                    /*
+                     * Iterate through the containing drawables up to two times,
+                     * the first attempting to find one that is active, the
+                     * second (if none is found the first time through)
+                     * attempting to find one that is reactive. If there are
+                     * symbols (including points), give them precedence.
+                     */
+                    editingDrawableActive = false;
+                    for (Set<IEntityIdentifier> allowableIdentifiers = activeIdentifiers; allowableIdentifiers != null; allowableIdentifiers = (allowableIdentifiers == activeIdentifiers ? reactiveIdentifiers
+                            : null)) {
+                        for (AbstractDrawableComponent containingDrawable : containingDrawables) {
+                            IEntityIdentifier identifier = ((IDrawable<?>) containingDrawable)
+                                    .getIdentifier();
+                            if (((drawable == null) || (containingDrawable instanceof SymbolDrawable))
+                                    && allowableIdentifiers
+                                            .contains(identifier)
+                                    && getSpatialDisplay()
+                                            .isDrawableModifiable(
+                                                    containingDrawable)) {
+                                drawable = containingDrawable;
+                                editingDrawableActive = (allowableIdentifiers == activeIdentifiers);
+                                if (containingDrawable instanceof SymbolDrawable) {
+                                    break;
+                                }
+                            }
+                        }
+                        if (drawable != null) {
                             break;
                         }
                     }
-                }
 
-                /*
-                 * If none of the reactive drawables were found to have been
-                 * clicked, then just pick the topmost drawable containing the
-                 * click. Also choose the topmost one that is uneditable and
-                 * unmovable, in case it needs to be selected during mouse-up
-                 * later.
-                 * 
-                 * TODO: May need a better way of determining which containing
-                 * drawable of multiple drawables to choose as the selected?
-                 */
-                if (drawable == null) {
-                    for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                        if (getSpatialDisplay().isDrawableEditable(
-                                containingDrawable)
-                                || getSpatialDisplay().isDrawableMovable(
-                                        containingDrawable)) {
-                            drawable = containingDrawable;
-                            break;
-                        } else if (drawableUnderMouseDown == null) {
-                            drawableUnderMouseDown = containingDrawable;
+                    /*
+                     * If none of the active or reactive drawables were found to
+                     * have been clicked, then just pick the topmost drawable
+                     * containing the click. Also choose the topmost one that is
+                     * uneditable and unmovable, in case it needs to be selected
+                     * during mouse-up later.
+                     * 
+                     * TODO: May need a better way of determining which
+                     * containing drawable of multiple drawables to choose as
+                     * the selected?
+                     */
+                    if (drawable == null) {
+                        for (AbstractDrawableComponent containingDrawable : containingDrawables) {
+                            if (getSpatialDisplay().isDrawableModifiable(
+                                    containingDrawable)) {
+                                drawable = containingDrawable;
+                                break;
+                            } else if (drawableUnderMouseDown == null) {
+                                drawableUnderMouseDown = containingDrawable;
+                            }
                         }
                     }
-                }
 
-                /*
-                 * If something was found to be editable, but nothing was set
-                 * for the drawable under the mouse down, set the latter to the
-                 * former. This way, if nothing occurs except for a mouse up, an
-                 * unselected drawable may be selected by the click.
-                 */
-                if (drawableUnderMouseDown == null) {
-                    drawableUnderMouseDown = drawable;
+                    /*
+                     * If something was found to be editable, but nothing was
+                     * set for the drawable under the mouse down, set the latter
+                     * to the former. This way, if nothing occurs except for a
+                     * mouse up, an unselected drawable may be selected by the
+                     * click.
+                     */
+                    if (drawableUnderMouseDown == null) {
+                        drawableUnderMouseDown = drawable;
+                    }
                 }
 
                 /*
@@ -281,7 +347,7 @@ public class SelectionAndModificationInputHandler extends
                  * This may end up being a shape move; in case it is, remember
                  * the starting position.
                  */
-                lastMoveLocation = new Coordinate(location);
+                lastButtonDownLocation = new Coordinate(location);
             }
         } else if (button == 2) {
             allowPanning = true;
@@ -294,10 +360,18 @@ public class SelectionAndModificationInputHandler extends
     public boolean handleMouseMove(int x, int y) {
 
         /*
+         * Remember these cursor coordinates in case the last known mouse
+         * position is needed later.
+         */
+        lastX = x;
+        lastY = y;
+
+        /*
          * If a delegate input handler exists, let it handle the event.
          */
-        if (multiSelectionInputHandler != null) {
-            return multiSelectionInputHandler.handleMouseMove(x, y);
+        if ((specialistInputHandler != null)
+                && specialistInputHandler.handleMouseMove(x, y)) {
+            return true;
         }
 
         /*
@@ -309,6 +383,7 @@ public class SelectionAndModificationInputHandler extends
          * Update the mouse cursor and recorded vertex index, if any.
          */
         updateMouseCursorAndRecordedVertexIndex(x, y);
+        getSpatialDisplay().issueRefresh();
 
         return false;
     }
@@ -317,32 +392,26 @@ public class SelectionAndModificationInputHandler extends
     public boolean handleMouseDownMove(int x, int y, int button) {
 
         /*
+         * Remember these cursor coordinates in case the last known mouse
+         * position is needed later.
+         */
+        lastX = x;
+        lastY = y;
+
+        /*
          * If a delegate input handler exists, let it handle the event.
          */
-        if (multiSelectionInputHandler != null) {
-            return multiSelectionInputHandler.handleMouseDownMove(x, y, button);
+        if ((specialistInputHandler != null)
+                && specialistInputHandler.handleMouseDownMove(x, y, button)) {
+            return true;
         }
 
         /*
-         * Retrieve a list of drawables which contain the mouse cursor's
-         * location, if any.
+         * Get the cursor location in lat-lon coordinates.
          */
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-        Coordinate location = editor.translateClick(x, y);
-
-        /*
-         * Check for a null coordinate. If it is null use the previous
-         * coordinate. If not save it off as the previous.
-         */
+        Coordinate location = getLocationFromPixels(x, y);
         if (location == null) {
-            if (previousLocation != null) {
-                location = previousLocation;
-            } else {
-                return false;
-            }
-        } else {
-            previousLocation = location;
+            return false;
         }
 
         /*
@@ -352,12 +421,68 @@ public class SelectionAndModificationInputHandler extends
         drawableUnderMouseDown = null;
 
         /*
-         * If the left button is down and a single vertex is being hovered over,
-         * attempt to move it.
+         * If the left button is down and a manipulation point is under the
+         * mouse cursor, get the appropriate input handler to start modifying
+         * the drawable in the manner appropriate given the manipulation point.
          */
-        if ((button == 1) && (vertexIndexUnderMouse != -1)) {
-            handleVertexMove(location);
-            return true;
+        if ((button == 1) && active) {
+            AbstractDrawableComponent drawableBeingEdited = getSpatialDisplay()
+                    .getDrawableBeingEdited();
+            if (getManipulationPointUnderMouse() instanceof VertexManipulationPoint) {
+                VertexMoveInputHandler handler = inputHandlerFactory
+                        .getNonDrawingInputHandler(InputHandlerType.VERTEX_MOVE);
+                handler.initialize(
+                        drawableBeingEdited,
+                        (VertexManipulationPoint) getManipulationPointUnderMouse(),
+                        location);
+                specialistInputHandler = handler;
+                return true;
+            } else if (getManipulationPointUnderMouse() instanceof RotationManipulationPoint) {
+
+                /*
+                 * Create a new rotation manipulation point that is the same as
+                 * the one triggering this rotation, but with its location being
+                 * the last place the mouse button was pressed, as this will
+                 * make any movement of the cursor be relative to where it was
+                 * pressed, not the center of the original manipulation point
+                 * (which may be different by a few pixels, making relative
+                 * cursor movement calculations get thrown off).
+                 */
+                RotationManipulationPoint originalManipulationPoint = (RotationManipulationPoint) getManipulationPointUnderMouse();
+                RotationManipulationPoint manipulationPoint = new RotationManipulationPoint(
+                        originalManipulationPoint.getDrawable(),
+                        lastButtonDownLocation,
+                        originalManipulationPoint.getCenter());
+                RotateInputHandler handler = inputHandlerFactory
+                        .getNonDrawingInputHandler(InputHandlerType.ROTATE);
+                handler.initialize(drawableBeingEdited, manipulationPoint,
+                        location);
+                specialistInputHandler = handler;
+                return true;
+            } else if (getManipulationPointUnderMouse() instanceof ScaleManipulationPoint) {
+
+                /*
+                 * Create a new scale manipulation point that is the same as the
+                 * one triggering this resizing, but with its location being the
+                 * last place the mouse button was pressed, as this will make
+                 * any movement of the cursor be relative to where it was
+                 * pressed, not the center of the original manipulation point
+                 * (which may be different by a few pixels, making relative
+                 * cursor movement calculations get thrown off).
+                 */
+                ScaleManipulationPoint originalManipulationPoint = (ScaleManipulationPoint) getManipulationPointUnderMouse();
+                ScaleManipulationPoint manipulationPoint = new ScaleManipulationPoint(
+                        originalManipulationPoint.getDrawable(),
+                        lastButtonDownLocation,
+                        originalManipulationPoint.getCenter(),
+                        originalManipulationPoint.getDirection());
+                ResizeInputHandler handler = inputHandlerFactory
+                        .getNonDrawingInputHandler(InputHandlerType.RESIZE);
+                handler.initialize(drawableBeingEdited, manipulationPoint,
+                        location);
+                specialistInputHandler = handler;
+                return true;
+            }
         }
 
         /*
@@ -366,30 +491,27 @@ public class SelectionAndModificationInputHandler extends
          * the corresponding modifier keys is down.
          */
         if (isShiftDown() || isControlDown()) {
-            multiSelectionInputHandler = (MultiSelectionInputHandler) inputHandlerFactory
+            specialistInputHandler = inputHandlerFactory
                     .getNonDrawingInputHandler(isShiftDown() ? InputHandlerType.RECTANGLE_MULTI_SELECTION
                             : InputHandlerType.FREEHAND_MULTI_SELECTION);
-            multiSelectionInputHandler.reset();
             return true;
         }
 
         /*
-         * If the drawable being edited is not reactive, allow panning.
+         * If the drawable being edited is not active, allow panning.
          */
         AbstractDrawableComponent editedDrawable = getSpatialDisplay()
                 .getDrawableBeingEdited();
-        if ((editedDrawable != null)
-                && (getSpatialDisplay().getReactiveDrawables().contains(
-                        editedDrawable) == false)) {
+        if ((editedDrawable != null) && (editingDrawableActive == false)) {
             allowPanning = true;
         }
 
         /*
-         * If no panning is allowed, attempt to move the entire shape if there
+         * If no panning is allowed, begin the move of the entire shape if there
          * is one to move.
          */
-        if (allowPanning == false) {
-            handleShapeMove(location);
+        if ((allowPanning == false) && active) {
+            beginShapeMove(location);
             return true;
         } else {
             return false;
@@ -400,38 +522,37 @@ public class SelectionAndModificationInputHandler extends
     public boolean handleMouseUp(final int x, final int y, int button) {
 
         /*
+         * Remember these cursor coordinates in case the last known mouse
+         * position is needed later.
+         */
+        lastX = x;
+        lastY = y;
+
+        /*
          * If a delegate input handler exists, let it handle the event.
          */
-        if (multiSelectionInputHandler != null) {
-            return multiSelectionInputHandler.handleMouseUp(x, y, button);
+        if ((specialistInputHandler != null)
+                && specialistInputHandler.handleMouseUp(x, y, button)) {
+            return true;
         }
 
         /*
          * If the right button, tell the spatial presenter that a location was
-         * selected; if the middle button, add or delete a vertex if the
-         * something was being edited; otherwise, if a vertex was moving, finish
-         * the move; otherwise, if a whole drawable was being moved, finish the
-         * move; otherwise, if an unselected drawable is under the mouse and the
-         * mouse did not move, select that drawable).
+         * selected; if the middle button, add or delete a vertex if something
+         * was being edited; otherwise, otherwise, if an unselected drawable is
+         * under the mouse and the mouse did not move, select that drawable.
          */
         boolean result = true;
-        boolean updateMouseCursor = true;
         if (button == 3) {
             Coordinate location = translatePixelToWorld(x, y);
             getSpatialDisplay().handleUserSelectionOfLocation(location);
-            updateMouseCursor = false;
         } else if (button == 2) {
             handleVertexAdditionOrDeletion(x, y);
-        } else if (vertexMoving) {
-            handleFinishVertexMove();
-        } else if (ghostDrawable != null) {
-            handleFinishShapeMove();
         } else if (drawableUnderMouseDown != null) {
             boolean multipleSelection = (isShiftDown() || isControlDown());
             getSpatialDisplay().handleUserSingleDrawableSelection(
                     drawableUnderMouseDown, multipleSelection);
         } else {
-            updateMouseCursor = false;
             result = false;
         }
 
@@ -439,27 +560,21 @@ public class SelectionAndModificationInputHandler extends
          * Finish up the handling of this sequence of mouse events.
          */
         finalizeMouseHandling();
-
-        /*
-         * If the mouse cursor should be updated, schedule this for later, once
-         * the drawables have been updated.
-         * 
-         * TODO: This doesn't really work. Instead, the update needs to happen
-         * in response to new drawables. Should it be handled within the spatial
-         * display?
-         */
-        if (updateMouseCursor) {
-            VizApp.runAsync(new Runnable() {
-                @Override
-                public void run() {
-                    updateMouseCursorAndRecordedVertexIndex(x, y);
-                }
-            });
-        }
         return result;
     }
 
     // Private Methods
+
+    /**
+     * Determine whether or not the mouse is currently over the spatial display.
+     * 
+     * @return <code>true</code> if the mouse is over the spatial display,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isMouseOverSpatialDisplay() {
+        return (spatialDisplayControl == Display.getCurrent()
+                .getCursorControl());
+    }
 
     /**
      * Update the mouse cursor and the recorded vertex index as appropriate
@@ -476,42 +591,57 @@ public class SelectionAndModificationInputHandler extends
          * Get the information about any mutable (editable or movable) drawable
          * under the current mouse location.
          */
-        vertexIndexUnderMouse = -1;
+        active = false;
+        clearManipulationPointUnderMouse();
         MutableDrawableInfo mutableDrawableInfo = getSpatialDisplay()
-                .getMutableDrawableInfoUnderPoint(x, y);
+                .getMutableDrawableInfoUnderPoint(x, y, false);
 
         /*
-         * If there is no mutable drawable here, remove any hover drawable, and
-         * set the cursor to be standard. Otherwise, if the drawable is
-         * editable, use it for the hover drawable, and set the cursor according
-         * to whether the mouse is over a vertex, not over a vertex but near the
-         * edge of the drawable, or far from the edge. Also record the vertex if
-         * one is under the mouse. Finally, if there is a movable but uneditable
+         * If there is no mutable drawable here, remove any highlit drawable,
+         * and set the cursor to be standard. Otherwise, make the drawable
+         * highlit, and if the drawable is editable, use its vertices for the
+         * handle bars. Also if editable, set the cursor according to whether
+         * the mouse is over a vertex, not over a vertex but near the edge of
+         * the drawable, or far from the edge. Also record the vertex if one is
+         * under the mouse. Finally, if there is a movable but uneditable
          * drawable under the mouse, set the cursor to indicate this and remove
-         * any hover drawable.
+         * any handle bars.
          */
         if (mutableDrawableInfo.getDrawable() == null) {
-            getSpatialDisplay().setHoverDrawable(null);
-            getSpatialDisplay().setCursor(CursorTypes.ARROW_CURSOR);
+            getSpatialDisplay().clearHighlitDrawable();
+            getSpatialDisplay().setHandlebarPoints(null);
+            getSpatialDisplay().setCursor(CursorType.ARROW_CURSOR);
         } else {
-            if (getSpatialDisplay().isDrawableEditable(
-                    mutableDrawableInfo.getDrawable())) {
-                getSpatialDisplay().setHoverDrawable(
-                        mutableDrawableInfo.getDrawable());
-                if (mutableDrawableInfo.getVertexIndex() == -1) {
+            active = mutableDrawableInfo.isActive();
+            AbstractDrawableComponent drawable = mutableDrawableInfo
+                    .getDrawable();
+            getSpatialDisplay().setHighlitDrawable(drawable, active);
+            List<ManipulationPoint> manipulationPoints = ((IDrawable<?>) drawable)
+                    .getManipulationPoints();
+            if (manipulationPoints.isEmpty() == false) {
+                getSpatialDisplay().setHandlebarPoints(
+                        active ? ((IDrawable<?>) drawable)
+                                .getManipulationPoints() : null);
+                if (active
+                        && (mutableDrawableInfo.getManipulationPoint() == null)) {
                     getSpatialDisplay()
                             .setCursor(
-                                    mutableDrawableInfo.isCloseToEdge() ? CursorTypes.DRAW_CURSOR
-                                            : CursorTypes.MOVE_SHAPE_CURSOR);
+                                    mutableDrawableInfo.getEdgeIndex() > -1 ? CursorType.DRAW_CURSOR
+                                            : CursorType.MOVE_SHAPE_CURSOR);
                 } else {
-                    getSpatialDisplay().setCursor(
-                            CursorTypes.MOVE_VERTEX_CURSOR);
-                    vertexIndexUnderMouse = mutableDrawableInfo
-                            .getVertexIndex();
+                    setManipulationPointUnderMouse(mutableDrawableInfo
+                            .getManipulationPoint());
+                    if (active) {
+                        getSpatialDisplay().setCursor(
+                                mutableDrawableInfo.getManipulationPoint()
+                                        .getCursor());
+                    }
                 }
             } else {
-                getSpatialDisplay().setHoverDrawable(null);
-                getSpatialDisplay().setCursor(CursorTypes.MOVE_SHAPE_CURSOR);
+                getSpatialDisplay().setHandlebarPoints(null);
+                if (active) {
+                    getSpatialDisplay().setCursor(CursorType.MOVE_SHAPE_CURSOR);
+                }
             }
         }
     }
@@ -536,12 +666,12 @@ public class SelectionAndModificationInputHandler extends
     }
 
     /**
-     * Handle the possible movenent of a shape.
+     * Begin the possible movement of the edited drawable.
      * 
      * @param location
      *            New location in world coordinates.
      */
-    private void handleShapeMove(Coordinate location) {
+    private void beginShapeMove(Coordinate location) {
         AbstractDrawableComponent editedDrawable = getSpatialDisplay()
                 .getDrawableBeingEdited();
         if (editedDrawable != null) {
@@ -552,7 +682,7 @@ public class SelectionAndModificationInputHandler extends
                  * drag point is close enough to the edited drawable, and if so,
                  * begin the drag.
                  */
-                if (ghostDrawable == null) {
+                if (getGhostDrawable() == null) {
                     GeometryFactory geometryFactory = new GeometryFactory();
                     Point clickPoint = geometryFactory.createPoint(location);
 
@@ -590,158 +720,19 @@ public class SelectionAndModificationInputHandler extends
                     }
 
                     /*
-                     * If the distance is small enough, set the selected point
-                     * and copy the edited drawable to be the ghost.
+                     * If the distance is small enough, let the movement
+                     * specialist input handler do the work.
                      */
                     if (distance < SpatialDisplay.SLOP_DISTANCE_PIXELS) {
-                        createGhostDrawable(getSpatialDisplay()
-                                .getDrawableBeingEdited());
+                        MoveInputHandler handler = inputHandlerFactory
+                                .getNonDrawingInputHandler(InputHandlerType.MOVE);
+                        handler.initialize(editedDrawable,
+                                new MovementManipulationPoint(editedDrawable,
+                                        lastButtonDownLocation), location);
+                        specialistInputHandler = handler;
                     }
                 }
-
-                /*
-                 * Get the new position of the ghost drawable.
-                 */
-                if (ghostDrawable != null) {
-
-                    /*
-                     * Get the offset between the last position during the move
-                     * of the click point and the current one. Also remember the
-                     * current position for next time.
-                     */
-                    double deltaX = location.x - lastMoveLocation.x;
-                    double deltaY = location.y - lastMoveLocation.y;
-                    lastMoveLocation.x = location.x;
-                    lastMoveLocation.y = location.y;
-
-                    /*
-                     * Offset the ghost drawable.
-                     */
-                    ((IDrawable<?>) ghostDrawable).offsetBy(deltaX, deltaY);
-
-                    /*
-                     * Set the ghost and hover drawables to be the same.
-                     */
-                    getSpatialDisplay().setGhostOfDrawableBeingEdited(
-                            ghostDrawable);
-                    getSpatialDisplay().setHoverDrawable(ghostDrawable);
-                    getSpatialDisplay().issueRefresh();
-                }
             }
-        }
-    }
-
-    /**
-     * Handle the possible movement of a vertex.
-     * 
-     * @param location
-     *            New location in world coordinates.
-     */
-    private void handleVertexMove(Coordinate location) {
-        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
-                .getDrawableBeingEdited();
-        if ((editedDrawable != null)
-                && ((IDrawable<?>) editedDrawable).isEditable()) {
-
-            /*
-             * If this is the beginning of the vertex move, make a note of it,
-             * and copy the drawable being edited to be used as a ghost. The
-             * ghost is the one that will actually be changed.
-             */
-            if (ghostDrawable == null) {
-                vertexMoving = true;
-                createGhostDrawable(editedDrawable);
-            }
-
-            /*
-             * Replace the previous coordinate with the new one. If this is a
-             * polygon, the last point must be the same as the first, so ensure
-             * that this is the case if the first point is the one being moved.
-             * (The last point is never the one being moved for polygons.)
-             */
-            List<Coordinate> points = ghostDrawable.getPoints();
-            points.set(vertexIndexUnderMouse, location);
-            if (getSpatialDisplay().isPolygon(ghostDrawable)
-                    && (vertexIndexUnderMouse == 0)) {
-                points.set(points.size() - 1, location);
-            }
-
-            /*
-             * Update the ghost drawable and the handlbar points.
-             */
-            getSpatialDisplay().setGhostOfDrawableBeingEdited(ghostDrawable);
-            getSpatialDisplay().useAsHandlebarPoints(points);
-            getSpatialDisplay().issueRefresh();
-        }
-    }
-
-    /**
-     * Handle the completion of the movement of the shape being edited.
-     */
-    private void handleFinishShapeMove() {
-
-        /*
-         * Get the drawable being edited.
-         */
-        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
-                .getDrawableBeingEdited();
-        if (editedDrawable == null) {
-            return;
-        }
-        IDrawable<?> originalShape = (IDrawable<?>) editedDrawable;
-
-        /*
-         * Create the new geometry for the drawable.
-         */
-        IAdvancedGeometry modifiedGeometry = getSpatialDisplay()
-                .buildModifiedGeometry(originalShape,
-                        ((IDrawable<?>) ghostDrawable).getGeometry());
-
-        /*
-         * Notify the spatial display of the change, reset the hover and editing
-         * drawables, and refresh the display.
-         */
-        getSpatialDisplay().handleUserModificationOfDrawable(editedDrawable,
-                modifiedGeometry);
-        getSpatialDisplay().setHoverDrawable(null);
-        getSpatialDisplay().issueRefresh();
-    }
-
-    /**
-     * Handle the completion of the movement of the vertex over which the mouse
-     * is hovering within the shape being edited.
-     */
-    private void handleFinishVertexMove() {
-
-        /*
-         * Reset the flag indicating vertex movement is occurring.
-         */
-        vertexMoving = false;
-
-        /*
-         * If there is an drawable being edited, complete the edit.
-         */
-        AbstractDrawableComponent editedDrawable = getSpatialDisplay()
-                .getDrawableBeingEdited();
-        if (ghostDrawable != null) {
-            IDrawable<?> entityShape = (IDrawable<?>) editedDrawable;
-            IAdvancedGeometry modifiedGeometry = getSpatialDisplay()
-                    .buildModifiedGeometry(entityShape,
-                            ghostDrawable.getPoints());
-            getSpatialDisplay().setHoverDrawable(null);
-
-            /*
-             * If the newly moved vertex results in a valid geometry, use the
-             * latter as a modified geometry for the spatial entity; otherwise,
-             * simply refresh the display.
-             */
-            if (getSpatialDisplay().checkGeometryValidity(modifiedGeometry)) {
-                getSpatialDisplay().handleUserModificationOfDrawable(
-                        editedDrawable, modifiedGeometry);
-            } else {
-                getSpatialDisplay().issueRefresh();
-            }
-            ghostDrawable = null;
         }
     }
 
@@ -755,40 +746,25 @@ public class SelectionAndModificationInputHandler extends
      *            Pixel Y coordinate.
      */
     private void handleVertexAdditionOrDeletion(int x, int y) {
-        if (vertexIndexUnderMouse != -1) {
-            getSpatialDisplay().deleteVertex(x, y);
-            vertexIndexUnderMouse = -1;
-        } else {
-            vertexIndexUnderMouse = getSpatialDisplay().addVertex(x, y);
+        if (active == false) {
+            return;
         }
-    }
-
-    /**
-     * Create a ghost drawable of the specified drawable.
-     * 
-     * @param drawableBeingEdited
-     *            Drawable that is being edited which needs a ghost.
-     */
-    private void createGhostDrawable(
-            AbstractDrawableComponent drawableBeingEdited) {
-        ghostDrawable = ((IDrawable<?>) drawableBeingEdited).copyOf();
-        ghostDrawable.setColors(GHOST_COLORS);
+        if (getManipulationPointUnderMouse() instanceof VertexManipulationPoint) {
+            getSpatialDisplay().deleteVertex(x, y);
+            clearManipulationPointUnderMouse();
+        } else {
+            setManipulationPointUnderMouse(getSpatialDisplay().addVertex(x, y));
+        }
     }
 
     /**
      * Finish up whatever selection or modification operation is in process.
      */
-    private void finalizeMouseHandling() {
-        getSpatialDisplay().setGhostOfDrawableBeingEdited(null);
-
-        getSpatialDisplay().setDrawableBeingEdited(null);
-        ghostDrawable = null;
-
+    @Override
+    protected void finalizeMouseHandling() {
         drawableUnderMouseDown = null;
-        vertexMoving = false;
         allowPanning = false;
-        vertexIndexUnderMouse = -1;
-
-        getSpatialDisplay().issueRefresh();
+        active = false;
+        super.finalizeMouseHandling();
     }
 }

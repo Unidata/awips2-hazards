@@ -9,9 +9,15 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 /**
@@ -23,6 +29,7 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  * Date         Ticket#    Engineer      Description
  * ------------ ---------- ------------- --------------------------
  * Sep 21, 2016   15934    Chris.Golden  Initial creation.
+ * Sep 29, 2016   15928    Chris.Golden  Added use of manipulation points.
  * </pre>
  * 
  * @author Chris.Golden
@@ -65,7 +72,7 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
      */
     protected PathDrawable(PathDrawable other) {
         super(other);
-        this.editable = other.editable;
+        setEditable(other.editable);
     }
 
     // Public Methods
@@ -78,28 +85,7 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
     @Override
     public void setEditable(boolean editable) {
         this.editable = editable;
-    }
-
-    @Override
-    public boolean isResizable() {
-        return false;
-    }
-
-    @Override
-    public void setResizable(boolean resizable) {
-        throw new UnsupportedOperationException(
-                "paths/polygons cannot be resizable");
-    }
-
-    @Override
-    public boolean isRotatable() {
-        return false;
-    }
-
-    @Override
-    public void setRotatable(boolean rotatable) {
-        throw new UnsupportedOperationException(
-                "paths/polygons cannot be resizable");
+        updateManipulationPoints();
     }
 
     @SuppressWarnings("unchecked")
@@ -120,5 +106,69 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
                 .translationInstance(x, y).transform(
                         getGeometry().getGeometry()), getGeometry()
                 .getRotation()));
+    }
+
+    // Protected Methods
+
+    @Override
+    protected List<ManipulationPoint> getUpdatedManipulationPoints() {
+
+        /*
+         * Get the vertices to be made into vertex-movement manipulation points
+         * if the path or polygon is editable. If it is a polygon and has holes
+         * in it, get each interior ring's coordinate array and add it to the
+         * list of arrays.
+         */
+        List<Coordinate[]> coordinates = null;
+        int numCoordinates = 0;
+        if (isEditable()) {
+            coordinates = AdvancedGeometryUtilities
+                    .getCoordinates(getGeometry().getGeometry());
+            for (Coordinate[] ringCoordinates : coordinates) {
+                numCoordinates += ringCoordinates.length;
+            }
+        } else {
+            coordinates = Collections.emptyList();
+        }
+
+        /*
+         * Get the manipulation points needed for resizing or rotating, if any.
+         */
+        List<ManipulationPoint> rotationAndResizingPoints = (Utilities
+                .getBoundingBoxManipulationPoints(this));
+
+        /*
+         * Create the list of manipulation points, sized to hold any editable
+         * vertices and any rotation or resizing points.
+         */
+        List<ManipulationPoint> manipulationPoints = new ArrayList<>(
+                numCoordinates + rotationAndResizingPoints.size());
+
+        /*
+         * Add any rotation and resizing points.
+         */
+        manipulationPoints.addAll(rotationAndResizingPoints);
+
+        /*
+         * Add the vertex-movement points, if any, the outer shell's points
+         * first, then any hole's points. For each ring of points, skip the last
+         * one if it is the same as the first one.
+         */
+        for (int j = 0; j < coordinates.size(); j++) {
+            Coordinate[] ringCoordinates = coordinates.get(j);
+            Coordinate firstCoordinate = null;
+            for (int k = 0; k < ringCoordinates.length; k++) {
+                Coordinate coordinate = ringCoordinates[k];
+                if (firstCoordinate == null) {
+                    firstCoordinate = coordinate;
+                } else if (firstCoordinate.equals(coordinate)) {
+                    continue;
+                }
+                manipulationPoints.add(new VertexManipulationPoint(this,
+                        coordinate, j, k));
+            }
+        }
+
+        return manipulationPoints;
     }
 }

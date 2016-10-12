@@ -76,6 +76,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  *                                      geometries are being used (since it was
  *                                      the JTS geometries' presence that had
  *                                      necessitated their inclusion previously).
+ * Sep 27, 2016   15928    Chris.Golden Changed the building of spatial entities
+ *                                      to only mark them as rotatable and/or
+ *                                      scaleable when the visual feature is
+ *                                      selected.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1203,7 +1207,8 @@ public class VisualFeature implements Serializable {
                 getInteger(getTextSize(time), hazardTextSize),
                 getColor(getTextColor(time), hazardColor),
                 getDragCapability(time), isMultiGeometryPointsDraggable(time),
-                isRotatable(time), isScaleable(time), isTopmost(time));
+                (isRotatable(time) && selected),
+                (isScaleable(time) && selected), isTopmost(time));
     }
 
     /**

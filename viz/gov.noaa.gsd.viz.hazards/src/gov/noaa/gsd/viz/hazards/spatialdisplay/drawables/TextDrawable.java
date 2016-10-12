@@ -13,6 +13,8 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 import java.awt.Color;
+import java.util.Collections;
+import java.util.List;
 
 import com.google.common.base.Joiner;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -48,6 +50,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             rotatable flags. Also added methods
  *                                             to allow copying and translation
  *                                             (offsetting by deltas).
+ * Sep 29, 2016 15928      Chris.Golden        Added offsetBy() method and use of
+ *                                             manipulation points.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -257,9 +261,19 @@ public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
     }
 
     @Override
+    public <D extends IDrawable<?>> D highlitCopyOf(boolean active) {
+        return copyOf();
+    }
+
+    @Override
     public void offsetBy(double x, double y) {
         this.baseLocation.x += x;
         this.baseLocation.y += y;
         setLocation(textPositioner.getLabelPosition(baseLocation));
+    }
+
+    @Override
+    public List<ManipulationPoint> getManipulationPoints() {
+        return Collections.emptyList();
     }
 }

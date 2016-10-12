@@ -39,6 +39,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Jul 25, 2016   19537    Chris.Golden   Renamed and completely revamped to work with
  *                                        new mouse handlers.
  * Sep 21, 2016   15934    Chris.Golden   Changed to support ellipse drawing.
+ * Sep 29, 2016   15928    Chris.Golden   Added ability to create new input handler
+ *                                        types, and a cast of the resulting handlers
+ *                                        to arbitrary subtypes.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -135,7 +138,8 @@ public class InputHandlerFactory {
      *            Type of input handler being requested.
      * @return Input handler.
      */
-    public BaseInputHandler getNonDrawingInputHandler(
+    @SuppressWarnings("unchecked")
+    public <I extends BaseInputHandler> I getNonDrawingInputHandler(
             InputHandlerType handlerType) {
 
         /*
@@ -155,6 +159,18 @@ public class InputHandlerFactory {
                 handler = new RectangleMultiSelectionInputHandler(
                         spatialDisplay);
                 break;
+            case MOVE:
+                handler = new MoveInputHandler(spatialDisplay);
+                break;
+            case VERTEX_MOVE:
+                handler = new VertexMoveInputHandler(spatialDisplay);
+                break;
+            case ROTATE:
+                handler = new RotateInputHandler(spatialDisplay);
+                break;
+            case RESIZE:
+                handler = new ResizeInputHandler(spatialDisplay);
+                break;
             default:
                 statusHandler
                         .debug("InputHandlerFactory.getNonDrawingInputHandler(): Unrecognized input handler: "
@@ -169,7 +185,7 @@ public class InputHandlerFactory {
          */
         handler.reset();
 
-        return handler;
+        return (I) handler;
     }
 
     /**

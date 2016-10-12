@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -36,6 +37,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 02, 2016   15934    Chris.Golden Initial creation.
+ * Sep 29, 2016   15928    Chris.Golden Added center point calculation.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,6 +61,11 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
      */
     private final ImmutableList<IAdvancedGeometry> children;
 
+    /**
+     * Center point in world coordinates.
+     */
+    private final Coordinate centerPoint;
+
     // Public Constructors
 
     /**
@@ -72,9 +79,30 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
     public AdvancedGeometryCollection(
             @JsonProperty("children") List<? extends IAdvancedGeometry> children) {
         this.children = ImmutableList.<IAdvancedGeometry> copyOf(children);
+
+        /*
+         * Calculate the center point of the envelope holding all the child
+         * geometries.
+         */
+        Envelope envelope = null;
+        for (IAdvancedGeometry child : children) {
+            Envelope childEnvelope = AdvancedGeometryUtilities.getJtsGeometry(
+                    child).getEnvelopeInternal();
+            if (envelope == null) {
+                envelope = childEnvelope;
+            } else {
+                envelope.expandToInclude(childEnvelope);
+            }
+        }
+        centerPoint = envelope.centre();
     }
 
     // Public Methods
+
+    @Override
+    public Coordinate getCenterPoint() {
+        return new Coordinate(centerPoint);
+    }
 
     /**
      * Get the child advanced geometries.

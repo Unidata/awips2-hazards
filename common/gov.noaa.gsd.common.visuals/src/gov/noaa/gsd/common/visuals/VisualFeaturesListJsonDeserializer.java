@@ -79,6 +79,8 @@ import com.google.common.reflect.TypeToken;
  *                                      flag.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries
  *                                      now used by visual features.
+ * Sep 27, 2016   15928    Chris.Golden Improved error message printed out when
+ *                                      deserializing an invalid geometry.
  * </pre>
  * 
  * @author Chris.Golden
@@ -883,7 +885,7 @@ class VisualFeaturesListJsonDeserializer {
                     "one of: "
                             + Joiner.on(", ").join(
                                     VisibilityConstraints.getDescriptions()),
-                    node, null);
+                    node, null, null);
         } else {
             visualFeature.setVisibilityConstraints(visibilityConstraints);
         }
@@ -1430,7 +1432,7 @@ class VisualFeaturesListJsonDeserializer {
                     Boolean.class);
         } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
-                    "boolean value", node, e);
+                    "boolean value", node, null, e);
         }
     }
 
@@ -1479,7 +1481,7 @@ class VisualFeaturesListJsonDeserializer {
                     identifier,
                     propertyName,
                     (positive ? "positive" : "non-negative") + " integer value",
-                    node, throwable);
+                    node, null, throwable);
         }
         return value;
     }
@@ -1528,7 +1530,7 @@ class VisualFeaturesListJsonDeserializer {
                 || (positive && (value == 0.0))) {
             throw createValueDeserializationException(identifier, propertyName,
                     (positive ? "positive" : "non-negative")
-                            + " floating-point value", node, throwable);
+                            + " floating-point value", node, null, throwable);
         }
         return value;
     }
@@ -1586,7 +1588,7 @@ class VisualFeaturesListJsonDeserializer {
                     });
         } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
-                    "list of strings", node, e);
+                    "list of strings", node, null, e);
         }
     }
 
@@ -1636,7 +1638,7 @@ class VisualFeaturesListJsonDeserializer {
             return color;
         } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
-                    "color dictionary", node, e);
+                    "color dictionary", node, null, e);
         }
     }
 
@@ -1661,11 +1663,11 @@ class VisualFeaturesListJsonDeserializer {
                     .fromJsonNode(node, IAdvancedGeometry.class);
         } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
-                    "advanced geometry", node, e);
+                    "advanced geometry", node, null, e);
         }
         if (geometry.isValid() == false) {
             throw createValueDeserializationException(identifier, propertyName,
-                    "valid geometry", node, null);
+                    "valid geometry", node, "invalid geometry", null);
         }
         return geometry;
     }
@@ -1693,7 +1695,8 @@ class VisualFeaturesListJsonDeserializer {
                     propertyName,
                     "one of: "
                             + Joiner.on(", ").join(
-                                    BorderStyle.getDescriptions()), node, null);
+                                    BorderStyle.getDescriptions()), node, null,
+                    null);
         }
         return style;
     }
@@ -1720,8 +1723,8 @@ class VisualFeaturesListJsonDeserializer {
                     identifier,
                     propertyName,
                     "one of: "
-                            + Joiner.on(", ").join(
-                                    BorderStyle.getDescriptions()), node, null);
+                            + Joiner.on(", ").join(FillStyle.getDescriptions()),
+                    node, null, null);
         }
         return style;
     }
@@ -1749,7 +1752,8 @@ class VisualFeaturesListJsonDeserializer {
                     propertyName,
                     "one of: "
                             + Joiner.on(", ").join(
-                                    SymbolShape.getDescriptions()), node, null);
+                                    SymbolShape.getDescriptions()), node, null,
+                    null);
         }
         return style;
     }
@@ -1778,7 +1782,7 @@ class VisualFeaturesListJsonDeserializer {
                     "one of: "
                             + Joiner.on(", ").join(
                                     DragCapability.getDescriptions()), node,
-                    null);
+                    null, null);
         }
         return draggability;
     }
@@ -1828,17 +1832,27 @@ class VisualFeaturesListJsonDeserializer {
      *            "list of strings".
      * @param node
      *            Node that did not yield the correct property value.
+     * @param badValueDescription
+     *            Description of the bad value, indicating what is wrong with
+     *            it; may be <code>null</code>.
      * @param cause
      *            Exception that signaled the problem, if any.
      * @return Created exception.
      */
     private static JsonParseException createValueDeserializationException(
             String identifier, String propertyName, String valueDescription,
-            JsonNode node, Throwable cause) {
-        return new JsonParseException("visual feature \"" + identifier
-                + "\": expected value for property \"" + propertyName
-                + "\" to be " + valueDescription + " but got \"" + node + "\"",
-                JsonLocation.NA, cause);
+            JsonNode node, String badValueDescription, Throwable cause) {
+        return new JsonParseException(
+                "visual feature \""
+                        + identifier
+                        + "\": expected value for property \""
+                        + propertyName
+                        + "\" to be "
+                        + valueDescription
+                        + " but got "
+                        + (badValueDescription == null ? ""
+                                : badValueDescription + " ") + "\"" + node
+                        + "\"", JsonLocation.NA, cause);
     }
 
     /**

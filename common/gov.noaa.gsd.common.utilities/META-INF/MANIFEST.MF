@@ -36,6 +36,7 @@ Export-Package: com.google.gson;
  org.joda.time.format;uses:="org.joda.time",
  org.joda.time.tz
 Import-Package: com.vividsolutions.jts.geom,
+ com.vividsolutions.jts.geom.util,
  com.vividsolutions.jts.io,
  com.vividsolutions.jts.operation.valid,
  oasis.names.tc.ebxml.regrep.xsd.rim.v4

@@ -16,9 +16,13 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LinearRing;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 /**
  * Description: Utilities for creating and modifying {@link IAdvancedGeometry}
@@ -34,6 +38,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      terms of JTS geometries having the option
  *                                      of being wrapped in a GeometryCollection,
  *                                      instead of the latter being mandatory.
+ * Sep 29, 2016   15928    Chris.Golden Added methods for closing and opening
+ *                                      lists of coordinates, getting coordinates
+ *                                      of multi-ringed polygons, and getting the
+ *                                      rotated bounding box of a geometry.
  * </pre>
  * 
  * @author Chris.Golden
@@ -90,6 +98,15 @@ public class AdvancedGeometryUtilities {
     // Public Static Methods
 
     /**
+     * Get a geometry factory that is safe to use for the current thread.
+     * 
+     * @return Geometry factory.
+     */
+    public static GeometryFactory getGeometryFactory() {
+        return GEOMETRY_FACTORY.get();
+    }
+
+    /**
      * Get a JTS geometry from the specified advanced geometry.
      * 
      * @param advancedGeometry
@@ -137,6 +154,140 @@ public class AdvancedGeometryUtilities {
     }
 
     /**
+     * Get the corners of the bounding box around the specified advanced
+     * geometry.
+     * 
+     * @param advancedGeometry
+     *            Advanced geometry that is rotatable and/or scaleable.
+     * @return List of corner points of the bounding box, in latitude-longitude
+     *         coordinates, in the order
+     *         <code>[lowerRight, upperRight, upperLeft, lowerLeft]</code>. The
+     *         corner points are rotated around the centroid of the geometry by
+     *         the amount that the geometry is rotated, if the latter is an
+     *         {@link IRotatable} instance.
+     */
+    public static List<Coordinate> getBoundingBoxCornerPoints(
+            IAdvancedGeometry advancedGeometry) {
+
+        /*
+         * Get the JTS geometry version.
+         */
+        Geometry geometry = getJtsGeometry(advancedGeometry);
+
+        /*
+         * If the geometry has inherent rotation, counter-rotate it back to an
+         * angle of zero prior to calculating the bounding box, and create an
+         * affine transformation to be used to re-rotate the bounding box back
+         * after said box is calculated.
+         */
+        AffineTransformation rotationTransformation = null;
+        if (advancedGeometry instanceof IRotatable) {
+            IRotatable rotatableGeometry = (IRotatable) advancedGeometry;
+            double rotation = rotatableGeometry.getRotation();
+            if (rotation != 0.0) {
+                Coordinate centerPoint = rotatableGeometry.getCenterPoint();
+                geometry = AffineTransformation.rotationInstance(
+                        rotation * -1.0, centerPoint.x, centerPoint.y)
+                        .transform(geometry);
+                rotationTransformation = AffineTransformation.rotationInstance(
+                        rotation, centerPoint.x, centerPoint.y);
+            }
+        }
+
+        /*
+         * Calculate the bounding box, and record the four corner points, in the
+         * order lower-right, upper-right, upper-left, and lower-left.
+         */
+        Envelope envelope = geometry.getEnvelopeInternal();
+        List<Coordinate> coordinates = Lists.newArrayList(new Coordinate(
+                envelope.getMaxX(), envelope.getMinY()), new Coordinate(
+                envelope.getMaxX(), envelope.getMaxY()), new Coordinate(
+                envelope.getMinX(), envelope.getMaxY()), new Coordinate(
+                envelope.getMinX(), envelope.getMinY()));
+
+        /*
+         * If re-rotation must be done, rotate the calculated corner points back
+         * to the locations they must have to bound the geometry at its actual
+         * rotation.
+         */
+        if (rotationTransformation != null) {
+            for (int j = 0; j < coordinates.size(); j++) {
+                rotationTransformation.transform(coordinates.get(j),
+                        coordinates.get(j));
+            }
+        }
+
+        return coordinates;
+    }
+
+    /**
+     * Get the coordinates of the specified geometry. It is assumed that the
+     * geometry is not a {@link GeometryCollection}.
+     * 
+     * @param geometry
+     *            Geometry for which to get the coordinates.
+     * @return List of arrays of coordinates, with at least one such array in
+     *         the list. If just one array is included, it holds the coordinates
+     *         of the geometry. If more than one is provided, then the geometry
+     *         is a {@link Polygon}; the first holds the coordinates of the
+     *         exterior shell of the polygon, while any other arrays hold the
+     *         coordinates of the holes in the polygon.
+     */
+    public static List<Coordinate[]> getCoordinates(Geometry geometry) {
+        List<Coordinate[]> coordinates = null;
+        if (geometry instanceof Polygon) {
+            Polygon polygon = (Polygon) geometry;
+            coordinates = new ArrayList<>(polygon.getNumInteriorRing() + 1);
+            Coordinate[] ringCoordinates = polygon.getExteriorRing()
+                    .getCoordinates();
+            coordinates.add(ringCoordinates);
+            for (int j = 0; j < polygon.getNumInteriorRing(); j++) {
+                ringCoordinates = polygon.getInteriorRingN(j).getCoordinates();
+                coordinates.add(ringCoordinates);
+            }
+        } else {
+            coordinates = new ArrayList<>(1);
+            Coordinate[] ringCoordinates = geometry.getCoordinates();
+            coordinates.add(ringCoordinates);
+        }
+        return coordinates;
+    }
+
+    /**
+     * If the specified list of coordinates does not have the same first and
+     * last point, duplicate the first point and append it to the list. This is
+     * required because JTS {@link LinearRing} (used in {@link Polygon}
+     * instances) always have the same first and last coordinates.
+     * 
+     * @param coordinates
+     *            List of coordinates to be modified if necessary.
+     */
+    public static void addDuplicateLastCoordinate(List<Coordinate> coordinates) {
+        if (coordinates.size() > 1) {
+            Coordinate firstPoint = coordinates.get(0);
+            if (firstPoint.equals(coordinates.get(coordinates.size() - 1)) == false) {
+                coordinates.add((Coordinate) firstPoint.clone());
+            }
+        }
+    }
+
+    /**
+     * If the specified list of coordinates has the same point at the end as it
+     * does at the beginning, remove the last point.
+     * 
+     * @param coordinates
+     *            List of coordinates to be modified if necessary.
+     */
+    public static void removeDuplicateLastCoordinate(
+            List<Coordinate> coordinates) {
+        if ((coordinates.size() > 1)
+                && (coordinates.get(0).equals(coordinates.get(coordinates
+                        .size() - 1)))) {
+            coordinates.remove(coordinates.size() - 1);
+        }
+    }
+
+    /**
      * Ensure that the specified geometry is a collection.
      * <p>
      * TODO: Why is this necessary? Hazard Services code seems to assume in many
@@ -174,7 +325,7 @@ public class AdvancedGeometryUtilities {
      *            Units for <code>width</code> and <code>height</code>; must not
      *            be <code>null</code>.
      * @param rotation
-     *            Rotation in counterclockwise degrees.
+     *            Rotation in counterclockwise radians.
      * @return Advanced geometry that was created.
      */
     public static IAdvancedGeometry createEllipse(double x, double y,
@@ -192,7 +343,7 @@ public class AdvancedGeometryUtilities {
      *            Geometry defining the shape; cannot be <code>null</code> or an
      *            empty <code>GeometryCollection</code>.
      * @param rotation
-     *            Rotation in counterclockwise degrees.
+     *            Rotation in counterclockwise radians.
      * @return Advanced geometry that was created.
      */
     public static IAdvancedGeometry createGeometryWrapper(Geometry geometry,
