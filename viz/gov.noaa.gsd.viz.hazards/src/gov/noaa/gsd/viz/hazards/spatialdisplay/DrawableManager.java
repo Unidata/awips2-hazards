@@ -118,6 +118,12 @@ import com.vividsolutions.jts.geom.Point;
  *                                      the mouse cursor. Added ability to
  *                                      handle polygons containing holes when
  *                                      vertex editing.
+ * Oct 04, 2016   22736    Chris.Golden Fixed bug causing null pointer
+ *                                      exception when tracking combinable
+ *                                      text drawables. (Only seen once, so
+ *                                      has not been reproducible, but this
+ *                                      fix should ensure it does not occur
+ *                                      again.)
  * </pre>
  * 
  * @author Chris.Golden
@@ -2223,7 +2229,9 @@ class DrawableManager {
          */
         for (Iterator<Coordinate> iterator = locationsNeedingUpdate.iterator(); iterator
                 .hasNext();) {
-            if (textDrawablesForLocations.get(iterator.next()).size() < 2) {
+            List<TextDrawable> textDrawables = textDrawablesForLocations
+                    .get(iterator.next());
+            if ((textDrawables == null) || (textDrawables.size() < 2)) {
                 iterator.remove();
             }
         }

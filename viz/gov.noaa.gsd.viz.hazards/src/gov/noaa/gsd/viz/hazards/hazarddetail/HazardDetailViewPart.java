@@ -239,6 +239,10 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           range/scale megawidgets.
  * Aug 12, 2015   4123     Chris.Golden      Changed to work with new megawidget manager
  *                                           listener.
+ * Oct 04, 2016  22736     Chris.Golden      Added flag indicating whether or not metadata
+ *                                           has its interdependency script reinitialize
+ *                                           if unchanged, so that when a hazard event is
+ *                                           selected, it triggers the reinitialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1285,9 +1289,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void setMegawidgetSpecifierManager(String qualifier,
                 MegawidgetSpecifierManager specifierManager,
-                Map<String, Serializable> metadataStates) {
+                Map<String, Serializable> metadataStates,
+                boolean reinitializeIfUnchanged) {
             setMetadataSpecifierManager(qualifier, specifierManager,
-                    metadataStates);
+                    metadataStates, reinitializeIfUnchanged);
         }
 
         @Override
@@ -2481,11 +2486,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @param specifierManager
      *            Megawidget specifier manager to be used.
      * @param metadataStates
-     *            States for the metadata.
+     *            States for the metadata. , @param reinitializeIfUnchanged Flag
+     *            indicating whether or not the metadata manager, if unchanged
+     *            as a result of this call, should reinitialize its components.
      */
     private void setMetadataSpecifierManager(String eventIdentifier,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Serializable> metadataStates) {
+            Map<String, Serializable> metadataStates,
+            boolean reinitializeIfUnchanged) {
 
         /*
          * Do nothing if widgets are not currently available.
@@ -2505,7 +2513,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         /*
          * If this specifier is not the same as what was used last time, then
          * remove the old specifier (if any), and create the new megawidget
-         * manager and accompanying panel (if there are any new specifiers).
+         * manager and accompanying panel (if there are any new specifiers). If
+         * it is the same, reuse it.
          */
         MegawidgetManager megawidgetManager = megawidgetManagersForEventIds
                 .get(eventIdentifier);
@@ -2658,7 +2667,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
             }
         } else if (megawidgetManager != null) {
+
+            /*
+             * Use the panel the still-current manager has.
+             */
             panel = megawidgetManager.getParent();
+
+            /*
+             * Reinitialize the megawidgets using the side effects applier
+             * script, if appropriate.
+             */
+            if (reinitializeIfUnchanged) {
+                megawidgetManager.reinitializeSideEffectsApplierScript();
+            }
         }
 
         /*

@@ -63,6 +63,8 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                        what it can be replaced by (if issued).
  * Apr 09, 2015  7382      Chris.Golden   Added "show start-end time sliders" flag.
  * Apr 15, 2015  3508      Chris.Golden   Added "hazard detail to be wide" flag.
+ * Oct 04, 2016 22736      Chris.Golden   Changed to work with latest version of metadata
+ *                                        state changer.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -273,7 +275,8 @@ public class HazardDetailViewForTesting implements
         @Override
         public void setMegawidgetSpecifierManager(String eventIdentifier,
                 MegawidgetSpecifierManager specifierManager,
-                Map<String, Serializable> metadataStates) {
+                Map<String, Serializable> metadataStates,
+                boolean reinitializeIfUnchanged) {
         }
 
         @Override

@@ -161,6 +161,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Jul 29, 2015    9306    Chris.Cody        Add processing for HazardSatus.ELAPSED
  * Aug 19, 2015    4245    Chris.Golden      Added ability to change visible time range from
  *                                           within the associated view.
+ * Oct 04, 2016   22736    Chris.Golden      Added flag indicating whether or not metadata
+ *                                           has its interdependency script reinitialize if
+ *                                           unchanged, so that when a hazard event is
+ *                                           selected, it triggers the reinitialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -418,7 +422,7 @@ public class HazardDetailPresenter extends
                 getModel().getEventManager().setLastModifiedSelectedEvent(
                         event, UIOriginator.HAZARD_INFORMATION_DIALOG);
                 if (selectedEventIdentifiers.contains(visibleEventIdentifier)) {
-                    updateViewVisibleEvent();
+                    updateViewVisibleEvent(false);
                 }
             }
         }
@@ -830,7 +834,7 @@ public class HazardDetailPresenter extends
                             .isEmpty() || selectedEventIdentifiers
                             .contains(visibleEventIdentifier)) && (oldVisibleEventIdentifier
                             .equals(visibleEventIdentifier) == false)))) {
-                updateViewVisibleEvent();
+                updateViewVisibleEvent(true);
             }
         }
 
@@ -884,7 +888,7 @@ public class HazardDetailPresenter extends
              * If the event identifier is valid, update the event details.
              */
             if (selectedEventIdentifiers.contains(visibleEventIdentifier)) {
-                updateViewVisibleEvent();
+                updateViewVisibleEvent(false);
             }
         }
     }
@@ -984,7 +988,7 @@ public class HazardDetailPresenter extends
             specifierManagersForSelectedEvents.remove(eventIdentifier);
             cacheMetadataSpecifiers(event);
             if (detailViewShowing && isVisibleEventModified(change)) {
-                updateViewMetadataSpecifiers(event);
+                updateViewMetadataSpecifiers(event, false);
             }
         }
     }
@@ -1338,7 +1342,7 @@ public class HazardDetailPresenter extends
         if (selectedEventDisplayables.equals(eventDisplayables) == false) {
             selectedEventDisplayables = eventDisplayables;
             updateViewSelectedEvents();
-            updateViewVisibleEvent();
+            updateViewVisibleEvent(false);
         }
     }
 
@@ -1555,12 +1559,18 @@ public class HazardDetailPresenter extends
      * 
      * @param event
      *            Event for which the update should occur.
+     * @param reinitializeIfUnchanged
+     *            Flag indicating whether or not the metadata manager, if
+     *            unchanged as a result of this call, should reinitialize its
+     *            components.
      */
-    private void updateViewMetadataSpecifiers(ObservedHazardEvent event) {
+    private void updateViewMetadataSpecifiers(ObservedHazardEvent event,
+            boolean reinitializeIfUnchanged) {
         getView().getMetadataChanger().setMegawidgetSpecifierManager(
                 event.getEventID(),
                 specifierManagersForSelectedEvents.get(visibleEventIdentifier),
-                new HashMap<>(event.getHazardAttributes()));
+                new HashMap<>(event.getHazardAttributes()),
+                reinitializeIfUnchanged);
     }
 
     /**
@@ -1625,8 +1635,13 @@ public class HazardDetailPresenter extends
 
     /**
      * Update the view to display the currently visible event.
+     * 
+     * @param reinitializeIfUnchanged
+     *            Flag indicating whether or not the visible event's metadata
+     *            manager, if unchanged as a result of this call, should
+     *            reinitialize its components.
      */
-    private void updateViewVisibleEvent() {
+    private void updateViewVisibleEvent(boolean reinitializeIfUnchanged) {
         ObservedHazardEvent event = getVisibleEvent();
         if (event != null) {
             cacheMetadataSpecifiers(event);
@@ -1637,7 +1652,7 @@ public class HazardDetailPresenter extends
             updateViewTypeEditability(event);
             updateViewTimeRangeBoundaries(event);
             updateViewTimeRange(event);
-            updateViewMetadataSpecifiers(event);
+            updateViewMetadataSpecifiers(event, reinitializeIfUnchanged);
             updateViewEndTimeUntilFurtherNoticeEnabled(event);
         }
         updateViewButtonsEnabledStates();
@@ -1655,7 +1670,7 @@ public class HazardDetailPresenter extends
         visibleEventIdentifier = getVisibleEventIdentifier();
         selectedEventDisplayables = compileSelectedEventDisplayables(selectedEvents);
         updateViewSelectedEvents();
-        updateViewVisibleEvent();
+        updateViewVisibleEvent(false);
     }
 
     /**

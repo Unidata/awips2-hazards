@@ -32,6 +32,11 @@ import java.util.Map;
  *                                      for.
  * Sep 16, 2014    4753    Chris.Golden Changed to support setting of mutable
  *                                      properties.
+ * Oct 04, 2016  22736     Chris.Golden Added flag indicating whether or not
+ *                                      metadata has its interdependency script
+ *                                      reinitialize if unchanged, so that when
+ *                                      a hazard event is selected, it triggers
+ *                                      the reinitialization.
  * </pre>
  * 
  * @author Chris.Golden
@@ -53,10 +58,15 @@ public interface IMetadataStateChanger extends
      *            Megawidget specifier manager to be used.
      * @param metadataStates
      *            States for the metadata.
+     * @param reinitializeIfUnchanged
+     *            Flag indicating whether or not the metadata manager, if
+     *            unchanged as a result of this call, should reinitialize its
+     *            components.
      */
     public void setMegawidgetSpecifierManager(String qualifier,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Serializable> metadataStates);
+            Map<String, Serializable> metadataStates,
+            boolean reinitializeIfUnchanged);
 
     /**
      * Change the metadata megawidget mutable properties to include those
