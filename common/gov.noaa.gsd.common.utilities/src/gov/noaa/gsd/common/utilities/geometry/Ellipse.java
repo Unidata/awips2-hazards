@@ -41,6 +41,10 @@ import com.vividsolutions.jts.geom.LineSegment;
  * Sep 29, 2016   15928    Chris.Golden Made scaleable, switched to use rotation
  *                                      angles in radians, and added methods to
  *                                      get rotated or scaled copies.
+ * Oct 12, 2016   15928    Chris.Golden Changed behavior to allow resizing
+ *                                      to cause geometries to flip over the
+ *                                      appropriate axis if the user crosses
+ *                                      that axis while resizing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -211,13 +215,13 @@ public class Ellipse implements IRotatable, IScaleable {
     @Override
     public <G extends IScaleable> G scaledCopyOf(double horizontalMultiplier,
             double verticalMultiplier) {
-        if ((horizontalMultiplier <= 0.0) || (verticalMultiplier <= 0.0)) {
+        if ((horizontalMultiplier == 0.0) || (verticalMultiplier == 0.0)) {
             throw new IllegalArgumentException(
-                    "scale multipliers must be positive numbers");
+                    "scale multipliers must be non-zero numbers");
         }
         return (G) new Ellipse(new Coordinate(centerPoint), width
-                * horizontalMultiplier, height * verticalMultiplier, units,
-                rotation);
+                * Math.abs(horizontalMultiplier), height
+                * Math.abs(verticalMultiplier), units, rotation);
     }
 
     @Override

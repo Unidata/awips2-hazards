@@ -44,6 +44,10 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      angles in radians, added methods to get
  *                                      rotated or scaled copies, and added
  *                                      calculation of center point.
+ * Oct 12, 2016   15928    Chris.Golden Changed behavior to allow resizing
+ *                                      to cause geometries to flip over the
+ *                                      appropriate axis if the user crosses
+ *                                      that axis while resizing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -343,9 +347,9 @@ public class GeometryWrapper implements IRotatable, IScaleable {
         /*
          * Sanity check the parameters.
          */
-        if ((horizontalMultiplier <= 0.0) || (verticalMultiplier <= 0.0)) {
+        if ((horizontalMultiplier == 0.0) || (verticalMultiplier == 0.0)) {
             throw new IllegalArgumentException(
-                    "scale multipliers must be positive numbers");
+                    "scale multipliers must be non-zero numbers");
         }
 
         /*

@@ -32,6 +32,10 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 29, 2016   15928    Chris.Golden Initial creation.
+ * Oct 12, 2016   15928    Chris.Golden Changed behavior to allow resizing
+ *                                      to cause geometries to flip over the
+ *                                      appropriate axis if the user crosses
+ *                                      that axis while resizing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -137,10 +141,16 @@ public class ResizeInputHandler extends
         if ((manipulationPoint.getDirection() != Direction.NORTH)
                 && (manipulationPoint.getDirection() != Direction.SOUTH)) {
             horizontalMultiplier = distances.x / lastDistances.x;
+            if (horizontalMultiplier == 0.0) {
+                return;
+            }
         }
         if ((manipulationPoint.getDirection() != Direction.EAST)
                 && (manipulationPoint.getDirection() != Direction.WEST)) {
             verticalMultiplier = distances.y / lastDistances.y;
+            if (verticalMultiplier == 0.0) {
+                return;
+            }
         }
         lastDistances = distances;
 
@@ -168,7 +178,7 @@ public class ResizeInputHandler extends
     private Coordinate getDistances(Coordinate location) {
         Coordinate unrotatedLocation = new Coordinate();
         unrotateTransformer.transform(location, unrotatedLocation);
-        return new Coordinate(Math.abs(unrotatedLocation.x - centerPoint.x),
-                Math.abs(unrotatedLocation.y - centerPoint.y));
+        return new Coordinate(unrotatedLocation.x - centerPoint.x,
+                unrotatedLocation.y - centerPoint.y);
     }
 }

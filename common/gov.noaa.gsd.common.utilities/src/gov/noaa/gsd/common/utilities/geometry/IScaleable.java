@@ -19,6 +19,10 @@ package gov.noaa.gsd.common.utilities.geometry;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 29, 2016   15928    Chris.Golden Initial creation.
+ * Sep 29, 2016   15928    Chris.Golden Changed behavior to allow resizing
+ *                                      to cause geometries to flip over the
+ *                                      appropriate axis if the user crosses
+ *                                      that axis while resizing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,10 +41,14 @@ public interface IScaleable extends IAdvancedGeometry {
      * 
      * @param horizontalMultiplier
      *            Multiplier to be applied along the horizontal axis (before
-     *            rotation); must be a positive number.
+     *            rotation); must be a non-zero number. A negative number will
+     *            cause the geometry to be flipped along the axis perpendicular
+     *            to the rescaling.
      * @param horizontalMultiplier
      *            Multiplier to be applied along the vertical axis (before
-     *            rotation); must be a positive number.
+     *            rotation); must be a non-zero number. A negative number will
+     *            cause the geometry to be flipped along the axis perpendicular
+     *            to the rescaling.
      * @return Copy of this geometry scaled as specified.
      */
     public <G extends IScaleable> G scaledCopyOf(double horizontalMultiplier,
