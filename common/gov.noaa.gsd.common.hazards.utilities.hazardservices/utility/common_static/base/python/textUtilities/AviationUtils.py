@@ -39,7 +39,7 @@ class AviationUtils:
         self._width = event.get('convectiveSigmetWidth')
 
         polygonArea = self.polygonArea(event, self._originalGeomType, self._width)
-        label = self._createLabel(event, polygonArea)
+        label = self.createLabel(event, polygonArea)
         
         eventID = event.getEventID()
         selectedFeatures = []
@@ -52,12 +52,14 @@ class AviationUtils:
                 basePoly = GeometryFactory.createPoint(basePoly)
             elif self._originalGeomType == 'LineString':
                 basePoly = GeometryFactory.createLineString(basePoly)
-            basePoly = AdvancedGeometry.createShapelyWrapper(basePoly, 0)
-            event.setGeometry(basePoly)        
+            basePoly = AdvancedGeometry.createShapelyWrapper(basePoly, 0)       
         else:
             poly = GeometryFactory.createPolygon(VOR_points)
-            basePoly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(vertices), 0)
-            event.setGeometry(basePoly)
+            try:
+                basePoly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(vertices), 0)
+            except ValueError:
+                basePoly = event.getGeometry()
+        event.setGeometry(basePoly)
             
         poly = AdvancedGeometry.createShapelyWrapper(poly, 0)
         
@@ -104,7 +106,7 @@ class AviationUtils:
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
             }
-        }                    
+        }                 
 
         selectedFeatures.append(basePoly)                      
         selectedFeatures.append(hazardEventPoly)            
@@ -112,7 +114,7 @@ class AviationUtils:
 
         return True
     
-    def _createLabel(self, event, polygonArea):
+    def createLabel(self, event, polygonArea):
         domain = event.getHazardAttributes().get('convectiveSigmetDomain')
         direction = event.getHazardAttributes().get('convectiveSigmetDirection')
         speed = event.getHazardAttributes().get('convectiveSigmetSpeed')
@@ -357,10 +359,6 @@ class AviationUtils:
         return convectiveSigmetAreas        
         
     def boundingStatement(self, hazardEvent, geomType, TABLEFILE, vertices, trigger):
-        if geomType is not 'Point':
-            boundingStatement = 'FROM '
-        else:
-            boundingStatement = ''
         
         per_row = []
         with open(TABLEFILE, 'r') as fr:
@@ -368,6 +366,21 @@ class AviationUtils:
                 if not line.startswith("!"):
                     per_row.append(line.split())
 
+        boundingStatement = self.findClosestPoint(per_row,trigger,hazardEvent,geomType,vertices,7)
+        
+        if any(char.isdigit() for char in boundingStatement):
+            boundingStatement = self.findClosestPoint(per_row,trigger,hazardEvent,geomType,vertices,6)        
+        
+        hazardEvent.set('boundingStatement', boundingStatement)
+        
+        return boundingStatement
+    
+    def findClosestPoint(self,per_row,trigger,hazardEvent,geomType,vertices,numvertices):
+        if geomType is not 'Point':
+            boundingStatement = 'FROM '
+        else:
+            boundingStatement = ''
+                    
         lats = []
         lons = []
         names = []
@@ -382,10 +395,7 @@ class AviationUtils:
         # YSJ00001      9 20N_YSJ                          -  -   4565  -6588     0  2
         # YSJ00002      9 30N_YSJ                          -  -   4582  -6588     0  2
         # YSJ00003      9 40N_YSJ                          -  -   4599  -6588     0  2
-        
-        headerLines = 4
 
-        #for x in range(headerLines, len(per_row)):
         for row in per_row:
             stid.append(row[0])
             lats.append(row[5])
@@ -421,9 +431,9 @@ class AviationUtils:
                 vertices = shapely.geometry.base.dump_coords(g)
                 
         if geomType == 'Polygon':
-            vertices = self._reducePolygon(vertices, geomType, 6)
+            vertices = self._reducePolygon(hazardEvent,vertices, geomType, numvertices)
             vertices = shapely.geometry.base.dump_coords(vertices)
-            
+           
         for vertice in vertices:
             hazardLat = vertice[1]
             hazardLon = vertice[0]
@@ -433,23 +443,25 @@ class AviationUtils:
                 diffList.append(abs(hazardLat - lats[x]) + abs(hazardLon - lons[x]))
 
             index = diffList.index(min(diffList))
-
+  
             boundingStatement += names[index] + '-'
             vorLat.append(lats[index])
             vorLon.append(lons[index])
 
         self._setVORPoints(vorLat, vorLon, hazardEvent)
         selectedVisualFeatures = []
-            
+           
         boundingStatement = boundingStatement[:-1]
-        #print "Bounding statement contains numbers? ", any(char.isdigit() for char in boundingStatement)
         
-        hazardEvent.set('boundingStatement', boundingStatement)
-        
-        return boundingStatement
+        return boundingStatement        
     
-    def _reducePolygon(self, vertices, geomType, numPoints):
-        initialPoly = GeometryFactory.createPolygon(vertices)
+    def _reducePolygon(self, hazardEvent, vertices, geomType, numPoints):
+        try:
+            initialPoly = GeometryFactory.createPolygon(vertices) 
+        except ValueError:
+            for g in hazardEvent.getFlattenedGeometry().geoms:
+                vertices = shapely.geometry.base.dump_coords(g)
+            initialPoly = GeometryFactory.createPolygon(vertices)
           
         #numPoints = 6
         tolerance = 0.001

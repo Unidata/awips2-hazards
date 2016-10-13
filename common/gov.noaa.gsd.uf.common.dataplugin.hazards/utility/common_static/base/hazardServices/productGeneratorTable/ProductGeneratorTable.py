@@ -73,7 +73,7 @@ ProductGeneratorTable = {
             ],
             "previewFormatters": ["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],
             "issueFormatters": [], #["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],                                   
-            },                
+            },                                         
                          
         # WFO Legacy                                           
         "FFA_ProductGenerator": {

@@ -2028,8 +2028,8 @@ HazardTypes = {
               },
     ################
     # Aviation Hazards
-    'SIGMET.W' : {
-              'headline': 'Aviation SIGMET',
+    'SIGMET.NonConvective' : {
+              'headline': 'Aviation NonConvective SIGMET',
               '_override_lock_': OVERRIDE_LOCK,
               'combinableSegments': True,
               'includeAll': True,
@@ -2063,5 +2063,67 @@ HazardTypes = {
               'modifyRecommenders': {
                                      'LineAndPointTool': [ 'geometry', 'visualFeature' ]
                                      },              
-              },                  
+              },
+    'SIGMET.International' : {
+              'headline': 'Aviation International SIGMET',
+              '_override_lock_': OVERRIDE_LOCK,
+              'combinableSegments': True,
+              'includeAll': False,
+              'allowAreaChange': True,
+              'allowTimeChange': True,
+              'expirationTime': (-30, 30),
+              'hazardConflictList': [],
+              'ugcType': 'zone',
+              'ugcLabel': 'name',
+              'inclusionFractionTest': False,
+              'inclusionFraction': 0.1,
+              'durationChoiceList': [ "4 hrs", "6 hrs" ],              
+              'defaultDuration': 4 * HOURS,
+              'durationIncrement': 60,
+              #'modifyRecommenders': {
+              #                       'LineAndPointTool': [ 'geometry', 'visualFeature' ]
+              #                       },              
+              },
+    ################
+    # National Hurricane Center Hazards
+    'SS.W' : {
+              'headline': 'Storm Surge Warning',
+              '_override_lock_': OVERRIDE_LOCK,
+              'combinableSegments': True,
+              'includeAll': True,
+              'allowAreaChange': True,
+              'allowTimeChange': True,
+              'expirationTime': (-30, 30),
+              'hazardConflictList': [],
+              'ugcType': 'zone',
+              'ugcLabel': 'name',
+              'inclusionFractionTest': False,
+              'inclusionFraction': 0.1,
+              'defaultDuration': 6 * HOURS, #6 hours
+              "durationChoiceList": [ "6 hrs"],
+              'durationIncrement': 60,
+              #'modifyRecommenders': {
+              #                       'LineAndPointTool': [ 'geometry', 'visualFeature' ]
+              #                       },               
+              },
+    'SS.A' : {
+              'headline': 'Storm Surge Watch',
+              '_override_lock_': OVERRIDE_LOCK,
+              'combinableSegments': True,
+              'includeAll': True,
+              'allowAreaChange': True,
+              'allowTimeChange': True,
+              'expirationTime': (-30, 30),
+              'hazardConflictList': [],
+              'ugcType': 'zone',
+              'ugcLabel': 'name',
+              'inclusionFractionTest': False,
+              'inclusionFraction': 0.1,
+              'defaultDuration': 6 * HOURS,
+              "durationChoiceList": [ "6 hrs"],
+              'durationIncrement': 60,
+              #'modifyRecommenders': {
+              #                       'LineAndPointTool': [ 'geometry', 'visualFeature' ]
+              #                       },              
+              },                                                                  
     }

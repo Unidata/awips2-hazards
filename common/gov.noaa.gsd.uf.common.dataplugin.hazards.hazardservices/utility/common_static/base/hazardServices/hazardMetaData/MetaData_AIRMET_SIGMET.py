@@ -330,22 +330,254 @@ class MetaData(CommonMetaData.MetaData):
         
         return aType
     
+    ###INTERNATIONAL SIGMET MEGAWIDGET OPTIONS###
+    def getInternationalSigmetInputs(self, geomType):
+        if geomType is 'LineString':
+            width = self.getInternationalSigmetWidth()
+        
+        originatingOffice = self.getInternationalSigmetOffice()
+        phenomenon = self.getInternationalSigmetPhenomenon()
+        extent = self.getInternationalSigmetExtent()
+        additionalDetails = self.getInternationalSigmetAdditionalDetails()       
+
+        if geomType is 'LineString':
+            fields = [width, originatingOffice, phenomenon, extent, additionalDetails]           
+        else:
+            fields = [originatingOffice, phenomenon, extent, additionalDetails]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp
+    
+    def getInternationalSigmetWidth(self):        
+        width = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetWidthGroup",
+            "label": "",
+            "numColumns": 1,
+            "enable": True,
+            "fields": [
+                       {
+                        "fieldType": "IntegerSpinner",
+                        "fieldName": "convectiveSigmetWidth",
+                        "sendEveryChange": False,
+                        "label": "Line Width (nm)",
+                        "minValue": 10,
+                        "maxValue": 60,
+                        "values": 10,
+                        "incrementDelta": 5,
+                        #"modifyRecommender": "LineAndPointTool"                             
+                        },
+                ]
+        }
+
+        return width    
+    
+    def getInternationalSigmetOffice(self):
+        
+        office = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetOfficeGroup",
+            "label": "",
+            "numColumns": 3,
+            "expandHorizontally": False,
+            "fields": [
+                       {
+                        "fieldType": "RadioButtons",
+                        "fieldName": "internationalSigmetOffice",
+                        "label": "Originating Office:",
+                        "expandHorizontally": False,
+                        "values": 'KKCI',
+                        "choices": [
+                                    "KKCI",
+                                    "PANC",
+                                    "PHFO",
+                                    ]                        
+                        },
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "internationalSigmetSequence",
+                        "label": "Sequence: ",
+                        "expandHorizontally": False,
+                        "choices": ["ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]
+                       },                                             
+            ]
+        }
+        return office
+    
+    def getInternationalSigmetPhenomenon(self):       
+        phenomenon = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetPhenomenonGroup",
+            "numColumns": 3,
+            "fields": [                     
+                  {
+                   "fieldType": "ComboBox",
+                   "fieldName": "internationalSigmetPhenomenon",
+                   "label": "Phenomenon:",
+                   "choices": ['Obscured Thunderstorms', 'Embedded Thunderstorms', 'Frequent Thunderstorms',
+                               'Squall Line', 'Widespread Thunderstorms', 'Isolated Severe Thunderstorms',
+                               'Turbulence', 'Severe Icing', 'Icing with Freezing Rain', 'Dust Storm',
+                               'Sand Storm', 'Tropical Cyclone', 'Volcanic Ash'
+                               ]
+                  },
+            ]
+        }        
+        return phenomenon
+    
+    def getInternationalSigmetExtent(self):
+        extent = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetExtentGroup",
+            "label": "Extent:",
+            "numColumns": 3,
+            "fields": [
+                       {
+                        "fieldType": "RadioButtons",
+                        "fieldName": "internationalSigmetExtent",
+                        "choices": ['Between','Below','Top'],
+                        "values": 'Between',
+                        "expandHorizontally": False,
+                        },
+                       {
+                        "fieldType": "Group",
+                        "fieldName": "internationalSigmetExtentSubGroup",
+                        "expandHorizontally": False,
+                        #"numColumns": 1,
+                        "fields": [
+                           {
+                            "fieldType": "IntegerSpinner",
+                            "fieldName": "internationalSigmetExtentBottom",
+                            "label": "Bottom:  FL",
+                            "minValue": 0,
+                            "maxValue": 600,
+                            "incrementDelta": 10,
+                            "values": 100,
+                            "expandHorizontally": False,
+                            },
+                           {
+                            "fieldType": "ComboBox",
+                            "fieldName": "internationalSigmetExtentTop",
+                            "expandHorizontally": False,
+                            "label": "Top: ",
+                            "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                        "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                        "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                        "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                        "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                        "FL500"
+                                        ],
+                            "values": "FL300",
+                            },                                                                                               
+                          ],
+                        },         
+            ]
+        }                  
+        return extent
+    
+    def getInternationalSigmetAdditionalDetails(self):
+        additionalDetails = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetAdditionalDetailsGroup",
+            "label": "Additional Details:",            
+            "numColumns": 1,
+            "fields": [
+                       {
+                        "fieldType": "Group",
+                        "fieldName": "internationalSigmetMovement",
+                        "expandHorizontally": True,
+                        "label": "Movement: ",
+                        "numColumns": 3,
+                        "fields": [
+                                   {
+                                   "fieldType": "IntegerSpinner",
+                                   "fieldName": "internationalSigmetSpeed",
+                                   "label": "Speed (kts):",
+                                   "minValue": 0,
+                                   "maxValue": 100,
+                                   "values": 0,
+                                   "incrementDelta": 5,
+                                   "expandHorizontally": False,
+                                   },
+                                   {
+                                    "fieldType": "ComboBox",
+                                    "fieldName": "internationalSigmetDirection",
+                                    "expandHorizontally": False,
+                                    "label": "Towards:",
+                                    "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                "WNW","NW","NNW"
+                                                ]
+                                    },
+                          ]
+                        },
+                        {
+                         "fieldType": "Group",
+                         "fieldName": "internationalSigmetFcstObsGroup",
+                         "expandHorizontally": True,
+                         "label": "This is:",
+                         "numColumns": 3,
+                         "fields": [
+                                   {
+                                    "fieldType": "RadioButtons",
+                                    "fieldName": "internationalSigmetFcstObs",
+                                    "expandHorizontally": False,
+                                    "label": "",
+                                    "choices": [
+                                                "Forecast",
+                                                "Observed"
+                                                ]
+                                   },
+                                   {
+                                    "fieldType": "ComboBox",
+                                    "fieldName": "internationalSigmetIntensity",
+                                    "expandHorizontally": False,
+                                    "label": "Intensity Trend:",
+                                    "choices": ['No Change','Intensifying','Weakening'],
+                                    "values": 'No Change',                                    
+                                   },
+                          ] 
+                        },                                                                                          
+            ]
+        }                          
+        return additionalDetails     
+    
     ###CONVECTIVE SIGMET MEGAWIDGET OPTIONS###
     def getConvectiveSigmetInputs(self, geomType, domain, modifiers):
         if geomType is not 'Polygon':
             width = self.getWidth(geomType)
+        if geomType is not 'Point':
+            changeType = self.changeType(geomType)
+            
+        if geomType in ['Point', 'LineString']:
+            values = ["Severe"]
+            hazards = ["hailCheckBox","windCheckBox"]
+        else:
+            values = []
+            hazards = []
+            
         correction = self.getConvectiveSigmetCorrection()
         domain = self.getConvectiveSigmetDomain(domain)
-        embeddedSvr = self.getConvectiveSigmetEmbeddedSevere(geomType)
+        embeddedSvr = self.getConvectiveSigmetEmbeddedSevere(geomType,values,hazards)
         modifier = self.getConvectiveSigmetModifier(modifiers)
         motion = self.getConvectiveSigmetMotion()
         tops = self.getConvectiveSigmetTops()           
         
-        if geomType is not 'Polygon':
+        if geomType is 'Point':
             fields = [width, correction, domain, embeddedSvr,
+                      modifier, motion, tops]
+        elif geomType is 'LineString':
+            fields = [changeType, width, correction, domain, embeddedSvr,
                       modifier, motion, tops]            
         else:
-            fields = [correction, domain,
+            fields = [changeType, correction, domain,
                       embeddedSvr, modifier, motion, tops]
         
         grp = {
@@ -359,6 +591,34 @@ class MetaData(CommonMetaData.MetaData):
             }
                                
         return grp
+    
+    def changeType(self, geomType):
+        if geomType == 'Polygon':
+            label = 'Change Area to Line'
+        else:
+            label = 'Change Line to Area'
+            
+        changeType = {
+            "fieldType": "Group",
+            "fieldName": "convectiveSigmetChangeTypeGroup",
+            "label": "",
+            "numColumns": 3,
+            "fields": [
+                       {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveSigmetChangeType",
+                        "label": label,
+                        "modifyRecommender": "ChangeObjectTypeTool"
+                        },
+                       {
+                        "fieldType": "HiddenField",
+                        "fieldName": "convectiveSigmetMetaData",
+                        "refreshMetadata": True, #replaces string "True"
+                        "values": False,
+                        },                      
+            ]
+        }        
+        return changeType
     
     def getWidth(self, geomType):        
         if geomType == 'LineString':
@@ -412,14 +672,12 @@ class MetaData(CommonMetaData.MetaData):
                         "fieldName": "convectiveSigmetCorrection",
                         "label": "Correction?",
                         "values": False,
-                        #"enable": enable,
                         },
                        {
                         "fieldType": "CheckBox",
                         "fieldName": "convectiveSigmetSpecialIssuance",
                         "label": "Special Issuance?",
                         "values": False,
-                        #"enable": enable,
                         }                       
             ]
         }
@@ -448,13 +706,7 @@ class MetaData(CommonMetaData.MetaData):
         
         return domain
     
-    def getConvectiveSigmetEmbeddedSevere(self, geomType):
-        if geomType in ['Point', 'LineString']:
-            values = ["Severe"]
-            hazards = ["hailCheckBox","windCheckBox"]
-        else:
-            values = []
-            hazards = []
+    def getConvectiveSigmetEmbeddedSevere(self, geomType, values, hazards):
         embeddedSvr = {
             "fieldType": "Group",
             "fieldName": "convectiveSigmetEmbeddedSvrGroup",
@@ -625,22 +877,58 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     import sys
     sys.stderr.writelines( ['Hello World!\n'])
     
-    if triggerIdentifiers == None or "convectiveSigmetEmbeddedSvr" in triggerIdentifiers:
-        if "Severe" in mutableProperties["convectiveSigmetEmbeddedSvr"]["values"]:
+    try:
+        if triggerIdentifiers == None or "convectiveSigmetEmbeddedSvr" in triggerIdentifiers:
+            if "Severe" in mutableProperties["convectiveSigmetEmbeddedSvr"]["values"]:
+                return {
+                      "convectiveSigmetAdditionalHazards": {
+                                "enable": True,
+                                "values": ["hailCheckBox", "windCheckBox"]
+                      }
+                }
+            else:
+                return {
+                      "convectiveSigmetAdditionalHazards": {
+                                "enable": False,
+                                "values": []
+                      }
+                }
+    except KeyError:
+        return None
+
+    if triggerIdentifiers == None or "internationalSigmetOffice" in triggerIdentifiers:
+        if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
             return {
-                  "convectiveSigmetAdditionalHazards": {
-                            "enable": True,
-                            "values": ["hailCheckBox", "windCheckBox"]
+                  "internationalSigmetSequence": {
+                            "choices": ["ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INIDA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
+                  }        
+            }
+        elif "PANC" in mutableProperties["internationalSigmetOffice"]["values"]:
+            return {
+                  "internationalSigmetSequence": {
+                            "choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]                                
+                  }        
+            }
+        else:
+            return {
+                  "internationalSigmetSequence": {
+                            "choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]                                
+                  }        
+            }                              
+    
+    if triggerIdentifiers == None or "internationalSigmetExtent" in triggerIdentifiers:
+        if "Below" in mutableProperties["internationalSigmetExtent"]["values"] or "Top" in mutableProperties["internationalSigmetExtent"]["values"]:
+            return {
+                  "internationalSigmetExtentBottom": {
+                          "enable": False,                                   
                   }
             }
         else:
             return {
-                  "convectiveSigmetAdditionalHazards": {
-                            "enable": False,
-                            "values": []
+                  "internationalSigmetExtentBottom": {
+                          "enable": True,                                   
                   }
-            }            
-    
+            }
     
     seriesOverride = None
     if triggerIdentifiers:
