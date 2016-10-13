@@ -212,6 +212,13 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        for active (selected) spatial entities, and to have unselected
  *                                        ones glow subtly when the mouse passes over them. Also changed
  *                                        to disallow editing of unselected ones.
+ * Oct 05, 2016 22870      Chris.Golden   Fixed bug in getDataTimes() that caused an index-out-of-bounds
+ *                                        exception if H.S. was the Time Match Basis and the number of
+ *                                        frames were increased when there were no data times previously
+ *                                        recorded. Also fixed bug in same method that did not decrease
+ *                                        the number of data times (and thus frames) when H.S. was the
+ *                                        Time Match Basis and the number of frames was decreased by the
+ *                                        user.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1056,15 +1063,25 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             /*
              * Calculate more data times if the user has selected more frames
-             * than there have been in the past.
+             * than there have been in the past; if instead the user has
+             * selected less frames, chop off the earliest frames from the old
+             * frames.
              */
             if (descriptor.getNumberOfFrames() > frameCount) {
                 int variance = descriptor.getNumberOfFrames() - frameCount;
 
                 frameCount = descriptor.getNumberOfFrames();
 
-                DataTime earliestTime = dataTimes.get(0);
+                DataTime earliestTime = (dataTimes.isEmpty() ? new DataTime(
+                        SimulatedTime.getSystemTime().getTime()) : dataTimes
+                        .get(0));
                 fillDataTimeArray(earliestTime, variance);
+            } else if (descriptor.getNumberOfFrames() < frameCount) {
+                frameCount = descriptor.getNumberOfFrames();
+
+                while (dataTimes.size() > frameCount) {
+                    dataTimes.remove(0);
+                }
             }
 
             /*

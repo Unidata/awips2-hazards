@@ -99,6 +99,7 @@ import com.google.common.collect.ImmutableMap;
  *                                      to reflect the fact that now all data times are wanted,
  *                                      not just the latest one.
  * Aug 31, 2016 15934     Chris.Golden  Added constant related to advanced geometries.
+ * Oct 05, 2016 22870     Chris.Golden  Added frame change to triggers.
  * </pre>
  * 
  * @author mnash
@@ -173,8 +174,8 @@ public final class HazardConstants {
     public enum Trigger {
         NONE("none"), HAZARD_TYPE_FIRST("hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
                 "hazardEventModification"), HAZARD_EVENT_VISUAL_FEATURE_CHANGE(
-                "hazardEventVisualFeatureChange"), TIME_INTERVAL("timeInterval"), DATA_LAYER_UPDATE(
-                "dataLayerUpdate");
+                "hazardEventVisualFeatureChange"), TIME_INTERVAL("timeInterval"), FRAME_CHANGE(
+                "frameChange"), DATA_LAYER_UPDATE("dataLayerUpdate");
 
         // Private Variables
 

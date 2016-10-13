@@ -9,7 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
-
 /**
  * Description: Enumeration of the types of triggers that may initiate the
  * execution of event-driven tools.
@@ -20,11 +19,12 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
  * Date         Ticket#    Engineer      Description
  * ------------ ---------- ------------- --------------------------
  * Apr 27, 2016   18266    Chris.Golden  Initial creation.
+ * Oct 05, 2016   22870    Chris.Golden  Added frame change as a trigger.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public enum TriggerType {
-    TIME_INTERVAL, DATA_LAYER_CHANGE;
+    TIME_INTERVAL, FRAME_CHANGE, DATA_LAYER_CHANGE;
 }
