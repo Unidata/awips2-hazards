@@ -64,6 +64,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * ------------ ---------- ------------ --------------------------
  * Aug 31, 2016   15934    Chris.Golden Initial creation.
  * Sep 29, 2016   15928    Chris.Golden Added method to retrieve center point.
+ * Oct 13, 2016   15928    Chris.Golden Fixed bug caused by no serialization of
+ *                                      center point.
  * </pre>
  * 
  * @author Chris.Golden
@@ -86,7 +88,6 @@ public interface IAdvancedGeometry extends Serializable {
      * 
      * @return Center point of the geometry in world coordinates.
      */
-    @JsonIgnore
     public Coordinate getCenterPoint();
 
     /**

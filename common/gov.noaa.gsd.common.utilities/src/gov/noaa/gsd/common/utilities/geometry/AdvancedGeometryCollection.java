@@ -38,6 +38,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * ------------ ---------- ------------ --------------------------
  * Sep 02, 2016   15934    Chris.Golden Initial creation.
  * Sep 29, 2016   15928    Chris.Golden Added center point calculation.
+ * Oct 13, 2016   15928    Chris.Golden Fixed bug caused by serialization problems
+ *                                      with NaN in coordinates.
  * </pre>
  * 
  * @author Chris.Golden
@@ -94,7 +96,8 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
                 envelope.expandToInclude(childEnvelope);
             }
         }
-        centerPoint = envelope.centre();
+        Coordinate center = envelope.centre();
+        centerPoint = new Coordinate(center.x, center.y, 0.0);
     }
 
     // Public Methods

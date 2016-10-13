@@ -511,8 +511,6 @@ class Recommender(RecommenderTemplate.Recommender):
         # If trigger is visualFeature, then don't do this
         # otherwise do this
         trigger = eventSetAttrs.get('trigger')
-        #if not trigger == "hazardEventVisualFeatureChange":
-        #    self._setEventGeometry(event, downstreamPolys[index])
         
         ######
         #  History Polys        
@@ -529,10 +527,15 @@ class Recommender(RecommenderTemplate.Recommender):
             newHistTimes = newHistTimes[index:]
         event.set('historyPolys', newHistPolys)
         event.set('historyTimes', newHistTimes)
-         
-    def _setEventGeometry(self, event, polygon):
-        polygon = self._probUtils._reducePolygon(polygon)
-        event.setGeometry(AdvancedGeometry.createShapelyWrapper(polygon, 0))
+      
+    def _setEventGeometry(self, event, shape):
+        '''
+        @summary Set the event geometry to that specified.
+        @param event Event to be set.
+        @param shape Shape in advanced geometry form.
+        '''
+        shape = self._probUtils._reduceShapeIfPolygon(shape)
+        event.setGeometry(shape)
 
     ##############################################
     # Upstream / Downstream set up               #
@@ -558,8 +561,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 i += timeStep
         #print "SR getIntervalPolys", timeDirection, timeIntervals
         #self.flush()
-        self._probUtils._createIntervalPolys(event, eventSetAttrs, self._nudge, SwathPreset(), 
-                                             self._eventSt_ms, timeIntervals, timeDirection)
+        self._probUtils._createIntervalShapes(event, eventSetAttrs, self._nudge, SwathPreset(), 
+                                              self._eventSt_ms, timeIntervals, timeDirection)
 
     ###############################
     # Visual Features and Nudging #
@@ -607,7 +610,7 @@ class Recommender(RecommenderTemplate.Recommender):
         features = event.getVisualFeatures()
         if not features: features = []
 
-        # We are only changing one attribute per SwathRecommender execution
+        # We are only changing one visual feature per SwathRecommender execution
         changedIdentifier = list(eventSetAttrs.get('attributeIdentifiers'))[0]
 
         for feature in features:
@@ -747,10 +750,7 @@ class Recommender(RecommenderTemplate.Recommender):
             return
         downstreamTimes = event.get('downstreamTimes')
         
-        # TODO: This should probably just be event.getGeometry() once ellipses
-        # are handled by this recommender. Right now, it is flattened so that
-        # any ellipse, etc. is treated as a polygon.
-        geometry = event.getFlattenedGeometry()
+        geometry = event.getGeometry()
         
         features = []
         # Downstream Polygons, Track Points, Relocated Downstream 
@@ -801,13 +801,16 @@ class Recommender(RecommenderTemplate.Recommender):
             showCentroid = False
             if polySt_ms >= self._eventSt_ms:
                 if i == 0:
-                    dragCapability = "all"
+                    editable = True
+                    dragCapability = "whole"
                     showCentroid = True
                 else:
+                    editable = False
                     dragCapability = "none"
                     showCentroid = False
                     
-                relocatedPoly = self._probUtils._reducePolygon(self._probUtils._relocatePolygon(centroid, geometry))
+                relocatedShape = self._probUtils._reduceShapeIfPolygon(AdvancedGeometry.
+                                                                       createRelocatedShape(geometry, centroid))
                 relocatedFeature = {
                   "identifier": "swathRec_relocated_"+str(polySt_ms),
                   "visibilityConstraints": "selected",
@@ -815,9 +818,11 @@ class Recommender(RecommenderTemplate.Recommender):
                   "borderThickness": "eventType",
                   "borderStyle": "dashed",
                   "textSize": "eventType",
-                  "dragCapability": dragCapability, 
+                  "dragCapability": dragCapability,
+                  "scaleable": editable,
+                  "rotatable": editable,
                   "geometry": {
-                      (polySt_ms, polyEnd): AdvancedGeometry.createShapelyWrapper(relocatedPoly, 0)
+                      (polySt_ms, polyEnd): relocatedShape
                        }
                 }
                 features.append(relocatedFeature)

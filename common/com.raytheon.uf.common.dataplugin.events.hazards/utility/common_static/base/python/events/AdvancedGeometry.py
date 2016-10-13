@@ -9,13 +9,21 @@
 # #
 
 from java.util import ArrayList
+from com.raytheon.uf.common.python import PyJavaUtil
 from gov.noaa.gsd.common.utilities import JsonConverter
 from gov.noaa.gsd.common.utilities.geometry import IAdvancedGeometry
+from gov.noaa.gsd.common.utilities.geometry import IRotatable
+from gov.noaa.gsd.common.utilities.geometry import AdvancedGeometryCollection
+from gov.noaa.gsd.common.utilities.geometry import GeometryWrapper
+from gov.noaa.gsd.common.utilities.geometry import Ellipse
 from gov.noaa.gsd.common.utilities.geometry import AdvancedGeometryUtilities
 from gov.noaa.gsd.common.utilities.geometry import LinearUnit
 
 import json
 import JUtil
+import math
+import shapely.ops
+import shapely.affinity
 import GeometryHandler
 
 #
@@ -34,6 +42,13 @@ import GeometryHandler
 #    Sep 29, 2016      15928       Chris.Golden    Minor changes to comments due to
 #                                                  switch to angles being specified
 #                                                  in radians, and to corrections.
+#    Oct 13, 2016      15928       Chris.Golden    Moved methods to convert between
+#                                                  coordinate systems here from
+#                                                  ProbUtils. Also added method to
+#                                                  get an advanced geometry's
+#                                                  rotation, and a method to create
+#                                                  a copy of an advanced geometry
+#                                                  with a different centroid.
 #
 class AdvancedGeometry(object):
     
@@ -89,6 +104,16 @@ class AdvancedGeometry(object):
         may include one or more curves; False otherwise.
         '''
         return self._javaObject.isPotentiallyCurved()
+
+    def getRotation(self):
+        '''
+        @summary Get the rotation of the geometry in radians, or 0 if it is
+        not rotatable.
+        @return Rotation in radians, or 0 if the geometry is not rotatable.
+        '''
+        if PyJavaUtil.isSubclass(self._javaObject, IRotatable):
+            return self._javaObject.getRotation()
+        return 0
 
     def isValid(self):
         '''
@@ -174,17 +199,79 @@ def createCollection(*args):
     '''
     return createCollectionFromList(args)
 
-def createCollectionFromList(advancedGeometries):
+def createCollectionFromList(geometries):
     '''
     @summary Create an advanced geometry collection made up of the list of one
     or more advanced geometries provided as the parameter.
-    @param advancedGeometries: List of one or more advanced geometries in
-    IAdvancedGeometry form to be included in the collection.
+    @param geometries: List of one or more advanced geometries in IAdvancedGeometry
+    form to be included in the collection.
     @return: Collection in Java IAdvancedGeometry form.
     '''
-    advancedGeometryList = ArrayList(len(advancedGeometries))
-    for advancedGeometry in advancedGeometries:
-        advancedGeometryList.add(advancedGeometry._javaObject)
-    return AdvancedGeometry(AdvancedGeometryUtilities.createCollection(advancedGeometryList))
+    geometryList = ArrayList(len(geometries))
+    for geometry in geometries:
+        geometryList.add(geometry._javaObject)
+    return AdvancedGeometry(AdvancedGeometryUtilities.createCollection(geometryList))
 
+def createRelocatedShape(geometry, newCentroid):
+    '''
+    @summary Create a new advanced geometry that is the same as the original one
+    specified, but with the specified new centroid.
+    @param geometry Advanced geometry to be relocated.
+    @param newCentroid Centroid the new copy is to have.
+    @return Advanced geometry relocated to use the new centroid. 
+    ''' 
+
+    # If the shape is a collection, relocate its children and return
+    # a new collection holding the relocated children; if it is an
+    # ellipse, build a new ellipse with the new centroid; otherwise,
+    # assume it is a shapely wrapper, and relocate the underlying
+    # shapely object, then re-wrap it and return that.
+    if PyJavaUtil.isSubclass(geometry._javaObject, AdvancedGeometryCollection):
+        children = geometry._javaObject.getChildren()
+        # TODO: Is there a cleaner Pythonesque way to iterate over a java.util.List?
+        size = children.size()
+        index = 0
+        newChildren = []
+        while index < size:
+            newChildren.append(createRelocatedShape(children.get(index), newCentroid))
+            index += 1
+        return createCollectionFromList(newChildren)
+
+    elif PyJavaUtil.isSubclass(geometry._javaObject, Ellipse):
+        return createEllipse(newCentroid.x, newCentroid.y, geometry._javaObject.getWidth(),
+                             geometry._javaObject.getHeight(), geometry._javaObject.getUnits().toString(),
+                             geometry._javaObject.getRotation())
     
+    else:
+        rotation = geometry.getRotation()
+        initialShape = geometry.asShapely()
+        if isinstance(initialShape, shapely.geometry.collection.GeometryCollection):
+            initialShape = initialShape.geoms[0]
+        initialShape_gglGeom = shapely.ops.transform(c4326t3857, initialShape)
+        newCentroid_gglGeom = shapely.ops.transform(c4326t3857, newCentroid)
+        xdis = newCentroid_gglGeom.x-initialShape_gglGeom.centroid.x
+        ydis = newCentroid_gglGeom.y-initialShape_gglGeom.centroid.y
+        newShape_gglGeom = shapely.affinity.translate(initialShape_gglGeom, \
+                                                      xoff=xdis, yoff=ydis)
+        newShape = shapely.ops.transform(c3857t4326, newShape_gglGeom)
+        return createShapelyWrapper(newShape, rotation)
+    
+def c4326t3857(lon, lat):
+    '''
+    Pure python 4326 -> 3857 transform. About 8x faster than pyproj.
+    '''
+    lat_rad = math.radians(lat)
+    xtile = lon * 111319.49079327358
+    ytile = math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / \
+        math.pi * 20037508.342789244
+    return(xtile, ytile)
+    
+    
+def c3857t4326(lon, lat):
+    '''
+    Pure python 3857 -> 4326 transform. About 12x faster than pyproj.
+    '''
+    xtile = lon / 111319.49079327358
+    ytile = math.degrees(
+        math.asin(math.tanh(lat / 20037508.342789244 * math.pi)))
+    return(xtile, ytile)

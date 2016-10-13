@@ -573,34 +573,28 @@ class ProbUtils(object):
         self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)                
 
 
-    def _reducePolygon(self, initialPoly): 
+    def _reduceShapeIfPolygon(self, initialShape): 
         '''
-        initialPoly: Polygon in shapely form.
+        @summary Reduce the shape if it is a polygon to have only the maximum allowable
+        number of vertices.
+        @param initialShape: Advanced geometry.
+        @return Reduced polygon as advanced geometry if the original was a
+        polygon, otherwise the original advanced geometry.
         '''  
-        numPoints = self._hazardPointLimit()
-        tolerance = 0.001
-        newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
-        while len(newPoly.exterior.coords) > numPoints:
-            tolerance += 0.001
+        if initialShape.isPolygonal() and not initialShape.isPotentiallyCurved():
+            rotation = initialShape.getRotation()
+            numPoints = self._hazardPointLimit()
+            tolerance = 0.001
+            initialPoly = initialShape.asShapely()
+            if type(initialPoly) is shapely.geometry.collection.GeometryCollection:
+                initialPoly = initialPoly[0] 
             newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
+            while len(newPoly.exterior.coords) > numPoints:
+                tolerance += 0.001
+                newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
             
-        return newPoly    
-
-    def _relocatePolygon(self, newCentroid, initialPoly):
-        '''
-        initialPoly: Polygon in shapely form.
-        '''  
-        if isinstance(initialPoly, shapely.geometry.collection.GeometryCollection):
-            initialPoly = initialPoly.geoms[0]
-        initialPoly_gglGeom = so.transform(self._c4326t3857, initialPoly)
-        newCentroid_gglGeom = so.transform(self._c4326t3857, newCentroid)
-        xdis = newCentroid_gglGeom.x-initialPoly_gglGeom.centroid.x
-        ydis = newCentroid_gglGeom.y-initialPoly_gglGeom.centroid.y
-        newPoly_gglGeom = sa.translate(initialPoly_gglGeom,\
-                                                xoff=xdis, yoff=ydis)
-        newPoly = so.transform(self._c3857t4326, newPoly_gglGeom)
-        return newPoly
-
+            return AdvancedGeometry.createShapelyWrapper(newPoly, rotation)
+        return initialShape
 
     ###############################
     # Compute Motion Vector       #
@@ -608,7 +602,7 @@ class ProbUtils(object):
 
     def computeMotionVector(self, polygonTuples, currentTime, defaultSpeed=32, defaultDir=270):
         '''
-        polygonTuples is a list of tuples expected as:
+        @param polygonTuples List of tuples expected as:
         [(poly1, startTime1), (poly2, startTime2),,,,(polyN, startTimeN)]
         with each poly being in advanced geometry form.
         '''
@@ -772,22 +766,22 @@ class ProbUtils(object):
     # Compute Interval (downstream and upstream Polygons #
     ######################################################
             
-    def _createIntervalPolys(self, event, eventSetAttrs, nudge, swathPresetClass, eventSt_ms, 
-                             timeIntervals, timeDirection='downstream'):
+    def _createIntervalShapes(self, event, eventSetAttrs, nudge, swathPresetClass, eventSt_ms, 
+                              timeIntervals, timeDirection='downstream'):
         '''
-        This method creates the downstream or upstream polygons given 
-          -- event start time polygon 
+        This method creates the downstream or upstream shapes given 
+          -- event start time shape
           -- a direction and direction uncertainty
           -- a speed and a speed uncertainty
           -- a Preset Choice
           -- a list of timeIntervals -- list of intervals (in secs) relative to eventSt_ms for
-             which to produce downstream or upstream polygons
+             which to produce downstream or upstream shapes
           -- timeDirection -- 'downstream' or 'upstream'
           
         Note that the timeIntervals will be negative for upstream and positive for downstream
                 
-        From the downstreamPolys and upstreamPolys, the visualFeatures 
-            (swath, trackpoints, and upstream polygons) can be determined.
+        From the downstreamShapes and upstreamShapes, the visualFeatures 
+            (swath, trackpoints, and upstream shapes) can be determined.
         
         '''        
         attrs = event.getHazardAttributes()
@@ -816,56 +810,60 @@ class ProbUtils(object):
         else:
             spdUVal = int(2.16067*1.94384)
                             
-        ### Get initial polygon.  
-        # This represents the polygon at the event start time resulting from the last nudge.
+        ### Get initial shape.  
+        # This represents the shape at the event start time resulting from the last nudge.
         if nudge:
-            poly = event.getGeometry()
+            shape = event.getGeometry()
         else:
-            downstreamPolys = event.get('downstreamPolys', [])
-            if downstreamPolys:
-                poly = downstreamPolys[0]
+            downstreamShapes = event.get('downstreamPolys', [])
+            if downstreamShapes:
+                shape = downstreamShapes[0]
             else:
-                poly = event.getGeometry()
-        poly = poly.asShapely()
+                shape = event.getGeometry()
+                
+        # Convert the shape to a shapely polygon.
+        poly = shape.asShapely()
         if type(poly) is shapely.geometry.collection.GeometryCollection:
             poly = poly[0] 
                     
         presetChoice = attrs.get('convectiveSwathPresets') if attrs.get('convectiveSwathPresets') is not None else 'NoPreset'
         presetMethod = getattr(swathPresetClass, presetChoice)
                 
-        ### convert poly to Google Coords to make use of Karstens' code
-        gglPoly = so.transform(self._c4326t3857,poly)
+        # Convert the shapely polygon to Google Coords to make use of Karstens' code
+        gglPoly = so.transform(AdvancedGeometry.c4326t3857, poly)
                     
-        intervalPolys = []
+        intervalShapes = []
         intervalTimes = []
-        totalSecs = abs(timeIntervals[-1]-timeIntervals[0]) 
+        totalSecs = abs(timeIntervals[-1] - timeIntervals[0]) 
         if not totalSecs:
             totalSecs = timeIntervals[0]
         self._prevDirVal = None
         
         for secs in timeIntervals:
             origDirVal = dirVal
-            intervalPoly, secs = self._getIntervalPoly(secs, totalSecs, poly, gglPoly, 
-                                                       speedVal, dirVal, spdUVal, dirUVal, 
-                                                       timeDirection, presetMethod) 
-            intervalPoly = self._reducePolygon(intervalPoly)
-            intervalPolys.append(AdvancedGeometry.createShapelyWrapper(intervalPoly, 0))
+            intervalShape, secs = self._getIntervalShape(secs, totalSecs, shape, gglPoly, 
+                                                        speedVal, dirVal, spdUVal, dirUVal, 
+                                                        timeDirection, presetMethod) 
+
+            intervalShape = self._reduceShapeIfPolygon(intervalShape)
+            intervalShapes.append(intervalShape)
             st = self._convertFeatureTime(eventSt_ms, secs)
             et = self._convertFeatureTime(eventSt_ms, secs+self._timeStep())
             intervalTimes.append((st, et))
                     
         if timeDirection == 'downstream':
-            event.addHazardAttribute('downstreamPolys',intervalPolys)       
+            event.addHazardAttribute('downstreamPolys',intervalShapes)       
             event.addHazardAttribute('downstreamTimes',intervalTimes) 
         else:
-            event.addHazardAttribute('upstreamPolys',intervalPolys)       
+            event.addHazardAttribute('upstreamPolys',intervalShapes)       
             event.addHazardAttribute('upstreamTimes',intervalTimes)     
 
-    def _getIntervalPoly(self, secs, totalSecs, poly, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
+    def _getIntervalShape(self, secs, totalSecs, shape, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
                          timeDirection, presetMethod):
         '''
-        poly: Polygon in shapely form.
-        Returns an internval polygon in shapely form.
+        @param shape: Shape in advanced geometry form.
+        @param gglPoly: Shapely polygon version of the shape using Google coordinates. 
+        @return Interval shape in advanced geometry form.
         '''
         if timeDirection == 'upstream':
             presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
@@ -882,11 +880,20 @@ class ProbUtils(object):
             dirUVal = presetResults['dirUVal']           
         
         gglDownstream = self._computePoly(secs, speedVal, dirVal, spdUVal, dirUVal,
-                            dirValLast,gglPoly)
-        intervalPoly = so.transform(self._c3857t4326, gglDownstream)
+                            dirValLast, gglPoly)
+        intervalPoly = so.transform(AdvancedGeometry.c3857t4326, gglDownstream)
+        
+        # If the interval is upstream, relocate the original shape using the newly
+        # calculated polygon's centroid; otherwise, use the newly calculated polygon
+        # as the interval. Downstream shapes are never ellipses (i.e. always polygons)
+        # because they may be transformed in such a way that they are no longer
+        # ellipsoid, i.e. symmetrical with regard to the distance of any given point
+        # along their edge with the one at the opposing angle.
         if timeDirection == "upstream":
-            intervalPoly = self._relocatePolygon(intervalPoly.centroid, poly)
-        return intervalPoly, secs
+            intervalShape = AdvancedGeometry.createRelocatedShape(shape, intervalPoly.centroid)
+        else:
+            intervalShape = AdvancedGeometry.createShapelyWrapper(intervalPoly, shape.getRotation())
+        return intervalShape, secs
 
     def computeUpstreamCentroid(self, centroid, dirDeg, spdKts, time):
         diffSecs = abs(time)
@@ -903,6 +910,10 @@ class ProbUtils(object):
         return newCentroid
 
     def _computePoly(self, secs, speedVal, dirVal, spdUVal, dirUVal, dirValLast, threat):
+        '''
+        @param threat Polygon in Google coordinates.
+        @return Polygon in Google coordinates.
+        '''
         speedVal = float(speedVal)
         dirVal = float(dirVal)
         dis = secs * speedVal * 0.514444444
@@ -935,28 +946,7 @@ class ProbUtils(object):
         threat = sa.rotate(threat,rotVal,origin='centroid')
 
         return threat
-    
-    
-    def _c4326t3857(self, lon, lat):
-        """
-        Pure python 4326 -> 3857 transform. About 8x faster than pyproj.
-        """
-        lat_rad = math.radians(lat)
-        xtile = lon * 111319.49079327358
-        ytile = math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / \
-            math.pi * 20037508.342789244
-        return(xtile, ytile)
-    
-    
-    def _c3857t4326(self, lon, lat):
-        """
-        Pure python 3857 -> 4326 transform. About 12x faster than pyproj.
-        """
-        xtile = lon / 111319.49079327358
-        ytile = math.degrees(
-            math.asin(math.tanh(lat / 20037508.342789244 * math.pi)))
-        return(xtile, ytile)
-    
+        
     def _convertFeatureTime(self, eventSt_ms, secs):
         # Return millis given the event start time and secs offset
         # Round to minutes

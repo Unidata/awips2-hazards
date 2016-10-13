@@ -48,6 +48,8 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      to cause geometries to flip over the
  *                                      appropriate axis if the user crosses
  *                                      that axis while resizing.
+ * Oct 13, 2016   15928    Chris.Golden Fixed bug caused by serialization problems
+ *                                      with NaN in coordinates.
  * </pre>
  * 
  * @author Chris.Golden
@@ -245,7 +247,8 @@ public class GeometryWrapper implements IRotatable, IScaleable {
         Geometry unrotatedGeometry = AffineTransformation.rotationInstance(
                 rotation * -1.0, firstPoint.x, firstPoint.y)
                 .transform(geometry);
-        centerPoint = unrotatedGeometry.getEnvelopeInternal().centre();
+        Coordinate center = unrotatedGeometry.getEnvelopeInternal().centre();
+        centerPoint = new Coordinate(center.x, center.y, 0.0);
         AffineTransformation.rotationInstance(rotation, firstPoint.x,
                 firstPoint.y).transform(centerPoint, centerPoint);
     }
