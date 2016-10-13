@@ -254,6 +254,13 @@ class Recommender(RecommenderTemplate.Recommender):
             
             # Construct Updated Visual Features
             self._setVisualFeatures(event)         
+
+            # Set the read-only attribute to True, since functionality to
+            # use it and modify it has not yet been implemented.
+            #
+            # TODO: Set it as outlined in the Swath Recommender Design doc
+            # when modify/read-only functionality is added.
+            event.set("readOnly", True)
                 
             # Add revised event to result
             resultEventSet.add(event)              

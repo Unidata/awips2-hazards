@@ -94,6 +94,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Sep 27, 2016 15928      Chris.Golden Changed line thickness for hazard events.
  * Oct 05, 2016 22870      Chris.Golden Added support for event-driven tools triggered
  *                                      by frame changes.
+ * Oct 06, 2016 22894      Chris.Golden Added method to get session attributes for a
+ *                                      hazard type.
  * </pre>
  * 
  * @author bsteffen
@@ -386,6 +388,19 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *         this may be an empty list.
      */
     public List<String> getReplaceByTypes(String hazardType);
+
+    /**
+     * Get the session attributes for the specified hazard event, if any.
+     * Session attributes are those which are used to store information by
+     * recommenders, etc. during a H.S. session, but which should not be
+     * persisted.
+     * 
+     * @param hazardType
+     *            Type of the hazard for which to fetch the session attributes.
+     * @return List of attributes that are not to be persisted for this hazard
+     *         type; may be empty.
+     */
+    public List<String> getSessionAttributes(String hazardType);
 
     /**
      * Get the hazard category from the hazardCategories configuration file for
