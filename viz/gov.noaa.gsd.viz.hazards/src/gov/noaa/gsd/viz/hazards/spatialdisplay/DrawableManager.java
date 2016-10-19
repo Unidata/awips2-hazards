@@ -1177,12 +1177,16 @@ class DrawableManager {
          * Get the spatial entity that is represented by the drawable with which
          * the bounding box to be replaced is associated, and from it, get the
          * list of drawables (including any such bounding box) that represents
-         * it visually.
+         * it visually. If none is found, then the drawables have disappeared,
+         * so nothing needs to be done.
          */
         SpatialEntity<? extends IEntityIdentifier> spatialEntity = spatialEntitiesForDrawables
                 .get(associatedDrawable);
         List<AbstractDrawableComponent> drawables = drawablesForSpatialEntities
                 .get(spatialEntity);
+        if (drawables == null) {
+            return;
+        }
 
         /*
          * Find the old bounding box, if there is one.

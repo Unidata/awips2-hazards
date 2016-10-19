@@ -9,10 +9,14 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 
 import org.eclipse.nebula.widgets.cdatetime.CDT;
@@ -35,6 +39,8 @@ import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
+
+import com.google.common.collect.ImmutableMap;
 
 /**
  * Description: Date-time component, providing an encapsulation of a single pair
@@ -69,14 +75,15 @@ import org.eclipse.swt.widgets.Text;
  * Mar 29, 2015    6874    Chris.Golden      Fixed bugs that caused some valid values
  *                                           entered by users in the date/time fields
  *                                           to be rejected.
- * Mar 31, 2015   6873     Chris.Golden      Added code to ensure that mouse wheel
+ * Mar 31, 2015    6873    Chris.Golden      Added code to ensure that mouse wheel
  *                                           events are not processed by the
  *                                           megawidget, but are instead passed up
  *                                           to any ancestor that is a scrolled
  *                                           composite.
- * Apr 10, 2015   7394     Robert.Blum       Simplified the code to use one Date object
+ * Apr 10, 2015    7394    Robert.Blum       Simplified the code to use one Date object
  *                                           to back both widgets and also made the 
  *                                           values roll correctly.
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution option.
  * </pre>
  * 
  * @author Chris.Golden
@@ -116,9 +123,17 @@ public class DateTimeComponent implements ITimeComponent {
     private static final String DATE_FORMAT = "dd-MMM-yyyy";
 
     /**
-     * Formatter for time strings.
+     * Map of time resolutions to the formats of the time strings at those
+     * resolutions.
      */
-    private static final String TIME_FORMAT = "HH:mm";
+    private static final Map<TimeResolution, String> TIME_FORMATS_FOR_RESOLUTIONS;
+    static {
+        EnumMap<TimeResolution, String> map = new EnumMap<>(
+                TimeResolution.class);
+        map.put(TimeResolution.MINUTES, "HH:mm");
+        map.put(TimeResolution.SECONDS, "HH:mm:ss");
+        TIME_FORMATS_FOR_RESOLUTIONS = ImmutableMap.copyOf(map);
+    }
 
     /**
      * Longest date text that could be displayed.
@@ -126,9 +141,17 @@ public class DateTimeComponent implements ITimeComponent {
     private static final String LONGEST_DATE_TEXT = "00-May-0000";
 
     /**
-     * Longest time text that could be displayed.
+     * Map of time resolutions to the longest time strings that are possible at
+     * those resolutions.
      */
-    private static final String LONGEST_TIME_TEXT = "00:00";
+    private static final Map<TimeResolution, String> LONGEST_TIME_TEXTS_FOR_RESOLUTIONS;
+    static {
+        EnumMap<TimeResolution, String> map = new EnumMap<>(
+                TimeResolution.class);
+        map.put(TimeResolution.MINUTES, "00:00");
+        map.put(TimeResolution.SECONDS, "00:00:00");
+        LONGEST_TIME_TEXTS_FOR_RESOLUTIONS = ImmutableMap.copyOf(map);
+    }
 
     private static final long MILLISECONDS_IN_MINUTE = 60000;
 
@@ -401,6 +424,8 @@ public class DateTimeComponent implements ITimeComponent {
      *            this date-time component.
      * @param startingValue
      *            Starting value of the date-time component.
+     * @param timeResolution
+     *            Time resolution to be used.
      * @param grabExcessHorizontalSpace
      *            Flag indicating whether or not the component's widgets should
      *            grab excess horizontal space.
@@ -414,8 +439,9 @@ public class DateTimeComponent implements ITimeComponent {
      */
     public DateTimeComponent(String identifier, Composite parent, String text,
             IControlSpecifier specifier, long startingValue,
-            boolean grabExcessHorizontalSpace, int verticalIndent,
-            boolean onlySendEndStateChanges, IDateTimeComponentHolder holder) {
+            TimeResolution timeResolution, boolean grabExcessHorizontalSpace,
+            int verticalIndent, boolean onlySendEndStateChanges,
+            IDateTimeComponentHolder holder) {
         this.identifier = identifier;
         this.holder = holder;
         lastForwardedState = state = startingValue;
@@ -485,11 +511,11 @@ public class DateTimeComponent implements ITimeComponent {
          * width is calculated and applied so that it stays at least that wide.
          */
         time = new DateTime(panel, CDT.BORDER | CDT.SPINNER | CDT.TAB_FIELDS);
-        time.setNullText(LONGEST_TIME_TEXT);
+        time.setNullText(LONGEST_TIME_TEXTS_FOR_RESOLUTIONS.get(timeResolution));
         time.setSelection(null);
         int timeWidth = time.computeSize(SWT.DEFAULT, SWT.DEFAULT).x;
         time.setNullText(NULL_TIME_TEXT);
-        time.setPattern(TIME_FORMAT);
+        time.setPattern(TIME_FORMATS_FOR_RESOLUTIONS.get(timeResolution));
         time.setTimeZone(TIME_ZONE);
         time.setSelection(timestamp);
         time.setEnabled(specifier.isEnabled());

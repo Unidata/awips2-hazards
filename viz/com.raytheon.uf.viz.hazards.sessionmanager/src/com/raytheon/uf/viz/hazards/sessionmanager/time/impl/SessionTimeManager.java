@@ -21,14 +21,16 @@ package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -38,18 +40,26 @@ import net.engio.mbassy.listener.Handler;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.time.DateUtils;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
+import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeMinuteTicked;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeReset;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeSecondTicked;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -109,6 +119,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      that it does not contain a reference to the
  *                                      time manager object (which it doesn't need
  *                                      anyway), to facilitate in garbage collection.
+ * Oct 19, 2016 21873      Chris.Golden Added time resolution tracking, which when
+ *                                      set to seconds causes time-change messages to
+ *                                      go out for each second, not just each minute.
+ *                                      Also changed managing of selected time to
+ *                                      ensure it always lies on unit boundaries (e.g.
+ *                                      if time resolution is minutes, it must lie on
+ *                                      a minute boundary).
  * </pre>
  * 
  * @author bsteffen
@@ -153,12 +170,34 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
     };
 
+    /**
+     * Map of time resolutions to the number of milliseconds in the resolutions'
+     * units.
+     */
+    private static final Map<TimeResolution, Long> UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION;
+    static {
+        Map<TimeResolution, Long> map = new EnumMap<>(TimeResolution.class);
+        map.put(TimeResolution.MINUTES, TimeUnit.MINUTES.toMillis(1L));
+        map.put(TimeResolution.SECONDS, TimeUnit.SECONDS.toMillis(1L));
+        UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION = ImmutableMap.copyOf(map);
+    }
+
     // Private Variables
+
+    /**
+     * Session manager.
+     */
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     /**
      * Notification sender, used to send out time-related notifications.
      */
     private final ISessionNotificationSender notificationSender;
+
+    /**
+     * Time resolution.
+     */
+    private TimeResolution timeResolution = TimeResolution.MINUTES;
 
     /**
      * Currently selected time.
@@ -177,6 +216,13 @@ public class SessionTimeManager implements ISessionTimeManager {
      * {@link #runAtRegularIntervals(Runnable, long)}.
      */
     private Timer timer;
+
+    /**
+     * Timer task that sends out notifications of seconds ticking forward, if
+     * {@link #timeResolution} is {@link TimeResolution#SECONDS} and the clock
+     * is ticking forward.
+     */
+    private TimerTask secondsTickTimerTask;
 
     /**
      * Map of tasks to be executed at regular intervals to their intervals in
@@ -208,18 +254,20 @@ public class SessionTimeManager implements ISessionTimeManager {
             if (timer != null) {
                 timer.cancel();
                 timer = null;
+                secondsTickTimerTask = null;
             }
 
             /*
-             * Notify any listeners that the CAVE current time has changed.
+             * Notify any listeners that the CAVE current time has been reset.
              */
-            publishNotificationOfTimeChange();
+            notificationSender.postNotificationAsync(new CurrentTimeReset(
+                    Originator.OTHER, SessionTimeManager.this));
 
             /*
              * If the CAVE current time is not frozen, schedule notifications to
-             * occur on the minute.
+             * occur regularly.
              */
-            scheduleTimerNotifications();
+            scheduleTimerNotifications(false);
 
             /*
              * Run any scheduled tasks immediately.
@@ -233,22 +281,27 @@ public class SessionTimeManager implements ISessionTimeManager {
     /**
      * Construct a standard instance.
      * 
+     * @param sessionManager
+     *            Session manager.
      * @param notificationSender
      *            Notification sender, used to send out time-related
      *            notifications.
      */
-    public SessionTimeManager(ISessionNotificationSender notificationSender) {
+    public SessionTimeManager(
+            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+            ISessionNotificationSender notificationSender) {
+        this.sessionManager = sessionManager;
         this.notificationSender = notificationSender;
-        Date currentTime = getCurrentTime();
+        Date currentTime = truncateDateForTimeResolution(getCurrentTime(),
+                timeResolution);
         selectedTime = new SelectedTime(currentTime.getTime());
 
         /*
-         * Create a timer that fires every CAVE current time minute, and
-         * schedule the firings. Also subscribe to notifications of simulated
-         * time changes to update the timer appropriately whenever such changes
-         * occur.
+         * Schedule timer notifications, and subscribe to notifications of
+         * simulated time changes to update the timer appropriately whenever
+         * such changes occur.
          */
-        scheduleTimerNotifications();
+        scheduleTimerNotifications(false);
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
                 simulatedTimeChangeListener);
     }
@@ -289,6 +342,22 @@ public class SessionTimeManager implements ISessionTimeManager {
     public void setSelectedTime(SelectedTime selectedTime,
             IOriginator originator) {
         assert (selectedTime != null);
+
+        /*
+         * Ensure the selected time is truncated as appropriate given the
+         * current time resolution.
+         */
+        Date lowerBound = truncateDateForTimeResolution(
+                new Date(selectedTime.getLowerBound()), timeResolution);
+        Date upperBound = truncateDateForTimeResolution(
+                new Date(selectedTime.getUpperBound()), timeResolution);
+        selectedTime = new SelectedTime(lowerBound.getTime(),
+                upperBound.getTime());
+
+        /*
+         * If nothing has changed, do no more. Otherwise, remember the new time,
+         * and send out a notification.
+         */
         if (selectedTime.equals(this.selectedTime)) {
             return;
         }
@@ -376,6 +445,38 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
     }
 
+    /**
+     * Handle a change in the settings.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void settingsModified(SettingsModified change) {
+
+        /*
+         * See if the time resolution has changed; if so, then schedule a timer
+         * task for seconds ticking forward if the resolution now includes
+         * seconds, or cancel any such task if it now is only minutes. Also set
+         * the selected time if the latter is the case, since seconds in the
+         * selected time must be truncated to minutes.
+         */
+        TimeResolution newTimeResolution = sessionManager
+                .getConfigurationManager().getSettingsValue(
+                        HazardConstants.TIME_RESOLUTION, change.getSettings());
+        if (timeResolution != newTimeResolution) {
+            timeResolution = newTimeResolution;
+            if (timeResolution == TimeResolution.SECONDS) {
+                scheduleTimerNotifications(true);
+            } else if (secondsTickTimerTask != null) {
+                secondsTickTimerTask.cancel();
+                secondsTickTimerTask = null;
+                setSelectedTime(new SelectedTime(selectedTime),
+                        Originator.OTHER);
+            }
+        }
+    }
+
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this);
@@ -386,6 +487,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         if (timer != null) {
             timer.cancel();
             timer = null;
+            secondsTickTimerTask = null;
         }
         SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
                 simulatedTimeChangeListener);
@@ -395,8 +497,14 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     /**
      * Schedule the timer notifications.
+     * 
+     * @param onlyScheduleSecondsTick
+     *            Flag indicating whether or not only the seconds tick timer
+     *            event should be scheduled. If <code>false</code>, then the
+     *            minutes tick will be scheduled, and the seconds tick may be
+     *            scheduled as well if the time resolution calls for it.
      */
-    private void scheduleTimerNotifications() {
+    private void scheduleTimerNotifications(boolean onlyScheduleSecondsTick) {
 
         /*
          * If time is frozen, do not start a timer.
@@ -406,47 +514,114 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
 
         /*
-         * Create the timer.
+         * Create the timer if it is needed. If only seconds ticks are to be
+         * scheduled, it should already be created.
          */
-        timer = new Timer(true);
+        if (timer == null) {
+            timer = new Timer(true);
+        }
 
         /*
-         * Get the number of milliseconds between the current simulated time and
-         * when the simulated time rolls over to the next minute.
+         * Determine which time tick notifications should be scheduled. If only
+         * the seconds one is needed, schedule only it; if the time resolution
+         * is minutes, schedule only the minutes one; otherwise, schedule both.
          */
-        Date simulatedTimeCurrent = SimulatedTime.getSystemTime().getTime();
-        Date simulatedTimeStartOfCurrentMinute = DateUtils.truncate(
-                simulatedTimeCurrent, Calendar.MINUTE);
-        long offsetUntilFirstSimulatedMinuteChange = simulatedTimeStartOfCurrentMinute
-                .getTime()
-                + MINUTE_AS_MILLISECONDS
-                - simulatedTimeCurrent.getTime();
+        Set<TimeResolution> timeResolutions = (onlyScheduleSecondsTick ? Sets
+                .newHashSet(TimeResolution.SECONDS)
+                : (timeResolution == TimeResolution.MINUTES ? Sets
+                        .newHashSet(TimeResolution.MINUTES) : Sets
+                        .newHashSet(TimeResolution.values())));
 
         /*
-         * Schedule the timer to fire a notification off each minute. Using this
-         * method instead of schedule() ensures that even if something delays
-         * the notifications of the minute changing, future notifications will
-         * occur on the minute change.
-         * 
-         * TODO: It is possible for the "scale" of time to be set in
-         * SimulatedTime, which changes time's rate of change (simulating the
-         * speeding up or slowing down of time's passage). This ability is not
-         * currently used, but if it ever is, the delay calculated above would
-         * need to be adjusted accordingly, as would the interval between
-         * firings.
+         * Create timer tasks to fire off once a minute and/or once a second, as
+         * determined above.
          */
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
-                    @Override
-                    public void run() {
-                        publishNotificationOfTimeChange();
-                        runScheduledTasks(false);
-                    }
-                });
+        for (final TimeResolution timeResolution : timeResolutions) {
+
+            /*
+             * Get the number of milliseconds between the current simulated time
+             * and when the simulated time rolls over to the next unit.
+             */
+            Date simulatedTimeCurrent = SimulatedTime.getSystemTime().getTime();
+            Date simulatedTimeStartOfCurrentUnit = truncateDateForTimeResolution(
+                    simulatedTimeCurrent, timeResolution);
+            long offsetUntilFirstSimulatedMinuteChange = simulatedTimeStartOfCurrentUnit
+                    .getTime()
+                    + UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION
+                            .get(timeResolution)
+                    - simulatedTimeCurrent.getTime();
+
+            /*
+             * Create a timer task to fire a notification off each interval. If
+             * this is a minute interval notification, also execute any
+             * scheduled tasks.
+             */
+            TimerTask timerTask = new TimerTask() {
+                @Override
+                public void run() {
+                    RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
+                        @Override
+                        public void run() {
+                            notificationSender
+                                    .postNotificationAsync((timeResolution == TimeResolution.MINUTES ? new CurrentTimeMinuteTicked(
+                                            Originator.OTHER,
+                                            SessionTimeManager.this)
+                                            : new CurrentTimeSecondTicked(
+                                                    Originator.OTHER,
+                                                    SessionTimeManager.this)));
+                            if (timeResolution == TimeResolution.MINUTES) {
+                                runScheduledTasks(false);
+                            }
+                        }
+                    });
+                }
+            };
+
+            /*
+             * If this is the seconds tick forward task, make a record of it so
+             * that it can be canceled independently of the timer later if need
+             * be.
+             */
+            if (timeResolution == TimeResolution.SECONDS) {
+                secondsTickTimerTask = timerTask;
             }
-        }, offsetUntilFirstSimulatedMinuteChange, MINUTE_AS_MILLISECONDS);
+
+            /*
+             * Schedule the timer to fire a notification off each interval.
+             * Using this method instead of schedule() ensures that even if
+             * something delays the notifications of the tick forward, future
+             * notifications will occur on the unit change. If this is a minute
+             * interval notification, also execute any scheduled tasks.
+             * 
+             * TODO: It is possible for the "scale" of time to be set in
+             * SimulatedTime, which changes time's rate of change (simulating
+             * the speeding up or slowing down of time's passage). This ability
+             * is not currently used, but if it ever is, the delay calculated
+             * above would need to be adjusted accordingly, as would the
+             * interval between firings.
+             */
+            timer.scheduleAtFixedRate(timerTask,
+                    offsetUntilFirstSimulatedMinuteChange,
+                    UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION
+                            .get(timeResolution));
+        }
+    }
+
+    /**
+     * Truncate the specified date for the specified time resolution.
+     * 
+     * @param date
+     *            Date-time to be truncated.
+     * @param timeResolution
+     *            Time resolution that will determine what unit boundary to
+     *            which to truncate.
+     * @return Truncated date-time.
+     */
+    private Date truncateDateForTimeResolution(Date date,
+            TimeResolution timeResolution) {
+        return DateUtils.truncate(date,
+                HazardConstants.TRUNCATION_UNITS_FOR_TIME_RESOLUTIONS
+                        .get(timeResolution));
     }
 
     /**
@@ -507,14 +682,6 @@ public class SessionTimeManager implements ISessionTimeManager {
     }
 
     /**
-     * Publish notification of a time change.
-     */
-    private void publishNotificationOfTimeChange() {
-        notificationSender.postNotificationAsync(new CurrentTimeChanged(
-                Originator.OTHER, SessionTimeManager.this));
-    }
-
-    /**
      * Get a selected time that intersects all the specified events. If the
      * existing selected time does so, then it is returned; otherwise,a new
      * selected time is returned.
@@ -570,23 +737,58 @@ public class SessionTimeManager implements ISessionTimeManager {
          * the existing selected time if the latter encloses the former,
          * otherwise, use the span.
          */
+        SelectedTime selectedTime = this.selectedTime;
         if (intersection != null) {
-            if (intersection.isConnected(selectedTime.getRange())) {
-                return selectedTime;
-            } else {
-                return new SelectedTime(
+            if (intersection.isConnected(selectedTime.getRange()) == false) {
+                selectedTime = new SelectedTime(
                         selectedTime.getLowerBound() > intersection
                                 .upperEndpoint() ? intersection.upperEndpoint()
                                 : intersection.lowerEndpoint());
             }
         } else {
-            if (selectedTime.getRange().encloses(span)) {
-                return selectedTime;
-            } else {
-                return new SelectedTime(span.lowerEndpoint(),
+            if (selectedTime.getRange().encloses(span) == false) {
+                selectedTime = new SelectedTime(span.lowerEndpoint(),
                         span.upperEndpoint());
             }
         }
+
+        /*
+         * Ensure the selected time is appropriate given the time resolution.
+         * This only requires work if the time resolution is minute-level. In
+         * that case, if the lower bound is not on a minute boundary, round it
+         * down to the nearest minute; and/or if the upper bound is not on a
+         * minute boundary, round it up to the nearest minute.
+         */
+        if (timeResolution == TimeResolution.MINUTES) {
+            boolean changed = false;
+
+            long lowerBoundMillis = selectedTime.getLowerBound();
+            Date lowerBound = new Date(lowerBoundMillis);
+            Date truncatedLowerBound = truncateDateForTimeResolution(
+                    lowerBound, timeResolution);
+            if (lowerBound.equals(truncatedLowerBound) == false) {
+                lowerBoundMillis = truncatedLowerBound.getTime();
+                changed = true;
+            }
+
+            long upperBoundMillis = selectedTime.getUpperBound();
+            Date upperBound = new Date(upperBoundMillis);
+            Date truncatedUpperBound = truncateDateForTimeResolution(
+                    upperBound, timeResolution);
+            if (upperBound.equals(truncatedUpperBound) == false) {
+                upperBoundMillis = truncatedUpperBound.getTime()
+                        + UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION
+                                .get(timeResolution);
+                changed = true;
+            }
+
+            if (changed) {
+                selectedTime = new SelectedTime(lowerBoundMillis,
+                        upperBoundMillis);
+            }
+
+        }
+        return selectedTime;
     }
 
     /**

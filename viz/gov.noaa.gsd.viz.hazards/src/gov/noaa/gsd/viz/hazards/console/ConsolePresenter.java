@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.hazards.display.deprecated.DeprecatedUtilities;
@@ -114,6 +115,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           object).
  * Sep 12, 2016   15934    Chris.Golden      Changed to work with new version of
  *                                           JsonConverter.
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to
+ *                                           settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -222,6 +225,11 @@ public class ConsolePresenter extends
     @Handler
     public void currentSettingsChanged(SettingsModified change) {
         if (change.getOriginator() != UIOriginator.CONSOLE) {
+            getView().updateTimeResolution(
+                    (TimeResolution) getModel().getConfigurationManager()
+                            .getSettingsValue(HazardConstants.TIME_RESOLUTION,
+                                    change.getSettings()),
+                    getModel().getTimeManager().getCurrentTime());
             updateHazardEventsForSettingChange();
         }
     }
@@ -292,11 +300,21 @@ public class ConsolePresenter extends
             statusHandler.error(
                     "Could not serialize filter configuration to JSON.", e);
         }
-        view.initialize(this, new Date(timeManager.getSelectedTime()
-                .getLowerBound()), timeManager.getCurrentTime(), getModel()
-                .getConfigurationManager().getSettings()
-                .getDefaultTimeDisplayDuration(), eventsAsDicts,
-                startTimeBoundariesForEventIds, endTimeBoundariesForEventIds,
+        view.initialize(
+                this,
+                new Date(timeManager.getSelectedTime().getLowerBound()),
+                timeManager.getCurrentTime(),
+                getModel().getConfigurationManager().getSettings()
+                        .getDefaultTimeDisplayDuration(),
+                eventsAsDicts,
+                startTimeBoundariesForEventIds,
+                endTimeBoundariesForEventIds,
+                (TimeResolution) getModel().getConfigurationManager()
+                        .getSettingsValue(
+                                HazardConstants.TIME_RESOLUTION,
+                                getModel().getConfigurationManager()
+                                        .getSettings()), getModel()
+                        .getEventManager().getTimeResolutionsForEventIds(),
                 getModel().getConfigurationManager().getSettings(), getModel()
                         .getConfigurationManager().getAvailableSettings(),
                 filterConfigJson, getModel().getAlertsManager()

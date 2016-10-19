@@ -81,6 +81,12 @@ import com.google.common.reflect.TypeToken;
  *                                      now used by visual features.
  * Sep 27, 2016   15928    Chris.Golden Improved error message printed out when
  *                                      deserializing an invalid geometry.
+ * Oct 19, 2016   21873    Chris.Golden Changed deserialization to treat upper
+ *                                      time boundary of properties as exclusive,
+ *                                      not inclusive. Also removed warning for
+ *                                      visual features with time boundaries that
+ *                                      do not lie on the minute boundaries, as
+ *                                      this is no longer required.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1326,10 +1332,11 @@ class VisualFeaturesListJsonDeserializer {
 
                     /*
                      * Create a time range if the lower boundary is less than or
-                     * equal to the upper boundary.
+                     * equal to the upper boundary. The range is inclusive of
+                     * its lower boundary but exclusive of its upper boundary.
                      */
                     if (boundaries.get(0).compareTo(boundaries.get(1)) <= 0) {
-                        timeRange = Range.closed(boundaries.get(0),
+                        timeRange = Range.closedOpen(boundaries.get(0),
                                 boundaries.get(1));
                     }
                 }
@@ -1340,22 +1347,6 @@ class VisualFeaturesListJsonDeserializer {
                 if (timeRange == null) {
                     throw createTimeRangeDeserializationException(identifier,
                             propertyName, key, cause);
-                }
-
-                /*
-                 * Log a warning if the time range boundaries are not rounded to
-                 * minutes (i.e. they should be 18:36:00, not 18:36:23).
-                 */
-                if ((timeRange.lowerEndpoint().getTime() % 60000L != 0L)
-                        || (timeRange.upperEndpoint().getTime() % 60000L != 0L)) {
-                    System.err
-                            .println("WARNING: visual feature \""
-                                    + identifier
-                                    + "\" has property \""
-                                    + propertyName
-                                    + "\" with range "
-                                    + timeRange
-                                    + ", at least one end of which is not on a minute boundary.");
                 }
 
                 /*

@@ -111,7 +111,9 @@
 #                            to be stripped out of hazard events of this type before such events
 #                            are persisted. This allows recommenders, etc. to use hazard
 #                            attributes as session-scoped storage for information without having
-#                            such information pointlessly stored in the database.   
+#                            such information pointlessly stored in the database. 
+#             timeResolution The time resolution for this type. May be either "minutes" or
+#                            "seconds"; if not provided, it defaults to "minutes".   
 
 HOURS = 3600000
 MINUTES = 60000
@@ -1997,6 +1999,7 @@ HazardTypes = {
               'modifyRecommenders': modRecsDict,
               'allowOverlappingPolygons': True,
               'sessionAttributes': [ "readOnly" ],
+              "timeResolution": "seconds",
               },
     'Prob_Severe' : {
               'headline': 'Probabilistic Severe',
@@ -2025,6 +2028,7 @@ HazardTypes = {
               'modifyRecommenders': modRecsDict,
               'allowOverlappingPolygons': True,
               'sessionAttributes': [ "readOnly" ],
+              "timeResolution": "seconds",
               },
     ################
     # Aviation Hazards

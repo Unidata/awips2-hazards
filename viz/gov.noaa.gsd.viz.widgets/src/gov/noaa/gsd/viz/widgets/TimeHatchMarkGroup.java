@@ -25,11 +25,13 @@ import org.eclipse.swt.graphics.Font;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Mar 19, 2013            Chris.Golden      Initial creation
- * Jan 28, 2014    2161    Chris.Golden      Removed extraneous Javadoc comments,
- *                                           and prettied up the Javadoc as well.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Mar 19, 2013            Chris.Golden Initial creation.
+ * Jan 28, 2014    2161    Chris.Golden Removed extraneous Javadoc comments,
+ *                                      and prettied up the Javadoc as well.
+ * Oct 19, 2016   21873    Chris.Golden Added support for seconds-level
+ *                                      font in addition to minutes-level.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,6 +50,11 @@ public class TimeHatchMarkGroup implements IHatchMarkGroup {
      * Milliseconds per hour.
      */
     private static final long MILLIS_PER_HOUR = TimeUnit.HOURS.toMillis(1);
+
+    /**
+     * Milliseconds per minute.
+     */
+    private static final long MILLIS_PER_MINUTE = TimeUnit.MINUTES.toMillis(1);
 
     // Private Variables
 
@@ -81,6 +88,11 @@ public class TimeHatchMarkGroup implements IHatchMarkGroup {
      */
     private Font minuteFont = null;
 
+    /**
+     * Font used for labeling second hatch marks.
+     */
+    private Font secondFont = null;
+
     // Public Constructors
 
     /**
@@ -93,27 +105,29 @@ public class TimeHatchMarkGroup implements IHatchMarkGroup {
      * @param color
      *            Color of hatch marks.
      */
-    public TimeHatchMarkGroup(long interval, float heightFraction, Color color,
-            Font minuteFont) {
+    public TimeHatchMarkGroup(long interval, float heightFraction, Color color) {
         this.interval = interval;
         this.heightFraction = heightFraction;
         this.color = color;
-        this.minuteFont = minuteFont;
-        dateFormatter = new SimpleDateFormat(interval < MILLIS_PER_HOUR ? "mm"
-                : "HH");
+        dateFormatter = new SimpleDateFormat(
+                interval < MILLIS_PER_MINUTE ? "ss"
+                        : (interval < MILLIS_PER_HOUR ? "mm" : "HH"));
         dateFormatter.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     // Public Methods
 
     /**
-     * Set the minute font.
+     * Set the minute and second fonts.
      * 
      * @param minuteFont
      *            Minute font to be used.
+     * @param secondFont
+     *            Second font to be used.
      */
-    public void setMinuteFont(Font minuteFont) {
+    public void setMinuteAndSecondFonts(Font minuteFont, Font secondFont) {
         this.minuteFont = minuteFont;
+        this.secondFont = secondFont;
     }
 
     @Override
@@ -133,7 +147,8 @@ public class TimeHatchMarkGroup implements IHatchMarkGroup {
 
     @Override
     public Font getFont() {
-        return (interval < MILLIS_PER_HOUR ? minuteFont : null);
+        return (interval < MILLIS_PER_MINUTE ? secondFont
+                : (interval < MILLIS_PER_HOUR ? minuteFont : null));
     }
 
     @Override

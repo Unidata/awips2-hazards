@@ -39,8 +39,9 @@ import com.google.common.collect.ImmutableSet;
  * Apr 24, 2014    2925    Chris.Golden      Changed to work with new validator
  *                                           package, updated Javadoc and other
  *                                           comments.
- * Jun 24, 2014   4010     Chris.Golden      Changed to no longer be a subclass
+ * Jun 24, 2014    4010    Chris.Golden      Changed to no longer be a subclass
  *                                           of NotifierMegawidget.
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution option.
  * </pre>
  * 
  * @author Chris.Golden
@@ -156,9 +157,9 @@ public class TimeMegawidget extends StatefulMegawidget implements IControl {
          */
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         dateTime = new DateTimeComponent(null, parent, specifier.getLabel(),
-                specifier, state, specifier.isHorizontalExpander(),
-                specifier.getSpacing(), !specifier.isSendingEveryChange(),
-                dateTimeManager);
+                specifier, state, specifier.getTimeResolution(),
+                specifier.isHorizontalExpander(), specifier.getSpacing(),
+                !specifier.isSendingEveryChange(), dateTimeManager);
 
         /*
          * Render the widget uneditable if necessary.

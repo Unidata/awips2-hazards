@@ -47,6 +47,7 @@ Prob_WFO = {
     "defaultTimeDisplayDuration": 10000000, #14400000,  # 172800000,
     "defaultCategory" : "Prob Convective",
     "defaultDuration": 28800000,
+    "timeResolution": "seconds",
     "visibleColumns": [
         "Event ID",
         "Object ID",

@@ -140,6 +140,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * Aug 15, 2016 18376      Chris.Golden Added code to unsubscribe session sub-managers from the
  *                                      event bus to aide in garbage collection.
+ * Oct 19, 2016 21873     Chris.Golden  Changed construction of time manager to take this object.
  * </pre>
  * 
  * @author bsteffen
@@ -226,7 +227,7 @@ public class SessionManager implements
         // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
         this.eventBus = eventBus;
         sender = new SessionNotificationSender(eventBus);
-        timeManager = new SessionTimeManager(sender);
+        timeManager = new SessionTimeManager(this, sender);
         configManager = new SessionConfigurationManager(this, pathManager,
                 timeManager, sender);
         eventManager = new SessionEventManager(this, timeManager,

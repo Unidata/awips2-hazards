@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.hazarddetail.EventScriptInfo;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
@@ -140,6 +141,35 @@ public class HazardDetailViewForTesting implements
                 List<DisplayableEventIdentifier> choiceDisplayables,
                 String value) {
             selectedEventIds = choices;
+        }
+    };
+
+    private final IStateChanger<String, TimeResolution> timeResolutionChanger = new IStateChanger<String, TimeResolution>() {
+
+        @Override
+        public void setEnabled(String identifier, boolean enable) {
+        }
+
+        @Override
+        public void setEditable(String identifier, boolean editable) {
+        }
+
+        @Override
+        public TimeResolution getState(String identifier) {
+            return null;
+        }
+
+        @Override
+        public void setState(String identifier, TimeResolution value) {
+        }
+
+        @Override
+        public void setStates(Map<String, TimeResolution> valuesForIdentifiers) {
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IStateChangeHandler<String, TimeResolution> handler) {
         }
     };
 
@@ -392,5 +422,10 @@ public class HazardDetailViewForTesting implements
 
     public List<String> getSelectedEventIdentifiers() {
         return selectedEventIds;
+    }
+
+    @Override
+    public IStateChanger<String, TimeResolution> getTimeResolutionChanger() {
+        return timeResolutionChanger;
     }
 }

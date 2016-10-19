@@ -73,6 +73,10 @@ import org.eclipse.swt.widgets.Composite;
  *                                           individuallly, instead of
  *                                           controlling editability at a
  *                                           coarser widget level.
+ * Oct 19, 2016   21873    Chris.Golden      Changed so that mouse-wheel
+ *                                           zooming occurs with the center
+ *                                           of the zoom being at the point
+ *                                           where the mouse cursor lies.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1257,8 +1261,10 @@ public class MultiValueRuler extends MultiValueLinearControl {
                 long newVisibleValueRange = visibleValueZoomCalculator
                         .getVisibleValueRangeForZoom(MultiValueRuler.this,
                                 (e.count > 0), 1);
+                double zoomCenter = (double) (mapPixelToValue(e.x, true) - getLowerVisibleValue())
+                        / (double) (getUpperVisibleValue() + 1L - getLowerVisibleValue());
                 if (newVisibleValueRange > 0L) {
-                    zoomVisibleValueRange(newVisibleValueRange,
+                    zoomVisibleValueRange(newVisibleValueRange, zoomCenter,
                             ChangeSource.USER_GUI_INTERACTION_COMPLETE);
                 }
             }

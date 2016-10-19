@@ -766,7 +766,6 @@ class Recommender(RecommenderTemplate.Recommender):
         for i in range(numIntervals):
             poly = downstreamPolys[i]
             polySt_ms, polyEt_ms = downstreamTimes[i]
-            polyEnd = polyEt_ms - 60*1000 # Take a minute off
               
             downstreamFeature = {
               "identifier": "swathRec_downstream_"+str(polySt_ms),
@@ -779,7 +778,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "textColor": "eventType",
               "dragCapability": "none", 
               "geometry": {
-                   (polySt_ms, polyEnd): poly
+                   (polySt_ms, polyEt_ms): poly
                   }
                 }
             features.append(downstreamFeature)
@@ -795,7 +794,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "diameter": 5,
               "geometry": {
                   (upstreamSt_ms,
-                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
+                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                    AdvancedGeometry.createShapelyWrapper(centroid, 0)
                }
             }
@@ -826,7 +825,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   "scaleable": editable,
                   "rotatable": editable,
                   "geometry": {
-                      (polySt_ms, polyEnd): relocatedShape
+                      (polySt_ms, polyEt_ms): relocatedShape
                        }
                 }
                 features.append(relocatedFeature)
@@ -840,7 +839,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   "fillColor": { "red": 1, "green": 1, "blue": 1},
                   "diameter": 6,
                    "geometry": {
-                      (polySt_ms, polyEnd): AdvancedGeometry.createShapelyWrapper(centroid, 0)
+                      (polySt_ms, polyEt_ms): AdvancedGeometry.createShapelyWrapper(centroid, 0)
                        }
                 }
                features.append(centroidFeature)
@@ -861,7 +860,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderStyle": "dotted",
               "geometry": {
                   (upstreamSt_ms,
-                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
+                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                    AdvancedGeometry.createShapelyWrapper(envelope, 0)
                }
               }
@@ -885,7 +884,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "geometry": {
                   #(st, et): centroid
                   (upstreamSt_ms,
-                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
+                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                    centroid
                }
             }
@@ -922,7 +921,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     "geometry": {
                         (upstreamSt_ms,
                         #(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), 
-                         TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())):
+                         TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                                  AdvancedGeometry.createShapelyWrapper(poly, 0)
                     }
                 }
@@ -1000,12 +999,12 @@ class Recommender(RecommenderTemplate.Recommender):
                                           historyPolys, historyTimes, upstreamPolys, upstreamTimes)
             if not poly:
                 continue
-            polyEt_ms = self._dataLayerTimes[i+1] - self._probUtils._timeStep()*1000
+            polyEt_ms = self._dataLayerTimes[i + 1]
             #print "SR previous st, et", self._probUtils._displayMsTime(polySt_ms), self._probUtils._displayMsTime(polyEt_ms)
             #self.flush()
                                 
             previousFeature = {              
-              "identifier": "swathRec_previous_"+str(polySt_ms),
+              "identifier": "swathRec_previous_" + str(polySt_ms),
               "visibilityConstraints": "selected",
               "borderColor":  color, #{ "red": 1, "green": 1, "blue": 0 }, #"eventType", 
               "borderThickness": "eventType",

@@ -7,6 +7,7 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
@@ -65,6 +66,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * May 05, 2015   6898     Chris.Cody        Pan & Scale Visible and Selected Time
  * Aug 15, 2016  18376     Chris.Golden      Added code to make garbage collection of
  *                                           the session manager more likely.
+ * Oct 19, 2016  21873     Chris.Golden      Added time resolution tracking tied to
+ *                                           settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -135,6 +138,10 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      *            Map of event identifiers to their start time range boundaries.
      * @param endTimeBoundariesForEventIds
      *            Map of event identifiers to their end time range boundaries.
+     * @param timeResolution
+     *            Overall time resolution.
+     * @param timeResolutionsForEventIds
+     *            Map of event identifiers to their time resolutions.
      * @param currentSettings
      *            Currently selected settings.
      * @param availableSettings
@@ -161,6 +168,8 @@ public class ConsoleViewPart extends DockTrackingViewPart {
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
             Map<String, Range<Long>> startTimeBoundariesForEventIds,
             Map<String, Range<Long>> endTimeBoundariesForEventIds,
+            TimeResolution timeResolution,
+            Map<String, TimeResolution> timeResolutionsForEventIds,
             ObservedSettings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
@@ -171,7 +180,8 @@ public class ConsoleViewPart extends DockTrackingViewPart {
         setSettings(currentSettingsID, availableSettings);
         temporalDisplay.initialize(presenter, selectedTime, currentTime,
                 visibleTimeRange, hazardEvents, startTimeBoundariesForEventIds,
-                endTimeBoundariesForEventIds, currentSettings, jsonFilters,
+                endTimeBoundariesForEventIds, timeResolution,
+                timeResolutionsForEventIds, currentSettings, jsonFilters,
                 activeAlerts, eventIdentifiersAllowingUntilFurtherNotice,
                 temporalControlsInToolBar);
     }
@@ -307,6 +317,19 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      */
     public void updateEventTimeRangeBoundaries(Set<String> eventIds) {
         temporalDisplay.updateEventTimeRangeBoundaries(eventIds);
+    }
+
+    /**
+     * Update the time resolution.
+     * 
+     * @param timeResolution
+     *            Time resolution.
+     * @param currentTime
+     *            Current time.
+     */
+    public void updateTimeResolution(TimeResolution timeResolution,
+            Date currentTime) {
+        temporalDisplay.updateTimeResolution(timeResolution, currentTime);
     }
 
     /**

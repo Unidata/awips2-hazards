@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
@@ -42,7 +43,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * Dec 05, 2014    4124    Chris.Golden      Changed to use ObservedSettings.
  * Feb 10, 2015    2331    Chris.Golden      Changed to use time range boundaries
  *                                           for the events.
- * May 05, 2015 6898       Chris.Cody        Pan & Scale Visible and Selected Time
+ * May 05, 2015    6898    Chris.Cody        Pan & Scale Visible and Selected Time
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to
+ *                                           settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,6 +73,10 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            Map of event identifiers to their start time range boundaries.
      * @param endTimeBoundariesForEventIds
      *            Map of event identifiers to their end time range boundaries.
+     * @param timeResolution
+     *            Overall time resolution.
+     * @param timeResolutionsForEventIds
+     *            Map of event identifiers to their time resolutions.
      * @param currentSettings
      *            Currently selected settings.
      * @param availableSettings
@@ -96,6 +103,8 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
             Map<String, Range<Long>> startTimeBoundariesForEventIds,
             Map<String, Range<Long>> endTimeBoundariesForEventIds,
+            TimeResolution timeResolution,
+            Map<String, TimeResolution> timeResolutionsForEventIds,
             ObservedSettings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
@@ -146,6 +155,17 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      *            visible at once in the time line.
      */
     public void updateVisibleTimeDelta(long visibleTimeDelta);
+
+    /**
+     * Update the time resolution.
+     * 
+     * @param timeResolution
+     *            Time resolution.
+     * @param currentTime
+     *            Current time.
+     */
+    public void updateTimeResolution(TimeResolution timeResolution,
+            Date currentTime);
 
     /**
      * Update the visible time range.

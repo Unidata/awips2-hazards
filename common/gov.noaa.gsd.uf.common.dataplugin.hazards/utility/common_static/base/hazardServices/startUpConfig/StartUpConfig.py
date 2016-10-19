@@ -28,6 +28,9 @@ StartUpConfig = {
     # Backup Sites 
     # Example:  "backupSites":  ["PUB", "GJT"]
     "backupSites": ["National"],
+    
+    # Time resolution for the time line; either "minutes" or "seconds".
+    "timeResolution": "minutes",
 
     # Directory of mounted X.400 directory where exported Site Config data is stored.
     "siteBackupBaseDir" : "CHANGEME",

@@ -151,6 +151,10 @@ import org.eclipse.swt.widgets.Composite;
  *                                           the fact that the widget had
  *                                           never been used with a small
  *                                           range of possible values before.
+ * Oct 19, 2016   21873    Chris.Golden      Changed so that mouse-wheel
+ *                                           zooming occurs with the center
+ *                                           of the zoom being at the point
+ *                                           where the mouse cursor lies.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1187,7 +1191,7 @@ public abstract class MultiValueLinearControl extends Canvas {
      *         otherwise.
      */
     public final boolean zoomVisibleValueRange(long newVisibleValueRange) {
-        return zoomVisibleValueRange(newVisibleValueRange,
+        return zoomVisibleValueRange(newVisibleValueRange, 0.5,
                 ChangeSource.METHOD_INVOCATION);
     }
 
@@ -2388,24 +2392,33 @@ public abstract class MultiValueLinearControl extends Canvas {
      * 
      * @param newVisibleValueRange
      *            New visible value range.
+     * @param centerLocation
+     *            Number between <code>0.0</code> and <code>1.0</code> inclusive
+     *            that indicates where along the range the center of the zoom is
+     *            located, with the former value indicating the left hand side
+     *            should be used as the zoom center location, and the latter
+     *            indicating the right hand side. A value of <code>0.5</code>
+     *            indicates that halfway along the range is the center.
      * @param source
      *            Source of the zoom.
      * @return True if the zoom resulted in a change to the viewport, false
      *         otherwise.
      */
     protected final boolean zoomVisibleValueRange(long newVisibleValueRange,
-            ChangeSource source) {
+            double centerLocation, ChangeSource source) {
 
         /*
-         * Determine the value currently visible in the center of the viewport.
+         * Determine the value currently visible at the specified zoom center
+         * point within the viewport.
          */
-        long center = ((getUpperVisibleValue() + 1L - getLowerVisibleValue()) / 2L)
+        long center = ((long) (((getUpperVisibleValue() + 1L - getLowerVisibleValue()) * centerLocation) + 0.5))
                 + getLowerVisibleValue();
 
         /*
          * Get the new visible value range boundaries.
          */
-        long lower = center - (newVisibleValueRange / 2);
+        long lower = center
+                - (long) (((newVisibleValueRange) * centerLocation) + 0.5);
         long upper = lower + newVisibleValueRange - 1L;
 
         /*

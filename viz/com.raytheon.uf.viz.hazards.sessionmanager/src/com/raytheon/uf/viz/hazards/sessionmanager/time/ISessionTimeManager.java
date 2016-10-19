@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.time;
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 
 import java.util.Date;
-import java.util.concurrent.TimeUnit;
 
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -55,6 +54,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      tasks to be triggered close to the
  *                                      instant when the CAVE current time
  *                                      ticks over to a new minute.
+ * Oct 19, 2016 21873      Chris.Golden Removed unneeded constant definition.
  * </pre>
  * 
  * @author bsteffen
@@ -62,14 +62,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  */
 
 public interface ISessionTimeManager {
-
-    // Public Static Constants
-
-    /**
-     * Number of milliseconds in a minute.
-     */
-    public static final long MINUTE_AS_MILLISECONDS = TimeUnit.MINUTES
-            .toMillis(1L);
 
     // Public Methods
 

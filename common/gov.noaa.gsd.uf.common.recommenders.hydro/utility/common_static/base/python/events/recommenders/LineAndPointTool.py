@@ -193,7 +193,7 @@ class Recommender(RecommenderTemplate.Recommender):
             "visibilityConstraints": "selected",
             "borderColor": borderColor,
             "geometry": {
-                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): poly
             }
         }
         
@@ -207,7 +207,7 @@ class Recommender(RecommenderTemplate.Recommender):
             #"borderColor": {"red": 255/255.0, "green": 255/255.0, "blue": 0/255.0, "alpha": 1}, #yellow
             "borderColor": {"red": 255/255.0, "green": 255/255.0, "blue": 255/255.0, "alpha": 1}, #white
             "geometry": {
-                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): basePoly
             }
         }                    
 

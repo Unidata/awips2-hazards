@@ -1,0 +1,26 @@
+[
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "A",
+  "label": "Option A",
+  "values": false
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "B",
+  "label": "Option B",
+  "values": false
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "C",
+  "label": "Option C",
+  "values": false
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "D",
+  "label": "Option D",
+  "values": false
+ }
+]

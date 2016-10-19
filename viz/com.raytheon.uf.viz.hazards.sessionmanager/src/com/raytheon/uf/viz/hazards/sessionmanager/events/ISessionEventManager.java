@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
@@ -99,6 +100,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 18, 2016 19537      Chris.Golden Added originator to sortEvents() method.
  * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries now used by
  *                                      hazard events.
+ * Oct 19, 2016 21873     Chris.Golden  Added time resolution tracking for individual events.
  * </pre>
  * 
  * @author bsteffen
@@ -471,6 +473,23 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         editability limitations.
      */
     public Map<String, Range<Long>> getEndTimeBoundariesForEventIds();
+
+    /**
+     * Get a map of hazard event identifiers to their corresponding time
+     * resolutions. Each hazard event being managed must have an entry in this
+     * map. The returned object will be kept current by the instance of this
+     * class, so that it will continue to be valid as long as the session event
+     * manager exists. At any given instant after it is fetched via this method,
+     * it may be queried to determine the time resolution boundaries for a
+     * specific hazard event within this session.
+     * <p>
+     * Note that the map is unmodifiable; attempts to modify it will result in
+     * an {@link UnsupportedOperationException}.
+     * 
+     * @return Map of hazard event identifiers to their corresponding time
+     *         resolutions.
+     */
+    public Map<String, TimeResolution> getTimeResolutionsForEventIds();
 
     /**
      * Sets the state of the event to ENDED, persists it to the database and

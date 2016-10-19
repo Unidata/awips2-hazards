@@ -38,6 +38,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.R
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
@@ -143,7 +144,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeMinuteTicked;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeReset;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -411,6 +413,16 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      session manager and was already being done by the spatial presenter.
  * Oct 06, 2016   22894    Chris.Golden Changed persist-event methods to remove any session attributes for
  *                                      a hazard's type from that hazard event prior to persisting it.
+ * Oct 12, 2016   21873    Chris.Golden Added code to track the time resolutions of all managed hazard
+ *                                      events, and to ensure that the start and end times of said events
+ *                                      always lie on the unit boundaries for their particular resolutions
+ *                                      (e.g. an event with minute-level resolution must have its start
+ *                                      and end times lie on the minute boundaries). Also added code to
+ *                                      remove session attributes from a hazard before its type is changed.
+ *                                      Also added ability to only react to CAVE clock changes when said
+ *                                      changes are resets minutes ticking forward, not seconds (in case
+ *                                      the time manager is sending out tick-forward notifications each
+ *                                      second).
  * </pre>
  * 
  * @author bsteffen
@@ -503,6 +515,8 @@ public class SessionEventManager implements
     private final Map<String, Range<Long>> startTimeBoundariesForEventIdentifiers = new HashMap<>();
 
     private final Map<String, Range<Long>> endTimeBoundariesForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, TimeResolution> timeResolutionsForEventIdentifiers = new HashMap<>();
 
     /**
      * Map pairing identifiers of issued events with either the end times they
@@ -792,16 +806,27 @@ public class SessionEventManager implements
 
         /*
          * If the event cannot change type, create a new event with the new
-         * type.
+         * type. Otherwise, record the old time resolution for this event, as it
+         * may change.
          */
         ObservedHazardEvent oldEvent = null;
-        if (!canChangeType(event)) {
+        TimeResolution oldTimeResolution = configManager
+                .getTimeResolution(event);
+        if (canChangeType(event) == false) {
             oldEvent = event;
             IHazardEvent baseEvent = new BaseHazardEvent(event);
             baseEvent.setEventID("");
             baseEvent.setStatus(HazardStatus.PENDING);
             baseEvent.addHazardAttribute(HazardConstants.REPLACES,
                     configManager.getHeadline(oldEvent));
+
+            /*
+             * Remove any type-specific session attributes from the copy.
+             */
+            for (String sessionAttribute : configManager
+                    .getSessionAttributes(event.getHazardType())) {
+                baseEvent.removeHazardAttribute(sessionAttribute);
+            }
 
             /*
              * New event should not have product information.
@@ -847,7 +872,6 @@ public class SessionEventManager implements
              * by the original originator.
              */
             if (oldEvent != null) {
-
                 IHazardEvent tempEvent = new BaseHazardEvent();
                 tempEvent.setPhenomenon(phenomenon);
                 tempEvent.setSignificance(significance);
@@ -876,19 +900,46 @@ public class SessionEventManager implements
         }
 
         /*
+         * Remember the time resolution for the hazard with the new type.
+         */
+        TimeResolution newTimeResolution = configManager
+                .getTimeResolution(event);
+        timeResolutionsForEventIdentifiers.put(event.getEventID(),
+                newTimeResolution);
+
+        /*
+         * If the time resolution has been reduced, the start and end times may
+         * need truncation. Additionally, if this is not a new event, change the
+         * end time to be offset from the start time by the default duration.
+         */
+        boolean timeResolutionReduced = ((oldTimeResolution == TimeResolution.SECONDS) && (newTimeResolution == TimeResolution.MINUTES));
+        Date oldStartTime = event.getStartTime();
+        Date newStartTime = (timeResolutionReduced ? roundDateDownToNearestMinute(oldStartTime)
+                : oldStartTime);
+        Date oldEndTime = event.getEndTime();
+        Date newEndTime = (oldEvent == null ? new Date(newStartTime.getTime()
+                + configManager.getDefaultDuration(event))
+                : roundDateDownToNearestMinute(oldEndTime));
+
+        /*
          * If this event is changing type (as opposed to a new event created
-         * because the type cannot change on the original), set the event's end
-         * time to have a distance from the start time equal to the new type's
-         * default duration. Also remove any recorded interval from before
-         * "until further notice" had been turned on, in case it was, since this
-         * could lead to the wrong interval being used for the new event type if
-         * "until further notice" is subsequently turned off.
+         * because the type cannot change on the original), remove any recorded
+         * interval from before "until further notice" had been turned on, in
+         * case it was, since this could lead to the wrong interval being used
+         * for the new event type if "until further notice" is subsequently
+         * turned off.
          */
         if (oldEvent == null) {
-            event.setEndTime(new Date(event.getStartTime().getTime()
-                    + configManager.getDefaultDuration(event)),
-                    Originator.OTHER);
             event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+        }
+
+        /*
+         * If the new start or end times differ from the old ones, change the
+         * event's time range.
+         */
+        if ((newStartTime.equals(oldStartTime) == false)
+                || (newEndTime.equals(oldEndTime) == false)) {
+            event.setTimeRange(newStartTime, newEndTime);
         }
 
         /*
@@ -903,18 +954,35 @@ public class SessionEventManager implements
 
         /*
          * Update the time boundaries if this is not a new event; if it is new,
-         * simply copy the old event's time boundaries to this one. Then update
+         * simply copy the old event's time boundaries (truncated to minute
+         * resolution if resolution has been reduced) to this one. Then update
          * the duration choices for the event.
          */
         if (oldEvent == null) {
             updateTimeBoundariesForEvents(event, false);
         } else {
+            Range<Long> oldStartTimeBoundaries = startTimeBoundariesForEventIdentifiers
+                    .get(oldEvent.getEventID());
+            Range<Long> oldEndTimeBoundaries = endTimeBoundariesForEventIdentifiers
+                    .get(oldEvent.getEventID());
+            Range<Long> newStartTimeBoundaries = oldStartTimeBoundaries;
+            Range<Long> newEndTimeBoundaries = oldEndTimeBoundaries;
+            if (timeResolutionReduced) {
+                newStartTimeBoundaries = Range.closed(
+                        roundTimeDownToNearestMinute(oldStartTimeBoundaries
+                                .lowerEndpoint()),
+                        roundTimeDownToNearestMinute(oldStartTimeBoundaries
+                                .upperEndpoint()));
+                newEndTimeBoundaries = Range.closed(
+                        roundTimeDownToNearestMinute(oldEndTimeBoundaries
+                                .lowerEndpoint()),
+                        roundTimeDownToNearestMinute(oldEndTimeBoundaries
+                                .upperEndpoint()));
+            }
             startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
-                    startTimeBoundariesForEventIdentifiers.get(oldEvent
-                            .getEventID()));
+                    newStartTimeBoundaries);
             endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
-                    endTimeBoundariesForEventIdentifiers.get(oldEvent
-                            .getEventID()));
+                    newEndTimeBoundaries);
         }
         updateDurationChoicesForEvent(event, false);
 
@@ -934,6 +1002,16 @@ public class SessionEventManager implements
     @Override
     public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
             Date endTime, IOriginator originator) {
+
+        /*
+         * Ensure that the start and end times are rounded down to the most
+         * recent minute boundary if the time resolution for this event is
+         * minute-level.
+         */
+        if (timeResolutionsForEventIdentifiers.get(event.getEventID()) == TimeResolution.MINUTES) {
+            startTime = roundDateDownToNearestMinute(startTime);
+            endTime = roundDateDownToNearestMinute(endTime);
+        }
 
         /*
          * Ensure that the start time falls within its allowable boundaries.
@@ -1214,6 +1292,8 @@ public class SessionEventManager implements
                             this, Sets.newHashSet(change.getEvent()
                                     .getEventID()), change.getOriginator()));
         }
+        timeResolutionsForEventIdentifiers.remove(change.getEvent()
+                .getEventID());
         updateSavedTimesForEventIfIssued(change.getEvent(), true);
         updateTimeBoundariesForEvents(change.getEvent(), true);
         updateDurationChoicesForEvent(change.getEvent(), true);
@@ -1436,14 +1516,26 @@ public class SessionEventManager implements
     }
 
     /**
-     * Respond to a CAVE current time tick by updating all the events' start and
-     * end time editability boundaries.
+     * Respond to a CAVE current time reset by updating all the events' start
+     * and end time editability boundaries.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler(priority = 1)
-    public void currentTimeChanged(CurrentTimeChanged change) {
+    public void currentTimeReset(CurrentTimeReset change) {
+        updateTimeBoundariesForEvents(null, false);
+    }
+
+    /**
+     * Respond to a CAVE current time minute tick by updating all the events'
+     * start and end time editability boundaries.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void currentTimeMinuteTicked(CurrentTimeMinuteTicked change) {
         updateTimeBoundariesForEvents(null, false);
     }
 
@@ -1978,6 +2070,11 @@ public class SessionEventManager implements
                 .unmodifiableMap(endTimeBoundariesForEventIdentifiers);
     }
 
+    @Override
+    public Map<String, TimeResolution> getTimeResolutionsForEventIds() {
+        return Collections.unmodifiableMap(timeResolutionsForEventIdentifiers);
+    }
+
     /**
      * Set the end time for the specified event with respect to the specified
      * value for "until further notice".
@@ -2308,12 +2405,13 @@ public class SessionEventManager implements
 
         /*
          * Need to account for the case where the event being added already
-         * exists in the event manager. This can happen with recommender
-         * callbacks.
+         * exists in the event manager. (This can happen with recommender
+         * callbacks, for example.) If it has an event identifier, see if it
+         * there is already an existing event, and if so, merge it into the
+         * existing one. If it does not have a valid identifier, create one.
          */
         String eventID = oevent.getEventID();
-
-        if (eventID != null && eventID.length() > 0) {
+        if ((eventID != null) && (eventID.length() > 0)) {
             ObservedHazardEvent existingEvent = getEventById(eventID);
             if (existingEvent != null) {
                 SessionEventUtilities.mergeHazardEvents(this, oevent,
@@ -2321,9 +2419,6 @@ public class SessionEventManager implements
                 return existingEvent;
             }
         } else {
-            /*
-             * Since the event doesn't have a valid identifier, request one.
-             */
             try {
                 oevent.setEventID(HazardServicesEventIdUtil.getNewEventID());
             } catch (Exception e) {
@@ -2331,17 +2426,15 @@ public class SessionEventManager implements
             }
         }
 
-        ObservedSettings settings = configManager.getSettings();
-
-        Set<String> visibleSites = configManager.getSettingsValue(
-                SETTING_HAZARD_SITES, configManager.getSettings());
-
         /*
          * If modifying the visible sites, make a copy first, as the original is
          * from the configuration manager.
          * 
          * TODO: Better defensive copying elsewhere!
          */
+        ObservedSettings settings = configManager.getSettings();
+        Set<String> visibleSites = configManager.getSettingsValue(
+                SETTING_HAZARD_SITES, configManager.getSettings());
         if (visibleSites.contains(configManager.getSiteID()) == false) {
             visibleSites = new HashSet<>(visibleSites);
             visibleSites.add(configManager.getSiteID());
@@ -2353,49 +2446,79 @@ public class SessionEventManager implements
             oevent.addHazardAttribute(ATTR_HAZARD_CATEGORY,
                     settings.getDefaultCategory(), false, originator);
         }
+
+        /*
+         * Set the event start and end times if they are not already set. If
+         * they are set, ensure they are at minute boundaries if this event uses
+         * minute-level time resolution.
+         */
+        TimeResolution eventTimeResolution = configManager
+                .getTimeResolution(oevent);
+        timeResolutionsForEventIdentifiers.put(oevent.getEventID(),
+                eventTimeResolution);
         if (oevent.getStartTime() == null) {
-            Date timeToUse = timeManager.getCurrentTime();
-            Date selectedTime = new Date(timeManager.getSelectedTime()
-                    .getLowerBound());
+            Date timeToUse = roundDateDownToNearestMinuteIfAppropriate(
+                    timeManager.getCurrentTime(), eventTimeResolution);
+            Date selectedTime = roundDateDownToNearestMinuteIfAppropriate(
+                    new Date(timeManager.getSelectedTime().getLowerBound()),
+                    eventTimeResolution);
             if (selectedTime.after(timeManager.getCurrentTime())) {
                 timeToUse = selectedTime;
             }
             oevent.setStartTime(timeToUse, false, originator);
+        } else {
+            oevent.setStartTime(roundDateDownToNearestMinuteIfAppropriate(
+                    oevent.getStartTime(), eventTimeResolution));
         }
         if (oevent.getEndTime() == null) {
             long s = oevent.getStartTime().getTime();
             long d = configManager.getDefaultDuration(oevent);
             oevent.setEndTime(new Date(s + d), false, originator);
+        } else {
+            oevent.setEndTime(roundDateDownToNearestMinuteIfAppropriate(
+                    oevent.getEndTime(), eventTimeResolution));
         }
+
+        /*
+         * Set the status to pending if none is found. Make it ended or elapsed
+         * if appropriate.
+         */
         if (oevent.getStatus() == null) {
             oevent.setStatus(HazardStatus.PENDING, false, false, originator);
         }
-
         if (SessionEventUtilities.isEnded(oevent)) {
             oevent.setStatus(HazardStatus.ENDED);
         }
         if (SessionEventUtilities.isElapsed(oevent)) {
             oevent.setStatus(HazardStatus.ELAPSED);
         }
+
+        /*
+         * Validate significance, since some recommenders use the full name.
+         */
         String sig = oevent.getSignificance();
         if (sig != null) {
-            try {
 
-                /*
-                 * Validate significance, since some recommenders use the full
-                 * name.
-                 */
+            /*
+             * This will throw an exception if its not a valid name or
+             * abbreviation.
+             */
+            try {
                 HazardConstants.significanceFromAbbreviation(sig);
             } catch (IllegalArgumentException e) {
-                /*
-                 * This will throw an exception if its not a valid name or
-                 * abbreviation.
-                 */
                 Significance s = Significance.valueOf(sig);
                 oevent.setSignificance(s.getAbbreviation(), false, originator);
             }
         }
+
+        /*
+         * Set the site identifier to the current one.
+         */
         oevent.setSiteID(configManager.getSiteID(), false, originator);
+
+        /*
+         * Set the hazard mode as appropriate.
+         */
         ProductClass productClass;
         switch (CAVEMode.getMode()) {
         case OPERATIONAL:
@@ -2412,6 +2535,11 @@ public class SessionEventManager implements
             productClass = ProductClass.TEST;
         }
         oevent.setHazardMode(productClass, false, originator);
+
+        /*
+         * Unselect all other events if this event is to be selected and
+         * add-to-selected is not set.
+         */
         synchronized (events) {
             if (select
                     && (addCreatedEventsToSelected == false)
@@ -2423,9 +2551,16 @@ public class SessionEventManager implements
             events.add(oevent);
         }
 
+        /*
+         * Notify listeners that the event has been added.
+         */
         notificationSender.postNotificationAsync(new SessionEventAdded(this,
                 oevent, originator));
 
+        /*
+         * Unset the selected and checked attributes, and set the issued flag as
+         * appropriate.
+         */
         oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, false, false,
                 originator);
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, false, false,
@@ -2434,10 +2569,19 @@ public class SessionEventManager implements
                 HazardStatus.issuedButNotEndedOrElapsed(oevent.getStatus()),
                 false, originator);
 
+        /*
+         * Set the selected flag if appropriate, and check the hazard as well.
+         */
         if (select) {
             oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, true, false);
         }
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, true);
+
+        /*
+         * Determine whether this event allows until-further-notice and record
+         * this fact if it does, and record any saved times for the event if it
+         * has been issued.
+         */
         updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
         updateSavedTimesForEventIfIssued(oevent, false);
 
@@ -2822,6 +2966,47 @@ public class SessionEventManager implements
     }
 
     /**
+     * Round the specified date down to the nearest minute if the specified time
+     * resolution is {@link TimeResolution#MINUTES}.
+     * 
+     * @param date
+     *            Date-time to be rounded down if appropriate.
+     * @param timeResolution
+     *            Time resolution.
+     * @return Date-time rounded down if appropriate.
+     */
+    private Date roundDateDownToNearestMinuteIfAppropriate(Date date,
+            TimeResolution timeResolution) {
+        if (timeResolution == TimeResolution.MINUTES) {
+            return roundDateDownToNearestMinute(date);
+        }
+        return date;
+    }
+
+    /**
+     * Round the specified date down to the nearest minute.
+     * 
+     * @param date
+     *            Date-time to be rounded down.
+     * @return Rounded down time.
+     */
+    private Date roundDateDownToNearestMinute(Date date) {
+        return DateUtils.truncate(date, Calendar.MINUTE);
+    }
+
+    /**
+     * Round the specified epoch time in milliseconds down to the nearest
+     * minute.
+     * 
+     * @param date
+     *            Date-time to be rounded down.
+     * @return Rounded down time.
+     */
+    private long roundTimeDownToNearestMinute(Date date) {
+        return roundDateDownToNearestMinute(date).getTime();
+    }
+
+    /**
      * Round the specified epoch time in milliseconds down to the nearest
      * minute.
      * 
@@ -2829,8 +3014,8 @@ public class SessionEventManager implements
      *            Time to be rounded down.
      * @return Rounded down time.
      */
-    private long roundTimeDownToNearestMinute(Date time) {
-        return DateUtils.truncate(time, Calendar.MINUTE).getTime();
+    private long roundTimeDownToNearestMinute(long time) {
+        return roundTimeDownToNearestMinute(new Date(time));
     }
 
     /**
@@ -3206,25 +3391,25 @@ public class SessionEventManager implements
             boolean removed) {
 
         /*
-         * Get the start of the current minute; this is used in place of the
-         * actual current time, since it is assumed that event start times that
-         * must be altered should be set to the start of the current minute, at
-         * least for user-interface purposes.
-         */
-        long startOfCurrentMinute = roundTimeDownToNearestMinute(SimulatedTime
-                .getSystemTime().getTime());
-
-        /*
          * If all events should be checked, iterate through them, adding any
          * that have their boundaries changed to the set recording changed
          * events. Otherwise, handle the single event's potential change.
          */
+        long currentTime = SimulatedTime.getSystemTime().getTime().getTime();
         Set<String> identifiersWithChangedBoundaries = new HashSet<>();
         if (singleEvent == null) {
             Set<String> identifiersWithExpiredTimes = new HashSet<>();
             for (ObservedHazardEvent thisEvent : events) {
+
+                /*
+                 * Round the current time down to the previous minute if this
+                 * event has minute-level time resolution.
+                 */
+                long eventCurrentTime = (timeResolutionsForEventIdentifiers
+                        .get(thisEvent.getEventID()) == TimeResolution.MINUTES ? roundTimeDownToNearestMinute(currentTime)
+                        : currentTime);
                 if (updateTimeBoundariesForSingleEvent(thisEvent,
-                        startOfCurrentMinute)) {
+                        eventCurrentTime)) {
                     identifiersWithChangedBoundaries
                             .add(thisEvent.getEventID());
                 }
@@ -3241,13 +3426,23 @@ public class SessionEventManager implements
                 postTimeRangeBoundariesModifiedNotification(identifiersWithExpiredTimes);
             }
         } else {
+
+            /*
+             * Remove the time boundaries if this event was removed, otherwise,
+             * update its time boundaries, rounding the current time down to the
+             * previous minute when doing so if the event has minute-level time
+             * resolution.
+             */
             if (removed) {
                 startTimeBoundariesForEventIdentifiers.remove(singleEvent
                         .getEventID());
                 endTimeBoundariesForEventIdentifiers.remove(singleEvent
                         .getEventID());
-            } else if (updateTimeBoundariesForSingleEvent(singleEvent,
-                    startOfCurrentMinute)) {
+            } else if (updateTimeBoundariesForSingleEvent(
+                    singleEvent,
+                    (timeResolutionsForEventIdentifiers.get(singleEvent
+                            .getEventID()) == TimeResolution.MINUTES ? roundTimeDownToNearestMinute(currentTime)
+                            : currentTime))) {
                 identifiersWithChangedBoundaries.add(singleEvent.getEventID());
             }
         }

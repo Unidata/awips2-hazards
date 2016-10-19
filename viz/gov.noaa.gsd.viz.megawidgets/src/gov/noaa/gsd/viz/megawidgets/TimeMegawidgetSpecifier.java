@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.megawidgets.validators.StateValidator;
 
 import java.util.Map;
@@ -34,6 +35,7 @@ import java.util.Map;
  *                                           determine whether or not to stretch
  *                                           across the full width of a details
  *                                           panel.
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution option.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,6 +46,14 @@ public abstract class TimeMegawidgetSpecifier extends
         IRapidlyChangingStatefulSpecifier {
 
     // Public Static Constants
+
+    /**
+     * Time resolution parameter name; a time megawidget may include a value
+     * associated with this name. The value must be either <code>minutes</code>
+     * or <code>seconds</code>, these being the two possible time resolutions.
+     * If not specified, it defaults to <code>minutes</code>.
+     */
+    public static final String TIME_RESOLUTION = "timeResolution";
 
     /**
      * Current time provider megawidget creation time parameter name; if
@@ -76,6 +86,11 @@ public abstract class TimeMegawidgetSpecifier extends
     private final ControlSpecifierOptionsManager optionsManager;
 
     /**
+     * Time resolution to be used.
+     */
+    private final TimeResolution timeResolution;
+
+    /**
      * Flag indicating whether or not state changes that are part of a group of
      * rapid changes are to result in notifications to the listener.
      */
@@ -105,6 +120,21 @@ public abstract class TimeMegawidgetSpecifier extends
         super(parameters, stateValidator);
         optionsManager = new ControlSpecifierOptionsManager(this, parameters,
                 howToSetFullWidthOption);
+
+        /*
+         * Get the time resolution, if one was specified, or default to minutes
+         * if one was not.
+         */
+        try {
+            String timeResolution = (String) parameters.get(TIME_RESOLUTION);
+            this.timeResolution = (timeResolution == null ? TimeResolution.MINUTES
+                    : TimeResolution.fromString(timeResolution));
+        } catch (Exception e) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), TIME_RESOLUTION,
+                    parameters.get(TIME_RESOLUTION),
+                    "must be either \"minutes\" or \"seconds\"", null);
+        }
 
         /*
          * Ensure that the rapid change notification flag, if provided, is
@@ -141,5 +171,14 @@ public abstract class TimeMegawidgetSpecifier extends
     @Override
     public final boolean isSendingEveryChange() {
         return sendingEveryChange;
+    }
+
+    /**
+     * Get the time resolution to be used.
+     * 
+     * @return Time resolution.
+     */
+    public final TimeResolution getTimeResolution() {
+        return timeResolution;
     }
 }

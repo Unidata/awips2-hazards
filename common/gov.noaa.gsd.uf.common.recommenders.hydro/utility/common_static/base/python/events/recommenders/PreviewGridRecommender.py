@@ -197,7 +197,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 "borderColor": colorFill[tuple],
                 "fillColor": colorFill[tuple],
                 "geometry": {
-                    (TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), TimeUtils.datetimeToEpochTimeMillis(event.getEndTime())): poly
+                    (TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000): poly
                 }
             }
 

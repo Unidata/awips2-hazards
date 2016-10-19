@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
@@ -389,6 +390,11 @@ public class SimpleSessionEventManager implements
     @Override
     @Deprecated
     public boolean isShutDown() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<String, TimeResolution> getTimeResolutionsForEventIds() {
         throw new UnsupportedOperationException();
     }
 }

@@ -165,6 +165,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           has its interdependency script reinitialize if
  *                                           unchanged, so that when a hazard event is
  *                                           selected, it triggers the reinitialization.
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1534,10 +1535,18 @@ public class HazardDetailPresenter extends
      */
     private void updateViewTimeRangeBoundaries(ObservedHazardEvent event) {
         Map<TimeRangeBoundary, Range<Long>> map = new HashMap<>(2, 1.0f);
-        map.put(TimeRangeBoundary.START, getModel().getEventManager()
-                .getStartTimeBoundariesForEventIds().get(event.getEventID()));
-        map.put(TimeRangeBoundary.END, getModel().getEventManager()
-                .getEndTimeBoundariesForEventIds().get(event.getEventID()));
+        Range<Long> bounds = getModel().getEventManager()
+                .getStartTimeBoundariesForEventIds().get(event.getEventID());
+        if (bounds == null) {
+            return;
+        }
+        map.put(TimeRangeBoundary.START, bounds);
+        bounds = getModel().getEventManager().getEndTimeBoundariesForEventIds()
+                .get(event.getEventID());
+        if (bounds == null) {
+            return;
+        }
+        map.put(TimeRangeBoundary.END, bounds);
         getView().getTimeRangeBoundariesChanger().setStates(event.getEventID(),
                 map);
     }
@@ -1549,6 +1558,10 @@ public class HazardDetailPresenter extends
      *            Event for which the update should occur.
      */
     private void updateViewDurations(ObservedHazardEvent event) {
+        getView().getTimeResolutionChanger().setState(
+                null,
+                getModel().getEventManager().getTimeResolutionsForEventIds()
+                        .get(event.getEventID()));
         getView().getDurationChanger().setChoices(event.getEventID(),
                 getModel().getEventManager().getDurationChoices(event), null,
                 null);

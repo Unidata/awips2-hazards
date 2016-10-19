@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
 import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
@@ -55,6 +56,7 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                      by (if issued).
  * Apr 09, 2015    7382    Chris.Golden Added "show start-end time sliders" flag.
  * Apr 15, 2015    3508    Chris.Golden Added "hazard detail to be wide" flag.
+ * Oct 19, 2016   21873    Chris.Golden Added time resolution tracking tied to events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -157,6 +159,13 @@ public interface IHazardDetailView {
      * @return Time range state changer.
      */
     public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger();
+
+    /**
+     * Get the time resolution changer. The identifier is ignored.
+     * 
+     * @return Time resolution changer.
+     */
+    public IStateChanger<String, TimeResolution> getTimeResolutionChanger();
 
     /**
      * Get the duration changer. This is only used to set the choices for

@@ -77,6 +77,7 @@ import org.eclipse.swt.widgets.Composite;
  *                                           defining of valid boundaries for the
  *                                           values, with potentially a different
  *                                           boundary for each state identifier.
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution option.
  * </pre>
  * 
  * @author Chris.Golden
@@ -175,8 +176,10 @@ public class TimeScaleMegawidget extends MultiTimeMegawidget {
                 .getStateIdentifiers().get(stateIndex);
         DateTimeComponent dateTime = new DateTimeComponent(identifier, parent,
                 text, (IControlSpecifier) getSpecifier(),
-                getStateInternally(identifier), false, verticalIndent,
-                isOnlySendEndStateChanges(), dateTimeManager);
+                getStateInternally(identifier),
+                ((TimeMegawidgetSpecifier) getSpecifier()).getTimeResolution(),
+                false, verticalIndent, isOnlySendEndStateChanges(),
+                dateTimeManager);
         setDateTimeComponentValues(dateTime, getStateInternally(identifier));
         return dateTime;
     }

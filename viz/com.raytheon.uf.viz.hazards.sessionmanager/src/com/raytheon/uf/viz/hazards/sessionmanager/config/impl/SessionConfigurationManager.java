@@ -27,6 +27,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_VISIBLE_COLUMNS;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TIME_RESOLUTION;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -252,6 +254,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      by frame changes.
  * Oct 06, 2016 22894      Chris.Golden Added method to get session attributes for a
  *                                      hazard type.
+ * Oct 19, 2016 21873      Chris.Golden Added time resolution, both for hazard types
+ *                                      and for the current settings (and with the
+ *                                      latter, startup-config).
  * </pre>
  * 
  * @author bsteffen
@@ -361,6 +366,8 @@ public class SessionConfigurationManager implements
     private ObservedSettings settings;
 
     private String siteId;
+
+    private Map<String, TimeResolution> timeResolutionsForHazardTypes;
 
     private Map<String, ImmutableList<String>> durationChoicesForHazardTypes;
 
@@ -1173,6 +1180,12 @@ public class SessionConfigurationManager implements
                 mapCenter = startUpConfig.getConfig().getMapCenter();
             }
             value = mapCenter;
+        } else if (identifier.equals(TIME_RESOLUTION)) {
+            TimeResolution timeResolution = settings.getTimeResolution();
+            if (timeResolution == null) {
+                timeResolution = startUpConfig.getConfig().getTimeResolution();
+            }
+            value = timeResolution;
         }
         return (T) value;
     }
@@ -1329,6 +1342,21 @@ public class SessionConfigurationManager implements
         }
 
         return durationChoicesForHazardTypes.get(HazardEventUtilities
+                .getHazardType(event));
+    }
+
+    @Override
+    public TimeResolution getTimeResolution(IHazardEvent event) {
+        if (timeResolutionsForHazardTypes == null) {
+            timeResolutionsForHazardTypes = new HashMap<>();
+            for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
+                    .getConfig().entrySet()) {
+                timeResolutionsForHazardTypes.put(entry.getKey(), entry
+                        .getValue().getTimeResolution());
+            }
+            timeResolutionsForHazardTypes.put(null, TimeResolution.MINUTES);
+        }
+        return timeResolutionsForHazardTypes.get(HazardEventUtilities
                 .getHazardType(event));
     }
 
@@ -1542,6 +1570,12 @@ public class SessionConfigurationManager implements
                 sessionAttributesForHazardTypes.put(entry.getKey(),
                         ImmutableList.copyOf(sessionAttributes));
             }
+
+            /*
+             * Add an entry for the null hazard type.
+             */
+            sessionAttributesForHazardTypes.put(null,
+                    ImmutableList.copyOf(Collections.<String> emptyList()));
         }
 
         return sessionAttributesForHazardTypes.get(hazardType);

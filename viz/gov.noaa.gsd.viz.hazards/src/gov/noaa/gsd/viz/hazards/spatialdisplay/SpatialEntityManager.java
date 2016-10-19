@@ -31,7 +31,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdenti
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityIdentifier;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
@@ -41,8 +40,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
@@ -101,6 +98,10 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      only mark the entities as rotatable
  *                                      and/or scaleable if they are
  *                                      selected.
+ * Oct 19, 2016   21873    Chris.Golden Removed rounding of selected time,
+ *                                      as this is now done elsewhere (and
+ *                                      shouldn't be the spatial display's
+ *                                      concern).
  * </pre>
  * 
  * @author Chris.Golden
@@ -1369,11 +1370,6 @@ class SpatialEntityManager {
         }
 
         /*
-         * Round the selected time down to the nearest minute.
-         */
-        selectedTime = DateUtils.truncate(selectedTime, Calendar.MINUTE);
-
-        /*
          * If there are visual features in the list, iterate through them,
          * creating spatial entities for any that are visible at the selected
          * time.
@@ -2044,11 +2040,6 @@ class SpatialEntityManager {
         List<SpatialEntity<? extends IHazardEventEntityIdentifier>> addedSpatialEntities = null;
         boolean allReused = true;
         if (visualFeaturesList != null) {
-
-            /*
-             * Round the selected time down to the nearest minute.
-             */
-            selectedTime = DateUtils.truncate(selectedTime, Calendar.MINUTE);
 
             /*
              * Iterate through the visual features, adding spatial entities

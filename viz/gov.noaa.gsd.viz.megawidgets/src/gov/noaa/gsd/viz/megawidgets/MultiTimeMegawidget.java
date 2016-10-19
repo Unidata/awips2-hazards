@@ -10,18 +10,16 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.megawidgets.validators.BoundedMultiLongValidator;
-import gov.noaa.gsd.viz.widgets.DayHatchMarkGroup;
-import gov.noaa.gsd.viz.widgets.IHatchMarkGroup;
 import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
 import gov.noaa.gsd.viz.widgets.IMultiValueTooltipTextProvider;
 import gov.noaa.gsd.viz.widgets.ISnapValueCalculator;
-import gov.noaa.gsd.viz.widgets.IVisibleValueZoomCalculator;
 import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
 import gov.noaa.gsd.viz.widgets.MultiValueLinearControl.ChangeSource;
 import gov.noaa.gsd.viz.widgets.MultiValueRuler;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
-import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
+import gov.noaa.gsd.viz.widgets.WidgetUtilities;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,12 +31,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.FontData;
-import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -47,7 +39,6 @@ import org.eclipse.swt.widgets.Label;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 /**
@@ -78,6 +69,7 @@ import com.google.common.collect.Sets;
  * Jul 23, 2015   4245     Chris.Golden Added time ruler above scale widget.
  * Aug 04, 2015   4123     Chris.Golden Changed to work with new signature of
  *                                      UiBuilder method.
+ * Oct 19, 2016  21873     Chris.Golden Added time resolution option.
  * </pre>
  * 
  * @author Chris.Golden
@@ -124,43 +116,12 @@ public abstract class MultiTimeMegawidget extends
     /**
      * Minimum visible time range as an epoch time delta in milliseconds.
      */
-    protected static final long MIN_VISIBLE_TIME_RANGE = 2L * HOUR_INTERVAL;
+    protected static final long MIN_VISIBLE_TIME_RANGE = 1L * MINUTE_INTERVAL;
 
     /**
      * Maximum visible time range as an epoch time delta in milliseconds.
      */
     protected static final long MAX_VISIBLE_TIME_RANGE = 8L * DAY_INTERVAL;
-
-    /**
-     * Snap value calculator, used to generate snap-to values for the scale
-     * widget.
-     */
-    protected static final ISnapValueCalculator SNAP_VALUE_CALCULATOR = new ISnapValueCalculator() {
-
-        private final long INTERVAL = MINUTE_INTERVAL;
-
-        private final long HALF_INTERVAL = INTERVAL / 2L;
-
-        @Override
-        public long getSnapThumbValue(long value, long minimum, long maximum) {
-            long remainder = value % INTERVAL;
-            if (remainder < HALF_INTERVAL) {
-                value -= remainder;
-            } else {
-                value += INTERVAL - remainder;
-            }
-            if (value < minimum) {
-                value += INTERVAL
-                        * (((minimum - value) / INTERVAL) + ((minimum - value)
-                                % INTERVAL == 0 ? 0L : 1L));
-            } else if (value > maximum) {
-                value -= INTERVAL
-                        * (((value - maximum) / INTERVAL) + ((value - maximum)
-                                % INTERVAL == 0 ? 0L : 1L));
-            }
-            return value;
-        }
-    };
 
     // Private Static Constants
 
@@ -404,6 +365,13 @@ public abstract class MultiTimeMegawidget extends
      * Multi-thumbed scale component.
      */
     private MultiValueScale scale;
+
+    /**
+     * Snap value calculator, used to generate snap-to values for the scale
+     * widget, and to ensure that values entered via the date-time fields are
+     * acceptable.
+     */
+    private ISnapValueCalculator snapValueCalculator;
 
     /**
      * Flag indicating whether state changes that occur as a result of a thumb
@@ -1062,6 +1030,16 @@ public abstract class MultiTimeMegawidget extends
         }
 
         /*
+         * Use the appropriate snap value calculator for the desired time
+         * resolution.
+         */
+        snapValueCalculator = (((TimeMegawidgetSpecifier) getSpecifier())
+                .getTimeResolution() == TimeResolution.SECONDS ? WidgetUtilities
+                .getTimeLineSnapValueCalculatorWithSecondsResolution()
+                : WidgetUtilities
+                        .getTimeLineSnapValueCalculatorWithMinutesResolution());
+
+        /*
          * Create the time ruler component.
          */
         createRulerComponent(specifier, panel, paramMap);
@@ -1359,7 +1337,7 @@ public abstract class MultiTimeMegawidget extends
      */
     protected final long convertToValueAcceptableToScale(String identifier,
             long value) {
-        return SNAP_VALUE_CALCULATOR.getSnapThumbValue(value,
+        return snapValueCalculator.getSnapThumbValue(value,
                 stateValidator.getMinimumValue(identifier),
                 stateValidator.getMaximumValue(identifier));
     }
@@ -1587,100 +1565,17 @@ public abstract class MultiTimeMegawidget extends
             Composite parent, Map<String, Object> paramMap) {
 
         /*
-         * Create the colors for the time ruler hatch marks, and record them as
-         * allocated resources so that they can be disposed of properly.
+         * Create the time line ruler.
          */
-        List<Color> colors = Lists.newArrayList(new Color(Display.getCurrent(),
-                128, 0, 0), new Color(Display.getCurrent(), 0, 0, 128),
-                new Color(Display.getCurrent(), 0, 128, 0),
-                new Color(Display.getCurrent(), 0, 128, 0),
-                new Color(Display.getCurrent(), 131, 120, 103));
-        final List<Resource> resources = new ArrayList<>(colors.size() + 1);
-        for (Color color : colors) {
-            resources.add(color);
-        }
-
-        /*
-         * Create the time ruler's hatch mark groups.
-         */
-        List<IHatchMarkGroup> hatchMarkGroups = new ArrayList<>();
-        hatchMarkGroups.add(new DayHatchMarkGroup());
-        hatchMarkGroups.add(new TimeHatchMarkGroup(6L * HOUR_INTERVAL, 0.25f,
-                colors.get(0), null));
-        hatchMarkGroups.add(new TimeHatchMarkGroup(HOUR_INTERVAL, 0.18f, colors
-                .get(1), null));
-        hatchMarkGroups.add(new TimeHatchMarkGroup(30L * MINUTE_INTERVAL,
-                0.11f, colors.get(2), null));
-        hatchMarkGroups.add(new TimeHatchMarkGroup(10L * MINUTE_INTERVAL,
-                0.05f, colors.get(3), null));
-
-        /*
-         * Create the ruler and configure it. The actual widget is an instance
-         * of an anonymous subclass; the latter is needed because background and
-         * foreground color changes must be ignored, since the ModeListener
-         * objects may try to change the colors when the CAVE mode changes,
-         * which in this case is undesirable.
-         */
-        ruler = new MultiValueRuler(parent,
+        ruler = WidgetUtilities.createTimeLineRuler(parent,
                 stateValidator.getLowestAllowableValue(),
-                stateValidator.getHighestAllowableValue(), hatchMarkGroups) {
-            @Override
-            public void setBackground(Color background) {
-
-                /*
-                 * No action.
-                 */
-            }
-
-            @Override
-            public void setForeground(Color foreground) {
-
-                /*
-                 * No action.
-                 */
-            }
-        };
+                stateValidator.getHighestAllowableValue(),
+                MIN_VISIBLE_TIME_RANGE, MAX_VISIBLE_TIME_RANGE);
+        ruler.setSnapValueCalculator(snapValueCalculator);
 
         /*
-         * Create the font to be used for smaller labels in the ruler, and
-         * record it for later disposal.
+         * Show no tooltips.
          */
-        FontData fontData = ruler.getFont().getFontData()[0];
-        Font minuteFont = new Font(Display.getCurrent(), fontData.getName(),
-                (fontData.getHeight() * 7) / 10, fontData.getStyle());
-        resources.add(minuteFont);
-        for (int j = 1; j < hatchMarkGroups.size(); j++) {
-            ((TimeHatchMarkGroup) hatchMarkGroups.get(j))
-                    .setMinuteFont(minuteFont);
-        }
-
-        /*
-         * Ensure that zoom calculations are done correctly by limiting them,
-         * and configure colors, size, etc.
-         */
-        ruler.setVisibleValueZoomCalculator(new IVisibleValueZoomCalculator() {
-            @Override
-            public long getVisibleValueRangeForZoom(MultiValueRuler ruler,
-                    boolean zoomIn, int amplitude) {
-                long range;
-                if (zoomIn) {
-                    range = (getVisibleTimeDelta() * 2L) / 3L;
-                    if (range < MIN_VISIBLE_TIME_RANGE) {
-                        return 0L;
-                    }
-                } else {
-                    range = (getVisibleTimeDelta() * 3L) / 2L;
-                    if (range > MAX_VISIBLE_TIME_RANGE) {
-                        return 0L;
-                    }
-                }
-                return range;
-            }
-        });
-        ruler.setBorderColor(colors.get(4));
-        ruler.setHeightMultiplier(2.95f);
-        ruler.setSnapValueCalculator(SNAP_VALUE_CALCULATOR);
-        ruler.setViewportDraggable(true);
         ruler.setTooltipTextProvider(new IMultiValueTooltipTextProvider() {
 
             @Override
@@ -1703,17 +1598,9 @@ public abstract class MultiTimeMegawidget extends
         });
 
         /*
-         * Ensure that the SWT colors and fonts are disposed of when the ruler
-         * is.
+         * Set the ruler's dimensions and its starting visible value range,
+         * disable it if appropriate, and grid it.
          */
-        ruler.addDisposeListener(new DisposeListener() {
-            @Override
-            public void widgetDisposed(DisposeEvent e) {
-                for (Resource resource : resources) {
-                    resource.dispose();
-                }
-            }
-        });
         UiBuilder.setMultiValueRulerVisualComponentDimensions(ruler,
                 SCALE_VERTICAL_PADDING_TOP, 0);
         ruler.setVisibleValueRange((Long) paramMap
@@ -1759,7 +1646,7 @@ public abstract class MultiTimeMegawidget extends
         scale = new MultiValueScale(parent,
                 stateValidator.getLowestAllowableValue(),
                 stateValidator.getHighestAllowableValue());
-        scale.setSnapValueCalculator(SNAP_VALUE_CALCULATOR);
+        scale.setSnapValueCalculator(snapValueCalculator);
         UiBuilder.setMultiValueScaleVisualComponentDimensions(scale,
                 SCALE_VERTICAL_PADDING_TOP, SCALE_VERTICAL_PADDING_BOTTOM);
         scale.setVisibleValueRange((Long) paramMap
@@ -1785,15 +1672,6 @@ public abstract class MultiTimeMegawidget extends
         gridData.horizontalSpan = 2;
         gridData.exclude = (specifier.isShowScale() == false);
         scale.setLayoutData(gridData);
-    }
-
-    /**
-     * Get the visible time delta.
-     * 
-     * @return Visible time delta.
-     */
-    private long getVisibleTimeDelta() {
-        return ruler.getUpperVisibleValue() + 1L - ruler.getLowerVisibleValue();
     }
 
     /**

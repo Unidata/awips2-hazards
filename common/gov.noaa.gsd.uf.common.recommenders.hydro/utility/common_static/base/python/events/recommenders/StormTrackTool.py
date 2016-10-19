@@ -991,8 +991,8 @@ class Recommender(TrackToolCommon.TrackToolCommon):
             # Create the base geometry visual feature.
             gray = { "red": 0.5, "green": 0.5, "blue": 0.5 }
             grayOrStandard = {
-                           (earliestVisibility, startTime - 60000): gray,
-                           (startTime, endTime - 60000): "eventType",
+                           (earliestVisibility, startTime): gray,
+                           (startTime, endTime): "eventType",
                            (endTime, latestVisibility): gray
                            }
             baseGeometryFeature = {
@@ -1003,7 +1003,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
                                    "borderStyle": "eventType",
                                    "dragCapability": "all", 
                                    "geometry": {
-                                                (earliestVisibility, latestVisibility - 60000): hazardEvent.getGeometry()
+                                                (earliestVisibility, latestVisibility): hazardEvent.getGeometry()
                                                 }
                                    }
             visualFeatures.append(baseGeometryFeature)
@@ -1018,7 +1018,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
                                   "borderThickness": "eventType",
                                   "dragCapability": "none", 
                                   "geometry": {
-                                               (earliestVisibility, latestVisibility - 60000): \
+                                               (earliestVisibility, latestVisibility): \
                                                AdvancedGeometry.createShapelyWrapper(GeometryFactory.createLineString(trackLineCoordinates), 0)
                                                }
                                   }
@@ -1047,7 +1047,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
                                                                                        params["startTime"], params["endTime"], \
                                                                                        "none", "all"),
                                    "geometry": {
-                                                (earliestVisibility, latestVisibility - 60000): params["geometry"]
+                                                (earliestVisibility, latestVisibility): params["geometry"]
                                                 },
                                    "topmost": self.getTemporallyVariantProperty(earliestVisibility, latestVisibility, \
                                                                                 params["startTime"], params["endTime"], \
@@ -1070,7 +1070,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
                             "dragCapability": "none",
                             "topmost": True,
                             "geometry": {
-                                         (earliestVisibility, latestVisibility - 60000):
+                                         (earliestVisibility, latestVisibility):
                                          AdvancedGeometry.createShapelyWrapper(hazardEvent.
                                                                                getFlattenedGeometry()[0].
                                                                                centroid, 0)
@@ -1133,23 +1133,23 @@ class Recommender(TrackToolCommon.TrackToolCommon):
 
         if minTime is highlightMinTime and maxTime is highlightMaxTime:
             return {
-                    (minTime, maxTime - 60000): highlightValue
+                    (minTime, maxTime): highlightValue
                     }
         elif minTime is highlightMinTime:
             return {
-                    (minTime, highlightMaxTime - 60000): highlightValue,
-                    (highlightMaxTime, maxTime - 60000): lowlightValue
+                    (minTime, highlightMaxTime): highlightValue,
+                    (highlightMaxTime, maxTime): lowlightValue
                     }
         elif maxTime is highlightMaxTime:
             return {
-                    (minTime, highlightMinTime - 60000): lowlightValue,
-                    (highlightMinTime, maxTime - 60000): highlightValue
+                    (minTime, highlightMinTime): lowlightValue,
+                    (highlightMinTime, maxTime): highlightValue
                     }
         else:
             return {
-                    (minTime, highlightMinTime - 60000): lowlightValue,
-                    (highlightMinTime, highlightMaxTime - 60000): highlightValue,
-                    (highlightMaxTime, maxTime - 60000): lowlightValue
+                    (minTime, highlightMinTime): lowlightValue,
+                    (highlightMinTime, highlightMaxTime): highlightValue,
+                    (highlightMaxTime, maxTime): lowlightValue
                     }
 
     def toString(self):

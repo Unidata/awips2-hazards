@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.TimeResolutionAdapter;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +29,7 @@ import java.util.Set;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -38,11 +42,11 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 20, 2013 1257       bsteffen    Initial creation
- * Aug 22, 2013  787       blawrenc    Added capability to associate the setting
- *                                     with one or more perspectives.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 20, 2013 1257       bsteffen     Initial creation
+ * Aug 22, 2013  787       blawrenc     Added capability to associate the setting
+ *                                      with one or more perspectives.
  * Dec 05, 2014 4124       Chris.Golden Made implementation of new ISettings
  *                                      interface, needed to allow for proper
  *                                      use of ObservedSettings.
@@ -52,6 +56,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * May 10, 2016 18515      Chris.Golden Added "deselect after issuing" flag.
+ * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * </pre>
  * 
  * @author bsteffen
@@ -85,6 +90,12 @@ public class Settings implements ISettings {
      * How long the time window should be
      */
     private Long defaultTimeDisplayDuration;
+
+    /**
+     * Time resolution.
+     */
+    @XmlJavaTypeAdapter(TimeResolutionAdapter.class)
+    private TimeResolution timeResolution;
 
     /**
      * Where to center the map when this settings is loaded.
@@ -194,6 +205,7 @@ public class Settings implements ISettings {
         setVisibleStatuses(other.getVisibleStatuses());
         setToolbarTools(other.getToolbarTools());
         setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration());
+        setTimeResolution(other.getTimeResolution());
         setMapCenter(other.getMapCenter());
         setDefaultCategory(other.getDefaultCategory());
         setPossibleSites(other.getPossibleSites());
@@ -258,6 +270,16 @@ public class Settings implements ISettings {
     @Override
     public void setDefaultTimeDisplayDuration(Long defaultTimeDisplayDuration) {
         this.defaultTimeDisplayDuration = defaultTimeDisplayDuration;
+    }
+
+    @Override
+    public TimeResolution getTimeResolution() {
+        return timeResolution;
+    }
+
+    @Override
+    public void setTimeResolution(TimeResolution timeResolution) {
+        this.timeResolution = timeResolution;
     }
 
     @Override

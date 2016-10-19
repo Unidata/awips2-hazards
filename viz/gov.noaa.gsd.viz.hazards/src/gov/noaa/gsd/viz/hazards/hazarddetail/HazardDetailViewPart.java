@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
@@ -22,6 +23,7 @@ import gov.noaa.gsd.viz.megawidgets.CompositeSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ControlComponentHelper;
 import gov.noaa.gsd.viz.megawidgets.IControl;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IMegawidget;
 import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISingleLineSpecifier;
@@ -243,6 +245,12 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           has its interdependency script reinitialize
  *                                           if unchanged, so that when a hazard event is
  *                                           selected, it triggers the reinitialization.
+ * Oct 19, 2016  21873     Chris.Golden      Added time resolution tracking tied to events.
+ *                                           This means having four different time-tracking
+ *                                           megawidgets, for the four possible cases:
+ *                                           explicit-end-time-type hazard event with
+ *                                           either time resolution, or duration-time-type
+ *                                           hazard event with either time resolution.
  * </pre>
  * 
  * @author Chris.Golden
@@ -475,9 +483,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Specifier parameters for the time range megawidget.
+     * Map of time resolutions to the corresponding specifier parameters for a
+     * time scale megawidget.
      */
-    private static final ImmutableMap<String, Object> TIME_SCALE_SPECIFIER_PARAMETERS;
+    private static final ImmutableMap<TimeResolution, ImmutableMap<String, Object>> TIME_SCALE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS;
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
@@ -505,13 +514,28 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 UNTIL_FURTHER_NOTICE_VALUE_TEXT);
         map.put(TimeScaleSpecifier.MEGAWIDGET_TIME_DESCRIPTORS,
                 ImmutableMap.copyOf(descriptiveTextForValues));
-        TIME_SCALE_SPECIFIER_PARAMETERS = ImmutableMap.copyOf(map);
+
+        /*
+         * Make a map holding one copy of the above map for each time
+         * resolution, with each one including the time resolution in string
+         * form.
+         */
+        Map<TimeResolution, ImmutableMap<String, Object>> overallMap = new EnumMap<>(
+                TimeResolution.class);
+        for (TimeResolution timeResolution : TimeResolution.values()) {
+            map.put(TimeScaleSpecifier.TIME_RESOLUTION,
+                    timeResolution.toString());
+            overallMap.put(timeResolution, ImmutableMap.copyOf(map));
+        }
+        TIME_SCALE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS = ImmutableMap
+                .copyOf(overallMap);
     }
 
     /**
-     * Specifier parameters for the time range megawidget.
+     * Map of time resolutions to the corresponding specifier parameters for a
+     * time range megawidget.
      */
-    private static final ImmutableMap<String, Object> TIME_RANGE_SPECIFIER_PARAMETERS;
+    private static final ImmutableMap<TimeResolution, ImmutableMap<String, Object>> TIME_RANGE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS;
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
@@ -521,7 +545,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         Map<String, Object> subMap = new HashMap<>();
         subMap.put(START_TIME_STATE, START_TIME_TEXT);
         subMap.put(END_TIME_STATE, DURATION_TEXT);
-        map.put(TimeScaleSpecifier.MEGAWIDGET_STATE_LABELS,
+        map.put(TimeRangeSpecifier.MEGAWIDGET_STATE_LABELS,
                 ImmutableMap.copyOf(subMap));
         map.put(IControlSpecifier.MEGAWIDGET_SPACING, 5);
         map.put(IParentSpecifier.MEGAWIDGET_SPECIFIER_FACTORY,
@@ -544,9 +568,23 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         childList.add(ImmutableMap.copyOf(subMap));
         subMap = new HashMap<>();
         subMap.put(END_TIME_STATE, ImmutableList.copyOf(childList));
-        map.put(TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS,
+        map.put(TimeRangeSpecifier.MEGAWIDGET_DETAIL_FIELDS,
                 ImmutableMap.copyOf(subMap));
-        TIME_RANGE_SPECIFIER_PARAMETERS = ImmutableMap.copyOf(map);
+
+        /*
+         * Make a map holding one copy of the above map for each time
+         * resolution, with each one including the time resolution in string
+         * form.
+         */
+        Map<TimeResolution, ImmutableMap<String, Object>> overallMap = new EnumMap<>(
+                TimeResolution.class);
+        for (TimeResolution timeResolution : TimeResolution.values()) {
+            map.put(TimeRangeSpecifier.TIME_RESOLUTION,
+                    timeResolution.toString());
+            overallMap.put(timeResolution, ImmutableMap.copyOf(map));
+        }
+        TIME_RANGE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS = ImmutableMap
+                .copyOf(overallMap);
     }
 
     /**
@@ -645,34 +683,43 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private StackLayout timeContentLayout;
 
     /**
-     * Composite within the time panel that holds the time scale megawidget.
+     * Map of time resolutions to the composites within the time panel that hold
+     * the time scale megawidgets for those resolutions.
      */
-    private Composite timeScalePanel;
+    private Map<TimeResolution, Composite> timeScalePanelsForTimeResolutions;
 
     /**
-     * Composite within the time panel that holds the time range megawidget.
+     * Map of time resolutions to the composites within the time panel that hold
+     * the time range megawidgets for those resolutions.
      */
-    private Composite timeRangePanel;
+    private Map<TimeResolution, Composite> timeRangePanelsForTimeResolutions;
 
     /**
      * List holding the time scale and time range megawidgets, one of which is
      * shown at all times when an event is being displayed to show the start and
-     * end times.
+     * end times. There are two of each; each pair has one that has a time
+     * resolution of minutes, and another with a time resolution of seconds.
      */
-    private final List<MultiTimeMegawidget> timeMegawidgets = new ArrayList<>(2);
+    private final List<MultiTimeMegawidget> timeMegawidgets = new ArrayList<>(4);
 
     /**
-     * Event time range megawidget, used when an event shows a start time and a
-     * duration.
+     * Map of time resolutions to event time range megawidgets, one of which is
+     * used when an event shows a start time and a duration.
      */
-    private TimeRangeMegawidget timeRangeMegawidget;
+    private final Map<TimeResolution, TimeRangeMegawidget> timeRangeMegawidgetsForTimeResolutions = new HashMap<>(
+            2, 1.0f);
 
     /**
      * List holding the "until further notice" checkbox megawidgets associated
-     * with the time scale and time range megawidgets, respectively.
+     * with the time scale and time range megawidgets.
      */
     private final List<CheckBoxMegawidget> untilFurtherNoticeToggleMegawidgets = new ArrayList<>(
-            2);
+            4);
+
+    /**
+     * Time resolution in use.
+     */
+    private TimeResolution timeResolution = TimeResolution.MINUTES;
 
     /**
      * Metadata panel.
@@ -1187,6 +1234,48 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
+     * Time resolution state changer. The identifier is ignored.
+     */
+    private final IStateChanger<String, TimeResolution> timeResolutionChanger = new IStateChanger<String, TimeResolution>() {
+
+        @Override
+        public void setEnabled(String identifier, boolean enable) {
+            throw new UnsupportedOperationException(
+                    "cannot enable/disable time resolution");
+        }
+
+        @Override
+        public void setEditable(String identifier, boolean editable) {
+            throw new UnsupportedOperationException(
+                    "cannot change editability of time resolution");
+        }
+
+        @Override
+        public TimeResolution getState(String identifier) {
+            throw new UnsupportedOperationException(
+                    "cannot get state of time resolution");
+        }
+
+        @Override
+        public void setState(String identifier, TimeResolution value) {
+            timeResolution = value;
+        }
+
+        @Override
+        public void setStates(Map<String, TimeResolution> valuesForIdentifiers) {
+            throw new UnsupportedOperationException(
+                    "cannot change multiple states for time resolution");
+        }
+
+        @Override
+        public void setStateChangeHandler(
+                IStateChangeHandler<String, TimeResolution> handler) {
+            throw new UnsupportedOperationException(
+                    "cannot set handler for time resolution");
+        }
+    };
+
+    /**
      * Duration combo box state changer. The identifier is that of the hazard
      * event.
      */
@@ -1207,7 +1296,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         @Override
         public void setChoices(String identifier, List<String> choices,
                 List<String> choiceDisplayables, String value) {
-            if (identifier.equals(visibleEventIdentifier)) {
+            if (identifier.equals(visibleEventIdentifier) && (choices != null)) {
                 setDurationChoices(choices);
             }
         }
@@ -1379,8 +1468,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 }
             } else if (identifier.equals(START_TIME_STATE)
                     || identifier.equals(END_TIME_STATE)) {
-                MultiTimeMegawidget otherTimeMegawidget = timeMegawidgets
-                        .get(megawidget == timeRangeMegawidget ? 0 : 1);
+                List<MultiTimeMegawidget> otherTimeMegawidgets = getOtherMegawidgets(
+                        megawidget, timeMegawidgets);
                 TimeRange range;
                 try {
                     range = new TimeRange(
@@ -1394,7 +1483,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                     + "values from megawidget", e);
                     return;
                 }
-                setTimeRange(otherTimeMegawidget, range);
+                for (MultiTimeMegawidget multiTimeMegawidget : otherTimeMegawidgets) {
+                    setTimeRange(multiTimeMegawidget, range);
+                }
                 if (timeRangeChangeHandler != null) {
                     timeRangeChangeHandler.stateChanged(visibleEventIdentifier,
                             range);
@@ -1402,11 +1493,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             } else if (identifier
                     .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
                 boolean untilFurtherNotice = Boolean.TRUE.equals(state);
-                CheckBoxMegawidget otherUntilFurtherNoticeMegawidget = untilFurtherNoticeToggleMegawidgets
-                        .get(megawidget == untilFurtherNoticeToggleMegawidgets
-                                .get(1) ? 0 : 1);
-                setEndTimeUntilFurtherNotice(otherUntilFurtherNoticeMegawidget,
-                        untilFurtherNotice);
+                for (CheckBoxMegawidget checkBoxMegawidget : getOtherMegawidgets(
+                        megawidget, untilFurtherNoticeToggleMegawidgets)) {
+                    setEndTimeUntilFurtherNotice(checkBoxMegawidget,
+                            untilFurtherNotice);
+                }
                 if (metadataChangeHandler != null) {
                     metadataChangeHandler.stateChanged(visibleEventIdentifier,
                             identifier, (Serializable) state);
@@ -1422,8 +1513,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         public void megawidgetStatesChanged(IStateful megawidget,
                 Map<String, ?> statesForIdentifiers) {
             if (megawidget instanceof MultiTimeMegawidget) {
-                MultiTimeMegawidget otherTimeMegawidget = timeMegawidgets
-                        .get(megawidget == timeRangeMegawidget ? 0 : 1);
+                List<MultiTimeMegawidget> otherTimeMegawidgets = getOtherMegawidgets(
+                        megawidget, timeMegawidgets);
                 TimeRange range;
                 try {
                     range = new TimeRange(
@@ -1435,7 +1526,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                     + "values from megawidget", e);
                     return;
                 }
-                setTimeRange(otherTimeMegawidget, range);
+                for (MultiTimeMegawidget multiTimeMegawidget : otherTimeMegawidgets) {
+                    setTimeRange(multiTimeMegawidget, range);
+                }
                 if (timeRangeChangeHandler != null) {
                     timeRangeChangeHandler.stateChanged(visibleEventIdentifier,
                             range);
@@ -1761,6 +1854,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     @Override
+    public IStateChanger<String, TimeResolution> getTimeResolutionChanger() {
+        return timeResolutionChanger;
+    }
+
+    @Override
     public IChoiceStateChanger<String, String, String, String> getDurationChanger() {
         return durationChanger;
     }
@@ -1817,24 +1915,29 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         /*
          * Align the time megawidgets labels to have the same horizontal space
-         * as one another, put the time scale panel at the top of the stack, and
-         * lay out the time group.
+         * as one another, put the time scale panel with minutes resolution at
+         * the top of the stack, and lay out the time group.
          */
         ControlComponentHelper.alignMegawidgetsElements(megawidgetsToAlign);
-        timeScalePanel.layout();
-        timeRangePanel.layout();
-        timeContentLayout.topControl = timeScalePanel;
+        for (TimeResolution timeResolution : TimeResolution.values()) {
+            timeScalePanelsForTimeResolutions.get(timeResolution).layout();
+            timeRangePanelsForTimeResolutions.get(timeResolution).layout();
+        }
+        timeContentLayout.topControl = timeScalePanelsForTimeResolutions
+                .get(TimeResolution.MINUTES);
         timeGroup.layout();
     }
 
     /**
      * Create a time option panel. The first time this is called, it creates the
-     * panel holding the time scale megawidget, for events that need to allow
-     * the user to manipulate the start time and the end time both as absolute
-     * date-time values; the second time it is called, it creates the panel
-     * holding the time range megawidget, for events that need to allow the user
-     * to manipulate the start time as an absolute value, and the end time as a
-     * duration (offset) from the start time.
+     * panels that each hold a time scale megawidget, for events that need to
+     * allow the user to manipulate the start time and the end time both as
+     * absolute date-time values; the second time it is called, it creates the
+     * panels each holding a time range megawidget, for events that need to
+     * allow the user to manipulate the start time as an absolute value, and the
+     * end time as a duration (offset) from the start time. In each case, two
+     * panels are created, one for events that have a time resolution of
+     * seconds, the other for those that have a time resolution of minutes.
      * 
      * @param parent
      *            Parent composite into which the panel will be inserted.
@@ -1850,64 +1953,91 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Map<String, Object> megawidgetCreationParams,
             List<IControl> megawidgetsToAlign) {
 
-        Composite timeSubPanel = new Composite(parent, SWT.NONE);
-        GridLayout gridLayout = new GridLayout();
-        gridLayout.marginHeight = 0;
-        gridLayout.marginBottom = (showStartEndTimeScale ? 5 : 10);
-        timeSubPanel.setLayout(gridLayout);
-
         /*
-         * Create the appropriate time megawidget; it in turn creates as a child
-         * its "until further notice" checkbox.
+         * Determine which type is being created, and create the map of time
+         * resolutions to composites for that type.
          */
-        MultiTimeMegawidget timeMegawidget = null;
-        CheckBoxMegawidget checkBoxMegawidget = null;
-        Map<String, Object> timeMegawidgetParameters = new HashMap<>(
-                timeScalePanel == null ? TIME_SCALE_SPECIFIER_PARAMETERS
-                        : TIME_RANGE_SPECIFIER_PARAMETERS);
-        timeMegawidgetParameters.put(
-                MultiTimeMegawidgetSpecifier.MEGAWIDGET_SHOW_SCALE,
-                showStartEndTimeScale);
-        Map<String, Object> map = new HashMap<>();
-        map.put(END_TIME_STATE,
-                (buildForWideViewing ? UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS
-                        : UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS));
-        timeMegawidgetParameters.put(
-                TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS, map);
-        if (timeScalePanel == null) {
-            timeScalePanel = timeSubPanel;
-            try {
-                timeMegawidget = new TimeScaleSpecifier(
-                        timeMegawidgetParameters).createMegawidget(
-                        timeScalePanel, TimeScaleMegawidget.class,
-                        megawidgetCreationParams);
-            } catch (Exception e) {
-                statusHandler.error(
-                        "unexpected problem creating time scale and checkbox "
-                                + "megawidgets", e);
-            }
-        } else if (timeRangePanel == null) {
-            timeRangePanel = timeSubPanel;
-            try {
-                timeMegawidget = timeRangeMegawidget = new TimeRangeSpecifier(
-                        timeMegawidgetParameters).createMegawidget(
-                        timeRangePanel, TimeRangeMegawidget.class,
-                        megawidgetCreationParams);
-            } catch (Exception e) {
-                statusHandler.error(
-                        "unexpected problem creating time range and checkbox "
-                                + "megawidgets", e);
-            }
-        } else {
+        if (timeRangePanelsForTimeResolutions != null) {
             throw new IllegalStateException(
                     "method already called twice, no more to create");
         }
-        checkBoxMegawidget = (CheckBoxMegawidget) (buildForWideViewing ? timeMegawidget
-                .getChildren().get(0) : ((CompositeMegawidget) timeMegawidget
-                .getChildren().get(0)).getChildren().get(0));
-        megawidgetsToAlign.add(timeMegawidget);
-        timeMegawidgets.add(timeMegawidget);
-        untilFurtherNoticeToggleMegawidgets.add(checkBoxMegawidget);
+        boolean creatingTimeScales = (timeScalePanelsForTimeResolutions == null);
+        Map<TimeResolution, Composite> timePanelsForTimeResolutions = new EnumMap<>(
+                TimeResolution.class);
+        if (creatingTimeScales) {
+            timeScalePanelsForTimeResolutions = timePanelsForTimeResolutions;
+        } else {
+            timeRangePanelsForTimeResolutions = timePanelsForTimeResolutions;
+        }
+
+        /*
+         * Create a time sub-panel for each time resolution.
+         */
+        for (TimeResolution timeResolution : TimeResolution.values()) {
+
+            /*
+             * Create the sub-panel itself.
+             */
+            Composite timeSubPanel = new Composite(parent, SWT.NONE);
+            GridLayout gridLayout = new GridLayout();
+            gridLayout.marginHeight = 0;
+            gridLayout.marginBottom = (showStartEndTimeScale ? 5 : 10);
+            timeSubPanel.setLayout(gridLayout);
+            timePanelsForTimeResolutions.put(timeResolution, timeSubPanel);
+
+            /*
+             * Create the appropriate time megawidget; it in turn creates as a
+             * child its "until further notice" checkbox.
+             */
+            MultiTimeMegawidget timeMegawidget = null;
+            CheckBoxMegawidget checkBoxMegawidget = null;
+            Map<String, Object> timeMegawidgetParameters = new HashMap<>(
+                    (creatingTimeScales ? TIME_SCALE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS
+                            : TIME_RANGE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS)
+                            .get(timeResolution));
+            timeMegawidgetParameters.put(
+                    MultiTimeMegawidgetSpecifier.MEGAWIDGET_SHOW_SCALE,
+                    showStartEndTimeScale);
+            Map<String, Object> map = new HashMap<>();
+            map.put(END_TIME_STATE,
+                    (buildForWideViewing ? UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS
+                            : UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS));
+            timeMegawidgetParameters.put(
+                    TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS, map);
+            if (creatingTimeScales) {
+                try {
+                    timeMegawidget = new TimeScaleSpecifier(
+                            timeMegawidgetParameters).createMegawidget(
+                            timeSubPanel, TimeScaleMegawidget.class,
+                            megawidgetCreationParams);
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "unexpected problem creating time scale and checkbox "
+                                    + "megawidgets", e);
+                }
+            } else {
+                try {
+                    TimeRangeMegawidget timeRangeMegawidget = new TimeRangeSpecifier(
+                            timeMegawidgetParameters).createMegawidget(
+                            timeSubPanel, TimeRangeMegawidget.class,
+                            megawidgetCreationParams);
+                    timeRangeMegawidgetsForTimeResolutions.put(timeResolution,
+                            timeRangeMegawidget);
+                    timeMegawidget = timeRangeMegawidget;
+                } catch (Exception e) {
+                    statusHandler.error(
+                            "unexpected problem creating time range and checkbox "
+                                    + "megawidgets", e);
+                }
+            }
+            checkBoxMegawidget = (CheckBoxMegawidget) (buildForWideViewing ? timeMegawidget
+                    .getChildren().get(0)
+                    : ((CompositeMegawidget) timeMegawidget.getChildren()
+                            .get(0)).getChildren().get(0));
+            megawidgetsToAlign.add(timeMegawidget);
+            timeMegawidgets.add(timeMegawidget);
+            untilFurtherNoticeToggleMegawidgets.add(checkBoxMegawidget);
+        }
     }
 
     /**
@@ -1950,6 +2080,28 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private boolean isAlive() {
         return ((tabPagePanel != null) && (tabPagePanel.isDisposed() == false));
+    }
+
+    /**
+     * Get a list of megawidgets that is identical to the one specified except
+     * that it does not include the single megawidget specified.
+     * 
+     * @param megawidget
+     *            Megawidget to not include.
+     * @param megawidgets
+     *            Megawidgets from which to create a new list of megawidgets,
+     *            not including <code>megawidget</code>.
+     * @return List of megawidgets without the specified megawidget.
+     */
+    private <M extends IMegawidget> List<M> getOtherMegawidgets(
+            IMegawidget megawidget, List<M> megawidgets) {
+        List<M> otherMegawidgets = new ArrayList<>(megawidgets.size() - 1);
+        for (M otherMegawidget : megawidgets) {
+            if (megawidget != otherMegawidget) {
+                otherMegawidgets.add(otherMegawidget);
+            }
+        }
+        return otherMegawidgets;
     }
 
     /**
@@ -2199,15 +2351,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             try {
 
                 /*
-                 * If the megawidget is the time scale, not the time range, and
-                 * its end time is limited to one value, and the new end time
-                 * falls outside that value, change its end time allowable
-                 * boundaries to equal the new end time. This must be done
-                 * because the time range megawidget allows the end time to move
-                 * if, for example, the duration is to be frozen but the user
-                 * moves the start time, which displaces the end time.
+                 * If the megawidget is a time scale, not a time range, and its
+                 * end time is limited to one value, and the new end time falls
+                 * outside that value, change its end time allowable boundaries
+                 * to equal the new end time. This must be done because the time
+                 * range megawidgets allow the end time to move if, for example,
+                 * the duration is to be frozen but the user moves the start
+                 * time, which displaces the end time.
                  */
-                if (megawidget != timeRangeMegawidget) {
+                if (timeRangeMegawidgetsForTimeResolutions.values().contains(
+                        megawidget) == false) {
                     long newEndTime = range.getEnd().getTime();
                     Map<String, Long> minimumAllowableTimes = megawidget
                             .getMinimumAllowableTimes();
@@ -2291,6 +2444,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
              * Get the duration of the event as it stands.
              */
             long duration;
+            TimeRangeMegawidget timeRangeMegawidget = timeRangeMegawidgetsForTimeResolutions
+                    .get(timeResolution);
             try {
                 duration = (Long) timeRangeMegawidget.getState(END_TIME_STATE)
                         - (Long) timeRangeMegawidget.getState(START_TIME_STATE);
@@ -2342,18 +2497,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Choices to be used.
      */
     private void setDurationChoices(List<String> choices) {
-        timeContentLayout.topControl = (choices.isEmpty() ? timeScalePanel
-                : timeRangePanel);
+        timeContentLayout.topControl = (choices.isEmpty() ? timeScalePanelsForTimeResolutions
+                : timeRangePanelsForTimeResolutions).get(timeResolution);
         timeGroup.layout();
         if (choices.isEmpty() == false) {
-            try {
-                timeRangeMegawidget
-                        .setMutableProperty(
-                                TimeRangeSpecifier.MEGAWIDGET_DURATION_CHOICES,
-                                choices);
-            } catch (MegawidgetPropertyException e) {
-                statusHandler.error("Error while setting duration choices "
-                        + "for time range megawidget.", e);
+            for (TimeRangeMegawidget timeRangeMegawidget : timeRangeMegawidgetsForTimeResolutions
+                    .values()) {
+                try {
+                    timeRangeMegawidget.setMutableProperty(
+                            TimeRangeSpecifier.MEGAWIDGET_DURATION_CHOICES,
+                            choices);
+                } catch (MegawidgetPropertyException e) {
+                    statusHandler.error("Error while setting duration choices "
+                            + "for time range megawidget.", e);
+                }
             }
         }
     }

@@ -38,7 +38,6 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -196,6 +195,8 @@ import com.vividsolutions.jts.geom.Point;
  * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
  * Sep 23, 2016 15934      Chris.Golden      Fixed bug that caused geometries added to the selected
  *                                           hazard event to not trigger a hazard area recalculation.
+ * Oct 19, 2016 21873      Chris.Golden      Adjusted selected time rounding to work with different
+ *                                           hazard event types' different time resolutions.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1138,8 +1139,7 @@ public class SpatialPresenter extends
                         .getByIdentifier(toolIdentifier
                                 .getVisualFeatureIdentifier());
                 if (feature != null) {
-                    feature.setGeometry(DateUtils.truncate(
-                            context.getSelectedTime(), Calendar.MINUTE),
+                    feature.setGeometry(context.getSelectedTime(),
                             context.getGeometry());
                     toolVisualFeatures.replace(feature);
                     getModel().getRecommenderManager().runRecommender(
@@ -1169,20 +1169,21 @@ public class SpatialPresenter extends
                 /*
                  * If the spatial entity represents a visual feature's state,
                  * set the visual feature's geometry to that specified, rounding
-                 * the selected time down to the nearest minute, since it could
-                 * be anything (i.e. not necessarily on a minute boundary).
-                 * Otherwise, the spatial entity is the default representation
-                 * of the hazard event's geometry, so set the latter's geometry
-                 * to match.
+                 * the selected time down if the current resolution demands it,
+                 * since it could be anything (i.e. not necessarily on a minute
+                 * boundary). Otherwise, the spatial entity is the default
+                 * representation of the hazard event's geometry, so set the
+                 * latter's geometry to match.
                  */
                 if (hazardIdentifier instanceof HazardEventVisualFeatureEntityIdentifier) {
                     VisualFeature feature = event
                             .getVisualFeature(((HazardEventVisualFeatureEntityIdentifier) hazardIdentifier)
                                     .getVisualFeatureIdentifier());
                     if (feature != null) {
-                        feature.setGeometry(DateUtils.truncate(
-                                context.getSelectedTime(), Calendar.MINUTE),
-                                context.getGeometry());
+                        feature.setGeometry(
+                                getTimeAtResolutionForEvent(event.getEventID(),
+                                        context.getSelectedTime()), context
+                                        .getGeometry());
                         event.setVisualFeature(feature,
                                 UIOriginator.SPATIAL_DISPLAY);
                     }
@@ -1579,6 +1580,24 @@ public class SpatialPresenter extends
 
         return getModel().getEventManager().addEvent(event,
                 UIOriginator.SPATIAL_DISPLAY);
+    }
+
+    /**
+     * Get the specified time rounded down for the resolution appropriate to the
+     * specified event.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event for which the time is to be used.
+     * @param time
+     *            Time to be rounded down.
+     * @return Time rounded down as appropriate.
+     */
+    private Date getTimeAtResolutionForEvent(String eventIdentifier, Date time) {
+        return DateUtils.truncate(time,
+                HazardConstants.TRUNCATION_UNITS_FOR_TIME_RESOLUTIONS
+                        .get(getModel().getEventManager()
+                                .getTimeResolutionsForEventIds()
+                                .get(eventIdentifier)));
     }
 
     /**

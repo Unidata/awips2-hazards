@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.hazards.configuration.types;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -67,6 +69,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      or not start time is unrestricted.
  * Jun 23, 2016 19537      Chris.Golden Made hatching style an enum.
  * Oct 06, 2016 22894      Chris.Golden Added sessionAttributes list.
+ * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
  * </pre>
  * 
  * @author bsteffen
@@ -131,6 +134,8 @@ public class HazardTypeEntry {
     private Map<String, List<String>> modifyRecommenders;
 
     private String[] sessionAttributes;
+
+    private TimeResolution timeResolution;
 
     public Map<String, List<String>> getModifyRecommenders() {
         return modifyRecommenders;
@@ -472,4 +477,12 @@ public class HazardTypeEntry {
         }
     }
 
+    public TimeResolution getTimeResolution() {
+        return (timeResolution == null ? TimeResolution.MINUTES
+                : timeResolution);
+    }
+
+    public void setTimeResolution(TimeResolution timeResolution) {
+        this.timeResolution = timeResolution;
+    }
 }

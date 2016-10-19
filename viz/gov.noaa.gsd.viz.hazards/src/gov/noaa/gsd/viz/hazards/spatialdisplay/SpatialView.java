@@ -141,6 +141,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 21, 2016 15934      Chris.Golden      Added support for ellipse drawing.
  * Sep 29, 2016 15928      Chris.Golden      Added better refreshing to show handlebars
  *                                           when an edit is completed.
+ * Oct 11, 2016 21873      Chris.Golden      Fixed bug that caused null pointer exceptions
+ *                                           in some cases when switching perspectives.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1157,8 +1159,10 @@ public class SpatialView implements
 
             @Override
             public void run() {
-                spatialDisplay.visualCuesNeedUpdatingAtNextRefresh();
-                spatialDisplay.issueRefresh();
+                if (spatialDisplay != null) {
+                    spatialDisplay.visualCuesNeedUpdatingAtNextRefresh();
+                    spatialDisplay.issueRefresh();
+                }
             }
         });
     }

@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.actions.ChangeVtecFormatAction;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
@@ -107,6 +108,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           #21271.
  * Aug 29, 2016   19537    Chris.Golden      Changed to make show hatched areas menu
  *                                           item start in checked state.
+ * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to
+ *                                           settings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -620,6 +623,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             final long visibleTimeRange, final List<Dict> hazardEvents,
             final Map<String, Range<Long>> startTimeBoundariesForEventIds,
             final Map<String, Range<Long>> endTimeBoundariesForEventIds,
+            final TimeResolution timeResolution,
+            final Map<String, TimeResolution> timeResolutionForEventIds,
             final ObservedSettings currentSettings,
             final List<Settings> availableSettings, final String jsonFilters,
             final ImmutableList<IHazardAlert> activeAlerts,
@@ -633,7 +638,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 getViewPart().initialize(presenter, selectedTime, currentTime,
                         visibleTimeRange, hazardEvents,
                         startTimeBoundariesForEventIds,
-                        endTimeBoundariesForEventIds, currentSettings,
+                        endTimeBoundariesForEventIds, timeResolution,
+                        timeResolutionForEventIds, currentSettings,
                         availableSettings, jsonFilters, activeAlerts,
                         eventIdentifiersAllowingUntilFurtherNotice,
                         temporalControlsInToolBar);
@@ -950,8 +956,13 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public void updateTitle(String title) {
-        getViewPart().updateSite(title);
+    public void updateTitle(final String title) {
+        executeOnCreatedViewPart(new Runnable() {
+            @Override
+            public void run() {
+                getViewPart().updateSite(title);
+            }
+        });
     }
 
     // Protected Methods
@@ -1028,5 +1039,17 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 });
             }
         }
+    }
+
+    @Override
+    public void updateTimeResolution(final TimeResolution timeResolution,
+            final Date currentTime) {
+        executeOnCreatedViewPart(new Runnable() {
+
+            @Override
+            public void run() {
+                getViewPart().updateTimeResolution(timeResolution, currentTime);
+            }
+        });
     }
 }

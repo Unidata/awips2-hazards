@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
@@ -128,6 +129,8 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           by (if issued).
  * Apr 09, 2015   7382     Chris.Golden      Added "show start-end time sliders" flag.
  * Apr 15, 2015   3508     Chris.Golden      Added "hazard detail to be wide" flag.
+ * Oct 19, 2016  21873     Chris.Golden      Added time resolution tracking tied to
+ *                                           events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -484,6 +487,20 @@ public class HazardDetailView extends
                     }, this), RUNNABLE_ASYNC_SCHEDULER);
 
     /**
+     * Time resolution state changer delegate.
+     */
+    private final IStateChanger<String, TimeResolution> timeResolutionChanger = new StateChangerDelegate<>(
+            new ViewPartWidgetDelegateHelper<>(
+                    new Callable<IStateChanger<String, TimeResolution>>() {
+
+                        @Override
+                        public IStateChanger<String, TimeResolution> call()
+                                throws Exception {
+                            return getViewPart().getTimeResolutionChanger();
+                        }
+                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+
+    /**
      * Duration state changer delegate.
      */
     private final IChoiceStateChanger<String, String, String, String> durationChanger = new ChoiceStateChangerDelegate<>(
@@ -731,6 +748,11 @@ public class HazardDetailView extends
     @Override
     public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
         return timeRangeBoundariesChanger;
+    }
+
+    @Override
+    public IStateChanger<String, TimeResolution> getTimeResolutionChanger() {
+        return timeResolutionChanger;
     }
 
     @Override

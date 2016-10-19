@@ -118,7 +118,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
             "fillColor": fillColor,
             "label": label,
             "geometry": {
-                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): poly
             }
         }
         
@@ -129,7 +129,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
             "borderColor": borderColor, #"eventType",
             "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
             "geometry": {
-                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): basePoly
             }
         }                    
 

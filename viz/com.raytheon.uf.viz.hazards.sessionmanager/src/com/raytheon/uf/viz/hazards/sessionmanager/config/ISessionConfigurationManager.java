@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +98,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      by frame changes.
  * Oct 06, 2016 22894      Chris.Golden Added method to get session attributes for a
  *                                      hazard type.
+ * Oct 12, 2016 21873      Chris.Golden Added code to track the time resolutions of all 
+ *                                      managed hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -298,6 +302,15 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *         for its end time, an empty list is returned.
      */
     public List<String> getDurationChoices(IHazardEvent event);
+
+    /**
+     * Get the time resolution used for the specified event.
+     * 
+     * @param event
+     *            Event for which to get the time resolution.
+     * @return Time resolution.
+     */
+    public TimeResolution getTimeResolution(IHazardEvent event);
 
     /**
      * Get the identifier of the recommender that is triggered by a change to

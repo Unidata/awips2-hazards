@@ -40,6 +40,7 @@ import com.google.common.collect.ImmutableSet;
  *                                      read-only when the interval between the
  *                                      thumbs was locked and the first thumb
  *                                      was movable.
+ * Oct 19, 2016  21873     Chris.Golden Added time resolution option.
  * </pre>
  * 
  * @author Chris.Golden
@@ -319,7 +320,9 @@ public class TimeRangeMegawidget extends MultiTimeMegawidget {
         if (stateIndex == 0) {
             dateTime = new DateTimeComponent(identifier, parent, text,
                     (IControlSpecifier) getSpecifier(),
-                    getStateInternally(identifier), false, verticalIndent,
+                    getStateInternally(identifier),
+                    ((TimeMegawidgetSpecifier) getSpecifier())
+                            .getTimeResolution(), false, verticalIndent,
                     isOnlySendEndStateChanges(), dateTimeManager);
             setDateTimeComponentValues(dateTime, getStateInternally(identifier));
             return dateTime;

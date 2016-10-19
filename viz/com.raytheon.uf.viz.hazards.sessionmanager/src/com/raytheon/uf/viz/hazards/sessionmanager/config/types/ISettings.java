@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +29,7 @@ import java.util.Set;
  * Feb 23, 2015    3618    Chris.Golden Added possible sites to settings.
  * Aug 03, 2015    8836    Chris.Cody   Changes for a configurable Event Id
  * May 10, 2016   18515    Chris.Golden Added "deselect after issuing" flag.
+ * Oct 19, 2016   21873    Chris.Golden Added time resolution.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,6 +65,10 @@ public interface ISettings {
     public Long getDefaultTimeDisplayDuration();
 
     public void setDefaultTimeDisplayDuration(Long defaultTimeDisplayDuration);
+
+    public TimeResolution getTimeResolution();
+
+    public void setTimeResolution(TimeResolution timeResolution);
 
     public MapCenter getMapCenter();
 

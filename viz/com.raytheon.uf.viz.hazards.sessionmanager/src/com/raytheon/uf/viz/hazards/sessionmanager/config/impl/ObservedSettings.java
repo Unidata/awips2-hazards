@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -79,6 +81,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * May 28, 2015 8401       Chris.Cody   Correct Hazard Filtering issue
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * May 10, 2016 18515      Chris.Golden Added "deselect after issuing" flag.
+ * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * </pre>
  * 
  * @author bsteffen
@@ -237,6 +240,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public TimeResolution getTimeResolution() {
+        return delegate.getTimeResolution();
+    }
+
+    @Override
     public List<String> getVisibleColumns() {
         return getListCopy(delegate.getVisibleColumns());
     }
@@ -310,6 +318,11 @@ public class ObservedSettings implements ISettings {
     public void setDefaultTimeDisplayDuration(Long defaultTimeDisplayDuration) {
         setDefaultTimeDisplayDuration(defaultTimeDisplayDuration, true,
                 Originator.OTHER);
+    }
+
+    @Override
+    public void setTimeResolution(TimeResolution timeResolution) {
+        setTimeResolution(timeResolution, true, Originator.OTHER);
     }
 
     @Override
@@ -396,6 +409,7 @@ public class ObservedSettings implements ISettings {
         setToolbarTools(other.getToolbarTools(), false, originator);
         setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration(),
                 false, originator);
+        setTimeResolution(other.getTimeResolution(), false, originator);
         setMapCenter(other.getMapCenter(), false, originator);
         setDefaultCategory(other.getDefaultCategory(), false, originator);
         setPossibleSites(other.getPossibleSites(), false, originator);
@@ -461,6 +475,10 @@ public class ObservedSettings implements ISettings {
                 persisted.getDefaultTimeDisplayDuration())) {
             setDefaultTimeDisplayDuration(
                     update.getDefaultTimeDisplayDuration(), false, null);
+            notify = true;
+        }
+        if (!changed(getTimeResolution(), persisted.getTimeResolution())) {
+            setTimeResolution(update.getTimeResolution(), false, null);
             notify = true;
         }
         if (!changed(getMapCenter(), persisted.getMapCenter())) {
@@ -544,6 +562,11 @@ public class ObservedSettings implements ISettings {
             IOriginator originator) {
         setDefaultTimeDisplayDuration(defaultTimeDisplayDuration, true,
                 originator);
+    }
+
+    public void setTimeResolution(TimeResolution timeResolution,
+            IOriginator originator) {
+        setTimeResolution(timeResolution, true, originator);
     }
 
     public void setMapCenter(MapCenter mapCenter, IOriginator originator) {
@@ -647,6 +670,14 @@ public class ObservedSettings implements ISettings {
             IOriginator originator) {
         if (changed(defaultTimeDisplayDuration, getDefaultTimeDisplayDuration())) {
             delegate.setDefaultTimeDisplayDuration(defaultTimeDisplayDuration);
+            settingsChanged(notify, originator);
+        }
+    }
+
+    protected void setTimeResolution(TimeResolution timeResolution,
+            boolean notify, IOriginator originator) {
+        if (changed(timeResolution, getTimeResolution())) {
+            delegate.setTimeResolution(timeResolution);
             settingsChanged(notify, originator);
         }
     }

@@ -90,7 +90,7 @@ class AviationUtils:
             "fillColor": fillColorHazard,
             "label": hazardPolyLabel,
             "geometry": {
-                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): poly
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): poly
             }
         }
         
@@ -104,7 +104,7 @@ class AviationUtils:
             "fillColor": fillColorBase,
             "label": basePolyLabel,
             "geometry": {
-                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): basePoly
             }
         }                 
 

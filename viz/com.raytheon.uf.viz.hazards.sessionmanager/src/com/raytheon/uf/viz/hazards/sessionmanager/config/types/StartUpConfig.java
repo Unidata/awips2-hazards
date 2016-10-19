@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+
 import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
@@ -41,6 +43,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Apr 15, 2015 3508       Chris.Golden Added hazard detail "assume wide" flag.
  * Sep 14, 2015 3473       Chris.Cody   Implement Hazard Services Import/Export through Central Registry server.
  * Sep 28, 2015 10302,8167 hansen       Added values to be optionally included in Settings - visibleSites, possibleSites, mapCenter, eventIdDisplayType
+ * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * </pre>
  * 
  * @author bsteffen
@@ -89,6 +92,9 @@ public class StartUpConfig {
 
     @JsonProperty("mapCenter")
     private MapCenter mapCenter;
+
+    @JsonProperty("timeResolution")
+    private TimeResolution timeResolution;
 
     public Console getConsole() {
         return console;
@@ -208,4 +214,12 @@ public class StartUpConfig {
         this.mapCenter = mapCenter;
     }
 
+    public TimeResolution getTimeResolution() {
+        return (timeResolution == null ? TimeResolution.MINUTES
+                : timeResolution);
+    }
+
+    public void setTimeResolution(TimeResolution timeResolution) {
+        this.timeResolution = timeResolution;
+    }
 }

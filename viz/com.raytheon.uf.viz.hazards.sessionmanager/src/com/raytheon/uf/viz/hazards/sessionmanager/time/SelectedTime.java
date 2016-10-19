@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
+import java.util.Date;
+
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
 
@@ -28,6 +30,9 @@ import com.raytheon.uf.common.time.TimeRange;
  * ------------ ---------- ------------ --------------------------
  * Nov 18, 2014    4124    Chris.Golden Initial creation.
  * Mar 30, 2015    7272    mduff        Changes to support Guava upgrade.
+ * Oct 19, 2016   21873   Chris.Golden  Added copy constructor and changed
+ *                                      toString() to output more readable
+ *                                      strings.
  * </pre>
  * 
  * @author Chris.Golden
@@ -66,6 +71,17 @@ public class SelectedTime {
         range = Range.closed(lowerTime, upperTime);
     }
 
+    /**
+     * Construct a copy instance.
+     * 
+     * @param other
+     *            Selected time to be copied.
+     */
+    public SelectedTime(SelectedTime other) {
+        range = Range.closed(other.range.lowerEndpoint(),
+                other.range.upperEndpoint());
+    }
+
     // Public Methods
 
     /**
@@ -98,7 +114,8 @@ public class SelectedTime {
      */
     @Override
     public String toString() {
-        return range.toString();
+        return new Date(range.lowerEndpoint()) + " - "
+                + new Date(range.upperEndpoint());
     }
 
     /**

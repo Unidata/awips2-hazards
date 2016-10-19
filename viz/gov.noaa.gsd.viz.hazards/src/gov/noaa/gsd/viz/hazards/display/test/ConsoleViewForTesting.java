@@ -1,5 +1,6 @@
 package gov.noaa.gsd.viz.hazards.display.test;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.IConsoleView;
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
@@ -169,9 +170,16 @@ public class ConsoleViewForTesting implements
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
             Map<String, Range<Long>> startTimeBoundariesForEventIds,
             Map<String, Range<Long>> endTimeBoundariesForEventIds,
+            TimeResolution timeResolution,
+            Map<String, TimeResolution> timeResolutionsForEventIds,
             ObservedSettings currentSettings, List<Settings> availableSettings,
             String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
             boolean temporalControlsInToolBar) {
+    }
+
+    @Override
+    public void updateTimeResolution(TimeResolution timeResolution,
+            Date currentTime) {
     }
 }

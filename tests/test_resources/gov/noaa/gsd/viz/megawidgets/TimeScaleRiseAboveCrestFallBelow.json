@@ -29,6 +29,7 @@
   "minimumTime": {
    "riseAbove": 1402400940000
   },
+  "timeResolution": "seconds",
   "values": {
    "riseAbove": 1402401000000,
    "crest": 1402401600000,

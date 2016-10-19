@@ -30,6 +30,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.T
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
@@ -47,24 +48,19 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 import gov.noaa.gsd.viz.widgets.CustomToolTip;
-import gov.noaa.gsd.viz.widgets.DayHatchMarkGroup;
-import gov.noaa.gsd.viz.widgets.IHatchMarkGroup;
 import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
 import gov.noaa.gsd.viz.widgets.IMultiValueTooltipTextProvider;
-import gov.noaa.gsd.viz.widgets.ISnapValueCalculator;
-import gov.noaa.gsd.viz.widgets.IVisibleValueZoomCalculator;
 import gov.noaa.gsd.viz.widgets.ImageUtilities;
 import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
 import gov.noaa.gsd.viz.widgets.MultiValueLinearControl.ChangeSource;
 import gov.noaa.gsd.viz.widgets.MultiValueRuler;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
-import gov.noaa.gsd.viz.widgets.TimeHatchMarkGroup;
+import gov.noaa.gsd.viz.widgets.WidgetUtilities;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -99,7 +95,6 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -279,6 +274,20 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           session manager more likely.
  * Sep 12, 2016 15934      Chris.Golden      Changed to work with new version of
  *                                           JsonConverter.
+ * Oct 19, 2016 21873      Chris.Golden      Changed to allow the time ruler to zoom
+ *                                           much farther in, in order to show seconds
+ *                                           level resolution. Also added ability to
+ *                                           handle time resolution changes at the
+ *                                           settings level, which govern how often
+ *                                           the current time marker is updated, and
+ *                                           whether time-ruler-based times are shown
+ *                                           with seconds or not. Offloaded much of the
+ *                                           creation of the time ruler to the new
+ *                                           WidgetUtilities class, so that similar
+ *                                           rulers may be created elsewhere. Also
+ *                                           added ability to use second-level resolution
+ *                                           for start and end time changes for hazard
+ *                                           events that have said resolution.
  * </pre>
  * 
  * @author Chris.Golden
@@ -413,9 +422,14 @@ class TemporalDisplay {
     private static final String PNG_FILE_NAME_SUFFIX = ".png";
 
     /**
-     * Date-time format string.
+     * Date-time format string for minutes resolution.
      */
-    private static final String DATE_TIME_FORMAT_STRING = "HH:mm'Z' dd-MMM-yy";
+    private static final String DATE_TIME_MINUTES_FORMAT_STRING = "HH:mm'Z' dd-MMM-yy";
+
+    /**
+     * Date-time format string for seconds resolution.
+     */
+    private static final String DATE_TIME_SECONDS_FORMAT_STRING = "HH:mm:ss'Z' dd-MMM-yy";
 
     /**
      * Text to be displayed in a cell of a boolean column with no value.
@@ -530,7 +544,7 @@ class TemporalDisplay {
     /**
      * Minimum visible time range as an epoch time delta in milliseconds.
      */
-    private static final long MIN_VISIBLE_TIME_RANGE = 2L * HOUR_INTERVAL;
+    private static final long MIN_VISIBLE_TIME_RANGE = 1L * MINUTE_INTERVAL;
 
     /**
      * Maximum visible time range as an epoch time delta in milliseconds.
@@ -815,6 +829,11 @@ class TemporalDisplay {
     private ComboAction selectedTimeModeAction = null;
 
     /**
+     * Time resolution.
+     */
+    private TimeResolution timeResolution;
+
+    /**
      * Time line ruler widget.
      */
     private MultiValueRuler ruler = null;
@@ -830,9 +849,14 @@ class TemporalDisplay {
     private final Date date = new Date();
 
     /**
-     * Date formatter for date-time strings.
+     * Date formatter for date-time strings with minutes resolution.
      */
-    private SimpleDateFormat dateTimeFormatter = null;
+    private SimpleDateFormat minutesDateTimeFormatter = null;
+
+    /**
+     * Date formatter for date-time strings with seconds resolution.
+     */
+    private SimpleDateFormat secondsDateTimeFormatter = null;
 
     /**
      * Current time as epoch time in milliseconds.
@@ -883,6 +907,11 @@ class TemporalDisplay {
      * Map of hazard event identifiers to allowable end time ranges.
      */
     private Map<String, Range<Long>> endTimeBoundariesForEventIds;
+
+    /**
+     * Map of event identifiers to their time resolutions.
+     */
+    private Map<String, TimeResolution> timeResolutionsForEventIds;
 
     /**
      * Indices of items that are currently selected.
@@ -1177,36 +1206,6 @@ class TemporalDisplay {
     };
 
     /**
-     * Snap value calculator, used to generate snap-to values for the hazard
-     * event time scales and the time line ruler.
-     */
-    private final ISnapValueCalculator snapValueCalculator = new ISnapValueCalculator() {
-        private final long INTERVAL = MINUTE_INTERVAL;
-
-        private final long HALF_INTERVAL = INTERVAL / 2L;
-
-        @Override
-        public long getSnapThumbValue(long value, long minimum, long maximum) {
-            long remainder = value % INTERVAL;
-            if (remainder < HALF_INTERVAL) {
-                value -= remainder;
-            } else {
-                value += INTERVAL - remainder;
-            }
-            if (value < minimum) {
-                value += INTERVAL
-                        * (((minimum - value) / INTERVAL) + ((minimum - value)
-                                % INTERVAL == 0 ? 0L : 1L));
-            } else if (value > maximum) {
-                value -= INTERVAL
-                        * (((value - maximum) / INTERVAL) + ((value - maximum)
-                                % INTERVAL == 0 ? 0L : 1L));
-            }
-            return value;
-        }
-    };
-
-    /**
      * Thumb tooltip text provider for the time line ruler.
      */
     private final IMultiValueTooltipTextProvider thumbTooltipTextProvider = new IMultiValueTooltipTextProvider() {
@@ -1227,7 +1226,7 @@ class TemporalDisplay {
         public String[] getTooltipTextForValue(MultiValueLinearControl widget,
                 long value) {
             if ((widget == ruler) && showRulerToolTipsForAllTimes) {
-                OTHER_VALUE_TEXT[0] = getDateTimeString(value);
+                OTHER_VALUE_TEXT[0] = getDateTimeString(value, timeResolution);
                 return OTHER_VALUE_TEXT;
             } else {
                 return null;
@@ -1240,14 +1239,20 @@ class TemporalDisplay {
             String[] text = (widget == ruler ? (index == 0 ? TIME_RANGE_START_TEXT
                     : TIME_RANGE_END_TEXT)
                     : (index == 0 ? START_TIME_TEXT : END_TIME_TEXT));
-            text[1] = getDateTimeString(value);
+            if (widget == ruler) {
+                text[1] = getDateTimeString(value, timeResolution);
+            } else {
+                text[1] = getDateTimeString(value,
+                        timeResolutionsForEventIds.get(((TableItem) widget
+                                .getData()).getData()));
+            }
             return text;
         }
 
         @Override
         public String[] getTooltipTextForFreeThumb(
                 MultiValueLinearControl widget, int index, long value) {
-            SELECTED_TIME_TEXT[1] = getDateTimeString(value);
+            SELECTED_TIME_TEXT[1] = getDateTimeString(value, timeResolution);
             return SELECTED_TIME_TEXT;
         }
     };
@@ -1739,9 +1744,13 @@ class TemporalDisplay {
         dateIdentifiersForVisibleColumnNames = new HashMap<>();
         tableEditorsForIdentifiers = new HashMap<>();
 
-        // Configure the date-time formatter.
-        dateTimeFormatter = new SimpleDateFormat(DATE_TIME_FORMAT_STRING);
-        dateTimeFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+        // Configure the date-time formatters.
+        minutesDateTimeFormatter = new SimpleDateFormat(
+                DATE_TIME_MINUTES_FORMAT_STRING);
+        minutesDateTimeFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+        secondsDateTimeFormatter = new SimpleDateFormat(
+                DATE_TIME_SECONDS_FORMAT_STRING);
+        secondsDateTimeFormatter.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
 
     // Public Methods
@@ -1764,6 +1773,10 @@ class TemporalDisplay {
      *            Map of event identifiers to their start time range boundaries.
      * @param endTimeBoundariesForEventIds
      *            Map of event identifiers to their end time range boundaries.
+     * @param timeResolution
+     *            Time resolution.
+     * @param timeResolutionsForEventIds
+     *            Map of event identifiers to their time resolutions.
      * @param currentSettings
      * @param filterMegawidgets
      *            JSON string holding a list of dictionaries providing filter
@@ -1787,6 +1800,8 @@ class TemporalDisplay {
             Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
             Map<String, Range<Long>> startTimeBoundariesForEventIds,
             Map<String, Range<Long>> endTimeBoundariesForEventIds,
+            TimeResolution timeResolution,
+            Map<String, TimeResolution> timeResolutionsForEventIds,
             ObservedSettings currentSettings, String filterMegawidgets,
             ImmutableList<IHazardAlert> activeAlerts,
             Set<String> eventIdentifiersAllowingUntilFurtherNotice,
@@ -1800,6 +1815,9 @@ class TemporalDisplay {
         this.filterMegawidgets = filterMegawidgets;
         this.startTimeBoundariesForEventIds = startTimeBoundariesForEventIds;
         this.endTimeBoundariesForEventIds = endTimeBoundariesForEventIds;
+        this.timeResolution = timeResolution;
+        updateRulerSnapValueCalculator();
+        this.timeResolutionsForEventIds = timeResolutionsForEventIds;
 
         // If the controls are to be shown in the toolbar, hide the
         // ones in the composite; otherwise, delete the ones in the
@@ -1946,7 +1964,6 @@ class TemporalDisplay {
      */
     public final void updateVisibleTimeRange(long earliestVisibleTime,
             long latestVisibleTime) {
-        // Use the new visible time range boundaries.
         setVisibleTimeRange(earliestVisibleTime, latestVisibleTime, false);
     }
 
@@ -1956,10 +1973,9 @@ class TemporalDisplay {
     public void updateCurrentTime(Date currentTime) {
 
         /*
-         * Round the current time down to the nearest minute before using it.
+         * Round the current time down to the nearest unit before using it.
          */
-        this.currentTime = DateUtils.truncate(currentTime, Calendar.MINUTE)
-                .getTime();
+        this.currentTime = truncateTimeForResolution(currentTime).getTime();
 
         /*
          * Update the current time marker on the time ruler and the hazard event
@@ -1985,7 +2001,7 @@ class TemporalDisplay {
      *            there is no selected time range.
      */
     public void updateSelectedTimeRange(Date start, Date end) {
-        setSelectedTimeRange(start.getTime(), end.getTime());
+        setSelectedTimeRange(start, end);
     }
 
     /**
@@ -2034,6 +2050,34 @@ class TemporalDisplay {
                                     .lowerEndpoint().equals(
                                             startTimeRange.upperEndpoint()) == false)));
         }
+    }
+
+    /**
+     * Update the time resolution.
+     * 
+     * @param timeResolution
+     *            Time resolution.
+     * @param currentTime
+     *            Current time.
+     */
+    public void updateTimeResolution(TimeResolution timeResolution,
+            Date currentTime) {
+
+        /*
+         * If the time resolution has changed, make a note of it. If the new
+         * time resolution is seconds, update the current time, as the time line
+         * ruler will otherwise keep showing a current time that has a
+         * resolution of seconds instead of minutes. Also update the ruler's
+         * snap value calculator.
+         */
+        if (this.timeResolution != timeResolution) {
+            this.timeResolution = timeResolution;
+            if (timeResolution == TimeResolution.MINUTES) {
+                updateCurrentTime(currentTime);
+            }
+            updateRulerSnapValueCalculator();
+        }
+
     }
 
     /**
@@ -2298,7 +2342,8 @@ class TemporalDisplay {
      * Zoom the visible time range out by one level.
      */
     void zoomTimeOut() {
-        long newVisibleTimeRange = getZoomedOutRange();
+        long newVisibleTimeRange = WidgetUtilities
+                .getTimeLineRulerZoomedOutRange(ruler);
         if (newVisibleTimeRange <= MAX_VISIBLE_TIME_RANGE) {
             zoomVisibleTimeRange(newVisibleTimeRange);
         }
@@ -2346,7 +2391,8 @@ class TemporalDisplay {
      * Zoom the visible time range in by one level.
      */
     void zoomTimeIn() {
-        long newVisibleTimeRange = getZoomedInRange();
+        long newVisibleTimeRange = WidgetUtilities
+                .getTimeLineRulerZoomedInRange(ruler);
         if (newVisibleTimeRange >= MIN_VISIBLE_TIME_RANGE) {
             zoomVisibleTimeRange(newVisibleTimeRange);
         }
@@ -2382,7 +2428,8 @@ class TemporalDisplay {
                         + (lastSelectedTimeRangeDelta > 0L ? lastSelectedTimeRangeDelta
                                 : HOUR_INTERVAL * 4L);
             }
-            setSelectedTimeRange(selectedTimeStart, selectedTimeEnd);
+            setSelectedTimeRange(new Date(selectedTimeStart), new Date(
+                    selectedTimeEnd));
         }
         notifyPresenterOfSelectedTimeRangeChange();
     }
@@ -2716,13 +2763,13 @@ class TemporalDisplay {
      * @param endTime
      *            End time of the selected range.
      */
-    private void setSelectedTimeRange(long startTime, long endTime) {
+    private void setSelectedTimeRange(Date startTime, Date endTime) {
 
         /*
          * Remember the new values.
          */
-        selectedTimeStart = startTime;
-        selectedTimeEnd = endTime;
+        selectedTimeStart = truncateTimeForResolution(startTime).getTime();
+        selectedTimeEnd = truncateTimeForResolution(endTime).getTime();
 
         /*
          * Determine whether the selected time mode was single or range, and if
@@ -2730,14 +2777,14 @@ class TemporalDisplay {
          * values.
          */
         boolean singleMode = (ruler.getFreeThumbValueCount() != 0);
-        boolean newSingleMode = ((startTime == endTime) && singleMode);
+        boolean newSingleMode = ((selectedTimeStart == selectedTimeEnd) && singleMode);
 
         /*
          * If the selected time mode must be changed to range, reconfigure the
          * ruler as appropriate, as well as the time scales for the events. Also
          * change the drop-down selector to show the new mode.
          */
-        if (singleMode && (startTime != endTime)) {
+        if (singleMode && (selectedTimeStart != selectedTimeEnd)) {
             ruler.setFreeThumbValues();
             for (TableEditor tableEditor : tableEditorsForIdentifiers.values()) {
                 ((MultiValueScale) tableEditor.getEditor())
@@ -2759,9 +2806,9 @@ class TemporalDisplay {
          * as the event time scales.
          */
         if (newSingleMode) {
-            ruler.setFreeThumbValues(startTime);
+            ruler.setFreeThumbValues(selectedTimeStart);
         } else {
-            ruler.setConstrainedThumbValues(startTime, endTime);
+            ruler.setConstrainedThumbValues(selectedTimeStart, selectedTimeEnd);
             if (singleMode) {
                 ruler.setConstrainedThumbColor(0, timeRangeEdgeColor);
                 ruler.setConstrainedThumbColor(1, timeRangeEdgeColor);
@@ -3158,7 +3205,10 @@ class TemporalDisplay {
         // set by the form margin width from the left of the column.
         MultiValueScale scale = new MultiValueScale(table,
                 HazardConstants.MIN_TIME, HazardConstants.MAX_TIME);
-        scale.setSnapValueCalculator(snapValueCalculator);
+        scale.setSnapValueCalculator(timeResolutionsForEventIds.get(eventId) == TimeResolution.SECONDS ? WidgetUtilities
+                .getTimeLineSnapValueCalculatorWithSecondsResolution()
+                : WidgetUtilities
+                        .getTimeLineSnapValueCalculatorWithMinutesResolution());
         scale.setTooltipTextProvider(thumbTooltipTextProvider);
         scale.setComponentDimensions(SCALE_THUMB_WIDTH, SCALE_THUMB_HEIGHT,
                 SCALE_TRACK_THICKNESS);
@@ -3968,82 +4018,32 @@ class TemporalDisplay {
         layout.marginWidth = layout.marginHeight = 0;
         headerRulerPanel.setLayout(layout);
 
-        // Create the colors for the time line ruler hatch marks.
-        Color[] hatchMarkColors = { new Color(Display.getCurrent(), 128, 0, 0),
-                new Color(Display.getCurrent(), 0, 0, 128),
-                new Color(Display.getCurrent(), 0, 128, 0),
-                new Color(Display.getCurrent(), 0, 128, 0) };
-        for (Color color : hatchMarkColors) {
-            resources.add(color);
-        }
+        /*
+         * Create the time line ruler.
+         */
+        ruler = WidgetUtilities.createTimeLineRuler(parent,
+                HazardConstants.MIN_TIME, HazardConstants.MAX_TIME,
+                MIN_VISIBLE_TIME_RANGE, MAX_VISIBLE_TIME_RANGE);
 
-        // Create the time line ruler's hatch mark groups.
-        List<IHatchMarkGroup> hatchMarkGroups = new ArrayList<>();
-        hatchMarkGroups.add(new DayHatchMarkGroup());
-        hatchMarkGroups.add(new TimeHatchMarkGroup(6L * HOUR_INTERVAL, 0.25f,
-                hatchMarkColors[0], null));
-        hatchMarkGroups.add(new TimeHatchMarkGroup(HOUR_INTERVAL, 0.18f,
-                hatchMarkColors[1], null));
-        hatchMarkGroups.add(new TimeHatchMarkGroup(30L * MINUTE_INTERVAL,
-                0.11f, hatchMarkColors[2], null));
-        hatchMarkGroups.add(new TimeHatchMarkGroup(10L * MINUTE_INTERVAL,
-                0.05f, hatchMarkColors[3], null));
+        /*
+         * Use the appropriate snap value calculator.
+         */
+        updateRulerSnapValueCalculator();
 
-        // Create the time line widget. It is configured to snap
-        // to values at increments of five minutes. The actual
-        // widget is an instance of an anonymous subclass; the
-        // latter is needed because background and foreground
-        // color changes must be ignored, since the ModeListener
-        // objects may try to change the colors when the CAVE
-        // mode changes, which in this case is undesirable.
-        ruler = new MultiValueRuler(parent, HazardConstants.MIN_TIME,
-                HazardConstants.MAX_TIME, hatchMarkGroups) {
-            @Override
-            public void setBackground(Color background) {
-
-                // No action.
-            }
-
-            @Override
-            public void setForeground(Color foreground) {
-
-                // No action.
-            }
-        };
-        FontData fontData = ruler.getFont().getFontData()[0];
-        Font minuteFont = new Font(Display.getCurrent(), fontData.getName(),
-                (fontData.getHeight() * 7) / 10, fontData.getStyle());
-        resources.add(minuteFont);
-        for (int j = 1; j < hatchMarkGroups.size(); j++) {
-            ((TimeHatchMarkGroup) hatchMarkGroups.get(j))
-                    .setMinuteFont(minuteFont);
-        }
-        ruler.setVisibleValueZoomCalculator(new IVisibleValueZoomCalculator() {
-            @Override
-            public long getVisibleValueRangeForZoom(MultiValueRuler ruler,
-                    boolean zoomIn, int amplitude) {
-                long range;
-                if (zoomIn) {
-                    range = getZoomedInRange();
-                    if (range < MIN_VISIBLE_TIME_RANGE) {
-                        return 0L;
-                    }
-                } else {
-                    range = getZoomedOutRange();
-                    if (range > MAX_VISIBLE_TIME_RANGE) {
-                        return 0L;
-                    }
-                }
-                return range;
-            }
-        });
-        ruler.setBorderColor(RULER_BORDER_COLOR);
-        ruler.setHeightMultiplier(2.95f);
-        ruler.setSnapValueCalculator(snapValueCalculator);
+        /*
+         * Show appropriate tooltips for the selected time, current time, and
+         * anywhere along the time line if so configured.
+         */
         ruler.setTooltipTextProvider(thumbTooltipTextProvider);
-        ruler.setInsets(TIME_HORIZONTAL_PADDING, 0, TIME_HORIZONTAL_PADDING, 0);
-        ruler.setViewportDraggable(true);
 
+        /*
+         * Give the ruler appropriate padding.
+         */
+        ruler.setInsets(TIME_HORIZONTAL_PADDING, 0, TIME_HORIZONTAL_PADDING, 0);
+
+        /*
+         * Set the starting visible time range, current time, and selected time.
+         */
         long lowerTime = currentTime - (visibleTimeRange / 4L);
         if (lowerTime < HazardConstants.MIN_TIME) {
             lowerTime = HazardConstants.MIN_TIME;
@@ -4059,6 +4059,9 @@ class TemporalDisplay {
         ruler.setFreeMarkedValues(currentTime);
         ruler.setFreeThumbValues(selectedTimeStart);
 
+        /*
+         * Set the colors to be used for the current and selected time thumbs.
+         */
         currentTimeColor = new Color(Display.getCurrent(), 50, 130, 50);
         resources.add(currentTimeColor);
         ruler.setFreeMarkedValueColor(0, currentTimeColor);
@@ -4074,6 +4077,10 @@ class TemporalDisplay {
         resources.add(timeRangeFillColor);
         ruler.setConstrainedThumbsDrawnAsBookends(true);
 
+        /*
+         * Ensure that changes to the visible time range or the selected
+         * time/time range propagate appropriately.
+         */
         ruler.addMultiValueLinearControlListener(new IMultiValueLinearControlListener() {
             @Override
             public void visibleValueRangeChanged(
@@ -4116,6 +4123,10 @@ class TemporalDisplay {
             }
         });
 
+        /*
+         * Give the ruler a right-click popup menu that allows the user to
+         * toggle the showing of tooltips anywhere along the ruler's length.
+         */
         Menu contextMenu = new Menu(ruler);
         MenuItem item = new MenuItem(contextMenu, SWT.CHECK);
         item.setText(SHOW_TIME_UNDER_MOUSE_TOGGLE_MENU_TEXT);
@@ -4129,10 +4140,12 @@ class TemporalDisplay {
         });
         ruler.setMenu(contextMenu);
 
-        // Create a spacer image of a sufficient height to avoid having
-        // the column headers smaller than they need to be in order to
-        // have the last column header visually surround the time ruler,
-        // and assign it as the image for each column.
+        /*
+         * Create a spacer image of a sufficient height to avoid having the
+         * column headers smaller than they need to be in order to have the last
+         * column header visually surround the time ruler, and assign it as the
+         * image for each column.
+         */
         BufferedImage finalImage = new BufferedImage(1, ruler.computeSize(
                 SWT.DEFAULT, SWT.DEFAULT).y, BufferedImage.TYPE_INT_ARGB);
         spacerImage = ImageUtilities.convertAwtImageToSwt(finalImage);
@@ -4141,10 +4154,26 @@ class TemporalDisplay {
             column.setImage(spacerImage);
         }
 
-        // Pack the composite with everything created so far, as the
-        // bounds of the time ruler are needed to continue.
+        /*
+         * Pack the composite with everything created so far, as the bounds of
+         * the time ruler are needed to continue.
+         */
         temporalDisplayPanel.pack(true);
         repackRuler();
+    }
+
+    /**
+     * Set the ruler snap value calculator as appropriate given the current time
+     * resolution.
+     */
+    private void updateRulerSnapValueCalculator() {
+        if (ruler == null) {
+            return;
+        }
+        ruler.setSnapValueCalculator(timeResolution == TimeResolution.SECONDS ? WidgetUtilities
+                .getTimeLineSnapValueCalculatorWithSecondsResolution()
+                : WidgetUtilities
+                        .getTimeLineSnapValueCalculatorWithMinutesResolution());
     }
 
     /**
@@ -4494,7 +4523,8 @@ class TemporalDisplay {
         }
 
         // Set the cell text to the appropriate value.
-        setCellText(col, item, getCellValue(row, columnDefinition),
+        setCellText(col, item,
+                getCellValue((String) item.getData(), row, columnDefinition),
                 getEmptyFieldText(columnDefinition));
     }
 
@@ -4511,8 +4541,11 @@ class TemporalDisplay {
      */
     private void updateCell(int col, Column columnDefinition, Object value,
             TableItem item) {
-        setCellText(col, item, convertToCellValue(value, columnDefinition),
-                getEmptyFieldText(columnDefinition));
+        setCellText(
+                col,
+                item,
+                convertToCellValue((String) item.getData(), value,
+                        columnDefinition), getEmptyFieldText(columnDefinition));
     }
 
     /**
@@ -4546,15 +4579,35 @@ class TemporalDisplay {
     }
 
     /**
-     * Get a date-time string for the specified time.
+     * Get a date-time string with the specified resolution for the specified
+     * time.
      * 
      * @param time
      *            Time for which to fetch the string.
+     * @param resolution
+     *            Time resolution to be used.
      * @return Date-time string.
      */
-    private String getDateTimeString(long time) {
+    private String getDateTimeString(long time, TimeResolution resolution) {
         date.setTime(time);
-        return dateTimeFormatter.format(date);
+        if (resolution == TimeResolution.SECONDS) {
+            return secondsDateTimeFormatter.format(date);
+        } else {
+            return minutesDateTimeFormatter.format(date);
+        }
+    }
+
+    /**
+     * Truncate the specified time for the current time resolution.
+     * 
+     * @param date
+     *            Date-time to be truncated.
+     * @return Truncated time.
+     */
+    private Date truncateTimeForResolution(Date date) {
+        return DateUtils.truncate(date,
+                HazardConstants.TRUNCATION_UNITS_FOR_TIME_RESOLUTIONS
+                        .get(timeResolution));
     }
 
     /**
@@ -4608,7 +4661,6 @@ class TemporalDisplay {
         // already had, commit to the change.
         if ((lower != ruler.getLowerVisibleValue())
                 || (upper != ruler.getUpperVisibleValue())) {
-
             ruler.setVisibleValueRange(lower, upper);
             if (forwardAction || altered) {
                 fireConsoleActionOccurred(new ConsoleAction(
@@ -4647,28 +4699,6 @@ class TemporalDisplay {
     }
 
     /**
-     * Get the visible time range that would result if the time line as it is
-     * currently was zoomed out one level.
-     * 
-     * @return Visible time range that would result if the time line was zoomed
-     *         out.
-     */
-    private long getZoomedOutRange() {
-        return (visibleTimeRange * 3L) / 2L;
-    }
-
-    /**
-     * Get the visible time range that would result if the time line as it is
-     * currently was zoomed in one level.
-     * 
-     * @return Visible time range that would result if the time line was zoomed
-     *         in.
-     */
-    private long getZoomedInRange() {
-        return (visibleTimeRange * 2L) / 3L;
-    }
-
-    /**
      * Pan the time range by an amount equal to the current visible time range
      * multiplied by the specified value.
      * 
@@ -4693,10 +4723,16 @@ class TemporalDisplay {
         // Update the buttons along the bottom of the view if they
         // exist.
         if (!comboBoxPanel.isDisposed()) {
-            buttonsForIdentifiers.get(BUTTON_ZOOM_OUT).setEnabled(
-                    getZoomedOutRange() <= MAX_VISIBLE_TIME_RANGE);
-            buttonsForIdentifiers.get(BUTTON_ZOOM_IN).setEnabled(
-                    getZoomedInRange() >= MIN_VISIBLE_TIME_RANGE);
+            buttonsForIdentifiers
+                    .get(BUTTON_ZOOM_OUT)
+                    .setEnabled(
+                            WidgetUtilities
+                                    .getTimeLineRulerZoomedOutRange(ruler) <= MAX_VISIBLE_TIME_RANGE);
+            buttonsForIdentifiers
+                    .get(BUTTON_ZOOM_IN)
+                    .setEnabled(
+                            WidgetUtilities
+                                    .getTimeLineRulerZoomedInRange(ruler) >= MIN_VISIBLE_TIME_RANGE);
             buttonsForIdentifiers.get(BUTTON_PAGE_BACKWARD).setEnabled(
                     ruler.getLowerVisibleValue() > HazardConstants.MIN_TIME);
             buttonsForIdentifiers.get(BUTTON_PAN_BACKWARD).setEnabled(
@@ -4709,10 +4745,16 @@ class TemporalDisplay {
 
         // Update the toolbar buttons if they exist.
         if (actionsForButtonIdentifiers.get(BUTTON_ZOOM_OUT) != null) {
-            actionsForButtonIdentifiers.get(BUTTON_ZOOM_OUT).setEnabled(
-                    getZoomedOutRange() <= MAX_VISIBLE_TIME_RANGE);
-            actionsForButtonIdentifiers.get(BUTTON_ZOOM_IN).setEnabled(
-                    getZoomedInRange() >= MIN_VISIBLE_TIME_RANGE);
+            actionsForButtonIdentifiers
+                    .get(BUTTON_ZOOM_OUT)
+                    .setEnabled(
+                            WidgetUtilities
+                                    .getTimeLineRulerZoomedOutRange(ruler) <= MAX_VISIBLE_TIME_RANGE);
+            actionsForButtonIdentifiers
+                    .get(BUTTON_ZOOM_IN)
+                    .setEnabled(
+                            WidgetUtilities
+                                    .getTimeLineRulerZoomedInRange(ruler) >= MIN_VISIBLE_TIME_RANGE);
             actionsForButtonIdentifiers.get(BUTTON_PAGE_BACKWARD).setEnabled(
                     ruler.getLowerVisibleValue() > HazardConstants.MIN_TIME);
             actionsForButtonIdentifiers.get(BUTTON_PAN_BACKWARD).setEnabled(
@@ -4977,12 +5019,15 @@ class TemporalDisplay {
     /**
      * Retrieve the value to display in a cell in the table.
      * 
+     * @param eventIdentifier
+     *            Identifier of the event represented by this row.
      * @param row
      *            Index of the row from which to retrieve the value.
      * @param columnDefinition
      * @return Value to display in the specified table cell.
      */
-    private String getCellValue(int row, Column columnDefinition) {
+    private String getCellValue(String eventIdentifier, int row,
+            Column columnDefinition) {
         if (columnDefinition == null) {
             statusHandler.error("TemporalDisplay.getCellValue(): Problem: "
                     + "no column definition provided");
@@ -4996,6 +5041,7 @@ class TemporalDisplay {
                     .getTextForEvent(eventIdentifiers.get(row));
         }
         return (convertToCellValue(
+                eventIdentifier,
                 dictsForEventIdentifiers.get(eventIdentifiers.get(row)).get(
                         columnDefinition.getFieldName()), columnDefinition));
     }
@@ -5003,13 +5049,17 @@ class TemporalDisplay {
     /**
      * Convert the specified value to a proper cell value for the table.
      * 
+     * @param eventIdentifier
+     *            Identifier of the event for which this value is being
+     *            converted.
      * @param value
      *            Value to be converted.
      * @param columnDefinition
      *            Column definition for this cell.
      * @return Value to display in a table cell.
      */
-    private String convertToCellValue(Object value, Column columnDefinition) {
+    private String convertToCellValue(String eventIdentifier, Object value,
+            Column columnDefinition) {
         if (columnDefinition == null) {
             statusHandler.error("TemporalDisplay.convertToCellValue(): "
                     + "Problem: no column definition provided");
@@ -5023,7 +5073,8 @@ class TemporalDisplay {
                         && (number.longValue() == UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
                     return UNTIL_FURTHER_NOTICE_COLUMN_TEXT;
                 }
-                return getDateTimeString(number.longValue());
+                return getDateTimeString(number.longValue(),
+                        timeResolutionsForEventIds.get(eventIdentifier));
             } else {
                 // no time defined, return empty String, not 0 milliseconds
                 return EMPTY_STRING;

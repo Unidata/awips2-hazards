@@ -287,6 +287,13 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             just the end of said range. Also added refresh of the
  *                                             spatial display when the frame is changed (without this,
  *                                             the display does not always show the new frame).
+ * Oct 11, 2016 21873      Chris.Golden        Fixed bug that caused null pointer exceptions in some
+ *                                             cases when switching perspectives. Also changed the
+ *                                             choosing of a D2D frame in response to a selected time
+ *                                             change; feedback from users indicated that it should not
+ *                                             ever be a frame with a reference time later than the
+ *                                             selected time; it has to be at the selected time or,
+ *                                             failing that, the most recent frame before that.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -504,8 +511,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
                     @Override
                     public void run() {
-                        sessionManager.getConfigurationManager()
-                                .triggerDataLayerChangeDrivenTool();
+                        if (disposing == false) {
+                            sessionManager.getConfigurationManager()
+                                    .triggerDataLayerChangeDrivenTool();
+                        }
                     }
                 });
             }
@@ -1048,16 +1057,18 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                         RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
                             @Override
                             public void run() {
-                                ISessionTimeManager timeManager = sessionManager
-                                        .getTimeManager();
-                                long delta = timeManager
-                                        .getUpperSelectedTimeInMillis()
-                                        - timeManager
-                                                .getLowerSelectedTimeInMillis();
-                                SelectedTime timeRange = new SelectedTime(
-                                        selectedTime, selectedTime + delta);
-                                timeManager.setSelectedTime(timeRange,
-                                        Originator.CAVE);
+                                if (disposing == false) {
+                                    ISessionTimeManager timeManager = sessionManager
+                                            .getTimeManager();
+                                    long delta = timeManager
+                                            .getUpperSelectedTimeInMillis()
+                                            - timeManager
+                                                    .getLowerSelectedTimeInMillis();
+                                    SelectedTime timeRange = new SelectedTime(
+                                            selectedTime, selectedTime + delta);
+                                    timeManager.setSelectedTime(timeRange,
+                                            Originator.CAVE);
+                                }
                             }
                         });
                     }
@@ -1557,63 +1568,30 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         }
 
         /*
-         * If there are data times, find the closest valid time.
+         * If there are data times, find the frame with the reference time that
+         * is closest to the selected time, but not after the selected time.
          */
         if (availableDataTimes != null) {
 
             /*
-             * Iterate through the frames, looking for the smallest difference
-             * between each frame's valid time range and the selected time.
+             * Iterate through the frames, looking for the last frame that has a
+             * reference time before or at the selected time.
              */
             int frameIndex = 0;
-            long diff;
-            long smallestDiff = Long.MAX_VALUE;
             for (DataTime time : availableDataTimes) {
-
-                /*
-                 * If the selected time falls within the valid time range for
-                 * this frame, this is the frame to use.
-                 */
-                if ((selectedTimeMillis >= time.getRefTime().getTime())
-                        && (selectedTimeMillis <= time.getValidTimeAsDate()
-                                .getTime())) {
-                    break;
-                }
-
-                /*
-                 * Determine the delta between the selected time and whichever
-                 * end of the valid time range of this frame is closest to the
-                 * selected time.
-                 */
                 if (selectedTimeMillis < time.getRefTime().getTime()) {
-                    diff = time.getRefTime().getTime() - selectedTimeMillis;
-                } else {
-                    diff = selectedTimeMillis
-                            - time.getValidTimeAsDate().getTime();
-                }
-
-                /*
-                 * If the new difference is greater than the last one, then the
-                 * iteration is moving away from the closest difference; in that
-                 * case, use the previous frame.
-                 */
-                if (diff > smallestDiff) {
-                    frameIndex--;
+                    if (frameIndex > 0) {
+                        frameIndex--;
+                    }
                     break;
                 }
-
-                /*
-                 * Remmember this difference for the next iteration, and
-                 * increment the frame index.
-                 */
-                smallestDiff = diff;
                 frameIndex++;
             }
 
             /*
              * Ensure the resulting frame index is not out of bounds.
              */
-            if (frameIndex >= frameCount) {
+            if (frameIndex == frameCount) {
                 frameIndex--;
             }
 

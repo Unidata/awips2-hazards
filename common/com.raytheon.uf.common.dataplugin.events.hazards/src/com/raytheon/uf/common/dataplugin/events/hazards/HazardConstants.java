@@ -19,7 +19,11 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards;
 
+import gov.noaa.gsd.common.utilities.TimeResolution;
+
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,8 +32,9 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.collect.ImmutableMap;
 
 /**
- * Contants to be used by both Java and Python code, Python will have a class
- * that mirrors many of the values within this class for use by the tool writers
+ * Constants to be used by both Java and Python code, Python will have a class
+ * that mirrors many of the values within this class for use by the tool
+ * writers.
  * 
  * <pre>
  * 
@@ -100,6 +105,7 @@ import com.google.common.collect.ImmutableMap;
  *                                      not just the latest one.
  * Aug 31, 2016 15934     Chris.Golden  Added constant related to advanced geometries.
  * Oct 05, 2016 22870     Chris.Golden  Added frame change to triggers.
+ * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
  * </pre>
  * 
  * @author mnash
@@ -107,6 +113,23 @@ import com.google.common.collect.ImmutableMap;
  */
 
 public final class HazardConstants {
+
+    /**
+     * Map pairing time resolutions with the truncation units to be used when
+     * rounding down a time to that particular resolution.
+     */
+    public static final Map<TimeResolution, Integer> TRUNCATION_UNITS_FOR_TIME_RESOLUTIONS;
+    static {
+        Map<TimeResolution, Integer> map = new EnumMap<>(TimeResolution.class);
+        map.put(TimeResolution.SECONDS, Calendar.SECOND);
+        map.put(TimeResolution.MINUTES, Calendar.MINUTE);
+        TRUNCATION_UNITS_FOR_TIME_RESOLUTIONS = ImmutableMap.copyOf(map);
+    }
+
+    /**
+     * Key for time resolution in settings.
+     */
+    public static final String TIME_RESOLUTION = "timeResolution";
 
     /**
      * Key for a hazard's label in a spatial input parameters dictionary.
