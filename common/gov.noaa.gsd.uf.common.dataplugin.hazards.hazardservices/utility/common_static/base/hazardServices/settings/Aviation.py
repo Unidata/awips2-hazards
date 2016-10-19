@@ -21,19 +21,20 @@ Aviation = {
                         "com.raytheon.viz.mpe.ui.MPEPerspective",
                         "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
                         "com.raytheon.viz.ui.GFEPerspective"],
-    "displayName": "Aviation", #"Aviation",
+    "displayName": "Aviation",
     "possibleSites": ["National"],
     "visibleSites": ["National"],    
     "visibleTypes": [
-        "SIGMET.W",
+        "SIGMET.NonConvective",
         "SIGMET.Convective",
     ],
     "hazardCategoriesAndTypes": [
         {
         "displayString": "Aviation",
         "children": [
-        "SIGMET.W",
+        "SIGMET.NonConvective",
         "SIGMET.Convective",
+        "SIGMET.International",
         ]
         }
     ],
@@ -180,7 +181,13 @@ Aviation = {
             "displayName": "Paste metadata to new event",
             "toolType": "RECOMMENDER",
             "visible":True,
-        }                                          
+        },
+        {
+            "toolName": "StormSurgeRecommender",
+            "displayName": "Storm Surge Recommender",
+            "toolType": "RECOMMENDER",
+            "visible":True,
+        },                                                                                                         
     ],
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "ALWAYS_FULL"

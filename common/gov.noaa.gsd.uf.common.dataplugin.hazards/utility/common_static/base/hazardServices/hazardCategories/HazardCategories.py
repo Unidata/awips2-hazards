@@ -40,7 +40,7 @@ HazardCategories = collections.OrderedDict(
                                     ('Prob_Rainfall','Moderate'), ('Prob_Rainfall','High')],
         
         ### Aviation
-        "Aviation": [("SIGMET","W"),("SIGMET","Convective")],
+        "Aviation": [("SIGMET","NonConvective"),("SIGMET","Convective"),("SIGMET","International")],
         
          
         ### WFO Deterministic
@@ -69,7 +69,7 @@ HazardCategories = collections.OrderedDict(
                        ("LW", "Y"), ("SM", "Y"), ("WI", "Y") ],
                         
         "Tropical": [("TR", "W"), ("TR", "A"), ("HU", "W"), ("HU", "S"), ("HU", "A"), ("HI", "A"), ("HI", "W"), 
-                     ("TI", "W"), ("TI", "A"), ("TY", "A"),("TY", "W"), ("TS", "A"), ("TS", "W")],
+                     ("TI", "W"), ("TI", "A"), ("TY", "A"),("TY", "W"), ("TS", "A"), ("TS", "W"), ("SS", "W"), ("SS", "A")],
                    
         }
 )

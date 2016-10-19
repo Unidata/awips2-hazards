@@ -139,7 +139,7 @@ class Recommender(RecommenderTemplate.Recommender):
             
                 featureIdentifier = feature.get('identifier')
                 # Find the feature that has changed
-                changedIdentifierList = ['convectiveSigmetWidth', 'convectiveSigmetDirection', 
+                changedIdentifierList = ['convectiveSigmetWidth', 'convectiveSigmetDirection',
                                          'convectiveSigmetSpeed', 'convectiveSigmetCloudTop', 'convectiveSigmetCloudTopText', 'geometry']
                 if (featureIdentifier == changedIdentifier) or (changedIdentifier in changedIdentifierList and 'basePreview' in featureIdentifier):
                     # Get feature polygon
@@ -179,19 +179,11 @@ class Recommender(RecommenderTemplate.Recommender):
         selectedFeatures = []
         
         polygonArea = AviationUtils.AviationUtils().polygonArea(event, self._originalGeomType, self._width)
-        label = AviationUtils.AviationUtils()._createLabel(event, polygonArea)
+        label = AviationUtils.AviationUtils().createLabel(event, polygonArea)
         
         poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(points), 0)         
         
-        if self._originalGeomType == 'Point':
-            basePoly = event.getGeometry()
-            #basePoly = event.get('originalGeometry')
-            #basePoly = basePoly[0]
-        elif self._originalGeomType == 'LineString':
-            basePoly = event.getGeometry()
-            #basePoly = basePoly[0]                          
-        else:
-            basePoly = event.getGeometry()
+        basePoly = event.getGeometry()
                 
         #borderColor = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 }  #white   
         borderColor = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }  #yellow  
