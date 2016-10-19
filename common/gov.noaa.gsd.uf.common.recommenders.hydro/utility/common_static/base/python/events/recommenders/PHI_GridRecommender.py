@@ -26,7 +26,7 @@ import RiverForecastUtils
 import JUtil
      
 ### FIXME: set path in configuration somewhere
-OUTPUTDIR = '/scratch/PHIGridTesting'
+#OUTPUTDIR = '/scratch/PHIGridTesting'
 ### FIXME: need better (dynamic or configurable) way to set domain corner
 #buff = 1.
 #lonPoints = 1200

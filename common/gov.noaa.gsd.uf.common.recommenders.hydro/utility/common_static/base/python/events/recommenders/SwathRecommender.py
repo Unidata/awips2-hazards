@@ -133,7 +133,6 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'SwathRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
-        self._probUtils = ProbUtils()
         
     def defineScriptMetadata(self):
         '''
@@ -187,6 +186,7 @@ class Recommender(RecommenderTemplate.Recommender):
         '''                
         self._setPrintFlags()
         self._printEventSet("\nRunning SwathRecommender", eventSet, eventLevel=1)
+        self._probUtils = ProbUtils()
                  
         eventSetAttrs = eventSet.getAttributes()
         trigger = eventSetAttrs.get('trigger')
@@ -740,7 +740,10 @@ class Recommender(RecommenderTemplate.Recommender):
                            
         # Replace Visual Features
         if features:
-            event.setVisualFeatures(VisualFeatures(features))
+            try:
+                event.setVisualFeatures(VisualFeatures(features))
+            except:
+                self._printFeatures(event, "\n*** [ERROR] - Unable to set Visual Features", features)
             
         if self._printVisualFeatures:
              self._printFeatures(event, "Visual Features", features)

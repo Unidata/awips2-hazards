@@ -22,10 +22,10 @@ import HazardDataAccess
 import TimeUtils, LogUtils
 import AdvancedGeometry
 from VisualFeatures import VisualFeatures
+from ConfigurationUtils import ConfigUtils
 
 class ProbUtils(object):
     def __init__(self):
-        self.setUpDomainValues()
         self.setUpDomain()
         
     def processEvents(self, eventSet, writeToFile=False):
@@ -562,16 +562,6 @@ class ProbUtils(object):
 
         return { "red": 1, "green": 1, "blue": 1 }      
 
-    def setUpDomain(self):                            
-        self._ulLat = self._initial_ulLat + self._buff
-        self._ulLon = self._initial_ulLon - self._buff        
-        self._xMin1 = self._ulLon 
-        self._xMax1 = self._xMin1 + (0.01 * self._lonPoints) 
-        self._yMax1 = self._ulLat 
-        self._yMin1 = self._yMax1 - (0.01 * self._latPoints) 
-        self._lons = np.arange(self._xMin1,self._xMax1,0.01)
-        self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)                
-
 
     def _reduceShapeIfPolygon(self, initialShape): 
         '''
@@ -995,11 +985,36 @@ class ProbUtils(object):
     def getOutputDir(self):
         return self._OUTPUTDIR
 
+    def setUpDomain(self):                            
+        self.setUpDomainValues()
+        self._ulLat = self._initial_ulLat + self._buff
+        self._ulLon = self._initial_ulLon - self._buff        
+        self._xMin1 = self._ulLon 
+        self._xMax1 = self._xMin1 + (0.01 * self._lonPoints) 
+        self._yMax1 = self._ulLat 
+        self._yMin1 = self._yMax1 - (0.01 * self._latPoints) 
+        self._lons = np.arange(self._xMin1,self._xMax1,0.01)
+        self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)                
+        sys.stdout.flush()
+
+
     def setUpDomainValues(self):
-        self._OUTPUTDIR = '/scratch/PHIGridTesting'
-        self._buff = 1.
-        self._lonPoints = 1200
-        self._latPoints = 1000
-        self._initial_ulLat = 46.0
-        self._initial_ulLon = -107.0
-    
+        #=======================================================================
+        # self._OUTPUTDIR = '/scratch/PHIGridTesting'
+        # self._buff = 1.
+        # self._lonPoints = 1200
+        # self._latPoints = 1000
+        # self._initial_ulLat = 43.0
+        # self._initial_ulLon = -104.00
+        #=======================================================================
+        print '\n==== RESETTING DOMAIN ==='
+        cu = ConfigUtils()
+        domainDict = cu.getConfigDict()
+        self._OUTPUTDIR = domainDict.get(cu._outputDirKey)
+        self._buff = domainDict.get(cu._domainBufferKey)
+        self._lonPoints = domainDict.get(cu._domainLonPointsKey)
+        self._latPoints = domainDict.get(cu._domainLatPointsKey)
+        self._initial_ulLon = domainDict.get(cu._domainULLonKey)
+        self._initial_ulLat = domainDict.get(cu._domainULLatKey)
+        self._lowThreshold = domainDict.get(cu._lowThreshKey)
+        sys.stdout.flush()

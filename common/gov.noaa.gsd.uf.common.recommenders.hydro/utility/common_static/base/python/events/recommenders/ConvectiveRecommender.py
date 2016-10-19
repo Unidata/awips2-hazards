@@ -82,14 +82,6 @@ class Recommender(RecommenderTemplate.Recommender):
             Column10: mean motion east, in m/s (float)
             Column11: mean motion south, in m/s (float)
         """
-        self._probUtils = ProbUtils()
-        lats = self._probUtils._lats
-        ulLat = lats[0]
-        lrLat = lats[-1]
-        lons = self._probUtils._lons
-        ulLon = lons[0]
-        lrLon = lons[-1]
-        self._domainPolygon = Polygon([(ulLon, ulLat), (lrLon, ulLat), (lrLon, lrLat), (ulLon, lrLat), (ulLon, ulLat)])
     
     def defineScriptMetadata(self):
         """
@@ -113,6 +105,18 @@ class Recommender(RecommenderTemplate.Recommender):
         """        
         return None
 
+    def _initialize(self):
+        self._probUtils = ProbUtils()
+        lats = self._probUtils._lats
+        ulLat = lats[0]
+        lrLat = lats[-1]
+        lons = self._probUtils._lons
+        ulLon = lons[0]
+        lrLon = lons[-1]
+        self._domainPolygon = Polygon([(ulLon, ulLat), (lrLon, ulLat), (lrLon, lrLat), (ulLon, lrLat), (ulLon, ulLat)])
+        self._lowThreshold = self._probUtils._lowThreshold
+    
+
     def execute(self, eventSet, dialogInputMap, visualFeatures):
         """
         Runs the River Flood Recommender tool
@@ -135,34 +139,34 @@ class Recommender(RecommenderTemplate.Recommender):
                          str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
                          str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
-        
+        self._initialize()
         sessionAttributes = eventSet.getAttributes()
         if sessionAttributes:
             sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
             
-        #st = time.time()
+        st = time.time()
 
         currentEvents = self.getCurrentEvents(eventSet)        
 
-        #LogUtils.logMessage('Finnished ', 'getCurrentEvent',' Took Seconds', time.time()-st)
-        #st = time.time()
+        LogUtils.logMessage('Finnished ', 'getCurrentEvent',' Took Seconds', time.time()-st)
+        st = time.time()
             
         currentTime = datetime.datetime.utcfromtimestamp(long(sessionAttributes["currentTime"])/1000)
         latestCurrentEventTime = self.getLatestTimestampOfCurrentEvents(eventSet, currentEvents)
 
-        #LogUtils.logMessage('Finnished ', 'getLatestTimestampOfCurrentEvents',' Took Seconds', time.time()-st)
-        #st = time.time()
+        LogUtils.logMessage('Finnished ', 'getLatestTimestampOfCurrentEvents',' Took Seconds', time.time()-st)
+        st = time.time()
         
         recommendedEventsDict = self.getRecommendedEventsDict(currentTime, latestCurrentEventTime)
 
-        #LogUtils.logMessage('Finnished ', 'getRecommendedEventsDict',' Took Seconds', time.time()-st)
-        #st = time.time()
+        LogUtils.logMessage('Finnished ', 'getRecommendedEventsDict',' Took Seconds', time.time()-st)
+        st = time.time()
         recommendedEventsDict = self.filterForUserOwned(currentEvents, recommendedEventsDict)
-        #LogUtils.logMessage('Finnished ', 'filterForUserOwne',' Took Seconds', time.time()-st)
-        #st = time.time()
+        LogUtils.logMessage('Finnished ', 'filterForUserOwne',' Took Seconds', time.time()-st)
+        st = time.time()
         mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventsDict, currentTime)
 
-        #LogUtils.logMessage('Finnished ', 'mergeHazardEvent',' Took Seconds', time.time()-st)
+        LogUtils.logMessage('Finnished ', 'mergeHazardEvent',' Took Seconds', time.time()-st)
         #for evt in mergedEventSet:
         #    print 'ME:', evt.getHazardAttributes().get('removeEvent')
         #    #  Tracy -- Not sure about this -- does probSeverAttrs really have an OBJECT_ID entry?
@@ -222,7 +226,7 @@ class Recommender(RecommenderTemplate.Recommender):
             row = {k:v[i] for k,v in latestGroup.iteritems()}
 
             ### Dumb filter. Need to make dynamic
-            if row.get('probabilities') < PROBABILITY_FILTER:
+            if row.get('probabilities') < self._lowThreshold:
                 continue
             
             thisPoly = row.get('polygons')
@@ -230,7 +234,6 @@ class Recommender(RecommenderTemplate.Recommender):
             if thisPoly is None:
                 continue
             elif not loads(thisPoly).centroid.within(self._domainPolygon):
-                #LogUtils.logMessage("Skipping....")
                 continue
            
             ### Current CONVECTPROB feed has objectids like "653830; Flash Rate 0 fl/min"
@@ -281,7 +284,8 @@ class Recommender(RecommenderTemplate.Recommender):
                         row = {k:v[i] for k,v in group.iteritems()}
 
                         ### Dumb filter. Need to make dynamic
-                        if row.get('probabilities') < PROBABILITY_FILTER:
+#                        if row.get('probabilities') < PROBABILITY_FILTER:
+                        if row.get('probabilities') < self._lowThreshold:
                             continue
                         
                         thisPoly = row.get('polygons')
@@ -543,9 +547,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 recommendedEventValues = recommendedEventsDict[currID]
                 self.setEventTimes(currentEvent, recommendedEventValues)
                 try:
-                    currentEvent.setGeometry(recommendedEventValues.pop('polygons'))
+                    newShape = loads(recommendedEventValues.get('polygons'))
+                    currentEvent.setGeometry(newShape)
                 except:
-                    print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommendedEventValues.get('polygons')) 
+                    print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommendedEventValues.get('polygons')), recommendedEventValues.get('polygons')
                     
                 currentEvent.set('convectiveObjectDir', recommendedEventValues.get('wdir'))
                 currentEvent.set('convectiveObjectSpdKts', recommendedEventValues.get('wspd'))

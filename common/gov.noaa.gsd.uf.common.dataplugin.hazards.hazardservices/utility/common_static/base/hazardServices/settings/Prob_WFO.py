@@ -179,6 +179,12 @@ Prob_WFO = {
     },
     "toolbarTools": [
         {
+            "toolName": "PHIConfigurationTool",
+            "displayName": "PHI Config Tool",
+            "toolType": "RECOMMENDER",
+            "visible":True,
+        },
+        {
             "toolName": "ConvectiveRecommender",
             "displayName": "Convective Recommender (PHI)",
             "toolType": "RECOMMENDER",
