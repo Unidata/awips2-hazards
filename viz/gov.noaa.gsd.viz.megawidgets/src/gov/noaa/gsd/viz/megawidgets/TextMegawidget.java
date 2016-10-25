@@ -103,6 +103,9 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Oct 08, 2015  12165     Chris.Golden      Added option to show no border, so that
  *                                           a read-only text field can look like a
  *                                           label.
+ * Oct 25, 2016  21677     Chris.Golden      Fixed behavior when set to be non-editable
+ *                                           so that text can still be scrolled,
+ *                                           selected, etc.
  * </pre>
  * 
  * @author Chris.Golden
@@ -624,7 +627,7 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
      *            editable or read-only.
      */
     private void doSetEditable(boolean editable) {
-        textViewer.getTextWidget().getParent().setEnabled(editable);
+        textViewer.getTextWidget().setEditable(editable);
         textViewer.getTextWidget().setBackground(
                 helper.getBackgroundColor(isEnabled() && editable,
                         textViewer.getTextWidget(), label));

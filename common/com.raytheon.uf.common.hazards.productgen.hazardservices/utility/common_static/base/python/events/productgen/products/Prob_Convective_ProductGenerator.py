@@ -134,22 +134,18 @@ class Product(Prob_Generator.Product):
             
             ### Capture discussion & threats, timestamp and place in readonly disc box
             newDisc = datetime.datetime.utcfromtimestamp(self._issueTime/1000).strftime('%m/%d/%Y %H:%M :: ')
-            threatFields = ['convectiveStormCharsHail', 'convectiveStormCharsWind', 'convectiveStormCharsTorn']
+            threatFields = ['convectiveStormCharsWind', 'convectiveStormCharsHail', 'convectiveStormCharsTorn']
             threats = [hazardEvent.get(threat) for threat in threatFields]
-            newDisc += str(threats) + '  >>>  ' 
-            thisDisc = hazardEvent.get('convectiveWarningDecisionDiscussion', '')
-            if len(thisDisc) > 0:
-                thisDiscEntries = thisDisc.split('\n---\n')
-                thisDiscEntries[0] = newDisc + thisDiscEntries[0]
-                thisDiscEntries = [''] + thisDiscEntries
-                newDisc = '\n---\n'.join(thisDiscEntries)
-                
-            else:
-                newDisc += '\n---\n'
-                
+            newDisc += str(threats) + '  >>> \n' + hazardEvent.get('convectiveWarningDecisionDiscussion', '')
+            newDisc += '\n---\n'
+
+            prevDisc = newDisc + hazardEvent.get('convectivePastWarningDecisionDiscussion', '')
+            
+
             ### Reset for next time HID appears
             [hazardEvent.set(threat, None) for threat in threatFields]
-            hazardEvent.set('convectiveWarningDecisionDiscussion', newDisc)
+            hazardEvent.set('convectivePastWarningDecisionDiscussion', prevDisc)
+            hazardEvent.set('convectiveWarningDecisionDiscussion', '')
             
             hazardEvent.set('eventStartTimeAtIssuance', long(TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getStartTime())))
             hazardEvent.set('durationSecsAtIssuance', self._probUtils._getDurationSecs(hazardEvent))
@@ -172,7 +168,7 @@ class Product(Prob_Generator.Product):
             self._headline = hazardAttrs.get('headline', 'Probabilistic Severe')
             self._location = self._getLocation(hazardEvent)
             defaultDiscussion = ''' Mesocyclone interacted with line producing brief spin-up. Not confident in enduring tornadoes...but more brief spinups are possible as more interactions occur.'''
-            self._discussion = thisDisc #hazardAttrs.get('convectiveWarningDecisionDiscussion', defaultDiscussion)            
+            self._discussion = prevDisc 
             #print "Prob Convective PG hazardAttrs", hazardAttrs
             #print "    start, end time, issueTime", hazardEvent.getStartTime(), hazardEvent.getEndTime(), hazardEvent.get('issueTime')
             if hazardEvent.getStatus() in ['ENDING']:

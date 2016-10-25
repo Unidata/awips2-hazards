@@ -9,7 +9,8 @@ import json
 
 class ConfigUtils(object):
     def __init__(self):
-        self._filename = '/scratch/hazardServicesConfig.json'
+        #### NOTE: Change this path to your directory shared between "Processor" and "UI" machine
+        self._filename = '/home/kevin.manross/realtime-a2/hazardServicesConfig.json'
         self._ContentsDict = {}
         self._defaultLowThreshold = 40
         self._defaultPHIOutputDir = '/scratch/PHIGridTesting'

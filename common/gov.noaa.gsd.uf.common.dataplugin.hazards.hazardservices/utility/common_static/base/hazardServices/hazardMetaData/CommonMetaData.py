@@ -1868,7 +1868,7 @@ class MetaData(object):
         mws.append(self._getStormCharacteristics())
         # Warning Discussion
         mws.append(self._getConvectiveDiscussion())
-#        mws.append(self._getPastConvectiveDiscussion())
+        mws.append(self._getPastConvectiveDiscussion())
         # Activate
         #mws.append(self._getConvectiveActivate())
         # Redraw # Reset History # Preview grid
@@ -2258,61 +2258,31 @@ class MetaData(object):
         text = {
             "fieldType": "Text",
             "fieldName": "convectiveWarningDecisionDiscussion",
-            "label": "Warning Decision Discussion  (please type above top most '---')",
+            "label": "Enter Warning Decision Discussion Here",
             "visibleChars": 40,
             "lines": 5,
             "expandHorizontally": False,
-            "promptText": "Recognized text will be copied here (or type manually).",
-            "values": "\n---\n",
+            "promptText": "(Enter discussion here...)",
         }
         return text
 
-    #===========================================================================
-    # def _getPastConvectiveDiscussion(self):
-    #     
-    #     pastDisc = self.hazardEvent.get('convectivePastWarningDecisionDiscussion', 'Init')
-    #     
-    #     text = {
-    #         "fieldType": "Text",
-    #         "fieldName": "convectivePastWarningDecisionDiscussion",
-    #         "label": "Previous Warning Decision Discussion",
-    #         "visibleChars": 40,
-    #         "lines": 5,
-    #         "expandHorizontally": False,
-    #         "editable": False,
-    #         #"promptText": "Recognized text will be copied here (or type manually).",
-    #         "values": pastDisc,
-    #     }
-    #     
-    #     return text
-    #===========================================================================
+    def _getPastConvectiveDiscussion(self):
+         
+        pastDisc = self.hazardEvent.get('convectivePastWarningDecisionDiscussion', '')
+         
+        text = {
+            "fieldType": "Text",
+            "fieldName": "convectivePastWarningDecisionDiscussion",
+            "label": "Warning Decision Discussion",
+            "visibleChars": 40,
+            "lines": 5,
+            "expandHorizontally": False,
+            "editable": False,
+            "values": pastDisc,
+        }
+         
+        return text
 
-#===============================================================================
-#     def _getConvectiveDiscussion(self):
-#         previousText = self.hazardEvent.get("convectiveWarningDecisionDiscussion")
-#         simTimeMils = SimulatedTime.getSystemTime().getMillis()
-#         currentTime = datetime.datetime.utcfromtimestamp(simTimeMils / 1000)
-#         
-#         textVals = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
-#         if previousText:
-#             textVals += previousText
-# 
-#         textVals += '\n\n'
-# 
-#         text = {
-#             "fieldType": "Text",
-#             "fieldName": "convectiveWarningDecisionDiscussion",
-#             "label": "Warning Decision Discussion",
-#             "visibleChars": 40,
-#             "lines": 10,
-#             "expandHorizontally": True,
-#             "promptText": "Recognized text will be copied here (or type manually).",
-#             "values": textVals,
-#         }
-#         
-#         return text
-#===============================================================================
-        
     def _getConvectiveActivate(self):
         butt = {
             "fieldType": "Button",
@@ -2476,56 +2446,6 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         if len(convectTriggers) == 0:
             return {}
         
-        ######################################################
-        ## Discussion Box
-        ######################################################
-#===============================================================================
-#         simTimeMils = SimulatedTime.getSystemTime().getMillis()
-#         currentTime = datetime.datetime.utcfromtimestamp(simTimeMils / 1000)
-#         currentTimeText = currentTime.strftime("[%m-%d-%Y %H:%M:00]  ")
-#         delimeter = u'\u2063\n'
-# 
-#         discussion = mutableProperties.get('convectiveWarningDecisionDiscussion')
-#         if discussion is not None:
-#             discussion = mutableProperties['convectiveWarningDecisionDiscussion']['values']
-#             discLines = discussion.split(delimeter)
-#             ### Seems to work!
-#             sortedDisclines = filter(None, sorted(discLines))[::-1]
-#     
-#             if len(sortedDisclines[0]) > 0:
-#                 latestTimestampMatch = re.match('\[\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}\]  ', sortedDisclines[0])
-#                 if latestTimestampMatch:
-#                     latestTimestamp = latestTimestampMatch.group(0)
-#     
-#                     hailVal0 = mutableProperties['convectiveStormCharsHail']['values']
-#                     windVal0 = mutableProperties['convectiveStormCharsWind']['values']
-#                     tornVal0 = mutableProperties['convectiveStormCharsTorn']['values']
-#                     
-#                     freeTextList = sortedDisclines[0].split(' :: ')
-#                     freeText = ''
-#                     if len(freeTextList) > 1 and len(freeTextList[-1]) > 1:
-#                         freeText = freeTextList[-1]
-#                     
-#     
-#                     if latestTimestamp != currentTimeText:
-#                         sortedDisclines.insert(0, currentTimeText+'  ')
-#                         returnDict['convectiveStormCharsHail'] = { 'values' : "None"}
-#                         returnDict['convectiveStormCharsWind'] = { 'values' : "None"}
-#                         returnDict['convectiveStormCharsTorn'] = { 'values' : "None"}
-#                         hailVal0 = "None"
-#                         windVal0 = "None"
-#                         tornVal0 = "None"
-#                         freeText = ''
-#     
-#                     hailVal = 'Hail: '+hailVal0 if hailVal0 != "None" else ''
-#                     windVal = 'Winds: '+windVal0 if windVal0 != "None" else ''
-#                     tornVal = 'Tornado: '+tornVal0 if tornVal0 != "None" else ''
-#                     updateLine = ' '.join([currentTimeText, windVal, hailVal, tornVal, ' :: ', freeText.lstrip()])
-#                     sortedDisclines[0] = updateLine
-#                     discussion = delimeter.join(sortedDisclines)
-#     
-#             returnDict['convectiveWarningDecisionDiscussion'] = { 'values' : discussion}
-#===============================================================================
         
         ######################################################
         ## Graph Megawidget Algorithm Buttons
@@ -2535,38 +2455,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         if len(convectiveProbTrendTriggers) > 0:
             probVals = mutableProperties['convectiveProbTrendGraph']['values']
             
-            #===================================================================
-            # print 'INITIAL...'
-            # print 'Graph:', mutableProperties['convectiveProbTrendGraph']['values']
-            # print 'Undo:', mutableProperties['convectiveProbTrendUndoValues']['values']
-            # print 'Redo:', mutableProperties['convectiveProbTrendRedoValues']['values']
-            # print '....'
-            # sys.stdout.flush()
-            # ### Ensure we save the old state of GMW before making any changes
-            # returnDict['convectiveProbTrendRedoValues'] = {"values": probVals}
-            #===================================================================
-            
             trigger = convectiveProbTrendTriggers[0]
-            #===================================================================
-            # #print 'Trigger:', trigger
-            # sys.stdout.flush()
-            # if trigger == 'convectiveProbTrendUndo':
-            #     #print 'convectiveProbTrendUndo'
-            #     returnDict['convectiveProbTrendGraph'] = {'values' : mutableProperties['convectiveProbTrendUndoValues']['values']}
-            #     #print returnDict['convectiveProbTrendGraph']
-            #     #sys.stdout.flush()
-            # elif trigger == 'convectiveProbTrendRedo':
-            #     #print 'convectiveProbTrendRedo'
-            #     returnDict['convectiveProbTrendGraph'] = {'values' : mutableProperties['convectiveProbTrendRedoValues']['values']}
-            #     #print returnDict['convectiveProbTrendGraph']
-            #     #sys.stdout.flush()
-            # else: 
-            #     updatedProbTrend = updateProbtrend(probVals, trigger)
-            # 
-            #     ### Set new state of GMW with updated trend
-            #     returnDict['convectiveProbTrendRedoValues'] = {"values": updatedProbTrend}
-            #     returnDict['convectiveProbTrendGraph'] = {'values' : updatedProbTrend}
-            #===================================================================
 
             updatedProbTrend = updateProbtrend(probVals, trigger)
         
