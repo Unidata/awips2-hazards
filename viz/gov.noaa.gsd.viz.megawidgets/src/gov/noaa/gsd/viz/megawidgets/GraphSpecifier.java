@@ -30,6 +30,9 @@ import com.google.common.collect.ImmutableList;
  *                                      to draw points via a click, drag,
  *                                      and release mouse operation, if
  *                                      the graph is empty of points.
+ * Oct 26, 2016   25773    Chris.Golden Added height multiplier option,
+ *                                      allowing the height the megawidget
+ *                                      takes up to be configured.
  * </pre>
  * 
  * @author Chris.Golden
@@ -93,6 +96,15 @@ public class GraphSpecifier extends StatefulMegawidgetSpecifier implements
      * default is to use no suffix.
      */
     public static final String MEGAWIDGET_Y_LABEL_SUFFIX = "yLabelSuffix";
+
+    /**
+     * Height multiplier parameter name; a megawidget may include a floating
+     * point value of <code>0.5</code> or greater for this parameter. The value
+     * so provided will be used to increase (if greater than <code>1.0</code>)
+     * or decrease (if less than <code>1.0</code>) the height of the megawidget.
+     * Defaults to <code>1.0</code>.
+     */
+    public static final String MEGAWIDGET_HEIGHT_MULTIPLIER = "heightMultiplier";
 
     /**
      * Y minimum parameter name; a megawidget must include an integer for this
@@ -196,6 +208,11 @@ public class GraphSpecifier extends StatefulMegawidgetSpecifier implements
     private final String suffixLabelY;
 
     /**
+     * Height multiplier.
+     */
+    private final double heightMultiplier;
+
+    /**
      * Interval between points drawn by the user when the latter clicks, drags,
      * and releases the mouse over the graph when the latter is empty. If
      * <code>0</code>, drawing capability is disabled.
@@ -256,6 +273,15 @@ public class GraphSpecifier extends StatefulMegawidgetSpecifier implements
                     "must be 0 if " + MEGAWIDGET_Y_HATCH_INTERVAL + " is 0, "
                             + "otherwise must be 0 or a multiple of "
                             + MEGAWIDGET_Y_HATCH_INTERVAL);
+        }
+        heightMultiplier = ConversionUtilities
+                .getSpecifierDoubleValueFromObject(getIdentifier(), getType(),
+                        parameters.get(MEGAWIDGET_HEIGHT_MULTIPLIER),
+                        MEGAWIDGET_HEIGHT_MULTIPLIER, 1.0);
+        if (heightMultiplier < 0.5) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), MEGAWIDGET_HEIGHT_MULTIPLIER, heightMultiplier,
+                    "must be floating point value of 0.5 or greater");
         }
         drawnPointsInterval = getNonNegativeIntegerFromObject(parameters,
                 MEGAWIDGET_DRAWN_POINTS_INTERVAL, 0);
@@ -437,6 +463,15 @@ public class GraphSpecifier extends StatefulMegawidgetSpecifier implements
      */
     public String getSuffixLabelY() {
         return suffixLabelY;
+    }
+
+    /**
+     * Get the height multiplier.
+     * 
+     * @return Height multiplier.
+     */
+    public double getHeightMultiplier() {
+        return heightMultiplier;
     }
 
     /**

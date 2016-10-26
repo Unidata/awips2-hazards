@@ -58,6 +58,9 @@ import com.google.common.collect.ImmutableSet;
  *                                      to draw points via a click, drag,
  *                                      and release mouse operation, if
  *                                      the graph is empty of points.
+ * Oct 26, 2016   25773    Chris.Golden Added height multiplier option,
+ *                                      allowing the height the megawidget
+ *                                      takes up to be configured.
  * </pre>
  * 
  * @author Chris.Golden
@@ -239,6 +242,7 @@ public class GraphMegawidget extends StatefulMegawidget implements IControl {
                 specifier.getIntervalLabelY());
         graph.setLabelSuffixes(specifier.getSuffixLabelX(),
                 specifier.getSuffixLabelY());
+        graph.setHeightMultiplier(specifier.getHeightMultiplier());
         graph.setIntervalDrawnPointsX(specifier.getDrawnPointsInterval());
         List<Map<String, Double>> colorMaps = specifier.getVerticalColors();
         if (colorMaps.isEmpty() == false) {

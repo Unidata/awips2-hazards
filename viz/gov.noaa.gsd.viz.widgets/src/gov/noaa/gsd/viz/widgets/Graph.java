@@ -78,6 +78,9 @@ import com.google.common.collect.Lists;
  *                                      different cursors depending upon
  *                                      the mode of the widget and where the
  *                                      mouse is hovering.
+ * Oct 26, 2016   25773    Chris.Golden Added height multiplier option,
+ *                                      allowing the height the widget takes
+ *                                      up to be configured.
  * </pre>
  * 
  * @author Chris.Golden
@@ -195,6 +198,14 @@ public class Graph extends Canvas {
      * <code>null</code>.
      */
     private String suffixLabelY;
+
+    /**
+     * Height multiplier, to be applied when determining the preferred height.
+     * Must be <code>0.5</code> or greater. Note that values under
+     * <code>1.0</code> may result in some Y axis labels not showing due to
+     * space limitations. If not set, this defaults to <code>1.0</code>.
+     */
+    private double heightMultiplier = 1.0;
 
     /**
      * <p>
@@ -728,6 +739,36 @@ public class Graph extends Canvas {
     }
 
     /**
+     * Get the height multiplier, to be applied when determining the preferred
+     * height.
+     * 
+     * @return Height multiplier.
+     */
+    public final double getHeightMultiplier() {
+        return heightMultiplier;
+    }
+
+    /**
+     * Set the height multiplier, to be applied when determining the preferred
+     * height.
+     * 
+     * @param heightMultiplier
+     *            New height multiplier; must be <code>0.5</code> or greater.
+     *            Note that values under <code>1.0</code> may result in some Y
+     *            axis labels not showing due to space limitations.
+     */
+    public final void setHeightMultiplier(double heightMultiplier) {
+        if (heightMultiplier < 0.5) {
+            throw new IllegalArgumentException(
+                    "height multiplier must be 0.5 or greater");
+        }
+        this.heightMultiplier = heightMultiplier;
+        computePreferredSize(true);
+        scheduleDetermineActivePointIfEnabled();
+        redraw();
+    }
+
+    /**
      * Get the X interval between points drawn by the user via
      * click-drag-release mouse operations.
      * 
@@ -1236,16 +1277,14 @@ public class Graph extends Canvas {
 
             /*
              * When calculating the preferred height, take into account the
-             * labels along the X axis and the vertical space they take up.
+             * labels along the X axis and the vertical space they take up. The
+             * configurable height multiplier is also considered.
              */
             if (minimumVisibleValueY != maximumVisibleValueY) {
                 int numLabels = (maximumVisibleValueY - minimumVisibleValueY)
                         / (intervalLabelY == 0 ? 10 : intervalLabelY);
-                preferredHeight = yLabelHeight
+                preferredHeight = ((int) ((yLabelHeight) * 2.0 * heightMultiplier))
                         * (numLabels + (intervalLabelX == 0 ? 0 : 1));
-            }
-            if (preferredHeight < 300) {
-                preferredHeight = 300;
             }
             preferredHeight += getTopInset() + getBottomInset();
 

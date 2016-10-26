@@ -2224,6 +2224,7 @@ class MetaData(object):
                         "yHatchInterval": 10,
                         "xLabelInterval": 10,
                         "yLabelInterval": 20,
+                        "heightMultiplier": 1.2,
                         "yLabelSuffix": "%",
                         "drawnPointsInterval": 5,
                         "modifyRecommender": recommender,
