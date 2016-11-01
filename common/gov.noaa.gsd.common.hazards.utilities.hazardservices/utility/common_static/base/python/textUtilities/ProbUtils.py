@@ -29,11 +29,11 @@ class ProbUtils(object):
         self.setUpDomain()
         
     def processEvents(self, eventSet, writeToFile=False):
-        if writeToFile and not os.path.exists(self._OUTPUTDIR):
+        if writeToFile and not os.path.exists(self.OUTPUTDIR):
             try:
-                os.makedirs(self._OUTPUTDIR)
+                os.makedirs(self.OUTPUTDIR)
             except:
-                sys.stderr.write('Could not create PHI grids output directory:' +self._OUTPUTDIR+ '.  No output written')
+                sys.stderr.write('Could not create PHI grids output directory:' +self.OUTPUTDIR+ '.  No output written')
 
 
         probSvrSnapList = []
@@ -75,53 +75,53 @@ class ProbUtils(object):
                 #probSvrSwath = np.max(swathCum, axis=0)
                 probSvrSnap = np.max(np.array(probSvrSnapList), axis=0)
                 probSvrSwath = np.max(np.array(probSvrSwathList), axis=0)
-                self._output(probSvrSnap, probSvrSwath, timeStamp, 'Severe')         
+                self.output(probSvrSnap, probSvrSwath, timeStamp, 'Severe')         
             if len(probTorSnapList) > 0:
                 probTorSnap = np.max(np.array(probTorSnapList), axis=0)
                 probTorSwath = np.max(np.array(probTorSwathList), axis=0)
-                self._output(probTorSnap, probTorSwath, timeStamp, 'Tornado')         
+                self.output(probTorSnap, probTorSwath, timeStamp, 'Tornado')         
 
         return 1
 
 
     def getOutputProbGrids(self, event, currentTime):                   
-        downstreamPolys = event.get('downstreamPolys')
-        if not downstreamPolys:
+        forecastPolys = event.get('forecastPolys')
+        if not forecastPolys:
             return
-        downstreamTimes = event.get('downstreamTimes')
+        forecastTimes = event.get('forecastTimes')
 
-        ###  Only send downstream poly's >= "now"
+        ###  Only send forecast poly's >= "now"
         
-        ### FIXME: downstreamTimes is currently a tuple (st, et).  If ever becomes just "st" (no-tuple) will need to change j[0] to j
+        ### FIXME: forecastTimes is currently a tuple (st, et).  If ever becomes just "st" (no-tuple) will need to change j[0] to j
         ### FIXME: might need to round/buffer for event currently being issued.  For now, the event being issued is still 'PENDING', so we'lll use that.
         firstIdx = 0
         if event.getStatus().upper() == 'ISSUED': 
-            firstIdx =  next(i for i,j in enumerate(downstreamTimes) if j[0]/1000 >= int(currentTime.strftime('%s')))
-        probTrend = self._getInterpolatedProbTrendColors(event)
+            firstIdx =  next(i for i,j in enumerate(forecastTimes) if j[0]/1000 >= int(currentTime.strftime('%s')))
+        probTrend = self.getInterpolatedProbTrendColors(event)
         
-        probGridSwath = self.makeGrid(downstreamPolys[firstIdx:], probTrend[firstIdx:], self._lons, self._lats, 
-                                 self._xMin1, self._xMax1, self._yMax1, self._yMin1)
-        probGridSnap = self.makeGrid(downstreamPolys[firstIdx:], probTrend[firstIdx:], self._lons, self._lats, 
-                                 self._xMin1, self._xMax1, self._yMax1, self._yMin1, accumulate=False)
+        probGridSwath = self.makeGrid(forecastPolys[firstIdx:], probTrend[firstIdx:], self.lons, self.lats, 
+                                 self.xMin1, self.xMax1, self.yMax1, self.yMin1)
+        probGridSnap = self.makeGrid(forecastPolys[firstIdx:], probTrend[firstIdx:], self.lons, self.lats, 
+                                 self.xMin1, self.xMax1, self.yMax1, self.yMin1, accumulate=False)
         
         
         return (probGridSnap, probGridSwath)
        
     def getProbGrid(self, event):
-        downstreamPolys = event.get('downstreamPolys')
+        forecastPolys = event.get('forecastPolys')
          
-        if not downstreamPolys:
+        if not forecastPolys:
            return
         
-        probTrend = self._getInterpolatedProbTrendColors(event)
-        probGridSwath = self.makeGrid(downstreamPolys, probTrend, self._lons, self._lats, 
-                                 self._xMin1, self._xMax1, self._yMax1, self._yMin1)
+        probTrend = self.getInterpolatedProbTrendColors(event)
+        probGridSwath = self.makeGrid(forecastPolys, probTrend, self.lons, self.lats, 
+                                 self.xMin1, self.xMax1, self.yMax1, self.yMin1)
         
-        return probGridSwath, self._lons, self._lats
+        return probGridSwath, self.lons, self.lats
         
 
     #===========================================================================
-    # def _getInterpolatedProbTrendColors(self, event):
+    # def getInterpolatedProbTrendColors(self, event):
     #     '''
     #     (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
     #                       ((20,40), { "red": 1, "green": 1, "blue": 0 }),
@@ -141,7 +141,7 @@ class ProbUtils(object):
     #     return oneMinuteProbs
     #===========================================================================
     
-    def _getInterpolatedProbTrendColors(self, event, returnOneMinuteTime=False):
+    def getInterpolatedProbTrendColors(self, event, returnOneMinuteTime=False):
         '''
         (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
                           ((20,40), { "red": 1, "green": 1, "blue": 0 }),
@@ -255,7 +255,7 @@ class ProbUtils(object):
                 
         return probability
       
-    def _output(self, snap, swath, timeStamp, eventType):
+    def output(self, snap, swath, timeStamp, eventType):
         '''
         Creates an output netCDF file in OUTPUTDIR (set near top)
         '''
@@ -263,8 +263,8 @@ class ProbUtils(object):
         nowTime = datetime.datetime.utcfromtimestamp(time.time())
         
         
-        #outDir = os.path.join(self._OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"), eventType)
-        outDir = self._OUTPUTDIR
+        #outDir = os.path.join(self.OUTPUTDIR, nowTime.strftime("%Y%m%d_%H"), eventType)
+        outDir = self.OUTPUTDIR
 
         if not os.path.exists(outDir):
             try:
@@ -288,21 +288,21 @@ class ProbUtils(object):
             f.time_origin = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
             f.time_valid = timeStamp.strftime("%Y-%m-%d %H:%M:%S")
             
-            f.createDimension('lats', len(self._lats))
-            f.createDimension('lons', len(self._lons))
+            f.createDimension('lats', len(self.lats))
+            f.createDimension('lons', len(self.lons))
             f.createDimension('time', 1)
             
             latVar = f.createVariable('lats', 'f', ('lats',))
             latVar.long_name = "latitude"
             latVar.units = "degrees_north"
             latVar.standard_name = "latitude"
-            latVar[:] = self._lats
+            latVar[:] = self.lats
             
             lonVar = f.createVariable('lons', 'f', ('lons',))
             lonVar.long_name = "longitude"
             lonVar.units = "degrees_east"
             lonVar.standard_name = "longitude"
-            lonVar[:] = self._lons
+            lonVar[:] = self.lons
             
             timeVar = f.createVariable('time', 'f8', ('time',))
             timeVar.long_name  = 'Valid Time'
@@ -342,32 +342,32 @@ class ProbUtils(object):
     # Helper methods              #
     ###############################
        
-    def _parseIdentifier(self, baseTime_ms, featureIdentifier):
+    def parseIdentifier(self, baseTime_ms, featureIdentifier):
         featureSt = featureIdentifier.split('_')[1]
         return int(featureSt)
                 
-    def _roundEventTimes(self, event):
-        # Current time rounded to nearest minute
-        startTime = TimeUtils.roundDatetime(event.getStartTime()) 
-        endTime = TimeUtils.roundDatetime(event.getEndTime())        
+    def roundEventTimes(self, event):
+        # Rounded to nearest second
+        startTime = TimeUtils.roundDatetime(event.getStartTime(), delta=datetime.timedelta(seconds=1)) 
+        endTime = TimeUtils.roundDatetime(event.getEndTime(), delta=datetime.timedelta(seconds=1))        
         event.setStartTime(startTime)
         event.setEndTime(endTime)
         
-    def _getDurationSecs(self, event, truncateAtZero=False):
-        return self._getDurationMinutes(event, truncateAtZero) * 60
+    def getDurationSecs(self, event, truncateAtZero=False):
+        return self.getDurationMinutes(event, truncateAtZero) * 60
 
-    def _getDurationMinutes(self, event, truncateAtZero=False):
+    def getDurationMinutes(self, event, truncateAtZero=False):
         # This will round down to the nearest minute
         startTime = TimeUtils.roundDatetime(event.getStartTime())
         endTime = TimeUtils.roundDatetime(event.getEndTime())
         
         if truncateAtZero:
-            endTime = self._getZeroProbTime_minutes(event, startTime, endTime)
+            endTime = self.getZeroProbTime_minutes(event, startTime, endTime)
                     
         durationMinutes = int((endTime-startTime).total_seconds()/60)
         return durationMinutes
 
-    def _getZeroProbTime_minutes(self, event, startTime_minutes=None, endTime_minutes=None):
+    def getZeroProbTime_minutes(self, event, startTime_minutes=None, endTime_minutes=None):
         # Return the time of the zero probability OR 
         #   the event end time if there is no zero prob found
         if not startTime_minutes:
@@ -385,14 +385,14 @@ class ProbUtils(object):
                     endIndex = i
                     break
             if zeroIndex and zeroIndex != len(graphVals)-1:
-                endTime_minutes = TimeUtils.roundDatetime(startTime_minutes + zeroIndex * self._timeStep()/60)
+                endTime_minutes = TimeUtils.roundDatetime(startTime_minutes + zeroIndex * self.timeStep()/60)
         return endTime_minutes
     
-    def _convertMsToSecsOffset(self, time_ms, baseTime_ms=0):
+    def convertMsToSecsOffset(self, time_ms, baseTime_ms=0):
         result = time_ms - baseTime_ms
         return int(result / 1000)
     
-    def _updateGraphValsDuration(self, origGraphVals, newGraphVals):
+    def updateGraphValsDuration(self, origGraphVals, newGraphVals):
         
         if len(newGraphVals) <= len(origGraphVals):
             newGraphVals = origGraphVals[0:len(newGraphVals)]
@@ -407,7 +407,7 @@ class ProbUtils(object):
             
         return newGraphVals            
     
-    def _getGraphProbs(self, event, latestDataLayerTime=None):
+    def getGraphProbs(self, event, latestDataLayerTime=None):
         ### Get difference in minutes and the probability trend
         previousDataLayerTime = event.get("previousDataLayerTime")
         issueStart = event.get("eventStartTimeAtIssuance")
@@ -416,7 +416,7 @@ class ProbUtils(object):
                 
         if graphVals is None:
             #LogUtils.logMessage('[HERE-0]')
-            return self._getGraphProbsBasedOnDuration(event)
+            return self.getGraphProbsBasedOnDuration(event)
         
         if issueStart is None:
             issueStart = currentStart
@@ -451,7 +451,7 @@ class ProbUtils(object):
         #self.flush()
         
         ### Get interpolated times and probabilities 
-        intervalDict = self._getInterpolatedProbTrendColors(event, returnOneMinuteTime=True)
+        intervalDict = self.getInterpolatedProbTrendColors(event, returnOneMinuteTime=True)
         oneMinuteProbs = intervalDict.get('oneMinuteProbs')
         oneMinuteTimeIntervals = intervalDict.get('oneMinuteTimeIntervals')
         ### New list of zeros as a placeholder
@@ -479,8 +479,8 @@ class ProbUtils(object):
                         
         ### Challenge is to get the graph to show the "rounded up" value, but we 
         ### don't want to muck with the duration, so still uncertain the best way
-        graphVals = self._updateGraphValsDuration(graphVals, self._getGraphProbsBasedOnDuration(event))
-        #graphVals = self._updateGraphValsDuration(graphVals, self._getGraphProbsBasedOnDuration(event))
+        graphVals = self.updateGraphValsDuration(graphVals, self.getGraphProbsBasedOnDuration(event))
+        #graphVals = self.updateGraphValsDuration(graphVals, self.getGraphProbsBasedOnDuration(event))
         
         import pprint
 #        print 'remainingProbs'
@@ -498,10 +498,10 @@ class ProbUtils(object):
         #self.flush()
         return graphVals
 
-    def _getGraphProbsBasedOnDuration(self, event):
+    def getGraphProbsBasedOnDuration(self, event):
         probVals = []
         probInc = event.get('convectiveProbabilityTrendIncrement', 5)
-        duration = self._getDurationMinutes(event)
+        duration = self.getDurationMinutes(event)
         
         ### Round up for some context
         duration = duration+probInc if duration%probInc != 0 else duration
@@ -519,20 +519,20 @@ class ProbUtils(object):
             probVals.append({"x":i, "y":y, "editable": editable})
         return probVals
 
-    def _timeDelta_ms(self):
+    def timeDelta_ms(self):
         # A tolerance for comparing millisecond times
         return 40*1000
     
-    def _displayMsTime(self, time_ms):
+    def displayMsTime(self, time_ms):
         return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms/1000))
         
-    def _getInterpolatedProbTrendColor(self, event, interval, numIvals):
+    def getInterpolatedProbTrendColor(self, event, interval, numIvals):
         '''
         (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
                           ((20,40), { "red": 1, "green": 1, "blue": 0 }),
         
         '''
-        duration = self._getDurationMinutes(event)
+        duration = self.getDurationMinutes(event)
         probVals = event.get('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
         probTrend = [entry.get('y') for entry in probVals]
         
@@ -545,16 +545,16 @@ class ProbUtils(object):
         if interval >= len(oneMinuteTimeIntervals):
             print "ProbUtils Warning: Oops1: interval >= len(oneMinuteTimeIntervals)", interval, len(oneMinuteTimeIntervals)
             ### Return white dot
-            return self._getProbTrendColor(-1)
+            return self.getProbTrendColor(-1)
         
         oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
         prob = oneMinuteProbs[interval]
         
-        return self._getProbTrendColor(prob)
+        return self.getProbTrendColor(prob)
 
-    def _getProbTrendColor(self, prob):
+    def getProbTrendColor(self, prob):
         ### Should match PHI Prototype Tool
-        colors = self._probTrendColors()
+        colors = self.probTrendColors()
         
         for k, v in colors.iteritems():
             if float(k[0]) <= prob and prob < float(k[1]):
@@ -562,8 +562,7 @@ class ProbUtils(object):
 
         return { "red": 1, "green": 1, "blue": 1 }      
 
-
-    def _reduceShapeIfPolygon(self, initialShape): 
+    def reduceShapeIfPolygon(self, initialShape): 
         '''
         @summary Reduce the shape if it is a polygon to have only the maximum allowable
         number of vertices.
@@ -573,7 +572,7 @@ class ProbUtils(object):
         '''  
         if initialShape.isPolygonal() and not initialShape.isPotentiallyCurved():
             rotation = initialShape.getRotation()
-            numPoints = self._hazardPointLimit()
+            numPoints = self.hazardPointLimit()
             tolerance = 0.001
             initialPoly = initialShape.asShapely()
             if type(initialPoly) is shapely.geometry.collection.GeometryCollection:
@@ -582,9 +581,10 @@ class ProbUtils(object):
             while len(newPoly.exterior.coords) > numPoints:
                 tolerance += 0.001
                 newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
-            
+        
             return AdvancedGeometry.createShapelyWrapper(newPoly, rotation)
-        return initialShape
+        return initialShape    
+
 
     ###############################
     # Compute Motion Vector       #
@@ -753,26 +753,28 @@ class ProbUtils(object):
     
 
     ######################################################
-    # Compute Interval (downstream and upstream Polygons #
+    # Compute Interval (forecast and upstream ) Polygons #
     ######################################################
             
-    def _createIntervalShapes(self, event, eventSetAttrs, nudge, swathPresetClass, eventSt_ms, 
-                              timeIntervals, timeDirection='downstream'):
+
+    def createIntervalPolys(self, event, eventSetAttrs, nudge, swathPresetClass, startTime_ms, 
+                             timeIntervals, timeDirection='forecast'):
         '''
-        This method creates the downstream or upstream shapes given 
-          -- event start time shape
+        This method creates the forecast or upstream polygons given 
+          -- event start time polygon 
           -- a direction and direction uncertainty
           -- a speed and a speed uncertainty
           -- a Preset Choice
-          -- a list of timeIntervals -- list of intervals (in secs) relative to eventSt_ms for
-             which to produce downstream or upstream shapes
-          -- timeDirection -- 'downstream' or 'upstream'
+          -- a list of timeIntervals -- list of intervals (in secs) relative to given start time for
+             which to produce forecast or upstream polygons
+             For forecast, startTime_ms will be current time
+             For upstream, startTime_ms will be the eventSt_ms
+          -- timeDirection -- 'forecast' or 'upstream'
           
-        Note that the timeIntervals will be negative for upstream and positive for downstream
+        Note that the timeIntervals will be negative for upstream and positive for forecast
                 
-        From the downstreamShapes and upstreamShapes, the visualFeatures 
-            (swath, trackpoints, and upstream shapes) can be determined.
-        
+        From the forecastPolys and upstreamPolys, the visualFeatures 
+            (swath, trackpoints, and upstream polygons) can be determined.        
         '''        
         attrs = event.getHazardAttributes()
 
@@ -780,7 +782,7 @@ class ProbUtils(object):
         ### get dir
         dirVal = attrs.get('convectiveObjectDir')
         if not dirVal:
-            dirVal = self._defaultWindDir()
+            dirVal = self.defaultWindDir()
         dirVal = int(dirVal)
         ### get dirUncertainty (degrees)
         dirUVal = attrs.get('convectiveObjectDirUnc')
@@ -791,7 +793,7 @@ class ProbUtils(object):
         ### get speed
         speedVal = attrs.get('convectiveObjectSpdKts')
         if not speedVal:
-            speedVal = self._defaultWindSpeed()
+            speedVal = self.defaultWindSpeed()
         speedVal = int(speedVal)
         # get speedUncertainty
         spdUVal = attrs.get('convectiveObjectSpdKtsUnc')
@@ -802,14 +804,15 @@ class ProbUtils(object):
                             
         ### Get initial shape.  
         # This represents the shape at the event start time resulting from the last nudge.
-        if nudge:
-            shape = event.getGeometry()
-        else:
-            downstreamShapes = event.get('downstreamPolys', [])
-            if downstreamShapes:
-                shape = downstreamShapes[0]
-            else:
-                shape = event.getGeometry()
+        shape = event.getGeometry()
+#         if nudge:
+#             shape = event.getGeometry()
+#         else:
+#             forecastPolys = event.get('forecastPolys', [])
+#             if forecastPolys:
+#                 shape = forecastPolys[0]
+#             else:
+#                 shape = event.getGeometry()
                 
         # Convert the shape to a shapely polygon.
         poly = shape.asShapely()
@@ -821,34 +824,34 @@ class ProbUtils(object):
                 
         # Convert the shapely polygon to Google Coords to make use of Karstens' code
         gglPoly = so.transform(AdvancedGeometry.c4326t3857, poly)
-                    
+                            
         intervalShapes = []
         intervalTimes = []
         totalSecs = abs(timeIntervals[-1] - timeIntervals[0]) 
         if not totalSecs:
             totalSecs = timeIntervals[0]
-        self._prevDirVal = None
+        self.prevDirVal = None
         
         for secs in timeIntervals:
             origDirVal = dirVal
-            intervalShape, secs = self._getIntervalShape(secs, totalSecs, shape, gglPoly, 
+            intervalShape, secs = self.getIntervalShape(secs, totalSecs, shape, gglPoly, 
                                                         speedVal, dirVal, spdUVal, dirUVal, 
                                                         timeDirection, presetMethod) 
 
-            intervalShape = self._reduceShapeIfPolygon(intervalShape)
+            intervalShape = self.reduceShapeIfPolygon(intervalShape)
             intervalShapes.append(intervalShape)
-            st = self._convertFeatureTime(eventSt_ms, secs)
-            et = self._convertFeatureTime(eventSt_ms, secs+self._timeStep())
-            intervalTimes.append((st, et))
+            st = self.convertFeatureTime(startTime_ms, secs)
+            et = self.convertFeatureTime(startTime_ms, secs+self.timeStep())
+            intervalTimes.append((st, et))                    
                     
-        if timeDirection == 'downstream':
-            event.addHazardAttribute('downstreamPolys',intervalShapes)       
-            event.addHazardAttribute('downstreamTimes',intervalTimes) 
+        if timeDirection == 'forecast':
+            event.addHazardAttribute('forecastPolys',intervalShapes)       
+            event.addHazardAttribute('forecastTimes',intervalTimes) 
         else:
             event.addHazardAttribute('upstreamPolys',intervalShapes)       
             event.addHazardAttribute('upstreamTimes',intervalTimes)     
 
-    def _getIntervalShape(self, secs, totalSecs, shape, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
+    def getIntervalShape(self, secs, totalSecs, shape, gglPoly, speedVal, dirVal, spdUVal, dirUVal, 
                          timeDirection, presetMethod):
         '''
         @param shape: Shape in advanced geometry form.
@@ -861,15 +864,15 @@ class ProbUtils(object):
         else:
             presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)            
             dirValLast = presetResults['dirVal']
-            if self._prevDirVal:
-                dirValLast = self._prevDirVal
+            if self.prevDirVal:
+                dirValLast = self.prevDirVal
             speedVal = presetResults['speedVal']
             dirVal = presetResults['dirVal']
-            self._prevDirVal = dirVal
+            self.prevDirVal = dirVal
             spdUVal = presetResults['spdUVal']
             dirUVal = presetResults['dirUVal']           
         
-        gglDownstream = self._computePoly(secs, speedVal, dirVal, spdUVal, dirUVal,
+        gglDownstream = self.computePoly(secs, speedVal, dirVal, spdUVal, dirUVal,
                             dirValLast, gglPoly)
         intervalPoly = so.transform(AdvancedGeometry.c3857t4326, gglDownstream)
         
@@ -899,7 +902,8 @@ class ProbUtils(object):
         newCentroid = shapely.geometry.point.Point(lon2, lat2)
         return newCentroid
 
-    def _computePoly(self, secs, speedVal, dirVal, spdUVal, dirUVal, dirValLast, threat):
+
+    def computePoly(self, secs, speedVal, dirVal, spdUVal, dirUVal, dirValLast, threat):
         '''
         @param threat Polygon in Google coordinates.
         @return Polygon in Google coordinates.
@@ -936,12 +940,12 @@ class ProbUtils(object):
         threat = sa.rotate(threat,rotVal,origin='centroid')
 
         return threat
-        
-    def _convertFeatureTime(self, eventSt_ms, secs):
+            
+    def convertFeatureTime(self, startTime_ms, secs):
         # Return millis given the event start time and secs offset
-        # Round to minutes
-        millis = long(eventSt_ms + secs * 1000 )
-        return TimeUtils.roundEpochTimeMilliseconds(millis)
+        # Round to seconds
+        millis = long(startTime_ms + secs * 1000 )
+        return TimeUtils.roundEpochTimeMilliseconds(millis, delta=datetime.timedelta(seconds=1))
     
     def flush(self):
         import os
@@ -951,22 +955,22 @@ class ProbUtils(object):
     #########################################
     ### OVERRIDES        
     
-    def _defaultWindSpeed(self):
+    def defaultWindSpeed(self):
         return 32
     
-    def _defaultWindDir(self):
+    def defaultWindDir(self):
         return 270    
 
-    def _timeStep(self):
-        # Time step for downstream polygons and track points
+    def timeStep(self):
+        # Time step for forecast polygons and track points
         return 60 # secs
     
     # TO DO:  The Recommender should access HazardTypes.py for this 
     #   information
-    def _hazardPointLimit(self):
+    def hazardPointLimit(self):
         return 20
 
-    def _probTrendColors(self):
+    def probTrendColors(self):
         '''
         Should match PHI Prototype Tool
         (range: color) e.g. ((0,20), { "red": 0, "green": 1, "blue": 0 } ), 
@@ -983,38 +987,39 @@ class ProbUtils(object):
         return colors
 
     def getOutputDir(self):
-        return self._OUTPUTDIR
+        return self.OUTPUTDIR
 
     def setUpDomain(self):                            
         self.setUpDomainValues()
-        self._ulLat = self._initial_ulLat + self._buff
-        self._ulLon = self._initial_ulLon - self._buff        
-        self._xMin1 = self._ulLon 
-        self._xMax1 = self._xMin1 + (0.01 * self._lonPoints) 
-        self._yMax1 = self._ulLat 
-        self._yMin1 = self._yMax1 - (0.01 * self._latPoints) 
-        self._lons = np.arange(self._xMin1,self._xMax1,0.01)
-        self._lats = np.arange(self._yMin1+0.01,self._yMax1+0.01,0.01)                
+        self.ulLat = self.initial_ulLat + self.buff
+        self.ulLon = self.initial_ulLon - self.buff        
+        self.xMin1 = self.ulLon 
+        self.xMax1 = self.xMin1 + (0.01 * self.lonPoints) 
+        self.yMax1 = self.ulLat 
+        self.yMin1 = self.yMax1 - (0.01 * self.latPoints) 
+        self.lons = np.arange(self.xMin1,self.xMax1,0.01)
+        self.lats = np.arange(self.yMin1+0.01,self.yMax1+0.01,0.01)                
         sys.stdout.flush()
 
 
     def setUpDomainValues(self):
         #=======================================================================
-        # self._OUTPUTDIR = '/scratch/PHIGridTesting'
-        # self._buff = 1.
-        # self._lonPoints = 1200
-        # self._latPoints = 1000
-        # self._initial_ulLat = 43.0
-        # self._initial_ulLon = -104.00
+        # self.OUTPUTDIR = '/scratch/PHIGridTesting'
+        # self.buff = 1.
+        # self.lonPoints = 1200
+        # self.latPoints = 1000
+        # self.initial_ulLat = 43.0
+        # self.initial_ulLon = -104.00
         #=======================================================================
         print '\n==== RESETTING DOMAIN ==='
         cu = ConfigUtils()
         domainDict = cu.getConfigDict()
-        self._OUTPUTDIR = domainDict.get(cu._outputDirKey)
-        self._buff = domainDict.get(cu._domainBufferKey)
-        self._lonPoints = domainDict.get(cu._domainLonPointsKey)
-        self._latPoints = domainDict.get(cu._domainLatPointsKey)
-        self._initial_ulLon = domainDict.get(cu._domainULLonKey)
-        self._initial_ulLat = domainDict.get(cu._domainULLatKey)
-        self._lowThreshold = domainDict.get(cu._lowThreshKey)
+        self.OUTPUTDIR = domainDict.get(cu.outputDirKey)
+        self.buff = domainDict.get(cu.domainBufferKey)
+        self.lonPoints = domainDict.get(cu.domainLonPointsKey)
+        self.latPoints = domainDict.get(cu.domainLatPointsKey)
+        self.initial_ulLon = domainDict.get(cu.domainULLonKey)
+        self.initial_ulLat = domainDict.get(cu.domainULLatKey)
+        self.lowThreshold = domainDict.get(cu.lowThreshKey)
         sys.stdout.flush()
+

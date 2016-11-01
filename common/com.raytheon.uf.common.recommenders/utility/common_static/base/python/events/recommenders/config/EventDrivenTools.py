@@ -48,14 +48,21 @@
 
 _CENTRAL_PROCESSOR = False 
 
-EventDrivenTools = [
-                    #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender" ], 
-                    #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
-                    #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender" ], 
-                    #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
-                    ]
 
 if _CENTRAL_PROCESSOR:
     cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender", "PHI_GridRecommender"],
                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
     EventDrivenTools.append(cpEntry)
+else:
+    EventDrivenTools = [
+                    #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender" ], 
+                    #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
+                    #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender" ], 
+                    #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
+                    { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+                       "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
+                    #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+                    #   "triggerType": "FRAME_CHANGE" },
+                    ]
+
+    

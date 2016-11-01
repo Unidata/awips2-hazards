@@ -60,11 +60,11 @@ class MetaData(object):
         else:
             self.hazardStatus = "pending"
     
-        self._riverForecastUtils = None
-        self._riverForecastManager = None
-        self._riverForecastPoint = None
-        self._probUtils = ProbUtils()
-        self._CENTRAL_PROCESSOR = False 
+        self.riverForecastUtils = None
+        self.riverForecastManager = None
+        self.riverForecastPoint = None
+        self.probUtils = ProbUtils()
+        self.CENTRAL_PROCESSOR = False 
 
     def editableWhenNew(self):
         return self.hazardStatus == "pending"
@@ -1147,36 +1147,36 @@ class MetaData(object):
     def getForecastPointsSection(self, parm):
         pointID = self.hazardEvent.get("pointID")
 
-        if self._riverForecastUtils is None:
-            self._riverForecastUtils = RiverForecastUtils()
-        if self._riverForecastManager is None:
-            self._riverForecastManager = RiverForecastManager()
+        if self.riverForecastUtils is None:
+             self.riverForecastUtils = RiverForecastUtils()
+        if self.riverForecastManager is None:
+             self.riverForecastManager = RiverForecastManager()
         
         
-        self._riverForecastPoint = self.getRiverForecastPoint(pointID, True)
-        PE = self._riverForecastPoint.getPrimaryPE()
-        riverPointID = self._riverForecastPoint.getLid()
-        riverName = self._riverForecastPoint.getName()
+        self.riverForecastPoint = self.getRiverForecastPoint(pointID, True)
+        PE = self.riverForecastPoint.getPrimaryPE()
+        riverPointID =  elf.riverForecastPoint.getLid()
+        riverName =  self.riverForecastPoint.getName()
         
-        curObs = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
-        curObs = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
-        maxFcst = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, PE)
+        curObs = self.riverForecastUtils.getObservedLevel(self.riverForecastPoint)
+        curObs = self.riverForecastUtils.getObservedLevel(self.riverForecastPoint)
+        maxFcst = self.riverForecastUtils.getMaximumForecastLevel(self.riverForecastPoint, PE)
 
         if PE[0] == PE_H :
             # get flood stage
-            fldStg = self._riverForecastPoint.getFloodStage()
+            fldStg = self.riverForecastPoint.getFloodStage()
             fldFlow = MISSING_VALUE
         else :
             # get flood flow
             fldStg = MISSING_VALUE
-            fldFlow = self._riverForecastPoint.getFloodFlow()
+            fldFlow =  self.riverForecastPoint.getFloodFlow()
     
 
         crestOrImpact = "Crest"
         label = "\tCurObs\tMaxFcst\tFldStg\tFldFlow\t|\tPE\tBased on PE"
 
-        groupID = self._riverForecastPoint.getGroupId()
-        riverForecastGroup = self._riverForecastManager.getRiverForecastGroup(groupID, False)
+        groupID = self.riverForecastPoint.getGroupId()
+        riverForecastGroup = self.riverForecastManager.getRiverForecastGroup(groupID, False)
         riverGrp = riverForecastGroup.getGroupName() 
         
         point = "\t" + riverPointID + "\t- " + riverName
@@ -1187,7 +1187,7 @@ class MetaData(object):
         values['FldStg'] = '{:<15.2f}'.format(fldStg)
         values['FldFlow'] = '{:<15.2f}'.format(fldFlow)
         values['Lookup PE'] = '{:15s}'.format(PE)
-        values['Based On Lookup PE'] = self._basedOnLookupPE
+        values['Based On Lookup PE'] =  self.basedOnLookupPE
         
         riverLabel = {
                       "fieldType": "Label",
@@ -1221,15 +1221,15 @@ class MetaData(object):
         choices = ['Current Obs/Max Fcst']
         pointID = self.hazardEvent.get("pointID")
         
-        if self._riverForecastUtils is None:
-            self._riverForecastUtils = RiverForecastUtils()
-        self._riverForecastPoint = self.getRiverForecastPoint(pointID, True)
-        primaryPE = self._riverForecastPoint.getPrimaryPE()
-        maxLevel = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, primaryPE)
+        if self.riverForecastUtils is None:
+             self.riverForecastUtils = RiverForecastUtils()
+        self.riverForecastPoint = self.getRiverForecastPoint(pointID, True)
+        primaryPE =  self.riverForecastPoint.getPrimaryPE()
+        maxLevel =  self.riverForecastUtils.getMaximumForecastLevel( self.riverForecastPoint, primaryPE)
         if maxLevel != MISSING_VALUE:
             choices.append('Max Forecast')
             
-        obLevel = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
+        obLevel =  self.riverForecastUtils.getObservedLevel( self.riverForecastPoint)
         if obLevel != MISSING_VALUE:
             choices.append('Current Observed')
         
@@ -1437,19 +1437,19 @@ class MetaData(object):
     """
     def getSelectedForecastPoints(self, parm):
         
-        filters = self._setupSearchParameterFilters(parm)
+        filters =  self.setupSearchParameterFilters(parm)
 
         if self.hazardEvent.get(parm + "ReferenceStageFlow"):
-            self._updateSearchParmsWithHazardEvent(self.hazardEvent, parm, filters)
+             self.updateSearchParmsWithHazardEvent(self.hazardEvent, parm, filters)
 
         filterValues = {k:filters[k]['values'] for k in filters}
         
         pointID = self.hazardEvent.get("pointID")
-        if self._riverForecastManager is None:
-            self._riverForecastManager = RiverForecastManager()
+        if  self.riverForecastManager is None:
+             self.riverForecastManager = RiverForecastManager()
             
-        self._riverForecastPoint = self.getRiverForecastPoint(pointID, True)
-        primaryPE = self._riverForecastPoint.getPrimaryPE()
+        self.riverForecastPoint = self.getRiverForecastPoint(pointID, True)
+        primaryPE =  self.riverForecastPoint.getPrimaryPE()
         
         impactsTextField = None
         if parm == "impacts":
@@ -1459,12 +1459,12 @@ class MetaData(object):
             simTimeMils = SimulatedTime.getSystemTime().getMillis()
             currentTime = datetime.datetime.utcfromtimestamp(simTimeMils / 1000)
             
-            impactDataList = self._riverForecastManager.getImpactsDataList(pointID, currentTime.month, currentTime.day)
+            impactDataList = self.riverForecastManager.getImpactsDataList(pointID, currentTime.month, currentTime.day)
             plist = JUtilHandler.javaCollectionToPyCollection(impactDataList)
             
-            characterizations, descriptions = self._riverForecastUtils.getImpacts(plist, primaryPE, self._riverForecastPoint, filterValues)
+            characterizations, descriptions =  self.riverForecastUtils.getImpacts(plist, primaryPE,  self.riverForecastPoint, filterValues)
             charDescDict = dict(zip(characterizations, descriptions))
-            impactChoices, values = self._makeImpactsChoices(charDescDict)
+            impactChoices, values =  self.makeImpactsChoices(charDescDict)
             
             if len(impactChoices) == 0:
                 # Reset the attribute
@@ -1482,9 +1482,9 @@ class MetaData(object):
                 referenceTypeValue = referenceType.get('values')
                 referenceValue = None
                 if referenceTypeValue == 'Max Forecast' :
-                    referenceValue = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, primaryPE)
+                    referenceValue =  self.riverForecastUtils.getMaximumForecastLevel( self.riverForecastPoint, primaryPE)
                 elif referenceTypeValue == 'Current Observed' :
-                    referenceValue = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
+                    referenceValue =  self.riverForecastUtils.getObservedLevel( self.riverForecastPoint)
 
                 floatValues = []
                 floatMap = {}
@@ -1508,7 +1508,7 @@ class MetaData(object):
                                       "fieldType":"CheckBoxes",
                                       "fieldName": "impactCheckBoxes",
                                       "label": "Impacts",
-                                      "choices": self._sortImpactsChoices(impactChoices, values),
+                                      "choices":  self.sortImpactsChoices(impactChoices, values),
                                       "values" : checkedValues,
                                       "extraData" : { "origList" : checkedValues },
                                       }
@@ -1516,7 +1516,7 @@ class MetaData(object):
             from HazardConstants import MISSING_VALUE
             headerLabel = "Crest to Use"
             selectionLabel = "CrestStg/Flow - CrestDate"
-            defCrest, crestList = self._riverForecastUtils.getHistoricalCrest(self._riverForecastPoint, primaryPE, filterValues)
+            defCrest, crestList =  self.riverForecastUtils.getHistoricalCrest( self.riverForecastPoint, primaryPE, filterValues)
 
             if defCrest.startswith(str(MISSING_VALUE)):
                 defCrest = ""
@@ -1563,7 +1563,7 @@ class MetaData(object):
         
         return grp
 
-    def _makeImpactsChoices(self, charDescDict):
+    def makeImpactsChoices(self, charDescDict):
         choices = []
         values = []
         
@@ -1575,7 +1575,7 @@ class MetaData(object):
             entry = {
                      "identifier": id,
                      "displayString":str(char) ,
-                    "detailFields": [ 
+                     "detailFields": [ 
                                      {
                                      "fieldType": "Text",
                                      "fieldName": "impactTextField_" + str(char),
@@ -1583,7 +1583,7 @@ class MetaData(object):
                                      "visibleChars": 35,
                                      "lines":2,
                                      "values": desc,
-                                     "enabled": True
+                                     "enable": True
                                      }
                                    ]
                      }
@@ -1591,7 +1591,7 @@ class MetaData(object):
             values.append(id)
         return choices, values
 
-    def _sortImpactsChoices(self, choices, values):
+    def sortImpactsChoices(self, choices, values):
         # Sort the choices so they are in order on the HID
         floatValues = []
         floatMap = {}
@@ -1615,7 +1615,7 @@ class MetaData(object):
                     break
         return sortedImpactChoices
 
-    def _setupSearchParameterFilters(self, parm):
+    def setupSearchParameterFilters(self, parm):
         filters = {}
         filters['Reference Type'] = self.getRefStgFlow(parm)
         filters['Search Type'] = self.getSearchType(parm)
@@ -1628,7 +1628,7 @@ class MetaData(object):
         # with only the value that goes with that identifier.
         stageWindowFields = self.getStageWindow(parm)['fields']
         stageWindowFieldsFlattened = []
-        self._flattenFieldsList(stageWindowFields, stageWindowFieldsFlattened)
+        self.flattenFieldsList(stageWindowFields, stageWindowFieldsFlattened)
         swfDict = {}
         for k in stageWindowFieldsFlattened:
             for identifier in k['fieldName'].split(":"):
@@ -1652,13 +1652,13 @@ class MetaData(object):
 
         return filters
         
-    def _flattenFieldsList(self, fieldsList, flattenedFieldsList):
+    def flattenFieldsList(self, fieldsList, flattenedFieldsList):
         for k in fieldsList:
             flattenedFieldsList.append(k)
             if "fields" in k:
-                self._flattenFieldsList(k["fields"], flattenedFieldsList)
+                 self.flattenFieldsList(k["fields"], flattenedFieldsList)
     
-    def _updateSearchParmsWithHazardEvent(self, hazardEvent, parm, filters):
+    def updateSearchParmsWithHazardEvent(self, hazardEvent, parm, filters):
         
         filters['Reference Type']['values'] = hazardEvent.get(parm + "ReferenceStageFlow")
         filters['Stage Window Lower']['values'] = hazardEvent.get(parm + "StageWindowSpinnerLow")
@@ -1676,16 +1676,16 @@ class MetaData(object):
 
     def getRiverForecastPoint(self, pointID, isDeepQuery=False):
         doQuery = False
-        if self._riverForecastPoint is None:
+        if  self.riverForecastPoint is None:
             doQuery = True
         else:
-            if pointID != self._riverForecastPoint.getLid():
+            if pointID !=  self.riverForecastPoint.getLid():
                 doQuery = True
         if doQuery == True:
-            if self._riverForecastManager is None:
-                self._riverForecastManager = RiverForecastManager()
-            self._riverForecastPoint = self._riverForecastManager.getRiverForecastPoint(pointID, isDeepQuery)
-        return(self._riverForecastPoint)
+            if  self.riverForecastManager is None:
+                 self.riverForecastManager = RiverForecastManager()
+            self.riverForecastPoint =  self.riverForecastManager.getRiverForecastPoint(pointID, isDeepQuery)
+        return(self.riverForecastPoint)
 
     def setDamNameLabel(self, damOrLeveeName):
         return {
@@ -1849,32 +1849,22 @@ class MetaData(object):
         
         return tbl
         
-    def convectiveControls(self):
-        mws = []
-        # ThreatID
-        mws.append(self._getConvectiveCellId())
-        # Threat Type  - Done by choosing Hazard Type Prob_Severe or Prob_Tornado
-        #mws.append(self._getConvectiveThreatType())
-        #mws.append(self._getUserOwned())
+    # Prob_Severe and Prob_Tornado
+    def convectiveControls(self): 
+        mws = self.initializeObject()       
+        enable = self.hazardEvent.get('editable', False)
+        self.flush()
+        # Object Info
+        mws.append( self.getConvectiveObjectInfo(enable))
         # Motion Vector
-        mws.append(self._getConvectiveMotionVector())
-        # Path/shape "recommender"
-        #mws.append(self._getConvectiveSwathPresets())
-        # Hazard Type (Svr/Tor)
-        # Duration (see config)
+        mws.append( self.getConvectiveMotionVector(enable))
         # Probability Trend
-        mws.append(self._getConvectiveProbabilityTrend())
+        mws.append( self.getConvectiveProbabilityTrend(enable))
         # Storm Chars
-        mws.append(self._getStormCharacteristics())
+        mws.append( self.getStormCharacteristics(enable))
         # Warning Discussion
-        mws.append(self._getConvectiveDiscussion())
-        mws.append(self._getPastConvectiveDiscussion())
-        # Activate
-        #mws.append(self._getConvectiveActivate())
-        # Redraw # Reset History # Preview grid
-        #mws.append(self._getConvectiveAuxControls())
-        # preview slider
-        #mws.append(self._getConvectivePreview())
+        mws.append( self.getConvectiveDiscussion(enable))
+        mws.append( self.getPastConvectiveDiscussion())
                 
         grp = {
             "fieldType": "Group",
@@ -1889,129 +1879,101 @@ class MetaData(object):
             "fields": mws
         }        
         return grp
-    
-    def _getUserOwned(self):
-        if self.hazardEvent.get('convectiveUserOwned'):
-            value = True
-        else:
-            value = False
-        return {
-            "fieldType": "CheckBox",
-            "fieldName": "convectiveUserOwned",
-            "label": "User Owned",
-            "values": value
-            }
-    
-    def _getConvectiveThreatType(self):
-        threatType = {
-            "fieldType": "ComboBox",
-            "fieldName": "convectiveThreatType",
-            "label": "Threat Type:",
-            "choices": ["None",
-                        "Severe",
-                        "Tornado"
-                        ],
-            "values": "None",
-            "expandHorizontally": False,
-        }
-        
-        return threatType
 
-    def _getStormCharacteristics(self):
-        hailType = self._buildStormChars('Wind', [str(x) + " mph" for x in [60, 65, 70, 75, 80, 85, 90]])
 
-        windType = self._buildStormChars('Hail', [str(x)+"\"" for x in [1, 1.5, 2, 2.5, 3, 3.5, ">=4"]])
-        
-        tornType = self._buildStormChars('Torn', ['radar indicated', 'radar observed', 'spotter observed'])
-        
-        threatTypes = {
-            "fieldType": "Composite",
-            "fieldName": "convectiveStormCharsGroup",
-            "label": "Storm Characteristics (included in discussion)",
-            #"leftMargin": 10,
-            #"rightMargin": 10,
-            #"topMargin": 10,
-            #"bottomMargin": 10,
-            #"expandHorizontally": True,
-            #"expandVertically": True,
-            "numColumns":3,
-            "fields": [hailType, windType, tornType]
-            }
-
-        
-        return threatTypes
-
-    def _buildStormChars(self, typ, vals):
-        capType = typ.capitalize()
-        labelDict = {'Wind':'Max Wind', 'Hail': 'Max Hail', 'Torn': 'Tornado'}
-        values = ["None"]
-        values.extend(vals)
-        chars = {
-            "fieldType": "ComboBox",
-            "fieldName": "convectiveStormChars"+capType,
-            "label": labelDict.get(capType, 'THREAT'),
-            "choices": values,
-            "values": "None",
-            "expandHorizontally": False,
-        }
-        
-        return chars
-        
-    def _getConvectiveCellId(self):        
-        # ## For manually drawn hazards, go with hazard event ID as it should be unique
+    def initializeObject(self):        
         #  Manually drawn hazards are always userOwned
         if self.hazardEvent.get('objectID') is None:
+            # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
-            self.hazardEvent.set('convectiveUserOwned', True)
-        objectID = self.hazardEvent.get('objectID')
-        
+            self.hazardEvent.set('automationLevel', 'userOwned')
+            editable = True
+            newManualObject = True
+        else:
+            editable = self.hazardEvent.get('editable', False)
+            newManualObject = False
+        print  "CM ConvectiveControls newManualObject, editable", newManualObject, editable
+        self.flush()       
+        mwList = [
+            {
+             "fieldType": "HiddenField",
+             "fieldName": "editable",
+             "values": editable, 
+             "modifyRecommender": "SwathRecommender",
+             },
+            {
+             "fieldType": "HiddenField",
+             "fieldName": "newManualObject",
+             "values": newManualObject,
+             },
+        ]        
+        return mwList
+    
+    def getConvectiveObjectInfo(self, enable):        
         grp = {
             "fieldType": "Composite",
-            "fieldName": "convectiveThreatGroup",
+            "fieldName": "convectiveObjectInfo",
             "label": "",
-            # "leftMargin": 10,
-            # "rightMargin": 10,
-            # "topMargin": 10,
-            # "bottomMargin": 10,
-            # "expandHorizontally": True,
-            # "expandVertically": True,
             "numColumns":3,
             "fields": [
-                        {
-                        "fieldType": "Label",
-                        "fieldName": "convectiveThreatLabel",
-                        "label": "ThreatID:",
-                        },
-                        {
-                        "fieldType": "Label",
-                        "fieldName": "convectiveThreatValue",
-                        "label": objectID
-                        },
-                       self._getUserOwned(),
+                        self.getModifyButton(enable),
+                        self.getAutomationLevel(),
+                        self.getAutoShape(enable),
                        ]
-        }
+        }        
+        return grp
+    
+    def getAutomationLevel(self):
+        automationLevelLabels = {
+                'userOwned': 'User Owned',
+                'automated': 'Automated',
+                'attributesAndGeometry': 'Attributes and Geometry',
+                'attributesOnly':'Attributes Only',
+                }
+        automationLabel = automationLevelLabels[self.hazardEvent.get('automationLevel', 'userOwned')]
+        return {
+             "fieldName": "automationLevel",
+             "fieldType": "Label",
+             "label": "AutomationLevel: " + automationLabel,
+            }
 
-        
+    def getAutoShape(self, enable):
+        automationLevel = self.hazardEvent.get('automationLevel', 'automated')
+        if automationLevel in ['automated', 'attributesAndGeometry']:
+            autoShape = True
+        else:
+            autoShape = False
+        return {
+            "fieldType": "CheckBox",
+            "fieldName": "autoShape",
+            "label": "Automatic Shape",
+            "sendEveryChange": False,
+            "values": autoShape,
+            "modifyRecommender": 'SwathRecommender',
+            "enable": enable,
+            }
+    
+    def getModifyButton(self, enable):               
+        grp = {
+            "fieldType": "Button",
+            "fieldName": "modifyButton",
+            "label": "     MODIFY     ",
+            "enable": not enable,
+            "refresh": True,
+        }        
         return grp
 
-
-    def _getConvectiveMotionVector(self):
+    def getConvectiveMotionVector(self, enable):
         wdir = self.hazardEvent.get('convectiveObjectDir', 270)
         wspd = self.hazardEvent.get('convectiveObjectSpdKts', 32) 
         
-        recommender = '' if self._CENTRAL_PROCESSOR else "SwathRecommender" 
+        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
         
         
         grp = {
             "fieldType": "Composite",
             "fieldName": "convectiveMotionVectorGroup",
             "label": "",
-            # "leftMargin": 10,
-            # "rightMargin": 10,
-            # "topMargin": 10,
-            # "bottomMargin": 10,
-            # "expandHorizontally": True,
-            # "expandVertically": True,
             "numColumns":2,
             "fields": [
                         {
@@ -2024,7 +1986,8 @@ class MetaData(object):
                         "values": int(wdir),
                         "incrementDelta": 5,
                         "showScale": False,
-                        "modifyRecommender": recommender
+                        "modifyRecommender": recommender,
+                        "enable": enable,
                         },
                         {
                         "fieldType": "IntegerSpinner",
@@ -2035,7 +1998,8 @@ class MetaData(object):
                         "maxValue": 200,
                         "values": int(wspd),
                         "showScale": False,
-                        "modifyRecommender": recommender
+                        "modifyRecommender": recommender,
+                        "enable": enable,
                         },
                        {
                         "fieldType": "IntegerSpinner",
@@ -2047,7 +2011,8 @@ class MetaData(object):
                         "values": 12,
                         "incrementDelta": 5,
                         "showScale": False,
-                        "modifyRecommender": recommender
+                        "modifyRecommender": recommender,
+                        "enable": enable,
                         },
                        {
                         "fieldType": "IntegerSpinner",
@@ -2058,7 +2023,8 @@ class MetaData(object):
                         "maxValue": 20,
                         "values": int(4.2),
                         "showScale": False,
-                        "modifyRecommender": recommender
+                        "modifyRecommender": recommender,
+                        "enable": enable,
                         },
                        {
                         "fieldType": "CheckBox",
@@ -2067,59 +2033,59 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "showScale": False,
                         "values": False,
-                        "modifyRecommender": recommender
+                        "modifyRecommender": recommender,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "resetMotionVector",
                         "label": "Reset Motion Vector",
                         "values": False,
-                        "modifyRecommender": recommender
+                        "modifyRecommender": recommender,
+                        "enable": enable,
                         },
-                        {
-                        "fieldType": "Button",
-                        "fieldName": "moveStartTime",
-                        "label": "Move Start Time",
-                        "values": False,
-                        "modifyRecommender": recommender
-                        },
-                       self._getConvectiveSwathPresets()
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "moveStartTime",
+#                         "label": "Move Start Time",
+#                         "values": False,
+#                         "modifyRecommender": recommender,
+#                         "enable": enable,
+#                         },
+                        self.getConvectiveSwathPresets(enable)
                        ]
-        }
-
-        
+        }        
         return grp
-        
-    def _getProbTrendColor(self, prob):
-        ### Should match PHI Prototype Tool
-        colors =  {
-            (0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
-            (20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
-            (40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
-            (60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
-            (80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
+
+    def getConvectiveSwathPresets(self, enable):
+        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
+        presets = {
+            "fieldType": "ComboBox",
+            "fieldName": "convectiveSwathPresets",
+            "label": "Swath Presets:",
+            "choices": ["NoPreset",
+                        "RightTurningSupercell",
+                        "LeftTurningSupercell",
+                        "BroadSwath",
+                        "LightBulbSwath",
+                        # "CubicSplineInterpolation"
+                        ],
+            "values": "NoPreset",
+            "expandHorizontally": False,
+            "width":2,
+            "modifyRecommender": recommender,
+            "enable": enable,
         }
         
-        
-        for k, v in colors.iteritems():
-            if float(k[0]) <= prob and prob < float(k[1]):
-                return v
+        return presets
 
-        return { "red": 1, "green": 1, "blue": 1 }
-                      
-    def _getConvectiveProbabilityTrend(self):
-        recommender = '' if self._CENTRAL_PROCESSOR else "SwathRecommender" 
+    
+    def getConvectiveProbabilityTrend(self, enable):
+        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
 
         trends = {
             "fieldType": "Composite",
             "fieldName": "convectiveTrendsGroup",
             "label": "",
-            # "leftMargin": 10,
-            # "rightMargin": 10,
-            # "topMargin": 10,
-            # "bottomMargin": 10,
-            # "expandHorizontally": True,
-            # "expandVertically": True,
             "numColumns":8,
             "fields": [
                         {
@@ -2130,37 +2096,44 @@ class MetaData(object):
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendDraw",
-                        "label": "Draw"
+                        "label": "Draw",
+                        "enable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendLinear",
-                        "label": "Linear"
+                        "label": "Linear",
+                        "enable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendExp1",
-                        "label": "Exp1"
+                        "label": "Exp1",
+                        "enable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendExp2",
-                        "label": "Exp2"
+                        "label": "Exp2",
+                        "enable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendBell",
-                        "label": "Bell"
+                        "label": "Bell",
+                        "enable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendPlus5",
-                        "label": "+5"
+                        "label": "+5",
+                        "enable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendMinus5",
-                        "label": "-5"
+                        "label": "-5",
+                        "enable": enable,
                         },
 
                        ]
@@ -2168,19 +2141,13 @@ class MetaData(object):
         
         probInc = 5
         self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
-        graphProbs = self._probUtils._getGraphProbs(self.hazardEvent)  
-        colors = [self._getProbTrendColor(y) for y in range(0,100, 20)]
+        graphProbs =  self.probUtils.getGraphProbs(self.hazardEvent)  
+        colors = [ self.getProbTrendColor(y) for y in range(0,100, 20)]
         
         probs = {
             "fieldType": "Composite",
             "fieldName": "convectiveProbGroup",
             "label": "",
-            # "leftMargin": 10,
-            # "rightMargin": 10,
-            # "topMargin": 10,
-            # "bottomMargin": 10,
-            # "expandHorizontally": True,
-            # "expandVertically": True,
             "numColumns":3,
             "fields": [
                         {
@@ -2231,12 +2198,10 @@ class MetaData(object):
                         "sendEveryChange":False,
                         "yColors": colors,
                         "values": graphProbs,
+                        "enable": enable,
                         }
                     ]
             }
-                       
-                       
-
         
         grp = {
             "fieldType": "Group",
@@ -2253,9 +2218,25 @@ class MetaData(object):
 
         
         return grp
-
-    def _getConvectiveDiscussion(self):
+    
+    def getProbTrendColor(self, prob):
+        ### Should match PHI Prototype Tool
+        colors =  {
+            (0,20): { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0 }, 
+            (20,40): { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0 }, 
+            (40,60): { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0 }, 
+            (60,80): { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0 }, 
+            (80,101): { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0 }
+        }
         
+        
+        for k, v in colors.iteritems():
+            if float(k[0]) <= prob and prob < float(k[1]):
+                return v
+
+        return { "red": 1, "green": 1, "blue": 1 }
+
+    def getConvectiveDiscussion(self, enable):        
         text = {
             "fieldType": "Text",
             "fieldName": "convectiveWarningDecisionDiscussion",
@@ -2264,10 +2245,11 @@ class MetaData(object):
             "lines": 5,
             "expandHorizontally": False,
             "promptText": "(Enter discussion here...)",
+            "enable": enable,
         }
         return text
 
-    def _getPastConvectiveDiscussion(self):
+    def getPastConvectiveDiscussion(self):
          
         pastDisc = self.hazardEvent.get('convectivePastWarningDecisionDiscussion', '')
          
@@ -2284,92 +2266,80 @@ class MetaData(object):
          
         return text
 
-    def _getConvectiveActivate(self):
-        butt = {
-            "fieldType": "Button",
-            "fieldName": "convectiveActivateThreat",
-            "label": "Activate Threat",
-        }
-        
-        return butt
+    def getStormCharacteristics(self, enable):
+        hailType =  self.buildStormChars('Wind', [str(x) + " mph" for x in [60, 65, 70, 75, 80, 85, 90]], enable)
 
-    def _getConvectiveAuxControls(self):
-        aux = {
+        windType =  self.buildStormChars('Hail', [str(x)+"\"" for x in [1, 1.5, 2, 2.5, 3, 3.5, ">=4"]], enable)
+        
+        tornType =  self.buildStormChars('Torn', ['radar indicated', 'radar observed', 'spotter observed'], enable)
+        
+        threatTypes = {
             "fieldType": "Composite",
-            "fieldName": "convectiveAuxiliaryControls",
-            "label": "",
-            # "leftMargin": 10,
-            # "rightMargin": 10,
-            # "topMargin": 10,
-            # "bottomMargin": 10,
-            # "expandHorizontally": True,
-            # "expandVertically": True,
-            "numColumns":4,
-            "fields": [
-                        {
-                        "fieldType": "Label",
-                        "fieldName": "convectiveAuxControlsLabel",
-                        "label": "Auxiliary Controls:"
-                        },
-                        {
-                        "fieldType": "Button",
-                        "fieldName": "convectiveAuxControlRedraw",
-                        "label": "Redraw Threat"
-                        },
-                        {
-                        "fieldType": "Button",
-                        "fieldName": "convectiveAuxControlResetHistory",
-                        "label": "Reset History"
-                        },
-                        {
-                        "fieldType": "Button",
-                        "fieldName": "convectiveAuxControlPreviewGrid",
-                        "label": "Preview Grid"
-                        },
-                       ]
-        }
-        
-        return aux
+            "fieldName": "convectiveStormCharsGroup",
+            "label": "Storm Characteristics (included in discussion)",
+            "numColumns":3,
+            "fields": [hailType, windType, tornType],
+            "enable": enable,
+            }
 
-    def _getConvectivePreview(self):
-        presets = {
-            "fieldType": "IntegerSpinner",
-            "fieldName": "convectivePreviewSlider",
-            "label": "Preview Time",
-            "minValue": 0,
-            "maxValue": 60,
-            "values": 0,
-            "sendEveryChange": False,
-            "showScale": True
-        }
         
-        return presets
-        
+        return threatTypes
 
-    def _getConvectiveSwathPresets(self):
-        recommender = '' if self._CENTRAL_PROCESSOR else "SwathRecommender" 
-        presets = {
+    def buildStormChars(self, typ, vals, enable):
+        capType = typ.capitalize()
+        labelDict = {'Wind':'Max Wind', 'Hail': 'Max Hail', 'Torn': 'Tornado'}
+        values = ["None"]
+        values.extend(vals)
+        chars = {
             "fieldType": "ComboBox",
-            "fieldName": "convectiveSwathPresets",
-            "label": "Swath Presets:",
-            "choices": ["NoPreset",
-                        "RightTurningSupercell",
-                        "LeftTurningSupercell",
-                        "BroadSwath",
-                        "LightBulbSwath",
-                        # "CubicSplineInterpolation"
-                        ],
-            "values": "NoPreset",
+            "fieldName": "convectiveStormChars"+capType,
+            "label": labelDict.get(capType, 'THREAT'),
+            "choices": values,
+            "values": "None",
             "expandHorizontally": False,
-            "width":2,
-            "modifyRecommender": recommender,
-        }
-        
-        return presets
+            "enable": enable,
+        }        
+        return chars        
+
         
 def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
-   
+    print "\n*****************\nCM applyConvective called"
+    print 'triggerIdentifiers', triggerIdentifiers
+    newManualObjectKey = mutableProperties.get('newManualObject')
+    editableKey = mutableProperties.get('editable')
+
+    print "CM newManualObjectKey, editableKey", newManualObjectKey, editableKey
+    if newManualObjectKey:
+        newManualObject = newManualObjectKey.get('values')
+    else:
+        newManualObject = True
+        print "WARNING -- CM made it to else - saying firstTime is True"       
+#     for key in mutableProperties:
+#         print key, mutableProperties[key]
+    os.sys.__stdout__.flush()
     returnDict = {}
+    if (triggerIdentifiers and 'modifyButton' in triggerIdentifiers) or not triggerIdentifiers:
+        if not triggerIdentifiers: # None -- set to whatever "editable" is set to
+            if newManualObject:
+                enable = True 
+                returnDict['newManualObject'] = {'values': False}
+                print 'CM Script setting newManualObject to False'
+                os.sys.__stdout__.flush()
+            else:
+                enable = False
+                returnDict['editable'] = {'values': False}
+        elif 'modifyButton' in triggerIdentifiers:  # Modify Button -- set to editable
+            enable = True
+            returnDict['editable'] = {'values': True}
+        for key in ['autoShape', "convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+                    "convectiveObjectSpdKtsUnc", "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
+                    "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
+                    "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
+                    "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
+            returnDict[key] = {'enable' : enable}
+        returnDict['modifyButton'] = {'enable' : not enable}
+        return returnDict
+   
 
     def convectiveFilter(myIterable, prefix):
         return [tf for tf in myIterable if tf.startswith(prefix)]
@@ -2490,7 +2460,6 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         
             ### Set new state of GMW with updated trend
             returnDict['convectiveProbTrendGraph'] = {'values' : updatedProbTrend}
-
 
     return returnDict
 

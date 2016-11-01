@@ -18,9 +18,9 @@ class Product(Prob_Generator.Product):
         super(Product, self).__init__()
 
         # Used by the VTECEngineWrapper to access the productGeneratorTable
-        self._productGeneratorName = 'Prob_Convective_ProductGenerator'
+        self.productGeneratorName = 'Prob_Convective_ProductGenerator'
 
-    def _initialize(self) :
+    def initialize(self) :
         super(Product, self)._initialize()
         self._productID = 'Probabilistic Hazard Information'
         self._productCategory = 'Probabilistic Hazard Information'
@@ -30,7 +30,7 @@ class Product(Prob_Generator.Product):
         self._includeCityNames = False
 
         self._vtecProduct = False
-        self._probUtils = ProbUtils()
+        self.probUtils = ProbUtils()
 
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
@@ -101,7 +101,7 @@ class Product(Prob_Generator.Product):
              Also, returned is a set of hazard events, updated with product information.
 
         '''
-        self._initialize()
+        self.initialize()
         self.logger.info("Start ProductGeneratorTemplate:execute RVS")
 
         whichEvents = dialogInputMap.get('selectedHazards')
@@ -126,10 +126,10 @@ class Product(Prob_Generator.Product):
         if not probHazardEvents:
             return [], []
 
-        self._inputHazardEvents = probHazardEvents
+        self.inputHazardEvents = probHazardEvents
         productDicts = []
         for hazardEvent in probHazardEvents:
-            self._WFO = 'XXX'
+            self.WFO = 'XXX'
             hazardEvent.set('issueTime', self._issueTime)
             
             ### Capture discussion & threats, timestamp and place in readonly disc box
@@ -148,27 +148,27 @@ class Product(Prob_Generator.Product):
             hazardEvent.set('convectiveWarningDecisionDiscussion', '')
             
             hazardEvent.set('eventStartTimeAtIssuance', long(TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getStartTime())))
-            hazardEvent.set('durationSecsAtIssuance', self._probUtils._getDurationSecs(hazardEvent))
+            hazardEvent.set('durationSecsAtIssuance', self.probUtils.getDurationSecs(hazardEvent))
             hazardEvent.set('graphProbsAtIssuance', hazardEvent.get('convectiveProbTrendGraph'))
             # Set expire time. This should coincide with the zero probability.
             # TO DO --convert hazard end time to millis
             hazardEvent.set('expirationTime', int(TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getEndTime())))
             hazardAttrs = hazardEvent.getHazardAttributes()
-            self._objectID = hazardEvent.get('objectID') if hazardEvent.get('objectID') else hazardEvent.getDisplayEventID()
-            self._userOwned = hazardEvent.get('userOwned', False)
-            self._percentage = hazardEvent.get('probabilities', '54')
+            self.objectID = hazardEvent.get('objectID') if hazardEvent.get('objectID') else hazardEvent.getDisplayEventID()
+            self.automationLevel = hazardEvent.get('automationLevel', 'userOwned')
+            self.percentage = hazardEvent.get('probabilities', '54')
             # Convert to a string
-            self._direction = self._convertDirection(hazardEvent.get('convectiveObjectDir', 270))
+            self.direction = self.convertDirection(hazardEvent.get('convectiveObjectDir', 270))
             # Convert to mph
-            self._speed = round(hazardAttrs.get('convectiveObjectSpdKts', 32)  * 1.15)
+            self.speed = round(hazardAttrs.get('convectiveObjectSpdKts', 32)  * 1.15)
             st =  TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getStartTime())
             et =  TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getEndTime())
-            self._startTime = self._timeFormat(st)
-            self._endTime = self._timeFormat(et)
-            self._headline = hazardAttrs.get('headline', 'Probabilistic Severe')
-            self._location = self._getLocation(hazardEvent)
+            self.startTime = self.timeFormat(st)
+            self.endTime = self.timeFormat(et)
+            self.headline = hazardAttrs.get('headline', 'Probabilistic Severe')
+            self.location = self.getLocation(hazardEvent)
             defaultDiscussion = ''' Mesocyclone interacted with line producing brief spin-up. Not confident in enduring tornadoes...but more brief spinups are possible as more interactions occur.'''
-            self._discussion = prevDisc 
+            self.discussion = prevDisc 
             #print "Prob Convective PG hazardAttrs", hazardAttrs
             #print "    start, end time, issueTime", hazardEvent.getStartTime(), hazardEvent.getEndTime(), hazardEvent.get('issueTime')
             if hazardEvent.getStatus() in ['ENDING']:
@@ -178,7 +178,7 @@ class Product(Prob_Generator.Product):
                            
             productDict = collections.OrderedDict()
             self._initializeProductDict(productDict, eventSetAttributes)
-            productDict['productText'] =  self._getText()
+            productDict['productText'] =  self.getText()
             productDict['issueTime'] = self._issueTime
             productDicts.append(productDict)
             
@@ -199,7 +199,7 @@ class Product(Prob_Generator.Product):
 #                   filteredDBEvents.append(evt)  
 # 
 #             eventSet.addAll(filteredDBEvents)
-#             eventSet.addAttribute('issueTime', datetime.datetime.utcfromtimestamp(self._issueTime/1000))
+#             eventSet.addAttribute('issueTime', datetime.datetime.utcfromtimestamp(self.issueTime/1000))
 # 
 # 
 #             pu = ProbUtils()
@@ -226,44 +226,44 @@ class Product(Prob_Generator.Product):
 
                 pickle.dump( outDict, open(OUTPUTDIR+'/'+filename, 'wb'))
                 
-        #productDicts, hazardEvents = self._makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
+        #productDicts, hazardEvents = self.makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 
         return productDicts, probHazardEvents
 
-    def _getText(self):
+    def getText(self):
         fcst =  '''
         Probabilistic Hazard Information Bulletin        
         '''
         fcst = fcst + '''
-        WHAT:  ''' + self._headline + '    '   + `self._percentage` + '%'
+        WHAT:  ''' + self.headline + '    '   + `self.percentage` + '%'
         fcst = fcst + '''
-           Thread ID: ''' + self._objectID + '  User-Owned Threat: ' + str(self._userOwned)
+           Thread ID: ''' + self.objectID + '  Automation Level: ' + str(self.automationLevel)
         fcst = fcst + '''
            
         WHEN: 
-            Start: ''' + self._startTime + '''
-            End:  ''' + self._endTime + '''
+            Start: ''' + self.startTime + '''
+            End:  ''' + self.endTime + '''
         
         WHERE: 
-            '''+self._location
+            '''+self.location
       
         fcst = fcst + '''
-            Moving '''+self._direction + ''' at ''' + `self._speed` + ''' mph
-            WFO: ''' + self._WFO + '''            
+            Moving '''+self.direction + ''' at ''' + `self.speed` + ''' mph
+            WFO: ''' + self.WFO + '''            
         '''
         fcst = fcst + '''
-        DISCUSSION: ''' + self._discussion
+        DISCUSSION: ''' + self.discussion
         return fcst
     
-    def _timeFormat(self, inputTime):
+    def timeFormat(self, inputTime):
         format='%I:%M %p %Z %d %a %b, %Y'
         return self._tpc.getFormattedTime(inputTime, format)
         #return '7:05 pm Thu May 7th, 2015'
                  
-    def _convertDirection(self, inputDirection):
+    def convertDirection(self, inputDirection):
          return self.dirTo16PtText(inputDirection)
 
-    def _getLocation(self, hazardEvent):
+    def getLocation(self, hazardEvent):
         ugcs = hazardEvent.get('ugcs')
         return str(ugcs)          
 #         # Get hazard geometry
@@ -320,14 +320,14 @@ class Product(Prob_Generator.Product):
             ]
 
     
-    def _getSegments(self, hazardEvents):
+    def getSegments(self, hazardEvents):
         '''
         @param hazardEvents: list of Hazard Events
         @return a list of segments for the hazard events
         '''
-        return self._getSegments_ForPointsAndAreas(hazardEvents)
+        return self.getSegments_ForPointsAndAreas(hazardEvents)
 
-    def _groupSegments(self, segments):
+    def groupSegments(self, segments):
         '''
         Products do not have segments, so create a productSegmentGroup with no segments. 
         '''        
@@ -335,26 +335,26 @@ class Product(Prob_Generator.Product):
         productSegmentGroups.append(self.createProductSegmentGroup(
                     'ProbProduct',  self._productName, 'area', None, 'counties', False, [])) 
         for productSegmentGroup in productSegmentGroups:
-            self._addProductParts(productSegmentGroup)
+            self.addProductParts(productSegmentGroup)
         return productSegmentGroups
 
-    def _addProductParts(self, productSegmentGroup):
+    def addProductParts(self, productSegmentGroup):
         productSegments = productSegmentGroup.productSegments
-        productSegmentGroup.setProductParts(self._hydroProductParts._productParts_RVS(productSegments))
+        productSegmentGroup.setProductParts(self.hydroProductParts.productParts_RVS(productSegments))
 
-    def _createProductLevelProductDictionaryData(self, productDict):
-        hazardEventsList = self._generatedHazardEvents
+    def createProductLevelProductDictionaryData(self, productDict):
+        hazardEventsList = self.generatedHazardEvents
         if hazardEventsList is not None:
             hazardEventDicts = []
             for hazardEvent in hazardEventsList:
                 metaData = self.getHazardMetaData(hazardEvent)
-                hazardEventDict = self._createHazardEventDictionary(hazardEvent, {}, metaData)
+                hazardEventDict = self.createHazardEventDictionary(hazardEvent, {}, metaData)
                 hazardEventDicts.append(hazardEventDict)
             productDict['hazardEvents'] = hazardEventDicts
 
         ugcs = []
         eventIDs = []
-        for hazardEvent in self._generatedHazardEvents:
+        for hazardEvent in self.generatedHazardEvents:
             ugcs.extend(hazardEvent.get('ugcs'))
             eventIDs.append(hazardEvent.getEventID())
         productDict['ugcs'] = ugcs
@@ -366,12 +366,12 @@ class Product(Prob_Generator.Product):
         productDict['expireTime'] = expireTime
         productDict['issueTime'] = self._issueTime
 
-    def _createAndAddSegmentsToDictionary(self, productDict, productSegmentGroup):
+    def createAndAddSegmentsToDictionary(self, productDict, productSegmentGroup):
         pass
     
-    def _headlineStatement(self, productDict, productSegmentGroup, arguments=None):        
-        productDict['headlineStatement'] =  self._dialogInputMap.get('headlineStatement')
+    def headlineStatement(self, productDict, productSegmentGroup, arguments=None):        
+        productDict['headlineStatement'] =  self.dialogInputMap.get('headlineStatement')
 
-    def _narrativeInformation(self, productDict, productSegmentGroup, arguments=None):        
-        productDict['narrativeInformation'] =  self._dialogInputMap.get('narrativeInformation')
+    def narrativeInformation(self, productDict, productSegmentGroup, arguments=None):        
+        productDict['narrativeInformation'] =  self.dialogInputMap.get('narrativeInformation')
 

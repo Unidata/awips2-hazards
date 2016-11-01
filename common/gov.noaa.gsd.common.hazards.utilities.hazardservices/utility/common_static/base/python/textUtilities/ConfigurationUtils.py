@@ -10,31 +10,31 @@ import json
 class ConfigUtils(object):
     def __init__(self):
         #### NOTE: Change this path to your directory shared between "Processor" and "UI" machine
-        self._filename = '/home/kevin.manross/realtime-a2/hazardServicesConfig.json'
-        self._ContentsDict = {}
-        self._defaultLowThreshold = 40
-        self._defaultPHIOutputDir = '/scratch/PHIGridTesting'
-        self._defaultDomainBuffer = 1.0
-        self._defaltDomainLonPoints = 1200
-        self._defaltDomainLatPoints = 1000
-        self._defaultDomainULLon = -104.0
-        self._defaultDomainULLat = 43.0
+        self.filename = '/home/kevin.manross/realtime-a2/hazardServicesConfig.json'
+        self.ContentsDict = {}
+        self.defaultLowThreshold = 40
+        self.defaultPHIOutputDir = '/scratch/PHIGridTesting'
+        self.defaultDomainBuffer = 1.0
+        self.defaltDomainLonPoints = 1200
+        self.defaltDomainLatPoints = 1000
+        self.defaultDomainULLon = -104.0
+        self.defaultDomainULLat = 43.0
         
-        self._lowThreshKey = 'lowThreshold'
-        self._outputDirKey = 'OUTPUTDIR'
-        self._domainBufferKey = 'domainBuffer'
-        self._domainLonPointsKey = 'domainLonPoints'
-        self._domainLatPointsKey = 'domainLatPoints'
-        self._domainULLonKey = 'domainULLon'
-        self._domainULLatKey = 'domainULLat'
-        self._defaultContents = {
-                                 self._lowThreshKey: self._defaultLowThreshold,
-                                 self._outputDirKey: self._defaultPHIOutputDir,
-                                 self._domainBufferKey: self._defaultDomainBuffer,
-                                 self._domainLonPointsKey: self._defaltDomainLonPoints,
-                                 self._domainLatPointsKey: self._defaltDomainLatPoints,
-                                 self._domainULLonKey: self._defaultDomainULLon,
-                                 self._domainULLatKey: self._defaultDomainULLat
+        self.lowThreshKey = 'lowThreshold'
+        self.outputDirKey = 'OUTPUTDIR'
+        self.domainBufferKey = 'domainBuffer'
+        self.domainLonPointsKey = 'domainLonPoints'
+        self.domainLatPointsKey = 'domainLatPoints'
+        self.domainULLonKey = 'domainULLon'
+        self.domainULLatKey = 'domainULLat'
+        self.defaultContents = {
+                                 self.lowThreshKey: self.defaultLowThreshold,
+                                 self.outputDirKey: self.defaultPHIOutputDir,
+                                 self.domainBufferKey: self.defaultDomainBuffer,
+                                 self.domainLonPointsKey: self.defaltDomainLonPoints,
+                                 self.domainLatPointsKey: self.defaltDomainLatPoints,
+                                 self.domainULLonKey: self.defaultDomainULLon,
+                                 self.domainULLatKey: self.defaultDomainULLat
                                  }
 
     def setConfigDict(self, lowThresh = None,
@@ -46,100 +46,100 @@ class ConfigUtils(object):
                             latPoints = None
                             ):
         
-        self._ContentsDict[self._lowThreshKey] = lowThresh if lowThresh is not None else self._defaultLowThreshold
-        self._ContentsDict[self._outputDirKey] = OUTPUTDIR if OUTPUTDIR is not None else self._defaultPHIOutputDir
-        self._ContentsDict[self._domainBufferKey] = buff if buff is not None else self._defaultDomainBuffer
-        self._ContentsDict[self._domainLonPointsKey] = lonPoints if lonPoints is not None else self._defaltDomainLonPoints
-        self._ContentsDict[self._domainLatPointsKey] = latPoints if latPoints is not None else self._defaltDomainLatPoints
-        self._ContentsDict[self._domainULLonKey] = initial_ulLon if initial_ulLon is not None else self._defaultDomainULLon
-        self._ContentsDict[self._domainULLatKey] = initial_ulLat if initial_ulLat is not None else self._defaultDomainULLat
-        self._writeJson()
+        self.ContentsDict[self.lowThreshKey] = lowThresh if lowThresh is not None else self.defaultLowThreshold
+        self.ContentsDict[self.outputDirKey] = OUTPUTDIR if OUTPUTDIR is not None else self.defaultPHIOutputDir
+        self.ContentsDict[self.domainBufferKey] = buff if buff is not None else self.defaultDomainBuffer
+        self.ContentsDict[self.domainLonPointsKey] = lonPoints if lonPoints is not None else self.defaltDomainLonPoints
+        self.ContentsDict[self.domainLatPointsKey] = latPoints if latPoints is not None else self.defaltDomainLatPoints
+        self.ContentsDict[self.domainULLonKey] = initial_ulLon if initial_ulLon is not None else self.defaultDomainULLon
+        self.ContentsDict[self.domainULLatKey] = initial_ulLat if initial_ulLat is not None else self.defaultDomainULLat
+        self.writeJson()
 
     def setLowThreshold(self, val=None):
-        self._readJson()
-        self._ContentsDict[self._lowThreshKey] = val if val is not Nonme else self._defaultLowThreshold
-        self._writeJson()
+        self.readJson()
+        self.ContentsDict[self.lowThreshKey] = val if val is not Nonme else self.defaultLowThreshold
+        self.writeJson()
     
     def setPHIOutputDir(self, val=None):
-        self._readJson()
-        self._ContentsDict[self._outputDirKey] = val if val is not Nonme else self._defaultPHIOutputDir
-        self._writeJson()
+        self.readJson()
+        self.ContentsDict[self.outputDirKey] = val if val is not Nonme else self.defaultPHIOutputDir
+        self.writeJson()
 
     def setDomainBuffer(self, val=None):
-        self._readJson()
-        self._ContentsDict[self._domainBufferKey] = val  if val is not Nonme else self._defaultDomainBuffer
-        self._writeJson()
+        self.readJson()
+        self.ContentsDict[self.domainBufferKey] = val  if val is not Nonme else self.defaultDomainBuffer
+        self.writeJson()
 
     def setDomainLonPoints(self, val=None):
-        self._readJson()
-        self._ContentsDict[self._domainLonPointsKey] = val if val is not Nonme else self._defaltDomainLonPoints
-        self._writeJson()
+        self.readJson()
+        self.ContentsDict[self.domainLonPointsKey] = val if val is not Nonme else self.defaltDomainLonPoints
+        self.writeJson()
 
     def setDomainLatPoints(self, val=None):
-        self._readJson()
-        self._ContentsDict[self._domainLatPointsKey] = val if val is not Nonme else self._defaltDomainLatPoints
-        self._writeJson()
+        self.readJson()
+        self.ContentsDict[self.domainLatPointsKey] = val if val is not Nonme else self.defaltDomainLatPoints
+        self.writeJson()
 
     def setDomainULLon(self, val=None):
-        self._readJson()
-        self._ContentsDict[self._domainULLonKey] = val if val is not Nonme else self._defaultDomainULLon
-        self._writeJson()
+        self.readJson()
+        self.ContentsDict[self.domainULLonKey] = val if val is not Nonme else self.defaultDomainULLon
+        self.writeJson()
 
     def setDomainULLat(self, val=None):
-        self._readJson()
-        self._ContentsDict[self._domainULLatKey] = val if val is not Nonme else self._defaultDomainULLat
-        self._writeJson()
+        self.readJson()
+        self.ContentsDict[self.domainULLatKey] = val if val is not Nonme else self.defaultDomainULLat
+        self.writeJson()
 
     def getConfigDict(self):
-        self._readJson()
-        return self._ContentsDict
+        self.readJson()
+        return self.ContentsDict
     
     def getLowThreshold(self):
-        self._readJson()
-        return self._ContentsDict.get(self._lowThreshKey, self._defaultLowThreshold)
+        self.readJson()
+        return self.ContentsDict.get(self.lowThreshKey, self.defaultLowThreshold)
 
     def getPHIOutputDir(self):
-        self._readJson()
-        return self._ContentsDict.get(self._outputDirKey, self._defaultPHIOutputDir)
+        self.readJson()
+        return self.ContentsDict.get(self.outputDirKey, self.defaultPHIOutputDir)
 
     def getDomainBuffer(self):
-        self._readJson()
-        return self._ContentsDict.get(self._domainBufferKey, self._defaultDomainBuffer)
+        self.readJson()
+        return self.ContentsDict.get(self.domainBufferKey, self.defaultDomainBuffer)
 
     def getDomainLonPoints(self):
-        self._readJson()
-        return self._ContentsDict.get(self._domainLonPointsKey, self._defaltDomainLonPoints )
+        self.readJson()
+        return self.ContentsDict.get(self.domainLonPointsKey, self.defaltDomainLonPoints )
 
     def getDomainLatPoints(self):
-        self._readJson()
-        return self._ContentsDict.get(self._domainLatPointsKey, self._defaltDomainLatPoints)
+        self.readJson()
+        return self.ContentsDict.get(self.domainLatPointsKey, self.defaltDomainLatPoints)
 
     def getDomainULLon(self):
-        self._readJson()
-        return self._ContentsDict.get(self._domainULLonKey, self._defaultDomainULLon)
+        self.readJson()
+        return self.ContentsDict.get(self.domainULLonKey, self.defaultDomainULLon)
 
     def getDomainULLat(self):
-        self._readJson()
-        return self._ContentsDict.get(self._domainULLatKey, self._defaultDomainULLat)
+        self.readJson()
+        return self.ContentsDict.get(self.domainULLatKey, self.defaultDomainULLat)
 
     def getOutputDir(self):
-        self._readJson()
-        return self._ContentsDict.get(self._outputDirKey, self._defaultPHIOutputDir)
+        self.readJson()
+        return self.ContentsDict.get(self.outputDirKey, self.defaultPHIOutputDir)
 
 
     
-    def _writeJson(self):
+    def writeJson(self):
         try:
-            with open(self._filename, 'w') as outfile:
-                json.dump(self._ContentsDict, outfile)
+            with open(self.filename, 'w') as outfile:
+                json.dump(self.ContentsDict, outfile)
         except:
-            sys.stderr.write('\nUnable to open config file: '+self._filename+' for writing.  Please check path and permissions')
+            sys.stderr.write('\nUnable to open config file: '+self.filename+' for writing.  Please check path and permissions')
     
-    def _readJson(self):
+    def readJson(self):
         try:
-            with open(self._filename) as contents:
-                self._ContentsDict = json.load(contents)
+            with open(self.filename) as contents:
+                self.ContentsDict = json.load(contents)
         except:
-            sys.stderr.write('\nUnable to open config file: '+self._filename+' for reading. Setting to defaults.\n')
-            self._ContentsDict = self._defaultContents.copy()
+            sys.stderr.write('\nUnable to open config file: '+self.filename+' for reading. Setting to defaults.\n')
+            self.ContentsDict = self.defaultContents.copy()
     

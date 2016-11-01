@@ -74,6 +74,8 @@ class Product(Prob_Generator.Product):
 
         fieldDicts = [headlineStatement, narrativeInformation]
         dialogDict["metadata"] = fieldDicts
+        # Bypass for now
+        return {}
         return dialogDict
 
 
