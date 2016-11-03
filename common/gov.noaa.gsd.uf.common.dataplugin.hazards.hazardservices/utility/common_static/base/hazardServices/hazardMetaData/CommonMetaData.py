@@ -117,7 +117,7 @@ class MetaData(object):
             "expandHorizontally": False,
             "choices": choices,
             "editable" : True,
-             "refreshMetadata": True,
+            "refreshMetadata": True,
                 }
         
     def immediateCauseChoices(self):
@@ -1765,7 +1765,6 @@ class MetaData(object):
             "expandHorizontally": False,
             "choices": choices,
             "editable" : True,
-            "refreshMetadata": True,
                 }
         
     def riskChoices(self):
@@ -1797,7 +1796,6 @@ class MetaData(object):
             "expandHorizontally": False,
             "choices": choices,
             "editable" : True,
-            "refreshMetadata": True,
                 }
         
     def convectionCategoryChoices(self):

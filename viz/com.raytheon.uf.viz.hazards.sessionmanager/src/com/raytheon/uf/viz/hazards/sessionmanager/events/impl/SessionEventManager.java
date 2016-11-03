@@ -41,8 +41,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.V
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
-import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
@@ -165,19 +163,20 @@ import com.vividsolutions.jts.geom.TopologyException;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 21, 2013 1257       bsteffen    Initial creation
- * Jul 19, 2013 1257       bsteffen    Notification support for session manager.
- * Sep 10, 2013  752       blawrenc    Modified addEvent to check if the event
- *                                     being added already exists.
- * Sep 12, 2013 717        jsanchez    Converted certain hazard events to grids.
- * Oct 21, 2013 2177       blawrenc    Added logic to check for event conflicts.
- * Oct 23, 2013 2277       jsanchez    Removed HazardEventConverter from viz.
- * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov 29, 2013 2378       blawrenc    Changed to not set modified
- *                                     events back to PENDING.
- * Nov 29, 2013 2380       daniel.s.schaffer@noaa.gov Fixing bugs in settings-based filtering
- * Jan 14, 2014 2755       bkowal      No longer create new Event IDs for events that
- *                                     are created EDEX-side for interoperability purposes.
+ * May 21, 2013 1257       bsteffen     Initial creation.
+ * Jul 19, 2013 1257       bsteffen     Notification support for session manager.
+ * Sep 10, 2013  752       blawrenc     Modified addEvent to check if the event
+ *                                      being added already exists.
+ * Sep 12, 2013 717        jsanchez     Converted certain hazard events to grids.
+ * Oct 21, 2013 2177       blawrenc     Added logic to check for event conflicts.
+ * Oct 23, 2013 2277       jsanchez     Removed HazardEventConverter from viz.
+ * Nov 04, 2013 2182       Dan Schaffer Started refactoring.
+ * Nov 29, 2013 2378       blawrenc     Changed to not set modified events back to
+ *                                      PENDING.
+ * Nov 29, 2013 2380       Dan Schaffer Fixing bugs in settings-based filtering.
+ * Jan 14, 2014 2755       bkowal       No longer create new Event IDs for events
+ *                                      that are created EDEX-side for
+ *                                      interoperability purposes.
  * Feb 17, 2014 2161       Chris.Golden Added code to change the end time or fall-
  *                                      below time to the "until further notice"
  *                                      value if the corresponding "until further
@@ -189,9 +188,9 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      the event bus) identifying them as potential
  *                                      hooks into addition/removal/modification of
  *                                      events.
- * Mar 3, 2014  3034       bkowal      Constant for GFE interoperability flag
- * Apr 28, 2014 3556       bkowal      Updated to use the new hazards common 
- *                                     configuration plugin.
+ * Mar 3, 2014  3034       bkowal       Constant for GFE interoperability flag
+ * Apr 28, 2014 3556       bkowal       Updated to use the new hazards common 
+ *                                      configuration plugin.
  * Apr 29, 2014 2925       Chris.Golden Moved business logic that was scattered
  *                                      elsewhere into here where it belongs. Also
  *                                      changed notifications being posted to be
@@ -249,33 +248,36 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      manager, and to properly use ObservedSettings.
  * Dec 13, 2014 4486       Dan Schaffer Eliminating effect of changed CAVE time on
  *                                      hazard status.
- * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes.
  * Jan 08, 2015 5700       Chris.Golden Changed to generalize the meaning of a command
  *                                      invocation for a particular event, since it no
  *                                      longer only means that an event-modifying
  *                                      script is to be executed; it may also trigger
  *                                      a metadata refresh. Previously, the latter was
  *                                      only possible on a hazard attribute state
- * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from hazards.
+ * Jan 22, 2015 4959       Dan Schaffer Ability to right click to add/remove UGCs from
+ *                                      hazards.
  * Jan 26, 2015 5952       Dan Schaffer Fix incorrect hazard area designation.
  * Feb  2, 2015 4930       Dan Schaffer Fixed problem where reduction of multi-polygons 
- *                                      can still yield a geometry with more than 20 points.
+ *                                      can still yield a geometry with more than 20
+ *                                      points.
  * Feb  3, 2015 2331       Chris.Golden Added code to track the allowable boundaries of
  *                                      all hazard events' start and end times, so that
  *                                      the user will not move them beyond the allowed
  *                                      ranges. Also added code to advance the start and/
  *                                      or end times of events as time ticks forward when
  *                                      appropriate.
- * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
+ * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen.
  * Feb 17, 2015 3847       Chris.Golden Added edit-rise-crest-fall metadata trigger.
- * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs
- * Feb 24, 2015 6499       Dan Schaffer Only allow add/remove UGCs for pending point hazards
+ * Feb 21, 2015 4959       Dan Schaffer Improvements to add/remove UGCs.
+ * Feb 24, 2015 6499       Dan Schaffer Only allow add/remove UGCs for pending point
+ *                                      hazards.
  * Feb 24, 2015 2331       Chris.Golden Added check of any event that is added to the
  *                                      list of events to ensure that it does not have
  *                                      until further notice set if such is not allowed.
- * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks
- * Mar 13, 2015 6922       Chris.Cody   Changes to skip re-query on GraphicalEditor cancel
- * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
+ * Mar 13, 2015 6090       Dan Schaffer Fixed goosenecks.
+ * Mar 13, 2015 6922       Chris.Cody   Changes to skip re-query on GraphicalEditor cancel.
+ * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen.
  * Mar 25, 2015 7102       Chris.Golden Changed behavior of start time limiting to make
  *                                      start times of some hazard events (those that do not
  *                                      have to have start time be current time) be no
@@ -293,28 +295,33 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      directly to ENDED status (no intermediate ENDING)
  *                                      to still allow their start and end times to be
  *                                      changed.
- * Apr 06, 2015   7272     mduff        Adding changes for Guava upgrade.  Last changes lost in merge.
+ * Apr 06, 2015   7272     mduff        Adding changes for Guava upgrade.  Last changes
+ *                                      lost in merge.
  * Apr 14, 2015   6935     Chris.Golden Fixed bug that caused duration choices for hazard
  *                                      events to lag behind event type (e.g. when event
  *                                      type of unissued FF.W.NonConvective was changed to
  *                                      FF.W.BurnScar).
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
- * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites for 
- *                                      when settings have not been overridden.
- * May 14, 2015    7560    mpduff       Trying to get the Time Range to update from Graphical Editor.
- * May 19, 2015    7975    Robert.Blum  Fixed bug that could incorrectly set the hazard status to ended
- *                                      if it was reverted and contained the REPLACED_BY attribute.
- * May 19, 2015    7706    Robert.Blum  Fixed bug when checking for conflicts where it would check hazards
- *                                      that were ended.
- * May 28, 2015    7709    Chris.Cody   Add Reference name of forecast zone in the conflicting hazards
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * Jun 02, 2015    7138    Robert.Blum  RVS can now be issued without changing the status/state of the 
- *                                      hazard events.
- * Jun 11, 2015    8191    Robert.Blum  Fixed apply on Rise/Crest/Fall editor
- *                                      to correctly update HID/Console times.
- * Jun 17, 2015    8543   Benjamin.Phillippe Catch error when creating geometry outside of forecast error
- * Jun 17, 2015    6730    Robert.Blum  Fixed messages bug that was preventing the display from updating
- *                                      correctly if the hazardType is not set.
+ * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging.
+ * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites
+ *                                      for when settings have not been overridden.
+ * May 14, 2015    7560    mpduff       Trying to get the Time Range to update from
+ *                                      Graphical Editor.
+ * May 19, 2015    7975    Robert.Blum  Fixed bug that could incorrectly set the hazard
+ *                                      status to ended if it was reverted and contained the
+ *                                      REPLACED_BY attribute.
+ * May 19, 2015    7706    Robert.Blum  Fixed bug when checking for conflicts where it would
+ *                                      check hazards that were ended.
+ * May 28, 2015    7709    Chris.Cody   Add Reference name of forecast zone in the
+ *                                      conflicting hazards.
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access.
+ * Jun 02, 2015    7138    Robert.Blum  RVS can now be issued without changing the
+ *                                      status/state of the hazard events.
+ * Jun 11, 2015    8191    Robert.Blum  Fixed apply on Rise/Crest/Fall editor to correctly
+ *                                      update HID/Console times.
+ * Jun 17, 2015    8543   Ben.Phillippe Catch error when creating geometry outside of
+ *                                      forecast area.
+ * Jun 17, 2015    6730    Robert.Blum  Fixed messages bug that was preventing the display
+ *                                      from updating correctly if the hazardType is not set.
  * Jun 26, 2015    7919    Robert.Blum  Changed for issuing EXP when hazard has ended.
  * Jul 06, 2015    7514    Robert.Blum  Retaining the start/end time when automatically replacing hazards. Note -
  *                                      the endTime may not be exact, it will be the duration that is the closest
@@ -345,7 +352,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      is added, not later on when the HID comes up (the latter behavior was
  *                                      a bug).
  * Feb 10, 2016   15561    Chris.Golden Removed hard-coded UGC that had been put in for testing.
- * Feb 10, 2015   13279    Chris.Golden Fixed bugs in calculation of new end time when a replacement event
+ * Feb 10, 2016   13279    Chris.Golden Fixed bugs in calculation of new end time when a replacement event
  *                                      uses duration-based end times and the original event does not.
  * Mar 03, 2016   14004    Chris.Golden Changed to pass originator when merging hazard events, and to
  *                                      only run event-triggered recommenders when they are not triggered
@@ -423,6 +430,15 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      changes are resets minutes ticking forward, not seconds (in case
  *                                      the time manager is sending out tick-forward notifications each
  *                                      second).
+ * Nov 02, 2016 26024     Chris.Golden  Removed metadata validation code from issue #8529, as it should
+ *                                      not be needed (product generators should ignore any attributes
+ *                                      that don't apply for the hazard types being issued), and it was
+ *                                      causing metadata generation to occur multiple times for a single
+ *                                      event type change. Changed the triggering of metadata reloads
+ *                                      due to attribute changes to only occur if the attribute was set
+ *                                      from non-null to some value (so that when the attribute is
+ *                                      initialized during metadata generation, it does not trigger a
+ *                                      pointless reload of the metadata).
  * </pre>
  * 
  * @author bsteffen
@@ -943,16 +959,6 @@ public class SessionEventManager implements
         }
 
         /*
-         * Validate the attributes, removing invalid ones (i.e. those that do
-         * not belong with this hazard type).
-         */
-        HazardEventMetadata metadata = configManager
-                .getMetadataForHazardEvent(event);
-        validateHazardAttributes(
-                getMegawidgetSpecifiers(event).getSpecifiers(), metadata
-                        .getMegawidgetSpecifierManager().getSpecifiers(), event);
-
-        /*
          * Update the time boundaries if this is not a new event; if it is new,
          * simply copy the old event's time boundaries (truncated to minute
          * resolution if resolution has been reduced) to this one. Then update
@@ -1082,77 +1088,6 @@ public class SessionEventManager implements
             return true;
         }
         return false;
-    }
-
-    /**
-     * Validates the hazard's attributes when the event type is changed. It
-     * compares the the Specifiers from the new and old MegawidgetManagers and
-     * removes any identifiers that are invalid.
-     * 
-     * @param prevSpecifiers
-     *            Specifiers from previous MegawidgetManager
-     * @param specifiers
-     *            Specifiers from the new MegawidgetManager
-     * @param event
-     *            Event that changed type
-     */
-    public void validateHazardAttributes(List<ISpecifier> prevSpecifiers,
-            List<ISpecifier> specifiers, ObservedHazardEvent event) {
-        for (ISpecifier prevSpecifier : prevSpecifiers) {
-            boolean matchFound = false;
-            if (prevSpecifier instanceof GroupSpecifier) {
-                GroupSpecifier groupSpecifier = (GroupSpecifier) prevSpecifier;
-                List<IControlSpecifier> controlSpecifiers = groupSpecifier
-                        .getChildMegawidgetSpecifiers();
-                List<ISpecifier> newList = new ArrayList<ISpecifier>(
-                        controlSpecifiers.size());
-                for (IControlSpecifier controlSpecifier : controlSpecifiers) {
-                    newList.add(controlSpecifier);
-                }
-                validateHazardAttributes(newList, specifiers, event);
-            } else {
-                matchFound = checkSpecifier(prevSpecifier, specifiers);
-                if (matchFound == false) {
-                    event.removeHazardAttribute(prevSpecifier.getIdentifier());
-                }
-            }
-        }
-    }
-
-    /**
-     * Checks if the supplied specifier is in the list of newSpecifiers.
-     * 
-     * @param specifier
-     *            Specifier to look for
-     * @param newSpecifiers
-     *            Specifiers to check
-     * @return Returns true if the specifier was found, otherwise false
-     */
-    public boolean checkSpecifier(ISpecifier specifier,
-            List<ISpecifier> newSpecifiers) {
-        boolean matchFound = false;
-        for (ISpecifier newSpecifier : newSpecifiers) {
-            if (newSpecifier instanceof GroupSpecifier) {
-                GroupSpecifier groupSpecifier = (GroupSpecifier) newSpecifier;
-                List<IControlSpecifier> controlSpecifiers = groupSpecifier
-                        .getChildMegawidgetSpecifiers();
-                List<ISpecifier> newList = new ArrayList<ISpecifier>(
-                        controlSpecifiers.size());
-                for (IControlSpecifier controlSpecifier : controlSpecifiers) {
-                    newList.add(controlSpecifier);
-                }
-                matchFound = checkSpecifier(specifier, newList);
-            } else {
-                if (specifier.getIdentifier().equals(
-                        newSpecifier.getIdentifier())) {
-                    matchFound = true;
-                }
-            }
-            if (matchFound) {
-                break;
-            }
-        }
-        return matchFound;
     }
 
     /**
@@ -1893,10 +1828,11 @@ public class SessionEventManager implements
         }
 
         /*
-         * If any of the attributes changed are metadata-reload triggers, then
-         * reload the metadata; if any of them are to trigger the running of
-         * recommenders, run the recommenders; otherwise, if any of them are to
-         * trigger the editing of rise-crest-fall information, reload that.
+         * If any of the attributes changed are metadata-reload triggers, see if
+         * metadata needs to be reloaded; if any of them are to trigger the
+         * running of recommenders, run the recommenders; otherwise, if any of
+         * them are to trigger the editing of rise-crest-fall information,
+         * reload that.
          */
         Set<String> metadataReloadTriggeringIdentifiers = metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .get(change.getEvent().getEventID());
@@ -1904,10 +1840,26 @@ public class SessionEventManager implements
                 .get(change.getEvent().getEventID());
         Set<String> editRiseCrestFallTriggeringIdentifiers = editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .get(change.getEvent().getEventID());
-        if ((metadataReloadTriggeringIdentifiers != null)
-                && (Sets.intersection(metadataReloadTriggeringIdentifiers,
-                        change.getAttributeKeys()).isEmpty() == false)) {
-            updateEventMetadata(change.getEvent());
+        if (metadataReloadTriggeringIdentifiers != null) {
+
+            /*
+             * Get the subset of trigger identifiers that changed, and then
+             * iterate through them. If at least one is found that had a
+             * non-null value before the change, reload the metadata. Otherwise,
+             * do no metadata reloading. This avoids having reloads triggered
+             * when a hazard event is given a new type and the attributes are
+             * initialized, in which case the attributes will go from null to
+             * non-null.
+             */
+            Set<String> triggers = Sets.intersection(
+                    metadataReloadTriggeringIdentifiers,
+                    change.getAttributeKeys());
+            for (String trigger : triggers) {
+                if (change.getOldAttribute(trigger) != null) {
+                    updateEventMetadata(change.getEvent());
+                    break;
+                }
+            }
         } else if (recommendersForTriggerIdentifiers != null) {
 
             /*
