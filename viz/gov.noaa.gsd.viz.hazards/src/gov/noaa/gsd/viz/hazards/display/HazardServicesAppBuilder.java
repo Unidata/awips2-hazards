@@ -131,6 +131,7 @@ import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
+import com.raytheon.uf.viz.core.map.MapDescriptor;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged.ChangeType;
@@ -294,6 +295,12 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             ever be a frame with a reference time later than the
  *                                             selected time; it has to be at the selected time or,
  *                                             failing that, the most recent frame before that.
+ * Nov 15, 2016 26331      Chris.Golden        Fixed bug that manifested when importing a previously
+ *                                             exported CAVE perspective display; a null pointer
+ *                                             exception would occur because the spatial display's
+ *                                             descriptor parameter would not yet be non-null. The
+ *                                             fix was to have it asynchronously attempt to register
+ *                                             again later.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -925,12 +932,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         createSpatialDisplay(spatialDisplay);
 
-        /*
-         * Make this object listen for frame changes with the spatial display's
-         * descriptor.
-         */
-        spatialDisplay.getDescriptor().addFrameChangedListener(this);
-
         // Determine whether or not views are to be hidden at first if this
         // app builder is being created as the result of a bundle load.
         IPreferenceStore preferenceStore = HazardServicesActivator.getDefault()
@@ -983,10 +984,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         redoTimeMatching();
 
-        addResourceListeners();
+        addFrameChangedListener();
 
-        // Send the current frame information to the session manager.
-        handleFrameChange();
+        addResourceListeners();
     }
 
     @Override
@@ -1337,6 +1337,104 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     }
 
     /**
+     * Register a listener for for frame changes with the spatial display's
+     * descriptor, if the latter has a descriptor at this point; otherwise,
+     * schedule another attempt to register for frame changes to occur later.
+     * The descriptor may not be available until later when loading as part of
+     * an imported CAVE display, for example.
+     */
+    private void addFrameChangedListener() {
+        MapDescriptor descriptor = spatialDisplay.getDescriptor();
+        if (descriptor != null) {
+            descriptor.addFrameChangedListener(this);
+            handleFrameChange();
+        } else {
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    addFrameChangedListener();
+                }
+            });
+        }
+    }
+
+    /**
+     * Register resource-related listeners, if an editor is available at this
+     * point; otherwise, schedule another attempt to register the listeners to
+     * occur later. The editor may not be available until later when loading as
+     * part of an imported CAVE display, for example.
+     */
+    private void addResourceListeners() {
+
+        /*
+         * Set up listeners for notifications concerning the addition or removal
+         * of resources, as well as a listener for changes to specific
+         * resources.
+         */
+        AbstractEditor editor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (editor != null) {
+            for (IDisplayPane displayPane : editor.getDisplayPanes()) {
+                if (displayPane != null) {
+                    ResourceList resourceList = displayPane.getDescriptor()
+                            .getResourceList();
+                    resourceList.addPostAddListener(addListener);
+                    resourceList.addPostRemoveListener(removeListener);
+                    for (ResourcePair resourcePair : resourceList) {
+                        setUpDataUpdateDetectorsForResource(resourcePair
+                                .getResource());
+                    }
+                }
+            }
+
+            /*
+             * Trigger the data layer update notification, in case there is a
+             * Time Match Basis product already loaded.
+             */
+            resourceChangeListener
+                    .resourceChanged(ChangeType.DATA_UPDATE, null);
+        } else {
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    addResourceListeners();
+                }
+            });
+        }
+    }
+
+    /**
+     * Remove resource-related listeners.
+     */
+    private void removeResourceListeners() {
+
+        /*
+         * Remove any listeners for specific resource data updates.
+         */
+        for (AbstractVizResource<?, ?> resource : monitoredVizResources) {
+            resource.getResourceData().removeChangeListener(
+                    resourceChangeListener);
+        }
+        monitoredVizResources.clear();
+
+        /*
+         * Remove the listeners for resource list changes.
+         */
+        AbstractEditor editor = EditorUtil
+                .getActiveEditorAs(AbstractEditor.class);
+        if (editor != null) {
+            for (IDisplayPane displayPane : editor.getDisplayPanes()) {
+                ResourceList resourceList = displayPane.getDescriptor()
+                        .getResourceList();
+                resourceList.removePostAddListener(addListener);
+                resourceList.removePostRemoveListener(removeListener);
+            }
+        }
+    }
+
+    /**
      * Force time matching to be recalculated.
      */
     private void redoTimeMatching() {
@@ -1373,67 +1471,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     statusHandler.error(
                             "HazardServicesAppBuilder.redoTimeMatching():", e);
                 }
-            }
-        }
-    }
-
-    /**
-     * Add resource-related listeners.
-     */
-    private void addResourceListeners() {
-
-        /*
-         * Set up listeners for notifications concerning the addition or removal
-         * of resources, as well as a listener for changes to specific
-         * resources.
-         */
-        AbstractEditor editor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
-        for (IDisplayPane displayPane : editor.getDisplayPanes()) {
-            if (displayPane != null) {
-                ResourceList resourceList = displayPane.getDescriptor()
-                        .getResourceList();
-                resourceList.addPostAddListener(addListener);
-                resourceList.addPostRemoveListener(removeListener);
-                for (ResourcePair resourcePair : resourceList) {
-                    setUpDataUpdateDetectorsForResource(resourcePair
-                            .getResource());
-                }
-            }
-        }
-
-        /*
-         * Trigger the data layer update notification, in case there is a Time
-         * Match Basis product already loaded.
-         */
-        resourceChangeListener.resourceChanged(ChangeType.DATA_UPDATE, null);
-    }
-
-    /**
-     * Remove resource-related listeners.
-     */
-    private void removeResourceListeners() {
-
-        /*
-         * Remove any listeners for specific resource data updates.
-         */
-        for (AbstractVizResource<?, ?> resource : monitoredVizResources) {
-            resource.getResourceData().removeChangeListener(
-                    resourceChangeListener);
-        }
-        monitoredVizResources.clear();
-
-        /*
-         * Remove the listeners for resource list changes.
-         */
-        AbstractEditor editor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
-        if (editor != null) {
-            for (IDisplayPane displayPane : editor.getDisplayPanes()) {
-                ResourceList resourceList = displayPane.getDescriptor()
-                        .getResourceList();
-                resourceList.removePostAddListener(addListener);
-                resourceList.removePostRemoveListener(removeListener);
             }
         }
     }
@@ -1847,7 +1884,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * Make this object listen for frame changes with the new spatial
          * display's descriptor.
          */
-        spatialDisplay.getDescriptor().addFrameChangedListener(this);
+        addFrameChangedListener();
 
         // Rebuild the console menubar.
         buildMenuBar();

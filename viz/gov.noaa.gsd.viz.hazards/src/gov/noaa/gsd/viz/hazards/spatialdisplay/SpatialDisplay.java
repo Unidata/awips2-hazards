@@ -219,6 +219,10 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        the number of data times (and thus frames) when H.S. was the
  *                                        Time Match Basis and the number of frames was decreased by the
  *                                        user.
+ * Nov 15, 2016 26331      Chris.Golden   Fixed bug that manifested itself with illegal thread access to
+ *                                        SWT classes' methods if the spatial display was instantiated
+ *                                        due to a bundle load, and if H.S. had not been started before
+ *                                        during the current CAVE session.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -671,7 +675,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     /**
      * Drawable manager assisting this spatial display.
      */
-    private final DrawableManager drawableManager;
+    private DrawableManager drawableManager;
 
     /**
      * Flag indicating whether or not this viz resource is acting as the basis
@@ -825,9 +829,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         }
 
         /*
-         * Create objects necessary for drawing and time-tracking.
+         * Create objects necessary time-tracking.
          */
-        drawableManager = new DrawableManager(this);
         dataTimes = new ArrayList<>();
 
         /*
@@ -847,6 +850,11 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
             @Override
             public void run() {
+
+                /*
+                 * Create the object required for drawing.
+                 */
+                drawableManager = new DrawableManager(SpatialDisplay.this);
 
                 /*
                  * Let the resource data finish its construction.
