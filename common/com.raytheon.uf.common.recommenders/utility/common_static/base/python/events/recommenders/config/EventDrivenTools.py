@@ -59,8 +59,8 @@ else:
                     #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
                     #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender" ], 
                     #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
-                    { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
-                       "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
+                    #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+                    #   "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 },
                     #{ "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
                     #   "triggerType": "FRAME_CHANGE" },
                     ]

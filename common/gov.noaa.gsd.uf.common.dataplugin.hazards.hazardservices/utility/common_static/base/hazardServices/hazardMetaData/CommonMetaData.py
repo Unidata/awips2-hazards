@@ -1850,7 +1850,7 @@ class MetaData(object):
     # Prob_Severe and Prob_Tornado
     def convectiveControls(self): 
         mws = self.initializeObject()       
-        enable = self.hazardEvent.get('editable', False)
+        enable = self.hazardEvent.get('editableObject', False)
         self.flush()
         # Object Info
         mws.append( self.getConvectiveObjectInfo(enable))
@@ -1885,18 +1885,18 @@ class MetaData(object):
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
             self.hazardEvent.set('automationLevel', 'userOwned')
-            editable = True
+            editableObject = True
             newManualObject = True
         else:
-            editable = self.hazardEvent.get('editable', False)
+            editableObject = self.hazardEvent.get('editableObject', False)
             newManualObject = False
-        print  "CM ConvectiveControls newManualObject, editable", newManualObject, editable
+        print  "CM ConvectiveControls newManualObject, editableObject", newManualObject, editableObject
         self.flush()       
         mwList = [
             {
              "fieldType": "HiddenField",
-             "fieldName": "editable",
-             "values": editable, 
+             "fieldName": "editableObject",
+             "values": editableObject, 
              "modifyRecommender": "SwathRecommender",
              },
             {
@@ -1917,6 +1917,7 @@ class MetaData(object):
                         self.getModifyButton(enable),
                         self.getAutomationLevel(),
                         self.getAutoShape(enable),
+                        self.getCancelButton(),
                        ]
         }        
         return grp
@@ -1960,6 +1961,22 @@ class MetaData(object):
             "refresh": True,
         }        
         return grp
+    
+    def getCancelButton(self): 
+        if self.hazardStatus == 'issued':
+            enable = True
+        else:
+            enable = False              
+        grp = {
+            "fieldType": "Button",
+            "fieldName": "cancelButton",
+            "label": "     EXPIRE / CANCEL     ",
+            "enable": enable,
+            "refresh": True,
+            "modifyRecommender": 'SwathRecommender',
+        }        
+        return grp
+
 
     def getConvectiveMotionVector(self, enable):
         wdir = self.hazardEvent.get('convectiveObjectDir', 270)
@@ -2300,44 +2317,7 @@ class MetaData(object):
         return chars        
 
         
-def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
-    print "\n*****************\nCM applyConvective called"
-    print 'triggerIdentifiers', triggerIdentifiers
-    newManualObjectKey = mutableProperties.get('newManualObject')
-    editableKey = mutableProperties.get('editable')
-
-    print "CM newManualObjectKey, editableKey", newManualObjectKey, editableKey
-    if newManualObjectKey:
-        newManualObject = newManualObjectKey.get('values')
-    else:
-        newManualObject = True
-        print "WARNING -- CM made it to else - saying firstTime is True"       
-#     for key in mutableProperties:
-#         print key, mutableProperties[key]
-    os.sys.__stdout__.flush()
-    returnDict = {}
-    if (triggerIdentifiers and 'modifyButton' in triggerIdentifiers) or not triggerIdentifiers:
-        if not triggerIdentifiers: # None -- set to whatever "editable" is set to
-            if newManualObject:
-                enable = True 
-                returnDict['newManualObject'] = {'values': False}
-                print 'CM Script setting newManualObject to False'
-                os.sys.__stdout__.flush()
-            else:
-                enable = False
-                returnDict['editable'] = {'values': False}
-        elif 'modifyButton' in triggerIdentifiers:  # Modify Button -- set to editable
-            enable = True
-            returnDict['editable'] = {'values': True}
-        for key in ['autoShape', "convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
-                    "convectiveObjectSpdKtsUnc", "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
-                    "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
-                    "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
-                    "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
-            returnDict[key] = {'enable' : enable}
-        returnDict['modifyButton'] = {'enable' : not enable}
-        return returnDict
-   
+def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):   
 
     def convectiveFilter(myIterable, prefix):
         return [tf for tf in myIterable if tf.startswith(prefix)]
@@ -2435,6 +2415,45 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         return convectiveProbTrendGraphVals
 
 
+    print "\n*****************\nCM applyConvective called"
+    print 'triggerIdentifiers', triggerIdentifiers
+    newManualObjectKey = mutableProperties.get('newManualObject')
+    editableKey = mutableProperties.get('editableObject')
+    print "CM newManualObjectKey, editableKey", newManualObjectKey, editableKey
+    if newManualObjectKey:
+        newManualObject = newManualObjectKey.get('values')
+    else:
+        newManualObject = True
+        print "CM WARNING -- CM made it to else - saying newManualObject is True"       
+#     for key in mutableProperties:
+#         print key, mutableProperties[key]
+    os.sys.__stdout__.flush()
+    returnDict = {}
+    if not triggerIdentifiers or 'modifyButton' in triggerIdentifiers or 'newManualObject' in triggerIdentifiers:
+        if not triggerIdentifiers or 'newManualObject' in triggerIdentifiers: # set to whatever "editableObject" is set to
+            if newManualObject:
+                enable = True 
+                returnDict['newManualObject'] = {'values': False}
+                print 'CM Script setting newManualObject to False'
+                os.sys.__stdout__.flush()
+            else:
+                enable = False
+                returnDict['editableObject'] = {'values': False}
+                print 'CM Script setting editableObject to False'
+                os.sys.__stdout__.flush()
+        elif 'modifyButton' in triggerIdentifiers:  # Modify Button -- set to editableObject
+            enable = True
+            returnDict['editableObject'] = {'values': True}
+            print 'CM Script setting editableObject to True'
+            os.sys.__stdout__.flush()
+        for key in ['autoShape', "convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+                    "convectiveObjectSpdKtsUnc", "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
+                    "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
+                    "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
+                    "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
+            returnDict[key] = {'enable' : enable}
+        returnDict['modifyButton'] = {'enable' : not enable}
+        return returnDict
 
     if triggerIdentifiers:
         convectTriggers = convectiveFilter(triggerIdentifiers, 'convective')

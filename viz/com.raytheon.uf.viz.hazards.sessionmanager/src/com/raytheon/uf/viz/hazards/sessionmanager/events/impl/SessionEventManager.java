@@ -430,7 +430,7 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      changes are resets minutes ticking forward, not seconds (in case
  *                                      the time manager is sending out tick-forward notifications each
  *                                      second).
- * Nov 02, 2016 26024     Chris.Golden  Removed metadata validation code from issue #8529, as it should
+ * Nov 02, 2016   26024    Chris.Golden Removed metadata validation code from issue #8529, as it should
  *                                      not be needed (product generators should ignore any attributes
  *                                      that don't apply for the hazard types being issued), and it was
  *                                      causing metadata generation to occur multiple times for a single
@@ -439,6 +439,10 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      from non-null to some value (so that when the attribute is
  *                                      initialized during metadata generation, it does not trigger a
  *                                      pointless reload of the metadata).
+ * Nov 14, 2016   21675    Chris.Golden Fixed bug introduced in previous commit that caused hazard
+ *                                      attribute changes that may trigger a metadata reload, but
+ *                                      (correctly) do not end up doing so, to not be checked to see if
+ *                                      they may instead trigger a recommender execution.
  * </pre>
  * 
  * @author bsteffen
@@ -1840,6 +1844,7 @@ public class SessionEventManager implements
                 .get(change.getEvent().getEventID());
         Set<String> editRiseCrestFallTriggeringIdentifiers = editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .get(change.getEvent().getEventID());
+        boolean triggeredReloadOrRecommender = false;
         if (metadataReloadTriggeringIdentifiers != null) {
 
             /*
@@ -1857,10 +1862,13 @@ public class SessionEventManager implements
             for (String trigger : triggers) {
                 if (change.getOldAttribute(trigger) != null) {
                     updateEventMetadata(change.getEvent());
+                    triggeredReloadOrRecommender = true;
                     break;
                 }
             }
-        } else if (recommendersForTriggerIdentifiers != null) {
+        }
+        if ((triggeredReloadOrRecommender == false)
+                && (recommendersForTriggerIdentifiers != null)) {
 
             /*
              * Determine whether or not a recommender triggered this change, and
@@ -1932,7 +1940,12 @@ public class SessionEventManager implements
                                                                 .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
                                                                 : RecommenderTriggerOrigin.USER))));
             }
-        } else if ((editRiseCrestFallTriggeringIdentifiers != null)
+            if (triggerSetsForRecommenders.isEmpty() == false) {
+                triggeredReloadOrRecommender = true;
+            }
+        }
+        if ((triggeredReloadOrRecommender == false)
+                && (editRiseCrestFallTriggeringIdentifiers != null)
                 && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
                         change.getAttributeKeys()).isEmpty() == false)) {
             startRiseCrestFallEdit(change.getEvent());

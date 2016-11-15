@@ -63,7 +63,7 @@ Prob_WFO = {
         "issued",
         "ending",
         #"ended",
-        "elapsed",
+        #"elapsed",
     ],
     "columns": {
         "Event ID": {

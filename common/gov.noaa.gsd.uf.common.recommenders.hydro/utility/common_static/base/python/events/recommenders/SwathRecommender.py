@@ -205,7 +205,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.editableObjects = False
         if trigger == 'timeInterval':
             for event in eventSet:
-                if event.get('editable'):
+                if event.get('editableObject'):
                     self.editableObjects = True
                 
         for event in eventSet:
@@ -218,8 +218,8 @@ class Recommender(RecommenderTemplate.Recommender):
                  resultEventSet.add(event)
                  continue
 
-            self.eventBookkeeping(event, origin)
             self.initializeEvent(event)
+            self.eventBookkeeping(event, origin)
             
             
             # Origin Database
@@ -240,23 +240,14 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
                 
             elif trigger == 'timeInterval':
-                if not self.editableHazard:
-                    self.advanceForecastPolys(event, eventSetAttrs)
-                    self.setVisualFeatures(event)
-                    resultEventSet.add(event)
-                    if not self.editableObjects:
-                        resultEventSet.addAttribute('selectedTime', self.latestDataLayerTime)
-                        print "SR Setting selected time to latestDataLayer due to time interval", self.editableHazard, self.editableObjects
-                        self.flush()
+                self.processTimeInterval(event, eventSetAttrs)
                 continue
                 
             elif trigger == 'hazardEventModification':
                 changes = self.adjustForEventModification(event)
                 if not changes:
-                    # Handle a status change or "showGrid"
-                    if "status" in self.attributeIdentifiers or "showGrid" in self.attributeIdentifiers:
-                        self.setVisualFeatures(event)
-                        resultEventSet.add(event)
+                    # Handle other dialog buttons"
+                    self.handleAdditionalEventModifications(event, resultEventSet)
                     continue
                 resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
                 print "SR Setting selected time to eventSt"
@@ -342,7 +333,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Check for end time < current time and end the event
         eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
         if eventEndTime_ms < self.currentTime:
-            event.setStatus('ENDED')
+            event.setStatus('ELAPSED')
             resultEventSet.add(event)
         # Skip ended, elapsed events 
         if event.getStatus() in ['ELAPSED', 'ENDED']:                
@@ -370,13 +361,16 @@ class Recommender(RecommenderTemplate.Recommender):
         '''      
         self.nudge = False
         self.pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"]
-        self.selectedHazard = event.get('selected')
+        self.selectedHazard = event.get('selected', False)
+        print "SR type selected", type(self.selectedHazard)
+        if self.selectedHazard == 0: self.selectedHazard = False
         #if not self.selectedHazard or 'selected' in self.attributeIdentifiers: # means we are transitioning to unselected
         #    event.set('editable', False)        
-        self.editableHazard = event.get('editable', False)
+        self.editableHazard = self.selectedHazard and event.get('editableObject', False)
         print "SR Bookkeeping Event status", event.getStatus()
         print "SR Event selected", event.get('selected')
-        print "SR Event editable", event.get('editable'), self.editableHazard
+        print "SR Event editableObject", event.get('editableObject'), self.editableHazard
+        print "SR Start Time", self.probUtils.displayMsTime(self.eventSt_ms)
         self.flush()
 
         
@@ -427,6 +421,19 @@ class Recommender(RecommenderTemplate.Recommender):
         #        Set attribute 'dataLayerStatus': 'Data Layer Updated' (which will give a visual cue)
         if self.eventSt_ms != self.latestDataLayerTime:
             event.set('dataLayerStatus', 'Data Layer Updated')
+
+    def processTimeInterval(self, event, eventSetAttrs):
+        if not self.editableHazard:
+            # Not sure if we should be doing this -- may want to wait for the advance to 
+            # take place when something is done to the hazard
+            pass
+            self.advanceForecastPolys(event, eventSetAttrs)
+            self.setVisualFeatures(event)
+            resultEventSet.add(event)
+        if not self.editableObjects:
+            resultEventSet.addAttribute('selectedTime', self.latestDataLayerTime)
+            print "SR Setting selected time to latestDataLayer due to time interval update", self.editableHazard, self.editableObjects
+            self.flush()
         
     def adjustForEventModification(self, event):
         changed = False
@@ -453,7 +460,7 @@ class Recommender(RecommenderTemplate.Recommender):
             return True
         
         # Handle Modify Button -- 'editable' changed by Interdependency Script
-        if 'editable' in self.attributeIdentifiers: # Hit modify button
+        if 'editableObject' in self.attributeIdentifiers: # User Hit modify button
             if event.getStatus() == 'ISSUED':         
                 self.moveStartTime(event, self.latestDataLayerTime, moveEndTime=True)
                 graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
@@ -465,7 +472,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 if event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
                     # Adjust automationLevel
                     event.set('automationLevel', 'attributesOnly')
-                    return True  
+                    return True 
+            else:
+                if event.get('automationLevel') in ['attributesOnly', 'userOwned']:
+                    event.set('automationLevel', 'attributesAndGeometry') 
+                    return True
                 
         # Get Convective Attributes from the MetaData. 
         # These should supercede and update the ones stored in the event
@@ -522,6 +533,19 @@ class Recommender(RecommenderTemplate.Recommender):
             return True
         
         return False
+    
+    def handleAdditionalEventModifications(self, event, resultEventSet):  
+        if "status" in self.attributeIdentifiers or "showGrid" in self.attributeIdentifiers:
+            self.setVisualFeatures(event)
+            resultEventSet.add(event)
+            return
+        if 'cancelButton' in self.attributeIdentifiers: 
+            print "SR Setting to Elapsed"
+            self.flush()
+            event.setStatus('ELAPSED')
+            resultEventSet.add(event)
+            resultEventSet.addAttribute("saveToDatabase", True)    
+            return        
 
     def ensureLastGraphProbZeroAndUneditable(self, event):
         probVals = event.get('convectiveProbTrendGraph', [])
@@ -543,6 +567,8 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('convectiveObjectSpdKts', convectiveAttrs['wspd'])
             
     def moveStartTime(self, event, startMS, moveEndTime=True):
+        print "SR moving start time"
+        self.flush()
         newStart = datetime.datetime.utcfromtimestamp(startMS/1000)
         #if abs((newStart - event.getStartTime()).total_seconds()*1000) > self.probUtils.timeDelta_ms():
         #    return False     
@@ -639,8 +665,8 @@ class Recommender(RecommenderTemplate.Recommender):
             while i <= durationSecs:
                 timeIntervals.append(i)
                 i += timeStep
-        print "SR getIntervalPolys", timeDirection, timeIntervals
-        self.flush()
+        #print "SR getIntervalPolys", timeDirection, timeIntervals
+        #self.flush()
         if timeIntervals:
             self.probUtils.createIntervalPolys(event, eventSetAttrs, self.nudge, SwathPreset(), 
                                              self.eventSt_ms, timeIntervals, timeDirection)
@@ -818,7 +844,7 @@ class Recommender(RecommenderTemplate.Recommender):
         upstreamSt_ms = self.dataLayerTimes[0]
         featuresDisplay = self.featuresDisplay()
         
-        # Forecast Features -- polygons, track points, relocated last motionVector
+        # Forecast Features -- polygons, track points, relocated dashed, last motionVector
         features += self.forecastVisualFeatures(event, upstreamSt_ms)
         
         # Swath
@@ -839,10 +865,7 @@ class Recommender(RecommenderTemplate.Recommender):
                            
         # Replace Visual Features
         if features:
-            try:
-                event.setVisualFeatures(VisualFeatures(features))
-            except:
-                self.printFeatures(event, "\n*** [ERROR] - Unable to set Visual Features", features)
+            event.setVisualFeatures(VisualFeatures(features))
             
         if self.printVisualFeatures:
              self.printFeatures(event, "Visual Features", features)
@@ -855,19 +878,51 @@ class Recommender(RecommenderTemplate.Recommender):
         featuresDisplay = self.featuresDisplay()
         
         geometry = event.getGeometry()
-        
+                
         features = []
         # Forecast Polygons, Track Points, Relocated Forecast 
         numIntervals = len(forecastPolys)
         
         # Prob Label
-        probTrend = event.get('convectiveProbTrendGraph')[0]
-        probStr = ' '+ `probTrend['y']`+'%'
-        self.label = str(event.get('objectID')) + " " + event.getHazardType() + probStr
-   
+        probTrendValues = self.probUtils.getInterpolatedProbTrendColors(event)
+        self.label = str(event.get('objectID')) + " " + event.getHazardType()
+
+        startTimeShapeFound = False
+        firstForecastSt_ms = self.eventSt_ms
+
+        print "SR eventSt_ms", self.probUtils.displayMsTime(self.eventSt_ms), self.eventSt_ms
+        print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']
+        self.flush()
+           
         for i in range(numIntervals):
             poly = forecastPolys[i]
             polySt_ms, polyEt_ms = forecastTimes[i]
+            
+            if i == 0:
+                firstForecastSt_ms = polySt_ms
+            
+            #print "SR forecast poly st", self.probUtils.displayMsTime(polySt_ms), polySt_ms, polySt_ms == self.eventSt_ms
+            self.flush()
+
+            dragCapability = 'none'
+            editable = False
+                
+            if polySt_ms == self.eventSt_ms:
+                startTimeShapeFound = True
+                if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                    #print "SR forecast poly equal to start time -- startTimeShape found -- setting editable"
+                    self.flush()
+                    dragCapability = 'all'
+                    editable = True
+                    
+
+            try: 
+                probTrend = int(probTrendValues[i])
+                probStr = ' '+ `probTrend`+'%'
+            except:
+                probStr = ''
+            label = self.label + probStr
+
               
             forecastFeature = {
               "identifier": "swathRec_forecast_"+str(polySt_ms),
@@ -876,9 +931,11 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderThickness": "eventType",
               "borderStyle": "eventType",
               "textSize": "eventType",
-              "label": self.label,
+              "label": label,
               "textColor": "eventType",
-              "dragCapability": "none", 
+              "dragCapability": dragCapability, 
+              "scaleable": editable,
+              "rotatable": editable,
               "geometry": {
                    (polySt_ms, polyEt_ms): poly
                   }
@@ -886,7 +943,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if featuresDisplay.get('forecastPolys'):
                 features.append(forecastFeature)
                
-            # Track Points 
+            # Track Points self.probUtils.displayMsTime(st)
             centroid = poly.asShapely().centroid
             color = self.probUtils.getInterpolatedProbTrendColor(event, i, numIntervals)
             trackPointFeature = {
@@ -904,14 +961,10 @@ class Recommender(RecommenderTemplate.Recommender):
             if featuresDisplay.get('trackPoints'):
                 features.append(trackPointFeature)
              
-            # Dashed relocated shape and centroid show up if selected, editable if at object start time
-            if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                if i == 0:
-                    editable = True
-                    dragCapability = "whole"
-                else:
-                    editable = False
-                    dragCapability = "none"
+            # Dashed relocated shape and centroid show up if selected
+            if self.editableHazard:
+                dragCapability = 'none'
+                editable = False
                     
                 relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
                                                                        createRelocatedShape(geometry, centroid))
@@ -947,11 +1000,54 @@ class Recommender(RecommenderTemplate.Recommender):
                 }
                 if featuresDisplay.get('dashedPolyCentroid') and self.selectedHazard:
                    features.append(centroidFeature)
+                   
+        # Start time may be prior to first forecast shape and we need to display it
+        if not startTimeShapeFound:
+            #print "SR startTimeShape not found -- attempt to use geometry"
+            self.flush()
+            if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                #print "SR forecast poly equal to start time -- setting editable"
+                self.flush()
+
+                dragCapability = 'all'
+                editable = True
+            else:
+                dragCapability = 'none'
+                editable = False
+            #print "SR dragCapability", dragCapability
+            self.flush()
+                
+            polySt_ms = self.eventSt_ms
+            polyEt_ms = firstForecastSt_ms
+            probTrend = probTrendValues[0]
+            probStr = ' '+ `probTrend['y']`+'%'
+            label = self.label + probStr
+
+            startTimeFeature = {
+              "identifier": "swathRec_forecast_"+str(polySt_ms),
+              "visibilityConstraints": "always",
+              "borderColor": "eventType",
+              "borderThickness": "eventType",
+              "borderStyle": "eventType",
+              "textSize": "eventType",
+              "label": label,
+              "textColor": "eventType",
+              "dragCapability": dragCapability, 
+              "scaleable": editable,
+              "rotatable": editable,
+              "geometry": {
+                   (polySt_ms, polyEt_ms): geometry
+                  }
+                }
+            if featuresDisplay.get('startTimeShape'):
+               features.append(startTimeFeature)
+                
      
         return features
 
     def swathFeature(self, event, upstreamSt_ms, forecastPolys):
         advancedGeometries = forecastPolys
+        forecastPolys = [event.getGeometry()] + forecastPolys
         forecastPolys = []
         for geometry in advancedGeometries:
             forecastPolys.append(geometry.asShapely())
@@ -1088,16 +1184,18 @@ class Recommender(RecommenderTemplate.Recommender):
         previousFeatures = []
         
         if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-            editableObject = True
+            editable = True
         else:
-            editableObject = False
+            editable = False
         print "SR previousTimeVisualFeatures editableHazard, automationLevel", self.editableHazard, event.get('automationLevel')  
         self.flush()
                         
-        # Don't want to show upstream polys for latestDataLayerTime
+        # Don't want to show upstream polys for times at or after eventSt
         for i in range(len(self.dataLayerTimes[:-1])):
             polySt_ms = self.dataLayerTimes[i]
-            poly, editablePoly = self.findPreviousPoly(polySt_ms,
+            if polySt_ms >= self.eventSt_ms:
+                continue
+            poly, editablePoly, polyType = self.findPreviousPoly(polySt_ms,
                                           motionVectorPolys, motionVectorTimes, 
                                           pastPolys, pastTimes, upstreamPolys, upstreamTimes)
             if not poly:
@@ -1107,7 +1205,7 @@ class Recommender(RecommenderTemplate.Recommender):
             #print "SR previous st, et", self.probUtils.displayMsTime(polySt_ms), self.probUtils.displayMsTime(polyEt_ms)
             #self.flush()
             
-            if editablePoly and editableObject:
+            if editablePoly and editable:
                 dragCapability = 'whole'
                 color = { "red": 1, "green": 1, "blue": 0 }
             else:
@@ -1135,30 +1233,33 @@ class Recommender(RecommenderTemplate.Recommender):
     def findPreviousPoly(self, polySt_ms, motionVectorPolys, motionVectorTimes, pastPolys, pastTimes,
                           upstreamPolys, upstreamTimes):
         featuresDisplay = self.featuresDisplay()
-        editable = False
+        editablePoly = False
         if featuresDisplay.get('motionVectorPolys') and featuresDisplay.get('motionVectorPolys'):
             for i in range(len(motionVectorTimes)):
                 st, et = motionVectorTimes[i]
                 if abs(st-polySt_ms) < self.probUtils.timeDelta_ms():
-                    print "SR upstream using motion vector", i, self.probUtils.displayMsTime(st)
-                    editable = True
-                    return motionVectorPolys[i], editable
+                    #print "SR upstream using motion vector", i, self.probUtils.displayMsTime(st)
+                    self.flush()
+                    editablePoly = True
+                    return motionVectorPolys[i], editablePoly, 'motionVector'
         if featuresDisplay.get('pastPolys') and featuresDisplay.get('pastPolys'):
             for i in range(len(pastTimes)):
                 st, et = pastTimes[i]
                 if abs(st-polySt_ms) < self.probUtils.timeDelta_ms():
-                    print "SR upstream using past", i, self.probUtils.displayMsTime(st)
-                    return pastPolys[i], editable
+                    #print "SR upstream using past", i, self.probUtils.displayMsTime(st)
+                    self.flush()
+                    return pastPolys[i], editablePoly, 'past'
         if not self.editableHazard:
-            return None, False
+            return None, False, 'none'
         if featuresDisplay.get('upstreamPolys') and featuresDisplay.get('upstreamPolys'):
             for i in range(len(upstreamTimes)):
                 st, et = upstreamTimes[i]
                 if abs(st-polySt_ms) < self.probUtils.timeDelta_ms():
-                    print "SR upstream poly", self.probUtils.displayMsTime(st)
-                    editable = True
-                    return upstreamPolys[i], editable
-        return None, False
+                    #print "SR upstream poly", self.probUtils.displayMsTime(st)
+                    self.flush()
+                    editablePoly = True
+                    return upstreamPolys[i], editablePoly, 'upstream'
+        return None, False, 'none'
 
     ###############################
     # Helper methods              #
@@ -1206,6 +1307,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 print "start, end", event.getStartTime(), event.getEndTime()
                 print "automationLevel", event.get('automationLevel')
                 print 'newManualObject', event.get('newManualObject')
+                #print "visual Features"                            
+                #for visualFeature in event.getVisualFeatures():
+                #    print "     ", str(visualFeature.get('identifier'))
+
             if eventLevel >= 2:
                 print '=== attrs ==='
                 pprint.pprint(event.getHazardAttributes())
@@ -1258,6 +1363,7 @@ class Recommender(RecommenderTemplate.Recommender):
         return {
                'upstreamPolys': True,
                'forecastPolys': True,
+               'startTimeShape': True,
                'trackPoints': True,
                'dashedPolys': True,
                'dashedPolyCentroids': True,

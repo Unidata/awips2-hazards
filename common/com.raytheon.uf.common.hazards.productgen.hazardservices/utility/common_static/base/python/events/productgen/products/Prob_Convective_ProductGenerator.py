@@ -7,6 +7,7 @@ import HazardDataAccess
 #from PHI_GridRecommender import Recommender as PHI_GridRecommender
 import TimeUtils
 from ProbUtils import ProbUtils
+from VisualFeatures import VisualFeatures
 import json, pickle, os
 import datetime
 
@@ -45,41 +46,6 @@ class Product(Prob_Generator.Product):
         """  
         dialogDict = {"title": "Probabilistic Hazard Information"}
 
-#         floodPointTableDict = {
-#             "fieldType": "CheckBoxes", 
-#             "fieldName": "floodPointTable",
-#             "choices": [{'displayString':'Include Flood Point Table', 'identifier': 'include'}],
-#             "defaultValues": 'include',
-#             "values": 'include',
-#             }
-# 
-#         selectedHazardsDict = {
-#             "fieldType": "RadioButtons", 
-#             "fieldName": "selectedHazards",
-#             "label": "Hazard Events",
-#             "choices": ["Use selected set of hazards", "Report on all hazards"]
-#             }
-
-#         headlineStatement = {
-#              "fieldType": "Text",
-#              "fieldName": "headlineStatement",
-#              "expandHorizontally": True,
-#              "visibleChars": 25,
-#              "lines": 1,
-#              "values": "|* Enter Headline Statement *|",
-#             } 
-# 
-#         narrativeInformation = {
-#              "fieldType": "Text",
-#              "fieldName": "narrativeInformation",
-#              "expandHorizontally": True,
-#              "visibleChars": 25,
-#              "lines": 25,
-#              "values": "|* Enter Narrative Information *|",
-#            } 
-
-#         fieldDicts = [headlineStatement, narrativeInformation]
-#         dialogDict["metadata"] = fieldDicts
         return dialogDict
 
 
@@ -110,7 +76,6 @@ class Product(Prob_Generator.Product):
 
         # Extract information for execution
         self._getVariables(eventSet, dialogInputMap)
-
 
         probHazardEvents = []
         for hazardEvent in hazardEvents:
@@ -182,50 +147,12 @@ class Product(Prob_Generator.Product):
             productDict['issueTime'] = self._issueTime
             productDicts.append(productDict)
             
-        if self._issueFlag:
-
-#===============================================================================
-#             siteID = eventSet.getAttributes().get('siteID')
-#             mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
-#             databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode)
-#             filteredDBEvents = []
-# 
-#             thisEventSetIDs = [evt.getEventID() for evt in eventSet]
-#             print 'Prob_Convective Product Generator -- DBEvents:'
-#             for evt in databaseEvents:
-#                 if evt.getStatus().lower() in ["elapsed", "ending", "ended"]:
-#                     continue
-#                 if evt.getEventID() not in thisEventSetIDs:
-#                   filteredDBEvents.append(evt)  
-# 
-#             eventSet.addAll(filteredDBEvents)
-#             eventSet.addAttribute('issueTime', datetime.datetime.utcfromtimestamp(self.issueTime/1000))
-# 
-# 
-#             pu = ProbUtils()
-#             
-#             pu.processEvents(eventSet, writeToFile=True)
-#===============================================================================
-            pu = ProbUtils()
-
-            ## Dump just this event to disk since only one hazard in events set?
-            attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
-                        'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
-                        'username', 'workstation', 'attributes']
-            outDict = {}
-            for hazardEvent in probHazardEvents:
-                outDict = {k:hazardEvent.__getitem__(k) for k in attrKeys}
-
-                filename = outDict.get('phenomenon') + '_' + outDict.get('eventid') + '_' + str(self._issueTime)
-                OUTPUTDIR = os.path.join(pu.getOutputDir(), 'IssuedEventsPickle')
-                if not os.path.exists(OUTPUTDIR):
-                    try:
-                        os.makedirs(OUTPUTDIR)
-                    except:
-                        sys.stderr.write('Could not create PHI grids output directory:' +OUTPUTDIR+ '.  No output written')
-
-                pickle.dump( outDict, open(OUTPUTDIR+'/'+filename, 'wb'))
-                
+            if self._issueFlag:
+                self.cleanupHazard(hazardEvent)            
+            
+        if self._issueFlag:            
+            self.storeIssuedHazards(probHazardEvents)                
+     
         #productDicts, hazardEvents = self.makeProducts_FromHazardEvents(probHazardEvents, eventSetAttributes)
 
         return productDicts, probHazardEvents
@@ -311,7 +238,7 @@ class Product(Prob_Generator.Product):
             ('SSE', base + 6*dirSpan,  base + 7*dirSpan),
             ('S',   base + 7*dirSpan,  base + 8*dirSpan),
             ('SSW', base + 8*dirSpan,  base + 9*dirSpan),
-            ('SW',  base + 9*dirSpan,  base + 10*dirSpan),
+            ('SW',  base + 9*dirSpan,  base + 10*dirSpan),        # Remove motion vector polygons
             ('WSW', base + 10*dirSpan,  base + 11*dirSpan),
             ('W',   base + 11*dirSpan,  base + 12*dirSpan),
             ('WNW', base + 12*dirSpan,  base + 13*dirSpan),
@@ -319,6 +246,37 @@ class Product(Prob_Generator.Product):
             ('NNW', base + 14*dirSpan,  base + 15*dirSpan),
             ]
 
+    def cleanupHazard(self, hazardEvent):
+        # Remove previous visual features
+        visualFeatures = hazardEvent.getVisualFeatures()
+        newFeatures = []                            
+        for visualFeature in visualFeatures:
+            if not 'previous' in str(visualFeature.get('identifier')):
+                newFeatures.append(visualFeature)
+        hazardEvent.setVisualFeatures(VisualFeatures(newFeatures))
+        # Set editableObject off
+        hazardEvent.set('editableObject', False)
+                
+    def storeIssuedHazards(self,probHazardEvents):
+        pu = ProbUtils()
+
+        ## Dump just this event to disk since only one hazard in events set?
+        attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
+                    'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
+                    'username', 'workstation', 'attributes']
+        outDict = {}
+        for hazardEvent in probHazardEvents:
+            outDict = {k:hazardEvent.__getitem__(k) for k in attrKeys}
+
+            filename = outDict.get('phenomenon') + '_' + outDict.get('eventid') + '_' + str(self._issueTime)
+            OUTPUTDIR = os.path.join(pu.getOutputDir(), 'IssuedEventsPickle')
+            if not os.path.exists(OUTPUTDIR):
+                try:
+                    os.makedirs(OUTPUTDIR)
+                except:
+                    sys.stderr.write('Could not create PHI grids output directory:' +OUTPUTDIR+ '.  No output written')
+
+            pickle.dump( outDict, open(OUTPUTDIR+'/'+filename, 'wb'))
     
     def getSegments(self, hazardEvents):
         '''

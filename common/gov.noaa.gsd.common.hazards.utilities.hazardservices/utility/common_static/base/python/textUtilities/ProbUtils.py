@@ -1011,7 +1011,7 @@ class ProbUtils(object):
         # self.initial_ulLat = 43.0
         # self.initial_ulLon = -104.00
         #=======================================================================
-        print '\n==== RESETTING DOMAIN ==='
+        print '\nProbUtils==== RESETTING DOMAIN ==='
         cu = ConfigUtils()
         domainDict = cu.getConfigDict()
         self.OUTPUTDIR = domainDict.get(cu.outputDirKey)
