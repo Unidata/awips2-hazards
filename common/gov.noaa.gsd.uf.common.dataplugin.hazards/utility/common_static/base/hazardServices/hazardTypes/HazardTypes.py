@@ -2197,10 +2197,11 @@ HazardTypes = {
               'defaultDuration': 4 * HOURS,
               'durationIncrement': 60,
               'sessionAttributes': SESSION_ATTRS,
-              #'modifyRecommenders': {
-              #                       'LineAndPointTool': [ 'geometry', 'visualFeature' ]
-              #                       },              
-              },
+              'modifyRecommenders': {
+                                     'InternationalSigmetTool': [ 'geometry', 'visualFeature' ]
+                                     },              
+              },             
+               
     ################
     # National Hurricane Center Hazards
     'SS.W' : {

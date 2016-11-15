@@ -1,9 +1,9 @@
-import shapely
-import EventFactory, EventSetFactory, GeometryFactory
-import AdvancedGeometry
 '''
 Utility for Aviation Products
 '''
+import shapely
+import EventFactory, EventSetFactory, GeometryFactory
+import AdvancedGeometry
 import numpy as np
 import datetime, math
 from math import sin, cos, sqrt, atan2, radians, pi
@@ -21,8 +21,32 @@ import HazardDataAccess
 import TimeUtils
 from VisualFeatures import VisualFeatures
 import Domains
+import csv
 
 class AviationUtils:
+    
+    def createVolcanoDict(self):
+        f = open(self.volcanoFilePath(), 'rb')
+        reader = csv.reader(f)
+        headers = reader.next()
+        column = {}
+        for h in headers:
+            column[h] = []
+        
+        for row in reader:
+            for h, v in zip(headers, row):
+                column[h].append(v)
+        
+        volcanoName = column['VolcanoName']
+        volcanoLatitude = column['LatitudeDecimal']
+        volcanoLongitude = column['LongitudeDecimal']
+        volcanoNumber = column['VolcanoNumber']
+        
+        volcanoDict = {}
+        for i in range(0,len(volcanoName)):
+            volcanoDict[volcanoName[i]] = [volcanoNumber[i], volcanoLatitude[i], volcanoLongitude[i]]        
+        
+        return volcanoDict    
         
     def getGeometryType(self, hazardEvent):        
         for g in hazardEvent.getFlattenedGeometry():
@@ -476,4 +500,10 @@ class AviationUtils:
         VOR_points = zip(vorLon, vorLat)
         hazardEvent.set('VOR_points', VOR_points)
         
-        return           
+        return
+    
+    #########################################
+    ### OVERRIDES
+    
+    def volcanoFilePath(self):
+        return '/home/nathan.hardin/Desktop/volcanoes.csv'           

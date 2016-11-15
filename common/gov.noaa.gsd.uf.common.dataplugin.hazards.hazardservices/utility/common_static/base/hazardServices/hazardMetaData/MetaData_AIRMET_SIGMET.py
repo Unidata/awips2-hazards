@@ -330,225 +330,6 @@ class MetaData(CommonMetaData.MetaData):
         
         return aType
     
-    ###INTERNATIONAL SIGMET MEGAWIDGET OPTIONS###
-    def getInternationalSigmetInputs(self, geomType):
-        if geomType is 'LineString':
-            width = self.getInternationalSigmetWidth()
-        
-        originatingOffice = self.getInternationalSigmetOffice()
-        phenomenon = self.getInternationalSigmetPhenomenon()
-        extent = self.getInternationalSigmetExtent()
-        additionalDetails = self.getInternationalSigmetAdditionalDetails()       
-
-        if geomType is 'LineString':
-            fields = [width, originatingOffice, phenomenon, extent, additionalDetails]           
-        else:
-            fields = [originatingOffice, phenomenon, extent, additionalDetails]
-        
-        grp = {
-            "fieldType": "Group",
-            "fieldName": "convectiveSigmetGroup",
-            "label": "",
-            "expandHorizontally": True,
-            "expandVertically": True,
-            "numColumns":1,
-            "fields": fields
-            }
-
-        return grp
-    
-    def getInternationalSigmetWidth(self):        
-        width = {
-            "fieldType": "Group",
-            "fieldName": "convectiveSigmetWidthGroup",
-            "label": "",
-            "numColumns": 1,
-            "enable": True,
-            "fields": [
-                       {
-                        "fieldType": "IntegerSpinner",
-                        "fieldName": "convectiveSigmetWidth",
-                        "sendEveryChange": False,
-                        "label": "Line Width (nm)",
-                        "minValue": 10,
-                        "maxValue": 60,
-                        "values": 10,
-                        "incrementDelta": 5,
-                        #"modifyRecommender": "LineAndPointTool"                             
-                        },
-                ]
-        }
-
-        return width    
-    
-    def getInternationalSigmetOffice(self):
-        
-        office = {
-            "fieldType": "Group",
-            "fieldName": "internationalSigmetOfficeGroup",
-            "label": "",
-            "numColumns": 3,
-            "expandHorizontally": False,
-            "fields": [
-                       {
-                        "fieldType": "RadioButtons",
-                        "fieldName": "internationalSigmetOffice",
-                        "label": "Originating Office:",
-                        "expandHorizontally": False,
-                        "values": 'KKCI',
-                        "choices": [
-                                    "KKCI",
-                                    "PANC",
-                                    "PHFO",
-                                    ]                        
-                        },
-                       {
-                        "fieldType": "ComboBox",
-                        "fieldName": "internationalSigmetSequence",
-                        "label": "Sequence: ",
-                        "expandHorizontally": False,
-                        "choices": ["ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]
-                       },                                             
-            ]
-        }
-        return office
-    
-    def getInternationalSigmetPhenomenon(self):       
-        phenomenon = {
-            "fieldType": "Group",
-            "fieldName": "internationalSigmetPhenomenonGroup",
-            "numColumns": 3,
-            "fields": [                     
-                  {
-                   "fieldType": "ComboBox",
-                   "fieldName": "internationalSigmetPhenomenon",
-                   "label": "Phenomenon:",
-                   "choices": ['Obscured Thunderstorms', 'Embedded Thunderstorms', 'Frequent Thunderstorms',
-                               'Squall Line', 'Widespread Thunderstorms', 'Isolated Severe Thunderstorms',
-                               'Turbulence', 'Severe Icing', 'Icing with Freezing Rain', 'Dust Storm',
-                               'Sand Storm', 'Tropical Cyclone', 'Volcanic Ash'
-                               ]
-                  },
-            ]
-        }        
-        return phenomenon
-    
-    def getInternationalSigmetExtent(self):
-        extent = {
-            "fieldType": "Group",
-            "fieldName": "internationalSigmetExtentGroup",
-            "label": "Extent:",
-            "numColumns": 3,
-            "fields": [
-                       {
-                        "fieldType": "RadioButtons",
-                        "fieldName": "internationalSigmetExtent",
-                        "choices": ['Between','Below','Top'],
-                        "values": 'Between',
-                        "expandHorizontally": False,
-                        },
-                       {
-                        "fieldType": "Group",
-                        "fieldName": "internationalSigmetExtentSubGroup",
-                        "expandHorizontally": False,
-                        #"numColumns": 1,
-                        "fields": [
-                           {
-                            "fieldType": "IntegerSpinner",
-                            "fieldName": "internationalSigmetExtentBottom",
-                            "label": "Bottom:  FL",
-                            "minValue": 0,
-                            "maxValue": 600,
-                            "incrementDelta": 10,
-                            "values": 100,
-                            "expandHorizontally": False,
-                            },
-                           {
-                            "fieldType": "ComboBox",
-                            "fieldName": "internationalSigmetExtentTop",
-                            "expandHorizontally": False,
-                            "label": "Top: ",
-                            "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
-                                        "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
-                                        "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
-                                        "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
-                                        "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
-                                        "FL500"
-                                        ],
-                            "values": "FL300",
-                            },                                                                                               
-                          ],
-                        },         
-            ]
-        }                  
-        return extent
-    
-    def getInternationalSigmetAdditionalDetails(self):
-        additionalDetails = {
-            "fieldType": "Group",
-            "fieldName": "internationalSigmetAdditionalDetailsGroup",
-            "label": "Additional Details:",            
-            "numColumns": 1,
-            "fields": [
-                       {
-                        "fieldType": "Group",
-                        "fieldName": "internationalSigmetMovement",
-                        "expandHorizontally": True,
-                        "label": "Movement: ",
-                        "numColumns": 3,
-                        "fields": [
-                                   {
-                                   "fieldType": "IntegerSpinner",
-                                   "fieldName": "internationalSigmetSpeed",
-                                   "label": "Speed (kts):",
-                                   "minValue": 0,
-                                   "maxValue": 100,
-                                   "values": 0,
-                                   "incrementDelta": 5,
-                                   "expandHorizontally": False,
-                                   },
-                                   {
-                                    "fieldType": "ComboBox",
-                                    "fieldName": "internationalSigmetDirection",
-                                    "expandHorizontally": False,
-                                    "label": "Towards:",
-                                    "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
-                                                "WNW","NW","NNW"
-                                                ]
-                                    },
-                          ]
-                        },
-                        {
-                         "fieldType": "Group",
-                         "fieldName": "internationalSigmetFcstObsGroup",
-                         "expandHorizontally": True,
-                         "label": "This is:",
-                         "numColumns": 3,
-                         "fields": [
-                                   {
-                                    "fieldType": "RadioButtons",
-                                    "fieldName": "internationalSigmetFcstObs",
-                                    "expandHorizontally": False,
-                                    "label": "",
-                                    "choices": [
-                                                "Forecast",
-                                                "Observed"
-                                                ]
-                                   },
-                                   {
-                                    "fieldType": "ComboBox",
-                                    "fieldName": "internationalSigmetIntensity",
-                                    "expandHorizontally": False,
-                                    "label": "Intensity Trend:",
-                                    "choices": ['No Change','Intensifying','Weakening'],
-                                    "values": 'No Change',                                    
-                                   },
-                          ] 
-                        },                                                                                          
-            ]
-        }                          
-        return additionalDetails     
-    
     ###CONVECTIVE SIGMET MEGAWIDGET OPTIONS###
     def getConvectiveSigmetInputs(self, geomType, domain, modifiers):
         if geomType is not 'Polygon':
@@ -870,6 +651,740 @@ class MetaData(CommonMetaData.MetaData):
                   }        
         
         return tops                               
+
+    ###INTERNATIONAL SIGMET MEGAWIDGET OPTIONS###
+    def getInternationalSigmetInputs(self, geomType, volcanoDict):
+        volcanoNamesList = list(volcanoDict.keys())
+        volcanoNamesList.sort()               
+        
+        if geomType in ['LineString', 'Point']:
+            if geomType == 'LineString':
+                label = "Line Width (nm)"
+            else:
+                label = "Radius (nm)"
+            width = self.getInternationalSigmetWidth(label)
+            
+        originatingOffice = self.getInternationalSigmetOffice()
+        phenomenon = self.getInternationalSigmetPhenomenon(volcanoNamesList, volcanoDict)
+        additionalRemarks = self.getInternationalSigmetAdditionalRemarks()      
+        if geomType in ['LineString','Point']:
+            fields = [originatingOffice, width, phenomenon, additionalRemarks]           
+        else:
+            fields = [originatingOffice, phenomenon, additionalRemarks]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp
+    
+    def getInternationalSigmetWidth(self, label):        
+        width = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetWidthGroup",
+            "label": "",
+            "numColumns": 1,
+            "enable": True,
+            "fields": [
+                       {
+                        "fieldType": "IntegerSpinner",
+                        "fieldName": "internationalSigmetWidth",
+                        "sendEveryChange": False,
+                        "label": label,
+                        "minValue": 10,
+                        "maxValue": 300,
+                        "values": 40,
+                        "incrementDelta": 5,                             
+                        },
+                ]
+        }
+
+        return width    
+    
+    def getInternationalSigmetOffice(self):
+        
+        office = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetOfficeGroup",
+            "label": "",
+            "numColumns": 1,
+            "fields": [
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "internationalSigmetOffice",
+                        "label": "Originating Office:",
+                        "expandHorizontally": False,
+                        "values": 'KKCI',
+                        "choices": ["KKCI", "PAWU", "PHFO"],                        
+                        },
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "internationalSigmetFIR",
+                        "label": "FIR:",
+                        "expandHorizontally": False,
+                        "values": 'KZWY',
+                        "choices": ['KZWY','KZMA','KZHU','TZJS','KZAK'],
+                        },
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "internationalSigmetSequence",
+                        "label": "Sequence: ",
+                        "expandHorizontally": False,
+                        "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]
+                       },
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "internationalSigmetCancellation",
+                        "label": "CANCEL THIS SERIES",           
+                       },                                                                    
+            ]
+        }
+        return office
+    
+    def getInternationalSigmetPhenomenon(self, volcanoNamesList, volcanoDict):       
+        phenomenon = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetPhenomenonGroup",
+            "numColumns": 2,
+            "fields": [                     
+                  {
+                   "fieldType": "DetailedComboBox",
+                   "fieldName": "internationalSigmetPhenomenonComboBox",
+                   "label": "Phenomenon:",
+                   "values": "obscuredThunderstorms",
+                   "modifyRecommender": "CreateVALayerForecastTool",
+                   "choices": [
+                               {
+                                "identifier": "obscuredThunderstorms",
+                                "displayString": "Obscured Thunderstorms",
+                                "detailFields": [
+                                                 {
+                                                  "fieldType": "ComboBox",
+                                                  "fieldName": "cbTops",
+                                                  "expandHorizontally": False,
+                                                  "label": "Max Tops (Cb): ",
+                                                  "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                              "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                              "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                              "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                              "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                              "FL500"],
+                                                  "values": "FL300",
+                                                  },
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetMovement",
+                                                  "expandHorizontally": True,
+                                                  "label": "Movement: ",
+                                                  "numColumns": 2,
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "IntegerSpinner",
+                                                              "fieldName": "internationalSigmetSpeed",
+                                                              "label": "Speed (kts):",
+                                                              "minValue": 0,
+                                                              "maxValue": 100,
+                                                              "values": 0,
+                                                              "incrementDelta": 5,
+                                                              "expandHorizontally": False,
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetDirection",
+                                                              "expandHorizontally": False,
+                                                              "label": "Towards:",
+                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                          "WNW","NW","NNW"
+                                                                          ]
+                                                              },
+                                                             ]
+                                                  },
+                                                  {
+                                                   "fieldType": "Group",
+                                                   "fieldName": "internationalSigmetFcstObsGroup",
+                                                   "expandHorizontally": True,
+                                                   "label": "This is:",
+                                                   "numColumns": 1,
+                                                   "fields": [
+                                                             {
+                                                              "fieldType": "RadioButtons",
+                                                              "fieldName": "internationalSigmetFcstObs",
+                                                              "expandHorizontally": True,
+                                                              "label": "",
+                                                              "choices": [
+                                                                          "Forecast",
+                                                                          "Observed",
+                                                                          ]
+                                                             },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetIntensity",
+                                                              "expandHorizontally": False,
+                                                              "label": "Intensity Trend:",
+                                                              "choices": ['No Change','Intensifying','Weakening'],
+                                                              "values": 'No Change',                                    
+                                                             },
+                                                    ] 
+                                                  },                                                                                               
+                                                 ],
+                                },
+                               {
+                                "identifier": "embeddedThunderstorms",
+                                "displayString": "Embedded Thunderstorms",
+                                "detailFields": "obscuredThunderstorms"
+                                },
+                               {
+                                "identifier": "frequentThunderstorms",
+                                "displayString": "Frequent Thunderstorms",
+                                "detailFields": "obscuredThunderstorms"
+                                }, 
+                               {
+                                "identifier": "squallLineThunderstorms",
+                                "displayString": "Squall Line",
+                                "detailFields": "obscuredThunderstorms"
+                                },                                
+                               {
+                                "identifier": "widespreadThunderstorms",
+                                "displayString": "Widespread Thunderstorms",
+                                "detailFields": "obscuredThunderstorms"
+                                },
+                               {
+                                "identifier": "isolatedSevereThunderstorms",
+                                "displayString": "Isolated Severe Thunderstorms",
+                                "detailFields": "obscuredThunderstorms"
+                                },
+                               {
+                                "identifier": "turbulence",
+                                "displayString": "Severe Turbulence",
+                                "detailFields": [
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetTurbulenceExtentSubGroup",
+                                                  "expandHorizontally": True,
+                                                  "numColumns": 2,
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetTurbulenceExtentBottom",
+                                                              "expandHorizontally": False,
+                                                              "label": "Bottom: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL200",
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetTurbulenceExtentTop",
+                                                              "expandHorizontally": False,
+                                                              "label": "Top: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL300",
+                                                              },                                                                                               
+                                                             ],
+                                                  },
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetTurbulenceMovement",
+                                                  "expandHorizontally": True,
+                                                  "label": "Movement: ",
+                                                  "numColumns": 2,
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "IntegerSpinner",
+                                                              "fieldName": "internationalSigmetTurbulenceSpeed",
+                                                              "label": "Speed (kts):",
+                                                              "minValue": 0,
+                                                              "maxValue": 100,
+                                                              "values": 0,
+                                                              "incrementDelta": 5,
+                                                              "expandHorizontally": False,
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetTurbulenceDirection",
+                                                              "expandHorizontally": False,
+                                                              "label": "Towards:",
+                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                          "WNW","NW","NNW"
+                                                                          ]
+                                                              },
+                                                             ]
+                                                  },
+                                                  {
+                                                   "fieldType": "Group",
+                                                   "fieldName": "internationalSigmetTurbObsGroup",
+                                                   "expandHorizontally": True,
+                                                   "label": "This is:",
+                                                   "numColumns": 1,
+                                                   "fields": [
+                                                             {
+                                                              "fieldType": "RadioButtons",
+                                                              "fieldName": "internationalSigmetTurbObs",
+                                                              "expandHorizontally": False,
+                                                              "label": "",
+                                                              "choices": [
+                                                                          "Forecast",
+                                                                          "Observed",
+                                                                          ]
+                                                             },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetTurbIntensity",
+                                                              "expandHorizontally": False,
+                                                              "label": "Intensity Trend:",
+                                                              "choices": ['No Change','Intensifying','Weakening'],
+                                                              "values": 'No Change',                                    
+                                                             },                                                               
+                                                    ] 
+                                                  },                                                                        
+                                                 ],
+                                },
+                               {
+                                "identifier": "icing",
+                                "displayString": "Severe Icing",
+                                "detailFields": "turbulence"
+                                }, 
+                               {
+                                "identifier": "icingFzra",
+                                "displayString": "Severe Icing with FZRA",
+                                "detailFields": "turbulence"
+                                }, 
+                               {
+                                "identifier": "dustStorm",
+                                "displayString": "Dust Storm",
+                                "detailFields": "turbulence"
+                                },
+                               {
+                                "identifier": "sandStorm",
+                                "displayString": "Sand Storm",
+                                "detailFields": "turbulence"
+                                },
+                               {
+                                "identifier": "radioactiveRelease",
+                                "displayString": "Radioactive Release",
+                                "detailFields": "turbulence"
+                                },
+                               {
+                                "identifier": "severeMountainWave",
+                                "displayString": "Severe Mountain Wave",
+                                "detailFields": "turbulence"
+                                },                                                                                                                                                                                                                                                                                                                                                         
+                               {
+                                "identifier": "tropicalCyclone",
+                                "displayString": "Tropical Cyclone",
+                                "detailFields": [                                                  
+                                                 {
+                                                  "fieldType": "Text",
+                                                  "fieldName": "internationalSigmetTCName",
+                                                  "label": "Tropical Cyclone Name:",
+                                                  "visibleChars": 12,
+                                                  "lines": 1,
+                                                  "expandHorizontally": False,
+                                                  },
+                                                 {
+                                                  "fieldType": "Button",
+                                                  "fieldName": "internationalSigmetTCPopulate",
+                                                  "label": "Automatically Populate MetaData",
+                                                  "modifyRecommender": "PopulateTCMetaDataTool"
+                                                  },
+                                                 {
+                                                  "fieldType": "HiddenField",
+                                                  "fieldName": "internationalSigmetTCMetaData",
+                                                  "refreshMetadata": True,
+                                                  "values": False,
+                                                  },                                                  
+                                                 {
+                                                  "fieldType": "ComboBox",
+                                                  "fieldName": "internationalSigmetTCObsTime",
+                                                  "expandHorizontally": False,
+                                                  "label": "Observation Time (UTC)",
+                                                  "choices": ['0000','0300','0600','0900','1200','1500','1800','2100'],
+                                                  "values": '0000',
+                                                  },
+                                                 {
+                                                  "fieldType": "Text",
+                                                  "fieldName": "internationalSigmetTCPosition",
+                                                  "label": "Current Center Position:",
+                                                  "visible Chars": 12,
+                                                  "lines": 1,
+                                                  "expandHorizontally": False,
+                                                  },
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetTCMovement",
+                                                  "expandHorizontally": True,
+                                                  "label": "Current Motion: ",
+                                                  "numColumns": 2,
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "IntegerSpinner",
+                                                              "fieldName": "internationalSigmetTCSpeed",
+                                                              "label": "Speed (kts):",
+                                                              "minValue": 0,
+                                                              "maxValue": 50,
+                                                              "values": 10,
+                                                              "incrementDelta": 1,
+                                                              "expandHorizontally": False,
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetTCDirection",
+                                                              "expandHorizontally": False,
+                                                              "label": "Towards:",
+                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                          "WNW","NW","NNW"
+                                                                          ]
+                                                              },
+                                                             ]
+                                                  },
+                                                 {
+                                                  "fieldType": "ComboBox",
+                                                  "fieldName": "internationalSigmetTCIntensity",
+                                                  "expandHorizontally": False,
+                                                  "label": "Intensity Trend:",
+                                                  "choices": ['No Change','Intensifying','Weakening'],
+                                                  "values": 'No Change',                                    
+                                                  },                                                                                                                                                   
+                                                 {
+                                                  "fieldType": "ComboBox",
+                                                  "fieldName": "cbTopsTC",
+                                                  "expandHorizontally": False,
+                                                  "label": "Max Tops (Cb):",
+                                                  "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                              "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                              "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                              "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                              "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                              "FL500"],
+                                                  "values": "FL300",
+                                                  },
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetTCFcst",
+                                                  "expandHorizontally": True,
+                                                  "label": "Forecast Time And Position",
+                                                  "numColumns": 2,
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetTCFcstTime",
+                                                              "expandHorizontally": True,
+                                                              "label": "Forecast Time (UTC)",
+                                                              "choices": ['0000','0300','0600','0900','1200','1500','1800','2100'],
+                                                              "values": '0000',
+                                                              },
+                                                            {
+                                                             "fieldType": "Text",
+                                                             "fieldName": "internationalSigmetTCFcstPosition",
+                                                             "label": "Forecast Center Position:",
+                                                             "visible Chars": 12,
+                                                             "lines": 1,
+                                                             "expandHorizontally": True,
+                                                             },
+                                                             ]
+                                                  },                                                
+                                                 ],
+                                },
+                               {
+                                "identifier": "volcanicAsh",
+                                "displayString": "Volcanic Ash",
+                                "detailFields": [
+                                                 {
+                                                  "fieldType": "ComboBox",
+                                                  "fieldName": "internationalSigmetVolcanoNameVA",
+                                                  "autocomplete": True,
+                                                  "label": "Select Volcano Name:",
+                                                  "choices": volcanoNamesList,
+                                                  "values": volcanoNamesList[0],                                               
+                                                  },                                               
+                                                 {
+                                                 "fieldType": "IntegerSpinner",
+                                                 "fieldName": "internationalSigmetVALayersSpinner",
+                                                 "label": "Number of Layers: ",
+                                                 "modifyRecommender": "CreateVALayerForecastTool",
+                                                 "minValue": 1,
+                                                 "maxValue": 3,
+                                                 "increment": 1,
+                                                 "expandHorizontally": False,
+                                                 },                                                 
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetVALayer1",
+                                                  "expandHorizontally": True,
+                                                  "numColumns": 2,
+                                                  "label": "Layer 1",
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVAExtentBottom1",
+                                                              "expandHorizontally": False,
+                                                              "label": "Bottom: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL200",
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVAExtentTop1",
+                                                              "expandHorizontally": False,
+                                                              "label": "Top: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL300",
+                                                              }, 
+                                                             {
+                                                              "fieldType": "IntegerSpinner",
+                                                              "fieldName": "internationalSigmetVASpeed1",
+                                                              "label": "Speed (kts):",
+                                                              "minValue": 0,
+                                                              "maxValue": 100,
+                                                              "values": 0,
+                                                              "incrementDelta": 5,
+                                                              "expandHorizontally": False,
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVADirection1",
+                                                              "expandHorizontally": False,
+                                                              "label": "Towards:",
+                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                          "WNW","NW","NNW"
+                                                                          ]
+                                                              },                                                                                                                                                           
+                                                             ],
+                                                  },
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetVALayer2",
+                                                  "expandHorizontally": True,
+                                                  "enable": False,
+                                                  "numColumns": 2,
+                                                  "label": "Layer 2",
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVAExtentBottom2",
+                                                              "expandHorizontally": False,
+                                                              "label": "Bottom: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL200",
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVAExtentTop2",
+                                                              "expandHorizontally": False,
+                                                              "label": "Top: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL300",
+                                                              }, 
+                                                             {
+                                                              "fieldType": "IntegerSpinner",
+                                                              "fieldName": "internationalSigmetVASpeed2",
+                                                              "label": "Speed (kts):",
+                                                              "minValue": 0,
+                                                              "maxValue": 100,
+                                                              "values": 0,
+                                                              "incrementDelta": 5,
+                                                              "expandHorizontally": False,
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVADirection2",
+                                                              "expandHorizontally": False,
+                                                              "label": "Towards:",
+                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                          "WNW","NW","NNW"
+                                                                          ]
+                                                              },                                                                                                                                                           
+                                                             ],
+                                                  },
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetVALayer3",
+                                                  "expandHorizontally": True,
+                                                  "enable": False,
+                                                  "numColumns": 2,
+                                                  "label": "Layer 3",
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVAExtentBottom3",
+                                                              "expandHorizontally": False,
+                                                              "label": "Bottom: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL200",
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVAExtentTop3",
+                                                              "expandHorizontally": False,
+                                                              "label": "Top: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL300",
+                                                              }, 
+                                                             {
+                                                              "fieldType": "IntegerSpinner",
+                                                              "fieldName": "internationalSigmetVASpeed3",
+                                                              "label": "Speed (kts):",
+                                                              "minValue": 0,
+                                                              "maxValue": 100,
+                                                              "values": 0,
+                                                              "incrementDelta": 5,
+                                                              "expandHorizontally": False,
+                                                              },
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetVADirection3",
+                                                              "expandHorizontally": False,
+                                                              "label": "Towards:",
+                                                              "choices": ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W",
+                                                                          "WNW","NW","NNW"
+                                                                          ]
+                                                              },                                                                                                                                                           
+                                                             ],
+                                                  },                                                                                                                                                                                                
+                                                 ],
+                                },
+                               {
+                                "identifier": "volcanicEruption",
+                                "displayString": "Volcanic Eruption",
+                                "detailFields": [
+                                                 {
+                                                  "fieldType": "ComboBox",
+                                                  "fieldName": "internationalSigmetVolcanoNameEruption",
+                                                  "autocomplete": True,
+                                                  "label": "Select Volcano Name:",
+                                                  "choices": volcanoNamesList,
+                                                  "values": volcanoNamesList[0],                                               
+                                                  },
+                                                 {
+                                                  "fieldType": "TimeScale",
+                                                  "fieldName": "internationalSigmetVolcanoEruptionTime",
+                                                  "valueLabels": {"internationalSigmetVolcanoEruptionTime": "Time of Eruption (UTC):"},
+                                                  },                                                 
+                                                 {
+                                                  "fieldType": "CheckBoxes",
+                                                  "fieldName": "internationalSigmetEruptionIndicator",
+                                                  "label": "Indicated By:",
+                                                  "values": "avo",
+                                                  "choices": [
+                                                              {"identifier": "mt-sat",
+                                                               "displayString": "MT-SAT"},
+                                                              {"identifier": "goes",
+                                                               "displayString": "GOES"},
+                                                              {"identifier": "poes",
+                                                               "displayString": "POES"},
+                                                              {"identifier": "avo",
+                                                               "displayString": "AVO"},
+                                                              {"identifier": "kvert",
+                                                               "displayString": "KVERT"},
+                                                              {"identifier": "pilot",
+                                                               "displayString": "PILOT REPORT"},
+                                                              {"identifier": "radar",
+                                                               "displayString": "RADAR"},                                                                                                                                                                                                                                                                                                                                                                                    
+                                                              ]
+                                                  },                                                
+                                                 {
+                                                  "fieldType": "Group",
+                                                  "fieldName": "internationalSigmetEruptionLayer",
+                                                  "expandHorizontally": True,
+                                                  "numColumns": 2,
+                                                  "fields": [
+                                                             {
+                                                              "fieldType": "ComboBox",
+                                                              "fieldName": "internationalSigmetEruptionExtentTop",
+                                                              "expandHorizontally": False,
+                                                              "label": "Estimated Ash Top: ",
+                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                          "FL500"],
+                                                              "values": "FL300",
+                                                              },                                                                                                                                                           
+                                                             ],
+                                                  },                                                                                                                                               
+                                                 ],
+                                },                                 
+                        ],
+                  },
+            ]
+        }        
+        return phenomenon
+    
+    def getInternationalSigmetAdditionalRemarks(self):
+        additionalRemarks = {
+            "fieldType": "Group",
+            "fieldName": "internationalSigmetAdditionalRemarksGroup",
+            "label": "Additional Remarks",
+            "numColumns": 1,
+            "enable": True,
+            "fields": [
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "internationalSigmetCannedRemarks",
+                        "expandHorizontally": True,
+                        "label": "Canned Remarks:",
+                        "choices": ["None", "Canned Response 1", "Canned Response 2"],
+                        "values": "None", 
+                        },
+                       {
+                        "fieldType": "Text",
+                        "fieldName": "internationalSigmetAdditionalRemarks",
+                        "label": "Custom Remarks:",
+                        "visibleChars": 40,
+                        "lines": 4,
+                        "expandHorizontally": True,
+                        "values": "***ADD CUSTOM REMARKS HERE...DELETE IF NOT USED***"                            
+                        },
+                ]
+        }     
+        
+        return additionalRemarks             
     
 ## # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
@@ -877,8 +1392,11 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     import sys
     sys.stderr.writelines( ['Hello World!\n'])
     
-    try:
-        if triggerIdentifiers == None or "convectiveSigmetEmbeddedSvr" in triggerIdentifiers:
+    ###FOR CONVECTIVE SIGMET MUST HAVE HAIL/WIND IF SEVERE IS CHECKED###
+    if triggerIdentifiers is None or "convectiveSigmetEmbeddedSvr" in triggerIdentifiers:
+        if triggerIdentifiers is None:
+            return None
+        else:
             if "Severe" in mutableProperties["convectiveSigmetEmbeddedSvr"]["values"]:
                 return {
                       "convectiveSigmetAdditionalHazards": {
@@ -893,42 +1411,142 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                                 "values": []
                       }
                 }
-    except KeyError:
+    else:
         return None
+    
+    ###DISABLE EVERYTHING IF CHOOSING TO CANCEL INTERNATIONAL SIGMET###
+    if triggerIdentifiers is None or "internationalSigmetCancellation" in triggerIdentifiers:
+        if mutableProperties["internationalSigmetCancellation"]["values"] == True:
+            return {
+                    "internationalSigmetPhenomenonGroup": {
+                            "enable": False,                                      
+                    }
+            }
+        else:
+            return {
+                    "internationalSigmetPhenomenonGroup": {
+                            "enable": True,                                      
+                    }
+            }            
 
-    if triggerIdentifiers == None or "internationalSigmetOffice" in triggerIdentifiers:
+    ###CONTROLLING SERIES NAMES FOR INTERNATIONAL SIGMET BASED ON ORIGINATING OFFICE(MWO)###
+    if triggerIdentifiers is None or "internationalSigmetOffice" in triggerIdentifiers:
         if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
             return {
                   "internationalSigmetSequence": {
-                            "choices": ["ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INIDA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
-                  }        
+                            "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
+                  },
+                  "internationalSigmetFIR": {
+                            "choices": ['KZWY','KZMA','KZHU','TZJS','KZAK']                                
+                  }                             
             }
-        elif "PANC" in mutableProperties["internationalSigmetOffice"]["values"]:
+        elif "PAWU" in mutableProperties["internationalSigmetOffice"]["values"]:
             return {
                   "internationalSigmetSequence": {
                             "choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]                                
-                  }        
+                  },
+                  "internationalSigmetFIR": {
+                            "choices": ['PAZA'],
+                            "enable": False,                                
+                  }                              
             }
         else:
             return {
                   "internationalSigmetSequence": {
                             "choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]                                
-                  }        
-            }                              
-    
-    if triggerIdentifiers == None or "internationalSigmetExtent" in triggerIdentifiers:
-        if "Below" in mutableProperties["internationalSigmetExtent"]["values"] or "Top" in mutableProperties["internationalSigmetExtent"]["values"]:
+                  },
+                  "internationalSigmetFIR": {
+                            "choices": ['KZAK'],
+                            "enable": False,                                
+                  }                            
+            }  
+            
+    ###CONTROLLING LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
+    if triggerIdentifiers is None or "internationalSigmetVALayersSpinner" in triggerIdentifiers:
+        if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
             return {
-                  "internationalSigmetExtentBottom": {
-                          "enable": False,                                   
-                  }
+                    "internationalSigmetVALayer3": {
+                          "enable": False
+                    },
+                    "internationalSigmetVALayer2": {
+                          "enable": False
+                    },
+                    "internationalSigmetVALayer1": {
+                          "enable": True
+                    },    
+            }                      
+        elif mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 2:
+            return {
+                    "internationalSigmetVALayer3": {
+                              "enable": False                                
+                    },
+                    "internationalSigmetVALayer2": {
+                              "enable": True                                
+                    },
+                    "internationalSigmetVALayer1": {
+                              "enable": True                                
+                    },
             }
         else:
             return {
-                  "internationalSigmetExtentBottom": {
-                          "enable": True,                                   
-                  }
+                    "internationalSigmetVALayer3": {
+                              "enable": True                                
+                    },
+                    "internationalSigmetVALayer2": {
+                              "enable": True                                
+                    },
+                    "internationalSigmetVALayer1": {
+                              "enable": True                                
+                    },                                                    
             }
+            
+    ###AIRMET INTERDEPENDECIES###
+    if triggerIdentifiers is None or "airmetOffice" in triggerIdentifiers:
+        if "KKCI" in mutableProperties["airmetOffice"]["values"]:
+            return {
+                  "airmetZone": {
+                            "choices": ['SFO','SLC','DFW','CHI','BOS','MIA']                                
+                  }                             
+            }
+        elif "PAWU" in mutableProperties["airmetOffice"]["values"]:
+            return {
+                  "airmetZone": {
+                            "choices": ['01 Arctic Coast Coastal',
+                                        '02 North Slopes of Brooks Range',
+                                        '03 Upper Yukon Valley',
+                                        '04 Koyukuk and Upper Kobuk Valley',
+                                        '05 Northern Seward Peninsula - Lower Kobuk Valley',
+                                        '06 Southern Seward Peninsula - Eastern Norton Sound',
+                                        '07 Tanana Valley',
+                                        '08 Lower Yukon Valley',
+                                        '09 Kuskokwim Valley',
+                                        '10 Yukon-Kuskokwim Delta',
+                                        '11 Bristol Bay',
+                                        '12 Lynn Canal and Glacier Bay',
+                                        '13 Central Southeast Alaska',
+                                        '14 Southern Southeast Alaska',
+                                        '15 Coastal Southeast Alaska',
+                                        '16 Eastern Gulf Coast',
+                                        '17 Copper River Basin',
+                                        '18 Cook Inlet-Susitna Valley',
+                                        '19 Central Gulf Coast',
+                                        '20 Kodiak Island',
+                                        '21 Alaska Peninsula - Port Heiden to Unimak Pass',
+                                        '22 Unimak Pass to Adak',
+                                        '23 St.Lawrence Island-Bering Sea Coast',
+                                        '24 Adak to Attu',
+                                        '25 Pribilof Islands and Southeast Bering Sea'],
+                            "enable": True,                                
+                  }                              
+            }
+        else:
+            return {
+                  "airmetZone": {
+                            "choices": ['From Kauai to Maui', 'Immediately south through west of mountains'],
+                            "enable": True,                                
+                  }                            
+            }              
+        
     
     seriesOverride = None
     if triggerIdentifiers:

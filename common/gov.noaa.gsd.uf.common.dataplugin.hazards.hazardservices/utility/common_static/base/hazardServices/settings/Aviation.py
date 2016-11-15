@@ -27,6 +27,7 @@ Aviation = {
     "visibleTypes": [
         "SIGMET.NonConvective",
         "SIGMET.Convective",
+        "SIGMET.International",
     ],
     "hazardCategoriesAndTypes": [
         {
@@ -34,7 +35,7 @@ Aviation = {
         "children": [
         "SIGMET.NonConvective",
         "SIGMET.Convective",
-        "SIGMET.International",
+        "SIGMET.International",       
         ]
         }
     ],
