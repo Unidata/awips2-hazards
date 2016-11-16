@@ -150,6 +150,7 @@ class LocalizationInterface():
         caveEdexHost = ""
         caveEdexLoc = ""
         prefspath = os.path.join( "~", "caveData", ".metadata", \
+        #prefspath = os.path.join( "~", "caveData_Farnsworth", ".metadata", \
                       ".plugins", "org.eclipse.core.runtime", ".settings", \
                       "localization.prefs" )
         prefspath = os.path.expanduser(prefspath)

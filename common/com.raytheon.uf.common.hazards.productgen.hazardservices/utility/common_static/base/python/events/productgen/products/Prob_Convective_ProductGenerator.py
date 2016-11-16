@@ -134,8 +134,6 @@ class Product(Prob_Generator.Product):
             self.location = self.getLocation(hazardEvent)
             defaultDiscussion = ''' Mesocyclone interacted with line producing brief spin-up. Not confident in enduring tornadoes...but more brief spinups are possible as more interactions occur.'''
             self.discussion = prevDisc 
-            #print "Prob Convective PG hazardAttrs", hazardAttrs
-            #print "    start, end time, issueTime", hazardEvent.getStartTime(), hazardEvent.getEndTime(), hazardEvent.get('issueTime')
             if hazardEvent.getStatus() in ['ENDING']:
                 print "Prob Convective Product Generator setting status to Ended", hazardEvent.getEventID()
                 self.flush()

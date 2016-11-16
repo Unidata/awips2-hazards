@@ -1003,15 +1003,6 @@ class ProbUtils(object):
 
 
     def setUpDomainValues(self):
-        #=======================================================================
-        # self.OUTPUTDIR = '/scratch/PHIGridTesting'
-        # self.buff = 1.
-        # self.lonPoints = 1200
-        # self.latPoints = 1000
-        # self.initial_ulLat = 43.0
-        # self.initial_ulLon = -104.00
-        #=======================================================================
-        print '\nProbUtils==== RESETTING DOMAIN ==='
         cu = ConfigUtils()
         domainDict = cu.getConfigDict()
         self.OUTPUTDIR = domainDict.get(cu.outputDirKey)

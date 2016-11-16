@@ -192,7 +192,7 @@ class Recommender(RecommenderTemplate.Recommender):
         trigger = eventSetAttrs.get('trigger')
         origin = eventSetAttrs.get('origin')
         self.currentTime = long(eventSetAttrs.get("currentTime")) 
-        self.selectedTime = long(eventSetAttrs.get('selectedTime'))
+        self.selectedTime = None if eventSetAttrs.get('selectedTime') is None else long(eventSetAttrs.get('selectedTime'))
         self.setDataLayerTimes(eventSetAttrs)                
         self.attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers', [])
         if self.attributeIdentifiers is None:
@@ -209,13 +209,20 @@ class Recommender(RecommenderTemplate.Recommender):
                     self.editableObjects = True
                 
         for event in eventSet:
-             
+            
+            print '>>>>> Next event:', event.getEventID(), event.get('objectID')
+            sys.stdout.flush()
+                        
             if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
+                print '\tNext[0]...'
+                sys.stdout.flush()
                 continue
             
             # Begin Graph Draw
             if self.beginGraphDraw(event, trigger):
                  resultEventSet.add(event)
+                 print '\tNext[1]...'
+                 sys.stdout.flush()
                  continue
 
             self.initializeEvent(event)
@@ -227,20 +234,26 @@ class Recommender(RecommenderTemplate.Recommender):
             if origin == 'database':
                 self.setVisualFeatures(event)
                 resultEventSet.add(event)
+                print '\tNext[2]...'
+                sys.stdout.flush()
                 continue
                        
             # Adjust Hazard Event Attributes
             
             if trigger == 'frameChange':
                 if not self.adjustForFrameChange(event, eventSetAttrs):
+                    print '\tNext[3]...'
+                    sys.stdout.flush()
                     continue
                     
             elif trigger == 'dataLayerUpdate':
                 self.visualCueForDataLayerUpdate(event)
+                print '\tNext[4]...'
+                sys.stdout.flush()
                 continue
                 
             elif trigger == 'timeInterval':
-                self.processTimeInterval(event, eventSetAttrs)
+                self.processTimeInterval(event, eventSetAttrs, resultEventSet)
                 continue
                 
             elif trigger == 'hazardEventModification':
@@ -255,6 +268,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     
             elif trigger == 'hazardEventVisualFeatureChange':
                 if not self.adjustForVisualFeatureChange(event, eventSetAttrs):
+                    print '\tNext[7]...'
+                    sys.stdout.flush()
                     continue
                 resultEventSet.addAttribute('selectedTime', self.dataLayerTimeToLeft)
                 print "SR Setting selected time to dataLayerTimeToLeft"
@@ -277,6 +292,12 @@ class Recommender(RecommenderTemplate.Recommender):
             
             # Construct Updated Visual Features
             self.setVisualFeatures(event)         
+                
+            #print '\n\n== ENDING =='
+            #import pprint
+            #pprint.pprint(event.getHazardAttributes())
+            #print '||||||||||||||||'
+            #sys.stdout.flush()
                 
             # Add revised event to result
             resultEventSet.add(event)              
@@ -329,6 +350,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange']:
             eventIdentifier = eventSetAttrs.get('eventIdentifier')            
             if eventIdentifier and eventIdentifier != event.getEventID():
+                    print '\tRETURNING FALSE - [0]'
                     return False
         # Check for end time < current time and end the event
         eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
@@ -337,6 +359,7 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.add(event)
         # Skip ended, elapsed events 
         if event.getStatus() in ['ELAPSED', 'ENDED']:                
+            print '\tRETURNING FALSE - [1]'
             return False
         return True                  
     
@@ -422,7 +445,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if self.eventSt_ms != self.latestDataLayerTime:
             event.set('dataLayerStatus', 'Data Layer Updated')
 
-    def processTimeInterval(self, event, eventSetAttrs):
+    def processTimeInterval(self, event, eventSetAttrs, resultEventSet):
         if not self.editableHazard:
             # Not sure if we should be doing this -- may want to wait for the advance to 
             # take place when something is done to the hazard
@@ -528,7 +551,9 @@ class Recommender(RecommenderTemplate.Recommender):
             if self.editableHazard and event.get('automationLevel') != 'userOwned':
                 manualAttrs = event.get('manualAttributes', [])  
                 manualAttrs += changedAttrs
-                event.set('manualAttributes', manualAttrs)                    
+                event.set('manualAttributes', manualAttrs)
+                if event.get('automationLevel') == 'automated':
+                    event.set('automationLevel', 'attributesAndGeometry')                    
             
             return True
         
@@ -1003,7 +1028,7 @@ class Recommender(RecommenderTemplate.Recommender):
                    
         # Start time may be prior to first forecast shape and we need to display it
         if not startTimeShapeFound:
-            #print "SR startTimeShape not found -- attempt to use geometry"
+            print "SR startTimeShape not found -- attempt to use geometry"
             self.flush()
             if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                 #print "SR forecast poly equal to start time -- setting editable"
@@ -1019,8 +1044,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 
             polySt_ms = self.eventSt_ms
             polyEt_ms = firstForecastSt_ms
-            probTrend = probTrendValues[0]
-            probStr = ' '+ `probTrend['y']`+'%'
+            try: 
+                probTrend = int(probTrendValues[0])
+                probStr = ' '+ `probTrend`+'%'
+            except:
+                probStr = ''
             label = self.label + probStr
 
             startTimeFeature = {

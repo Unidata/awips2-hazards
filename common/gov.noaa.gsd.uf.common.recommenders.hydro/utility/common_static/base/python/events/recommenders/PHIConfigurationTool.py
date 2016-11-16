@@ -78,7 +78,7 @@ class Recommender(RecommenderTemplate.Recommender):
         upperLeftLonDict["fieldName"] = ULLONSOURCE
         upperLeftLonDict["label"] = "Set Upper Left Longitude"
         upperLeftLonDict["fieldType"] = "FractionSpinner"
-        upperLeftLonDict["minValue"] = -126.0
+        upperLeftLonDict["minValue"] = -129.0
         upperLeftLonDict["maxValue"] = -67.5
         upperLeftLonDict["values"] = self._configUtils.getDomainULLon()
         upperLeftLonDict["showScale"] = True

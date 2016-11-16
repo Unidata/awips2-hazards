@@ -1934,6 +1934,7 @@ class MetaData(object):
              "fieldName": "automationLevel",
              "fieldType": "Label",
              "label": "AutomationLevel: " + automationLabel,
+             #"refreshMetadata": True,
             }
 
     def getAutoShape(self, enable):
@@ -1958,7 +1959,7 @@ class MetaData(object):
             "fieldName": "modifyButton",
             "label": "     MODIFY     ",
             "enable": not enable,
-            "refresh": True,
+            #"refreshMetadata": True,
         }        
         return grp
     
@@ -1972,7 +1973,7 @@ class MetaData(object):
             "fieldName": "cancelButton",
             "label": "     EXPIRE / CANCEL     ",
             "enable": enable,
-            "refresh": True,
+            #"refreshMetadata": True,
             "modifyRecommender": 'SwathRecommender',
         }        
         return grp
@@ -2282,9 +2283,9 @@ class MetaData(object):
         return text
 
     def getStormCharacteristics(self, enable):
-        hailType =  self.buildStormChars('Wind', [str(x) + " mph" for x in [60, 65, 70, 75, 80, 85, 90]], enable)
+        windType =  self.buildStormChars('Wind', [str(x) + " mph" for x in ["<40", 40, 50, 60, 70, 80, 90]], enable)
 
-        windType =  self.buildStormChars('Hail', [str(x)+"\"" for x in [1, 1.5, 2, 2.5, 3, 3.5, ">=4"]], enable)
+        hailType =  self.buildStormChars('Hail', [str(x)+"\"" for x in ["None", 0.5, 1, 1.5, 2, 2.5, 3, 3.5, ">=4", "copious small hail"]], enable)
         
         tornType =  self.buildStormChars('Torn', ['radar indicated', 'radar observed', 'spotter observed'], enable)
         
@@ -2293,7 +2294,7 @@ class MetaData(object):
             "fieldName": "convectiveStormCharsGroup",
             "label": "Storm Characteristics (included in discussion)",
             "numColumns":3,
-            "fields": [hailType, windType, tornType],
+            "fields": [windType, hailType, tornType],
             "enable": enable,
             }
 

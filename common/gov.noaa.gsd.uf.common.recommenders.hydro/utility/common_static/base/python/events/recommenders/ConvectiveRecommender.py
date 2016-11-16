@@ -57,6 +57,7 @@ PROBABILITY_FILTER = 8 # filter our any objects less than this.
 SOURCEPATH_ARCHIVE = '/awips2/edex/data/hdf5/convectprob'
 SOURCEPATH_REALTIME = '/realtime-a2/hdf5/probsevere'
     
+AUTOMATION_LEVELS = ['userOwned','attributesOnly','attributesAndGeometry','automated']
 
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -164,7 +165,8 @@ class Recommender(RecommenderTemplate.Recommender):
         recommendedEventsDict = self.filterForUserOwned(currentEvents, recommendedEventsDict)
         LogUtils.logMessage('Finnished ', 'filterForUserOwne',' Took Seconds', time.time()-st)
         st = time.time()
-        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventsDict, currentTime)
+#        mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventsDict, currentTime)
+        mergedEventSet = self.mergeHazardEventsNew(currentEvents, recommendedEventsDict, currentTime)
 
         LogUtils.logMessage('Finnished ', 'mergeHazardEvent',' Took Seconds', time.time()-st)
         #for evt in mergedEventSet:
@@ -225,10 +227,6 @@ class Recommender(RecommenderTemplate.Recommender):
         for i in range(latestGroup.values()[0].len()):
             row = {k:v[i] for k,v in latestGroup.iteritems()}
 
-            ### Dumb filter. Need to make dynamic
-            if row.get('probabilities') < self.lowThreshold:
-                continue
-            
             thisPoly = row.get('polygons')
             #LogUtils.logMessage(type(thisPoly), thisPoly, self.domainPolygon)
             if thisPoly is None:
@@ -237,6 +235,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 #LogUtils.logMessage("Skipping....")
                 continue
            
+            if row.get('probabilities') < self.lowThreshold:
+                row['belowThreshold'] = True
+            else:
+                row['belowThreshold'] = False
+            
             ### Current CONVECTPROB feed has objectids like "653830; Flash Rate 0 fl/min"
             objIds = row.get('objectids')
             if ';' in objIds:
@@ -411,7 +414,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 eventIDs.append(event.getEventID())
         return currentEvents
 
-    def makeHazardEvent(self, ID, values, currentTime):        
+    def makeHazardEvent(self, ID, values, currentTime):
+        
+        print '>>>>>>>>>>>  ID: ', ID
+        sys.stdout.flush()
+        
+        dataLayerTimeMS = int(currentTime.strftime('%s'))*1000
         hazardEvent = EventFactory.createEvent()
         hazardEvent.setCreationTime(currentTime)
         self.setEventTimes(hazardEvent, values)
@@ -427,6 +435,13 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.set('convectiveObjectSpdKts', values.get('wspd'))
         hazardEvent.set('probSeverAttrs',values)
         hazardEvent.set('objectID', ID)
+        
+        print '\n\n\tCR - Setting automation level to *** AUTOMATED ***\n'
+        
+        hazardEvent.set('automationLevel', 'automated')
+        
+        graphProbs = self.probUtils.getGraphProbs(hazardEvent, dataLayerTimeMS)
+        hazardEvent.set('convectiveProbTrendGraph', graphProbs)
         
         return hazardEvent
 
@@ -453,6 +468,153 @@ class Recommender(RecommenderTemplate.Recommender):
 #         endTime = startTime + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
 #         event.setStartTime(startTime)
 #         event.setEndTime(endTime)
+
+
+    def updateUserOwned(self, event, recommended, dataLayerTimeMS):
+        pass
+
+
+    def updateAttributesAndGeometry(self, event, recommended, dataLayerTime):
+        self.updateAttributesOnly(self, event, recommended, dataLayerTime)
+        
+        try:
+            newShape = loads(recommended.get('polygons'))
+            event.setGeometry(newShape)
+        except:
+            print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommended.get('polygons')), recommended.get('polygons')
+        
+        
+
+
+    def updateAttributesOnly(self, event, recommended, dataLayerTime):
+        manualAttrs = event.get('manualAttributes', [])
+        updatedAttrs = {k:v for k,v in recommended.iteritems() if k not in manualAttrs}
+        event.set('probSeverAttrs',updatedAttrs)
+        
+        
+        ### Special Cases
+        if 'wdir' in updatedAttrs:
+            event.set('convectiveObjectDir', recommended.get('wdir'))
+            
+        if 'wspd' in updatedAttrs:
+            event.set('convectiveObjectSpdKts', recommended.get('wspd'))
+            
+        if 'convectiveProbTrendGraph' in updatedAttrs:
+            graphProbs = self.probUtils.getGraphProbs(event, dataLayerTime)
+            event.set('convectiveProbTrendGraph', graphProbs)
+       
+
+
+    def updateAutomated(self, event, recommended, dataLayerTime):
+        try:
+            newShape = loads(recommended.get('polygons'))
+            event.setGeometry(newShape)
+        except:
+            print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommended.get('polygons')), recommended.get('polygons')
+            
+        event.set('convectiveObjectDir', recommended.get('wdir'))
+        event.set('convectiveObjectSpdKts', recommended.get('wspd'))
+        event.set('probSeverAttrs',recommended)
+        graphProbs = self.probUtils.getGraphProbs(event, dataLayerTime)
+        event.set('convectiveProbTrendGraph', graphProbs)
+        
+
+
+    def updateCurrentEvents(self, intersectionDict, mergedEvents, currentTime):
+        dataLayerTimeMS = int(currentTime.strftime('%s'))*1000
+        for ID, vals in intersectionDict.iteritems():
+            currentEvent = vals['currentEvent']
+
+            if currentEvent.get('editableObject'):
+                continue
+            
+            recommendedAttrs = vals['recommendedAttrs']
+            automationLevel = currentEvent.get('automationLevel')
+            
+            if automationLevel == 'attributesOnly':
+                self.updateAttributesOnly(currentEvent, recommendedAttrs, dataLayerTimeMS)
+            
+            if automationLevel == 'attributesAndGeometry':
+                self.updateAttributesAndGeometry(currentEvent, recommendedAttrs, dataLayerTimeMS)
+            
+            if automationLevel == 'automated':
+                self.updateAutomated(currentEvent, recommendedAttrs, dataLayerTimeMS)
+            
+            if automationLevel == 'userOwned':
+                self.updateUserOwned(currentEvent, recommendedAttrs, dataLayerTimeMS)
+                
+            mergedEvents.add(currentEvent)  
+            
+            
+
+    
+    def mergeHazardEventsNew(self, currentEventsList, recommendedEventsDict, currentTime):
+        intersectionDict = {}
+        recommendedObjectIDsList = sorted(recommendedEventsDict.keys())
+        currentOnlyList = []
+        mergedEvents = EventSet(None)
+
+        currentTimeMS = int(currentTime.strftime('%s'))*1000
+        mergedEvents.addAttribute('currentTime', currentTimeMS)
+        mergedEvents.addAttribute('trigger', 'autoUpdate')
+        
+        
+        ### First, find the overlap between currentEvents and recommended events
+        for currentEvent in currentEventsList:
+            currentEventObjectID = currentEvent.get('objectID')
+            if currentEventObjectID in recommendedObjectIDsList:
+                ### If current event has match in rec event, add to dict for later processing
+                intersectionDict[currentEventObjectID] = {'currentEvent': currentEvent, 'recommendedAttrs': recommendedEventsDict[currentEventObjectID]}
+                
+                ### Remove ID from rec list so remaining list is "newOnly"
+                recommendedObjectIDsList.remove(currentEventObjectID)
+            else:
+                currentOnlyList.append(currentEvent)
+                
+
+        
+        ### Update the current events with the attributes of the recommended events
+        self.updateCurrentEvents(intersectionDict, mergedEvents, currentTime)
+        
+        
+        ### Loop through remaining/unmatched recommendedEvents
+        ### if recommended geometry overlaps an existing *manual* geometry
+        ### ignore it. 
+        for recID in recommendedObjectIDsList:
+            recommendedValues = recommendedEventsDict[recID]
+            ### Get recommended geometry
+            recGeom = recommendedValues.get('polygons')
+            
+
+            if len(currentOnlyList) == 0:
+                print '\n\t CR -- Making Hazard [0]'
+                sys.stdout.flush()
+                recommendedEvent = self.makeHazardEvent(recID, recommendedValues, currentTime)
+                mergedEvents.add(recommendedEvent)
+                
+            else:
+                ### The only events left in this list should be
+                ###  1) those that are full manual
+                ###  2) formerly automated at some level but no longer have
+                ###     a corresponding ProbSevere ID and should be "removed".
+                for event in currentOnlyList:
+                    if event.get('automationLevel') is not 'userOwned':
+                        event.setStatus('ELAPSED')
+                        ### userOwned events get precedent over automated
+                    else:
+                        ### Add the userOwned geometry to the EventSet
+                        evtGeom = event.getGeometry().asShapely()
+                        ### if the geometries DO NOT intersect, add recommended
+                        if not evtGeom.intersects(recGeom):
+                            print '\n\t CR -- Making Hazard [1]'
+                            sys.stdout.flush()
+                            recommendedEvent = self.makeHazardEvent(recID, recommendedValues, currentTime)
+                            mergedEvents.add(recommendedEvent)
+    
+                    mergedEvents.add(event)
+                    
+        return mergedEvents
+        
             
     def mergeHazardEvents(self, currentEventsList, recommendedEventsDict, currentTime):    
         ### if no recommended events
@@ -474,8 +636,8 @@ class Recommender(RecommenderTemplate.Recommender):
             #print '[2] No CURRENT records, making and returning NEW events...'
             for ID, recommendedValues in recommendedEventsDict.iteritems():
                 recommendedEvent = self.makeHazardEvent(ID, recommendedValues, currentTime)
-                graphProbs = self.probUtils.getGraphProbs(recommendedEvent, self.latestDataLayerTime)
-                recommendedEvent.set('convectiveProbTrendGraph', graphProbs)
+                #graphProbs = self.probUtils.getGraphProbs(recommendedEvent, self.latestDataLayerTime)
+                #recommendedEvent.set('convectiveProbTrendGraph', graphProbs)
                 mergedEvents.add(recommendedEvent)
             return mergedEvents
 
