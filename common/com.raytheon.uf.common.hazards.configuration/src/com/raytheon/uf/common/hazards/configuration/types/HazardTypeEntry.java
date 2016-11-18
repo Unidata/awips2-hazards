@@ -25,8 +25,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+
+import com.google.common.collect.Sets;
 
 /**
  * 
@@ -69,7 +72,9 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  *                                      or not start time is unrestricted.
  * Jun 23, 2016 19537      Chris.Golden Made hatching style an enum.
  * Oct 06, 2016 22894      Chris.Golden Added sessionAttributes list.
- * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
+ * Oct 19, 2016 21873      Chris.Golden Added time resolution.
+ * Nov 17, 2016 26313      Chris.Golden Changed UGC type to be a set of
+ *                                      zero or more types.
  * </pre>
  * 
  * @author bsteffen
@@ -105,7 +110,7 @@ public class HazardTypeEntry {
 
     private boolean pointBased;
 
-    private String ugcType;
+    private String[] ugcTypes;
 
     private String ugcLabel;
 
@@ -251,22 +256,24 @@ public class HazardTypeEntry {
      *            the hazardConflictList to set
      */
     public void setHazardConflictList(List<String> hazardConflictList) {
-        this.hazardConflictList = hazardConflictList.toArray(new String[0]);
+        this.hazardConflictList = hazardConflictList
+                .toArray(new String[hazardConflictList.size()]);
     }
 
     /**
-     * @return the ugcType
+     * @return the ugcTypes
      */
-    public String getUgcType() {
-        return ugcType;
+    public Set<String> getUgcTypes() {
+        return (ugcTypes == null ? Collections.<String> emptySet() : Sets
+                .newHashSet(ugcTypes));
     }
 
     /**
      * @param ugcType
      *            the ugcType to set
      */
-    public void setUgcType(String ugcType) {
-        this.ugcType = ugcType;
+    public void setUgcTypes(Set<String> ugcTypes) {
+        this.ugcTypes = ugcTypes.toArray(new String[ugcTypes.size()]);
     }
 
     /**

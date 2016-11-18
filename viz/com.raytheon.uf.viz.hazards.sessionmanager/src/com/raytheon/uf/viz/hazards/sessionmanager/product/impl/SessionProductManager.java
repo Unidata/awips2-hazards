@@ -228,6 +228,8 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      of hazard events.
  * Aug 15, 2016 18376      Chris.Golden Added code to make garbage collection of the messenger instance
  *                                      passed in (which is the app builder) more likely.
+ * Nov 17, 2016 26313      Chris.Golden Changed to work with the new capacity of hazard types to be associated
+ *                                      with more than one UGC type.
  * </pre>
  * 
  * @author bsteffen
@@ -1614,12 +1616,15 @@ public class SessionProductManager implements ISessionProductManager {
             }/* if not a polygon event type */
             event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
 
-            /* Make descriptions of portions of counties if we have any polygon */
-            /* geometries for this event. */
+            /*
+             * Make descriptions of portions of counties if we have any polygon
+             * geometries for this event.
+             */
             HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
                     .get(HazardEventUtilities.getHazardType(event));
-            String ugcType = hazardTypeEntry.getUgcType();
-            if (ugcType.equals(MAPDATA_COUNTY) && polygonGeometries.size() > 0) {
+            Set<String> ugcTypes = hazardTypeEntry.getUgcTypes();
+            if (ugcTypes.contains(MAPDATA_COUNTY)
+                    && polygonGeometries.size() > 0) {
                 if (polygonGeometries.size() < geometryCollection
                         .getNumGeometries()) {
                     geometryCollection = new GeometryFactory()
