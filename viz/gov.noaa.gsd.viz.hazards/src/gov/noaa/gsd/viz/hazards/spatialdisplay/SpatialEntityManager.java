@@ -102,6 +102,8 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      as this is now done elsewhere (and
  *                                      shouldn't be the spatial display's
  *                                      concern).
+ * Nov 17, 2016   26313    Chris.Golden Changed to work with revamped
+ *                                      GeoMapUtilities.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1831,12 +1833,8 @@ class SpatialEntityManager {
          * Get the mapping of UGC identifiers to geometry data describing the
          * areas to be hatched.
          */
-        String mapDBtableName = hazardTypeEntry.getUgcType();
-        String mapLabelParameter = hazardTypeEntry.getUgcLabel();
-        String cwa = event.getSiteID();
         Map<String, IGeometryData> geometryDataForUgcs = geoMapUtilities
-                .buildHazardAreaForEvent(mapDBtableName, mapLabelParameter,
-                        cwa, event);
+                .buildHazardAreaForEvent(event);
 
         /*
          * Iterate through the mapping entries, handling each one's geometry in

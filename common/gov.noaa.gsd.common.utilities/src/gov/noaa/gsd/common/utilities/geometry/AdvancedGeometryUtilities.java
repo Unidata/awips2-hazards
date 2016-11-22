@@ -22,6 +22,7 @@ import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 /**
@@ -42,6 +43,8 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                      lists of coordinates, getting coordinates
  *                                      of multi-ringed polygons, and getting the
  *                                      rotated bounding box of a geometry.
+ * Nov 17, 2016 26313      Chris.Golden Moved method to union polygonal elements
+ *                                      of a geometry into this class.
  * </pre>
  * 
  * @author Chris.Golden
@@ -285,6 +288,29 @@ public class AdvancedGeometryUtilities {
                         .size() - 1)))) {
             coordinates.remove(coordinates.size() - 1);
         }
+    }
+
+    /**
+     * Given the specified geometry, create a union of any polygons and/or
+     * multipolygons that comprise part or all of the geometry.
+     * 
+     * @param geometry
+     *            Geometry to have its polygonal elements unioned.
+     * @return Union of any polygonal elements of the geometry.
+     */
+    public static Geometry getUnionOfPolygonalElements(Geometry geometry) {
+        Geometry result = null;
+        for (int j = 0; j < geometry.getNumGeometries(); j++) {
+            Geometry subGeometry = geometry.getGeometryN(j);
+            if (subGeometry instanceof Polygonal) {
+                if (result == null) {
+                    result = subGeometry;
+                } else {
+                    result = result.union(subGeometry);
+                }
+            }
+        }
+        return result;
     }
 
     /**

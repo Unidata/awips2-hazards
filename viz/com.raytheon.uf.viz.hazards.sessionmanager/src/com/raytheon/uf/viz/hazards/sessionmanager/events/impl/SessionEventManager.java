@@ -103,6 +103,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
@@ -152,7 +153,6 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.TopologyException;
 
 /**
  * Implementation of ISessionEventManager
@@ -443,6 +443,9 @@ import com.vividsolutions.jts.geom.TopologyException;
  *                                      attribute changes that may trigger a metadata reload, but
  *                                      (correctly) do not end up doing so, to not be checked to see if
  *                                      they may instead trigger a recommender execution.
+ * Nov 17, 2016   26313    Chris.Golden Changed to support multiple UGC types per hazard type, and to
+ *                                      work with revamped GeoMapUtilities, moving some code that was
+ *                                      previously here into that class as it was poorly placed.
  * </pre>
  * 
  * @author bsteffen
@@ -492,8 +495,6 @@ public class SessionEventManager implements
     // Private Static Constants
 
     private static final String GEOMETRY_MODIFICATION_ERROR = "Geometry Modification Error";
-
-    private static final String EMPTY_GEOMETRY_ERROR = "Deleting this UGC would leave the hazard with an empty geometry";
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionEventManager.class);
@@ -3710,15 +3711,11 @@ public class SessionEventManager implements
 
                 if (!hazardConflictList.isEmpty()) {
 
-                    String cwa = configManager.getSiteID();
-
-                    String ugcType = hazardTypeEntry.getUgcType();
-
                     String ugcLabel = hazardTypeEntry.getUgcLabel();
 
                     List<IGeometryData> hatchedAreasForEvent = new ArrayList<>(
-                            geoMapUtilities.buildHazardAreaForEvent(ugcType,
-                                    ugcLabel, cwa, eventToCompare).values());
+                            geoMapUtilities.buildHazardAreaForEvent(
+                                    eventToCompare).values());
 
                     /*
                      * Retrieve matching events from the Hazard Event Manager
@@ -3770,8 +3767,6 @@ public class SessionEventManager implements
 
                                     HazardTypeEntry otherHazardTypeEntry = hazardTypes
                                             .get(otherEventPhenSigSubtype);
-                                    String otherUgcType = otherHazardTypeEntry
-                                            .getUgcType();
                                     String otherUgcLabel = otherHazardTypeEntry
                                             .getUgcLabel();
 
@@ -3779,9 +3774,6 @@ public class SessionEventManager implements
                                         List<IGeometryData> hatchedAreasEventToCheck = new ArrayList<>(
                                                 geoMapUtilities
                                                         .buildHazardAreaForEvent(
-                                                                otherUgcType,
-                                                                otherUgcLabel,
-                                                                cwa,
                                                                 eventToCheck)
                                                         .values());
 
@@ -4233,15 +4225,6 @@ public class SessionEventManager implements
         return true;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #buildInitialHatching
-     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent,
-     * java.util.List)
-     */
     @Override
     public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent) {
         if (geoMapUtilities.isNonHatching(hazardEvent)) {
@@ -4262,153 +4245,86 @@ public class SessionEventManager implements
 
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #addOrRemoveEnclosingUGCs(com.vividsolutions.jts.geom.Coordinate)
-     */
     @Override
     public void addOrRemoveEnclosingUGCs(Coordinate location,
             IOriginator originator) {
-        try {
-            List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
-            if (selectedEvents.size() != 1) {
+        List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+        if (selectedEvents.size() != 1) {
 
-                /*
-                 * TODO: This message is annoying to have pop up all the time
-                 * when one accidentally right-clicks. Explore having it pop up
-                 * only when the user has two or more selected events, not when
-                 * there are no events selected. Would that be better from a
-                 * user-experience perspective?
-                 */
-                messenger
-                        .getWarner()
-                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                                "Cannot add or remove UGCs unless exactly one hazard event is selected.");
-                return;
-            }
-            ObservedHazardEvent hazardEvent = selectedEvents.get(0);
-            String hazardType = hazardEvent.getHazardType();
-            if (hazardType == null) {
-                messenger
-                        .getWarner()
-                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                                "Cannot add or remove UGCs for a hazard with an undefined type.");
-                return;
-            }
-            if (HazardStatus.endingEndedOrElapsed(hazardEvent.getStatus())) {
-                messenger
-                        .getWarner()
-                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                                "Cannot add or remove UGCs for an ending, ended, or elapsed hazard.");
-                return;
-            }
-
-            if ((hazardEvent.getStatus().equals(HazardStatus.PENDING) == false)
-                    && geoMapUtilities.isPointBasedHatching(hazardEvent)) {
-                messenger
-                        .getWarner()
-                        .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                                "Can only add or remove UGCs for point hazards when they are pending.");
-                return;
-            }
-            if (userConfirmationAsNecessary(hazardEvent) == false) {
-                return;
-            }
-            makeHighResolutionVisible(hazardEvent, originator);
-
-            @SuppressWarnings("unchecked")
-            Map<String, String> hazardAreas = (Map<String, String>) hazardEvent
-                    .getHazardAttribute(HAZARD_AREA);
-            hazardAreas = new HashMap<>(hazardAreas);
-            String mapDBtableName = geoMapUtilities
-                    .getMapDBtableName(hazardEvent);
-
-            String mapLabelParameter = geoMapUtilities
-                    .getMapLabelParameter(hazardEvent);
-
-            String cwa = configManager.getSiteID();
-            Geometry locationAsGeometry = geometryFactory.createPoint(location);
-            Set<IGeometryData> mapGeometryData = geoMapUtilities
-                    .getMapGeometries(mapDBtableName, mapLabelParameter, cwa);
-            Set<IGeometryData> mapGeometryDataContainingLocation = geoMapUtilities
-                    .getContainingMapGeometries(mapGeometryData,
-                            locationAsGeometry);
-
-            Map<String, IGeometryData> ugcsEnclosingUserSelectedLocation = geoMapUtilities
-                    .getUgcsGeometryDataMapping(mapDBtableName,
-                            mapGeometryDataContainingLocation);
-
-            Map<String, IGeometryData> allUGCs = geoMapUtilities
-                    .getUgcsGeometryDataMapping(mapDBtableName, mapGeometryData);
-
-            Geometry hazardEventBaseGeometry = hazardEvent
-                    .getFlattenedGeometry();
-
-            Geometry modifiedHazardBaseGeometry = hazardEventBaseGeometry;
-            if (geoMapUtilities.isPointBasedHatching(hazardEvent) == false) {
-                GeometryCollection asGeometryCollection = (GeometryCollection) hazardEventBaseGeometry;
-                modifiedHazardBaseGeometry = geoMapUtilities
-                        .asUnion(asGeometryCollection);
-            }
-
-            for (String enclosingUGC : ugcsEnclosingUserSelectedLocation
-                    .keySet()) {
-                Geometry enclosingUgcGeometry = allUGCs.get(enclosingUGC)
-                        .getGeometry();
-
-                String hazardArea = hazardAreas.get(enclosingUGC);
-                if (geoMapUtilities.isWarngenHatching(hazardEvent)) {
-                    warngenHatchingAddRemove(hazardAreas, locationAsGeometry,
-                            modifiedHazardBaseGeometry, enclosingUGC,
-                            hazardArea);
-                    if (!(hazardAreas.values().contains(HAZARD_AREA_ALL) || hazardAreas
-                            .values().contains(HAZARD_AREA_INTERSECTION))) {
-                        statusHandler.warn(EMPTY_GEOMETRY_ERROR);
-                        return;
-                    }
-                    if (hazardAreas.get(enclosingUGC) == HazardConstants.HAZARD_AREA_NONE) {
-                        modifiedHazardBaseGeometry = modifiedHazardBaseGeometry
-                                .difference(enclosingUgcGeometry);
-                    } else {
-                        modifiedHazardBaseGeometry = modifiedHazardBaseGeometry
-                                .union(enclosingUgcGeometry);
-                    }
-                    if (isValidGeometryChange(
-                            AdvancedGeometryUtilities.createGeometryWrapper(
-                                    modifiedHazardBaseGeometry, 0),
-                            hazardEvent, true) == false) {
-                        return;
-                    }
-                } else if (geoMapUtilities.isPointBasedHatching(hazardEvent)) {
-                    pointBasedAddRemove(hazardAreas, enclosingUGC, hazardArea);
-                } else {
-                    modifiedHazardBaseGeometry = gfeHatchingAddRemove(
-                            hazardAreas, modifiedHazardBaseGeometry,
-                            enclosingUGC, enclosingUgcGeometry, hazardArea);
-                    if (modifiedHazardBaseGeometry.isEmpty()) {
-                        statusHandler.warn(EMPTY_GEOMETRY_ERROR);
-                        return;
-                    }
-
-                }
-
-            }
-
-            hazardEventBaseGeometry = modifiedHazardBaseGeometry;
-            hazardEvent.setGeometry(AdvancedGeometryUtilities
-                    .createGeometryWrapper(hazardEventBaseGeometry, 0),
-                    originator);
-            hazardEvent.addHazardAttribute(HAZARD_AREA,
-                    (Serializable) hazardAreas, true, originator);
-        } catch (TopologyException e) {
             /*
-             * /* TODO Use {@link GeometryPrecisionReducer}?
+             * TODO: This message is annoying to have pop up all the time when
+             * one accidentally right-clicks. Explore having it pop up only when
+             * the user has two or more selected events, not when there are no
+             * events selected. Would that be better from a UX perspective?
              */
-            statusHandler.error("Encountered topology exception", e);
+            messenger
+                    .getWarner()
+                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                            "Cannot add or remove UGCs unless exactly one hazard event is selected.");
+            return;
         }
+        ObservedHazardEvent hazardEvent = selectedEvents.get(0);
+        String hazardType = hazardEvent.getHazardType();
+        if (hazardType == null) {
+            messenger
+                    .getWarner()
+                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                            "Cannot add or remove UGCs for a hazard with an undefined type.");
+            return;
+        }
+        if (HazardStatus.endingEndedOrElapsed(hazardEvent.getStatus())) {
+            messenger
+                    .getWarner()
+                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                            "Cannot add or remove UGCs for an ending, ended, or elapsed hazard.");
+            return;
+        }
+
+        if ((hazardEvent.getStatus().equals(HazardStatus.PENDING) == false)
+                && geoMapUtilities.isPointBasedHatching(hazardEvent)) {
+            messenger
+                    .getWarner()
+                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
+                            "Can only add or remove UGCs for point hazards when they are pending.");
+            return;
+        }
+        if (userConfirmationAsNecessary(hazardEvent) == false) {
+            return;
+        }
+        makeHighResolutionVisible(hazardEvent, originator);
+
+        /*
+         * Get the modified hazard areas and geometry resulting from adding or
+         * removing UGCs enclosing this location; if nothing is returned, an
+         * error occurred during the toggling, so do nothing more.
+         */
+        Pair<Map<String, String>, Geometry> newHazardAreasAndGeometry = geoMapUtilities
+                .addOrRemoveEnclosingUgcs(hazardEvent, location);
+        if (newHazardAreasAndGeometry == null) {
+            return;
+        }
+
+        /*
+         * If a modified geometry was returned, ensure the changed geometry is
+         * valid. If it is, use it as the event's geometry.
+         */
+        Geometry modifiedGeometry = newHazardAreasAndGeometry.getSecond();
+        if (modifiedGeometry != null) {
+            if (isValidGeometryChange(
+                    AdvancedGeometryUtilities.createGeometryWrapper(
+                            modifiedGeometry, 0), hazardEvent, true) == false) {
+                return;
+            }
+            hazardEvent.setGeometry(AdvancedGeometryUtilities
+                    .createGeometryWrapper(modifiedGeometry, 0), originator);
+        }
+
+        /*
+         * Use the returned hazard areas as the new ones for the hazard event.
+         */
+        hazardEvent.addHazardAttribute(HAZARD_AREA,
+                (Serializable) newHazardAreasAndGeometry.getFirst(), true,
+                originator);
     }
 
     private class HazardGeometryOutsideCWAException extends RuntimeException {
@@ -4437,14 +4353,14 @@ public class SessionEventManager implements
             if ((configManager.getSiteID().equals(HazardConstants.NATIONAL) == false)
                     && (geoMapUtilities.isNonHatching(selectedEvent) == false)) {
                 if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                    result = geoMapUtilities.warngenClipping(selectedEvent,
-                            hazardType);
+                    result = geoMapUtilities.applyWarngenClipping(
+                            selectedEvent, hazardType);
                     result = reduceGeometry(result, hazardType);
                     if (!result.isEmpty()) {
                         result = addGoosenecksAsNecessary(result);
                     }
                 } else {
-                    result = geoMapUtilities.gfeClipping(selectedEvent);
+                    result = geoMapUtilities.applyGfeClipping(selectedEvent);
                 }
             }
 
@@ -4585,71 +4501,8 @@ public class SessionEventManager implements
     }
 
     private List<String> buildIntersectionStrategyUGCs(IHazardEvent hazardEvent) {
-        String mapDBtableName = geoMapUtilities.getMapDBtableName(hazardEvent);
-
-        Set<IGeometryData> hazardArea = geoMapUtilities
-                .getIntersectingMapGeometries(true, hazardEvent);
-
-        Set<String> ugcs = geoMapUtilities.getUgcsGeometryDataMapping(
-                mapDBtableName, hazardArea).keySet();
-
-        return new ArrayList<>(ugcs);
-    }
-
-    private void warngenHatchingAddRemove(
-            Map<String, String> enclosingHazardArea,
-            Geometry locationAsGeometry, Geometry nonPointGeometry,
-            String enclosingUGC, String hazardArea) {
-        if (nonPointGeometry.intersects(locationAsGeometry)) {
-            /*
-             * hazardArea is none when due to thresholding the hatching in this
-             * area not defined to begin with.
-             */
-            if (hazardArea == null || hazardArea.equals(HAZARD_AREA_NONE)) {
-                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_INTERSECTION);
-            } else {
-                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_NONE);
-            }
-        } else {
-            /*
-             * The hazardArea is null when the user clicks on a UGC that wasn't
-             * previously included in the hazardArea
-             */
-            if (hazardArea == null || !hazardArea.equals(HAZARD_AREA_ALL)) {
-                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_ALL);
-            } else {
-                enclosingHazardArea.put(enclosingUGC, HAZARD_AREA_NONE);
-            }
-        }
-    }
-
-    private void pointBasedAddRemove(Map<String, String> hazardAreas,
-            String enclosingUGC, String enclosingHazardArea) {
-        if (enclosingHazardArea == null
-                || !enclosingHazardArea.equals(HAZARD_AREA_ALL)) {
-            hazardAreas.put(enclosingUGC, HAZARD_AREA_ALL);
-        } else {
-            hazardAreas.put(enclosingUGC, HAZARD_AREA_NONE);
-        }
-    }
-
-    private Geometry gfeHatchingAddRemove(Map<String, String> hazardAreas,
-            Geometry nonPointGeometry, String enclosingUGC,
-            Geometry enclosingUgcGeometry, String enclosingHazardArea) {
-        if (enclosingHazardArea == null
-                || !enclosingHazardArea.equals(HAZARD_AREA_ALL)) {
-            nonPointGeometry = nonPointGeometry.union(enclosingUgcGeometry);
-            hazardAreas.put(enclosingUGC, HAZARD_AREA_ALL);
-
-        }
-
-        else {
-            nonPointGeometry = nonPointGeometry
-                    .difference(enclosingUgcGeometry);
-
-            hazardAreas.put(enclosingUGC, HAZARD_AREA_NONE);
-        }
-        return nonPointGeometry;
+        return new ArrayList<>(geoMapUtilities
+                .getIntersectingMapGeometriesForUgcs(hazardEvent).keySet());
     }
 
     private Collection<ObservedHazardEvent> fromIDs(Collection<String> eventIDs) {
