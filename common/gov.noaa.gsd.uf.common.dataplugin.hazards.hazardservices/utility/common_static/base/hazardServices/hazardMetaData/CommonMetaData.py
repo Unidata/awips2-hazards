@@ -2169,7 +2169,6 @@ class MetaData(object):
             "fieldType": "Composite",
             "fieldName": "convectiveProbGroup",
             "label": "",
-            "numColumns":3,
             "fields": [
                         {
                          "fieldType": "HiddenField",

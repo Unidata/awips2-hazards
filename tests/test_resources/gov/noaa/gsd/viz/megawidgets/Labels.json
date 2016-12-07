@@ -1,0 +1,62 @@
+[
+ {
+  "fieldType": "Composite",
+  "fieldName": "parent1",
+  "scrollable": true,
+  "expandHorizontally": true,
+  "expandVertically": true,
+  "fields": [
+   {
+    "fieldType": "Label",
+    "fieldName": "label1",
+    "label": "Include any surrounding counties"
+   },
+   {
+    "fieldType": "Label",
+    "fieldName": "label2",
+    "label": "Bold text",
+    "bold": true
+   },
+   {
+    "fieldType": "Label",
+    "fieldName": "label3",
+    "label": "Italic text",
+    "italic": true
+   },
+   {
+    "fieldType": "Label",
+    "fieldName": "label4",
+    "label": "Bold and italic text",
+    "bold": true,
+    "italic": true
+   },
+   {
+    "fieldType": "Label",
+    "fieldName": "label5",
+    "label": "Red text",
+    "color": { "red": 1.0, "green": 0.0, "blue": 0.0 }
+   },
+   {
+    "fieldType": "Composite",
+    "fieldName": "parent2",
+    "numColumns": 2,
+    "expandHorizontally": true,
+    "expandVertically": true,
+    "fields": [
+     {
+      "fieldType": "Label",
+      "fieldName": "label6",
+      "label": "This is a long line of text that just keeps going and going and going, and which should be wrapped. This is a long line of text that just keeps going and going and going, and which should be wrapped. This is a long line of text that just keeps going and going and going, and which should be wrapped. This is a long line of text that just keeps going and going and going, and which should be wrapped. This is a long line of text that just keeps going and going and going, and which should be wrapped. This is a long line of text that just keeps going and going and going, and which should be wrapped.",
+      "wrap": true,
+      "preferredWidth": 15
+     },
+     {
+      "fieldType": "Label",
+      "fieldName": "label7",
+      "label": "Non-wrapping label to the right"
+     }
+    ]
+   }
+  ]
+ }
+]

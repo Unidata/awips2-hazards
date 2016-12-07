@@ -19,6 +19,7 @@ import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
@@ -45,13 +46,24 @@ import com.google.common.collect.ImmutableSet;
  *                                           comments.
  * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
  * Jun 07, 2016   19464    Chris.Golden      Added "color" parameter.
+ * Dec 06, 2016   26855    Chris.Golden      Changed to provide more information
+ *                                           when setting up wrapping if an
+ *                                           instance is to wrap its text. This
+ *                                           is done so that the wrapping may
+ *                                           respond better to resizing events.
+ *                                           Also made the class implement the
+ *                                           IResizer interface, so that it can
+ *                                           trigger notifications for parents
+ *                                           as it changes its width and height
+ *                                           if wrapping is enabled and resizing
+ *                                           of the parent occurs.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see LabelSpecifier
  */
-public class LabelMegawidget extends Megawidget implements IControl {
+public class LabelMegawidget extends Megawidget implements IControl, IResizer {
 
     // Protected Static Constants
 
@@ -148,19 +160,54 @@ public class LabelMegawidget extends Megawidget implements IControl {
         label.setEnabled(specifier.isEnabled());
 
         /*
+         * If the label should wrap, get the width of the string if it is not
+         * wrapped, and the initial preferred width in case the latter is
+         * needed.
+         */
+        int preferredWidth = 0;
+        int maxWidth = 0;
+        if (specifier.isToWrap()) {
+            GC gc = new GC(label);
+            maxWidth = gc.textExtent(label.getText()).x;
+            preferredWidth = (specifier.getPreferredWidth() * gc
+                    .getFontMetrics().getAverageCharWidth());
+            gc.dispose();
+        }
+
+        /*
          * Place the widget in the grid. If the widget may end up wrapping, then
          * it must be registered as a listener for its parent's resize events so
          * that it can have its width hint set each time the parent is resized.
-         * Use the preferred width if one was specified.
          */
         GridData gridData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         gridData.horizontalSpan = specifier.getWidth();
         if (specifier.isToWrap()) {
-            specifier.ensureChildIsResizedWithParent(parent, label);
+            final IResizeListener resizeListener = (IResizeListener) paramMap
+                    .get(RESIZE_LISTENER);
+            specifier.ensureChildIsResizedWithParent(parent, label, maxWidth,
+                    (resizeListener == null ? null : new Runnable() {
+
+                        @Override
+                        public void run() {
+                            Display.getDefault().asyncExec(new Runnable() {
+
+                                @Override
+                                public void run() {
+                                    resizeListener
+                                            .sizeChanged(LabelMegawidget.this);
+                                }
+                            });
+                        }
+                    }));
         }
+
+        /*
+         * Use the preferred width if one was specified.
+         */
         if (specifier.getPreferredWidth() > 0) {
-            gridData.widthHint = specifier.getPreferredWidth();
+            gridData.widthHint = preferredWidth;
         }
+
         gridData.verticalIndent = specifier.getSpacing();
         label.setLayoutData(gridData);
     }

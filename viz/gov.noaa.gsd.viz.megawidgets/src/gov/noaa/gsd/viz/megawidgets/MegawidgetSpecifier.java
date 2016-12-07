@@ -14,12 +14,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.ControlListener;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.layout.GridData;
@@ -27,6 +31,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Widget;
+
+import com.google.common.collect.Sets;
 
 /**
  * Megawidget specifier abstract base class.
@@ -66,6 +72,18 @@ import org.eclipse.swt.widgets.Widget;
  *                                           package, updated Javadoc and other
  *                                           comments.
  * Jun 24, 2014   4009     Chris.Golden      Added extra data functionality.
+ * Dec 06, 2016  26855     Chris.Golden      Changed to make resize-aware
+ *                                           megawidgets better handle the size
+ *                                           changes of their parents, as well as
+ *                                           the shrinkage of a parent's enclosing
+ *                                           scrollable composite. The latter
+ *                                           triggers the resize-aware megawidgets
+ *                                           to shrink themselves so that they
+ *                                           do not take up so much room in their
+ *                                           parent, and thus allow the parent to
+ *                                           shrink, which in turn avoids the
+ *                                           unnecessary use of scrollbars in the
+ *                                           parent's scrollable container.
  * </pre>
  * 
  * @author Chris.Golden
@@ -77,26 +95,55 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
     // Private Static Variables
 
     /**
-     * Hash table mapping parent composites to lists of widgets that must be
-     * notified when the parents change size.
+     * Map of parent composites to widgets that must be notified when the
+     * parents change size.
      */
-    private static Map<Composite, List<Control>> resizeAwareControlListsForParents = new HashMap<>();
+    private static Map<Composite, Set<Control>> resizeAwareControlsForParents = new IdentityHashMap<>();
 
     /**
-     * Hash table mapping parent composites to their control listeners, if any.
-     * These are used to listen for resize events and pass them onto the widgets
-     * in the lists associated with the same parents in
-     * {@link #resizeAwareControlListsForParents}.
+     * Map of widgets that are notified when their parents change size to their
+     * parents.
      */
-    private static Map<Composite, ControlListener> controlListenersForParents = new HashMap<>();
+    private static Map<Control, Composite> parentsForResizeAwareControls = new IdentityHashMap<>();
 
     /**
-     * Hash table mapping parent composites to their dispose listeners, if any.
-     * These are used to listen for dispose events and use them to remove the
-     * control listeners and lists of widgets associated with the parents when
-     * the latter are disposed of.
+     * Map of ancestor scrollable composites to widgets that must be notified
+     * when the ancestors change size.
      */
-    private static Map<Composite, DisposeListener> disposeListenersForParents = new HashMap<>();
+    private static Map<ScrolledComposite, Set<Control>> resizeAwareControlsForScrollableAncestors = new IdentityHashMap<>();
+
+    /**
+     * Map of ancestor scrollable composites to their last recorded widths.
+     */
+    private static Map<ScrolledComposite, Integer> widthsForScrollableAncestors = new IdentityHashMap<>();
+
+    /**
+     * Map of widgets that must be notified when their parents change size (that
+     * is, those widgets found in the sets that are values within
+     * {@link #resizeAwareControlsForParents}) to their maximum widths.
+     */
+    private static Map<Control, Integer> maxWidthsForControls = new IdentityHashMap<>();
+
+    /**
+     * Map of widgets that must be notified when their parents change size (that
+     * is, those widgets found in the sets that are values within
+     * {@link #resizeAwareControlsForParents}) to the resize handlers that
+     * should be run when they themselves change size.
+     */
+    private static Map<Control, Runnable> resizeHandlersForControls = new IdentityHashMap<>();
+
+    /**
+     * Map pairing resize-aware controls with the number of times that they are
+     * handling a resize simultaneously. This is used to avoid inappropriate
+     * reentrant calls to the resize routines for particular controls.
+     */
+    private static Map<Control, Integer> resizeCountsForControls = new IdentityHashMap<>();
+
+    /**
+     * Map pairing resize-aware controls with the widths they had prior to the
+     * last decrease of their ancestors.
+     */
+    private static Map<Control, Integer> preDecreaseWidthsForControls = new IdentityHashMap<>();
 
     // Private Variables
 
@@ -391,84 +438,160 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
      *            Parent widget.
      * @param child
      *            Child widget.
+     * @param maximumWidth
+     *            Maximum width desired by the child widget.
+     * @param resizeHandler
+     *            Optional runnable that, if supplied, is to be run after this
+     *            child resizes itself.
      */
     protected final void ensureChildIsResizedWithParent(Composite parent,
-            Control child) {
-        synchronized (resizeAwareControlListsForParents) {
+            Control child, int maximumWidth, Runnable resizeHandler) {
+        synchronized (resizeAwareControlsForParents) {
 
             /*
-             * Find the list of controls for this parent; if none has been
+             * Remember the maximum desired width of the control, and the resize
+             * handler for the control.
+             */
+            maxWidthsForControls.put(child, maximumWidth);
+            resizeHandlersForControls.put(child, resizeHandler);
+
+            /*
+             * Find the collection of controls for this parent; if none has been
              * created by now, set one up.
              */
-            List<Control> list = resizeAwareControlListsForParents.get(parent);
-            if (list == null) {
+            Set<Control> resizeAwareControls = resizeAwareControlsForParents
+                    .get(parent);
+            if (resizeAwareControls == null) {
 
                 /*
-                 * Create the list to hold controls that wish to be notified of
-                 * parent resizes.
+                 * Create the collection to hold controls that wish to be
+                 * notified of parent resizes.
                  */
-                list = new ArrayList<>();
-                resizeAwareControlListsForParents.put(parent, list);
+                resizeAwareControls = Sets.newIdentityHashSet();
+                resizeAwareControlsForParents.put(parent, resizeAwareControls);
 
                 /*
                  * Create a control listener for the parent that resizes any
                  * children in its list when the parent itself is resized, and
                  * associate the listener with the parent.
                  */
-                ControlListener controlListener = new ControlAdapter() {
+                parent.addControlListener(new ControlAdapter() {
                     @Override
                     public void controlResized(ControlEvent e) {
-
-                        /*
-                         * Ensure that there are widgets to be notified of the
-                         * resize.
-                         */
-                        List<Control> list = resizeAwareControlListsForParents
-                                .get(e.widget);
-                        if (list != null) {
-
-                            /*
-                             * Change each child's width hint to match that of
-                             * the client area of the parent.
-                             */
-                            Composite widget = (Composite) e.widget;
-                            for (Control child : list) {
-                                GridLayout layout = (GridLayout) widget
-                                        .getLayout();
-                                ((GridData) child.getLayoutData()).widthHint = widget
-                                        .getClientArea().width
-                                        - ((layout.marginWidth * 2)
-                                                + layout.marginLeft + layout.marginRight);
-                            }
-
-                            /*
-                             * Tell the parent to lay itself out again.
-                             */
-                            ((Composite) e.widget).layout(list
-                                    .toArray(new Control[list.size()]));
-                        }
+                        ancestorResized((Composite) e.widget,
+                                resizeAwareControlsForParents, 0);
                     }
-                };
-                parent.addControlListener(controlListener);
-                controlListenersForParents.put(parent, controlListener);
+                });
 
                 /*
                  * Create a disposal listener for the parent that removes all
                  * associations of the parent related to notifying children of
                  * resizes, since after disposal they are no longer needed.
                  */
-                DisposeListener disposeListener = new DisposeListener() {
+                parent.addDisposeListener(new DisposeListener() {
                     @Override
                     public void widgetDisposed(DisposeEvent e) {
-                        resizeAwareControlListsForParents.remove(e.widget);
-                        controlListenersForParents.remove(e.widget);
-                        disposeListenersForParents.remove(e.widget);
+                        Set<Control> resizeAwareControls = resizeAwareControlsForParents
+                                .remove(e.widget);
+                        if (resizeAwareControls != null) {
+                            for (Control control : resizeAwareControls) {
+                                maxWidthsForControls.remove(control);
+                                resizeHandlersForControls.remove(control);
+                                parentsForResizeAwareControls.remove(control);
+                                resizeCountsForControls.remove(control);
+                                preDecreaseWidthsForControls.remove(control);
+                            }
+                        }
                     }
-                };
-                parent.addDisposeListener(disposeListener);
-                disposeListenersForParents.put(parent, disposeListener);
+                });
             }
-            list.add(child);
+
+            /*
+             * Add this control to the resize-aware controls collection that was
+             * just found or created, and link the parent to the control.
+             */
+            resizeAwareControls.add(child);
+            parentsForResizeAwareControls.put(child, parent);
+
+            /*
+             * Determine whether or not there is a scrollable ancestor (whether
+             * the parent, a grandparent, etc.) of the control. If there is, add
+             * a control listener that tracks the width of the scrollable
+             * ancestor, and when it shrinks, attempts to shrink the
+             * resize-aware widgets so that they take up less space, which means
+             * the scrollable's child composite may get smaller.
+             */
+            Composite ancestor = parent;
+            while ((ancestor != null)
+                    && (ancestor instanceof ScrolledComposite == false)) {
+                ancestor = ancestor.getParent();
+            }
+            final ScrolledComposite scrollable = (ScrolledComposite) ancestor;
+            if (scrollable == null) {
+                return;
+            }
+
+            /*
+             * Find the list of controls for this scrollable ancestor; if none
+             * has been created by now, set one up.
+             */
+            resizeAwareControls = resizeAwareControlsForScrollableAncestors
+                    .get(scrollable);
+            if (resizeAwareControls == null) {
+
+                /*
+                 * Create the collection to hold controls that wish to be
+                 * notified of scrollable ancestor resizes.
+                 */
+                resizeAwareControls = Sets.newIdentityHashSet();
+                resizeAwareControlsForScrollableAncestors.put(scrollable,
+                        resizeAwareControls);
+
+                /*
+                 * Create a control listener for the scrollable ancestor that
+                 * resizes any children in its list when the ancestor itself is
+                 * made narrower, and associate the listener with the ancestor.
+                 */
+                scrollable.addControlListener(new ControlAdapter() {
+                    @Override
+                    public void controlResized(ControlEvent e) {
+                        Integer oldWidth = widthsForScrollableAncestors
+                                .get(scrollable);
+                        int newWidth = scrollable.getSize().x;
+                        if ((oldWidth == null) || (oldWidth != newWidth)) {
+                            widthsForScrollableAncestors.put(scrollable,
+                                    newWidth);
+                            if ((oldWidth != null) && (oldWidth > newWidth)) {
+                                int delta = oldWidth - newWidth;
+                                ancestorResized(
+                                        (Composite) e.widget,
+                                        resizeAwareControlsForScrollableAncestors,
+                                        delta);
+                            }
+                        }
+                    }
+                });
+
+                /*
+                 * Create a disposal listener that removes all associations with
+                 * said ancestor when the latter is disposed.
+                 */
+                scrollable.addDisposeListener(new DisposeListener() {
+
+                    @Override
+                    public void widgetDisposed(DisposeEvent e) {
+                        resizeAwareControlsForScrollableAncestors
+                                .remove(e.widget);
+                        widthsForScrollableAncestors.remove(e.widget);
+                    }
+                });
+            }
+
+            /*
+             * Add this control to the resize-aware controls collection that was
+             * just found or created.
+             */
+            resizeAwareControls.add(child);
         }
     }
 
@@ -490,5 +613,429 @@ public abstract class MegawidgetSpecifier implements ISpecifier {
             stringBuilder.append(element.getName());
         }
         return stringBuilder.toString();
+    }
+
+    /**
+     * Respond to the resizing of the specified ancestor by resizing any
+     * resize-aware controls associated with said ancestor in the specified map.
+     * 
+     * @param ancestor
+     *            Ancestor that has been resized.
+     * @param resizeAwareControlsForAncestors
+     *            Map of ancestors to the resize-aware controls that are to be
+     *            resized when the ancestor changes its size.
+     * @param decrease
+     *            Non-negative number of pixels by which the width of the
+     *            ancestor decreased. If this is <code>0</code>, the new size of
+     *            any resize-aware controls is calculated by divvying up the
+     *            available width of the ancestor between them as appropriate.
+     *            If it is a positive number, it indicates the amount by which
+     *            all the resize-aware ancestors in a particular row should
+     *            collectively shrink their widths if possible.
+     */
+    private void ancestorResized(
+            Composite ancestor,
+            Map<? extends Composite, Set<Control>> resizeAwareControlsForAncestors,
+            int decrease) {
+
+        /*
+         * Ensure that there are widgets to be notified of the resize.
+         */
+        if (resizeAwareControlsForAncestors.containsKey(ancestor) == false) {
+            return;
+        }
+        Set<Control> resizeAwareControls = new HashSet<>(
+                resizeAwareControlsForAncestors.get(ancestor));
+
+        /*
+         * If there are no controls that have not been disposed of, do nothing.
+         */
+        pruneDisposedWidgets(resizeAwareControls);
+        if (resizeAwareControls.isEmpty()) {
+            return;
+        }
+
+        /*
+         * Iterate through the resize-aware controls, recording for each one the
+         * new reentrant count for that control. The reentrant count is only
+         * incremented if this is a decrease and the old count is 0, or if this
+         * is not a decrease and the old count is a positive number. This way,
+         * reentrancy is only counted if there is a decrease in process.
+         */
+        for (Control control : resizeAwareControls) {
+            Integer count = resizeCountsForControls.get(control);
+            if ((count == null) || (count == 0)) {
+                if (decrease > 0) {
+                    resizeCountsForControls.put(control, 1);
+                }
+            } else if (count > 0) {
+                if (decrease < 1) {
+                    resizeCountsForControls.put(control, ++count);
+                }
+            }
+        }
+
+        /*
+         * Find the parents of all the resize-aware controls associated with
+         * this ancestor (since the ancestor may or may not be the parent of all
+         * the controls), and for each such parent, associate a set of its
+         * resize-aware children with it. This way, each parent's resize-aware
+         * children may be dealt with as a group, separately from the other
+         * resize-aware controls that do not share the same parent with that
+         * group.
+         */
+        Map<Composite, Set<Control>> controlsForParents = new IdentityHashMap<>();
+        for (Control control : resizeAwareControls) {
+            Composite parent = parentsForResizeAwareControls.get(control);
+            Set<Control> controls = controlsForParents.get(parent);
+            if (controls == null) {
+                controls = Sets.newIdentityHashSet();
+                controlsForParents.put(parent, controls);
+            }
+            controls.add(control);
+        }
+
+        /*
+         * Iterate through each set of resize-aware controls associated with one
+         * parent, resizing said controls as appropriate.
+         * 
+         * TODO: It is assumed that the parents are never gridded in such a
+         * manner that they lie side by side. Allowing for the latter would
+         * require a much more complex algorithm, but this may be worth doing in
+         * the future.
+         */
+        Set<Control> allResizedControls = new HashSet<>(
+                resizeAwareControls.size(), 1.0f);
+        for (Map.Entry<Composite, Set<Control>> entry : controlsForParents
+                .entrySet()) {
+            Set<Control> resizedControls = new HashSet<>(
+                    resizeAwareControls.size(), 1.0f);
+
+            /*
+             * Iterate through the children of the widget being resized,
+             * compiling information about the row of any resize-aware child so
+             * that said child's new preferred width may be calculated.
+             */
+            Composite parent = entry.getKey();
+            Set<Control> controls = entry.getValue();
+            GridLayout layout = (GridLayout) parent.getLayout();
+            int column = 0;
+            int row = 0;
+            int numResizablesInRow = 0;
+            int numColumnsHoldingResizablesInRow = 0;
+            Set<Integer> nonResizableColumnIndicesInRow = new HashSet<>();
+            Map<Control, Integer> rowsForControls = new IdentityHashMap<>();
+            Map<Control, Integer> columnsForControls = (decrease > 0 ? new IdentityHashMap<Control, Integer>()
+                    : null);
+            List<Set<Integer>> nonResizableColumnIndicesInRows = new ArrayList<>();
+            List<Integer> numResizablesInRows = new ArrayList<>();
+            List<Integer> numColumnsHoldingResizablesInRows = new ArrayList<>();
+            Map<Integer, Integer> widthsForColumns = new HashMap<>(
+                    layout.numColumns, 1.0f);
+            for (Control child : parent.getChildren()) {
+
+                /*
+                 * If this child is one of the resize-aware ones, make a note of
+                 * the row it is in, and what column it starts in (it may span
+                 * multiple columns) if the width of the ancestor has decreased.
+                 * Otherwise, if the child does not attempt to grab excess
+                 * horizontal space, divide up its width (minus the padding
+                 * between columns) by the number of columns it spans, and for
+                 * each such column, see if the resulting width is greater than
+                 * the largest width already recorded for that column. If it is,
+                 * treat the new width as the largest for the column.
+                 */
+                GridData gridData = (GridData) child.getLayoutData();
+                if (controls.contains(child)) {
+                    rowsForControls.put(child, row);
+                    if (columnsForControls != null) {
+                        columnsForControls.put(child, column);
+                    }
+                    numColumnsHoldingResizablesInRow += gridData.horizontalSpan;
+                    numResizablesInRow++;
+                } else {
+                    if (gridData.grabExcessHorizontalSpace == false) {
+                        int newWidth = (child.getSize().x - (layout.horizontalSpacing * (gridData.horizontalSpan - 1)))
+                                / gridData.horizontalSpan;
+                        for (int j = 0; j < gridData.horizontalSpan; j++) {
+                            nonResizableColumnIndicesInRow.add(column + j);
+                            int oldWidth = (widthsForColumns.containsKey(column
+                                    + j) ? widthsForColumns.get(column + j)
+                                    : -1);
+                            if (newWidth > oldWidth) {
+                                widthsForColumns.put(column + j, newWidth);
+                            }
+                        }
+                    }
+                }
+
+                /*
+                 * Increment the column counter, and if this means the row is
+                 * complete, go to the next row, saving this row's set of
+                 * indices of non-resize-aware controls, and the number of
+                 * resize-aware controls in the row.
+                 */
+                column += ((GridData) child.getLayoutData()).horizontalSpan;
+                if (column >= layout.numColumns) {
+                    nonResizableColumnIndicesInRows
+                            .add(nonResizableColumnIndicesInRow);
+                    numResizablesInRows.add(numResizablesInRow);
+                    numColumnsHoldingResizablesInRows
+                            .add(numColumnsHoldingResizablesInRow);
+                    row++;
+                    column = 0;
+                    numResizablesInRow = 0;
+                    numColumnsHoldingResizablesInRow = 0;
+                    nonResizableColumnIndicesInRow = new HashSet<>();
+                }
+            }
+
+            /*
+             * Change each resize-aware control's width hint to fill the space
+             * appropriate for that row, if the row it is in has no
+             * non-resize-aware siblings that expand to fill all available
+             * space. Assuming the latter is not the case, the width hint is set
+             * to be the total width of the parent, minus the sum of margins,
+             * any space between columns, the total width of the
+             * non-resize-aware controls; and then divided by the number of
+             * resize-aware controls in the row.
+             */
+            for (Control child : controls) {
+
+                /*
+                 * Do nothing if this resize-aware child is already in the
+                 * course of being resized both as a result of a decrease and of
+                 * multiple non-decrease calls. This avoids bad reentrant
+                 * behavior; it's fine for a decrease involving this child to
+                 * result in a reentrant call that is not for decrease, but the
+                 * latter call must not allow a further reentrant call.
+                 */
+                Integer reentrantCountObj = resizeCountsForControls.get(child);
+                int reentrantCount = (reentrantCountObj == null ? 0
+                        : reentrantCountObj);
+                if (reentrantCount > 2) {
+                    continue;
+                }
+
+                /*
+                 * Do nothing if there is at least one sibling in this
+                 * resize-aware child's row that grabs excess horizontal space.
+                 */
+                if (rowsForControls.containsKey(child) == false) {
+                    continue;
+                }
+                row = rowsForControls.get(child);
+                numResizablesInRow = numResizablesInRows.get(row);
+                nonResizableColumnIndicesInRow = nonResizableColumnIndicesInRows
+                        .get(row);
+                if (numResizablesInRow + nonResizableColumnIndicesInRow.size() < layout.numColumns) {
+                    continue;
+                }
+
+                /*
+                 * Compute the amount of horizontal space taken up by the
+                 * non-resize-aware columns in this row. If the total amount is
+                 * 0 and there is at least one non-resize-aware sibling in the
+                 * row, then this means that the sibling widgets have not had a
+                 * chance to size themselves yet, so nothing should be done.
+                 */
+                int widthOfNonResizablesInRow = 0;
+                for (Integer columnIndex : nonResizableColumnIndicesInRow) {
+                    widthOfNonResizablesInRow += widthsForColumns
+                            .get(columnIndex);
+                }
+                if ((widthOfNonResizablesInRow == 0)
+                        && (layout.numColumns != numResizablesInRow)) {
+                    continue;
+                }
+
+                /*
+                 * If an explicit decrease in width is required, shrink the
+                 * width appropriately; otherwise, change the width as
+                 * appropriate given the ancestor's new width.
+                 */
+                int maximumWidth = maxWidthsForControls.get(child);
+                GridData gridData = (GridData) child.getLayoutData();
+                int newWidth;
+                if (decrease > 0) {
+
+                    /*
+                     * The amount by which to decrease the width is determined
+                     * by taking the total decrease available, dividing it by
+                     * the number of columns holding resize-aware controls in
+                     * this row, and multiplying the result by the number of
+                     * columns this control takes up in this row.
+                     */
+                    int thisDecrease = decrease * gridData.horizontalSpan
+                            / numColumnsHoldingResizablesInRows.get(row);
+
+                    /*
+                     * Determine the minimum width for the columns spanned by
+                     * this control by seeing what the other non-resizable
+                     * widgets in the same columns require.
+                     */
+                    int minimumWidth = 0;
+                    int thisColumn = columnsForControls.get(child);
+                    for (int j = 0; j < gridData.horizontalSpan; j++) {
+                        minimumWidth += (widthsForColumns
+                                .containsKey(thisColumn + j) == false ? 0
+                                : widthsForColumns.get(thisColumn + j));
+                    }
+
+                    /*
+                     * If decreasing the existing width by the appropriate
+                     * decrease makes the width smaller than the minimum width
+                     * calculated above, use said minimum width, or if that is
+                     * larger than the maximum width for this control, the
+                     * latter. Otherwise, just decrease the width by the amount
+                     * appropriate.
+                     */
+                    newWidth = gridData.widthHint;
+                    if (newWidth - thisDecrease < minimumWidth) {
+                        newWidth = (minimumWidth < maximumWidth ? minimumWidth
+                                : maximumWidth);
+                    } else {
+                        newWidth -= thisDecrease;
+                    }
+                } else {
+
+                    /*
+                     * Set the new width to equal the space remaining after
+                     * subtracting the margins, the padding between columns, and
+                     * the space already used by non-resize-aware siblings, all
+                     * divided by the number of resize-aware siblings in this
+                     * row.
+                     */
+                    int availableWidth = (parent.getClientArea().width - ((layout.marginWidth * 2)
+                            + layout.marginLeft
+                            + layout.marginRight
+                            + widthOfNonResizablesInRow + (layout.horizontalSpacing * (layout.numColumns - 1))))
+                            / numResizablesInRows.get(row);
+                    newWidth = (maximumWidth > availableWidth ? availableWidth
+                            : maximumWidth);
+                }
+
+                /*
+                 * If the newly calculated width is different from what the
+                 * child is using now, and either this is not a reentrant call
+                 * or the new width is less than the old one, and there any
+                 * pre-decrease width for this child that is found is not the
+                 * same as the new width (to prevent the child from acquiring
+                 * its old, larger width after a decrease), change the child's
+                 * width hint.
+                 * 
+                 * The check of the reentrant count is done to ensure that an
+                 * overly-nested call does not attempt a change, as this causes
+                 * the widths of child controls to bounce between values when a
+                 * decrease is in effect. Likewise, the check to ensure that the
+                 * new width is not the same as the pre-decrease width is done
+                 * for the same reason; if it was not, then after a decrease, a
+                 * child's width might bounce back to the width it had before
+                 * the decrease. Essentially the reason that this is so complex
+                 * is that nested child controls within a composite that is
+                 * acting as a scrollable's content pane are not told that they
+                 * should get smaller as the scrollable gets smaller, and
+                 * resize-aware widgets need to, as they should attempt to
+                 * accommodate the shrinking parent's scrollable parent by
+                 * requiring less width themselves, thus allowing their parents
+                 * (the scrollable's content pane) to shrink and, if no other
+                 * widgets are insisting on a larger size, not require
+                 * scrollbars.
+                 */
+                if ((newWidth != gridData.widthHint)
+                        && ((reentrantCount < 2) || (newWidth < gridData.widthHint))
+                        && ((decrease > 0)
+                                || (preDecreaseWidthsForControls
+                                        .containsKey(child) == false) || (preDecreaseWidthsForControls
+                                .get(child) != newWidth))) {
+
+                    /*
+                     * Record the old width if this is a decrease, so that it
+                     * can be compared against future width-setting attempts for
+                     * this child to ensure that the child is not trying to
+                     * acquire the same width it had before the decrease.
+                     */
+                    if (decrease > 0) {
+                        preDecreaseWidthsForControls.put(child,
+                                gridData.widthHint);
+                    } else {
+                        preDecreaseWidthsForControls.remove(child);
+                    }
+
+                    /*
+                     * Use the new width, and add the child to the list of
+                     * controls that have been resized.
+                     */
+                    gridData.widthHint = newWidth;
+                    resizedControls.add(child);
+                }
+            }
+
+            /*
+             * If at least one control changed size, lay them out.
+             */
+            if (resizedControls.isEmpty() == false) {
+                parent.layout(resizedControls
+                        .toArray(new Control[resizedControls.size()]));
+                allResizedControls.addAll(resizedControls);
+            }
+
+            /*
+             * Repack the parent if it is not the content pane of a scrollable
+             * composite.
+             */
+            if (parent.getParent() instanceof ScrolledComposite == false) {
+                parent.pack(false);
+            }
+        }
+
+        /*
+         * For any controls that have resize handlers, execute said handlers.
+         */
+        for (Control child : allResizedControls) {
+            Runnable resizeHandler = resizeHandlersForControls.get(child);
+            if (resizeHandler != null) {
+                resizeHandler.run();
+            }
+        }
+
+        /*
+         * Iterate through the resize-aware controls, recording for each one the
+         * new reentrant count for that control. The reentrant count for each is
+         * decremented if it is 1 and this is a decrease, or if it is greater
+         * than 1 and this is not a decrease.
+         */
+        for (Control control : resizeAwareControls) {
+            Integer count = resizeCountsForControls.get(control);
+            if (count == null) {
+                continue;
+            }
+            if (count == 1) {
+                if (decrease > 0) {
+                    resizeCountsForControls.remove(control);
+                }
+            } else if (count > 1) {
+                if (decrease < 1) {
+                    resizeCountsForControls.put(control, --count);
+                }
+            }
+        }
+    }
+
+    /**
+     * Prune any widgets that are disposed from the specified set.
+     * 
+     * @param controls
+     *            Set of controls from which to prune any widgets that are
+     *            disposed.
+     */
+    private void pruneDisposedWidgets(Set<Control> controls) {
+        for (Iterator<Control> iterator = controls.iterator(); iterator
+                .hasNext();) {
+            Control control = iterator.next();
+            if (control.isDisposed()) {
+                iterator.remove();
+            }
+        }
     }
 }

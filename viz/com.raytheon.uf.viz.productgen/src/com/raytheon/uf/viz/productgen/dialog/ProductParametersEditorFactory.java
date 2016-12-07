@@ -25,6 +25,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.TextSpecifier;
 import gov.noaa.gsd.viz.megawidgets.TimeSpecifier;
 import gov.noaa.gsd.viz.megawidgets.UnboundedListBuilderSpecifier;
@@ -116,6 +117,14 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  *                                           Text megawidgets that are meant to look like
  *                                           labels.
  * Jun 07, 2016   19464    Chris.Golden      Added red labels for required fields.
+ * Dec 06, 2016   26855    Chris.Golden      Changed to use wrapping Label megawidget for
+ *                                           editor field labels, in case the latter are
+ *                                           too long to fit within the width of the
+ *                                           product editor. Also ensured that Text and
+ *                                           other megawidgets expand horizontally to
+ *                                           fill their parents. Added a container for
+ *                                           generated megawidgets that is a scrollable
+ *                                           Composite megawidget.
  * </pre>
  * 
  * @author Chris.Golden
@@ -160,9 +169,9 @@ public class ProductParametersEditorFactory {
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(CompositeSpecifier.MEGAWIDGET_TYPE, "Composite");
-        map.put(CompositeSpecifier.MEGAWIDGET_SPACING, 10);
         map.put(CompositeSpecifier.MEGAWIDGET_COLUMN_COUNT, 2);
         map.put(CompositeSpecifier.COLUMN_SPACING, 0);
+        map.put(CompositeSpecifier.EXPAND_HORIZONTALLY, true);
 
         DEFAULT_COMPOSITE_SPECIFICATION_PARAMETERS = ImmutableMap.copyOf(map);
     }
@@ -174,8 +183,10 @@ public class ProductParametersEditorFactory {
     private static final Map<String, Object> DEFAULT_LABEL_SPECIFICATION_PARAMETERS;
     static {
         Map<String, Object> map = new HashMap<>();
-        map.put(ExpandBarSpecifier.MEGAWIDGET_TYPE, "Label");
-        map.put(ExpandBarSpecifier.MEGAWIDGET_SPACING, 0);
+        map.put(LabelSpecifier.MEGAWIDGET_TYPE, "Label");
+        map.put(LabelSpecifier.MEGAWIDGET_SPACING, 10);
+        map.put(LabelSpecifier.LABEL_WRAP, true);
+        map.put(LabelSpecifier.LABEL_PREFERRED_WIDTH, 20);
 
         DEFAULT_LABEL_SPECIFICATION_PARAMETERS = ImmutableMap.copyOf(map);
     }
@@ -187,8 +198,8 @@ public class ProductParametersEditorFactory {
     private static final Map<String, Object> DEFAULT_REQUIRED_FIELD_LABEL_SPECIFICATION_PARAMETERS;
     static {
         Map<String, Object> map = new HashMap<>();
-        map.put(ExpandBarSpecifier.MEGAWIDGET_TYPE, "Label");
-        map.put(ExpandBarSpecifier.MEGAWIDGET_SPACING, 0);
+        map.put(LabelSpecifier.MEGAWIDGET_TYPE, "Label");
+        map.put(LabelSpecifier.MEGAWIDGET_SPACING, 10);
         Map<String, Double> colorMap = new HashMap<>();
         colorMap.put(ConversionUtilities.COLOR_AS_MAP_RED, 1.0);
         colorMap.put(ConversionUtilities.COLOR_AS_MAP_GREEN, 0.0);
@@ -224,6 +235,7 @@ public class ProductParametersEditorFactory {
         defaults = new HashMap<>();
         defaults.put(TextSpecifier.MEGAWIDGET_TYPE, "Text");
         defaults.put(TextSpecifier.MEGAWIDGET_SPACING, 10);
+        defaults.put(TextSpecifier.EXPAND_HORIZONTALLY, true);
         defaults.put(TextSpecifier.MEGAWIDGET_EDITABLE, false);
         defaults.put(TextSpecifier.SHOW_BORDER, false);
         map.put(LabelSpecifier.class, defaults);
@@ -552,7 +564,7 @@ public class ProductParametersEditorFactory {
      * megawidget class. The latter is configured in some default manner. If an
      * association with this class is already in existence, it is overwritten by
      * this new one. The megawidget will not be expandable (i.e. will not have
-     * its visiblility toggled via an expand bar).
+     * its visibility toggled via an expand bar).
      * 
      * @param parameterClass
      *            Class of the parameter.
@@ -815,8 +827,12 @@ public class ProductParametersEditorFactory {
              * create a composite megawidget holding two labels, one with the
              * label text itself, and one (in red) indicating that the field is
              * required. (This is done because megawidgets cannot have
-             * multi-colored labels.) If not a required field, just use the
-             * megawidget's label parameter to give the label.
+             * multi-colored labels.) If not a required field, create a label
+             * megawidget for the label. The reason that the field megawidget's
+             * label parameter is not used for the labeling is that sometimes
+             * the label can be quite long, and needs to wrap to the next
+             * line(s); using a separate label megawidget allows wrapping to be
+             * done.
              */
             if ((label.isEmpty() == false) && keyinfo.isDisplayLabel()) {
                 boolean required = keyinfo.isRequired();
@@ -825,13 +841,13 @@ public class ProductParametersEditorFactory {
                     label = label.trim();
                     required = true;
                 }
+                Map<String, Object> baseLabelSpecifier = new HashMap<>(
+                        DEFAULT_LABEL_SPECIFICATION_PARAMETERS);
+                baseLabelSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER, key
+                        + "---baseLabel" + (required ? "Main" : ""));
+                baseLabelSpecifier
+                        .put(ISpecifier.MEGAWIDGET_LABEL, label + ":");
                 if (required) {
-                    Map<String, Object> baseLabelSpecifier = new HashMap<>(
-                            DEFAULT_LABEL_SPECIFICATION_PARAMETERS);
-                    baseLabelSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER,
-                            key + "---baseLabel");
-                    baseLabelSpecifier.put(ISpecifier.MEGAWIDGET_LABEL, label
-                            + ":");
                     Map<String, Object> redLabelSpecifier = new HashMap<>(
                             DEFAULT_REQUIRED_FIELD_LABEL_SPECIFICATION_PARAMETERS);
                     redLabelSpecifier.put(ISpecifier.MEGAWIDGET_IDENTIFIER, key
@@ -848,10 +864,10 @@ public class ProductParametersEditorFactory {
                     headerSpecifier.put(CompositeSpecifier.CHILD_MEGAWIDGETS,
                             headerFields);
                     specifiers.add(headerSpecifier);
-                    specifier.put(IControlSpecifier.MEGAWIDGET_SPACING, 0);
                 } else {
-                    specifier.put(ISpecifier.MEGAWIDGET_LABEL, label + ":");
+                    specifiers.add(baseLabelSpecifier);
                 }
+                specifier.put(IControlSpecifier.MEGAWIDGET_SPACING, 0);
             }
 
             /*
@@ -904,10 +920,14 @@ public class ProductParametersEditorFactory {
         });
 
         /*
-         * Create and return a megawidget manager to be used as a parameters
-         * editor. The former creates all the megawidgets that are specified and
-         * notifies the listener of any parameter value changes.
+         * Ensure that the specifiers are wrapped in a scrollable megawidget as
+         * a container, then create and return a megawidget manager to be used
+         * as a parameters editor. The former creates all the megawidgets that
+         * are specified and notifies the listener of any parameter value
+         * changes.
          */
+        specifiers = MegawidgetSpecifierManager.makeRawSpecifiersScrollable(
+                specifiers, 0, 0, 0, 0);
         MegawidgetManager manager = new ParametersEditor(parent, specifiers,
                 valuesForKeys, parametersForKeys, minimumTime, maximumTime,
                 currentTimeProvider);

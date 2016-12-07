@@ -104,6 +104,9 @@ import com.google.common.collect.Lists;
  *                                           is used by product editor to fix scroll issue.
  * Aug 12, 2015    4123    Chris.Golden      Added code to configure a multi-value
  *                                           scale with appropriate sizing and padding.
+ * Dec 06, 2016   26855    Chris.Golden      Fixed bug that caused the scrollable area of
+ *                                           a ScrolledComposite to be sized to be
+ *                                           smaller than the latter's available area.
  * </pre>
  * 
  * @author Chris.Golden
@@ -397,7 +400,6 @@ public class UiBuilder {
         scrolledComposite.setData(AREA_CHANGING_KEY, Boolean.TRUE);
         Point size = scrolledComposite.getContent().computeSize(SWT.DEFAULT,
                 SWT.DEFAULT);
-        scrolledComposite.getContent().setSize(size);
         scrolledComposite.setMinSize(size);
         updateScrollPageIncrement(scrolledComposite);
         scrolledComposite.setData(AREA_CHANGING_KEY, null);

@@ -23,7 +23,6 @@ import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
-import gov.noaa.gsd.viz.megawidgets.UiBuilder;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -37,7 +36,6 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
-import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -94,6 +92,10 @@ import com.raytheon.uf.common.util.Pair;
  * 08/26/2015   8836       Chris.Cody   Changes for Unique (alpha-numeric) Event ID values
  * 08/31/2015   9617       Chris.Golden Modified to use local copy of parameters editor factory.
  * 09/11/2015   9508       Robert.Blum  Save MessageBox now notifies of missing required fields.
+ * 12/06/2016  26855       Chris.Golden Removed explicit use of scrollable composite, since the
+ *                                      megawidgets can be wrapped within a scrollable Composite
+ *                                      megawidget instead, which will handle Label-wrapping behavior
+ *                                      more correctly.
  * </pre>
  * 
  * @author jsanchez
@@ -129,9 +131,6 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     /** The undo button widget */
     private Button undoButton;
-
-    /** The scrolled composite for the megawidgets **/
-    private ScrolledComposite scrollerComposite;
 
     /** The parent composite for the megawidgets **/
     private Composite parentComposite;
@@ -186,15 +185,9 @@ public class ProductDataEditor extends AbstractDataEditor {
         }
 
         // Create the scroller composite and the layouts
-        scrollerComposite = UiBuilder.buildScrolledComposite(editorPane);
-        ProductEditorUtil.setLayoutInfo(scrollerComposite, 1, false, SWT.FILL,
-                SWT.FILL, true, true, 500, 300);
-        parentComposite = new Composite(scrollerComposite, SWT.BORDER);
+        parentComposite = new Composite(editorPane, SWT.NONE);
         ProductEditorUtil.setLayoutInfo(parentComposite, 1, false, SWT.FILL,
-                SWT.FILL, true, true);
-
-        scrollerComposite.setExpandHorizontal(true);
-        scrollerComposite.setExpandVertical(true);
+                SWT.FILL, true, true, 500, 300);
 
         // Create the Megawidgets
         createMegawidgets();
@@ -278,14 +271,9 @@ public class ProductDataEditor extends AbstractDataEditor {
                         public void sizeChanged(KeyInfo parameter) {
 
                             /*
-                             * TODO: If resizable megawidgets are to be used
-                             * (i.e. if any parameter types are to be registered
-                             * as expandable with the parameters editor
-                             * factory), respond to this notification by
-                             * resizing the scrollable area as appropriate.
+                             * No action; size changes of any children should be
+                             * handled by scrollable wrapper megawidget.
                              */
-                            throw new UnsupportedOperationException(
-                                    "not yet implemented");
                         }
                     });
 
@@ -312,10 +300,7 @@ public class ProductDataEditor extends AbstractDataEditor {
             handler.error("Error creating megawidgets: " + e, e);
         }
 
-        scrollerComposite.setContent(parentComposite);
-        scrollerComposite.setMinSize(parentComposite.computeSize(SWT.DEFAULT,
-                SWT.DEFAULT));
-        scrollerComposite.layout();
+        parentComposite.layout();
     }
 
     /**

@@ -37,6 +37,10 @@ import com.raytheon.uf.common.colormap.Color;
  *                                           property to "isFullWidthOfDetailPanel".
  * Oct 10, 2014    4042    Chris.Golden      Added "preferredWidth" parameter.
  * Jun 07, 2016   19464    Chris.Golden      Added "color" parameter.
+ * Dec 06, 2016   26855    Chris.Golden      Changed so that the preferred width
+ *                                           creation time parameter is not allowed
+ *                                           to be specified if the specification
+ *                                           does not call for wrapping.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,7 +68,8 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
      * If provided, the megawidget will request that its parent be that wide if
      * possible; if not, it will request that the parent be wide enough to show
      * all of its text. This is intended to be used only when
-     * {@link #LABEL_WRAP} is <code>true</code>.
+     * {@link #LABEL_WRAP} is <code>true</code>; if specified when the latter is
+     * <code>false</code>, it will generate an error.
      */
     public static final String LABEL_PREFERRED_WIDTH = "preferredWidth";
 
@@ -162,7 +167,7 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
         /*
          * Ensure that the preferred width, if present, is acceptable.
          */
-        preferredWidth = ConversionUtilities
+        int preferredWidth = ConversionUtilities
                 .getSpecifierIntegerValueFromObject(getIdentifier(), getType(),
                         parameters.get(LABEL_PREFERRED_WIDTH),
                         LABEL_PREFERRED_WIDTH, 0);
@@ -170,7 +175,12 @@ public class LabelSpecifier extends MegawidgetSpecifier implements
             throw new MegawidgetSpecificationException(getIdentifier(),
                     getType(), LABEL_PREFERRED_WIDTH, preferredWidth,
                     "must be positive integer");
+        } else if ((preferredWidth > 0) && (wrap == false)) {
+            throw new MegawidgetSpecificationException(getIdentifier(),
+                    getType(), LABEL_PREFERRED_WIDTH, preferredWidth,
+                    "cannot be specified when " + LABEL_WRAP + " is false");
         }
+        this.preferredWidth = preferredWidth;
 
         /*
          * Ensure that the bold and italic flags, if present, are acceptable.
