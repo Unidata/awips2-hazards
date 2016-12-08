@@ -395,15 +395,22 @@ class ProbUtils(object):
     def updateGraphValsDuration(self, origGraphVals, newGraphVals):
         
         if len(newGraphVals) <= len(origGraphVals):
+            print "PU-0 len(newGraphVals) <= len(origGraphVals)"
             newGraphVals = origGraphVals[0:len(newGraphVals)]
         else:
+            print "PU-1 "
             origGraphVals[-1]['editable'] = True
             for entry in newGraphVals:
+                print '\t setting y=0'
                 entry['y'] = 0
             newGraphVals[0:len(origGraphVals)] = origGraphVals
             
         newGraphVals[-1]['y'] = 0
         newGraphVals[-1]['editable'] = False
+            
+        import pprint
+        print 'PU--'
+        pprint.pprint(newGraphVals)
             
         return newGraphVals            
     
@@ -521,7 +528,7 @@ class ProbUtils(object):
 
     def timeDelta_ms(self):
         # A tolerance for comparing millisecond times
-        return 40*1000
+        return 60*1000
     
     def displayMsTime(self, time_ms):
         return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_ms/1000))
@@ -761,10 +768,13 @@ class ProbUtils(object):
                              timeIntervals, timeDirection='forecast'):
         '''
         This method creates the forecast or upstream polygons given 
-          -- event start time polygon 
-          -- a direction and direction uncertainty
-          -- a speed and a speed uncertainty
-          -- a Preset Choice
+          -- event which contains:
+               -- a direction and direction uncertainty
+               -- a speed and a speed uncertainty
+          -- eventSetAttrs
+          -- nudge -- whether or not this is a nudge
+          -- swathPresetClass
+          -- startTime_ms 
           -- a list of timeIntervals -- list of intervals (in secs) relative to given start time for
              which to produce forecast or upstream polygons
              For forecast, startTime_ms will be current time
@@ -805,14 +815,14 @@ class ProbUtils(object):
         ### Get initial shape.  
         # This represents the shape at the event start time resulting from the last nudge.
         shape = event.getGeometry()
-#         if nudge:
-#             shape = event.getGeometry()
-#         else:
-#             forecastPolys = event.get('forecastPolys', [])
-#             if forecastPolys:
-#                 shape = forecastPolys[0]
-#             else:
-#                 shape = event.getGeometry()
+        if nudge:
+            shape = event.getGeometry()
+        else:
+            forecastPolys = event.get('forecastPolys', [])
+            if forecastPolys:
+                shape = forecastPolys[0]
+            else:
+                shape = event.getGeometry()
                 
         # Convert the shape to a shapely polygon.
         poly = shape.asShapely()

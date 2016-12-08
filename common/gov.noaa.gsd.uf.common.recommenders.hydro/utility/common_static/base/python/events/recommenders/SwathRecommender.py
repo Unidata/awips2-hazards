@@ -58,7 +58,7 @@ class SwathPreset(object):
     def NoPreset(self, speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs):
         returnDict = {
                       'speedVal':speedVal,
-                      'dirVal':dirVal, 
+                      'dirVal':dirVal,
                       'spdUVal':spdUVal,
                       'dirUVal':dirUVal
                       }
@@ -66,14 +66,14 @@ class SwathPreset(object):
     
     def RightTurningSupercell(self, speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs): 
         spdWt = 0.75
-        dirWtTup = (0.,30.)
+        dirWtTup = (0., 30.)
         dirWt = dirWtTup[1] * secs / totalSecs
         dirVal = dirVal + dirWt
-        speedVal =  speedVal * spdWt
+        speedVal = speedVal * spdWt
       
         returnDict = {
-                      'speedVal':speedVal, 
-                      'dirVal':dirVal, 
+                      'speedVal':speedVal,
+                      'dirVal':dirVal,
                       'spdUVal':spdUVal,
                       'dirUVal':dirUVal
                       }
@@ -81,46 +81,46 @@ class SwathPreset(object):
     
     def LeftTurningSupercell(self, speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs): 
         spdWt = 0.75
-        dirWtTup = (0.,30.)
+        dirWtTup = (0., 30.)
         dirWt = -1. * dirWtTup[1] * secs / totalSecs
         dirVal = dirVal + dirWt
         speedVal = speedVal * spdWt
         
         returnDict = {
-                      'speedVal':speedVal, 
-                      'dirVal':dirVal, 
+                      'speedVal':speedVal,
+                      'dirVal':dirVal,
                       'spdUVal':spdUVal,
                       'dirUVal':dirUVal
                       }
         return returnDict
     
     def BroadSwath(self, speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs):
-        spdUValWtTup = (0.,15)
-        dirUValWtTup = (0.,40)
+        spdUValWtTup = (0., 15)
+        dirUValWtTup = (0., 40)
         spdUValWt = spdUValWtTup[1] * secs / totalSecs
         spdUVal = spdUVal + (spdUValWtTup[1] - spdUValWt)
         dirUValWt = dirUValWtTup[1] * secs / totalSecs
         dirUVal = dirUVal + (dirUValWtTup[1] - dirUValWt)
 
         returnDict = {
-                      'speedVal':speedVal, 
-                      'dirVal':dirVal, 
+                      'speedVal':speedVal,
+                      'dirVal':dirVal,
                       'spdUVal':spdUVal,
                       'dirUVal':dirUVal
                       }
         return returnDict
     
     def LightBulbSwath(self, speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs):
-        spdUValWtTup = (0.,7)
-        dirUValWtTup = (0.,20)
+        spdUValWtTup = (0., 7)
+        dirUValWtTup = (0., 20)
         spdUValWt = spdUValWtTup[1] * secs / totalSecs
         spdUVal = spdUVal + (spdUValWtTup[0] + spdUValWt)
         dirUValWt = dirUValWtTup[1] * secs / totalSecs
         dirUVal = dirUVal + (dirUValWtTup[0] + dirUValWt)
 
         returnDict = {
-                      'speedVal':speedVal, 
-                      'dirVal':dirVal, 
+                      'speedVal':speedVal,
+                      'dirVal':dirVal,
                       'spdUVal':spdUVal,
                       'dirUVal':dirUVal
                       }
@@ -203,26 +203,20 @@ class Recommender(RecommenderTemplate.Recommender):
         # IF there are any editableObjects, we do not want to set the selected time ahead for
         #   a timeInterval update
         self.editableObjects = False
-        if trigger == 'timeInterval':
+        if trigger == 'dataLayerUpdate':
             for event in eventSet:
-                if event.get('editableObject'):
+                editable, selected = self.isEditableSelected(event)
+                if editable:
                     self.editableObjects = True
                 
-        for event in eventSet:
-            
-            print '>>>>> Next event:', event.getEventID(), event.get('objectID')
-            sys.stdout.flush()
+        for event in eventSet:            
                         
             if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
-                print '\tNext[0]...'
-                sys.stdout.flush()
                 continue
             
             # Begin Graph Draw
             if self.beginGraphDraw(event, trigger):
                  resultEventSet.add(event)
-                 print '\tNext[1]...'
-                 sys.stdout.flush()
                  continue
 
             self.initializeEvent(event)
@@ -234,42 +228,34 @@ class Recommender(RecommenderTemplate.Recommender):
             if origin == 'database':
                 self.setVisualFeatures(event)
                 resultEventSet.add(event)
-                print '\tNext[2]...'
-                sys.stdout.flush()
                 continue
                        
             # Adjust Hazard Event Attributes
             
             if trigger == 'frameChange':
                 if not self.adjustForFrameChange(event, eventSetAttrs):
-                    print '\tNext[3]...'
-                    sys.stdout.flush()
                     continue
                     
             elif trigger == 'dataLayerUpdate':
-                self.visualCueForDataLayerUpdate(event)
-                print '\tNext[4]...'
-                sys.stdout.flush()
+                self.processDataLayerUpdate(event, eventSetAttrs, resultEventSet)
                 continue
                 
             elif trigger == 'timeInterval':
-                self.processTimeInterval(event, eventSetAttrs, resultEventSet)
                 continue
                 
             elif trigger == 'hazardEventModification':
-                changes = self.adjustForEventModification(event)
+                changes = self.adjustForEventModification(event, eventSetAttrs)
                 if not changes:
                     # Handle other dialog buttons"
                     self.handleAdditionalEventModifications(event, resultEventSet)
                     continue
-                resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
-                print "SR Setting selected time to eventSt"
-                self.flush()
+                if 'editableObject' in self.attributeIdentifiers: # Modify button
+                    resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
+                    print "SR Setting selected time to eventSt"
+                    self.flush()
                     
             elif trigger == 'hazardEventVisualFeatureChange':
                 if not self.adjustForVisualFeatureChange(event, eventSetAttrs):
-                    print '\tNext[7]...'
-                    sys.stdout.flush()
                     continue
                 resultEventSet.addAttribute('selectedTime', self.dataLayerTimeToLeft)
                 print "SR Setting selected time to dataLayerTimeToLeft"
@@ -280,27 +266,24 @@ class Recommender(RecommenderTemplate.Recommender):
 
             print self.logMessage("Re-calculating")                                                
             # Re-calculate Motion Vector-related and Probabilistic Information
-            self.advanceForecastPolys(event, eventSetAttrs)
             self.getIntervalPolys(event, eventSetAttrs, 'forecast')
-            if self.editableHazard:
+            if self.editableHazard and event.get('settingMotionVector'):
                 self.getIntervalPolys(event, eventSetAttrs, 'upstream')
+            else:
+                event.set('upstreamPolys', [])
                     
-            if trigger == 'dataLayerUpdate':
-                graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
-                #LogUtils.logMessage('[0]', graphProbs)
-                event.set('convectiveProbTrendGraph', graphProbs)
+            if trigger == 'dataLayerUpdate' and not self.editableObjects:
+                if self.latestDataLayerTime <= self.selectedTime:
+                    graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+                    event.set('convectiveProbTrendGraph', graphProbs)
             
             # Construct Updated Visual Features
             self.setVisualFeatures(event)         
-                
-            #print '\n\n== ENDING =='
-            #import pprint
-            #pprint.pprint(event.getHazardAttributes())
-            #print '||||||||||||||||'
-            #sys.stdout.flush()
-                
+                                
             # Add revised event to result
-            resultEventSet.add(event)              
+            resultEventSet.add(event)
+            
+        resultEventSet.addAttribute("saveToDatabase", True)
 
         return resultEventSet      
     
@@ -312,16 +295,14 @@ class Recommender(RecommenderTemplate.Recommender):
             dlTimes = []
             for i in range(self.upstreamTimeLimit()):
                 dlTimes.append(TimeUtils.roundEpochTimeMilliseconds(
-                                self.currentTime - i*60*1000, delta=datetime.timedelta(seconds=1)))
+                                self.currentTime - i * 60 * 1000, delta=datetime.timedelta(seconds=1)))
             dlTimes.sort()
             
         # Round data layer times to seconds
         self.dataLayerTimes = []
+        self.dataLayerTimeToLeft = self.currentTime
         for dlTime in dlTimes:
             newTime = TimeUtils.roundEpochTimeMilliseconds(int(dlTime), delta=datetime.timedelta(seconds=1))
-            # Cut off at upstreamTimeLimit e.g. no earlier than 30 minutes back in time
-            if abs(self.currentTime - newTime) / (60*1000) > self.upstreamTimeLimit():
-                    continue
             if self.selectedTime >= newTime:
                 self.dataLayerTimeToLeft = newTime
             self.dataLayerTimes.append(newTime)
@@ -334,7 +315,7 @@ class Recommender(RecommenderTemplate.Recommender):
         print 'latestDataLayerTime', self.probUtils.displayMsTime(self.latestDataLayerTime)
         print 'dataLayerTimes'
         for t in self.dataLayerTimes:
-            print self.probUtils.displayMsTime(t), 
+            print self.probUtils.displayMsTime(t),
         print 'currentTime', self.probUtils.displayMsTime(self.currentTime)
         print 'framesInfo', eventSetAttrs.get('framesInfo')
         self.flush()
@@ -350,17 +331,17 @@ class Recommender(RecommenderTemplate.Recommender):
         if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange']:
             eventIdentifier = eventSetAttrs.get('eventIdentifier')            
             if eventIdentifier and eventIdentifier != event.getEventID():
-                    print '\tRETURNING FALSE - [0]'
                     return False
-        # Check for end time < current time and end the event
-        eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
-        if eventEndTime_ms < self.currentTime:
-            event.setStatus('ELAPSED')
-            resultEventSet.add(event)
         # Skip ended, elapsed events 
+        eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
+        if abs(eventEndTime_ms - self.currentTime) > self.elapsedTimeLimit():
+            event.setStatus('ELAPSED')
         if event.getStatus() in ['ELAPSED', 'ENDED']:                
-            print '\tRETURNING FALSE - [1]'
             return False
+        # Check for end time < current time and end the event
+        if eventEndTime_ms < self.currentTime:
+            event.setStatus('ENDED')
+            resultEventSet.add(event)
         return True                  
     
     def beginGraphDraw(self, event, trigger):
@@ -384,35 +365,39 @@ class Recommender(RecommenderTemplate.Recommender):
         '''      
         self.nudge = False
         self.pendingHazard = event.getStatus() in ["PENDING", "POTENTIAL"]
-        self.selectedHazard = event.get('selected', False)
-        print "SR type selected", type(self.selectedHazard)
-        if self.selectedHazard == 0: self.selectedHazard = False
-        #if not self.selectedHazard or 'selected' in self.attributeIdentifiers: # means we are transitioning to unselected
-        #    event.set('editable', False)        
-        self.editableHazard = self.selectedHazard and event.get('editableObject', False)
+        self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
         print "SR Bookkeeping Event status", event.getStatus()
         print "SR Event selected", event.get('selected')
         print "SR Event editableObject", event.get('editableObject'), self.editableHazard
         print "SR Start Time", self.probUtils.displayMsTime(self.eventSt_ms)
         self.flush()
 
+    def isEditableSelected(self, event):
+        selected = event.get('selected', False)
+        if selected == 0: selected = False  
+        return selected and event.get('editableObject', False), selected        
         
     #################################
     # Update of Event Attributes    #
     #################################
     
     def initializeEvent(self, event):
-        # Initialize with event polygon
         mvPolys = event.get('motionVectorPolys')
-        if not mvPolys:
-            # Set start time and set eventSt_ms:
-            self.moveStartTime(event, self.latestDataLayerTime)                
+        if not mvPolys and event.getStatus() in ["PENDING", "POTENTIAL"]:
+            # Initialize event polygon
+            # Set start time and set eventSt_ms
+            # If automated, start time is ProbSevere time as set by ConvectiveRecommender
+            # Otherwise, set to latestDataLayer time
+            if not event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
+                self.moveStartTime(event, self.dataLayerTimeToLeft)                
+            self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
             mvPolys = [event.getGeometry()]
             st = self.probUtils.convertFeatureTime(self.eventSt_ms, 0)
             et = self.probUtils.convertFeatureTime(self.eventSt_ms, self.probUtils.timeStep())
             mvTimes = [(st, et)]
             event.set('motionVectorPolys', mvPolys)
             event.set('motionVectorTimes', mvTimes)
+            event.set('settingMotionVector', True)
         else:
             self.probUtils.roundEventTimes(event)
             self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
@@ -422,18 +407,23 @@ class Recommender(RecommenderTemplate.Recommender):
     def setUserOwned(self, event):         
         event.set('automationLevel', 'userOwned')
         if event.get('objectID') and not event.get('objectID').startswith('M'):
-            event.set('objectID',  'M' + event.get('objectID'))
+            event.set('objectID', 'M' + event.get('objectID'))
             
     def adjustForFrameChange(self, event, eventSetAttrs):
+        # Assumption is that D2D frame change was used to get to the latest data layer
+        #
         # If hazard is editable AND
         #    If selected time is at latest data layer and start time < selected time:
-        #       Move start time
+        #       Move start time, advance polys
         #       return True
         # return False
-        if self.editableHazard:
+        if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
             if self.selectedTime == self.latestDataLayerTime:
                 if self.eventSt_ms < self.selectedTime:
                     self.moveStartTime(event, self.latestDataLayerTime)
+                    self.advanceForecastPolys(event, eventSetAttrs)
+                    graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+                    event.set('convectiveProbTrendGraph', graphProbs)                    
                     event.set('dataLayerStatus', 'Synced')
                     return True
         return False
@@ -442,23 +432,21 @@ class Recommender(RecommenderTemplate.Recommender):
         # If editable:
         #    If start time is not at data layer:
         #        Set attribute 'dataLayerStatus': 'Data Layer Updated' (which will give a visual cue)
+        print "SR Visual Cue eventSt, latestDataLayer", self.eventSt_ms, self.latestDataLayerTime
+        self.flush()
         if self.eventSt_ms != self.latestDataLayerTime:
             event.set('dataLayerStatus', 'Data Layer Updated')
 
-    def processTimeInterval(self, event, eventSetAttrs, resultEventSet):
-        if not self.editableHazard:
-            # Not sure if we should be doing this -- may want to wait for the advance to 
-            # take place when something is done to the hazard
-            pass
-            self.advanceForecastPolys(event, eventSetAttrs)
-            self.setVisualFeatures(event)
-            resultEventSet.add(event)
+    def processDataLayerUpdate(self, event, eventSetAttrs, resultEventSet):
         if not self.editableObjects:
-            resultEventSet.addAttribute('selectedTime', self.latestDataLayerTime)
-            print "SR Setting selected time to latestDataLayer due to time interval update", self.editableHazard, self.editableObjects
-            self.flush()
+            if self.latestDataLayerTime <= self.selectedTime:
+                resultEventSet.addAttribute('selectedTime', self.latestDataLayerTime)
+                print "SR Setting selected time to latestDataLayer due to time interval update", self.editableHazard, self.editableObjects
+                self.flush()
+        elif self.editableHazard:
+            self.visualCueForDataLayerUpdate(event)    
         
-    def adjustForEventModification(self, event):
+    def adjustForEventModification(self, event, eventSetAttrs):
         changed = False
 
         if 'selected' in self.attributeIdentifiers:
@@ -468,6 +456,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if 'resetMotionVector' in self.attributeIdentifiers: 
             event.set('convectiveObjectDir', 270)
             event.set('convectiveObjectSpdKts', 32) 
+            event.set('settingMotionVector', True)
             motionVectorPolys = event.get('motionVectorPolys', []) 
             motionVectorTimes = event.get('motionVectorTimes', [])
             if motionVectorPolys:
@@ -477,28 +466,30 @@ class Recommender(RecommenderTemplate.Recommender):
                 event.set('motionVectorTimes', motionVectorTimes) 
             return True
         
-        # Handle Move Start Time
-        if 'moveStartTime' in self.attributeIdentifiers: 
-            #self.moveStartTime(event, self.latestDataLayerTime)
-            return True
-        
-        # Handle Modify Button -- 'editable' changed by Interdependency Script
-        if 'editableObject' in self.attributeIdentifiers: # User Hit modify button
+        # Handle Modify Button -- 'editableObject' changed by Interdependency Script
+        if 'editableObject' in self.attributeIdentifiers:  # User Hit modify button
             if event.getStatus() == 'ISSUED':         
-                self.moveStartTime(event, self.latestDataLayerTime, moveEndTime=True)
-                graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
-                event.set('convectiveProbTrendGraph', graphProbs)
+                if event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                    self.moveStartTime(event, self.latestDataLayerTime, moveEndTime=True)
+                    self.advanceForecastPolys(event, eventSetAttrs)
+                    graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
+                    event.set('convectiveProbTrendGraph', graphProbs)
             return True
         
         if 'autoShape' in self.attributeIdentifiers:
-            if not event.get('autoShape'):
+            if not event.get('autoShape'):  # Taking over the geometry
                 if event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
                     # Adjust automationLevel
                     event.set('automationLevel', 'attributesOnly')
+                    #self.moveStartTime(event, self.dataLayerTimeToLeft, moveEndTime=True)
                     return True 
-            else:
+            else:  # Returning to automation of geometry
                 if event.get('automationLevel') in ['attributesOnly', 'userOwned']:
                     event.set('automationLevel', 'attributesAndGeometry') 
+                    st = event.get('probSevereTimeStamp')
+                    if not st:
+                        st = self.dataLayerTimeToLeft
+                    #self.moveStartTime(event, st, moveEndTime=True)
                     return True
                 
         # Get Convective Attributes from the MetaData. 
@@ -508,7 +499,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Compare previous values to the new values to determine if any changes were made.  
         # Update the previous values along the way.
         triggerCheckList = ['convectiveObjectSpdKtsUnc', 'convectiveObjectDirUnc', 'convectiveProbTrendGraph',
-                            'convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveSwathPresets', 
+                            'convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveSwathPresets',
                             'duration']
         newTriggerAttrs = {t:event.get(t) for t in triggerCheckList}
         newTriggerAttrs['duration'] = self.probUtils.getDurationMinutes(event)
@@ -518,7 +509,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         for t in triggerCheckList:
             newVal = newTriggerAttrs.get(t)
-            prevName = "prev_"+t
+            prevName = "prev_" + t
             prevVal = event.get(prevName)
             if t == 'convectiveProbTrendGraph':
                 if newVal is None: newVal = []
@@ -531,7 +522,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     changedAttrs.append(t)
                 if t == 'duration':
                     graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
-                    #LogUtils.logMessage('[1]', graphProbs)
+                    # LogUtils.logMessage('[1]', graphProbs)
                     event.set('convectiveProbTrendGraph', graphProbs)
                 elif t == 'convectiveProbTrendGraph':
                     self.ensureLastGraphProbZeroAndUneditable(event)
@@ -594,13 +585,13 @@ class Recommender(RecommenderTemplate.Recommender):
     def moveStartTime(self, event, startMS, moveEndTime=True):
         print "SR moving start time"
         self.flush()
-        newStart = datetime.datetime.utcfromtimestamp(startMS/1000)
-        #if abs((newStart - event.getStartTime()).total_seconds()*1000) > self.probUtils.timeDelta_ms():
+        newStart = datetime.datetime.utcfromtimestamp(startMS / 1000)
+        # if abs((newStart - event.getStartTime()).total_seconds()*1000) > self.probUtils.timeDelta_ms():
         #    return False     
         if moveEndTime or self.pendingHazard:
             durationSecs = self.probUtils.getDurationSecs(event)
-            endMS = startMS+(durationSecs*1000)
-            event.setEndTime(datetime.datetime.utcfromtimestamp(endMS/1000))
+            endMS = startMS + (durationSecs * 1000)
+            event.setEndTime(datetime.datetime.utcfromtimestamp(endMS / 1000))
         event.setStartTime(newStart)
         self.probUtils.roundEventTimes(event)
         self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
@@ -612,8 +603,8 @@ class Recommender(RecommenderTemplate.Recommender):
                         
     def advanceForecastPolys(self, event, eventSetAttrs):
         ''' 
-        As the current time moves forward, 
-            move forecastPolys to pastPolys
+        Move forecastPolys to pastPolys
+        Reset start time poly
         ''' 
         ####### 
         # Forecast Polys
@@ -637,10 +628,12 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('forecastPolys', forecastPolys[index:])
         event.set('forecastTimes', forecastTimes[index:])
         
-        # If trigger is visualFeature, then don't do this
-        # otherwise do this
-        trigger = eventSetAttrs.get('trigger')
-        
+        # Reset geometry to new interior start time shape
+        geometry = event.getGeometry()
+        centroid = forecastPolys[index].asShapely().centroid
+        newGeometry = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.createRelocatedShape(geometry, centroid))
+        event.setGeometry(newGeometry)                        
+                
         ######
         #  Past Polys        
         pastPolys = event.get('pastPolys', [])
@@ -677,23 +670,28 @@ class Recommender(RecommenderTemplate.Recommender):
             # Do not include the latest data layer time. 
             # DataLayerTimes are in ms past the epoch
             # Convert to secs relative to eventSt_ms
-            startTime_ms = self.eventSt_ms
             for dlTime in self.dataLayerTimes[:-1]:
                 secs = int((dlTime - self.eventSt_ms) / 1000)
                 timeIntervals.append(secs)
+                if abs(secs) > self.upstreamTimeLimit()*3600:
+                    break
         else:
             # Follow timeStep for forecast polys
-            startTime_ms = self.currentTime
             durationSecs = self.probUtils.getDurationSecs(event, truncateAtZero=True)
             timeStep = self.probUtils.timeStep()
-            i= 0
+            i = 0
             while i <= durationSecs:
                 timeIntervals.append(i)
-                i += timeStep
-        #print "SR getIntervalPolys", timeDirection, timeIntervals
-        #self.flush()
+                # If object start time is Prob Severe time, put first forecast polygon on the dataLayerTime
+                if i == 0 and event.get('automationLevel') not in ['userOwned', 'attributesAndGeometry'] \
+                   and self.latestDataLayerTime > self.eventSt_ms:
+                        i += int((self.latestDataLayerTime - self.eventSt_ms) / 1000)
+                else:
+                    i += timeStep
+        print "SR getIntervalPolys", timeDirection, timeIntervals
+        self.flush()
         if timeIntervals:
-            self.probUtils.createIntervalPolys(event, eventSetAttrs, self.nudge, SwathPreset(), 
+            self.probUtils.createIntervalPolys(event, eventSetAttrs, self.nudge, SwathPreset(),
                                              self.eventSt_ms, timeIntervals, timeDirection)
 
     ###############################
@@ -736,7 +734,7 @@ class Recommender(RecommenderTemplate.Recommender):
         Update event geometry i.e. polygon at event start time, if changed        
         '''
         
-        print "SR AdjustforVF editable", self.editableHazard
+        print "SR AdjustforVisualFeature editable", self.editableHazard
         self.flush()
         if not self.editableHazard:
             return False
@@ -764,43 +762,43 @@ class Recommender(RecommenderTemplate.Recommender):
                     featureSt = long(featureSt)
                     featurePoly = geometry
                 # Add the feature to the motionVectorPolys 
-                motionVectorPolys, motionVectorTimes = self.updatePolys(motionVectorPolys, motionVectorTimes, 
+                motionVectorPolys, motionVectorTimes = self.updatePolys(motionVectorPolys, motionVectorTimes,
                              featurePoly, featureSt, featureEt, limit=self.maxMotionVectorPolygons())
                 event.set('motionVectorPolys', motionVectorPolys)
                 event.set('motionVectorTimes', motionVectorTimes)
                                      
-                # If the feature is prior to the event start time, 
-                #   add it to the past list
-                if featureSt < self.eventSt_ms:
-                    pastPolys = event.get('pastPolys', []) 
-                    pastTimes = event.get('pastTimes', [])
-                    pastPolys, pastTimes = self.updatePolys(pastPolys, pastTimes, featurePoly, featureSt, featureEt,
-                                   limit=self.maxPastPolygons())
-                    event.set('pastPolys', pastPolys)
-                    event.set('pastTimes', pastTimes)
+#                 # If the feature is prior to the event start time, 
+#                 #   add it to the past list
+#                 if featureSt < self.eventSt_ms:
+#                     pastPolys = event.get('pastPolys', []) 
+#                     pastTimes = event.get('pastTimes', [])
+#                     pastPolys, pastTimes = self.updatePolys(pastPolys, pastTimes, featurePoly, featureSt, featureEt,
+#                                    limit=self.maxPastPolygons())
+#                     event.set('pastPolys', pastPolys)
+#                     event.set('pastTimes', pastTimes)
                     
                 # If the feature is at the event start time, add it to the 
                 #  event geometry
-                if abs(featureSt-self.eventSt_ms) <= self.probUtils.timeDelta_ms():
+                if abs(featureSt - self.eventSt_ms) <= self.probUtils.timeDelta_ms():
                     event.setGeometry(featurePoly)
                     self.nudge = True
                     # If nudging an issued event, restore the issuedDuration
                     if not self.pendingHazard: 
                         durationSecs = event.get("durationSecsAtIssuance")
                         if durationSecs is not None:
-                            endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self.eventSt_ms + durationSecs *1000, 
+                            endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self.eventSt_ms + durationSecs * 1000,
                                                                              delta=datetime.timedelta(seconds=1))
-                            event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS/1000))
-                            #graphProbs = self.probUtils.getGraphProbsBasedOnDuration(event)
+                            event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS / 1000))
+                            # graphProbs = self.probUtils.getGraphProbsBasedOnDuration(event)
                             graphProbs = event.get("graphProbsAtIssuance")
-                            #LogUtils.logMessage('[2]', graphProbs)
+                            # LogUtils.logMessage('[2]', graphProbs)
                             event.set('convectiveProbTrendGraph', graphProbs)
                                         
-        #print "SR Feature ST", featureSt, self.probUtils.displayMsTime(featureSt)
-        #self.flush()
+        # print "SR Feature ST", featureSt, self.probUtils.displayMsTime(featureSt)
+        # self.flush()
         
         if len(motionVectorPolys) <= 1:
-            return False
+            return True
                                       
         # Re-compute the motion vector and uncertainty
         motionVectorTuples = []
@@ -811,12 +809,12 @@ class Recommender(RecommenderTemplate.Recommender):
             print 'SR motionVector Poly, startTime:', poly.asShapely().centroid, self.probUtils.displayMsTime(st)
             self.flush()
             
-        #print "SR motionVectorTuples", len(motionVectorTuples)
-        #self.flush()
+        # print "SR motionVectorTuples", len(motionVectorTuples)
+        # self.flush()
             
-        newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms, #self.currentTime,                     
+        newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms,  # self.currentTime,                     
                    event.get('convectiveObjectSpdKts', self.probUtils.defaultWindSpeed()),
-                   event.get('convectiveObjectDir',self.probUtils.defaultWindDir())) 
+                   event.get('convectiveObjectDir', self.probUtils.defaultWindDir())) 
         for attr in ['convectiveObjectDir', 'convectiveObjectSpdKts',
                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
             event.set(attr, int(newMotion.get(attr)))
@@ -840,7 +838,7 @@ class Recommender(RecommenderTemplate.Recommender):
         newTuples = []
         found = False
         for poly, st, et in tuples:
-            if abs(st-newSt) <= self.probUtils.timeDelta_ms():                        
+            if abs(st - newSt) <= self.probUtils.timeDelta_ms():                        
                 newTuples.append((newPoly, st, et))
                 found = True
             else: 
@@ -854,7 +852,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if limit and len(newTuples) > limit:
             newTuples = newTuples[:limit]
         newPolys = [poly for poly, st, et in newTuples]
-        newTimes = [(st,et) for poly, st, et in newTuples]            
+        newTimes = [(st, et) for poly, st, et in newTuples]            
         return newPolys, newTimes         
  
     def setVisualFeatures(self, event):
@@ -866,36 +864,35 @@ class Recommender(RecommenderTemplate.Recommender):
             return
         
         features = []
-        upstreamSt_ms = self.dataLayerTimes[0]
+        startTime_ms = self.dataLayerTimes[0]
         featuresDisplay = self.featuresDisplay()
         
         # Forecast Features -- polygons, track points, relocated dashed, last motionVector
-        features += self.forecastVisualFeatures(event, upstreamSt_ms)
+        features += self.forecastVisualFeatures(event, startTime_ms)
         
         # Swath
         if featuresDisplay.get('swath'):
-            swathFeature = self.swathFeature(event, upstreamSt_ms, forecastPolys)                
+            swathFeature = self.swathFeature(event, startTime_ms, forecastPolys)                
             features.append(swathFeature) 
         
         # Motion vector centroids
         if featuresDisplay.get('motionVectorCentroids'):
-            features += self.motionVectorFeatures(event, upstreamSt_ms)     
+            features += self.motionVectorFeatures(event, startTime_ms)     
         
         # Previous Time Features
         features += self.previousTimeVisualFeatures(event)
         
         # Preview Grid
         if featuresDisplay.get('previewGrid'):
-            features += self.getPreviewGridFeatures(event, upstreamSt_ms)
+            features += self.getPreviewGridFeatures(event, startTime_ms)
                            
-        # Replace Visual Features
         if features:
             event.setVisualFeatures(VisualFeatures(features))
             
         if self.printVisualFeatures:
              self.printFeatures(event, "Visual Features", features)
         
-    def forecastVisualFeatures(self, event, upstreamSt_ms):
+    def forecastVisualFeatures(self, event, startTime_ms):
         forecastPolys = event.get('forecastPolys')
         if not forecastPolys:
             return
@@ -911,6 +908,12 @@ class Recommender(RecommenderTemplate.Recommender):
         # Prob Label
         probTrendValues = self.probUtils.getInterpolatedProbTrendColors(event)
         self.label = str(event.get('objectID')) + " " + event.getHazardType()
+        
+        # Border thickness
+        if self.selectedHazard:
+            borderThickness = 'eventType'
+        else:
+            borderThickness = 4
 
         startTimeShapeFound = False
         firstForecastSt_ms = self.eventSt_ms
@@ -922,45 +925,34 @@ class Recommender(RecommenderTemplate.Recommender):
         for i in range(numIntervals):
             poly = forecastPolys[i]
             polySt_ms, polyEt_ms = forecastTimes[i]
-            
-            if i == 0:
-                firstForecastSt_ms = polySt_ms
-            
-            #print "SR forecast poly st", self.probUtils.displayMsTime(polySt_ms), polySt_ms, polySt_ms == self.eventSt_ms
-            self.flush()
 
-            dragCapability = 'none'
-            editable = False
-                
+            #print "SR forecast i, polySt, eventSt", i, self.probUtils.displayMsTime(polySt_ms), polySt_ms, polySt_ms == self.eventSt_ms
+            #self.flush()
             if polySt_ms == self.eventSt_ms:
                 startTimeShapeFound = True
-                if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                    #print "SR forecast poly equal to start time -- startTimeShape found -- setting editable"
-                    self.flush()
-                    dragCapability = 'all'
-                    editable = True
-                    
-
+            
+            if i == 0:
+                firstForecastSt_ms = polySt_ms                
             try: 
                 probTrend = int(probTrendValues[i])
-                probStr = ' '+ `probTrend`+'%'
+                probStr = ' ' + `probTrend` + '%'
             except:
                 probStr = ''
             label = self.label + probStr
 
               
             forecastFeature = {
-              "identifier": "swathRec_forecast_"+str(polySt_ms),
+              "identifier": "swathRec_forecast_" + str(polySt_ms),
               "visibilityConstraints": "always",
               "borderColor": "eventType",
-              "borderThickness": "eventType",
+              "borderThickness": borderThickness,
               "borderStyle": "eventType",
               "textSize": "eventType",
               "label": label,
               "textColor": "eventType",
-              "dragCapability": dragCapability, 
-              "scaleable": editable,
-              "rotatable": editable,
+              "dragCapability": "none",
+              "scaleable": False,
+              "rotatable": False,
               "geometry": {
                    (polySt_ms, polyEt_ms): poly
                   }
@@ -972,13 +964,13 @@ class Recommender(RecommenderTemplate.Recommender):
             centroid = poly.asShapely().centroid
             color = self.probUtils.getInterpolatedProbTrendColor(event, i, numIntervals)
             trackPointFeature = {
-              "identifier": "swathRec_trackPoint_"+str(polySt_ms),
+              "identifier": "swathRec_trackPoint_" + str(polySt_ms),
               "visibilityConstraints": "selected",
               "borderColor": color,
               "borderThickness": 2,
               "diameter": 5,
               "geometry": {
-                  (upstreamSt_ms,
+                  (startTime_ms,
                    TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                    AdvancedGeometry.createShapelyWrapper(centroid, 0)
                }
@@ -986,16 +978,19 @@ class Recommender(RecommenderTemplate.Recommender):
             if featuresDisplay.get('trackPoints'):
                 features.append(trackPointFeature)
              
-            # Dashed relocated shape and centroid show up if selected
-            if self.editableHazard:
+            # Dashed relocated shape and centroid show up if editable
+            if self.editableHazard: 
                 dragCapability = 'none'
-                editable = False
-                    
+                editable = False                
+                if polySt_ms == self.eventSt_ms:
+                    if event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                        dragCapability = 'all'
+                        editable = True
+                   
                 relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
-                                                                       createRelocatedShape(geometry, centroid))
-    
+                                                                       createRelocatedShape(geometry, centroid))    
                 relocatedFeature = {
-                  "identifier": "swathRec_relocated_"+str(polySt_ms),
+                  "identifier": "swathRec_relocated_" + str(polySt_ms),
                   "visibilityConstraints": "selected",
                   "borderColor": "eventType",
                   "borderThickness": "eventType",
@@ -1013,7 +1008,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 
 
                 centroidFeature = {
-                  "identifier": "swathRec_relocatedCentroid_"+str(polySt_ms),
+                  "identifier": "swathRec_relocatedCentroid_" + str(polySt_ms),
                   "visibilityConstraints": "selected",
                   "borderColor": { "red": 0, "green": 0, "blue": 0 },
                   "borderThickness": 2,
@@ -1028,39 +1023,38 @@ class Recommender(RecommenderTemplate.Recommender):
                    
         # Start time may be prior to first forecast shape and we need to display it
         if not startTimeShapeFound:
-            print "SR startTimeShape not found -- attempt to use geometry"
+            print "****SR startTimeShape not found -- attempt to use geometry"
             self.flush()
             if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                #print "SR forecast poly equal to start time -- setting editable"
+                # print "SR forecast poly equal to start time -- setting editable"
                 self.flush()
-
                 dragCapability = 'all'
                 editable = True
             else:
                 dragCapability = 'none'
                 editable = False
-            #print "SR dragCapability", dragCapability
+            # print "SR dragCapability", dragCapability
             self.flush()
                 
             polySt_ms = self.eventSt_ms
             polyEt_ms = firstForecastSt_ms
             try: 
                 probTrend = int(probTrendValues[0])
-                probStr = ' '+ `probTrend`+'%'
+                probStr = ' ' + `probTrend` + '%'
             except:
                 probStr = ''
             label = self.label + probStr
 
             startTimeFeature = {
-              "identifier": "swathRec_forecast_"+str(polySt_ms),
+              "identifier": "swathRec_forecast_" + str(polySt_ms),
               "visibilityConstraints": "always",
               "borderColor": "eventType",
-              "borderThickness": "eventType",
+              "borderThickness": borderThickness,
               "borderStyle": "eventType",
               "textSize": "eventType",
               "label": label,
               "textColor": "eventType",
-              "dragCapability": dragCapability, 
+              "dragCapability": dragCapability,
               "scaleable": editable,
               "rotatable": editable,
               "geometry": {
@@ -1073,9 +1067,8 @@ class Recommender(RecommenderTemplate.Recommender):
      
         return features
 
-    def swathFeature(self, event, upstreamSt_ms, forecastPolys):
+    def swathFeature(self, event, startTime_ms, forecastPolys):
         advancedGeometries = forecastPolys
-        forecastPolys = [event.getGeometry()] + forecastPolys
         forecastPolys = []
         for geometry in advancedGeometries:
             forecastPolys.append(geometry.asShapely())
@@ -1087,30 +1080,33 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderThickness": 3,
               "borderStyle": "dotted",
               "geometry": {
-                  (upstreamSt_ms,
+                  (startTime_ms,
                    TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                    AdvancedGeometry.createShapelyWrapper(envelope, 0)
                }
               }
         return swath
 
-    def motionVectorFeatures(self, event, upstreamSt_ms):
+    def motionVectorFeatures(self, event, startTime_ms):
+        # Show current (time=0) object centroid when both initiating and modifying issued objects.
+        features = []
+        if not self.editableHazard:
+            return features 
         motionVectorPolys = event.get('motionVectorPolys', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
-        features = []
-        for i in range(len(motionVectorTimes)):
+        for i in range(len(motionVectorPolys)):
             st, et = motionVectorTimes[i]
             poly = motionVectorPolys[i].asShapely()                        
             centroid = AdvancedGeometry.createShapelyWrapper(poly.centroid, 0)
             feature = {
-              "identifier": "swathRec_motionVector_"+str(st),
+              "identifier": "swathRec_motionVector_" + str(st),
               "visibilityConstraints": "selected",
               "borderColor": { "red": 0, "green": 0, "blue": 0 },
               "borderThickness": 2,
               "fillColor": { "red": 1, "green": 1, "blue": 1},
               "diameter": 6,
               "geometry": {
-                  (upstreamSt_ms,
+                  (startTime_ms,
                    TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
                    centroid
                }
@@ -1118,75 +1114,6 @@ class Recommender(RecommenderTemplate.Recommender):
             features.append(feature)
         return features
 
-    def getPreviewGridFeatures(self, event, upstreamSt_ms):
-        if not event.get('showGrid'): 
-            return []
-        gridFeatures = []            
-        probGrid, lons, lats = self.probUtils.getProbGrid(event)
-        polyTupleDict = self.createPolygons(probGrid, lons, lats)
-                
-        # Generate and add preview-grid-related visual features        
-        for key in sorted(polyTupleDict): 
-            poly = polyTupleDict[key]
-            
-                                
-            ### Should match PHI Prototype Tool
-            colorFill =  {
-                '0': { "red": 102/255.0, "green": 224/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
-                '20': { "red": 255/255.0, "green": 255/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
-                '40': { "red": 255/255.0, "green": 179/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
-                '60': { "red": 255/255.0, "green": 102/255.0, "blue": 102/255.0, "alpha": 0.4 }, 
-                '80': { "red": 255/255.0, "green": 102/255.0, "blue": 255/255.0, "alpha": 0.4 }
-                }
-            
-            if poly.is_valid:
-                gridPreviewPoly = {
-                    "identifier": "gridPreview_" + key,
-                    "visibilityConstraints": "selected",
-                    "borderColor": { "red": 0, "green": 0, "blue": 0 }, # colorFill[key],
-                    "fillColor": colorFill[key],
-                    "geometry": {
-                        (upstreamSt_ms,
-                        #(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), 
-                         TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
-                                 AdvancedGeometry.createShapelyWrapper(poly, 0)
-                    }
-                }
-                gridFeatures.append(gridPreviewPoly)
-                            
-        return gridFeatures
-    
-    def createPolygons(self, probGrid, lons, lats):
-        polyDict = {}
-        
-        levels = np.linspace(0,100,6)
-
-        X, Y = np.meshgrid(lons, lats)
-        plt.figure()
-        
-        CS = plt.contour(X, Y, probGrid, levels=levels)
-
-        prob = ['0', '20', '40', '60', '80']
-        probIndex = [0.0, 20.0, 40.0, 60.0, 80.0]
-        polyTupleDict = {}
-
-        for c in range(0,(len(CS.levels) - 1)):
-            contourVal = CS.levels[c]
-            coords = CS.collections[c].get_paths()
-
-            polygons = []
-            for coord in coords:
-                v = coord.vertices
-                x = v[:,0]
-                y = v[:,1]
-                poly = GeometryFactory.createPolygon([(i[0], i[1]) for i in zip(x,y)])
-                polygons.append(poly)
-                
-            mp = GeometryFactory.createMultiPolygon(polygons,'polygons')
-            if contourVal in probIndex and len(polygons):    
-                    polyTupleDict[prob[c]] = mp
-                
-        return polyTupleDict
         
     def previousTimeVisualFeatures(self, event):    
         # Previous time polygons -- prior to current time
@@ -1202,7 +1129,7 @@ class Recommender(RecommenderTemplate.Recommender):
         #
         # All are editable if the hazard has not been issued yet.
         # 
-        #print "\nDoing Previous time polys"
+        # print "\nDoing Previous time polys"
         pastPolys = event.get('pastPolys', [])
         pastTimes = event.get('pastTimes', [])
         motionVectorPolys = event.get('motionVectorPolys', []) 
@@ -1218,20 +1145,23 @@ class Recommender(RecommenderTemplate.Recommender):
         print "SR previousTimeVisualFeatures editableHazard, automationLevel", self.editableHazard, event.get('automationLevel')  
         self.flush()
                         
-        # Don't want to show upstream polys for times at or after eventSt
+        # Don't want to show previous polys for times at or after eventSt
         for i in range(len(self.dataLayerTimes[:-1])):
             polySt_ms = self.dataLayerTimes[i]
             if polySt_ms >= self.eventSt_ms:
                 continue
-            poly, editablePoly, polyType = self.findPreviousPoly(polySt_ms,
-                                          motionVectorPolys, motionVectorTimes, 
+            poly, editablePoly, polyType = self.findPreviousPoly(event, polySt_ms,
+                                          motionVectorPolys, motionVectorTimes,
                                           pastPolys, pastTimes, upstreamPolys, upstreamTimes)
             if not poly:
                 continue
 
             polyEt_ms = self.dataLayerTimes[i + 1]
+            # Don't want to overlap with start time polygon
+            if polyEt_ms > self.eventSt_ms:
+                polyEt_ms = self.eventSt_ms
             #print "SR previous st, et", self.probUtils.displayMsTime(polySt_ms), self.probUtils.displayMsTime(polyEt_ms)
-            #self.flush()
+            self.flush()
             
             if editablePoly and editable:
                 dragCapability = 'whole'
@@ -1243,12 +1173,12 @@ class Recommender(RecommenderTemplate.Recommender):
             previousFeature = {              
               "identifier": "swathRec_previous_" + str(polySt_ms),
               "visibilityConstraints": "selected",
-              "borderColor":  color, #{ "red": 1, "green": 1, "blue": 0 }, #"eventType", 
+              "borderColor":  color,  # { "red": 1, "green": 1, "blue": 0 }, #"eventType", 
               "borderThickness": "eventType",
               "borderStyle": "eventType",
               "dragCapability": dragCapability,
               "textSize": "eventType",
-              "label": self.label, 
+              "label": self.label,
               "textColor": "eventType",
               "geometry": {
                   (polySt_ms, polyEt_ms): poly
@@ -1258,36 +1188,109 @@ class Recommender(RecommenderTemplate.Recommender):
         return previousFeatures
 
 
-    def findPreviousPoly(self, polySt_ms, motionVectorPolys, motionVectorTimes, pastPolys, pastTimes,
+    def findPreviousPoly(self, event, polySt_ms, motionVectorPolys, motionVectorTimes, pastPolys, pastTimes,
                           upstreamPolys, upstreamTimes):
         featuresDisplay = self.featuresDisplay()
         editablePoly = False
-        if featuresDisplay.get('motionVectorPolys') and featuresDisplay.get('motionVectorPolys'):
-            for i in range(len(motionVectorTimes)):
+        if featuresDisplay.get('motionVectorCentroids'):
+            for i in range(len(motionVectorPolys)):
                 st, et = motionVectorTimes[i]
-                if abs(st-polySt_ms) < self.probUtils.timeDelta_ms():
-                    #print "SR upstream using motion vector", i, self.probUtils.displayMsTime(st)
+                #print "SR  difference ", self.probUtils.displayMsTime(st), self.probUtils.displayMsTime(polySt_ms), abs(st - polySt_ms), self.probUtils.timeDelta_ms()
+                #self.flush()
+                if abs(st - polySt_ms) < self.probUtils.timeDelta_ms():
+                    print "SR upstream using motion vector", i, self.probUtils.displayMsTime(st)
                     self.flush()
                     editablePoly = True
                     return motionVectorPolys[i], editablePoly, 'motionVector'
-        if featuresDisplay.get('pastPolys') and featuresDisplay.get('pastPolys'):
-            for i in range(len(pastTimes)):
+        if featuresDisplay.get('pastPolys'):
+            for i in range(len(pastPolys)):
                 st, et = pastTimes[i]
-                if abs(st-polySt_ms) < self.probUtils.timeDelta_ms():
+                if abs(st - polySt_ms) < self.probUtils.timeDelta_ms():
                     #print "SR upstream using past", i, self.probUtils.displayMsTime(st)
-                    self.flush()
+                    #self.flush()
                     return pastPolys[i], editablePoly, 'past'
-        if not self.editableHazard:
+        if not self.editableHazard or not event.get('settingMotionVector'):
             return None, False, 'none'
-        if featuresDisplay.get('upstreamPolys') and featuresDisplay.get('upstreamPolys'):
-            for i in range(len(upstreamTimes)):
+        if featuresDisplay.get('upstreamPolys'):
+            for i in range(len(upstreamPolys)):
                 st, et = upstreamTimes[i]
-                if abs(st-polySt_ms) < self.probUtils.timeDelta_ms():
+                if abs(st - polySt_ms) < self.probUtils.timeDelta_ms():
                     #print "SR upstream poly", self.probUtils.displayMsTime(st)
-                    self.flush()
+                    #self.flush()
                     editablePoly = True
                     return upstreamPolys[i], editablePoly, 'upstream'
         return None, False, 'none'
+
+
+    def getPreviewGridFeatures(self, event, upstreamSt_ms):
+        if not event.get('showGrid'): 
+            return []
+        gridFeatures = []            
+        probGrid, lons, lats = self.probUtils.getProbGrid(event)
+        polyTupleDict = self.createPolygons(probGrid, lons, lats)
+                
+        # Generate and add preview-grid-related visual features        
+        for key in sorted(polyTupleDict): 
+            poly = polyTupleDict[key]
+            
+                                
+            # ## Should match PHI Prototype Tool
+            colorFill = {
+                '0': { "red": 102 / 255.0, "green": 224 / 255.0, "blue": 102 / 255.0, "alpha": 0.4 },
+                '20': { "red": 255 / 255.0, "green": 255 / 255.0, "blue": 102 / 255.0, "alpha": 0.4 },
+                '40': { "red": 255 / 255.0, "green": 179 / 255.0, "blue": 102 / 255.0, "alpha": 0.4 },
+                '60': { "red": 255 / 255.0, "green": 102 / 255.0, "blue": 102 / 255.0, "alpha": 0.4 },
+                '80': { "red": 255 / 255.0, "green": 102 / 255.0, "blue": 255 / 255.0, "alpha": 0.4 }
+                }
+            
+            if poly.is_valid:
+                gridPreviewPoly = {
+                    "identifier": "gridPreview_" + key,
+                    "visibilityConstraints": "selected",
+                    "borderColor": { "red": 0, "green": 0, "blue": 0 },  # colorFill[key],
+                    "fillColor": colorFill[key],
+                    "geometry": {
+                        (upstreamSt_ms,
+                        # (TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), 
+                         TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
+                                 AdvancedGeometry.createShapelyWrapper(poly, 0)
+                    }
+                }
+                gridFeatures.append(gridPreviewPoly)
+                            
+        return gridFeatures
+    
+    def createPolygons(self, probGrid, lons, lats):
+        polyDict = {}
+        
+        levels = np.linspace(0, 100, 6)
+
+        X, Y = np.meshgrid(lons, lats)
+        plt.figure()
+        
+        CS = plt.contour(X, Y, probGrid, levels=levels)
+
+        prob = ['0', '20', '40', '60', '80']
+        probIndex = [0.0, 20.0, 40.0, 60.0, 80.0]
+        polyTupleDict = {}
+
+        for c in range(0, (len(CS.levels) - 1)):
+            contourVal = CS.levels[c]
+            coords = CS.collections[c].get_paths()
+
+            polygons = []
+            for coord in coords:
+                v = coord.vertices
+                x = v[:, 0]
+                y = v[:, 1]
+                poly = GeometryFactory.createPolygon([(i[0], i[1]) for i in zip(x, y)])
+                polygons.append(poly)
+                
+            mp = GeometryFactory.createMultiPolygon(polygons, 'polygons')
+            if contourVal in probIndex and len(polygons):    
+                    polyTupleDict[prob[c]] = mp
+                
+        return polyTupleDict
 
     ###############################
     # Helper methods              #
@@ -1306,7 +1309,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def printFeatures(self, event, label, features):
         print label, event.getEventID(), " = ", str(len(features)), ' ----'
         self.flush()
-        #for feature in features:
+        # for feature in features:
         #    print feature
 
     def printEventSet(self, label, eventSet, eventLevel=1):            
@@ -1330,13 +1333,15 @@ class Recommender(RecommenderTemplate.Recommender):
         if self.printEvent:
             import pprint
             if label: print label
-            if eventLevel >=1:
+            if eventLevel >= 1:
                 print 'ID:', event.getEventID(), event.get('objectID')
                 print "start, end", event.getStartTime(), event.getEndTime()
                 print "automationLevel", event.get('automationLevel')
                 print 'newManualObject', event.get('newManualObject')
-                #print "visual Features"                            
-                #for visualFeature in event.getVisualFeatures():
+                print 'settingMotionVector', event.get('settingMotionVector')
+                print 'dataLayerStatus', event.get('dataLayerStatus')                
+                # print "visual Features"                            
+                # for visualFeature in event.getVisualFeatures():
                 #    print "     ", str(visualFeature.get('identifier'))
 
             if eventLevel >= 2:
@@ -1365,11 +1370,15 @@ class Recommender(RecommenderTemplate.Recommender):
 
 
     #########################################
-    ### OVERRIDES
+    # ## OVERRIDES
     
     def upstreamTimeLimit(self):
         # Number of minutes backward in time for upstream polygons
         return 30 
+    
+    def elapsedTimeLimit(self):
+        # Number of milliseconds past the end time to elapse an object
+        return 60 * 60000  # 60 minutes
 
     def maxPastPolygons(self):
         # Maximum number of past polygons to store

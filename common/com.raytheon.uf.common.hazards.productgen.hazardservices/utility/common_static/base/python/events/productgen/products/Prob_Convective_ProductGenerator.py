@@ -252,8 +252,11 @@ class Product(Prob_Generator.Product):
             if not 'previous' in str(visualFeature.get('identifier')):
                 newFeatures.append(visualFeature)
         hazardEvent.setVisualFeatures(VisualFeatures(newFeatures))
-        # Set editableObject off
+        # Set editableObject, throw away motion vector polys, and settingMotionVector to False
         hazardEvent.set('editableObject', False)
+        hazardEvent.set('settingMotionVector', False)
+        hazardEvent.set('motionVectorPolys', [])
+        hazardEvent.set('upstreamPolys', [])
                 
     def storeIssuedHazards(self,probHazardEvents):
         pu = ProbUtils()
