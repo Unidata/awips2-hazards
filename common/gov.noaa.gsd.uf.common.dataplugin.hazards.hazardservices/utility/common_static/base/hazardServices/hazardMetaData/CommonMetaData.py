@@ -1881,6 +1881,12 @@ class MetaData(object):
 
     def initializeObject(self):        
         #  Manually drawn hazards are always userOwned
+#         if self.hazardEvent.get('objectID') is None:
+#             # Go with eventID as it should be unique
+#             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
+#             self.hazardEvent.set('automationLevel', 'automated')
+#             editableObject = False
+#             newManualObject = False
         if self.hazardEvent.get('objectID') is None:
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
@@ -1934,7 +1940,7 @@ class MetaData(object):
              "fieldName": "automationLevel",
              "fieldType": "Label",
              "label": "AutomationLevel: " + automationLabel,
-             #"refreshMetadata": True,
+             "refreshMetadata": True,
             }
 
     def getAutoShape(self, enable):
@@ -1971,7 +1977,7 @@ class MetaData(object):
         grp = {
             "fieldType": "Button",
             "fieldName": "cancelButton",
-            "label": "     EXPIRE / CANCEL     ",
+            "label": "     CANCEL     ",
             "enable": enable,
             #"refreshMetadata": True,
             "modifyRecommender": 'SwathRecommender',

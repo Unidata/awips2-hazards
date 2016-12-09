@@ -54,8 +54,10 @@ if _CENTRAL_PROCESSOR:
                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
     EventDrivenTools.append(cpEntry)
 else:
-    cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
-                       "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
-    EventDrivenTools.append(cpEntry)
+#     cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+#                        "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
+     cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+                        "triggerType": "DATA_LAYER_CHANGE", "dataTypes": [ "RADAR" ]}
+     EventDrivenTools.append(cpEntry)
 
     

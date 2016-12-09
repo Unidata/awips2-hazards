@@ -55,6 +55,7 @@ Prob_WFO = {
         "Status",
         "Start Time",
         "End Time",
+        "DataLayer Status",
     ],
     "visibleStatuses": [
         "potential",
@@ -103,6 +104,12 @@ Prob_WFO = {
             "sortDir": "none",
             "width": 50,
             "fieldName": "phen",
+            "type": "string"
+        },
+        "DataLayer Status": {
+            "sortDir": "none",
+            "width": 150,
+            "fieldName": "dataLayerStatus",
             "type": "string"
         },
         "Sig": {
