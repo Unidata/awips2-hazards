@@ -4,6 +4,7 @@ Utility for PHIGridRecommender and PreviewGridRecommender
 import numpy as np
 import datetime, math
 import time
+import json
 #from math import *
 import shapely
 import shapely.ops as so
@@ -597,7 +598,7 @@ class ProbUtils(object):
     # Compute Motion Vector       #
     ###############################
 
-    def computeMotionVector(self, polygonTuples, currentTime, defaultSpeed=32, defaultDir=270):
+    def computeMotionVector(self, polygonTuples, currentTime):
         '''
         @param polygonTuples List of tuples expected as:
         [(poly1, startTime1), (poly2, startTime2),,,,(polyN, startTimeN)]
@@ -610,28 +611,6 @@ class ProbUtils(object):
 
         ### Sort polygonTuples by startTime
         sortedPolys = sorted(polygonTuples, key=lambda tup: tup[1])
-
-        ### Get create sorted list of u's & v's
-#        for i in range(len(sortedPolys)):
-#            if i == 0:
-#                ### Use default motionVector. 
-#                ### Note, need to invert dir since Meteorological winds
-#                ### by definition are entered in as *from*
-#                speed = defaultSpeed*0.514444
-#                bearing = (180+defaultDir)%360
-#                u, v = self.get_uv(speed, bearing)
-#            else: ### use i, i-1 pair
-#                p1 = sortedPolys[i-1][0]
-#                t1 = sortedPolys[i-1][1]
-#                p2 = sortedPolys[i][0]
-#                t2 = sortedPolys[i][1]
-#                dist = self.getHaversineDistance(p1, p2)
-#                speed = dist/((t2-t1)/1000)
-#                bearing = self.getBearing(p1, p2)
-#                u, v = self.get_uv(speed, bearing)
-#
-#            uList.append(u)
-#            vList.append(v)
 
         ### Get create sorted list of u's & v's
         for i in range(1, len(sortedPolys)):
@@ -785,32 +764,17 @@ class ProbUtils(object):
                 
         From the forecastPolys and upstreamPolys, the visualFeatures 
             (swath, trackpoints, and upstream polygons) can be determined.        
-        '''        
-        attrs = event.getHazardAttributes()
-
+        '''
+        
         # Set up direction and speed values
-        ### get dir
-        dirVal = attrs.get('convectiveObjectDir')
-        if not dirVal:
-            dirVal = self.defaultWindDir()
-        dirVal = int(dirVal)
+        ### get Wind Dir
+        dirVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectDir')             
         ### get dirUncertainty (degrees)
-        dirUVal = attrs.get('convectiveObjectDirUnc')
-        if dirUVal:
-            dirUVal = int(dirUVal)
-        else:
-            dirUVal = 12
+        dirUVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectDirUnc')
         ### get speed
-        speedVal = attrs.get('convectiveObjectSpdKts')
-        if not speedVal:
-            speedVal = self.defaultWindSpeed()
-        speedVal = int(speedVal)
+        speedVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectSpdKts')
         # get speedUncertainty
-        spdUVal = attrs.get('convectiveObjectSpdKtsUnc')
-        if spdUVal:
-            spdUVal = int(spdUVal)
-        else:
-            spdUVal = int(2.16067*1.94384)
+        spdUVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectSpdKtsUnc')
                             
         ### Get initial shape.  
         # This represents the shape at the event start time resulting from the last nudge.
@@ -829,7 +793,7 @@ class ProbUtils(object):
         if type(poly) is shapely.geometry.collection.GeometryCollection:
             poly = poly[0] 
                     
-        presetChoice = attrs.get('convectiveSwathPresets') if attrs.get('convectiveSwathPresets') is not None else 'NoPreset'
+        presetChoice = event.get('convectiveSwathPresets') if event.get('convectiveSwathPresets') is not None else 'NoPreset'
         presetMethod = getattr(swathPresetClass, presetChoice)
                 
         # Convert the shapely polygon to Google Coords to make use of Karstens' code
@@ -961,15 +925,48 @@ class ProbUtils(object):
         import os
         os.sys.__stdout__.flush()
 
+
+    #########################################
+    ### Application Dictionary Helper methods        
+    # Temporarily read / write dictionary to /tmp file
+    # Eventually will build a dictionary that can be
+    #   persisted and passed to Recommenders, MetaData,
+    #   and Product Generation.
     
+    def writeApplicationDict(self, dictionary):
+        f = open('/tmp/appDict.json', 'w')
+        f.write(json.dumps(dictionary))
+            
+    def readApplicationDict(self):
+        try:
+            f = open('/tmp/appDict.json', 'r')
+        except:
+            return {}
+        return json.load(f)
+    
+    def updateApplicationDict(self, updateDict):
+        appDict = self.readApplicationDict()
+        for key in updateDict:
+            appDict[key]=updateDict[key]
+        self.writeApplicationDict(appDict)
+    
+    def getApplicationValue(self, key, default):
+        appDict = self.readApplicationDict()
+        return appDict.get(key, default)
+    
+    def getDefaultMotionVectorKey(self, event, key): 
+        return int(event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0))))   
+                    
     #########################################
     ### OVERRIDES        
     
-    def defaultWindSpeed(self):
-        return 32
-    
-    def defaultWindDir(self):
-        return 270    
+    def defaultValueDict(self):
+        return {
+            'convectiveObjectDir': 270,
+            'convectiveObjectSpdKts': 32,
+            'convectiveObjectDirUnc': 12,
+            'convectiveObjectSpdKtsUnc': int(2.16067*1.94384),
+            }
 
     def timeStep(self):
         # Time step for forecast polygons and track points

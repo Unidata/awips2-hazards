@@ -5,8 +5,6 @@ Utility for PHIGridRecommender and PreviewGridRecommender
 import sys, os
 import json
 
-
-
 class ConfigUtils(object):
     def __init__(self):
         #### NOTE: Change this path to your directory shared between "Processor" and "UI" machine

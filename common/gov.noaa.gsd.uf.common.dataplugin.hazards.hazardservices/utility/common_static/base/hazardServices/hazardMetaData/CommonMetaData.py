@@ -1932,7 +1932,7 @@ class MetaData(object):
         automationLevelLabels = {
                 'userOwned': 'User Owned',
                 'automated': 'Automated',
-                'attributesAndGeometry': 'Attributes and Geometry',
+                'attributesAndMechanics': 'Attributes and Mechanics',
                 'attributesOnly':'Attributes Only',
                 }
         automationLabel = automationLevelLabels[self.hazardEvent.get('automationLevel', 'userOwned')]
@@ -1945,7 +1945,7 @@ class MetaData(object):
 
     def getAutoShape(self, enable):
         automationLevel = self.hazardEvent.get('automationLevel', 'automated')
-        if automationLevel in ['automated', 'attributesAndGeometry']:
+        if automationLevel in ['automated', 'attributesAndMechanics']:
             autoShape = True
         else:
             autoShape = False
@@ -1986,9 +1986,8 @@ class MetaData(object):
 
 
     def getConvectiveMotionVector(self, enable):
-        wdir = self.hazardEvent.get('convectiveObjectDir', 270)
-        wspd = self.hazardEvent.get('convectiveObjectSpdKts', 32) 
-        
+        wdir = self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectDir')
+        wspd = self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectSpdKts')
         recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
         
         
@@ -2030,7 +2029,7 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 45,
-                        "values": 12,
+                        "values":  self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectDirUnc'),
                         "incrementDelta": 5,
                         "showScale": False,
                         "modifyRecommender": recommender,
@@ -2043,7 +2042,7 @@ class MetaData(object):
                         "sendEveryChange": False,
                         "minValue": 0,
                         "maxValue": 20,
-                        "values": int(4.2),
+                        "values": self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectSpdKtsUnc'),
                         "showScale": False,
                         "modifyRecommender": recommender,
                         "enable": enable,
@@ -2426,14 +2425,15 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     print 'triggerIdentifiers', triggerIdentifiers
     newManualObjectKey = mutableProperties.get('newManualObject')
     editableKey = mutableProperties.get('editableObject')
-    print "CM newManualObjectKey, editableKey", newManualObjectKey, editableKey
+    autoShape = mutableProperties.get('autoShape', {}).get('values')
+    print "CM newManualObjectKey, editableKey, autoShape", newManualObjectKey, editableKey, autoShape
     if newManualObjectKey:
         newManualObject = newManualObjectKey.get('values')
     else:
         newManualObject = True
         print "CM WARNING -- CM made it to else - saying newManualObject is True"       
-#     for key in mutableProperties:
-#         print key, mutableProperties[key]
+    #for key in mutableProperties:
+         #print key, mutableProperties[key]
     os.sys.__stdout__.flush()
     returnDict = {}
     if not triggerIdentifiers or 'modifyButton' in triggerIdentifiers or 'newManualObject' in triggerIdentifiers:
@@ -2453,12 +2453,18 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             returnDict['editableObject'] = {'values': True}
             print 'CM Script setting editableObject to True'
             os.sys.__stdout__.flush()
-        for key in ['autoShape', "convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
-                    "convectiveObjectSpdKtsUnc", "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
+        print "CM enable", enable
+        os.sys.__stdout__.flush()
+        for key in ['autoShape', "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
                     "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
                     "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
                     "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
             returnDict[key] = {'enable' : enable}
+        if enable:
+            for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+                    "convectiveObjectSpdKtsUnc"]:
+                # Enable these if autoShape is off i.e. the user owns the mechanics
+                returnDict[key] = {'enable': not autoShape}
         returnDict['modifyButton'] = {'enable' : not enable}
         return returnDict
 

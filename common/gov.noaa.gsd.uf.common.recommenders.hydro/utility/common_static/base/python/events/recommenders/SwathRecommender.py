@@ -209,11 +209,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 if editable:
                     self.editableObjects = True
                 
-        for event in eventSet:            
-                        
+        for event in eventSet:   
+                                    
             if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
                 continue
-            
+                        
             # Begin Graph Draw
             if self.beginGraphDraw(event, trigger):
                  resultEventSet.add(event)
@@ -327,15 +327,16 @@ class Recommender(RecommenderTemplate.Recommender):
         '''            
         # For event modification or visual feature change, 
         #   we only want to process the one event identified in the eventSetAttrs,
-        #   so skip all others           
+        #   so skip all others         
         if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange']:
             eventIdentifier = eventSetAttrs.get('eventIdentifier')            
             if eventIdentifier and eventIdentifier != event.getEventID():
-                    return False
+                return False
         # Skip ended, elapsed events 
         eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
-        if abs(eventEndTime_ms - self.currentTime) > self.elapsedTimeLimit():
+        if self.currentTime - eventEndTime_ms > self.elapsedTimeLimit():
             event.setStatus('ELAPSED')
+            resultEventSet.add(event)
         if event.getStatus() in ['ELAPSED', 'ENDED']:                
             return False
         # Check for end time < current time and end the event
@@ -388,7 +389,7 @@ class Recommender(RecommenderTemplate.Recommender):
             # Set start time and set eventSt_ms
             # If automated, start time is ProbSevere time as set by ConvectiveRecommender
             # Otherwise, set to latestDataLayer time
-            if not event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
+            if not event.get('automationLevel') in ['automated', 'attributesAndMechanics']:
                 self.moveStartTime(event, self.dataLayerTimeToLeft)                
             self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
             mvPolys = [event.getGeometry()]
@@ -454,8 +455,10 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # Handle Reset Motion Vector
         if 'resetMotionVector' in self.attributeIdentifiers: 
-            event.set('convectiveObjectDir', 270)
-            event.set('convectiveObjectSpdKts', 32) 
+            for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
+                default = self.defaultValueDict().get(key)
+                event.set(key, self.probUtils.getApplicationValue(key, default))
             event.set('settingMotionVector', True)
             motionVectorPolys = event.get('motionVectorPolys', []) 
             motionVectorTimes = event.get('motionVectorTimes', [])
@@ -478,14 +481,14 @@ class Recommender(RecommenderTemplate.Recommender):
         
         if 'autoShape' in self.attributeIdentifiers:
             if not event.get('autoShape'):  # Taking over the geometry
-                if event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
+                if event.get('automationLevel') in ['automated', 'attributesAndMechanics']:
                     # Adjust automationLevel
                     event.set('automationLevel', 'attributesOnly')
                     #self.moveStartTime(event, self.dataLayerTimeToLeft, moveEndTime=True)
                     return True 
             else:  # Returning to automation of geometry
                 if event.get('automationLevel') in ['attributesOnly', 'userOwned']:
-                    event.set('automationLevel', 'attributesAndGeometry') 
+                    event.set('automationLevel', 'attributesAndMechanics') 
                     st = event.get('probSevereTimeStamp')
                     if not st:
                         st = self.dataLayerTimeToLeft
@@ -528,8 +531,10 @@ class Recommender(RecommenderTemplate.Recommender):
                     self.ensureLastGraphProbZeroAndUneditable(event)
                 # Update previous value
                 event.set(prevName, newVal)
-
-            
+                if prevName in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+                    self.probUtils.updateApplicationDict({prevName:value})
+           
         # Ensure that if changes were made, there are valid probability trend graph points ready for calculations. 
         # There could be none currently if the user had previously commenced a "draw points on graph" action, 
         # but did not complete it.
@@ -544,7 +549,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 manualAttrs += changedAttrs
                 event.set('manualAttributes', manualAttrs)
                 if event.get('automationLevel') == 'automated':
-                    event.set('automationLevel', 'attributesAndGeometry')                    
+                    event.set('automationLevel', 'attributesAndMechanics')                    
             
             return True
         
@@ -583,7 +588,7 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('convectiveObjectSpdKts', convectiveAttrs['wspd'])
             
     def moveStartTime(self, event, startMS, moveEndTime=True):
-        print "SR moving start time"
+        print "SR moving start time to", self.probUtils.displayMsTime(startMS)
         self.flush()
         newStart = datetime.datetime.utcfromtimestamp(startMS / 1000)
         # if abs((newStart - event.getStartTime()).total_seconds()*1000) > self.probUtils.timeDelta_ms():
@@ -683,7 +688,7 @@ class Recommender(RecommenderTemplate.Recommender):
             while i <= durationSecs:
                 timeIntervals.append(i)
                 # If object start time is Prob Severe time, put first forecast polygon on the dataLayerTime
-                if i == 0 and event.get('automationLevel') not in ['userOwned', 'attributesAndGeometry'] \
+                if i == 0 and event.get('automationLevel') not in ['userOwned', 'attributesAndMechanics'] \
                    and self.latestDataLayerTime > self.eventSt_ms:
                         i += int((self.latestDataLayerTime - self.eventSt_ms) / 1000)
                 else:
@@ -699,30 +704,8 @@ class Recommender(RecommenderTemplate.Recommender):
     ###############################  
       
     def adjustForAutoUpdate(self, event, eventSetAttrs):
-        self.nudge = True
-        #=======================================================================
-        # # If nudging an issued event, restore the issuedDuration
-        # if not self.pendingHazard:
-        #     durationSecs = event.get("durationSecsAtIssuance")
-        #     if durationSecs is not None:
-        #         endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self.eventSt_ms + durationSecs *1000, delta=datetime.timedelta(seconds=1))
-        #         event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS/1000))
-        #         #graphProbs = self.probUtils.getGraphProbsBasedOnDuration(event)
-        #         graphProbs = event.get("graphProbsAtIssuance")
-        #         event.set('convectiveProbTrendGraph', graphProbs)
-        # #=======================================================================
-        # # newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms, #self.currentTime,                     
-        # #            event.get('convectiveObjectSpdKts', self.probUtils.defaultWindSpeed()),
-        # #            event.get('convectiveObjectDir',self.probUtils.defaultWindDir())) 
-        # # for attr in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-        # #               'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
-        # #     event.set(attr, int(newMotion.get(attr)))
-        # #=======================================================================
-        #=======================================================================
-        
-        
-        
- 
+        self.nudge = True        
+    
     ###############################
     # Visual Features and Nudging #
     ###############################  
@@ -812,12 +795,15 @@ class Recommender(RecommenderTemplate.Recommender):
         # print "SR motionVectorTuples", len(motionVectorTuples)
         # self.flush()
             
-        newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms,  # self.currentTime,                     
-                   event.get('convectiveObjectSpdKts', self.probUtils.defaultWindSpeed()),
-                   event.get('convectiveObjectDir', self.probUtils.defaultWindDir())) 
-        for attr in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+        newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms) 
+        updateDict = {}
+        for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
-            event.set(attr, int(newMotion.get(attr)))
+            value = int(newMotion.get(key))
+            # Save new motion vector to Application Dictionary
+            updateDict[key] = value           
+            event.set(key, value)
+        self.probUtils.updateApplicationDict(updateDict)
             
         return True
 
@@ -1161,7 +1147,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if polyEt_ms > self.eventSt_ms:
                 polyEt_ms = self.eventSt_ms
             #print "SR previous st, et", self.probUtils.displayMsTime(polySt_ms), self.probUtils.displayMsTime(polyEt_ms)
-            self.flush()
+            #self.flush()
             
             if editablePoly and editable:
                 dragCapability = 'whole'
@@ -1295,7 +1281,7 @@ class Recommender(RecommenderTemplate.Recommender):
     ###############################
     # Helper methods              #
     ###############################
-        
+            
     def sortPolys(self, p1, p2):
         # Sort polygon tuples by start time
         poly1, st1, et1 = p1
@@ -1371,6 +1357,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
     #########################################
     # ## OVERRIDES
+
     
     def upstreamTimeLimit(self):
         # Number of minutes backward in time for upstream polygons
