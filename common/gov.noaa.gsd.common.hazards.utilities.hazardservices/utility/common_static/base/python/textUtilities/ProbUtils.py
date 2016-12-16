@@ -25,9 +25,13 @@ import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 from ConfigurationUtils import ConfigUtils
 
+from socket import gethostname
+from ufpy import qpidingest
+
 class ProbUtils(object):
     def __init__(self):
         self.setUpDomain()
+        
         
     def processEvents(self, eventSet, writeToFile=False):
         if writeToFile and not os.path.exists(self.OUTPUTDIR):
@@ -56,8 +60,8 @@ class ProbUtils(object):
             if event.getEndTime() <= timestamp:
                 continue
             
-            if event.getStatus().upper() != 'ISSUED':
-                continue
+#            if event.getStatus().upper() != 'ISSUED':
+#                continue
             
             hazardType = event.getHazardType()
             probGridSnap, probGridSwath = self.getOutputProbGrids(event, timeStamp)
@@ -76,14 +80,46 @@ class ProbUtils(object):
                 #probSvrSwath = np.max(swathCum, axis=0)
                 probSvrSnap = np.max(np.array(probSvrSnapList), axis=0)
                 probSvrSwath = np.max(np.array(probSvrSwathList), axis=0)
-                self.output(probSvrSnap, probSvrSwath, timeStamp, 'Severe')         
+                outputFileName = self.output(probSvrSnap, probSvrSwath, timeStamp, 'Severe')         
+                #self.sendGridToQPID(outputFileName)
             if len(probTorSnapList) > 0:
                 probTorSnap = np.max(np.array(probTorSnapList), axis=0)
                 probTorSwath = np.max(np.array(probTorSwathList), axis=0)
-                self.output(probTorSnap, probTorSwath, timeStamp, 'Tornado')         
+                outputFileName = self.output(probTorSnap, probTorSwath, timeStamp, 'Tornado')         
+                #self.sendGridToQPID(outputFileName)
 
         return 1
 
+    def sendGridToQPID(self, filename):
+        ### Might need to change this
+        qpidServer = gethostname() #location where qpidd is running (currently assuming it is run locally)
+        
+        header = ''
+        
+        if 'Severe' in filename:
+            header = 'PHIGrid_Severe_STUFF'
+        if 'Tornado' in filename:
+            header = 'PHIGrid_Tornado_STUFF'
+        
+        if os.path.exists(filename) and len(header) > 0:
+        #=======================================================================
+        #     try:
+        #         conn = qpidingest.IngestViaQPID(host=self.qpidServer)
+        #         conn.sendmessage(filename,self.probSevereHeader)
+        #         conn.close()
+        #     except:
+        #         LogUtils.logMessage('[ERROR] :: Problem inserting the PHI Grid File ', filename, ' into QPID')
+        # else:
+        #     LogUtils.logMessage('[WARNING] :: PHI Grid filename: ', filename, ' does not exist. Skipping')
+        #=======================================================================
+            
+            conn = qpidingest.IngestViaQPID(host=qpidServer)
+            print '\n\nSENDING...', qpidServer, filename, header, '\n'
+            conn.sendmessage(filename, header)
+            conn.close()
+        else:
+            LogUtils.logMessage('[WARNING] :: PHI Grid filename: ', filename, ' does not exist. Skipping')
+            
 
     def getOutputProbGrids(self, event, currentTime):                   
         forecastPolys = event.get('forecastPolys')

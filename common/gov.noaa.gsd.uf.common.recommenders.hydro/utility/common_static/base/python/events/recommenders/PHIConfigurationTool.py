@@ -134,6 +134,26 @@ class Recommender(RecommenderTemplate.Recommender):
         valueDict[BUFFERSOURCE] = bufferDict["values"]
         fieldDictList.append(bufferDict)
         
+        lowerRightLonDict = {}
+        lowerRightLonDict["fieldName"] = "phiConfigLowerRightLon"
+        lowerRightLonDict["label"] = "Lower Right Lon"
+        lowerRightLonDict["fieldType"] = "Text"
+        lowerRightLonDict["values"] = -1
+        lowerRightLonDict["editable"] = False
+        valueDict["phiConfigLowerRightLon"] = lowerRightLonDict["values"]
+        fieldDictList.append(lowerRightLonDict)
+
+        lowerRightLatDict = {}
+        lowerRightLatDict["fieldName"] = "phiConfigLowerRightLat"
+        lowerRightLatDict["label"] = "Lower Right Lat"
+        lowerRightLatDict["fieldType"] = "Text"
+        lowerRightLatDict["values"] = -1
+        lowerRightLatDict["editable"] = False
+        valueDict["phiConfigLowerRightLat"] = lowerRightLatDict["values"]
+        fieldDictList.append(lowerRightLatDict)
+        
+
+        
         outputDirDict = {}
         outputDirDict["fieldName"] = OUTDIRSOURCE
         outputDirDict["label"] = "Set Location for PHI Output Grids"
@@ -176,3 +196,22 @@ class Recommender(RecommenderTemplate.Recommender):
     def toString(self):
         return "PHIConfigurationTool"
     
+def applyInterdependencies(triggerIdentifiers, mutableProperties):
+    returnDict = {}
+    if triggerIdentifiers == None:
+        return returnDict
+    
+    if 'phiConfigUpperLeftLat' in triggerIdentifiers or "phiConfigNumLatPoints" in triggerIdentifiers:
+        ulLatVal = mutableProperties['phiConfigUpperLeftLat']['values']
+        latPts = mutableProperties['phiConfigNumLatPoints']['values']
+        lrLatVal =  ulLatVal - (0.01 * latPts)
+        returnDict['phiConfigLowerRightLat'] = {'values': lrLatVal}
+
+    if 'phiConfigUpperLeftLon' in triggerIdentifiers or "phiConfigNumLonPoints" in triggerIdentifiers:
+        ulLonVal = mutableProperties['phiConfigUpperLeftLon']['values']
+        lonPts = mutableProperties['phiConfigNumLonPoints']['values']
+        lrLonVal =  ulLonVal - (0.01 * lonPts)
+        returnDict['phiConfigLowerRightLon'] = {'values':lrLonVal}
+
+    return returnDict
+        

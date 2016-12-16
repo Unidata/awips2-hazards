@@ -509,6 +509,8 @@ class Recommender(RecommenderTemplate.Recommender):
         
         changedAttrs = []
         manualAttrs = event.get('manualAttributes', [])
+        #print "SR manualAttrs", manualAttrs
+        #self.flush()
         
         for t in triggerCheckList:
             newVal = newTriggerAttrs.get(t)
@@ -522,7 +524,15 @@ class Recommender(RecommenderTemplate.Recommender):
             if prevVal != newVal:
                 changed = True
                 if t not in manualAttrs:
-                    changedAttrs.append(t)
+                    if t in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+                         if event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                              changedAttrs.append(t)
+                              #print "SR Adding to manualAttrs1", t
+                    else:
+                         changedAttrs.append(t)
+                         #print "SR Adding to manualAttrs2", t
+                    #self.flush()
                 if t == 'duration':
                     graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
                     # LogUtils.logMessage('[1]', graphProbs)
@@ -1215,6 +1225,10 @@ class Recommender(RecommenderTemplate.Recommender):
         probGrid, lons, lats = self.probUtils.getProbGrid(event)
         polyTupleDict = self.createPolygons(probGrid, lons, lats)
                 
+#        print '\n\n%%%%%%%'
+#        print 'SR - probGrid, lons, lats', probGrid, lons, lats
+#        print 'SR - polyTupleDict', polyTupleDict
+                
         # Generate and add preview-grid-related visual features        
         for key in sorted(polyTupleDict): 
             poly = polyTupleDict[key]
@@ -1229,6 +1243,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 '80': { "red": 255 / 255.0, "green": 102 / 255.0, "blue": 255 / 255.0, "alpha": 0.4 }
                 }
             
+            
             if poly.is_valid:
                 gridPreviewPoly = {
                     "identifier": "gridPreview_" + key,
@@ -1242,6 +1257,7 @@ class Recommender(RecommenderTemplate.Recommender):
                                  AdvancedGeometry.createShapelyWrapper(poly, 0)
                     }
                 }
+                
                 gridFeatures.append(gridPreviewPoly)
                             
         return gridFeatures

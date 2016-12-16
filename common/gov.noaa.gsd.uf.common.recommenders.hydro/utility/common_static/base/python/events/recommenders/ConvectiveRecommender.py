@@ -57,7 +57,7 @@ PROBABILITY_FILTER = 8 # filter our any objects less than this.
 SOURCEPATH_ARCHIVE = '/awips2/edex/data/hdf5/convectprob'
 SOURCEPATH_REALTIME = '/realtime-a2/hdf5/probsevere'
     
-AUTOMATION_LEVELS = ['userOwned','attributesOnly','attributesAndGeometry','automated']
+AUTOMATION_LEVELS = ['userOwned','attributesOnly','attributesAndMechanics','automated']
 
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -414,7 +414,7 @@ class Recommender(RecommenderTemplate.Recommender):
         pass
 
 
-    def updateAttributesAndGeometry(self, event, recommended, dataLayerTime):
+    def updateAttributesAndMechanics(self, event, recommended, dataLayerTime):
         self.updateAttributesOnly(event, recommended, dataLayerTime)
         self.updateEventGeometry(event, recommended)
 
@@ -426,8 +426,18 @@ class Recommender(RecommenderTemplate.Recommender):
         ##################################################################
         updatedAttrs = {k:v for k,v in recommended.iteritems() if k not in manualAttrs}
         probSevereAttrs = event.get('probSeverAttrs')
+        
+        #print '\n=================='
+        #print 'CR - ManualAttrs:', manualAttrs
+        #print 'CR - UpdatedAttrs:', updatedAttrs
+        #print 'CR - probSevereAttrs1:', probSevereAttrs
+        
         for k,v in updatedAttrs.iteritems():
                 probSevereAttrs[k] = v
+
+        #print 'CR - probSevereAttrs2:', probSevereAttrs
+        #print '*******'
+        
         event.set('probSeverAttrs',probSevereAttrs)
         
         
@@ -469,8 +479,8 @@ class Recommender(RecommenderTemplate.Recommender):
             if automationLevel == 'attributesOnly':
                 self.updateAttributesOnly(currentEvent, recommendedAttrs, dataLayerTimeMS)
             
-            if automationLevel == 'attributesAndGeometry':
-                self.updateAttributesAndGeometry(currentEvent, recommendedAttrs, dataLayerTimeMS)
+            if automationLevel == 'attributesAndMechanics':
+                self.updateAttributesAndMechanics(currentEvent, recommendedAttrs, dataLayerTimeMS)
             
             if automationLevel == 'automated':
                 self.updateAutomated(currentEvent, recommendedAttrs, dataLayerTimeMS)
@@ -519,7 +529,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for recID in recommendedObjectIDsList:
             recommendedValues = recommendedEventsDict[recID]
             ### Get recommended geometry
-            recGeom = recommendedValues.get('polygons')
+            recGeom = loads(recommendedValues.get('polygons'))
             
 
             if len(currentOnlyList) == 0:
@@ -533,7 +543,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 ###  2) formerly automated at some level but no longer have
                 ###     a corresponding ProbSevere ID and should be "removed".
                 for event in currentOnlyList:
-                    if event.get('automationLevel') is not 'userOwned':
+                    if 'userOwned' not in event.get('automationLevel'):
                         event.setStatus('ELAPSED')
                         ### userOwned events get precedent over automated
                     else:

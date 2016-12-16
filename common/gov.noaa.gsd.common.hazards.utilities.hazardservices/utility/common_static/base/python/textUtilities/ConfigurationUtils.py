@@ -55,37 +55,37 @@ class ConfigUtils(object):
 
     def setLowThreshold(self, val=None):
         self.readJson()
-        self.ContentsDict[self.lowThreshKey] = val if val is not Nonme else self.defaultLowThreshold
+        self.ContentsDict[self.lowThreshKey] = val if val is not None else self.defaultLowThreshold
         self.writeJson()
     
     def setPHIOutputDir(self, val=None):
         self.readJson()
-        self.ContentsDict[self.outputDirKey] = val if val is not Nonme else self.defaultPHIOutputDir
+        self.ContentsDict[self.outputDirKey] = val if val is not None else self.defaultPHIOutputDir
         self.writeJson()
 
     def setDomainBuffer(self, val=None):
         self.readJson()
-        self.ContentsDict[self.domainBufferKey] = val  if val is not Nonme else self.defaultDomainBuffer
+        self.ContentsDict[self.domainBufferKey] = val  if val is not None else self.defaultDomainBuffer
         self.writeJson()
 
     def setDomainLonPoints(self, val=None):
         self.readJson()
-        self.ContentsDict[self.domainLonPointsKey] = val if val is not Nonme else self.defaltDomainLonPoints
+        self.ContentsDict[self.domainLonPointsKey] = val if val is not None else self.defaltDomainLonPoints
         self.writeJson()
 
     def setDomainLatPoints(self, val=None):
         self.readJson()
-        self.ContentsDict[self.domainLatPointsKey] = val if val is not Nonme else self.defaltDomainLatPoints
+        self.ContentsDict[self.domainLatPointsKey] = val if val is not None else self.defaltDomainLatPoints
         self.writeJson()
 
     def setDomainULLon(self, val=None):
         self.readJson()
-        self.ContentsDict[self.domainULLonKey] = val if val is not Nonme else self.defaultDomainULLon
+        self.ContentsDict[self.domainULLonKey] = val if val is not None else self.defaultDomainULLon
         self.writeJson()
 
     def setDomainULLat(self, val=None):
         self.readJson()
-        self.ContentsDict[self.domainULLatKey] = val if val is not Nonme else self.defaultDomainULLat
+        self.ContentsDict[self.domainULLatKey] = val if val is not None else self.defaultDomainULLat
         self.writeJson()
 
     def getConfigDict(self):
