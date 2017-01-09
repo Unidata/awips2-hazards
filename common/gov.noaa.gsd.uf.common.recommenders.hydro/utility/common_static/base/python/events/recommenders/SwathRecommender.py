@@ -383,7 +383,7 @@ class Recommender(RecommenderTemplate.Recommender):
     #################################
     
     def initializeEvent(self, event):
-        mvPolys = event.get('motionVectorPolys')
+        mvPolys = event.get('motionVectorCentroids')
         if not mvPolys and event.getStatus() in ["PENDING", "POTENTIAL"]:
             # Initialize event polygon
             # Set start time and set eventSt_ms
@@ -392,11 +392,11 @@ class Recommender(RecommenderTemplate.Recommender):
             if not event.get('automationLevel') in ['automated', 'attributesAndMechanics']:
                 self.moveStartTime(event, self.dataLayerTimeToLeft)                
             self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
-            mvPolys = [event.getGeometry()]
+            mvCentroids = [event.getGeometry().asShapely().centroid]
             st = self.probUtils.convertFeatureTime(self.eventSt_ms, 0)
             et = self.probUtils.convertFeatureTime(self.eventSt_ms, self.probUtils.timeStep())
             mvTimes = [(st, et)]
-            event.set('motionVectorPolys', mvPolys)
+            event.set('motionVectorCentroids', mvCentroids)
             event.set('motionVectorTimes', mvTimes)
             event.set('settingMotionVector', True)
         else:
@@ -445,7 +445,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 print "SR Setting selected time to latestDataLayer due to time interval update", self.editableHazard, self.editableObjects
                 self.flush()
         elif self.editableHazard:
-            self.visualCueForDataLayerUpdate(event)    
+            self.visualCueForDataLayerUpdate(event)
+            resultEventSet.addAttribute('selectedTime', self.eventSt_ms)    
         
     def adjustForEventModification(self, event, eventSetAttrs):
         changed = False
@@ -457,20 +458,20 @@ class Recommender(RecommenderTemplate.Recommender):
         if 'resetMotionVector' in self.attributeIdentifiers: 
             for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
-                default = self.defaultValueDict().get(key)
+                default = self.probUtils.defaultValueDict().get(key)
                 event.set(key, self.probUtils.getApplicationValue(key, default))
             event.set('settingMotionVector', True)
-            motionVectorPolys = event.get('motionVectorPolys', []) 
+            motionVectorCentroids = event.get('motionVectorCentroids', []) 
             motionVectorTimes = event.get('motionVectorTimes', [])
-            if motionVectorPolys:
-                motionVectorPolys = [motionVectorPolys[-1]]
+            if motionVectorCentroids:
+                motionVectorCentroids = [motionVectorCentroids[-1]]
                 motionVectorTimes = [motionVectorTimes[-1]]
-                event.set('motionVectorPolys', motionVectorPolys) 
+                event.set('motionVectorCentroids', motionVectorCentroids) 
                 event.set('motionVectorTimes', motionVectorTimes) 
             return True
         
-        # Handle Modify Button -- 'editableObject' changed by Interdependency Script
-        if 'editableObject' in self.attributeIdentifiers:  # User Hit modify button
+        # Handle Modify Button -- 'editableObject' changed by Interdependency Script AND editableHazard
+        if 'editableObject' in self.attributeIdentifiers and self.editableHazard:  # User Hit modify button
             if event.getStatus() == 'ISSUED':         
                 if event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                     self.moveStartTime(event, self.latestDataLayerTime, moveEndTime=True)
@@ -636,18 +637,24 @@ class Recommender(RecommenderTemplate.Recommender):
                 return
             
             st, et = forecastTimes[i]
-            if st >= self.currentTime:    
-                index = i
+            if st >= self.latestDataLayerTime:
+                print "SR Advancing to ", i, self.probUtils.displayMsTime(st), self.probUtils.displayMsTime(self.latestDataLayerTime)    
+                self.flush()
+                if i > 0:
+                    index = i-1
+                else:
+                    index = 0
                 break
-        
-        event.set('forecastPolys', forecastPolys[index:])
-        event.set('forecastTimes', forecastTimes[index:])
-        
+                
         # Reset geometry to new interior start time shape
         geometry = event.getGeometry()
         centroid = forecastPolys[index].asShapely().centroid
         newGeometry = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.createRelocatedShape(geometry, centroid))
-        event.setGeometry(newGeometry)                        
+        event.setGeometry(newGeometry) 
+        
+        event.set('forecastPolys', forecastPolys[index:])
+        event.set('forecastTimes', forecastTimes[index:])
+                       
                 
         ######
         #  Past Polys        
@@ -732,8 +739,8 @@ class Recommender(RecommenderTemplate.Recommender):
         if not self.editableHazard:
             return False
             
-        # Add the visualFeature change to the motion vector polygons       
-        motionVectorPolys = event.get('motionVectorPolys', []) 
+        # Add the visualFeature change to the motion vector centroids       
+        motionVectorCentroids = event.get('motionVectorCentroids', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
             
         features = event.getVisualFeatures()
@@ -754,10 +761,10 @@ class Recommender(RecommenderTemplate.Recommender):
                     featureSt, featureEt = timeBounds
                     featureSt = long(featureSt)
                     featurePoly = geometry
-                # Add the feature to the motionVectorPolys 
-                motionVectorPolys, motionVectorTimes = self.updatePolys(motionVectorPolys, motionVectorTimes,
-                             featurePoly, featureSt, featureEt, limit=self.maxMotionVectorPolygons())
-                event.set('motionVectorPolys', motionVectorPolys)
+                # Add the feature to the motionVectorCentroids 
+                motionVectorCentroids, motionVectorTimes = self.updateShapes(motionVectorCentroids, motionVectorTimes,
+                             featurePoly, featureSt, featureEt, centroid=True, limit=self.maxMotionVectorCentroids())
+                event.set('motionVectorCentroids', motionVectorCentroids)
                 event.set('motionVectorTimes', motionVectorTimes)
                                      
 #                 # If the feature is prior to the event start time, 
@@ -765,7 +772,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #                 if featureSt < self.eventSt_ms:
 #                     pastPolys = event.get('pastPolys', []) 
 #                     pastTimes = event.get('pastTimes', [])
-#                     pastPolys, pastTimes = self.updatePolys(pastPolys, pastTimes, featurePoly, featureSt, featureEt,
+#                     pastPolys, pastTimes = self.updateShapes(pastPolys, pastTimes, featurePoly, featureSt, featureEt,
 #                                    limit=self.maxPastPolygons())
 #                     event.set('pastPolys', pastPolys)
 #                     event.set('pastTimes', pastTimes)
@@ -790,13 +797,13 @@ class Recommender(RecommenderTemplate.Recommender):
         # print "SR Feature ST", featureSt, self.probUtils.displayMsTime(featureSt)
         # self.flush()
         
-        if len(motionVectorPolys) <= 1:
+        if len(motionVectorCentroids) <= 1:
             return True
                                       
         # Re-compute the motion vector and uncertainty
         motionVectorTuples = []
-        for i in range(len(motionVectorPolys)):
-            poly = motionVectorPolys[i]
+        for i in range(len(motionVectorCentroids)):
+            poly = AdvancedGeometry.createRelocatedShape(event.getGeometry(), motionVectorCentroids[i])
             st, et = motionVectorTimes[i]
             motionVectorTuples.append((poly, st, et))
             print 'SR motionVector Poly, startTime:', poly.asShapely().centroid, self.probUtils.displayMsTime(st)
@@ -817,8 +824,9 @@ class Recommender(RecommenderTemplate.Recommender):
             
         return True
 
-    def updatePolys(self, polys, times, newPoly, newSt, newEt, limit=None):
-        # Add the newPoly to the list of polys and times
+    def updateShapes(self, shapes, times, newShape, newSt, newEt, centroid=False, limit=None):
+        # Add the newPoly to the list of shapes and times
+        #  The shapes could be centroids or geometry shapes
         # If one currently exists at the newSt, replace it
         # Keep the lists in time order
         # If limit, then add the new poly and then truncate the list to the 
@@ -826,30 +834,32 @@ class Recommender(RecommenderTemplate.Recommender):
     
         # Convert to tuples
         tuples = []
-        for i in range(len(polys)):
-            poly = polys[i]
+        for i in range(len(shapes)):
+            shape = shapes[i]
             st, et = times[i]
-            tuples.append((poly, st, et))
+            tuples.append((shape, st, et))
 
         newTuples = []
         found = False
-        for poly, st, et in tuples:
+        if centroid:
+            newShape = newShape.asShapely().centroid
+        for shape, st, et in tuples:
             if abs(st - newSt) <= self.probUtils.timeDelta_ms():                        
-                newTuples.append((newPoly, st, et))
+                newTuples.append((newShape, st, et))
                 found = True
             else: 
-                newTuples.append((poly, st, et))
-        # Otherwise, add a new motionVectorPoly 
+                newTuples.append((shape, st, et))
+        # Otherwise, add a new shape 
         if not found:                    
-            newTuples.append((newPoly, newSt, newEt))
+            newTuples.append((newShape, newSt, newEt))
  
-        newTuples.sort(self.sortPolys) 
+        newTuples.sort(self.sortShapes) 
         # CHECK THIS -- for Motion Vector may have to keep last one added to replace it
         if limit and len(newTuples) > limit:
             newTuples = newTuples[:limit]
-        newPolys = [poly for poly, st, et in newTuples]
-        newTimes = [(st, et) for poly, st, et in newTuples]            
-        return newPolys, newTimes         
+        newShapes = [shape for shape, st, et in newTuples]
+        newTimes = [(st, et) for shape, st, et in newTuples]            
+        return newShapes, newTimes         
  
     def setVisualFeatures(self, event):
         print self.logMessage("Setting Visual Features")
@@ -999,7 +1009,7 @@ class Recommender(RecommenderTemplate.Recommender):
                       (polySt_ms, polyEt_ms): relocatedShape
                        }
                 }
-                if featuresDisplay.get('dashedPolys') and self.selectedHazard:
+                if featuresDisplay.get('dashedPolys') and self.selectedHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                     features.append(relocatedFeature)
                 
 
@@ -1059,6 +1069,25 @@ class Recommender(RecommenderTemplate.Recommender):
                 }
             if featuresDisplay.get('startTimeShape'):
                features.append(startTimeFeature)
+               
+            # centroid
+            centroid = poly.asShapely().centroid
+            color = self.probUtils.getInterpolatedProbTrendColor(event, 0, numIntervals)
+            trackPointFeature = {
+              "identifier": "swathRec_trackPoint_" + str(polySt_ms),
+              "visibilityConstraints": "selected",
+              "borderColor": color,
+              "borderThickness": 2,
+              "diameter": 5,
+              "geometry": {
+                  (startTime_ms,
+                   TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
+                   AdvancedGeometry.createShapelyWrapper(centroid, 0)
+               }
+            }
+            if featuresDisplay.get('trackPoints'):
+                features.append(trackPointFeature)
+
                 
      
         return features
@@ -1085,15 +1114,12 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def motionVectorFeatures(self, event, startTime_ms):
         # Show current (time=0) object centroid when both initiating and modifying issued objects.
-        features = []
-        if not self.editableHazard:
-            return features 
-        motionVectorPolys = event.get('motionVectorPolys', []) 
+        features = [] 
+        motionVectorCentroids = event.get('motionVectorCentroids', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
-        for i in range(len(motionVectorPolys)):
-            st, et = motionVectorTimes[i]
-            poly = motionVectorPolys[i].asShapely()                        
-            centroid = AdvancedGeometry.createShapelyWrapper(poly.centroid, 0)
+        for i in range(len(motionVectorCentroids)):
+            st, et = motionVectorTimes[i]                        
+            centroid = AdvancedGeometry.createShapelyWrapper(motionVectorCentroids[i], 0)
             feature = {
               "identifier": "swathRec_motionVector_" + str(st),
               "visibilityConstraints": "selected",
@@ -1128,13 +1154,13 @@ class Recommender(RecommenderTemplate.Recommender):
         # print "\nDoing Previous time polys"
         pastPolys = event.get('pastPolys', [])
         pastTimes = event.get('pastTimes', [])
-        motionVectorPolys = event.get('motionVectorPolys', []) 
+        motionVectorCentroids = event.get('motionVectorCentroids', []) 
         motionVectorTimes = event.get('motionVectorTimes', [])
         upstreamPolys = event.get('upstreamPolys', []) 
         upstreamTimes = event.get('upstreamTimes', [])
         previousFeatures = []
         
-        if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+        if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'] and event.get('settingMotionVector'):
             editable = True
         else:
             editable = False
@@ -1147,7 +1173,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if polySt_ms >= self.eventSt_ms:
                 continue
             poly, editablePoly, polyType = self.findPreviousPoly(event, polySt_ms,
-                                          motionVectorPolys, motionVectorTimes,
+                                          motionVectorCentroids, motionVectorTimes,
                                           pastPolys, pastTimes, upstreamPolys, upstreamTimes)
             if not poly:
                 continue
@@ -1159,37 +1185,52 @@ class Recommender(RecommenderTemplate.Recommender):
             #print "SR previous st, et", self.probUtils.displayMsTime(polySt_ms), self.probUtils.displayMsTime(polyEt_ms)
             #self.flush()
             
+            color = 'eventType'
             if editablePoly and editable:
                 dragCapability = 'whole'
                 color = { "red": 1, "green": 1, "blue": 0 }
-            else:
-                dragCapability = 'none'
-                color = "eventType"
-                                     
-            previousFeature = {              
-              "identifier": "swathRec_previous_" + str(polySt_ms),
-              "visibilityConstraints": "selected",
-              "borderColor":  color,  # { "red": 1, "green": 1, "blue": 0 }, #"eventType", 
-              "borderThickness": "eventType",
-              "borderStyle": "eventType",
-              "dragCapability": dragCapability,
-              "textSize": "eventType",
-              "label": self.label,
-              "textColor": "eventType",
-              "geometry": {
-                  (polySt_ms, polyEt_ms): poly
-               }
-              }
-            previousFeatures.append(previousFeature)
+                # Display previous time shape                         
+                previousFeature = {              
+                  "identifier": "swathRec_previous_" + str(polySt_ms),
+                  "visibilityConstraints": "selected",
+                  "borderColor":  color,  # { "red": 1, "green": 1, "blue": 0 }, #"eventType", 
+                  "borderThickness": "eventType",
+                  "borderStyle": "eventType",
+                  "dragCapability": dragCapability,
+                  "textSize": "eventType",
+                  "label": self.label,
+                  "textColor": "eventType",
+                  "geometry": {
+                      (polySt_ms, polyEt_ms): poly
+                   }
+                  }
+                previousFeatures.append(previousFeature)            
+
+#             # Display previous time centroids
+#             previousCentroid = {              
+#               "identifier": "swathRec_previousCentroid_" + str(polySt_ms),
+#               "visibilityConstraints": "selected",
+#               "borderColor":  color,  # { "red": 1, "green": 1, "blue": 0 }, #"eventType", 
+#               "borderThickness": 2,
+#               "diameter": 5,
+#               "dragCapability": 'none',
+#               "geometry": {
+#                   (startTime_ms,
+#                    TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000): AdvancedGeometry.createShapelyWrapper(poly.asShapely().centroid, 0),
+#                }
+#               }
+#             previousFeatures.append(previousCentroid)
+            
+            
         return previousFeatures
 
 
-    def findPreviousPoly(self, event, polySt_ms, motionVectorPolys, motionVectorTimes, pastPolys, pastTimes,
+    def findPreviousPoly(self, event, polySt_ms, motionVectorCentroids, motionVectorTimes, pastPolys, pastTimes,
                           upstreamPolys, upstreamTimes):
         featuresDisplay = self.featuresDisplay()
         editablePoly = False
         if featuresDisplay.get('motionVectorCentroids'):
-            for i in range(len(motionVectorPolys)):
+            for i in range(len(motionVectorCentroids)):
                 st, et = motionVectorTimes[i]
                 #print "SR  difference ", self.probUtils.displayMsTime(st), self.probUtils.displayMsTime(polySt_ms), abs(st - polySt_ms), self.probUtils.timeDelta_ms()
                 #self.flush()
@@ -1197,13 +1238,14 @@ class Recommender(RecommenderTemplate.Recommender):
                     print "SR upstream using motion vector", i, self.probUtils.displayMsTime(st)
                     self.flush()
                     editablePoly = True
-                    return motionVectorPolys[i], editablePoly, 'motionVector'
+                    shape = AdvancedGeometry.createRelocatedShape(event.getGeometry(), motionVectorCentroids[i])
+                    return shape, editablePoly, 'motionVector'
         if featuresDisplay.get('pastPolys'):
             for i in range(len(pastPolys)):
                 st, et = pastTimes[i]
                 if abs(st - polySt_ms) < self.probUtils.timeDelta_ms():
-                    #print "SR upstream using past", i, self.probUtils.displayMsTime(st)
-                    #self.flush()
+                    print "SR upstream using past", i, self.probUtils.displayMsTime(st)
+                    self.flush()
                     return pastPolys[i], editablePoly, 'past'
         if not self.editableHazard or not event.get('settingMotionVector'):
             return None, False, 'none'
@@ -1298,8 +1340,8 @@ class Recommender(RecommenderTemplate.Recommender):
     # Helper methods              #
     ###############################
             
-    def sortPolys(self, p1, p2):
-        # Sort polygon tuples by start time
+    def sortShapes(self, p1, p2):
+        # Sort shape tuples by start time
         poly1, st1, et1 = p1
         poly2, st2, et2 = p2
         if st1 < st2:
@@ -1388,8 +1430,8 @@ class Recommender(RecommenderTemplate.Recommender):
         # Older polygons are dropped off as time progresses
         return None
         
-    def maxMotionVectorPolygons(self):
-        # Maximum number of motion vector polygons
+    def maxMotionVectorCentroids(self):
+        # Maximum number of motion vector centroids
         # If None, then unlimited
         return None
                         

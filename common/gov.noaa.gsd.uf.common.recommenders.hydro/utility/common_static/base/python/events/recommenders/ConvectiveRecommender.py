@@ -6,7 +6,7 @@ http://cimss.ssec.wisc.edu/severe_conv/probsev.html
 
 Assumes data feed from CIMSS via LDM into /awips2/edex/data/manual
 
-convectprob data plugin for edex should be part of baseline and should ingest
+probsevere data plugin for edex should be part of baseline and should ingest
 to datastore
 
 '''
@@ -37,7 +37,7 @@ from HazardConstants import *
 import HazardDataAccess
 
 from com.raytheon.uf.common.time import SimulatedTime
-from edu.wisc.ssec.cimss.common.dataplugin.convectprob import ConvectProbRecord
+from edu.wisc.ssec.cimss.common.dataplugin.probsevere import ProbSevereRecord
 from SwathRecommender import Recommender as SwathRecommender 
 #
 # The size of the buffer for default flood polygons.
@@ -51,12 +51,16 @@ MISSING_VALUE = -9999
 MILLIS_PER_SECOND = 1000
 
 ### FIXME
-DEFAULT_DURATION_IN_SECS = 2700 # 45 minutes
-#DEFAULT_DURATION_IN_SECS = 120
-PROBABILITY_FILTER = 8 # filter our any objects less than this.
-SOURCEPATH_ARCHIVE = '/awips2/edex/data/hdf5/convectprob'
-SOURCEPATH_REALTIME = '/realtime-a2/hdf5/probsevere'
-    
+DEFAULT_DURATION_IN_SECS = 3600 # 60 minutes
+
+
+sysTime=SimulatedTime.getSystemTime().getMillis()/1000
+print "SYSTIME:", sysTime
+if sysTime < 1478186880:
+    SOURCEPATH='/awips2/edex/data/hdf5/probsevere'
+else:
+    SOURCEPATH = '/realtime-a2/hdf5/probsevere'
+
 AUTOMATION_LEVELS = ['userOwned','attributesOnly','attributesAndMechanics','automated']
 
 class Recommender(RecommenderTemplate.Recommender):
@@ -166,9 +170,9 @@ class Recommender(RecommenderTemplate.Recommender):
         recommendedEventsDict = self.getRecommendedEventsDict(self.currentTime, latestCurrentEventTime)
 
         LogUtils.logMessage('Finnished ', 'getRecommendedEventsDict',' Took Seconds', time.time()-st)
-        st = time.time()
-        recommendedEventsDict = self.filterForUserOwned(currentEvents, recommendedEventsDict)
-        LogUtils.logMessage('Finnished ', 'filterForUserOwne',' Took Seconds', time.time()-st)
+        #st = time.time()
+        #recommendedEventsDict = self.filterForUserOwned(currentEvents, recommendedEventsDict)
+        #LogUtils.logMessage('Finnished ', 'filterForUserOwne',' Took Seconds', time.time()-st)
         st = time.time()
         mergedEventSet = self.mergeHazardEventsNew(currentEvents, recommendedEventsDict)
 
@@ -263,14 +267,9 @@ class Recommender(RecommenderTemplate.Recommender):
     def getLatestProbSevereDataHDFFileList(self, latestDatetime=None):
         fileList = None
         try:
-            #===================================================================
-            # fileList = sorted(glob.glob(os.path.join(SOURCEPATH,'*.h5')), 
-            #               reverse=True)
-            #===================================================================
-            fileList = sorted(glob.glob(os.path.join(SOURCEPATH_REALTIME,'*.h5')), reverse=True) + \
-                        sorted(glob.glob(os.path.join(SOURCEPATH_ARCHIVE,'*.h5')), reverse=True)
+            fileList = sorted(glob.glob(os.path.join(SOURCEPATH,'*.h5')), reverse=True)
         except:
-            print 'Convective Recommender Warning: Could not obtain list of convectprob*.h5 files at:', os.path.join(SOURCEPATH,'*.h5')
+            print 'Convective Recommender Warning: Could not obtain list of probsevere*.h5 files at:', os.path.join(SOURCEPATH,'*.h5')
             print 'Returning:', fileList
             return fileList
         
@@ -279,28 +278,12 @@ class Recommender(RecommenderTemplate.Recommender):
         
         if latestDatetime:
             ### Use filename to make datetime and return ONLY the latest
-            regex = "convectprob-%Y-%m-%d-%H.h5"
-            if fileList:
-                if fileList[0].startswith('probsevere'):
-                    regex = "probsevere-%Y-%m-%d-%H.h5"
+            regex = "probsevere-%Y-%m-%d-%H.h5"
                 
             fileDict = {datetime.datetime.strptime(os.path.basename(x),regex):x for x in fileList}
             
             # see https://bytes.com/topic/python/answers/765154-find-nearest-time-datetime-list
             returnFileList = [fileDict.get(min(fileDict.keys(), key=lambda date : abs(latestDatetime-date)))]
-            
-            ### Use filename to make datetime
-            #returnFileList = [x for x in fileList if 
-            #                  datetime.datetime.strptime(os.path.basename(x),
-            #                  "convectprob-%Y-%m-%d-%H.h5")
-            #                  > latestDatetime
-            #                  ]
-            
-            ### Use file's modification time to make datetime
-            #returnFileList = [x for x in fileList if 
-            #                  datetime.datetime.utcfromtimestamp(os.path.getmtime(x))
-            #                  > latestDatetime
-            #                  ]
             
             return returnFileList
         else:
@@ -367,6 +350,7 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.set('convectiveObjectSpdKts', values.get('wspd'))
         hazardEvent.set('probSeverAttrs',values)
         hazardEvent.set('objectID', ID)
+        hazardEvent.setStatus('ISSUED')
         
         hazardEvent.set('automationLevel', 'automated')
         
@@ -560,26 +544,28 @@ class Recommender(RecommenderTemplate.Recommender):
         return mergedEvents
         
             
-    def filterForUserOwned(self, currentEvents, recommendedEventsDict):
-        newDict = {}
-        # Check the object ID match or polygon overlap of each recommended event values 
-        #    with any "userOwned" currentEvent
-        #  If there is an overlap, throw it out. 
-        for ID, recommendedEventValues in recommendedEventsDict.iteritems():
-            overlap = False
-            for event in currentEvents:
-                if event.get('convectiveUserOwned'):
-                    if event.get(OBJECT_ID) == ID:
-                        overlap = True
-                        break
-                    polygon = loads(recommendedEventValues.get('polygons'))
-                    if GeometryFactory.createPolygon(polygon).overlaps(event.getFlattenedGeometry()):
-                        overlap = True
-                        break
-            if not overlap:
-                newDict[ID] = recommendedEventValues
-        self.flush()
-        return newDict
+    #===========================================================================
+    # def filterForUserOwned(self, currentEvents, recommendedEventsDict):
+    #     newDict = {}
+    #     # Check the object ID match or polygon overlap of each recommended event values 
+    #     #    with any "userOwned" currentEvent
+    #     #  If there is an overlap, throw it out. 
+    #     for ID, recommendedEventValues in recommendedEventsDict.iteritems():
+    #         overlap = False
+    #         for event in currentEvents:
+    #             if event.get('convectiveUserOwned'):
+    #                 if event.get(OBJECT_ID) == ID:
+    #                     overlap = True
+    #                     break
+    #                 polygon = loads(recommendedEventValues.get('polygons'))
+    #                 if GeometryFactory.createPolygon(polygon).overlaps(event.getFlattenedGeometry()):
+    #                     overlap = True
+    #                     break
+    #         if not overlap:
+    #             newDict[ID] = recommendedEventValues
+    #     self.flush()
+    #     return newDict
+    #===========================================================================
 
                                 
     def flush(self):

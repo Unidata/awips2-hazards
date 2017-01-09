@@ -3,6 +3,8 @@
 '''
 import CommonMetaData
 from HazardConstants import *
+import datetime
+
 
 class MetaData(CommonMetaData.MetaData):
     
@@ -16,6 +18,9 @@ class MetaData(CommonMetaData.MetaData):
                     self.convectiveControls(),
                     self.convectiveGetAttrs()
                     ]
+        startTime = hazardEvent.getStartTime()
+        newEnd = startTime + datetime.timedelta(minutes=60)
+        hazardEvent.setEndTime(newEnd)
 
         return {
                 METADATA_KEY: metaData,

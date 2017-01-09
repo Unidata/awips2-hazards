@@ -815,14 +815,6 @@ class ProbUtils(object):
         ### Get initial shape.  
         # This represents the shape at the event start time resulting from the last nudge.
         shape = event.getGeometry()
-        if nudge:
-            shape = event.getGeometry()
-        else:
-            forecastPolys = event.get('forecastPolys', [])
-            if forecastPolys:
-                shape = forecastPolys[0]
-            else:
-                shape = event.getGeometry()
                 
         # Convert the shape to a shapely polygon.
         poly = shape.asShapely()

@@ -210,7 +210,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     if 'phiConfigUpperLeftLon' in triggerIdentifiers or "phiConfigNumLonPoints" in triggerIdentifiers:
         ulLonVal = mutableProperties['phiConfigUpperLeftLon']['values']
         lonPts = mutableProperties['phiConfigNumLonPoints']['values']
-        lrLonVal =  ulLonVal - (0.01 * lonPts)
+        lrLonVal =  ulLonVal + (0.01 * lonPts)
         returnDict['phiConfigLowerRightLon'] = {'values':lrLonVal}
 
     return returnDict

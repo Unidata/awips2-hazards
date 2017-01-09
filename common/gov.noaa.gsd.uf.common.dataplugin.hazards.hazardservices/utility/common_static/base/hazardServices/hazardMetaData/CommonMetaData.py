@@ -1981,7 +1981,7 @@ class MetaData(object):
             "enable": enable,
             #"refreshMetadata": True,
             "modifyRecommender": 'SwathRecommender',
-        }        
+        }
         return grp
 
 
@@ -2169,6 +2169,7 @@ class MetaData(object):
             "fieldType": "Composite",
             "fieldName": "convectiveProbGroup",
             "label": "",
+            "numColumns":3,
             "fields": [
                         {
                          "fieldType": "HiddenField",
@@ -2289,7 +2290,7 @@ class MetaData(object):
     def getStormCharacteristics(self, enable):
         windType =  self.buildStormChars('Wind', [str(x) + " mph" for x in ["<40", 40, 50, 60, 70, 80, 90]], enable)
 
-        hailType =  self.buildStormChars('Hail', [str(x)+"\"" for x in ["None", 0.5, 1, 1.5, 2, 2.5, 3, 3.5, ">=4", "copious small hail"]], enable)
+        hailType =  self.buildStormChars("Hail", ["0.5\"", "1\"", "1.5\"", "2\"", "2.5\"", "3\"", "3.5\"", ">=4\"", "copious small hail"], enable)
         
         tornType =  self.buildStormChars('Torn', ['radar indicated', 'radar observed', 'spotter observed'], enable)
         
