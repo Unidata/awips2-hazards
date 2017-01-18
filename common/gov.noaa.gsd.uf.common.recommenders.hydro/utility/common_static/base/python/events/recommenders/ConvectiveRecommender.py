@@ -445,6 +445,9 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('probSeverAttrs',recommended)
         graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
         event.set('convectiveProbTrendGraph', graphProbs)
+        event.setStartTime(recommended.get('startTime', self.dataLayerTime))
+        endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+        event.setEndTime(endTime)
         
     def updateCurrentEvents(self, intersectionDict, mergedEvents):
         dataLayerTimeMS = int(self.dataLayerTime )

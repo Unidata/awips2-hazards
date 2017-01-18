@@ -200,7 +200,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         resultEventSet = EventSetFactory.createEventSet(None)
         
-        # IF there are any editableObjects, we do not want to set the selected time ahead for
+        # IF there are any editable objects, we do not want to set the selected time ahead for
         #   a timeInterval update
         self.editableObjects = False
         if trigger == 'dataLayerUpdate':
@@ -246,10 +246,10 @@ class Recommender(RecommenderTemplate.Recommender):
             elif trigger == 'hazardEventModification':
                 changes = self.adjustForEventModification(event, eventSetAttrs)
                 if not changes:
-                    # Handle other dialog buttons"
+                    # Handle other dialog buttons
                     self.handleAdditionalEventModifications(event, resultEventSet)
                     continue
-                if 'editableObject' in self.attributeIdentifiers: # Modify button
+                if 'modifyButton' in self.attributeIdentifiers: # Modify button
                     resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
                     print "SR Setting selected time to eventSt"
                     self.flush()
@@ -337,7 +337,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if self.currentTime - eventEndTime_ms > self.elapsedTimeLimit():
             event.setStatus('ELAPSED')
             resultEventSet.add(event)
-        if event.getStatus() in ['ELAPSED', 'ENDED']:                
+        if event.getStatus() in ['ELAPSED', 'ENDED', 'POTENTIAL']:                
             return False
         # Check for end time < current time and end the event
         if eventEndTime_ms < self.currentTime:
@@ -369,14 +369,14 @@ class Recommender(RecommenderTemplate.Recommender):
         self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
         print "SR Bookkeeping Event status", event.getStatus()
         print "SR Event selected", event.get('selected')
-        print "SR Event editableObject", event.get('editableObject'), self.editableHazard
+        print "SR Event activate, editableHazard", event.get('activate'), self.editableHazard
         print "SR Start Time", self.probUtils.displayMsTime(self.eventSt_ms)
         self.flush()
 
     def isEditableSelected(self, event):
         selected = event.get('selected', False)
         if selected == 0: selected = False  
-        return selected and event.get('editableObject', False), selected        
+        return selected and event.get('activate', False), selected        
         
     #################################
     # Update of Event Attributes    #
@@ -409,6 +409,9 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('automationLevel', 'userOwned')
         if event.get('objectID') and not event.get('objectID').startswith('M'):
             event.set('objectID', 'M' + event.get('objectID'))
+        print "SR calling setActivation for setting userOwned"
+        self.flush()
+        self.probUtils.setActivation(event)
             
     def adjustForFrameChange(self, event, eventSetAttrs):
         # Assumption is that D2D frame change was used to get to the latest data layer
@@ -459,7 +462,7 @@ class Recommender(RecommenderTemplate.Recommender):
             for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
                 default = self.probUtils.defaultValueDict().get(key)
-                event.set(key, self.probUtils.getApplicationValue(key, default))
+                event.set(key, default)
             event.set('settingMotionVector', True)
             motionVectorCentroids = event.get('motionVectorCentroids', []) 
             motionVectorTimes = event.get('motionVectorTimes', [])
@@ -470,31 +473,52 @@ class Recommender(RecommenderTemplate.Recommender):
                 event.set('motionVectorTimes', motionVectorTimes) 
             return True
         
-        # Handle Modify Button -- 'editableObject' changed by Interdependency Script AND editableHazard
-        if 'editableObject' in self.attributeIdentifiers and self.editableHazard:  # User Hit modify button
+        # Handle Modify Button
+        if 'modifyButton' in self.attributeIdentifiers:  # User Hit modify button
             if event.getStatus() == 'ISSUED':         
                 if event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                     self.moveStartTime(event, self.latestDataLayerTime, moveEndTime=True)
                     self.advanceForecastPolys(event, eventSetAttrs)
                     graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
                     event.set('convectiveProbTrendGraph', graphProbs)
+                    print "SR setting activation for hitting Modify"
+                    self.flush()
+                    event.set('activate', True)
+                    event.set('activateModify', False)
+                    #self.probUtils.setActivation(event)
+                    self.editableHazard = True
             return True
         
+        # Handle Auto Shape
         if 'autoShape' in self.attributeIdentifiers:
             if not event.get('autoShape'):  # Taking over the geometry
                 if event.get('automationLevel') in ['automated', 'attributesAndMechanics']:
                     # Adjust automationLevel
                     event.set('automationLevel', 'attributesOnly')
-                    #self.moveStartTime(event, self.dataLayerTimeToLeft, moveEndTime=True)
+                    print "SR calling setActivation for autoShape taking over geometry"
+                    self.flush()
+                    self.probUtils.setActivation(event)
                     return True 
             else:  # Returning to automation of geometry
                 if event.get('automationLevel') in ['attributesOnly', 'userOwned']:
                     event.set('automationLevel', 'attributesAndMechanics') 
-                    st = event.get('probSevereTimeStamp')
-                    if not st:
-                        st = self.dataLayerTimeToLeft
-                    #self.moveStartTime(event, st, moveEndTime=True)
+                    print "SR calling setActivation for autoShape returning to automated"
+                    self.flush()
+                    self.probUtils.setActivation(event)
                     return True
+                  
+        # Handle Select Semaphore
+        if 'selectSemaphore' in self.attributeIdentifiers and len(self.attributeIdentifiers) == 1:
+            print "SR selectSemaphore", event.get('selectSemaphore')
+            self.flush()
+            if event.get('selectSemaphore') is True:
+                print "SR calling setActivation for selectSemaphore"
+                self.flush()
+                self.probUtils.setActivation(event)
+                event.set('selectSemaphore', False)
+                return True
+            else:
+                return False
                 
         # Get Convective Attributes from the MetaData. 
         # These should supercede and update the ones stored in the event
@@ -542,8 +566,9 @@ class Recommender(RecommenderTemplate.Recommender):
                     self.ensureLastGraphProbZeroAndUneditable(event)
                 # Update previous value
                 event.set(prevName, newVal)
-                if prevName in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+                if prevName in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+                    print "SR updateApplicationDict adjust for event modification", updateDict
+                    self.flush()
                     self.probUtils.updateApplicationDict({prevName:value})
            
         # Ensure that if changes were made, there are valid probability trend graph points ready for calculations. 
@@ -560,8 +585,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 manualAttrs += changedAttrs
                 event.set('manualAttributes', manualAttrs)
                 if event.get('automationLevel') == 'automated':
-                    event.set('automationLevel', 'attributesAndMechanics')                    
-            
+                    event.set('automationLevel', 'attributesAndMechanics')
+                    print "SR calling setActivation for changing automation level to attributesAndMechanics"
+                    self.flush()
+                    self.probUtils.setActivation(event)
+                                
             return True
         
         return False
@@ -811,15 +839,21 @@ class Recommender(RecommenderTemplate.Recommender):
             
         # print "SR motionVectorTuples", len(motionVectorTuples)
         # self.flush()
-            
+        
+        for key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+            print "SR key, value", key, event.get(key)  
+        self.flush() 
         newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms) 
+        print "SR newMotion", newMotion
+        self.flush()
         updateDict = {}
-        for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+        for key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
             value = int(newMotion.get(key))
             # Save new motion vector to Application Dictionary
             updateDict[key] = value           
             event.set(key, value)
+        print "SR updateApplicationDict adjust", updateDict
+        self.flush()
         self.probUtils.updateApplicationDict(updateDict)
             
         return True
@@ -925,7 +959,7 @@ class Recommender(RecommenderTemplate.Recommender):
         firstForecastSt_ms = self.eventSt_ms
 
         print "SR eventSt_ms", self.probUtils.displayMsTime(self.eventSt_ms), self.eventSt_ms
-        print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']
+        print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'], event.get('automationLevel')
         self.flush()
            
         for i in range(numIntervals):
@@ -984,48 +1018,47 @@ class Recommender(RecommenderTemplate.Recommender):
             if featuresDisplay.get('trackPoints'):
                 features.append(trackPointFeature)
              
-            # Dashed relocated shape and centroid show up if editable
-            if self.editableHazard: 
-                dragCapability = 'none'
-                editable = False                
-                if polySt_ms == self.eventSt_ms:
-                    if event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                        dragCapability = 'all'
-                        editable = True
-                   
-                relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
-                                                                       createRelocatedShape(geometry, centroid))    
-                relocatedFeature = {
-                  "identifier": "swathRec_relocated_" + str(polySt_ms),
-                  "visibilityConstraints": "selected",
-                  "borderColor": "eventType",
-                  "borderThickness": "eventType",
-                  "borderStyle": "dashed",
-                  "textSize": "eventType",
-                  "dragCapability": dragCapability,
-                  "scaleable": editable,
-                  "rotatable": editable,
-                  "geometry": {
-                      (polySt_ms, polyEt_ms): relocatedShape
-                       }
-                }
-                if featuresDisplay.get('dashedPolys') and self.selectedHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                    features.append(relocatedFeature)
-                
+            # Dashed relocated shape and centroid show up if editable 
+            dragCapability = 'none'
+            editable = False                
+            if polySt_ms == self.eventSt_ms:
+                if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                    dragCapability = 'all'
+                    editable = True
+               
+            relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
+                                                                   createRelocatedShape(geometry, centroid))    
+            relocatedFeature = {
+              "identifier": "swathRec_relocated_" + str(polySt_ms),
+              "visibilityConstraints": "selected",
+              "borderColor": "eventType",
+              "borderThickness": "eventType",
+              "borderStyle": "dashed",
+              "textSize": "eventType",
+              "dragCapability": dragCapability,
+              "scaleable": editable,
+              "rotatable": editable,
+              "geometry": {
+                  (polySt_ms, polyEt_ms): relocatedShape
+                   }
+            }
+            if featuresDisplay.get('dashedPolys') and self.selectedHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                features.append(relocatedFeature)
+            
 
-                centroidFeature = {
-                  "identifier": "swathRec_relocatedCentroid_" + str(polySt_ms),
-                  "visibilityConstraints": "selected",
-                  "borderColor": { "red": 0, "green": 0, "blue": 0 },
-                  "borderThickness": 2,
-                  "fillColor": { "red": 1, "green": 1, "blue": 1},
-                  "diameter": 6,
-                   "geometry": {
-                      (polySt_ms, polyEt_ms): AdvancedGeometry.createShapelyWrapper(centroid, 0)
-                       }
-                }
-                if featuresDisplay.get('dashedPolyCentroid') and self.selectedHazard:
-                   features.append(centroidFeature)
+            centroidFeature = {
+              "identifier": "swathRec_relocatedCentroid_" + str(polySt_ms),
+              "visibilityConstraints": "selected",
+              "borderColor": { "red": 0, "green": 0, "blue": 0 },
+              "borderThickness": 2,
+              "fillColor": { "red": 1, "green": 1, "blue": 1},
+              "diameter": 6,
+               "geometry": {
+                  (polySt_ms, polyEt_ms): AdvancedGeometry.createShapelyWrapper(centroid, 0)
+                   }
+            }
+            if featuresDisplay.get('dashedPolyCentroid') and self.selectedHazard:
+               features.append(centroidFeature)
                    
         # Start time may be prior to first forecast shape and we need to display it
         if not startTimeShapeFound:
@@ -1381,7 +1414,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 print 'ID:', event.getEventID(), event.get('objectID')
                 print "start, end", event.getStartTime(), event.getEndTime()
                 print "automationLevel", event.get('automationLevel')
-                print 'newManualObject', event.get('newManualObject')
                 print 'settingMotionVector', event.get('settingMotionVector')
                 print 'dataLayerStatus', event.get('dataLayerStatus')                
                 # print "visual Features"                            

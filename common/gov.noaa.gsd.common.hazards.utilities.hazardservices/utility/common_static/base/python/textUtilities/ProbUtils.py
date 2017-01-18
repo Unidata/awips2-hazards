@@ -523,8 +523,11 @@ class ProbUtils(object):
                         
         ### Challenge is to get the graph to show the "rounded up" value, but we 
         ### don't want to muck with the duration, so still uncertain the best way
-        graphVals = self.updateGraphValsDuration(graphVals, self.getGraphProbsBasedOnDuration(event))
-        #graphVals = self.updateGraphValsDuration(graphVals, self.getGraphProbsBasedOnDuration(event))
+        newGraphVals = self.getGraphProbsBasedOnDuration(event)
+        if event.get('automationLevel') == 'automated':
+            graphVals = newGraphVals
+        else:
+            graphVals = self.updateGraphValsDuration(graphVals, newGraphVals)
         
         import pprint
 #        print 'remainingProbs'
@@ -834,7 +837,8 @@ class ProbUtils(object):
             totalSecs = timeIntervals[0]
         self.prevDirVal = None
         
-        for secs in timeIntervals:
+        for i in range(len(timeIntervals)):
+            secs = timeIntervals[i]
             origDirVal = dirVal
             intervalShape, secs = self.getIntervalShape(secs, totalSecs, shape, gglPoly, 
                                                         speedVal, dirVal, spdUVal, dirUVal, 
@@ -843,7 +847,11 @@ class ProbUtils(object):
             intervalShape = self.reduceShapeIfPolygon(intervalShape)
             intervalShapes.append(intervalShape)
             st = self.convertFeatureTime(startTime_ms, secs)
-            et = self.convertFeatureTime(startTime_ms, secs+self.timeStep())
+            if i < len(timeIntervals)-1:
+                endSecs = timeIntervals[i+1] - secs
+            else:
+                endSecs = self.timeStep()
+            et = self.convertFeatureTime(startTime_ms, secs+endSecs)
             intervalTimes.append((st, et))                    
                     
         if timeDirection == 'forecast':
@@ -983,7 +991,48 @@ class ProbUtils(object):
         return appDict.get(key, default)
     
     def getDefaultMotionVectorKey(self, event, key): 
-        return int(event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0))))   
+        print "PU getDefaultMotionVectorKey", key, int(event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0))))
+        self.flush()
+        return int(event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0)))) 
+    
+    #########################################
+    ### Common Methods shared among modules
+    def setActivation(self, event):
+        '''
+        Set the activate and activeModify attributes of the event
+
+        If selecting user-owned (automationLevel) pending (status) hazard: activated and Modify button deactivated
+        If selecting automated (automationLevel) and pending (status): deactivated and Modify button deactivated
+        If selecting either of the other two possible (automationLevel) and pending (status): deactivated and Modify button activated
+        If selecting issued hazard: deactivated and Modify button activated
+        If selecting Ending, Ended, Elapsed hazard: deactivated and Modify button deactivated.
+        '''
+        automationLevel = event.get('automationLevel')
+        status = event.getStatus()
+        print "PU setActivation", automationLevel, status
+        self.flush()
+        if status == 'PENDING':
+            if automationLevel == 'userOwned':
+                activate = True
+                activateModify = False
+            elif automationLevel == 'automated':
+                activate = False
+                activateModify = False
+            else:
+                activate = False
+                activateModify = True
+        elif status == 'ISSUED':
+            activate = False
+            activateModify = True
+        else: # status Ending, Ended, Elapsed
+            activate = False
+            activateModify = False       
+
+        print "PU Setting activate, activateModify", activate, activateModify
+        self.flush()
+        event.set('activate', activate)
+        event.set('activateModify', activateModify)
+        return activate, activateModify
                     
     #########################################
     ### OVERRIDES        

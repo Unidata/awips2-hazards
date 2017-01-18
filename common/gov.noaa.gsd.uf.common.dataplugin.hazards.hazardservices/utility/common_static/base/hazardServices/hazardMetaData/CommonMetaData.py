@@ -1849,19 +1849,21 @@ class MetaData(object):
         
     # Prob_Severe and Prob_Tornado
     def convectiveControls(self): 
-        mws = self.initializeObject()       
-        enable = self.hazardEvent.get('editableObject', False)
-        self.flush()
+        mws = self.initializeObject() 
+        activate = self.hazardEvent.get('activate', False)      
+        activateModify = self.hazardEvent.get('activateModify', False)      
+        print  "CM ConvectiveControls -- activate, activateModify", activate, activateModify
+        self.flush()       
         # Object Info
-        mws.append( self.getConvectiveObjectInfo(enable))
+        mws.append( self.getConvectiveObjectInfo(activate, activateModify))
         # Motion Vector
-        mws.append( self.getConvectiveMotionVector(enable))
+        mws.append( self.getConvectiveMotionVector(activate))
         # Probability Trend
-        mws.append( self.getConvectiveProbabilityTrend(enable))
+        mws.append( self.getConvectiveProbabilityTrend(activate))
         # Storm Chars
-        mws.append( self.getStormCharacteristics(enable))
+        mws.append( self.getStormCharacteristics(activate))
         # Warning Discussion
-        mws.append( self.getConvectiveDiscussion(enable))
+        mws.append( self.getConvectiveDiscussion(activate))
         mws.append( self.getPastConvectiveDiscussion())
                 
         grp = {
@@ -1880,49 +1882,46 @@ class MetaData(object):
 
 
     def initializeObject(self):        
-        #  Manually drawn hazards are always userOwned
-#         if self.hazardEvent.get('objectID') is None:
-#             # Go with eventID as it should be unique
-#             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
-#             self.hazardEvent.set('automationLevel', 'automated')
-#             editableObject = False
-#             newManualObject = False
         if self.hazardEvent.get('objectID') is None:
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
             self.hazardEvent.set('automationLevel', 'userOwned')
-            editableObject = True
-            newManualObject = True
-        else:
-            editableObject = self.hazardEvent.get('editableObject', False)
-            newManualObject = False
-        print  "CM ConvectiveControls newManualObject, editableObject", newManualObject, editableObject
-        self.flush()       
+        print "CM calling setActivation"
+        self.flush()
+        self.probUtils.setActivation(self.hazardEvent)
+        activate = self.hazardEvent.get('activate', False)      
+        activateModify = self.hazardEvent.get('activateModify', False)      
         mwList = [
             {
              "fieldType": "HiddenField",
-             "fieldName": "editableObject",
-             "values": editableObject, 
-             "modifyRecommender": "SwathRecommender",
+             "fieldName": "activate",
+             "values": activate, 
              },
             {
              "fieldType": "HiddenField",
-             "fieldName": "newManualObject",
-             "values": newManualObject,
+             "fieldName": "activateModify",
+             "values": activateModify,
              },
+            {
+             "fieldType": "HiddenField",
+             "fieldName": "selectSemaphore",
+             "values": False,
+             "modifyRecommender": 'SwathRecommender',
+             },
+
         ]        
         return mwList
     
-    def getConvectiveObjectInfo(self, enable):        
+    def getConvectiveObjectInfo(self, activate, activateModify):        
         grp = {
             "fieldType": "Composite",
             "fieldName": "convectiveObjectInfo",
             "label": "",
             "numColumns":3,
             "fields": [
-                        self.getModifyButton(enable),
+                        self.getModifyButton(activateModify),
                         self.getAutomationLevel(),
-                        self.getAutoShape(enable),
+                        self.getAutoShape(activate),
                         self.getCancelButton(),
                        ]
         }        
@@ -1964,13 +1963,16 @@ class MetaData(object):
             "fieldType": "Button",
             "fieldName": "modifyButton",
             "label": "     MODIFY     ",
-            "enable": not enable,
+            "enable": enable,
+            "modifyRecommender": 'SwathRecommender',
             #"refreshMetadata": True,
         }        
         return grp
     
     def getCancelButton(self): 
-        if self.hazardStatus == 'issued':
+        print "CM status, automationlevel", self.hazardStatus, self.hazardEvent.get('automationLevel')
+        self.flush()
+        if self.hazardStatus == 'issued' and self.hazardEvent.get('automationLevel') in ['userOwned', 'attributesOnly']:
             enable = True
         else:
             enable = False              
@@ -2028,7 +2030,7 @@ class MetaData(object):
                         "label": "Dir Uncertainty (deg)",
                         "sendEveryChange": False,
                         "minValue": 0,
-                        "maxValue": 45,
+                        "maxValue": 60,
                         "values":  self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectDirUnc'),
                         "incrementDelta": 5,
                         "showScale": False,
@@ -2419,53 +2421,48 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             sys.stderr.write('New probs length does not match old probs length. No change')
 
         return convectiveProbTrendGraphVals
-
-
+        
     print "\n*****************\nCM applyConvective called"
     print 'triggerIdentifiers', triggerIdentifiers
-    newManualObjectKey = mutableProperties.get('newManualObject')
-    editableKey = mutableProperties.get('editableObject')
-    autoShape = mutableProperties.get('autoShape', {}).get('values')
-    print "CM newManualObjectKey, editableKey, autoShape", newManualObjectKey, editableKey, autoShape
-    if newManualObjectKey:
-        newManualObject = newManualObjectKey.get('values')
-    else:
-        newManualObject = True
-        print "CM WARNING -- CM made it to else - saying newManualObject is True"       
-    #for key in mutableProperties:
-         #print key, mutableProperties[key]
-    os.sys.__stdout__.flush()
     returnDict = {}
-    if not triggerIdentifiers or 'modifyButton' in triggerIdentifiers or 'newManualObject' in triggerIdentifiers:
-        if not triggerIdentifiers or 'newManualObject' in triggerIdentifiers: # set to whatever "editableObject" is set to
-            if newManualObject:
-                enable = True 
-                returnDict['newManualObject'] = {'values': False}
-                print 'CM Script setting newManualObject to False'
-                os.sys.__stdout__.flush()
-            else:
-                enable = False
-                returnDict['editableObject'] = {'values': False}
-                print 'CM Script setting editableObject to False'
-                os.sys.__stdout__.flush()
-        elif 'modifyButton' in triggerIdentifiers:  # Modify Button -- set to editableObject
-            enable = True
-            returnDict['editableObject'] = {'values': True}
-            print 'CM Script setting editableObject to True'
-            os.sys.__stdout__.flush()
-        print "CM enable", enable
-        os.sys.__stdout__.flush()
-        for key in ['autoShape', "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
-                    "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
-                    "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
-                    "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
-            returnDict[key] = {'enable' : enable}
-        if enable:
+    hazardSelected = not triggerIdentifiers
+    modifyButtonChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'modifyButton' in triggerIdentifiers 
+    autoShapeChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'autoShape' in triggerIdentifiers
+    print "hazardSelected, modifyButtonChosen, autoShapeChosen", hazardSelected, modifyButtonChosen, autoShapeChosen
+    os.sys.__stdout__.flush()
+    if hazardSelected or modifyButtonChosen or autoShapeChosen: 
+        
+        if hazardSelected: 
+            activate = mutableProperties.get('activate', {}).get('values')
+            activateModify = mutableProperties.get('activateModify', {}).get('values')
+#             # Set the selectSemaphore to be picked up by SwathRecommender which will adjust the Visual Features
+#             returnDict['selectSemaphore'] = {'values': True}
+
+        elif modifyButtonChosen:
+            activate = True
+            activateModify = False
+        
+        elif autoShapeChosen:
+            autoShape = mutableProperties.get('autoShape', {}).get('values')
             for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
                     "convectiveObjectSpdKtsUnc"]:
                 # Enable these if autoShape is off i.e. the user owns the mechanics
                 returnDict[key] = {'enable': not autoShape}
-        returnDict['modifyButton'] = {'enable' : not enable}
+        
+        if hazardSelected or modifyButtonChosen:        
+            for key in ['autoShape', "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
+                "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
+                "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
+                "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
+                returnDict[key] = {'enable' : activate}
+            autoShape = mutableProperties.get('autoShape', {}).get('values')
+            if not autoShape:
+                for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+                    "convectiveObjectSpdKtsUnc"]:
+                    # Enable these if autoShape is off i.e. the user owns the mechanics
+                    returnDict[key] = {'enable': activate}                
+
+            returnDict['modifyButton'] = {'enable' : activateModify}
         return returnDict
 
     if triggerIdentifiers:
