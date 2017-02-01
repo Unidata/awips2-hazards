@@ -197,13 +197,15 @@ class Recommender(RecommenderTemplate.Recommender):
         eventsDict = self.latestEventSetFromHDFFile(hdfFilesList, currentTime)
         return eventsDict
 
-    def uvToSpdDir(self, motionEasts, motionSouths):
-        if motionEasts is None or motionSouths is None:
+    def uvToSpdDir(self, eastMotions, southMotions):
+        if eastMotions is None or southMotions is None:
             wdir = self.defaultWindDir()
             wspd = self.defaultWindSpeed() #kts
         else:
-            u = float(motionEasts)
-            v = -1.*float(motionSouths)
+            #u = float(eastMotions)
+            #v = -1.*float(southMotions)
+            u = -1.*float(eastMotions)
+            v = -1.*float(southMotions)
             wspd = int(round(math.sqrt(u**2 + v**2) * 1.94384)) # to knots
             wdir = int(round(math.degrees(math.atan2(-u, -v))))
             if wdir < 0:
@@ -247,7 +249,7 @@ class Recommender(RecommenderTemplate.Recommender):
             
             
             row['startTime'] = latestGroupDT
-            vectorDict = self.uvToSpdDir(row.get('motionEasts'),row.get('motionSouths'))
+            vectorDict = self.uvToSpdDir(row.get('eastMotions'),row.get('southMotions'))
             row['wdir'] = vectorDict.get('wdir')
             row['wspd'] = vectorDict.get('wspd')
             
@@ -329,7 +331,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def makeHazardEvent(self, ID, values):
         
         if values.get('belowThreshold'):
-            print '\tBelow Threshold, returning None'
+            print '\tBelow Threshold', self.lowThreshold, 'returning None'
             return None
         
         sys.stdout.flush()
@@ -443,6 +445,12 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('convectiveObjectDir', recommended.get('wdir'))
         event.set('convectiveObjectSpdKts', recommended.get('wspd'))
         event.set('probSeverAttrs',recommended)
+        
+        if recommended.get('belowThreshold'):
+            event.setStatus('PENDING')
+        else:
+            event.setStatus('ISSUED')
+        
         graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
         event.set('convectiveProbTrendGraph', graphProbs)
         event.setStartTime(recommended.get('startTime', self.dataLayerTime))
