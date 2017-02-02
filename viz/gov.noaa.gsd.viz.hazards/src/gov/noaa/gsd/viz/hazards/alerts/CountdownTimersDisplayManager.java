@@ -9,43 +9,49 @@
  */
 package gov.noaa.gsd.viz.hazards.alerts;
 
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.widgets.Display;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationAlert;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 
 /**
  * Description: Superclass from which to derive managers of the display of
- * countdown timers. Instances of subclasses are used to track which alerts
+ * countdown timers. Instances of subclasses are used to track which events
  * require countdown timer displays, and when to update said displays. The
- * parameter <code>H</code> specifies the subclass of alerts for which countdown
- * timers are to be managed, while the parameter <code>P</code> indicates the
- * subclass of display properties that will be created by the manager in order
- * to facilitate countdown timer display painting.
+ * generic parameter <code>C</code> specifies the subclass of countdown timers
+ * to be managed, while <code>P</code> indicates the subclass of display
+ * properties that will be created by the manager in order to facilitate
+ * countdown timer display painting.
  * 
  * <pre>
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 22, 2013    1936    Chris.Golden      Initial creation
- * Jun 18, 2015  7307      Chris.Cody  Added Hazard End time for requested Time Remaining calculation
- * Aug 06, 2015  9968      Chris.Cody  Minor change to continue count down until Expiration Time
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Aug 22, 2013    1936    Chris.Golden Initial creation.
+ * Jun 18, 2015    7307    Chris.Cody   Added Hazard End time for requested
+ *                                      Time Remaining calculation.
+ * Aug 06, 2015    9968    Chris.Cody   Minor change to continue count down
+ *                                      until Expiration Time.
+ * Feb 01, 2017   15556    Chris.Golden Changed to remove dependencies upon
+ *                                      session manager code, making this
+ *                                      more view-appropriate in the MVP
+ *                                      context.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirationAlert, P extends CountdownTimerDisplayProperties> {
+public abstract class CountdownTimersDisplayManager<C extends CountdownTimer, P extends CountdownTimerDisplayProperties> {
 
     // Private Static Constants
 
@@ -186,39 +192,36 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
     // Private Variables
 
     /**
-     * Class of hazard alerts for which this manager will be handling countdown
-     * timers.
+     * Class of the countdown timers being managed.
      */
-    private final Class<H> hazardAlertClass;
+    private final Class<C> countdownTimerClass;
 
     /**
      * Countdown timers display listener.
      */
-    private final CountdownTimersDisplayListener listener;
-
-    /**
-     * Flag indicating whether CAVE time is currently frozen or not.
-     */
-    private boolean timeIsFrozen;
+    private final ICountdownTimersDisplayListener listener;
 
     /**
      * Map of event identifiers to the display properties to be used for any
      * countdown timer displays for those events.
      */
-    private final Map<String, P> countdownTimerDisplayPropertiesForEventIdentifiers = Maps
-            .newHashMap();
+    private final Map<String, P> countdownTimerDisplayPropertiesForEventIdentifiers = new HashMap<>();
 
     /**
-     * Map of event identifiers to associated alerts, for those events that have
-     * alerts.
+     * Map of event identifiers to associated expiration times.
      */
-    private final Map<String, H> alertsForEventIdentifiers = Maps.newHashMap();
+    private final Map<String, C> countdownTimersForEventIdentifiers = new HashMap<>();
 
     /**
-     * Map of alerts to the next epoch time (in milliseconds) at which their
-     * associated timers' text, if any, needs updating.
+     * Map of event identifiers to the next epoch time (in milliseconds) at
+     * which their associated timers' text, if any, needs updating.
      */
-    private final Map<H, Long> updateTimesForActiveAlerts = Maps.newHashMap();
+    private final Map<String, Long> updateTimesForEventIdentifiers = new HashMap<>();
+
+    /**
+     * Flag indicating whether CAVE time is currently frozen or not.
+     */
+    private boolean timeIsFrozen;
 
     /**
      * Simulated time change listener.
@@ -232,9 +235,8 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
                 display.asyncExec(new Runnable() {
                     @Override
                     public void run() {
-                        updateActiveAlerts(ImmutableList.copyOf(Lists
-                                .newArrayList(alertsForEventIdentifiers
-                                        .values())));
+                        updateCountdownTimers(ImmutableMap
+                                .copyOf(countdownTimersForEventIdentifiers));
                         listener.allCountdownTimerDisplaysChanged(CountdownTimersDisplayManager.this);
                     }
                 });
@@ -257,20 +259,20 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
     /**
      * Construct a standard instance.
      * 
-     * @param hazardAlertClass
-     *            Class of hazard alerts for which the manager will be handling
-     *            countdown timers.
+     * @param countdownTimerClass
+     *            Class of countdown timers that is to be managed.
      * @param listener
      *            Listener for countdown timer display notifications.
      */
-    public CountdownTimersDisplayManager(Class<H> hazardAlertClass,
-            CountdownTimersDisplayListener listener) {
-        this.hazardAlertClass = hazardAlertClass;
+    public CountdownTimersDisplayManager(Class<C> countdownTimerClass,
+            ICountdownTimersDisplayListener listener) {
+        this.countdownTimerClass = countdownTimerClass;
         this.listener = listener;
 
-        // Ensure that this object gets notifications of simulated
-        // time changes, and determine whether or not the current
-        // time is frozen.
+        /*
+         * Ensure that this object gets notifications of simulated time changes,
+         * and determine whether or not the current time is frozen.
+         */
         SimulatedTime time = SimulatedTime.getSystemTime();
         timeIsFrozen = time.isFrozen();
         time.addSimulatedTimeChangeListener(simulatedTimeChangeListener);
@@ -283,10 +285,14 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      */
     public void dispose() {
 
-        // Cancel any pending timer-based update of countdown timers.
+        /*
+         * Cancel any pending timer-based update of countdown timers.
+         */
         Display.getCurrent().timerExec(-1, updateCountdownTimersExecutor);
 
-        // Remove the time change listener.
+        /*
+         * Remove the time change listener.
+         */
         SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
                 simulatedTimeChangeListener);
     }
@@ -298,29 +304,30 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      * <strong>NOTE</strong>: The object returned should be used immediately for
      * drawing purposes; it should never be cached.
      * 
-     * @param eventId
+     * @param eventIdentifier
      *            Event identifier for which to fetch the countdown timer
      *            display properties.
      * @return Display properties for the specified countdown timer, or
      *         <code>null</code> if no countdown timer exists for the specified
      *         event identifier.
      */
-    public final P getDisplayPropertiesForEvent(String eventId) {
+    public final P getDisplayPropertiesForEvent(String eventIdentifier) {
         P properties = countdownTimerDisplayPropertiesForEventIdentifiers
-                .get(eventId);
+                .get(eventIdentifier);
         if (properties == null) {
             return null;
         }
 
-        // Set the flag indicating whether the primary or secondary color is
-        // to be used as the foreground. If it is not blinking, the primary
-        // color is always the foreground color. Otherwise, the current time
-        // is used to determine whether the primary color is the foreground or
-        // or not, to simulate blinking. If CAVE time is currently frozen, the
-        // current system time is used, since the CAVE time will not tick
-        // forward.
+        /*
+         * Set the flag indicating whether the primary or secondary color is to
+         * be used as the foreground. If it is not blinking, the primary color
+         * is always the foreground color. Otherwise, the current time is used
+         * to determine whether the primary color is the foreground or or not,
+         * to simulate blinking. If CAVE time is currently frozen, the current
+         * system time is used, since the CAVE time will not tick forward.
+         */
         properties
-                .setPrimaryForeground(!properties.isBlinking()
+                .setPrimaryForeground((properties.isBlinking() == false)
                         || ((timeIsFrozen ? System.currentTimeMillis()
                                 : SimulatedTime.getSystemTime().getMillis())
                                 % (2L * BLINK_INTERVAL) < BLINK_INTERVAL));
@@ -331,16 +338,18 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      * Get the text for the countdown timer associated with the specified event
      * identifier, or an empty string if none.
      * 
-     * @param eventId
+     * @param eventIdentifier
      *            Event identifier for which to fetch the countdown timer text.
-     * @return Text to be displayed for the countdown identifier, or
+     * @return Text to be displayed for the countdown timer, or
      *         <code>null>/code> if there is none to be shown.
      */
-    public final String getTextForEvent(String eventId) {
-        H alert = alertsForEventIdentifiers.get(eventId);
-        if (alert != null) {
+    public final String getTextForEvent(String eventIdentifier) {
+        CountdownTimer countdownTimer = countdownTimersForEventIdentifiers
+                .get(eventIdentifier);
+        if (countdownTimer != null) {
             return TimeDeltaStringFormat
-                    .getTimeDeltaString(getTimeDeltaUntilAlertExpiration(alert,
+                    .getTimeDeltaString(getTimeDeltaUntilCountdownTimerExpiration(
+                            countdownTimer.getExpireTime(),
                             getCurrentTimeInMillis()));
         }
         return NO_TIMER_TEXT;
@@ -348,34 +357,19 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
 
     /**
      * Get the expiration time as an epoch time in milliseconds at which the
-     * alert associated with the specified event identifier is to expire.
+     * countdown timer associated with the specified event identifier is to
+     * expire.
      * 
-     * @param eventId
+     * @param eventIdentifier
      *            Event identifier for which to fetch the expiration time.
-     * @return Expiration time when the associated alert is to expire, or
-     *         <code>Long.MAX_VALUE</code> if there is no expiration time.
+     * @return Expiration time when the associated countdown timer is to expire,
+     *         or <code>Long.MAX_VALUE</code> if there is no expiration time.
      */
-    public final long getAlertExpirationTimeForEvent(String eventId) {
-        H alert = alertsForEventIdentifiers.get(eventId);
-        if (alert != null) {
-            return alert.getHazardExpiration().getTime();
-        }
-        return Long.MAX_VALUE;
-    }
-
-    /**
-     * Get the END time as an epoch time in milliseconds at which the alert
-     * associated with the specified event identifier is to END.
-     * 
-     * @param eventId
-     *            Event identifier for which to fetch the END time.
-     * @return END time when the associated alert is to END, or
-     *         <code>Long.MAX_VALUE</code> if there is no END time.
-     */
-    public final long getAlertEndTimeForEvent(String eventId) {
-        H alert = alertsForEventIdentifiers.get(eventId);
-        if (alert != null) {
-            return alert.getHazardEnd().getTime();
+    public final long getCountdownExpirationTimeForEvent(String eventIdentifier) {
+        CountdownTimer countdownTimer = countdownTimersForEventIdentifiers
+                .get(eventIdentifier);
+        if (countdownTimer != null) {
+            return countdownTimer.getExpireTime().getTime();
         }
         return Long.MAX_VALUE;
     }
@@ -384,60 +378,78 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      * Update the display properties for the countdown timer associated with the
      * specified event identifier, if any.
      * 
-     * @param eventId
+     * @param eventIdentifier
      *            Event identifier for which to update an associated countdown
      *            timer's display properties, if any.
      * @param baseFont
      *            Base font to be used for deriving fonts that will be used as
      *            properties of the countdown timer, if necessary.
      */
-    public final void updateDisplayPropertiesForEvent(String eventId,
+    public final void updateDisplayPropertiesForEvent(String eventIdentifier,
             Font baseFont) {
-        H alert = alertsForEventIdentifiers.get(eventId);
-        if ((alert != null)
+        C countdownTimer = countdownTimersForEventIdentifiers
+                .get(eventIdentifier);
+        if ((countdownTimer != null)
                 && (countdownTimerDisplayPropertiesForEventIdentifiers
-                        .get(eventId) == null)) {
-            countdownTimerDisplayPropertiesForEventIdentifiers.put(eventId,
-                    generateDisplayPropertiesForEvent(alert));
+                        .get(eventIdentifier) == null)) {
+            countdownTimerDisplayPropertiesForEventIdentifiers.put(
+                    eventIdentifier,
+                    generateDisplayPropertiesForCountdownTimer(countdownTimer));
         }
     }
 
     /**
-     * Update the currently active alerts.
+     * Update the currently active countdown timers.
      * 
-     * @param activeAlerts
-     *            Currently active alerts.
+     * @param countdownTimersForEventIdentifiers
+     *            Map of event identifiers to their countdown timers for any
+     *            events that have such.
      */
-    public final void updateActiveAlerts(
-            ImmutableList<? extends IHazardAlert> activeAlerts) {
+    @SuppressWarnings("unchecked")
+    public final void updateCountdownTimers(
+            ImmutableMap<String, ? extends CountdownTimer> countdownTimersForEventIdentifiers) {
 
-        // Clear the maps of alerts, update times, and countdown timer
-        // display properties.
-        alertsForEventIdentifiers.clear();
-        updateTimesForActiveAlerts.clear();
+        /*
+         * Clear the maps of countdown timers, update times, and countdown timer
+         * display properties.
+         */
+        this.countdownTimersForEventIdentifiers.clear();
+        updateTimesForEventIdentifiers.clear();
         countdownTimerDisplayPropertiesForEventIdentifiers.clear();
 
-        // Iterate through the active alerts, finding any that are of the
-        // appropriate types and associating each of these with their
-        // corresponding events, as well as getting the next update time
-        // for these alerts.
+        /*
+         * Iterate through the countdown timers, finding any that are of the
+         * appropriate types and associating each of these with their
+         * corresponding events, as well as getting the next update time for
+         * these alerts.
+         */
         long currentTimeMillis = getCurrentTimeInMillis();
-        for (IHazardAlert activeAlert : activeAlerts) {
+        for (Map.Entry<String, ? extends CountdownTimer> entry : countdownTimersForEventIdentifiers
+                .entrySet()) {
 
-            // Skip the alert if it is not of the appropriate type.
-            if (hazardAlertClass.isAssignableFrom(activeAlert.getClass()) == false) {
+            /*
+             * Skip the alert if it is not of the appropriate type.
+             */
+            if (countdownTimerClass.isAssignableFrom(entry.getValue()
+                    .getClass()) == false) {
                 continue;
             }
 
-            // Associate the alert with its event.
-            @SuppressWarnings("unchecked")
-            H alert = (H) activeAlert;
-            alertsForEventIdentifiers.put(alert.getEventID(), alert);
+            /*
+             * Associate the alert with its event.
+             */
+            C countdownTimer = (C) entry.getValue();
+            this.countdownTimersForEventIdentifiers.put(entry.getKey(),
+                    countdownTimer);
 
-            // Associate the alert with the next time it needs to have its
-            // associated countdown timer text updated, if any.
-            updateTimesForActiveAlerts.put(alert,
-                    getNextUpdateTimeForAlert(alert, currentTimeMillis));
+            /*
+             * Associate the countdown timer with the next time it needs to have
+             * its text updated, if any.
+             */
+            updateTimesForEventIdentifiers.put(
+                    entry.getKey(),
+                    getNextUpdateTimeForCountdownTimer(countdownTimer,
+                            currentTimeMillis));
         }
     }
 
@@ -452,26 +464,34 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      */
     public final Map<String, UpdateType> getEventsNeedingUpdateAndRefreshRedrawTimes() {
 
-        // Iterate through the alerts, determining for each if its text
-        // needs updating, and/or if it is blinking. If the former, then
-        // calculate its next refresh time. If either the text needs up-
-        // dating or the timer is blinking, make an entry in the map to
-        // indicate what needs updating.
-        Map<String, UpdateType> updateTypesForEventIdentifiers = Maps
-                .newHashMap();
+        /*
+         * Iterate through the countdown timers, determining for each if its
+         * text needs updating, and/or if it is blinking. If the former, then
+         * calculate its next refresh time. If either the text needs updating or
+         * the timer is blinking, make an entry in the map to indicate what
+         * needs updating.
+         */
+        Map<String, UpdateType> updateTypesForEventIdentifiers = new HashMap<>();
         long currentTimeMillis = getCurrentTimeInMillis();
-        for (H alert : alertsForEventIdentifiers.values()) {
-            boolean updateText = (updateTimesForActiveAlerts.get(alert) <= currentTimeMillis);
-            if (!updateText && !alert.isBlinking()) {
+        for (Map.Entry<String, C> entry : countdownTimersForEventIdentifiers
+                .entrySet()) {
+            boolean updateText = (updateTimesForEventIdentifiers.get(entry
+                    .getKey()) <= currentTimeMillis);
+            if ((updateText == false)
+                    && (entry.getValue().isBlinking() == false)) {
                 continue;
             }
             if (updateText) {
-                updateTimesForActiveAlerts.put(alert,
-                        getNextUpdateTimeForAlert(alert, currentTimeMillis));
+                updateTimesForEventIdentifiers.put(
+                        entry.getKey(),
+                        getNextUpdateTimeForCountdownTimer(entry.getValue(),
+                                currentTimeMillis));
             }
-            updateTypesForEventIdentifiers.put(alert.getEventID(), (updateText
-                    && alert.isBlinking() ? UpdateType.TEXT_AND_COLOR
-                    : (updateText ? UpdateType.TEXT : UpdateType.COLOR)));
+            updateTypesForEventIdentifiers
+                    .put(entry.getKey(),
+                            (updateText && entry.getValue().isBlinking() ? UpdateType.TEXT_AND_COLOR
+                                    : (updateText ? UpdateType.TEXT
+                                            : UpdateType.COLOR)));
         }
         return updateTypesForEventIdentifiers;
     }
@@ -483,14 +503,18 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      */
     public void refreshAllRedrawTimes() {
 
-        // Determine the next refresh time for each of the alerts,
-        // and schedule the next update of appropriate countdown
-        // timer displays if there is anything to update in the fu-
-        // ture.
+        /*
+         * Determine the next refresh time for each of the countdown timers, and
+         * schedule the next update of appropriate countdown timer displays if
+         * there is anything to update in the future.
+         */
         long currentTimeMillis = getCurrentTimeInMillis();
-        for (H alert : alertsForEventIdentifiers.values()) {
-            updateTimesForActiveAlerts.put(alert,
-                    getNextUpdateTimeForAlert(alert, currentTimeMillis));
+        for (Map.Entry<String, C> entry : countdownTimersForEventIdentifiers
+                .entrySet()) {
+            updateTimesForEventIdentifiers.put(
+                    entry.getKey(),
+                    getNextUpdateTimeForCountdownTimer(entry.getValue(),
+                            currentTimeMillis));
         }
     }
 
@@ -499,13 +523,15 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      * is any reason to update in the future.
      * 
      * @param eventIdentifiers
-     *            List of event identifiers. Alerts will be ignored if their
-     *            event identifiers are not found within this list.
+     *            List of event identifiers. Countdown timers will be ignored if
+     *            their event identifiers are not found within this list.
      */
     public void scheduleNextDisplayUpdate(List<String> eventIdentifiers) {
 
-        // Schedule the next invocation of the method if there
-        // is anything to be updated.
+        /*
+         * Schedule the next invocation of the method if there is anything to be
+         * updated.
+         */
         int timeDelta = getTimeDeltaBeforeNextDisplayUpdate(eventIdentifiers);
         if (timeDelta != -1) {
             Display.getCurrent().timerExec(timeDelta,
@@ -517,13 +543,14 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
 
     /**
      * Generate the display properties for the countdown timer associated with
-     * the specified event alert.
+     * the specified countdown timer.
      * 
-     * @param alert
-     *            Event alert.
+     * @param countdownTimer
+     *            Countdown timer.
      * @return Display properties for the associated countdown timer.
      */
-    protected abstract P generateDisplayPropertiesForEvent(H alert);
+    protected abstract P generateDisplayPropertiesForCountdownTimer(
+            C countdownTimer);
 
     // Private Methods
 
@@ -537,55 +564,62 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
     }
 
     /**
-     * Get the time remaining (in millis) for the Hazard Event for the alert.
+     * Get the time remaining in milliseconds for the hazard event for the
+     * countdown timer.
      * 
-     * Check to see if the Hazard Event for the Alert has Ended. If it has not
-     * ended, then get the time delta, in milliseconds, between the current CAVE
-     * time and the expiration time for the specified alert.
-     * 
-     * @param alert
-     *            Alert for which the delta is to be calculated.
+     * @param expireTime
+     *            Time at which the countdown timer is to expire.
      * @param currentTimeMillis
      *            Current CAVE time in milliseconds.
      * @return Time delta in milliseconds.
      */
-    private long getTimeDeltaUntilAlertExpiration(H alert,
+    private long getTimeDeltaUntilCountdownTimerExpiration(Date expireTime,
             long currentTimeMillis) {
-        // Place endTimeMillis on the other side of the minute to compensate for
-        // rounding
-        long expireTimeMillis = alert.getHazardExpiration().getTime()
+
+        /*
+         * Add a minute to the expiration time to compensate for rounding.
+         * 
+         * TODO: Is this needed? Shouldn't the code be changed elsewhere to
+         * ensure that expiration time is always on a second or minute boundary
+         * (as appropriate for the time resolution of the particular hazard
+         * event)?
+         */
+        long expireTimeMillis = expireTime.getTime()
                 + TimeUnit.MINUTES.toMillis(1L);
-        if ((expireTimeMillis - currentTimeMillis) >= 0) {
-            long delta = expireTimeMillis - currentTimeMillis;
-            if (delta >= 0L) {
-                return (delta);
-            }
-        }
-        return (-1L);
+
+        /*
+         * If the expiration time is later than the current time, return the
+         * delta; otherwise return -1 to indicate that the expiration time has
+         * passed.
+         */
+        long delta = expireTimeMillis - currentTimeMillis;
+        return (delta >= 0 ? delta : -1L);
     }
 
     /**
      * Get the next time, as epoch time in milliseconds, that the specified
-     * alert's associated countdown timer (if any) needs its text updated.
+     * countdown timer (if any) needs its text updated.
      * 
-     * @param alert
-     *            Alert for which the update time is to be calculated.
+     * @param countdownTimer
+     *            Countdown timer for which the update time is to be calculated.
      * @param currentTimeMillis
      *            Current CAVE time in milliseconds.
      * @return Update time, as epoch time in milliseconds, or
      *         <code>Long.MAX_VALUE</code> if no update is needed.
      */
-    private long getNextUpdateTimeForAlert(H alert, long currentTimeMillis) {
+    private long getNextUpdateTimeForCountdownTimer(C countdownTimer,
+            long currentTimeMillis) {
         if (timeIsFrozen) {
             return Long.MAX_VALUE;
         }
         long baseTimeDelta = TimeDeltaStringFormat.getStringFormatForTimeDelta(
-                getTimeDeltaUntilAlertExpiration(alert, currentTimeMillis))
+                getTimeDeltaUntilCountdownTimerExpiration(
+                        countdownTimer.getExpireTime(), currentTimeMillis))
                 .getTextChangeIntervalInMillis();
         if (baseTimeDelta == Long.MAX_VALUE) {
             return baseTimeDelta;
         }
-        long timeDelta = (alert.getHazardExpiration().getTime() - currentTimeMillis)
+        long timeDelta = (countdownTimer.getExpireTime().getTime() - currentTimeMillis)
                 % baseTimeDelta;
         return currentTimeMillis + timeDelta;
     }
@@ -595,58 +629,72 @@ public abstract class CountdownTimersDisplayManager<H extends HazardEventExpirat
      * should exist before the next update to the countdown timer displays.
      * 
      * @param eventIdentifiers
-     *            List of event identifiers. Alerts will be ignored if their
-     *            event identifiers are not found within this list.
+     *            List of event identifiers. Countdown timers will be ignored if
+     *            their event identifiers are not found within this list.
      * @return Time delta in milliseconds, or <code>-1</code> if no update is
      *         needed.
      */
     private int getTimeDeltaBeforeNextDisplayUpdate(
             List<String> eventIdentifiers) {
 
-        // Compile a list of active alerts that have corresponding events
-        // in the provided list. At the same time, determine if any of these
-        // alerts are blinking.
-        List<H> activeAlerts = Lists.newArrayList();
+        /*
+         * Compile a set that is the intersection of the passed in event
+         * identifiers and those which are associated with countdown timers. At
+         * the same time, determine if any of the subset's associated countdown
+         * timers are blinking.
+         */
+        Set<String> activeEventIdentifiers = new HashSet<>(
+                countdownTimersForEventIdentifiers.size(), 1.0f);
         boolean blinking = false;
-        for (H alert : alertsForEventIdentifiers.values()) {
-            if (eventIdentifiers.contains(alert.getEventID())) {
-                activeAlerts.add(alert);
-                if (alert.isBlinking()) {
+        for (Map.Entry<String, C> entry : countdownTimersForEventIdentifiers
+                .entrySet()) {
+            if (eventIdentifiers.contains(entry.getKey())) {
+                activeEventIdentifiers.add(entry.getKey());
+                if (entry.getValue().isBlinking()) {
                     blinking = true;
                 }
             }
         }
 
-        // Return a result differently depending upon whether CAVE time is
-        // currently frozen.
+        /*
+         * Return a result differently depending upon whether CAVE time is
+         * currently frozen.
+         */
         if (SimulatedTime.getSystemTime().isFrozen()) {
 
-            // Return a blink interval if blinking is occurring; otherwise,
-            // return -1.
+            /*
+             * Return a blink interval if blinking is occurring; otherwise,
+             * return -1.
+             */
             if (blinking) {
                 return (int) BLINK_INTERVAL;
             }
             return -1;
         } else {
 
-            // Determine the earliest update time required of all the count-
-            // down timers.
+            /*
+             * Determine the earliest update time required of all the countdown
+             * timers.
+             */
             long nextUpdate = Long.MAX_VALUE;
-            for (HazardEventExpirationAlert alert : activeAlerts) {
-                long thisNextUpdate = updateTimesForActiveAlerts.get(alert);
+            for (String eventIdentifier : activeEventIdentifiers) {
+                long thisNextUpdate = updateTimesForEventIdentifiers
+                        .get(eventIdentifier);
                 if (thisNextUpdate < nextUpdate) {
                     nextUpdate = thisNextUpdate;
                 }
             }
             long interval = Math.max(0L, nextUpdate - getCurrentTimeInMillis());
 
-            // If blinking is occurring, calculate the actual interval as
-            // the remainder of dividing the current CAVE time by the blink
-            // interval if the interval calculated above is significantly
-            // larger than the blink interval. Since these calculations may
-            // yield 0, just use 1 millisecond in such cases, since it may
-            // mean that the update that just occurred happened slightly too
-            // soon and thus the timers weren't updated properly.
+            /*
+             * If blinking is occurring, calculate the actual interval as the
+             * remainder of dividing the current CAVE time by the blink interval
+             * if the interval calculated above is significantly larger than the
+             * blink interval. Since these calculations may yield 0, just use 1
+             * millisecond in such cases, since it may mean that the update that
+             * just occurred happened slightly too soon and thus the timers
+             * weren't updated properly.
+             */
             int result;
             if (blinking && (interval > (BLINK_INTERVAL * 5L) / 4L)) {
                 result = (int) (getCurrentTimeInMillis() % BLINK_INTERVAL);

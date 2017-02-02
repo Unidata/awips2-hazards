@@ -133,17 +133,20 @@ Prob_StormPrediction = {
         "VTEC Codes": {
             "type": "string",
             "fieldName": "vtecCodes",
-            "sortDir": "none"
+            "sortDir": "none",
+            "displayEmptyAs": "[]"
         },
         "ETNs": {
             "type": "string",
             "fieldName": "etns",
-            "sortDir": "none"
+            "sortDir": "none",
+            "displayEmptyAs": "[]"
         },
         "PILs": {
             "type": "string",
             "fieldName": "pils",
-            "sortDir": "none"
+            "sortDir": "none",
+            "displayEmptyAs": "[]"
         },
         "Time to Expiration": {
             "sortDir": "none",

@@ -90,7 +90,7 @@ public class MegawidgetSettingsConversionUtils {
      * holding child names as identifiers, return a list of strings holding
      * their names.
      * 
-     * @param List
+     * @param childList
      *            of child names, in one of the forms listed above.
      * @return List of strings holding the names.
      */

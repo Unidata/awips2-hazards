@@ -19,7 +19,7 @@ import org.eclipse.swt.graphics.Font;
  * Description: Encapsulation of the properties of a console countdown timer's
  * display.
  * <p>
- * <strong>NOTE</strong>: Objects of this type are returned by the
+ * <strong>Note</strong>: Objects of this type are returned by the
  * {@link CountdownTimersDisplayManager#getDisplayPropertiesForEvent(String)}
  * method. They are to be used immediately for drawing operations, and are not
  * to be cached, as their states may be changed by the countdown timers display

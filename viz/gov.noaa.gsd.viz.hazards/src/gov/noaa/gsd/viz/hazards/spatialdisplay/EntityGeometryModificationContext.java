@@ -25,12 +25,13 @@ import java.util.Date;
  * Aug 29, 2016   19537    Chris.Golden Initial creation.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
  *                                      geometries.
+ * Feb 07, 2017   15556    Chris.Golden Changed to be package-private.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class EntityGeometryModificationContext {
+class EntityGeometryModificationContext {
 
     // Private Variables
 

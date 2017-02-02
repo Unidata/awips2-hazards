@@ -33,6 +33,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Apr 01, 2014            mnash        Initial creation
  * Oct 09, 2014    4042    Chris.Golden Added product staging dialog.
  * Dec 05, 2014    4124    Chris.Golden Added new UI elements.
+ * Feb 01, 2017   15556    Chris.Golden Removed unneeded UI element.
  * </pre>
  * 
  * @author mnash
@@ -41,11 +42,4 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 public enum UIOriginator implements IOriginator {
     SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, STAGING_DIALOG, SETTINGS_MENU, SETTINGS_DIALOG, CONSOLE,
-
-    /*
-     * TODO: CONSOLE_HEADER_FILTER is required because the Console has not yet
-     * been refactored; see the TODO comment in the anonymous
-     * MegawidgetManagerAdapter instance within TemporalDisplay.updateConsole()
-     */
-    CONSOLE_HEADER_FILTER;
 }

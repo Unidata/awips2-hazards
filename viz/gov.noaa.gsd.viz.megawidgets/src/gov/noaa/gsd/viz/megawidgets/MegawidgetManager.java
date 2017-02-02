@@ -151,6 +151,8 @@ import com.google.common.collect.Maps;
  *                                           of megawidget manager listener.
  * Oct 04, 2016   22736    Chris.Golden      Added method allowing an interdependency
  *                                           script to be reinitialized explicitly.
+ * Feb 03, 2017   15556    Chris.Golden      Added ability to set entire manager's
+ *                                           editability.
  * </pre>
  * 
  * @author Chris.Golden
@@ -234,6 +236,12 @@ public class MegawidgetManager {
      * enabled.
      */
     private boolean enabled = true;
+
+    /**
+     * Flag indicating whether or not the managed megawidgets are currently
+     * editable.
+     */
+    private boolean editable = true;
 
     /**
      * Flag indicating whether or not the mutable properties of any megawidget
@@ -694,10 +702,10 @@ public class MegawidgetManager {
 
     /**
      * Determine whether or not the manager and its megawidgets are currently
-     * enabled not.
+     * enabled.
      * 
-     * @return True if the manager and its megawidgets are currently enabled,
-     *         false otherwise.
+     * @return <code>true</code> if the manager and its megawidgets are
+     *         currently enabled, <code>false</code> otherwise.
      */
     public boolean isEnabled() {
         return enabled;
@@ -714,6 +722,34 @@ public class MegawidgetManager {
         this.enabled = enabled;
         for (IMegawidget megawidget : megawidgetsForIdentifiers.values()) {
             megawidget.setEnabled(enabled);
+        }
+        propertyProgrammaticallyChanged = true;
+    }
+
+    /**
+     * Determine whether or not the manager and its megawidgets are currently
+     * editable.
+     * 
+     * @return <code>true</code> if the manager and its megawidgets are
+     *         currently editable, <code>false</code> otherwise.
+     */
+    public boolean isEditable() {
+        return editable;
+    }
+
+    /**
+     * Render the manager and its megawidgets editable or read-only.
+     * 
+     * @param editable
+     *            Flag indicating whether or not the manager and its megawidgets
+     *            are to be editable.
+     */
+    public void setEditable(boolean editable) {
+        this.editable = editable;
+        for (IMegawidget megawidget : megawidgetsForIdentifiers.values()) {
+            if (megawidget instanceof IControl) {
+                ((IControl) megawidget).setEditable(editable);
+            }
         }
         propertyProgrammaticallyChanged = true;
     }
@@ -762,7 +798,8 @@ public class MegawidgetManager {
          * Set the mutable properties, finding out what states changed in the
          * process of doing so.
          */
-        Map<String, Object> valuesForChangedStates = doSetMutableProperties(mutableProperties);
+        Map<String, Object> valuesForChangedStates = doSetMutableProperties(
+                mutableProperties, true);
 
         /*
          * If there is a side effects applier, and at least one state changed,
@@ -1251,6 +1288,10 @@ public class MegawidgetManager {
      *            properties are to be changed to submaps holding the new
      *            mutable properties. Each of the latter maps the names of any
      *            mutable properties being changed to their new values.
+     * @param overrideEditability
+     *            Flag indicating whether or not mutable property changes may
+     *            alter editability when overall editability of the manager is
+     *            <code>false</code>.
      * @return Map of state identifiers to their new values for those states
      *         that were changed as a result of this call.
      * @throws MegawidgetPropertyException
@@ -1259,8 +1300,8 @@ public class MegawidgetManager {
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> doSetMutableProperties(
-            Map<String, Map<String, Object>> mutableProperties)
-            throws MegawidgetPropertyException {
+            Map<String, Map<String, Object>> mutableProperties,
+            boolean overrideEditability) throws MegawidgetPropertyException {
 
         /*
          * Iterate through the mutable properties map, setting the properties
@@ -1282,10 +1323,16 @@ public class MegawidgetManager {
             }
 
             /*
-             * Set the megawidget's mutable properties.
+             * Set the megawidget's mutable properties, not including any
+             * changes to editability if the manager is uneditable right now and
+             * if override of editability is not desired.
              */
             Map<String, Object> megawidgetMutableProperties = mutableProperties
                     .get(identifier);
+            if ((editable == false) && (overrideEditability == false)) {
+                megawidgetMutableProperties
+                        .remove(IControlSpecifier.MEGAWIDGET_EDITABLE);
+            }
             megawidget.setMutableProperties(megawidgetMutableProperties);
 
             /*
@@ -1561,7 +1608,8 @@ public class MegawidgetManager {
         if (changedProperties != null) {
             Map<String, Object> valuesForChangedStates = null;
             try {
-                valuesForChangedStates = doSetMutableProperties(changedProperties);
+                valuesForChangedStates = doSetMutableProperties(
+                        changedProperties, false);
             } catch (MegawidgetPropertyException e) {
                 if (managerListener != null) {
                     managerListener

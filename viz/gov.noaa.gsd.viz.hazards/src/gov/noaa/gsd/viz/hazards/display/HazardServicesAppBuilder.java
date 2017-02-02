@@ -47,10 +47,10 @@ import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
 import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
 import gov.noaa.gsd.viz.hazards.console.ConsoleView;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
-import gov.noaa.gsd.viz.hazards.display.test.AutomatedTests;
+import gov.noaa.gsd.viz.hazards.console.IConsoleHandler;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
+import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailHandler;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstView;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -67,7 +67,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
-import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.tools.ToolsView;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
@@ -76,6 +75,7 @@ import gov.noaa.gsd.viz.mvp.IView;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
@@ -106,9 +106,11 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -150,6 +152,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -301,6 +304,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             descriptor parameter would not yet be non-null. The
  *                                             fix was to have it asynchronously attempt to register
  *                                             again later.
+ * Feb 01, 2017 15556      Chris.Golden        Minor changes to support console refactor, including
+ *                                             implementation of the new console handler and
+ *                                             hazard detail handler interfaces. Also moved methods
+ *                                             from HazardServicesMessageHandler here as appropriate,
+ *                                             and removed anything not being used.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -308,7 +316,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  */
 public class HazardServicesAppBuilder implements IPerspectiveListener4,
         IGlobalChangedListener, IWorkbenchListener, IFrameChangedListener,
-        ISpatialDisplayHandler, IMessenger {
+        IConsoleHandler, IHazardDetailHandler, ISpatialDisplayHandler,
+        IMessenger {
 
     // Public Static Constants
 
@@ -350,11 +359,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * as hidden when loaded from a bundle.
      */
     private static final String START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE = "startViewsHiddenWhenLoadedFromBundle";
-
-    /**
-     * Run automated tests command string.
-     */
-    private static final String AUTO_TEST_COMMAND_MENU_TEXT = "Run Automated Tests";
 
     /**
      * Logging mechanism.
@@ -612,9 +616,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     private IContinueCanceller continueCanceller;
 
-    private IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
-
-    private AutomatedTests automatedTests;
+    private final IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
 
     private IRiseCrestFallEditor graphicalEditor;
 
@@ -895,37 +897,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public void buildGUIs(boolean loadedFromBundle) {
 
-        // Initialize the automated tests if appropriate.
-        String autoTestsEnabled = System
-                .getenv("HAZARD_SERVICES_AUTO_TESTS_ENABLED");
-        if (autoTestsEnabled != null) {
-
-            // Build a menubar contributor that adds the
-            // automated test menu item.
-            appBuilderMenubarContributor = new IMainUiContributor<Action, RCPMainUserInterfaceElement>() {
-                @Override
-                public List<? extends Action> contributeToMainUI(
-                        RCPMainUserInterfaceElement type) {
-                    if (type == RCPMainUserInterfaceElement.MENUBAR) {
-                        Action autoTestAction = new BasicAction(
-                                AUTO_TEST_COMMAND_MENU_TEXT, null,
-                                Action.AS_PUSH_BUTTON, null) {
-                            @Override
-                            public void run() {
-                                automatedTests = new AutomatedTests();
-                                automatedTests
-                                        .init(HazardServicesAppBuilder.this);
-                                eventBus.publish(new ConsoleAction(
-                                        ConsoleAction.ActionType.RUN_AUTOMATED_TESTS));
-                            }
-                        };
-                        return Lists.newArrayList(autoTestAction);
-                    }
-                    return Collections.emptyList();
-                }
-            };
-        }
-
         /*
          * Create the Spatial Display layer in the active CAVE editor. This is
          * what hazards will be drawn on.
@@ -974,9 +945,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         // when loading a drawing layer
         PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                 .addPerspectiveListener(this);
-
-        // Set the time line duration.
-        messageHandler.updateConsoleVisibleTimeDelta();
 
         // Add the HazardServicesAppBuilder as a listener for frame changes.
         VizGlobalsManager.addListener(VizConstants.FRAMES_ID, this);
@@ -1031,7 +999,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     /**
      * Update the model with CAVE frame information.
      */
-    public void handleFrameChange() {
+    private void handleFrameChange() {
 
         /*
          * If frame information is available, use it, but ensure that this is
@@ -1078,6 +1046,33 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     }
 
     @Override
+    public void showUserConflictingHazardsWarning(
+            Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> areasForConflictingEventsForEvents) {
+        launchConflictingHazardsDialog(areasForConflictingEventsForEvents,
+                false);
+    }
+
+    @Override
+    public void showUserProductViewerSelectionDialog(
+            List<ProductData> productData) {
+        Shell shell = VizWorkbenchManager.getInstance().getCurrentWindow()
+                .getShell();
+        final ProductViewerSelectionDlg selectionDialog = new ProductViewerSelectionDlg(
+                shell, consolePresenter, productData);
+        VizApp.runSync(new Runnable() {
+            @Override
+            public void run() {
+                selectionDialog.open();
+            }
+        });
+    }
+
+    @Override
+    public void consoleDisposed() {
+        dispose();
+    }
+
+    @Override
     public void spatialDisplayDisposed() {
         dispose();
     }
@@ -1089,7 +1084,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            Question to be asked.
      * @return Answer provided by the user.
      */
-    public boolean getUserAnswerToQuestion(String question) {
+    private boolean getUserAnswerToQuestion(String question) {
         return questionAnswerer.getUserAnswerToQuestion(question);
     }
 
@@ -1103,7 +1098,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      *            The warning message to convey to the user
      * @return
      */
-    public void warnUser(String title, String warning) {
+    private void warnUser(String title, String warning) {
         warner.warnUser(title, warning);
     }
 
@@ -1165,7 +1160,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private void createConsole(boolean loadedFromBundle) {
         ConsoleView consoleView = new ConsoleView(loadedFromBundle);
         if (consolePresenter == null) {
-            consolePresenter = new ConsolePresenter(sessionManager, eventBus);
+            consolePresenter = new ConsolePresenter(sessionManager, this,
+                    eventBus);
             presenters.add(consolePresenter);
         }
         consolePresenter.setView(consoleView);
@@ -1238,7 +1234,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 loadedFromBundle);
         if (hazardDetailPresenter == null) {
             hazardDetailPresenter = new HazardDetailPresenter(sessionManager,
-                    eventBus);
+                    this, eventBus);
             presenters.add(hazardDetailPresenter);
         }
         hazardDetailPresenter.setView(hazardDetailView);
@@ -1540,16 +1536,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * Shut down this instance of hazard services, disposing of all allocated
      * resources.
      */
-    public void dispose() {
+    private void dispose() {
         closeHazardServices(null);
-    }
-
-    /**
-     * Ensure that the views are visible.
-     */
-    public void ensureViewsVisible() {
-        consolePresenter.getView().ensureVisible();
-        hazardDetailPresenter.showHazardDetail();
     }
 
     /**
@@ -1791,25 +1779,27 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         });
     }
 
-    /**
-     * Close the product editor dialog.
-     */
-    public void closeProductEditorView() {
+    @Override
+    public boolean shouldContinueIfThereAreHazardConflicts() {
+
+        boolean userResponse = true;
+
+        ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
+                .getEventManager();
+
+        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
+                .getAllConflictingEvents();
+
+        if (!conflictMap.isEmpty()) {
+            userResponse = launchConflictingHazardsDialog(conflictMap, true);
+        }
+
+        return userResponse;
+    }
+
+    @Override
+    public void closeProductEditor() {
         productEditorPresenter.getView().closeProductEditorDialog();
-    }
-
-    /**
-     * Show the hazard detail subview.
-     */
-    public void showHazardDetail() {
-        hazardDetailPresenter.showHazardDetail();
-    }
-
-    /**
-     * Hide the hazard detail subview.
-     */
-    public void hideHazardDetail() {
-        hazardDetailPresenter.hideHazardDetail();
     }
 
     @Override
@@ -1970,6 +1960,83 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     }
 
     /**
+     * Launches a dialog displaying conflicting hazards. It is up to the user as
+     * to whether or not to fix them.
+     * 
+     * @param conflictingHazardMap
+     *            A map of hazards and hazards which conflict with them.
+     * @param requiresConfirmation
+     *            Indicates whether or not this dialog should require user
+     *            confirmation (Yes or No).
+     * @return The return value from the dialog based on the user's selection.
+     */
+    private boolean launchConflictingHazardsDialog(
+            final Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap,
+            final Boolean requiresConfirmation) {
+
+        boolean userSelection = true;
+
+        if (!conflictingHazardMap.isEmpty()) {
+            StringBuffer message = new StringBuffer(
+                    "Conflicting Hazards: The following hazard conflicts exist: ");
+
+            if (requiresConfirmation) {
+                message.append("Continue?\n");
+            } else {
+                message.append("\n");
+            }
+
+            for (IHazardEvent hazardEvent : conflictingHazardMap.keySet()) {
+
+                String phenSig = HazardEventUtilities
+                        .getHazardType(hazardEvent);
+                message.append("Event ID:" + hazardEvent.getEventID() + "("
+                        + phenSig + ") Conflicts With: ");
+
+                Map<IHazardEvent, Collection<String>> conflictingHazards = conflictingHazardMap
+                        .get(hazardEvent);
+
+                for (IHazardEvent conflictingHazard : conflictingHazards
+                        .keySet()) {
+                    String conflictingPhenSig = HazardEventUtilities
+                            .getHazardType(conflictingHazard);
+                    message.append("Event ID:" + conflictingHazard.getEventID()
+                            + "(" + conflictingPhenSig + ") ");
+
+                    Collection<String> conflictingAreas = conflictingHazards
+                            .get(conflictingHazard);
+
+                    /*
+                     * TODO - Future work to be done under RM 7306. The below
+                     * label needs to be updated based on the ugcType of the
+                     * hazard. It could be a county, forecast zone, or fire wx
+                     * zone.
+                     */
+                    if (!conflictingAreas.isEmpty()) {
+                        message.append("\n\tForecast Zones:");
+
+                        for (String area : conflictingAreas) {
+                            message.append(" " + area);
+                        }
+                    }
+
+                }
+
+                message.append("\n");
+            }
+
+            if (requiresConfirmation) {
+                userSelection = getUserAnswerToQuestion(message.toString());
+
+            } else {
+                warnUser("Conflicting Hazards", message.toString());
+            }
+        }
+
+        return userSelection;
+    }
+
+    /**
      * Add the spatial display to the current perspective.
      */
     private void addSpatialDisplayResourceToPerspective() {
@@ -2055,65 +2122,16 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         return sessionManager;
     }
 
-    void setToolsPresenter(ToolsPresenter toolsPresenter) {
-        this.toolsPresenter = toolsPresenter;
-    }
-
-    public ConsolePresenter getConsolePresenter() {
-        return consolePresenter;
-    }
-
-    public HazardTypeFirstPresenter getHazardTypeFirstPresenter() {
-        return hazardTypeFirstPresenter;
-    }
-
-    public ProductStagingPresenter getProductStagingPresenter() {
-        return productStagingPresenter;
-    }
-
-    public ToolsPresenter getToolsPresenter() {
-        return toolsPresenter;
-    }
-
-    public SpatialPresenter getSpatialPresenter() {
-        return spatialPresenter;
-    }
-
-    public SpatialDisplay getSpatialDisplay() {
-        return spatialDisplay;
-    }
-
-    public HazardDetailPresenter getHazardDetailPresenter() {
-        return hazardDetailPresenter;
-    }
-
-    public ProductEditorPresenter getProductEditorPresenter() {
-        return productEditorPresenter;
-    }
-
-    public void setQuestionAnswerer(IQuestionAnswerer questionAnswerer) {
-        this.questionAnswerer = questionAnswerer;
-    }
-
     @Override
     public IQuestionAnswerer getQuestionAnswerer() {
         return questionAnswerer;
     }
 
-    /**
-     * Returns the warner.
-     * 
-     * @param
-     * @return The warner.
-     */
     @Override
     public IWarner getWarner() {
         return warner;
     }
 
-    /**
-     * Returns the continue/canceller.
-     */
     @Override
     public IContinueCanceller getContinueCanceller() {
         return continueCanceller;
@@ -2122,17 +2140,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public IToolParameterGatherer getToolParameterGatherer() {
         return toolParameterGatherer;
-    }
-
-    /**
-     * Sets the warner.
-     * 
-     * @param warner
-     *            The warner
-     * @return
-     */
-    public void setWarner(IWarner warner) {
-        this.warner = warner;
     }
 
     @Override

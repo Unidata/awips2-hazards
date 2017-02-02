@@ -233,7 +233,7 @@ public interface IDrawable<G extends IAdvancedGeometry> {
     /**
      * Set the resizable status of this shape.
      * 
-     * @param editable
+     * @param resizable
      *            Flag indicating whether or not this shape is resizable.
      */
     public void setResizable(boolean resizable);

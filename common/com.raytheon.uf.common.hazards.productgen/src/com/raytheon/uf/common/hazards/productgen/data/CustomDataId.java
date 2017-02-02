@@ -38,11 +38,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 11, 2014            jsanchez     Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Apr 11, 2014            jsanchez     Initial creation.
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
- * 
+ * Feb 01, 2017 15556      Chris.Golden Added copy constructor.
  * </pre>
  * 
  * @author jsanchez
@@ -73,6 +73,13 @@ public class CustomDataId implements ISerializableObject, Serializable {
         this.mode = mode;
         this.productGeneratorName = productGeneratorName;
         this.eventIDs = eventIDs;
+    }
+
+    public CustomDataId(CustomDataId other) {
+        this.mode = other.mode;
+        this.productGeneratorName = other.productGeneratorName;
+        this.eventIDs = (other.eventIDs == null ? null : new ArrayList<>(
+                other.eventIDs));
     }
 
     public String getMode() {
@@ -115,28 +122,37 @@ public class CustomDataId implements ISerializableObject, Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         CustomDataId other = (CustomDataId) obj;
         if (eventIDs == null) {
-            if (other.eventIDs != null)
+            if (other.eventIDs != null) {
                 return false;
-        } else if (!eventIDs.equals(other.eventIDs))
+            }
+        } else if (!eventIDs.equals(other.eventIDs)) {
             return false;
+        }
         if (mode == null) {
-            if (other.mode != null)
+            if (other.mode != null) {
                 return false;
-        } else if (!mode.equals(other.mode))
+            }
+        } else if (!mode.equals(other.mode)) {
             return false;
+        }
         if (productGeneratorName == null) {
-            if (other.productGeneratorName != null)
+            if (other.productGeneratorName != null) {
                 return false;
-        } else if (!productGeneratorName.equals(other.productGeneratorName))
+            }
+        } else if (!productGeneratorName.equals(other.productGeneratorName)) {
             return false;
+        }
         return true;
     }
 

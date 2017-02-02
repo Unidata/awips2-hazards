@@ -20,11 +20,11 @@
 
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
 
 import java.io.Serializable;
-import java.text.SimpleDateFormat;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,11 +56,11 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 29, 2015 9681       Robert.Blum Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jul 29, 2015 9681       Robert.Blum  Initial creation
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
- * 
+ * Feb 01, 2017 15556      Chris.Golden Minor changes to support console refactor.
  * </pre>
  * 
  * @author Robert.Blum
@@ -68,18 +68,18 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 public class ProductViewerSelectionDlg extends CaveSWTDialog {
 
+    public static final String PRODUCT_DATA_PARAM = "productData";
+
     private final String DIALOG_TITILE = "Select Product to View";
 
     private final String VIEW_BUTTON_TEXT = "View product";
 
     private final String CLOSE_BUTTON_TEXT = "Close";
 
-    private final String PRODUCT_DATA_PARAM = "productData";
+    private final DateFormat dateFormat = Utils
+            .getGmtDateTimeFormatterWithMinutesResolution();
 
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat(
-            "HH:mm'Z' dd-MMM-yy");
-
-    private final ConsolePresenter presenter;
+    private final HazardServicesPresenter<?> presenter;
 
     /** List of all productData in the table */
     private final List<ProductData> productData;
@@ -99,7 +99,7 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
      * @param productData
      */
     public ProductViewerSelectionDlg(Shell parentShell,
-            ConsolePresenter presenter, List<ProductData> productData) {
+            HazardServicesPresenter<?> presenter, List<ProductData> productData) {
         super(parentShell, SWT.DIALOG_TRIM, CAVE.NONE);
         this.presenter = presenter;
         this.productData = productData;
@@ -189,8 +189,8 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
                 }
                 // Table only allows for single selection.
                 if (items.length == 1) {
-                    HazardDetailAction action = new HazardDetailAction(
-                            HazardDetailAction.ActionType.VIEW);
+                    ProductAction action = new ProductAction(
+                            ProductAction.ActionType.VIEW);
                     Map<String, Serializable> parameters = new HashMap<String, Serializable>();
                     parameters.put(PRODUCT_DATA_PARAM,
                             (Serializable) selectedProductData);

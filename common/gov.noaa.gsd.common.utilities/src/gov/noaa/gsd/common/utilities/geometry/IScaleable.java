@@ -44,7 +44,7 @@ public interface IScaleable extends IAdvancedGeometry {
      *            rotation); must be a non-zero number. A negative number will
      *            cause the geometry to be flipped along the axis perpendicular
      *            to the rescaling.
-     * @param horizontalMultiplier
+     * @param verticalMultiplier
      *            Multiplier to be applied along the vertical axis (before
      *            rotation); must be a non-zero number. A negative number will
      *            cause the geometry to be flipped along the axis perpendicular

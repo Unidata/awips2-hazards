@@ -47,8 +47,7 @@ public interface IHazardTypeFirstView {
     /**
      * Get the dialog command invoker.
      * 
-     * @param Command
-     *            invoker.
+     * @return Command invoker.
      */
     public ICommandInvoker<Command> getCommandInvoker();
 }

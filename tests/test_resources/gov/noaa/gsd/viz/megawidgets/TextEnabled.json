@@ -21,5 +21,11 @@
   "fieldName": "enabled",
   "label": "Enabled",
   "values": true
+ },
+ {
+  "fieldType": "CheckBox",
+  "fieldName": "editable",
+  "label": "Editable",
+  "values": true
  }
 ]

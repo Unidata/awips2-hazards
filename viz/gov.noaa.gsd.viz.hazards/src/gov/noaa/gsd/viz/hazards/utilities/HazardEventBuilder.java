@@ -44,6 +44,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Sep 12, 2016 15934      Chris.Golden Folded functionality back into the spatial
  *                                      presenter, leaving only deprecated methods being
  *                                      used by obsolete auto-tests.
+ * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
  * </pre>
  * 
  * @author Dan Schaffer
@@ -131,10 +132,11 @@ public class HazardEventBuilder {
         if ((Boolean.TRUE.equals(sessionManager.getConfigurationManager()
                 .getSettings().getAddGeometryToSelected()))
                 && (event.getHazardType() == null)
-                && (sessionManager.getEventManager().getSelectedEvents().size() == 1)) {
+                && (sessionManager.getSelectionManager().getSelectedEvents()
+                        .size() == 1)) {
 
             ObservedHazardEvent existingEvent = sessionManager
-                    .getEventManager().getSelectedEvents().iterator().next();
+                    .getSelectionManager().getSelectedEvents().get(0);
 
             IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
             IAdvancedGeometry newGeometries = event.getGeometry();

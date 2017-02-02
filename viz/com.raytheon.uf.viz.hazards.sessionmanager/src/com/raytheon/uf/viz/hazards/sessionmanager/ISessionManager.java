@@ -33,6 +33,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
@@ -66,6 +67,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      instead of just one recommender.
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
+ * Feb 01, 2017 15556      Chris.Golden Added selection manager.
  * </pre>
  * 
  * @author bsteffen
@@ -81,6 +83,13 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @return
      */
     public ISessionEventManager<E> getEventManager();
+
+    /**
+     * Get a manager for interacting with the selection set.
+     * 
+     * @return
+     */
+    public ISessionSelectionManager<E> getSelectionManager();
 
     /**
      * Get a manager for interacting with the times

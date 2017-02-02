@@ -180,11 +180,6 @@ public abstract class ScalingDrawingInputHandler extends DrawingInputHandler {
     /**
      * Show a ghost drawable providing a visual indicator of the shape drawn so
      * far.
-     * 
-     * @param location
-     *            Point to add to the end of the list of points for the purposes
-     *            of creating the ghost drawable; if <code>null</code>, no extra
-     *            point is added.
      */
     protected final void showGhost() {
         ArrayList<Coordinate> ghostPoints = Lists

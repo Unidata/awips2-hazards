@@ -29,6 +29,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_VISIBLE_COLUMNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TIME_RESOLUTION;
 import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
@@ -102,6 +103,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardCategories;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardMetaData;
@@ -257,6 +259,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 19, 2016 21873      Chris.Golden Added time resolution, both for hazard types
  *                                      and for the current settings (and with the
  *                                      latter, startup-config).
+ * Feb 01, 2017 15556      Chris.Golden Changed to include originator when setting
+ *                                      the site identifier.
  * </pre>
  * 
  * @author bsteffen
@@ -365,7 +369,7 @@ public class SessionConfigurationManager implements
 
     private ObservedSettings settings;
 
-    private String siteId;
+    private String siteIdentifier;
 
     private Map<String, TimeResolution> timeResolutionsForHazardTypes;
 
@@ -748,12 +752,16 @@ public class SessionConfigurationManager implements
 
     @Override
     public String getSiteID() {
-        return siteId;
+        return siteIdentifier;
     }
 
     @Override
-    public void setSiteID(String siteID) {
-        this.siteId = siteID;
+    public void setSiteID(String siteIdentifier, IOriginator originator) {
+        if (Utils.equal(siteIdentifier, this.siteIdentifier) == false) {
+            this.siteIdentifier = siteIdentifier;
+            notificationSender.postNotificationAsync(new SiteChanged(
+                    siteIdentifier, originator));
+        }
     }
 
     @Override
@@ -1082,7 +1090,8 @@ public class SessionConfigurationManager implements
         SettingsConfig viewConfig = getSettingsConfig();
         for (Page page : viewConfig.getPages()) {
             for (Field field : page.getPageFields()) {
-                if (field.getFieldName().equals("hazardCategoriesAndTypes")) {
+                if (field.getFieldName().equals(
+                        SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
                     config[0] = new Field(field);
                     config[0].setFieldType("HierarchicalChoicesMenu");
                     config[0].setLabel("Hazard &Types");

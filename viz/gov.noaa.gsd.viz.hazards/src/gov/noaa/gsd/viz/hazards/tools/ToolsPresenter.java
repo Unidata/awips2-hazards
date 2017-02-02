@@ -20,7 +20,6 @@ import net.engio.mbassy.listener.Handler;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsToolsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
@@ -51,6 +50,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                           running a recommender.
  * Nov 10, 2015   12762    Chris.Golden      Added support for use of new recommender
  *                                           manager.
+ * Feb 01, 2017   15556    Chris.Golden      Changed to take advantage of new
+ *                                           finer-grained settings change messages.
  * </pre>
  * 
  * @author Chris.Golden
@@ -100,19 +101,17 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
     @Override
     @Deprecated
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
-        // DO NOTHING HERE, WILL BE REMOVED
+
+        /*
+         * No action.
+         */
     }
 
     @Handler
-    public void toolsChanged(SettingsToolsModified modified) {
-        getView().setTools(modified.getSettingsTools());
-    }
-
-    @Handler
-    public void settingsChanged(SettingsModified loaded) {
-        getView().setTools(
-                getModel().getConfigurationManager().getSettings()
-                        .getToolbarTools());
+    public void settingsChanged(SettingsModified modified) {
+        if (modified.getChanged().contains(ObservedSettings.Type.TOOLS)) {
+            getView().setTools(modified.getSettings().getToolbarTools());
+        }
     }
 
     /**

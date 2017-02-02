@@ -22,6 +22,7 @@ import java.util.Map;
 
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
 
 /**
  * Description: Interface describing the methods that must be implemented by a
@@ -93,10 +94,10 @@ public interface IHazardDetailView {
      *            as to be optimized for wide viewing.
      * @param includeIssueButton
      *            Flag indicating whether or not to include the Issue button.
-     * @param extraDataForEventIdentifiers
-     *            Map pairing event identifiers with any extra data they may
-     *            have used in previous view instantiations, allowing such data
-     *            to persist between different views.
+     * @param extraDataForEventVersionIdentifiers
+     *            Map pairing event version identifiers with any extra data they
+     *            may have used in previous view instantiations, allowing such
+     *            data to persist between different views.
      */
     public void initialize(
             long minVisibleTime,
@@ -105,7 +106,7 @@ public interface IHazardDetailView {
             boolean showStartEndTimeScale,
             boolean buildForWideViewing,
             boolean includeIssueButton,
-            Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers);
+            Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers);
 
     /**
      * Get the visible time range state changer. The identifier is ignored.
@@ -119,46 +120,47 @@ public interface IHazardDetailView {
      * 
      * @return Selected event state changer.
      */
-    public IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> getVisibleEventChanger();
+    public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> getVisibleEventChanger();
 
     /**
      * Get the category state changer. The identifier is that of the hazard
-     * event.
+     * event version.
      * 
      * @return Category state changer.
      */
-    public IChoiceStateChanger<String, String, String, String> getCategoryChanger();
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getCategoryChanger();
 
     /**
-     * Get the type state changer. The identifier is that of the hazard event.
+     * Get the type state changer. The identifier is that of the hazard event
+     * version.
      * 
      * @return Type state changer.
      */
-    public IChoiceStateChanger<String, String, String, String> getTypeChanger();
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getTypeChanger();
 
     /**
      * Get the time range state changer. The identifier is that of the hazard
-     * event.
+     * event version.
      * 
      * @return Time range state changer.
      */
-    public IStateChanger<String, TimeRange> getTimeRangeChanger();
+    public IStateChanger<Pair<String, Integer>, TimeRange> getTimeRangeChanger();
 
     /**
      * Get the time range boundaries state changer. The qualifier is that of the
-     * hazard event, while the identifier indicates which boundary.
+     * hazard event version, while the identifier indicates which boundary.
      * <p>
      * <strong>Note</strong>: This class uses a {@link Range} instead of a
      * {@link TimeRange} because the latter is not intended to have a
      * zero-length interval between its start and end times (such an instance is
-     * considered invalid by its {@link TimeRange#isInvalid()} method). However,
+     * considered invalid by its {@link TimeRange#isValid()} method). However,
      * the allowable boundaries for event start and end times may have
      * zero-length intervals.
      * </p>
      * 
-     * @return Time range state changer.
+     * @return Time range boundaries state changer.
      */
-    public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger();
+    public IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger();
 
     /**
      * Get the time resolution changer. The identifier is ignored.
@@ -170,15 +172,15 @@ public interface IHazardDetailView {
     /**
      * Get the duration changer. This is only used to set the choices for
      * possible durations; changes in the chosen duration are handled as time
-     * range changes. The identifier is that of the hazard event.
+     * range changes. The identifier is that of the hazard event version.
      * 
      * @return Duration changer.
      */
-    public IChoiceStateChanger<String, String, String, String> getDurationChanger();
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getDurationChanger();
 
     /**
      * Get the metadata state changer. The qualifier is the identifier of the
-     * hazard event, while the identifier is that of the metadata.
+     * hazard event version, while the identifier is that of the metadata.
      * 
      * @return Metadata state changer.
      */

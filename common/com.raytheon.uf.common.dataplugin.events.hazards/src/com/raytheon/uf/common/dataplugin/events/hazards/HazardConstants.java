@@ -106,6 +106,8 @@ import com.google.common.collect.ImmutableMap;
  * Aug 31, 2016 15934     Chris.Golden  Added constant related to advanced geometries.
  * Oct 05, 2016 22870     Chris.Golden  Added frame change to triggers.
  * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
+ * Feb 01, 2017 15556     Chris.Golden  Removed obsolete elements, and added constants for the
+ *                                      console refactor.
  * </pre>
  * 
  * @author mnash
@@ -422,8 +424,7 @@ public final class HazardConstants {
     }
 
     public static enum HazardAction {
-        PROPOSE("Propose"), PREVIEW("Preview"), ISSUE("Issue"), CORRECT(
-                "Correct");
+        ISSUE("Issue"), CORRECT("Correct");
 
         private final String value;
 
@@ -444,7 +445,7 @@ public final class HazardConstants {
      */
     @Deprecated
     public static enum Element {
-        EVENTS, SELECTED_TIME_RANGE, VISIBLE_TIME_DELTA, SETTINGS, CURRENT_SETTINGS, SITE;
+        SETTINGS, CURRENT_SETTINGS;
     }
 
     /**
@@ -618,9 +619,19 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_IDENTIFIER = "eventID";
 
     /**
+     * Displayable event identifier key.
+     */
+    public static final String HAZARD_EVENT_DISPLAY_IDENTIFIER = "displayEventID";
+
+    /**
      * Category key for hazard
      */
     public static final String HAZARD_EVENT_CATEGORY = "hazardCategory";
+
+    /**
+     * Flag indicating visibility in history list key for hazard.
+     */
+    public static final String HAZARD_EVENT_VISIBLE_IN_HISTORY_LIST = "visibleInHistoryList";
 
     /**
      * Type key for hazard
@@ -773,8 +784,13 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_COLOR = "color";
 
     /**
-     * Event-is-selected key in hazard
+     * Event-is-selected key in hazard.
+     * 
+     * @deprecated Should not be used once recommenders, etc. switch to being
+     *             told which events are selected via a separate set of event
+     *             identifiers
      */
+    @Deprecated
     public static final String HAZARD_EVENT_SELECTED = "selected";
 
     /**
@@ -1059,11 +1075,6 @@ public final class HazardConstants {
      * Hazard categories and types key in setting dictionary.
      */
     public static final String SETTING_HAZARD_CATEGORIES_AND_TYPES = "hazardCategoriesAndTypes";
-
-    /**
-     * Hazard categories key setting dictionary.
-     */
-    public static final String SETTING_HAZARD_CATEGORIES = "hidHazardCategories";
 
     /*
      * Hazard types key in settings.

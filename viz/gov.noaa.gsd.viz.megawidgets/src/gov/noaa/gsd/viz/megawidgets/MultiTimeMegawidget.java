@@ -113,16 +113,6 @@ public abstract class MultiTimeMegawidget extends
      */
     protected static final long DAY_INTERVAL = TimeUnit.DAYS.toMillis(1);
 
-    /**
-     * Minimum visible time range as an epoch time delta in milliseconds.
-     */
-    protected static final long MIN_VISIBLE_TIME_RANGE = 1L * MINUTE_INTERVAL;
-
-    /**
-     * Maximum visible time range as an epoch time delta in milliseconds.
-     */
-    protected static final long MAX_VISIBLE_TIME_RANGE = 8L * DAY_INTERVAL;
-
     // Private Static Constants
 
     /**
@@ -1345,7 +1335,7 @@ public abstract class MultiTimeMegawidget extends
     /**
      * Determine whether or not the specified value is within the range between
      * any neighboring values. The specified value must already have been run
-     * through {@link #convertToValueAcceptableToScale(long)}.
+     * through {@link #convertToValueAcceptableToScale(String, long)}.
      * 
      * @param index
      *            Index of the thumb in the multi-value scale for which this
@@ -1373,9 +1363,9 @@ public abstract class MultiTimeMegawidget extends
      * Determine whether or not the specified first value for the multi-value
      * scale would push any of the other values beyond the maximum. The
      * specified value must already have been run through
-     * {@link #convertToValueAcceptableToScale(long)}. This method is to be used
-     * when the multi-value scale's intervals are locked, and thus moving the
-     * first value will also move the other values in concert.
+     * {@link #convertToValueAcceptableToScale(String, long)}. This method is to
+     * be used when the multi-value scale's intervals are locked, and thus
+     * moving the first value will also move the other values in concert.
      * 
      * @param value
      *            Value to be checked.
@@ -1488,9 +1478,9 @@ public abstract class MultiTimeMegawidget extends
      * @return Height in pixels of the largest detail field megawidget created
      *         in the same row as the time field widgets, or 0 if no such detail
      *         field megawidget was created.
-     * @throw MegawidgetException If an error occurs while creating or
-     *        initializing any megawidgets acting as detail fields for this
-     *        state.
+     * @throws MegawidgetException
+     *             If an error occurs while creating or initializing any
+     *             megawidgets acting as detail fields for this state.
      */
     private int createTimeFieldComponent(
             MultiTimeMegawidgetSpecifier specifier, Composite parent,
@@ -1569,8 +1559,7 @@ public abstract class MultiTimeMegawidget extends
          */
         ruler = WidgetUtilities.createTimeLineRuler(parent,
                 stateValidator.getLowestAllowableValue(),
-                stateValidator.getHighestAllowableValue(),
-                MIN_VISIBLE_TIME_RANGE, MAX_VISIBLE_TIME_RANGE);
+                stateValidator.getHighestAllowableValue());
         ruler.setSnapValueCalculator(snapValueCalculator);
 
         /*

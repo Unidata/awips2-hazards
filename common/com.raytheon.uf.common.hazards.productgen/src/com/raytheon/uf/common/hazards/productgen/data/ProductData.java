@@ -48,7 +48,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
  * May 07, 2015    6979    Robert.Blum  Added editableEntries.
  * Aug 13, 2015    8836    Chris.Cody   Changes for a configurable Event Id
- * 
+ * Feb 01, 2017   15556    Chris.Golden Added copy constructor.
  * </pre>
  * 
  * @author jsanchez
@@ -91,6 +91,20 @@ public class ProductData extends PersistableDataObject<String> implements
         this.issueTime = issueTime;
         this.data = data;
         this.editableEntries = editableEntries;
+    }
+
+    public ProductData(ProductData other) {
+        this.id = new CustomDataId(other.getId());
+        this.issueTime = (other.issueTime == null ? null : new Date(
+                other.issueTime.getTime()));
+        this.data = (other.data == null ? null : new HashMap<>(other.data));
+        this.editableEntries = (other.editableEntries == null ? null
+                : new ArrayList<EditableEntryMap>(other.editableEntries.size()));
+        if (this.editableEntries != null) {
+            for (EditableEntryMap editableEntry : other.editableEntries) {
+                this.editableEntries.add(new EditableEntryMap(editableEntry));
+            }
+        }
     }
 
     public CustomDataId getId() {

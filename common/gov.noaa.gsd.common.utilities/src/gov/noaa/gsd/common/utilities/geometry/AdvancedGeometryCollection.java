@@ -40,6 +40,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Sep 29, 2016   15928    Chris.Golden Added center point calculation.
  * Oct 13, 2016   15928    Chris.Golden Fixed bug caused by serialization problems
  *                                      with NaN in coordinates.
+ * Feb 01, 2017   15556    Chris.Golden Improved generic parameter usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -73,13 +74,12 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
     /**
      * Construct a standard instance.
      * 
-     * @param advancedGeometries
-     *            Child advanced geometries; must be a non-empty list that
-     *            implements {@link Serializable}.
+     * @param children
+     *            Child advanced geometries; must be a non-empty list.
      */
     @JsonCreator
-    public AdvancedGeometryCollection(
-            @JsonProperty("children") List<? extends IAdvancedGeometry> children) {
+    public <G extends IAdvancedGeometry & Serializable> AdvancedGeometryCollection(
+            @JsonProperty("children") List<G> children) {
         this.children = ImmutableList.<IAdvancedGeometry> copyOf(children);
 
         /*

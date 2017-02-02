@@ -31,7 +31,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.recommenders.EventRecommender;
@@ -94,6 +93,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug 15, 2016   18376    Chris.Golden Added code to make garbage collection of the
  *                                      messenger instance passed in (which is the
  *                                      app builder) more likely.
+ * Feb 01, 2017   15556    Chris.Golden Minor cleanup.
  * </pre>
  * 
  * @author Chris.Golden
@@ -313,15 +313,15 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         if (Boolean.TRUE.equals(onlyIncludeTriggerEvent)
                 && ((context.getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE) || (context
                         .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION))) {
-            eventSet.add(new BaseHazardEvent(sessionManager.getEventManager()
+            eventSet.add(createBaseHazardEvent(sessionManager.getEventManager()
                     .getEventById(context.getEventIdentifier())));
         } else {
             Collection<ObservedHazardEvent> hazardEvents = sessionManager
                     .getEventManager().getEvents();
-            for (IHazardEvent event : hazardEvents) {
+            for (ObservedHazardEvent event : hazardEvents) {
                 if ((includeEventTypes == null)
                         || includeEventTypes.contains(event.getHazardType())) {
-                    eventSet.add(new BaseHazardEvent(event));
+                    eventSet.add(createBaseHazardEvent(event));
                 }
             }
         }
@@ -461,6 +461,26 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     }
 
     // Private Methods
+
+    /**
+     * Create a base hazard event copy of the specified hazard event.
+     * 
+     * @param event
+     *            Event to be copied.
+     * @return Base hazard event copy.
+     */
+    private BaseHazardEvent createBaseHazardEvent(ObservedHazardEvent event) {
+        BaseHazardEvent copy = new BaseHazardEvent(event);
+
+        /*
+         * TODO: Change recommenders so that they have a separate set of
+         * selected event identifiers passed to them, instead of having
+         * selection be an attribute of the individual hazards.
+         */
+        copy.addHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED,
+                sessionManager.getSelectionManager().isSelected(event));
+        return copy;
+    }
 
     /**
      * Add the specified execution context parameters to the specified event

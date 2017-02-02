@@ -5,7 +5,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * Description: General class of static utilities.
@@ -22,12 +27,28 @@ import java.util.Collection;
  * Jul 25, 2016   19537    Chris.Golden      Cleaned up, and added methods for testing
  *                                           equality and generating hash codes for
  *                                           potentially null objects.
+ * Feb 01, 2017   15556    Chris.Golden      Added method to find element in array,
+ *                                           method to prune map entries with null
+ *                                           keys or values, and methods to create
+ *                                           date-time formatters.
  * </pre>
  * 
  * @author daniel.s.schaffer
  * @version 1.0
  */
 public class Utils {
+
+    // Private Static Constants
+
+    /**
+     * Date-time format string for minutes resolution.
+     */
+    private static final String DATE_TIME_MINUTES_FORMAT_STRING = "HH:mm'Z' dd-MMM-yy";
+
+    /**
+     * Date-time format string for seconds resolution.
+     */
+    private static final String DATE_TIME_SECONDS_FORMAT_STRING = "HH:mm:ss'Z' dd-MMM-yy";
 
     // Public Static Methods
 
@@ -39,7 +60,7 @@ public class Utils {
      *            First object to be compared; may be <code>null</code>.
      * @param object2
      *            Second object to be compared; may be <code>null</code>.
-     * @return <code>true>/code> if the two objects are equivalent or are both
+     * @return <code>true</code> if the two objects are equivalent or are both
      *         <code>null</code>, <code>false</code> otherwise.
      */
     public static boolean equal(Object object1, Object object2) {
@@ -56,6 +77,76 @@ public class Utils {
      */
     public static long getHashCode(Object object) {
         return (object == null ? 0L : object.hashCode());
+    }
+
+    /**
+     * Get the index of the specified element within the specified array. Note
+     * that the search uses identity equality (<code>==</code>) not equivalence,
+     * so the element being searched for must be within the array in order to
+     * get back a valid index, not just equivalent to an object in the array.
+     * 
+     * @param element
+     *            Element to be searched for in the array.
+     * @param elements
+     *            Array to be searched.
+     * @return Index of the element in the array, or <code>-1</code> if it is
+     *         not found.
+     */
+    public static <T> int getIndexOfElementInArray(T element, T[] elements) {
+        int index = 0;
+        for (T anElement : elements) {
+            if (anElement == element) {
+                return index;
+            }
+            index++;
+        }
+        return -1;
+    }
+
+    /**
+     * Prune the specified map of any entries that have a key or value of
+     * <code>null</code>.
+     * 
+     * @param map
+     *            Map to be pruned.
+     * @return Map that was passed in, for chaining purposes.
+     */
+    public static <K, V> Map<K, V> pruneNullEntriesFromMap(Map<K, V> map) {
+        map.remove(null);
+        Iterator<Map.Entry<K, V>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<K, V> entry = iterator.next();
+            if (entry.getValue() == null) {
+                iterator.remove();
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Get a date-time formatter with minute-level resolution set to use the GMT
+     * time zone.
+     * 
+     * @return GMT date-time formatter with minute-level resolution.
+     */
+    public static DateFormat getGmtDateTimeFormatterWithMinutesResolution() {
+        DateFormat formatter = new SimpleDateFormat(
+                DATE_TIME_MINUTES_FORMAT_STRING);
+        formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return formatter;
+    }
+
+    /**
+     * Get a date-time formatter with second-level resolution set to use the GMT
+     * time zone.
+     * 
+     * @return GMT date-time formatter with second-level resolution.
+     */
+    public static DateFormat getGmtDateTimeFormatterWithSecondsResolution() {
+        DateFormat formatter = new SimpleDateFormat(
+                DATE_TIME_SECONDS_FORMAT_STRING);
+        formatter.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return formatter;
     }
 
     /**
@@ -76,7 +167,7 @@ public class Utils {
      * 
      * @param path
      *            Path to the file.
-     * @param retainNewLines
+     * @param retainNewlines
      *            Flag indicating whether or not new line characters should be
      *            retained.
      * @return String contents of the file.

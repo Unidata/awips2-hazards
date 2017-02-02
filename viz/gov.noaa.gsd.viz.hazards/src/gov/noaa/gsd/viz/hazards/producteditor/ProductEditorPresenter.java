@@ -9,7 +9,7 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 
@@ -63,6 +63,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
  * May 13, 2015 6899       Robert.Blum       Removed sessionEventsModified handler.
  * Jul 01, 2015 6726       Robert.Blum       IssueAll button no longer closes the Editor.
+ * Feb 02, 2017 15556      Chris.Golden      Minor changes to support console refactor.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -185,8 +186,8 @@ public class ProductEditorPresenter extends
                         if (identifier != null
                                 && identifier
                                         .equalsIgnoreCase(HazardConstants.REGENERATE_FLAG)) {
-                            HazardDetailAction action = new HazardDetailAction(
-                                    HazardDetailAction.ActionType.PREVIEW);
+                            ProductAction action = new ProductAction(
+                                    ProductAction.ActionType.PREVIEW);
                             ProductEditorPresenter.this.publish(action);
                         }
                     }

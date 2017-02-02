@@ -57,6 +57,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                      manager.
  * Mar 16, 2016   15676    Chris.Golden Changed to work with new recommender execution
  *                                      context.
+ * Feb 01, 2017   15556    Chris.Golden Changed to work with finer-grained settings
+ *                                      change messages.
  * </pre>
  * 
  * @author Chris.Golden
@@ -91,21 +93,20 @@ public class HazardTypeFirstPresenter extends
     private final ImmutableList<String> categories;
 
     /**
-     * Map of each of the hazard categories found within
-     * {@link #hazardCategories} to lists of the types that fall within those
-     * categories. Only types that have associated hazard-type-first
-     * recommenders are included.
+     * Map of each of the hazard categories found within {@link #categories} to
+     * lists of the types that fall within those categories. Only types that
+     * have associated hazard-type-first recommenders are included.
      */
     private final ImmutableMap<String, ImmutableList<String>> typesForCategories;
 
     /**
-     * Map of each of the hazard categories found within
-     * {@link #hazardCategories} to lists of the descriptions of the types that
-     * fall within those categories. Only types that have associated
-     * hazard-type-first recommenders have descriptions included. Note that for
-     * any list that is a value within this map, the description at a given
-     * index describes the type at the corresponding index within the list
-     * associated with the same category within {@link #typesForCategories}.
+     * Map of each of the hazard categories found within {@link #categories} to
+     * lists of the descriptions of the types that fall within those categories.
+     * Only types that have associated hazard-type-first recommenders have
+     * descriptions included. Note that for any list that is a value within this
+     * map, the description at a given index describes the type at the
+     * corresponding index within the list associated with the same category
+     * within {@link #typesForCategories}.
      */
     private final ImmutableMap<String, ImmutableList<String>> typeDescriptionsForCategories;
 
@@ -297,7 +298,10 @@ public class HazardTypeFirstPresenter extends
      */
     @Handler
     public void settingsModified(final SettingsModified change) {
-        resetCategoryAndType();
+        if (change.getChanged()
+                .contains(ObservedSettings.Type.DEFAULT_CATEGORY)) {
+            resetCategoryAndType();
+        }
     }
 
     // Protected Methods
@@ -418,7 +422,8 @@ public class HazardTypeFirstPresenter extends
      * @param description
      *            Description of the element for which an attempt to change
      *            multiple states was made.
-     * @throw UnsupportedOperationException Whenever this method is called.
+     * @throws UnsupportedOperationException
+     *             Whenever this method is called.
      */
     private void handleUnsupportedOperationAttempt(String description)
             throws UnsupportedOperationException {

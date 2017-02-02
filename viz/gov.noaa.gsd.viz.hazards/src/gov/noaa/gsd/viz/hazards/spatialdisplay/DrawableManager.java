@@ -124,6 +124,14 @@ import com.vividsolutions.jts.geom.Point;
  *                                      has not been reproducible, but this
  *                                      fix should ensure it does not occur
  *                                      again.)
+ * Feb 01, 2017   15556    Chris.Golden Fixed bug caused by entities being
+ *                                      added to (for example) the unselected
+ *                                      list, then removed from the selected
+ *                                      list, meaning that the entities would
+ *                                      not show up. Instances now have an
+ *                                      awareness of what list entities are
+ *                                      from, so that they are not removed
+ *                                      inappropriately.
  * </pre>
  * 
  * @author Chris.Golden
@@ -136,7 +144,7 @@ class DrawableManager {
     /**
      * Renderers for types of handlebars. Each renderer has properties
      * indicating how it is to paint its handlebars, and each also has a
-     * {@link HandlebarRenderer#render(List, IGraphicsTarget, PaintProperties)}
+     * {@link HandlebarTypeRenderer#render(List, IGraphicsTarget, PaintProperties)}
      * method that given a list of locations in pixel space renders handlebars
      * at those locations.
      */
@@ -673,6 +681,11 @@ class DrawableManager {
     private final Map<SpatialEntity<? extends IEntityIdentifier>, List<AbstractDrawableComponent>> drawablesForSpatialEntities = new IdentityHashMap<>();
 
     /**
+     * Map pairing spatial entities with their associated types.
+     */
+    private final Map<SpatialEntity<? extends IEntityIdentifier>, SpatialEntityType> typesForSpatialEntities = new IdentityHashMap<>();
+
+    /**
      * Map pairing locations with the {@link TextDrawable#isCombinable()
      * combinable} text drawables that that occupy those locations. Each of the
      * latter will be part of a value of one entry here, regardless of whether
@@ -846,14 +859,22 @@ class DrawableManager {
      * drawables are created.
      * </p>
      * 
+     * @param type
+     *            Type of the spatial entities.
      * @param spatialEntities
      *            Spatial entities for which to add associated drawables.
+     * @return <code>true</code> if the addition caused the currently-edited
+     *         drawable to be removed (because it was replaced),
+     *         <code>false</code> otherwise.
      */
-    void addDrawablesForSpatialEntities(
+    boolean addDrawablesForSpatialEntities(
+            SpatialEntityType type,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> spatialEntities) {
+        boolean result = false;
         for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntities) {
-            addDrawablesForSpatialEntity(spatialEntity);
+            result |= addDrawablesForSpatialEntity(type, spatialEntity);
         }
+        return result;
     }
 
     /**
@@ -877,6 +898,8 @@ class DrawableManager {
      * <code>locationsNeedingUpdate</code> are built or rebuilt.
      * </p>
      * 
+     * @param type
+     *            Type of the spatial entities.
      * @param oldSpatialEntities
      *            Spatial entities for which to remove associated drawables.
      * @param newSpatialEntities
@@ -885,10 +908,12 @@ class DrawableManager {
      *         drawable to be removed, <code>false</code> otherwise.
      */
     boolean replaceDrawablesForSpatialEntities(
+            SpatialEntityType type,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> oldSpatialEntities,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> newSpatialEntities) {
-        boolean result = removeDrawablesForSpatialEntities(oldSpatialEntities);
-        addDrawablesForSpatialEntities(newSpatialEntities);
+        boolean result = removeDrawablesForSpatialEntities(type,
+                oldSpatialEntities);
+        result |= addDrawablesForSpatialEntities(type, newSpatialEntities);
         return result;
     }
 
@@ -898,8 +923,8 @@ class DrawableManager {
      * any amalgamated text drawables that need to be recreated or removed as a
      * result of this invocation.
      * <p>
-     * Unlike {@link #addDrawablesForSpatialEntities(List)}, this method does
-     * not leave the lists of drawables used as values by
+     * Unlike {@link #addDrawablesForSpatialEntities(SpatialEntityType, List)},
+     * this method does not leave the lists of drawables used as values by
      * {@link #textDrawablesForLocations} in need of sorting. However, the
      * {@link #amalgamatedDrawablesForTextDrawables} and
      * {@link #textDrawablesForAmalgamatedDrawables} maps will still need to be
@@ -908,16 +933,19 @@ class DrawableManager {
      * rebuilt/removed.
      * </p>
      * 
+     * @param type
+     *            Type of the spatial entities.
      * @param spatialEntities
      *            Spatial entities for which to remove associated drawables.
      * @return <code>true</code> if the removal caused the currently-edited
      *         drawable to be removed, <code>false</code> otherwise.
      */
     boolean removeDrawablesForSpatialEntities(
+            SpatialEntityType type,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> spatialEntities) {
         boolean result = false;
         for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntities) {
-            result |= removeDrawablesForSpatialEntity(spatialEntity);
+            result |= removeDrawablesForSpatialEntity(type, spatialEntity);
         }
         return result;
     }
@@ -938,11 +966,26 @@ class DrawableManager {
      * drawables are created.
      * </p>
      * 
+     * @param type
+     *            Type of the spatial entity.
      * @param spatialEntity
      *            Spatial entity for which to add associated drawables.
+     * @return <code>true</code> if the addition caused the currently-edited
+     *         drawable to be removed (because it replaced another entity),
+     *         <code>false</code> otherwise.
      */
-    void addDrawablesForSpatialEntity(
+    boolean addDrawablesForSpatialEntity(SpatialEntityType type,
             SpatialEntity<? extends IEntityIdentifier> spatialEntity) {
+
+        /*
+         * If the spatial entity for which drawables are to be added is already
+         * here, remove the old version.
+         */
+        boolean result = false;
+        if (typesForSpatialEntities.containsKey(spatialEntity)) {
+            result |= removeDrawablesForSpatialEntity(
+                    typesForSpatialEntities.get(spatialEntity), spatialEntity);
+        }
 
         /*
          * Create the hatched area drawables, and make a note of each one.
@@ -985,6 +1028,7 @@ class DrawableManager {
          * Associate the new drawables with the spatial entity.
          */
         drawablesForSpatialEntities.put(spatialEntity, drawables);
+        typesForSpatialEntities.put(spatialEntity, type);
 
         /*
          * For each drawable, create an association between it and the spatial
@@ -1009,6 +1053,8 @@ class DrawableManager {
                 combinableDrawables.add(textDrawable);
             }
         }
+
+        return result;
     }
 
     /**
@@ -1032,6 +1078,8 @@ class DrawableManager {
      * <code>locationsNeedingUpdate</code> are built or rebuilt.
      * </p>
      * 
+     * @param type
+     *            Type of the spatial entity.
      * @param oldSpatialEntity
      *            Spatial entity for which to remove associated drawables.
      * @param newSpatialEntity
@@ -1039,11 +1087,11 @@ class DrawableManager {
      * @return <code>true</code> if the replacement caused the currently-edited
      *         drawable to be removed, <code>false</code> otherwise.
      */
-    boolean replaceDrawablesForSpatialEntity(
+    boolean replaceDrawablesForSpatialEntity(SpatialEntityType type,
             SpatialEntity<? extends IEntityIdentifier> oldSpatialEntity,
             SpatialEntity<? extends IEntityIdentifier> newSpatialEntity) {
-        boolean result = removeDrawablesForSpatialEntity(oldSpatialEntity);
-        addDrawablesForSpatialEntity(newSpatialEntity);
+        boolean result = removeDrawablesForSpatialEntity(type, oldSpatialEntity);
+        result |= addDrawablesForSpatialEntity(type, newSpatialEntity);
         return result;
     }
 
@@ -1053,8 +1101,9 @@ class DrawableManager {
      * to contain any amalgamated text drawables that need to be recreated or
      * removed as a result of this invocation.
      * <p>
-     * Unlike {@link #addDrawablesForSpatialEntity(SpatialEntity)}, this method
-     * does not leave the lists of drawables used as values by
+     * Unlike
+     * {@link #addDrawablesForSpatialEntity(SpatialEntityType, SpatialEntity)},
+     * this method does not leave the lists of drawables used as values by
      * {@link #textDrawablesForLocations} in need of sorting. However, the
      * {@link #amalgamatedDrawablesForTextDrawables} and
      * {@link #textDrawablesForAmalgamatedDrawables} maps will still need to be
@@ -1063,19 +1112,32 @@ class DrawableManager {
      * rebuilt/removed.
      * </p>
      * 
+     * @param type
+     *            Type of the spatial entity.
      * @param spatialEntity
      *            Spatial entity for which to remove associated drawables.
      * @return <code>true</code> if the removal caused the currently-edited
      *         drawable to be removed, <code>false</code> otherwise.
      */
-    boolean removeDrawablesForSpatialEntity(
+    boolean removeDrawablesForSpatialEntity(SpatialEntityType type,
             SpatialEntity<? extends IEntityIdentifier> spatialEntity) {
+
+        /*
+         * If the spatial entity for which drawables are to be removed is not of
+         * the specified type, do nothing; this means that the spatial entity is
+         * associated with another type, so removing its drawables would mean
+         * interfering with the drawables of said other type.
+         */
+        if (type != typesForSpatialEntities.get(spatialEntity)) {
+            return false;
+        }
 
         /*
          * If there are drawables for this spatial entity, remove them.
          */
         List<AbstractDrawableComponent> drawables = drawablesForSpatialEntities
                 .remove(spatialEntity);
+        typesForSpatialEntities.remove(spatialEntity);
         boolean result = false;
         if (drawables != null) {
 

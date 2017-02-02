@@ -35,12 +35,13 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 17, 2013 1257       bsteffen    Initial creation
- * Feb 19, 2014 2915       bkowal      Remove unused constructors.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 17, 2013 1257       bsteffen     Initial creation
+ * Feb 19, 2014 2915       bkowal       Remove unused constructors.
  * Dec 05, 2014 4124       Chris.Golden Added copy constructor, and
  *                                      new sort priority parameter.
+ * Feb 01, 2017 15556      Chris.Golden Added additional constructor.
  * </pre>
  * 
  * @author bsteffen
@@ -84,6 +85,18 @@ public class Column {
         this.fieldName = fieldName;
         this.hintTextFieldName = hintTextFieldName;
         this.sortDir = sortDir;
+    }
+
+    public Column(Integer width, String type, String fieldName,
+            String hintTextFieldName, String sortDir, int sortPriority,
+            String displayEmptyAs) {
+        this.width = width;
+        this.type = type;
+        this.fieldName = fieldName;
+        this.hintTextFieldName = hintTextFieldName;
+        this.sortDir = sortDir;
+        this.sortPriority = sortPriority;
+        this.displayEmptyAs = displayEmptyAs;
     }
 
     public Column(Column other) {

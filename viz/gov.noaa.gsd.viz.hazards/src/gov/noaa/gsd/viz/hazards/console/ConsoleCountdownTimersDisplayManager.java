@@ -9,10 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayListener;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimersDisplayManager;
+import gov.noaa.gsd.viz.hazards.alerts.ICountdownTimersDisplayListener;
 import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,18 +25,17 @@ import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Resource;
 
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationConsoleTimer;
-
 /**
  * Description: Manager of console countdown timers.
  * 
  * <pre>
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 22, 2013    1936    Chris.Golden      Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Aug 22, 2013    1936    Chris.Golden Initial creation.
+ * Feb 01, 2017   15556    Chris.Golden Removed session manager dependency, and
+ *                                      cleaned up in order to make it more
+ *                                      view-appropriate within the MVP context.
  * </pre>
  * 
  * @author Chris.Golden
@@ -41,7 +43,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationCo
  */
 public class ConsoleCountdownTimersDisplayManager
         extends
-        CountdownTimersDisplayManager<HazardEventExpirationConsoleTimer, ConsoleCountdownTimerDisplayProperties> {
+        CountdownTimersDisplayManager<CountdownTimer, ConsoleCountdownTimerDisplayProperties> {
 
     // Private Variables
 
@@ -54,28 +56,26 @@ public class ConsoleCountdownTimersDisplayManager
      * Set of basic resources created for use by this manager, to be disposed of
      * when this manager is disposed of.
      */
-    private final Set<Resource> resources = Sets.newHashSet();
+    private final Set<Resource> resources = new HashSet<>();
 
     /**
      * Map of font styles, each an integer holding the flags used to specify the
      * font style for {@link org.eclipse.swt.graphics.Font}, to the
      * corresponding fonts to be used in the count down timer displays.
      */
-    private final Map<Integer, Font> fontsForFontStyles = Maps.newHashMap();
+    private final Map<Integer, Font> fontsForFontStyles = new HashMap<>();
 
     /**
      * Map of RTS colors to SWT colors used as primary colors for countdown
      * timer display.
      */
-    private final Map<com.raytheon.uf.common.colormap.Color, Color> swtColorsForRtsColors = Maps
-            .newHashMap();
+    private final Map<com.raytheon.uf.common.colormap.Color, Color> swtColorsForRtsColors = new HashMap<>();
 
     /**
      * Map of RTS colors to SWT colors that contrast with the RTS colors used as
      * primary colors in the countdown timer display.
      */
-    private final Map<com.raytheon.uf.common.colormap.Color, Color> contrastingSwtColorsForRtsColors = Maps
-            .newHashMap();
+    private final Map<com.raytheon.uf.common.colormap.Color, Color> contrastingSwtColorsForRtsColors = new HashMap<>();
 
     // Public Constructors
 
@@ -86,8 +86,8 @@ public class ConsoleCountdownTimersDisplayManager
      *            Listener for countdown timer display notifications.
      */
     public ConsoleCountdownTimersDisplayManager(
-            CountdownTimersDisplayListener listener) {
-        super(HazardEventExpirationConsoleTimer.class, listener);
+            ICountdownTimersDisplayListener listener) {
+        super(CountdownTimer.class, listener);
     }
 
     // Public Methods
@@ -99,7 +99,9 @@ public class ConsoleCountdownTimersDisplayManager
     public void dispose() {
         super.dispose();
 
-        // Dispose of any SWT resources created.
+        /*
+         * Dispose of any SWT resources created.
+         */
         for (Resource resource : resources) {
             resource.dispose();
         }
@@ -118,27 +120,22 @@ public class ConsoleCountdownTimersDisplayManager
 
     // Protected Methods
 
-    /**
-     * Generate the display properties for the countdown timer associated with
-     * the specified alert.
-     * 
-     * @param alert
-     *            Alert for which to generate the display properties.
-     * @return Display properties, or <code>null</code> if the base font has not
-     *         yet been set.
-     */
     @Override
-    protected ConsoleCountdownTimerDisplayProperties generateDisplayPropertiesForEvent(
-            HazardEventExpirationConsoleTimer alert) {
+    protected ConsoleCountdownTimerDisplayProperties generateDisplayPropertiesForCountdownTimer(
+            CountdownTimer countdownTimer) {
 
-        // If the base font has not been provided, return nothing.
+        /*
+         * If the base font has not been provided, return nothing.
+         */
         if (baseFont == null) {
             return null;
         }
 
-        // Get the font, constructing it if it hasn't been created yet.
-        int style = (alert.isBold() ? SWT.BOLD : SWT.NORMAL)
-                + (alert.isItalic() ? SWT.ITALIC : SWT.NORMAL);
+        /*
+         * Get the font, constructing it if it hasn't been created yet.
+         */
+        int style = (countdownTimer.isBold() ? SWT.BOLD : SWT.NORMAL)
+                + (countdownTimer.isItalic() ? SWT.ITALIC : SWT.NORMAL);
         Font font = fontsForFontStyles.get(style);
         if (font == null) {
             FontData fontData = baseFont.getFontData()[0];
@@ -148,10 +145,12 @@ public class ConsoleCountdownTimersDisplayManager
             resources.add(font);
         }
 
-        // Get the colors, constructing them if it hasn't been
-        // created yet. The second color is meant to contrast
-        // with the first.
-        com.raytheon.uf.common.colormap.Color rtsColor = alert.getColor();
+        /*
+         * Get the colors, constructing them if they haven't been created yet.
+         * The second color is meant to contrast with the first.
+         */
+        com.raytheon.uf.common.colormap.Color rtsColor = countdownTimer
+                .getColor();
         Color color1 = swtColorsForRtsColors.get(rtsColor);
         if (color1 == null) {
             color1 = new Color(font.getDevice(),
@@ -173,8 +172,10 @@ public class ConsoleCountdownTimersDisplayManager
             resources.add(color2);
         }
 
-        // Return the result.
+        /*
+         * Return the result.
+         */
         return new ConsoleCountdownTimerDisplayProperties(font, color1, color2,
-                alert.isBlinking());
+                countdownTimer.isBlinking());
     }
 }

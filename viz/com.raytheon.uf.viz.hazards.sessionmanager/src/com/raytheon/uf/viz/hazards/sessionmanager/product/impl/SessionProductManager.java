@@ -89,6 +89,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGener
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventUtilities;
@@ -230,6 +231,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      passed in (which is the app builder) more likely.
  * Nov 17, 2016 26313      Chris.Golden Changed to work with the new capacity of hazard types to be associated
  *                                      with more than one UGC type.
+ * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
  * </pre>
  * 
  * @author bsteffen
@@ -256,6 +258,8 @@ public class SessionProductManager implements ISessionProductManager {
     private final ISessionConfigurationManager<ObservedSettings> configManager;
 
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
+
+    private final ISessionSelectionManager<ObservedHazardEvent> selectionManager;
 
     private final ISessionNotificationSender notificationSender;
 
@@ -312,11 +316,13 @@ public class SessionProductManager implements ISessionProductManager {
             ISessionTimeManager timeManager,
             ISessionConfigurationManager<ObservedSettings> configManager,
             ISessionEventManager<ObservedHazardEvent> eventManager,
+            ISessionSelectionManager<ObservedHazardEvent> selectionManager,
             ISessionNotificationSender notificationSender, IMessenger messenger) {
         this.sessionManager = sessionManager;
         this.timeManager = timeManager;
         this.configManager = configManager;
         this.eventManager = eventManager;
+        this.selectionManager = selectionManager;
         this.notificationSender = notificationSender;
         this.productGen = ProductGeneration.getInstance(configManager
                 .getSiteID());
@@ -373,6 +379,8 @@ public class SessionProductManager implements ISessionProductManager {
         List<ProductGeneratorInformation> result = new ArrayList<>();
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
 
+        Set<String> selectedEventIdentifiers = selectionManager
+                .getSelectedEventIdentifiers();
         for (Entry<String, ProductGeneratorEntry> entry : pgt.entrySet()) {
             if (entry.getValue().isReservedNameNotYetImplemented()
                     || entry.getValue().getAutoSelect() == false) {
@@ -389,8 +397,7 @@ public class SessionProductManager implements ISessionProductManager {
                 String key = HazardEventUtilities.getHazardType(e);
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
                     if (pair[0].equals(key)) {
-                        if (Boolean.TRUE.equals(e
-                                .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
+                        if (selectedEventIdentifiers.contains(e.getEventID())) {
                             productEvents.add(e);
                         } else if (e.getStatus() != HazardStatus.POTENTIAL
                                 && e.getStatus() != HazardStatus.ENDED
@@ -437,6 +444,8 @@ public class SessionProductManager implements ISessionProductManager {
         List<ProductGeneratorInformation> result = new ArrayList<>();
         ProductGeneratorTable pgt = configManager.getProductGeneratorTable();
 
+        Set<String> selectedEventIdentifiers = selectionManager
+                .getSelectedEventIdentifiers();
         for (GeneratedProductList genProdList : generatedProductsList) {
             ProductGeneratorEntry entry = pgt.get(genProdList.getProductInfo());
 
@@ -451,8 +460,7 @@ public class SessionProductManager implements ISessionProductManager {
                 String key = HazardEventUtilities.getHazardType(e);
                 for (String[] pair : entry.getAllowedHazards()) {
                     if (pair[0].equals(key)) {
-                        if (Boolean.TRUE.equals(e
-                                .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
+                        if (selectedEventIdentifiers.contains(e.getEventID())) {
                             productEvents.add(e);
                         } else if (e.getStatus() != HazardStatus.POTENTIAL
                                 && e.getStatus() != HazardStatus.ENDED
@@ -619,6 +627,8 @@ public class SessionProductManager implements ISessionProductManager {
             }
         }
 
+        Set<String> selectedEventIdentifiers = selectionManager
+                .getSelectedEventIdentifiers();
         for (ObservedHazardEvent e : eventManager.getEventsForCurrentSettings()) {
             String key = HazardEventUtilities.getHazardType(e);
             boolean found = false;
@@ -628,9 +638,7 @@ public class SessionProductManager implements ISessionProductManager {
                     break;
                 }
             }
-            if (!found
-                    && Boolean.TRUE.equals(e
-                            .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
+            if (!found && selectedEventIdentifiers.contains(e.getEventID())) {
                 unsupportedHazards.add(key);
             }
         }
@@ -831,7 +839,7 @@ public class SessionProductManager implements ISessionProductManager {
                                 (SessionEventManager) eventManager);
 
                         SessionEventUtilities.mergeHazardEvents(eventManager,
-                                newEvent, sessionEvent, false, false,
+                                newEvent, sessionEvent, false, false, true,
                                 Originator.OTHER);
 
                         /*
@@ -994,9 +1002,7 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void generateProducts(boolean issue) {
 
-        List<ObservedHazardEvent> selectedEvents = eventManager
-                .getSelectedEvents();
-        if (!areValidEvents(selectedEvents, issue)) {
+        if (!areValidEvents(selectionManager.getSelectedEvents(), issue)) {
             return;
         }
 
@@ -1020,7 +1026,7 @@ public class SessionProductManager implements ISessionProductManager {
      */
     @Override
     public void generateProducts(String productGeneratorName) {
-        List<ObservedHazardEvent> selectedEvents = eventManager
+        List<ObservedHazardEvent> selectedEvents = selectionManager
                 .getSelectedEvents();
         if (!areValidEvents(selectedEvents, false)) {
             return;
@@ -1049,17 +1055,15 @@ public class SessionProductManager implements ISessionProductManager {
      */
     @Override
     public void generateNonHazardProducts(String productGeneratorName) {
-        List<ObservedHazardEvent> selectedEvents = eventManager
-                .getSelectedEvents();
         Collection<ProductGeneratorInformation> allProductGeneratorInfo = productGeneratorInfoFromName(
-                productGeneratorName, selectedEvents);
+                productGeneratorName, selectionManager.getSelectedEvents());
         productGeneratorInformationForSelectedHazardsCache.put(false,
                 allProductGeneratorInfo);
         generate(false, allProductGeneratorInfo);
     }
 
     private boolean isAtLeastOneSelectedAllowed(String productGeneratorName,
-            List<ObservedHazardEvent> selectedEvents) {
+            Collection<ObservedHazardEvent> selectedEvents) {
         ProductGeneratorTable pgTable = configManager
                 .getProductGeneratorTable();
         ProductGeneratorEntry pgEntry = pgTable.get(productGeneratorName);
@@ -1075,7 +1079,7 @@ public class SessionProductManager implements ISessionProductManager {
 
     private Collection<ProductGeneratorInformation> productGeneratorInfoFromName(
             String productGeneratorName,
-            List<ObservedHazardEvent> selectedEvents) {
+            Collection<ObservedHazardEvent> selectedEvents) {
         Collection<ProductGeneratorInformation> allProductGeneratorInfo = new ArrayList<>();
         ProductGeneratorInformation productGeneratorInfo = new ProductGeneratorInformation();
         productGeneratorInfo.setProductGeneratorName(productGeneratorName);
@@ -1154,8 +1158,8 @@ public class SessionProductManager implements ISessionProductManager {
     /*
      * Ensure selected hazards meet criteria for product generation
      */
-    private boolean areValidEvents(List<ObservedHazardEvent> selectedEvents,
-            boolean issue) {
+    private boolean areValidEvents(
+            Collection<ObservedHazardEvent> selectedEvents, boolean issue) {
         if (selectedEvents.isEmpty()) {
             messenger.getWarner().warnUser("Product Generation Error",
                     "No selected events");
@@ -1192,11 +1196,8 @@ public class SessionProductManager implements ISessionProductManager {
 
         Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation = new ArrayList<>();
 
-        List<String> selectedEventIDs = new ArrayList<>();
-        for (ObservedHazardEvent selectedEvent : sessionManager
-                .getEventManager().getSelectedEvents()) {
-            selectedEventIDs.add(selectedEvent.getEventID());
-        }
+        Set<String> selectedEventIDs = selectionManager
+                .getSelectedEventIdentifiers();
 
         for (GeneratedProductList productList : generatedProductsList) {
             for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForSelectedHazards) {
@@ -1247,13 +1248,6 @@ public class SessionProductManager implements ISessionProductManager {
 
         Collection<ProductGeneratorInformation> allMatchingProductGeneratorInformation = new ArrayList<>();
 
-        List<ObservedHazardEvent> selectedHazards = sessionManager
-                .getEventManager().getSelectedEvents();
-        List<String> selectedEventIDs = new ArrayList<>(selectedHazards.size());
-        for (ObservedHazardEvent selectedEvent : selectedHazards) {
-            selectedEventIDs.add(selectedEvent.getEventID());
-        }
-
         for (GeneratedProductList productList : generatedProductsList) {
             for (ProductGeneratorInformation productGeneratorInformation : allProductGeneratorInformationForGeneratedProductsList) {
                 if (productList.getProductInfo().equals(
@@ -1301,13 +1295,13 @@ public class SessionProductManager implements ISessionProductManager {
             if ((info.getPossibleProductEvents() != null)
                     && (info.getPossibleProductEvents().isEmpty() == false)) {
                 info.getProductEvents().addAll(info.getPossibleProductEvents());
-                List<ObservedHazardEvent> selectedEvents = eventManager
-                        .getSelectedEvents();
+                Set<ObservedHazardEvent> selectedEvents = new HashSet<>(
+                        selectionManager.getSelectedEvents());
                 for (IHazardEvent hevent : info.getProductEvents()) {
                     selectedEvents.add((ObservedHazardEvent) hevent);
                 }
-                eventManager
-                        .setSelectedEvents(selectedEvents, Originator.OTHER);
+                selectionManager.setSelectedEvents(selectedEvents,
+                        Originator.OTHER);
                 // return StagingRequired.POSSIBLE_EVENTS;
             }
         }
@@ -1649,8 +1643,13 @@ public class SessionProductManager implements ISessionProductManager {
             }
             event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
             event.removeHazardAttribute(HAZARD_EVENT_CHECKED);
-            event.removeHazardAttribute(HAZARD_EVENT_SELECTED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
+
+            /*
+             * TODO: Remove this once the HAZARD_EVENT_SELECTED attribute has
+             * been entirely done away with.
+             */
+            event.removeHazardAttribute(HAZARD_EVENT_SELECTED);
 
             events.add(event);
         }/* end loop over information.getProductEvents */

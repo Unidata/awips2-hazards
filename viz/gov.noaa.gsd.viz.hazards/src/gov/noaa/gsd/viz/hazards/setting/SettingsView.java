@@ -9,7 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_TYPES;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
@@ -87,6 +86,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Jan 09, 2015    5457    Daniel.S.Schaffer Fixed bug in settings deletion.
  * Feb 23, 2015    3618    Chris.Golden      Added ability to close settings dialog
  *                                           from public method.
+ * Feb 01, 2017   15556    Chris.Golden      Changed to work with settings changes
+ *                                           as part of console refactor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -446,9 +447,11 @@ public class SettingsView implements
     /**
      * Find the hazard categories and types hierarchical choices state within
      * the specified map, and translate its categories and types into separate
-     * lists, placing those lists back in the map. This should be removed if we
-     * can get rid of the visibleTypes and hidHazardCategories lists in the
-     * current setting.
+     * lists, placing those lists back in the map.
+     * <p>
+     * TODO: This should be removed if the <code>visibleTypes</code> list can be
+     * gotten rid of in settings.
+     * </p>
      * 
      * @param map
      *            Map in which the translation is to occur.
@@ -456,13 +459,9 @@ public class SettingsView implements
     public static void translateHazardCategoriesAndTypesToOldLists(Dict map) {
         List<Object> treeState = map
                 .getDynamicallyTypedValue(SETTING_HAZARD_CATEGORIES_AND_TYPES);
-        List<String> categories = new ArrayList<>();
         Set<String> typesSet = new HashSet<>();
         for (int j = 0; j < treeState.size(); j++) {
             Map<?, ?> category = (Map<?, ?>) treeState.get(j);
-            categories
-                    .add((String) category
-                            .get(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_NAME));
             List<?> children = (List<?>) category
                     .get(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_CHILDREN);
             for (Object child : children) {
@@ -478,7 +477,6 @@ public class SettingsView implements
         for (String type : typesSet) {
             types.add(type);
         }
-        map.put(SETTING_HAZARD_CATEGORIES, categories);
         map.put(SETTING_HAZARD_TYPES, types);
     }
 

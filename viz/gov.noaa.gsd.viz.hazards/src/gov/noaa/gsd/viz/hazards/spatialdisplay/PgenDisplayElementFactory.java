@@ -97,7 +97,7 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
  * Description: Copy of the {@link DisplayElementFactory}, with functionality
  * unneeded by the spatial display stripped out, and generating any line
  * displayables with their color's alpha component honored (meaning lines may be
- * translucent). This version also handles {@link Polygon} isntances that have
+ * translucent). This version also handles {@link Polygon} instances that have
  * one or more holes in them properly; the original created the fill displayable
  * for any such polygon correctly (i.e. the fill retained the holes), but
  * created the edge displayables for all the {@link LinearRing} components as a
@@ -130,12 +130,13 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
  *                                      the edge to include lines between
  *                                      the exterior ring and any interior
  *                                      rings (holes).
+ * Feb 07, 2017   15556    Chris.Golden Changed to be package-private.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class PgenDisplayElementFactory {
+class PgenDisplayElementFactory {
 
     // Private Classes
 

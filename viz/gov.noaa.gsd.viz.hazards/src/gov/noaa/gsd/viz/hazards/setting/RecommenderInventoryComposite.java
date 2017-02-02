@@ -49,7 +49,7 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsToolsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
@@ -70,6 +70,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender
  *                                      manager.
+ * Feb 01, 2017 15556      Chris.Golden Changed to work with new settings change
+ *                                      messages.
  * </pre>
  * 
  * @author Robert.Blum
@@ -155,7 +157,8 @@ public class RecommenderInventoryComposite extends Composite {
                             manager.getSettings().getToolbarTools()
                                     .remove(tool);
                         }
-                        presenter.publish(new SettingsToolsModified(manager,
+                        presenter.publish(new SettingsModified(manager,
+                                ObservedSettings.Type.TOOLS,
                                 UIOriginator.SETTINGS_DIALOG));
                     }
                 } else {

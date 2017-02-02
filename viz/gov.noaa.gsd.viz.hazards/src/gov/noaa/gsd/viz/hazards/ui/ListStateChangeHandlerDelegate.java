@@ -13,6 +13,8 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 
+import java.util.Set;
+
 /**
  * Description: List state change handler delegate, used to provide thread-safe
  * access to list state change handlers from {@link IListStateChanger} instances
@@ -26,6 +28,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 22, 2016   19537    Chris.Golden Initial creation.
+ * Feb 01, 2017   15556    Chris.Golden Added new multiple-elements changed
+ *                                      method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -67,6 +71,17 @@ public class ListStateChangeHandlerDelegate<I, E> extends HandlerDelegate
             @Override
             public void run() {
                 principal.listElementChanged(identifier, element);
+            }
+        });
+    }
+
+    @Override
+    public void listElementsChanged(final I identifier, final Set<E> elements) {
+        getHandlerInvocationScheduler().schedule(new Runnable() {
+
+            @Override
+            public void run() {
+                principal.listElementsChanged(identifier, elements);
             }
         });
     }

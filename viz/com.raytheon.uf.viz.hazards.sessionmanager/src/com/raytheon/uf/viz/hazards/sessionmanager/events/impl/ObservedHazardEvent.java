@@ -143,6 +143,11 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      a boolean value indicating whether the
  *                                      set happened or not (returning false if
  *                                      no change occurred).
+ * Feb 01, 2017 15556      Chris.Golden Added "visible in history list" flag, and
+ *                                      record of insert time. Also fixed setting
+ *                                      of status to not persist the hazard event
+ *                                      if the status is reverting from "ending"
+ *                                      to something other than "ended".
  * </pre>
  * 
  * @author bsteffen
@@ -577,6 +582,15 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     protected boolean setStatus(HazardStatus status, boolean notify,
             boolean persist, IOriginator originator) {
         if (changed(getStatus(), status)) {
+
+            /*
+             * No need to persist the change if changing from "ending" to
+             * something other than "ended", as this is a revert.
+             */
+            if ((getStatus() == HazardStatus.ENDING)
+                    && (status != HazardStatus.ENDED)) {
+                persist = false;
+            }
             delegate.setStatus(status);
 
             if (notify) {
@@ -1197,13 +1211,22 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     @Override
     public void setInsertTime(Date date) {
-        // No-op
+        delegate.setInsertTime(date);
 
     }
 
     @Override
     public Date getInsertTime() {
-        // No-op
-        return null;
+        return delegate.getInsertTime();
+    }
+
+    @Override
+    public boolean isVisibleInHistoryList() {
+        return delegate.isVisibleInHistoryList();
+    }
+
+    @Override
+    public void setVisibleInHistoryList(boolean visible) {
+        delegate.setVisibleInHistoryList(visible);
     }
 }

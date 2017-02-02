@@ -71,6 +71,8 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Feb 01, 2017 15556     Chris.Golden  Changed to always update insert time of
+ *                                      events.
  * </pre>
  * 
  * @author bphillip
@@ -143,9 +145,7 @@ public class HazardEventServices implements IHazardEventServices {
                 }
                 event.addHazardAttribute(HazardConstants.PHEN_SIG, phensig);
                 event.addHazardAttribute("practice", practice);
-                if (event.getInsertTime() == null) {
-                    event.setInsertTime(new Date());
-                }
+                event.setInsertTime(new Date());
                 response.addExceptions(registryHandler.storeOrReplaceObject(
                         userName, event).getErrors());
                 hazardNotifier.notify(event, NotificationType.STORE, mode);
@@ -241,9 +241,7 @@ public class HazardEventServices implements IHazardEventServices {
                 }
                 event.addHazardAttribute(HazardConstants.PHEN_SIG, phensig);
                 event.addHazardAttribute("practice", practice);
-                if (event.getInsertTime() == null) {
-                    event.setInsertTime(new Date());
-                }
+                event.setInsertTime(new Date());
                 response.addExceptions(registryHandler.storeOrReplaceObject(
                         userName, event).getErrors());
                 hazardNotifier.notify(event, NotificationType.UPDATE, mode);

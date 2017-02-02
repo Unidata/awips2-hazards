@@ -33,6 +33,7 @@ import java.util.Set;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -40,6 +41,16 @@ import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Manages all events in a session.
+ * <p>
+ * Note that the events provided by {@link #getEvents()} is the list of all
+ * events that have been managed within this session, whether they are displayed
+ * currently or not. In contrast, {@link #getEventsForCurrentSettings()} returns
+ * the subset of the list provided by <code>getEvents()</code>, filtered by the
+ * current settings to remove any events that do not have a visible hazard type,
+ * status, or site identifier. The {@link #getEventHistoryById(String)} method
+ * returns the list of historical events, if any, for the specified event
+ * identifier.
+ * </p>
  * 
  * <pre>
  * 
@@ -100,7 +111,11 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 18, 2016 19537      Chris.Golden Added originator to sortEvents() method.
  * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries now used by
  *                                      hazard events.
- * Oct 19, 2016 21873     Chris.Golden  Added time resolution tracking for individual events.
+ * Oct 19, 2016 21873      Chris.Golden Added time resolution tracking for individual events.
+ * Feb 01, 2017 15556      Chris.Golden Added methods to get the history count and visible history
+ *                                      count for a hazard event. Also moved selection methods to
+ *                                      new selection manager, and added method for reverting an
+ *                                      event to the most recent saved version.
  * </pre>
  * 
  * @author bsteffen
@@ -143,6 +158,38 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return
      */
     public E getEventById(String eventId);
+
+    /**
+     * Get the history list for the event with the given ID or null if there is
+     * no such event in the session.
+     * 
+     * @param eventId
+     * @return
+     */
+    public HazardHistoryList getEventHistoryById(String eventId);
+
+    /**
+     * Get the number of historical versions (that is, the size of the history
+     * list) that exist for the specified event.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event for which the number of historical
+     *            versions is to be fetched.
+     * @return Number of historical versions.
+     */
+    public int getHistoricalVersionCountForEvent(String eventIdentifier);
+
+    /**
+     * Get the number of visible historical versions (that is, the subset of the
+     * snapshots in the history list that are visible) that exist for the
+     * specified event.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event for which the number of visible
+     *            historical versions is to be fetched.
+     * @return Number of visible historical versions.
+     */
+    public int getVisibleHistoricalVersionCountForEvent(String eventIdentifier);
 
     /**
      * Set the specified event to have the specified category. As a side effect,
@@ -229,7 +276,7 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         megawidgets as well as any side effects applier to be used with
      *         the megawidgets.
      */
-    public MegawidgetSpecifierManager getMegawidgetSpecifiers(E event);
+    public MegawidgetSpecifierManager getMegawidgetSpecifiers(IHazardEvent event);
 
     /**
      * Get the duration selector choices that are available for the specified
@@ -245,7 +292,7 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         or expand. If the specified event does not use a duration
      *         selector for its end time, an empty list is returned.
      */
-    public List<String> getDurationChoices(E event);
+    public List<String> getDurationChoices(IHazardEvent event);
 
     /**
      * Receive notification that a command was invoked within the user interface
@@ -263,13 +310,19 @@ public interface ISessionEventManager<E extends IHazardEvent> {
             Map<String, Map<String, Object>> mutableProperties);
 
     /**
-     * Get all events with the given state from the session. This will never
+     * Get all events with the given status from the session. This will never
      * return null, if no states exist an empty collection is returned.
      * 
-     * @param state
-     * @return
+     * @param status
+     *            Status of the hazards to be fetched.
+     * @param includeUntyped
+     *            Flag indicating whether or not to include untyped hazard
+     *            events (those without types).
+     * @return Events with the specified status, including untyped events if
+     *         appropriate.
      */
-    public Collection<E> getEventsByStatus(HazardStatus state);
+    public Collection<E> getEventsByStatus(HazardStatus status,
+            boolean includeUntyped);
 
     /**
      * Remove an event from the session.
@@ -288,62 +341,31 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public void removeEvents(Collection<E> events, IOriginator originator);
 
     /**
-     * Get all events that are currently part of this session.
+     * Get all events that are currently being managed by this session. This may
+     * include events that are not currently visible due to filtering based upon
+     * the current settings; see {@link #getEventsForCurrentSettings()} if only
+     * the filtered list is desired.
      * 
-     * @return
+     * @return List of all events that are currently being managed by this
+     *         session.
      */
     public List<E> getEvents();
 
     /**
+     * Get the events that are currently being managed by this session, filtered
+     * by the current settings. For an unfiltered list, use the
+     * {@link #getEvents()} method.
      * 
-     * @return the selected events
+     * @return List of events that are currently being managed by this session,
+     *         filtered by the current settings.
      */
-    public List<E> getSelectedEvents();
-
-    /**
-     * Return the selected event that was most recently modified.
-     * 
-     * @return
-     */
-    public E getLastModifiedSelectedEvent();
-
-    /**
-     * Set the selected event that was most recently modified.
-     * 
-     * @param event
-     *            New last-modified event.
-     * @param originator
-     *            Originator of the change.
-     */
-    public void setLastModifiedSelectedEvent(E event, IOriginator originator);
-
-    /**
-     * Set the selected events. Any currently selected events that are no in
-     * selectedEvents will be deslected, all events in the selectedEvents set
-     * will get ATTR_SELECTED set to True.
-     * 
-     * @param selectedEvents
-     * @param originator
-     */
-    public void setSelectedEvents(Collection<E> selectedEvents,
-            IOriginator originator);
-
-    /**
-     * Set the selected events corresponding to on the eventIDs.
-     * 
-     * @param selectedEventIDs
-     * @param originator
-     */
-    public void setSelectedEventForIDs(Collection<String> selectedEventIDs,
-            IOriginator originator);
+    public List<E> getEventsForCurrentSettings();
 
     /**
      * 
      * @return the checked events
      */
     public List<E> getCheckedEvents();
-
-    public List<E> getEventsForCurrentSettings();
 
     /**
      * Tests whether it is valid to change a hazard type(includes phen, sig, and
@@ -629,11 +651,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     public boolean isCurrentEvent();
 
     /**
-     * @return true if the event is selected
-     */
-    public boolean isSelected(E event);
-
-    /**
      * Determine whether the specified hazard event may accept the specified
      * geometry as its new geometry. It is assumed that the geometry is valid,
      * i.e. {@link IAdvancedGeometry#isValid()} returns <code>true</code>, if
@@ -678,14 +695,34 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public void updateHazardAreas(IHazardEvent hazardEvent);
 
-    public void saveEvents(List<IHazardEvent> events);
+    /**
+     * Save the specified events to the database.
+     * 
+     * @param events
+     *            Events to be saved.
+     * @param forceVisibility
+     *            Flag indicating whether or not the snapshots of the events
+     *            created to be saved to the database should have their
+     *            "visible in history list" flag set to <code>true</code> or
+     *            whether said flag should be left untouched.
+     */
+    public void saveEvents(List<IHazardEvent> events, boolean forceVisibility);
+
+    /**
+     * Revert the event with the specified identifier to the most recently saved
+     * version of that event, if any.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event to be reverted.
+     */
+    public void revertEventToLastSaved(String eventIdentifier);
 
     /**
      * Set the flag indicating whether or not newly user-created events should
      * be added to the current selection set.
      * 
-     * @param New
-     *            value.
+     * @param addCreatedEventsToSelected
+     *            New value.
      */
     public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected);
 

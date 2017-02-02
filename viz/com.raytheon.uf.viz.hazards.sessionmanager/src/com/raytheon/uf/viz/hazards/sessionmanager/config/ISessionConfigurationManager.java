@@ -100,6 +100,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      hazard type.
  * Oct 12, 2016 21873      Chris.Golden Added code to track the time resolutions of all 
  *                                      managed hazard events.
+ * Feb 01, 2017 15556      Chris.Golden Added originator parameter for setting site ID.
  * </pre>
  * 
  * @author bsteffen
@@ -128,8 +129,11 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * a site is backing up another site.
      * 
      * @param siteID
+     *            New site identifier.
+     * @param originator
+     *            Originator of the change.
      */
-    public void setSiteID(String siteID);
+    public void setSiteID(String siteID, IOriginator originator);
 
     /**
      * Get the currently selected settings for the session.

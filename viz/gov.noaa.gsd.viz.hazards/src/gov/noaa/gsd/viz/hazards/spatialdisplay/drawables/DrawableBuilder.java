@@ -275,7 +275,7 @@ public class DrawableBuilder {
      * 
      * @param text
      *            Text string, possibly holding newlines.
-     * @return
+     * @return Array holding the specified text as elements.
      */
     private String[] convertNewlinesToArray(String text) {
         List<String> result = SPLITTER.splitToList(text.trim());

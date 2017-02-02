@@ -223,6 +223,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        SWT classes' methods if the spatial display was instantiated
  *                                        due to a bundle load, and if H.S. had not been started before
  *                                        during the current CAVE session.
+ * Feb 01, 2017 15556      Chris.Golden   Changed to pass entity list identifier with entities to
+ *                                        drawable manager.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -448,8 +450,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * Remove any drawables associated with the removed spatial
              * entities.
              */
-            if (drawableManager
-                    .removeDrawablesForSpatialEntities(removedEntities)) {
+            if (drawableManager.removeDrawablesForSpatialEntities(identifier,
+                    removedEntities)) {
                 setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
             }
         }
@@ -476,7 +478,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * Replace any drawables associated with the removed spatial
              * entities with new ones now occupying the list.
              */
-            if (drawableManager.replaceDrawablesForSpatialEntities(
+            if (drawableManager.replaceDrawablesForSpatialEntities(identifier,
                     removedEntities, elements)) {
                 setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
             }
@@ -496,7 +498,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Create any drawables needed for the new spatial entity.
              */
-            drawableManager.addDrawablesForSpatialEntity(element);
+            if (drawableManager.addDrawablesForSpatialEntity(identifier,
+                    element)) {
+                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+            }
         }
 
         @Override
@@ -514,7 +519,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Create any drawables needed for the new spatial entities.
              */
-            drawableManager.addDrawablesForSpatialEntities(elements);
+            if (drawableManager.addDrawablesForSpatialEntities(identifier,
+                    elements)) {
+                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+            }
         }
 
         @Override
@@ -531,7 +539,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Create any drawables needed for the new spatial entity.
              */
-            drawableManager.addDrawablesForSpatialEntity(element);
+            if (drawableManager.addDrawablesForSpatialEntity(identifier,
+                    element)) {
+                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+            }
         }
 
         @Override
@@ -550,7 +561,10 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Create any drawables needed for the new spatial entities.
              */
-            drawableManager.addDrawablesForSpatialEntities(elements);
+            if (drawableManager.addDrawablesForSpatialEntities(identifier,
+                    elements)) {
+                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+            }
         }
 
         @Override
@@ -570,8 +584,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * Replace any drawables associated with the removed spatial entity
              * with new ones for the inserted spatial entity.
              */
-            if (drawableManager.replaceDrawablesForSpatialEntity(removedEntity,
-                    element)) {
+            if (drawableManager.replaceDrawablesForSpatialEntity(identifier,
+                    removedEntity, element)) {
                 setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
             }
         }
@@ -599,7 +613,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * Replace any drawables associated with the removed spatial
              * entities with new ones for the inserted spatial entities.
              */
-            if (drawableManager.replaceDrawablesForSpatialEntities(
+            if (drawableManager.replaceDrawablesForSpatialEntities(identifier,
                     removedEntities, elements)) {
                 setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
             }
@@ -619,7 +633,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             /*
              * Remove any drawables associated with the removed spatial entity.
              */
-            if (drawableManager.removeDrawablesForSpatialEntity(removedEntity)) {
+            if (drawableManager.removeDrawablesForSpatialEntity(identifier,
+                    removedEntity)) {
                 setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
             }
         }
@@ -642,8 +657,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * Remove any drawables associated with the removed spatial
              * entities.
              */
-            if (drawableManager
-                    .removeDrawablesForSpatialEntities(removedEntities)) {
+            if (drawableManager.removeDrawablesForSpatialEntities(identifier,
+                    removedEntities)) {
                 setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
             }
         }
@@ -2242,8 +2257,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     private void ensureExecutingThreadIsMainUiThread() {
         if (Display.getDefault().getThread() != Thread.currentThread()) {
             throw new IllegalStateException("inappropriate thread "
-                    + Thread.currentThread()
-                    + " used to add context menu items");
+                    + Thread.currentThread() + " used to perform UI task");
         }
     }
 

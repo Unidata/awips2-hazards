@@ -15,6 +15,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Toggle;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
@@ -52,6 +53,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.IPerspectiveDescriptor;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -143,6 +145,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           when an edit is completed.
  * Oct 11, 2016 21873      Chris.Golden      Fixed bug that caused null pointer exceptions
  *                                           in some cases when switching perspectives.
+ * Feb 01, 2017 15556      Chris.Golden      Fixed bug that caused deselection of visual
+ *                                           feature spatial entity representing a hazard
+ *                                           event to do nothing to deselect the hazard
+ *                                           event in some cases.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1501,13 +1507,30 @@ public class SpatialView implements
          * data set that tracks which spatial entities are selected is not
          * changed, since the presenter may not accept the new selection (and
          * said member is an unmodifiable view anyway); it has its contents
-         * altered by the presenter as necessary.
+         * altered by the presenter as necessary. Also, if attempting to
+         * deselect an entity that represents a hazard event, remove any spatial
+         * entity identifiers from the selection set for other entities that
+         * represent that same hazard event.
          */
         Set<IEntityIdentifier> identifiers = null;
         if (multipleSelection) {
             identifiers = new HashSet<>(selectedSpatialEntityIdentifiers);
             if (identifiers.contains(identifier)) {
-                identifiers.remove(identifier);
+                if (identifier instanceof IHazardEventEntityIdentifier) {
+                    final String eventIdentifier = ((IHazardEventEntityIdentifier) identifier)
+                            .getEventIdentifier();
+                    identifiers = Sets.filter(identifiers,
+                            new Predicate<IEntityIdentifier>() {
+                                @Override
+                                public boolean apply(IEntityIdentifier input) {
+                                    return ((input instanceof IHazardEventEntityIdentifier == false) || (((IHazardEventEntityIdentifier) input)
+                                            .getEventIdentifier().equals(
+                                                    eventIdentifier) == false));
+                                }
+                            });
+                } else {
+                    identifiers.remove(identifier);
+                }
             } else {
                 identifiers.add(identifier);
             }
@@ -1659,8 +1682,9 @@ public class SpatialView implements
      * coordinates.
      * 
      * @param entityIdentifier
-     *            Identifier of the spatial that was chosen with the context
-     *            menu invocation, or <code>null</code> if none was chosen.
+     *            Identifier of the spatial entity that was chosen with the
+     *            context menu invocation, or <code>null</code> if none was
+     *            chosen.
      * @return Actions for the menu items to be shown.
      */
     List<IAction> getContextMenuActions(IEntityIdentifier entityIdentifier) {

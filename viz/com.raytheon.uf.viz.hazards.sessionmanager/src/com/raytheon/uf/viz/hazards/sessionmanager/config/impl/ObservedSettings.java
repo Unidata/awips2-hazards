@@ -23,6 +23,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -82,6 +83,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * May 10, 2016 18515      Chris.Golden Added "deselect after issuing" flag.
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
+ * Feb 01, 2017 15556      Chris.Golden Changed to include set of changed settings
+ *                                      elements when notifying of changes.
  * </pre>
  * 
  * @author bsteffen
@@ -91,6 +94,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 @XmlRootElement(name = "HazardServicesSettings")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ObservedSettings implements ISettings {
+
+    /**
+     * Types of changes that may be made to a settings object.
+     */
+    public enum Type {
+        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, MAP_CENTER, DEFAULT_CATEGORY, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, ADD_GEOMETRY_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
+    };
 
     private SessionConfigurationManager configManager;
 
@@ -160,9 +170,19 @@ public class ObservedSettings implements ISettings {
         return copy;
     }
 
-    private void settingsChanged(boolean notify, IOriginator originator) {
+    private void settingsChanged(boolean notify, Type changed,
+            IOriginator originator) {
         if (notify) {
-            settingsChanged(new SettingsModified(configManager, originator));
+            settingsChanged(new SettingsModified(configManager, changed,
+                    originator));
+        }
+    }
+
+    private void settingsChanged(boolean notify, Set<Type> changed,
+            IOriginator originator) {
+        if (notify) {
+            settingsChanged(new SettingsModified(configManager, changed,
+                    originator));
         }
     }
 
@@ -402,33 +422,47 @@ public class ObservedSettings implements ISettings {
      * @param originator
      */
     public void apply(ISettings other, IOriginator originator) {
-        boolean idChanged = changed(getSettingsID(), other.getSettingsID());
-        setSettingsID(other.getSettingsID(), false, originator);
-        setVisibleTypes(other.getVisibleTypes(), false, originator);
-        setVisibleStatuses(other.getVisibleStatuses(), false, originator);
-        setToolbarTools(other.getToolbarTools(), false, originator);
-        setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration(),
-                false, originator);
-        setTimeResolution(other.getTimeResolution(), false, originator);
-        setMapCenter(other.getMapCenter(), false, originator);
-        setDefaultCategory(other.getDefaultCategory(), false, originator);
-        setPossibleSites(other.getPossibleSites(), false, originator);
-        setVisibleSites(other.getVisibleSites(), false, originator);
-        setDisplayName(other.getDisplayName(), false, originator);
-        setDefaultDuration(other.getDefaultDuration(), false, originator);
-        setVisibleColumns(other.getVisibleColumns(), false, originator);
-        setColumns(other.getColumns(), false, originator);
-        setStaticSettingsID(other.getStaticSettingsID(), false, originator);
-        setAddToSelected(other.getAddToSelected(), false, originator);
-        setAddGeometryToSelected(other.getAddGeometryToSelected(), false,
-                originator);
-        setEventIdDisplayType(other.getEventIdDisplayType(), false, originator);
-        setDeselectAfterIssuing(other.getDeselectAfterIssuing(), false,
-                originator);
-        if (idChanged) {
+        Set<Type> changed = EnumSet.noneOf(Type.class);
+        changed.addAll(setSettingsID(other.getSettingsID(), false, originator));
+        changed.addAll(setVisibleTypes(other.getVisibleTypes(), false,
+                originator));
+        changed.addAll(setVisibleStatuses(other.getVisibleStatuses(), false,
+                originator));
+        changed.addAll(setToolbarTools(other.getToolbarTools(), false,
+                originator));
+        changed.addAll(setDefaultTimeDisplayDuration(
+                other.getDefaultTimeDisplayDuration(), false, originator));
+        changed.addAll(setTimeResolution(other.getTimeResolution(), false,
+                originator));
+        changed.addAll(setMapCenter(other.getMapCenter(), false, originator));
+        changed.addAll(setDefaultCategory(other.getDefaultCategory(), false,
+                originator));
+        changed.addAll(setPossibleSites(other.getPossibleSites(), false,
+                originator));
+        changed.addAll(setVisibleSites(other.getVisibleSites(), false,
+                originator));
+        changed.addAll(setDisplayName(other.getDisplayName(), false, originator));
+        changed.addAll(setDefaultDuration(other.getDefaultDuration(), false,
+                originator));
+        changed.addAll(setVisibleColumns(other.getVisibleColumns(), false,
+                originator));
+        changed.addAll(setColumns(other.getColumns(), false, originator));
+        changed.addAll(setStaticSettingsID(other.getStaticSettingsID(), false,
+                originator));
+        changed.addAll(setAddToSelected(other.getAddToSelected(), false,
+                originator));
+        changed.addAll(setAddGeometryToSelected(
+                other.getAddGeometryToSelected(), false, originator));
+        changed.addAll(setEventIdDisplayType(other.getEventIdDisplayType(),
+                false, originator));
+        changed.addAll(setPerspectiveIDs(other.getPerspectiveIDs(), false,
+                originator));
+        changed.addAll(setDeselectAfterIssuing(other.getDeselectAfterIssuing(),
+                false, originator));
+        if (changed.contains(Type.IDENTIFIER)) {
             settingsChangedIdentifier(true, originator);
-        } else {
-            settingsChanged(true, originator);
+        } else if (changed.isEmpty() == false) {
+            settingsChanged(true, changed, originator);
         }
     }
 
@@ -452,91 +486,92 @@ public class ObservedSettings implements ISettings {
      *            the new persisted settings that have changed in localization.
      */
     public void applyPersistedChanges(ISettings persisted, ISettings update) {
-        boolean notify = false;
-        boolean idChanged = false;
-        if (!changed(getSettingsID(), persisted.getSettingsID())) {
-            idChanged = changed(update.getSettingsID(), getSettingsID());
-            setSettingsID(update.getSettingsID(), false, null);
-            notify = true;
+        Set<Type> changed = EnumSet.noneOf(Type.class);
+        if (changed(getSettingsID(), persisted.getSettingsID()) == false) {
+            changed.addAll(setSettingsID(update.getSettingsID(), false, null));
         }
-        if (!changed(getVisibleTypes(), persisted.getVisibleTypes())) {
-            setVisibleTypes(update.getVisibleTypes(), false, null);
-            notify = true;
+        if (changed(getVisibleTypes(), persisted.getVisibleTypes()) == false) {
+            changed.addAll(setVisibleTypes(update.getVisibleTypes(), false,
+                    null));
         }
-        if (!changed(getVisibleStatuses(), persisted.getVisibleStatuses())) {
-            setVisibleStatuses(update.getVisibleStatuses(), false, null);
-            notify = true;
+        if (changed(getVisibleStatuses(), persisted.getVisibleStatuses()) == false) {
+            changed.addAll(setVisibleStatuses(update.getVisibleStatuses(),
+                    false, null));
         }
-        if (!changed(getToolbarTools(), persisted.getToolbarTools())) {
-            setToolbarTools(update.getToolbarTools(), false, null);
-            notify = true;
+        if (changed(getToolbarTools(), persisted.getToolbarTools()) == false) {
+            changed.addAll(setToolbarTools(update.getToolbarTools(), false,
+                    null));
         }
-        if (!changed(getDefaultTimeDisplayDuration(),
-                persisted.getDefaultTimeDisplayDuration())) {
-            setDefaultTimeDisplayDuration(
-                    update.getDefaultTimeDisplayDuration(), false, null);
-            notify = true;
+        if (changed(getDefaultTimeDisplayDuration(),
+                persisted.getDefaultTimeDisplayDuration()) == false) {
+            changed.addAll(setDefaultTimeDisplayDuration(
+                    update.getDefaultTimeDisplayDuration(), false, null));
         }
-        if (!changed(getTimeResolution(), persisted.getTimeResolution())) {
-            setTimeResolution(update.getTimeResolution(), false, null);
-            notify = true;
+        if (changed(getTimeResolution(), persisted.getTimeResolution()) == false) {
+            changed.addAll(setTimeResolution(update.getTimeResolution(), false,
+                    null));
         }
-        if (!changed(getMapCenter(), persisted.getMapCenter())) {
-            setMapCenter(update.getMapCenter(), false, null);
-            notify = true;
+        if (changed(getMapCenter(), persisted.getMapCenter()) == false) {
+            changed.addAll(setMapCenter(update.getMapCenter(), false, null));
         }
-        if (!changed(getDefaultCategory(), persisted.getDefaultCategory())) {
-            setDefaultCategory(update.getDefaultCategory(), false, null);
-            notify = true;
+        if (changed(getDefaultCategory(), persisted.getDefaultCategory()) == false) {
+            changed.addAll(setDefaultCategory(update.getDefaultCategory(),
+                    false, null));
         }
-        if (!changed(getPossibleSites(), persisted.getPossibleSites())) {
-            setPossibleSites(update.getPossibleSites(), false, null);
-            notify = true;
+        if (changed(getPossibleSites(), persisted.getPossibleSites()) == false) {
+            changed.addAll(setPossibleSites(update.getPossibleSites(), false,
+                    null));
         }
-        if (!changed(getVisibleSites(), persisted.getVisibleSites())) {
-            setVisibleSites(update.getVisibleSites(), false, null);
-            notify = true;
+        if (changed(getVisibleSites(), persisted.getVisibleSites()) == false) {
+            changed.addAll(setVisibleSites(update.getVisibleSites(), false,
+                    null));
         }
-        if (!changed(getDisplayName(), persisted.getDisplayName())) {
-            setDisplayName(update.getDisplayName(), false, null);
-            notify = true;
+        if (changed(getDisplayName(), persisted.getDisplayName()) == false) {
+            changed.addAll(setDisplayName(update.getDisplayName(), false, null));
         }
-        if (!changed(getDefaultDuration(), persisted.getDefaultDuration())) {
-            setDefaultDuration(update.getDefaultDuration(), false, null);
-            notify = true;
+        if (changed(getDefaultDuration(), persisted.getDefaultDuration()) == false) {
+            changed.addAll(setDefaultDuration(update.getDefaultDuration(),
+                    false, null));
         }
-        if (!changed(getVisibleColumns(), persisted.getVisibleColumns())) {
-            setVisibleColumns(update.getVisibleColumns(), false, null);
-            notify = true;
+        if (changed(getVisibleColumns(), persisted.getVisibleColumns()) == false) {
+            changed.addAll(setVisibleColumns(update.getVisibleColumns(), false,
+                    null));
         }
-        if (!changed(getColumns(), persisted.getColumns())) {
-            setColumns(update.getColumns(), false, null);
-            notify = true;
+        if (changed(getColumns(), persisted.getColumns()) == false) {
+            changed.addAll(setColumns(update.getColumns(), false, null));
         }
-        if (!changed(getStaticSettingsID(), persisted.getStaticSettingsID())) {
-            setStaticSettingsID(update.getStaticSettingsID(), false, null);
-            notify = true;
+        if (changed(getStaticSettingsID(), persisted.getStaticSettingsID()) == false) {
+            changed.addAll(setStaticSettingsID(update.getStaticSettingsID(),
+                    false, null));
         }
-        if (!changed(getAddToSelected(), persisted.getAddToSelected())) {
-            setAddToSelected(update.getAddToSelected(), false, null);
-            notify = true;
+        if (changed(getAddToSelected(), persisted.getAddToSelected()) == false) {
+            changed.addAll(setAddToSelected(update.getAddToSelected(), false,
+                    null));
         }
-        if (!changed(getEventIdDisplayType(), persisted.getEventIdDisplayType())) {
-            setEventIdDisplayType(update.getEventIdDisplayType(), false, null);
-            notify = true;
+        if (changed(getAddGeometryToSelected(),
+                persisted.getAddGeometryToSelected()) == false) {
+            changed.addAll(setAddGeometryToSelected(
+                    update.getAddGeometryToSelected(), false, null));
         }
-        if (!changed(getDeselectAfterIssuing(),
-                persisted.getDeselectAfterIssuing())) {
-            setDeselectAfterIssuing(update.getDeselectAfterIssuing(), false,
-                    null);
-            notify = true;
+        if (changed(getEventIdDisplayType(), persisted.getEventIdDisplayType()) == false) {
+            changed.addAll(setEventIdDisplayType(
+                    update.getEventIdDisplayType(), false, null));
+        }
+        if (changed(getPerspectiveIDs(), persisted.getPerspectiveIDs()) == false) {
+            changed.addAll(setPerspectiveIDs(update.getPerspectiveIDs(), false,
+                    null));
+        }
+        if (changed(getDeselectAfterIssuing(),
+                persisted.getDeselectAfterIssuing()) == false) {
+            changed.addAll(setDeselectAfterIssuing(
+                    update.getDeselectAfterIssuing(), false, null));
         }
 
-        if (notify) {
-            if (idChanged) {
+        if (changed.isEmpty() == false) {
+            if (changed.contains(Type.IDENTIFIER)) {
                 settingsChangedIdentifier(true, Originator.OTHER);
             } else {
-                settingsChanged(true, Originator.OTHER);
+                settingsChanged(true, changed, Originator.OTHER);
             }
         }
     }
@@ -633,165 +668,206 @@ public class ObservedSettings implements ISettings {
         setDeselectAfterIssuing(deselectAfterIssuing, true, originator);
     }
 
-    protected void setSettingsID(String settingsID, boolean notify,
+    protected Set<Type> setSettingsID(String settingsID, boolean notify,
             IOriginator originator) {
         if (changed(settingsID, getSettingsID())) {
             delegate.setSettingsID(settingsID);
             settingsChangedIdentifier(notify, originator);
+            return EnumSet.of(Type.IDENTIFIER);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setVisibleTypes(Set<String> visibleTypes, boolean notify,
-            IOriginator originator) {
+    protected Set<Type> setVisibleTypes(Set<String> visibleTypes,
+            boolean notify, IOriginator originator) {
         if (changed(visibleTypes, getVisibleTypes())) {
             delegate.setVisibleTypes(getSetCopy(visibleTypes));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.FILTERS, originator);
+            return EnumSet.of(Type.FILTERS);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setVisibleStatuses(Set<String> visibleStatuses,
+    protected Set<Type> setVisibleStatuses(Set<String> visibleStatuses,
             boolean notify, IOriginator originator) {
         if (changed(visibleStatuses, getVisibleStatuses())) {
             delegate.setVisibleStatuses(getSetCopy(visibleStatuses));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.FILTERS, originator);
+            return EnumSet.of(Type.FILTERS);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setToolbarTools(List<Tool> toolbarTools, boolean notify,
-            IOriginator originator) {
+    protected Set<Type> setToolbarTools(List<Tool> toolbarTools,
+            boolean notify, IOriginator originator) {
         if (changed(toolbarTools, getToolbarTools())) {
             delegate.setToolbarTools(getToolbarToolsCopy(toolbarTools));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.TOOLS, originator);
+            return EnumSet.of(Type.TOOLS);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setDefaultTimeDisplayDuration(
+    protected Set<Type> setDefaultTimeDisplayDuration(
             Long defaultTimeDisplayDuration, boolean notify,
             IOriginator originator) {
         if (changed(defaultTimeDisplayDuration, getDefaultTimeDisplayDuration())) {
             delegate.setDefaultTimeDisplayDuration(defaultTimeDisplayDuration);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.DEFAULT_DISPLAY_DURATION, originator);
+            return EnumSet.of(Type.DEFAULT_DISPLAY_DURATION);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setTimeResolution(TimeResolution timeResolution,
+    protected Set<Type> setTimeResolution(TimeResolution timeResolution,
             boolean notify, IOriginator originator) {
         if (changed(timeResolution, getTimeResolution())) {
             delegate.setTimeResolution(timeResolution);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.TIME_RESOLUTION, originator);
+            return EnumSet.of(Type.TIME_RESOLUTION);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setMapCenter(MapCenter mapCenter, boolean notify,
+    protected Set<Type> setMapCenter(MapCenter mapCenter, boolean notify,
             IOriginator originator) {
         if (changed(mapCenter, getMapCenter())) {
             delegate.setMapCenter(getMapCenterCopy(mapCenter));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.MAP_CENTER, originator);
+            return EnumSet.of(Type.MAP_CENTER);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setDefaultCategory(String defaultCategory, boolean notify,
-            IOriginator originator) {
+    protected Set<Type> setDefaultCategory(String defaultCategory,
+            boolean notify, IOriginator originator) {
         if (changed(defaultCategory, getDefaultCategory())) {
             delegate.setDefaultCategory(defaultCategory);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.DEFAULT_CATEGORY, originator);
+            return EnumSet.of(Type.DEFAULT_CATEGORY);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setPossibleSites(Set<String> possibleSites, boolean notify,
-            IOriginator originator) {
+    protected Set<Type> setPossibleSites(Set<String> possibleSites,
+            boolean notify, IOriginator originator) {
         if (changed(possibleSites, getPossibleSites())) {
             delegate.setPossibleSites(getSetCopy(possibleSites));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.POSSIBLE_SITES, originator);
+            return EnumSet.of(Type.POSSIBLE_SITES);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setVisibleSites(Set<String> visibleSites, boolean notify,
-            IOriginator originator) {
+    protected Set<Type> setVisibleSites(Set<String> visibleSites,
+            boolean notify, IOriginator originator) {
         if (changed(visibleSites, getVisibleSites())) {
             delegate.setVisibleSites(getSetCopy(visibleSites));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.FILTERS, originator);
+            return EnumSet.of(Type.FILTERS);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setDisplayName(String displayName, boolean notify,
+    protected Set<Type> setDisplayName(String displayName, boolean notify,
             IOriginator originator) {
         if (changed(displayName, getDisplayName())) {
             delegate.setDisplayName(displayName);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.DISPLAY_NAME, originator);
+            return EnumSet.of(Type.DISPLAY_NAME);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setDefaultDuration(Long defaultDuration, boolean notify,
-            IOriginator originator) {
+    protected Set<Type> setDefaultDuration(Long defaultDuration,
+            boolean notify, IOriginator originator) {
         if (changed(defaultDuration, getDefaultDuration())) {
             delegate.setDefaultDuration(defaultDuration);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.DEFAULT_EVENT_DURATION, originator);
+            return EnumSet.of(Type.DEFAULT_EVENT_DURATION);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setVisibleColumns(List<String> visibleColumns,
+    protected Set<Type> setVisibleColumns(List<String> visibleColumns,
             boolean notify, IOriginator originator) {
         if (changed(visibleColumns, getVisibleColumns())) {
             delegate.setVisibleColumns(getListCopy(visibleColumns));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.VISIBLE_COLUMNS, originator);
+            return EnumSet.of(Type.VISIBLE_COLUMNS);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setColumns(Map<String, Column> columns, boolean notify,
+    protected Set<Type> setColumns(Map<String, Column> columns, boolean notify,
             IOriginator originator) {
         if (changed(columns, getColumns())) {
             delegate.setColumns(getColumnsCopy(columns));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.COLUMN_DEFINITIONS, originator);
+            return EnumSet.of(Type.COLUMN_DEFINITIONS);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setStaticSettingsID(String staticSettingsID, boolean notify,
-            IOriginator originator) {
+    protected Set<Type> setStaticSettingsID(String staticSettingsID,
+            boolean notify, IOriginator originator) {
         if (changed(staticSettingsID, getStaticSettingsID())) {
             delegate.setStaticSettingsID(staticSettingsID);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.STATIC_IDENTIFIER, originator);
+            return EnumSet.of(Type.STATIC_IDENTIFIER);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setAddToSelected(Boolean addToSelected, boolean notify,
+    protected Set<Type> setAddToSelected(Boolean addToSelected, boolean notify,
             IOriginator originator) {
         if (changed(addToSelected, getAddToSelected())) {
             delegate.setAddToSelected(addToSelected);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.ADD_TO_SELECTED, originator);
+            return EnumSet.of(Type.ADD_TO_SELECTED);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setAddGeometryToSelected(Boolean addGeometryToSelected,
+    protected Set<Type> setAddGeometryToSelected(Boolean addGeometryToSelected,
             boolean notify, IOriginator originator) {
         if (changed(addGeometryToSelected, getAddGeometryToSelected())) {
             delegate.setAddGeometryToSelected(addGeometryToSelected);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.ADD_GEOMETRY_TO_SELECTED, originator);
+            return EnumSet.of(Type.ADD_GEOMETRY_TO_SELECTED);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setEventIdDisplayType(String eventIdDisplayType,
+    protected Set<Type> setEventIdDisplayType(String eventIdDisplayType,
             boolean notify, IOriginator originator) {
         if (changed(eventIdDisplayType, getEventIdDisplayType())) {
             delegate.setEventIdDisplayType(eventIdDisplayType);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.EVENT_IDENTIFIER_DISPLAY_TYPE,
+                    originator);
+            return EnumSet.of(Type.EVENT_IDENTIFIER_DISPLAY_TYPE);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    protected void setPerspectiveIDs(Set<String> perspectiveIDs,
+    protected Set<Type> setPerspectiveIDs(Set<String> perspectiveIDs,
             boolean notify, IOriginator originator) {
         if (changed(perspectiveIDs, getPerspectiveIDs())) {
             delegate.setPerspectiveIDs(getSetCopy(perspectiveIDs));
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.PERSPECTIVE_IDENTIFIERS, originator);
+            return EnumSet.of(Type.PERSPECTIVE_IDENTIFIERS);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
-    public void setDeselectAfterIssuing(Boolean deselectAfterIssuing,
+    protected Set<Type> setDeselectAfterIssuing(Boolean deselectAfterIssuing,
             boolean notify, IOriginator originator) {
         if (changed(deselectAfterIssuing, getDeselectAfterIssuing())) {
             delegate.setDeselectAfterIssuing(deselectAfterIssuing);
-            settingsChanged(notify, originator);
+            settingsChanged(notify, Type.DESELECT_AFTER_ISSUING, originator);
+            return EnumSet.of(Type.DESELECT_AFTER_ISSUING);
         }
+        return EnumSet.noneOf(Type.class);
     }
 
     /**
@@ -818,7 +894,7 @@ public class ObservedSettings implements ISettings {
                 hcat.getChildren().add(type);
             }
         }
-        return new ArrayList<HazardCategoryAndTypes>(typeMap.values());
+        return new ArrayList<>(typeMap.values());
     }
 
     /**

@@ -101,15 +101,6 @@ public class Utilities {
         return result;
     }
 
-    /**
-     * Builds the JEP include path. This includes the paths to all of the python
-     * resources that Hazard Services will need. This removes dependence from
-     * the PYTHONPATH environment variable.
-     * 
-     * @param
-     * @return An path like string containing all of the python resources needed
-     *         by Hazard Services.
-     */
     static String[] pythonLocalizationDirectories = {
             "python",
             "python" + File.separator + "UFStatusHandler.py",
@@ -127,6 +118,14 @@ public class Utilities {
                     + "recommenders" + File.separator
                     + "DamBreakFloodRecommender.py" };
 
+    /**
+     * Builds the JEP include path. This includes the paths to all of the python
+     * resources that Hazard Services will need. This removes dependence from
+     * the PYTHONPATH environment variable.
+     * 
+     * @return An path like string containing all of the python resources needed
+     *         by Hazard Services.
+     */
     public static List<String> buildPythonPath() {
 
         List<String> sourcePaths = new ArrayList<>();

@@ -25,6 +25,7 @@ import com.google.gson.GsonBuilder;
  *                                             points.
  * Nov 04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
  * Dec 05, 2014   4124     Chris.Golden        Removed obsolete methods.
+ * Dec 12, 2016  15556     Chris.Golden        Removed EventDict references.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -38,8 +39,6 @@ public class JSONUtilities {
      */
     static public Gson createGsonInterpreter() {
         GsonBuilder gsonBuilder = new GsonBuilder();
-        gsonBuilder.registerTypeAdapter(EventDict.class,
-                new EventDictDeserializer());
         gsonBuilder.registerTypeAdapter(Dict.class, new DictDeserializer());
         gsonBuilder.registerTypeAdapter(DictList.class,
                 new DictListDeserializer());

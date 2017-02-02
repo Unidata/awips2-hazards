@@ -56,12 +56,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,9 +71,11 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.time.DateUtils;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
+import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
@@ -119,6 +119,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
@@ -129,9 +130,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModifie
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastChangedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -446,6 +445,18 @@ import com.vividsolutions.jts.geom.Polygon;
  * Nov 17, 2016   26313    Chris.Golden Changed to support multiple UGC types per hazard type, and to
  *                                      work with revamped GeoMapUtilities, moving some code that was
  *                                      previously here into that class as it was poorly placed.
+ * Feb 01, 2017   15556    Chris.Golden Added methods to get the history count and visible history
+ *                                      count for a hazard event. Also moved selection methods to
+ *                                      new selection manager, while removing use of the old
+ *                                      selected attribute in the hazard event. Revamped the fetching
+ *                                      of hazard events for current settings to be more thorough.
+ *                                      Added method for reverting to the most recent version of an
+ *                                      event that is found in the database. Added handling of the
+ *                                      "visible in history list" flag that hazard events now have.
+ *                                      Added ability to get duration choices and metadata specifiers
+ *                                      for historical snapshots of events. Fixed bug that did not
+ *                                      remove an event from the selection set if its status changed
+ *                                      to one that was invisible under the current settings.
  * </pre>
  * 
  * @author bsteffen
@@ -455,44 +466,9 @@ import com.vividsolutions.jts.geom.Polygon;
 public class SessionEventManager implements
         ISessionEventManager<ObservedHazardEvent> {
 
-    private static final String POINT_ID = "id";
-
-    // Public Static Constants
-
-    /**
-     * Comparator can be used with sortEvents to send selected events to the
-     * front of the list.
-     */
-    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_FRONT = new Comparator<ObservedHazardEvent>() {
-
-        @Override
-        public int compare(ObservedHazardEvent o1, ObservedHazardEvent o2) {
-            boolean s1 = Boolean.TRUE.equals(o1
-                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
-            boolean s2 = Boolean.TRUE.equals(o2
-                    .getHazardAttribute(HAZARD_EVENT_SELECTED));
-            if (s1) {
-                if (s2) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            } else if (s2) {
-                return -1;
-            }
-            return 0;
-        }
-
-    };
-
-    /**
-     * Comparator can be used with sortEvents to send selected events to the
-     * back of the list.
-     */
-    public static final Comparator<ObservedHazardEvent> SEND_SELECTED_BACK = Collections
-            .reverseOrder(SEND_SELECTED_FRONT);
-
     // Private Static Constants
+
+    private static final String POINT_ID = "id";
 
     private static final String GEOMETRY_MODIFICATION_ERROR = "Geometry Modification Error";
 
@@ -505,19 +481,13 @@ public class SessionEventManager implements
 
     private final ISessionTimeManager timeManager;
 
-    /*
-     * A full configuration manager is needed to get access to hazard types,
-     * which is not exposed in ISessionConfigurationManager
-     */
     private final ISessionConfigurationManager<ObservedSettings> configManager;
 
     private final IHazardEventManager dbManager;
 
     private final ISessionNotificationSender notificationSender;
 
-    private final List<ObservedHazardEvent> events = new ArrayList<ObservedHazardEvent>();
-
-    private final Deque<String> eventModifications = new LinkedList<String>();
+    private final List<ObservedHazardEvent> events = new ArrayList<>();
 
     /*
      * TODO: Decide whether expiration is to be done in Java code or not. For
@@ -573,6 +543,25 @@ public class SessionEventManager implements
             null);
 
     /**
+     * Map pairing event identifiers for all the {@link #events} with historical
+     * versions with the number of historical versions. If an event identifier
+     * has no associated value within this map, the event has no historical
+     * versions.
+     */
+    private final Map<String, Integer> historicalVersionCountForEventIdentifiers = new HashMap<>();
+
+    /**
+     * Map pairing event identifiers for all the {@link #events} with historical
+     * versions with the number of visible historical versions, that is, those
+     * that should be viewable by the user in any display of the history list.
+     * This number will always be less than or equal to the number found at the
+     * same key in {@link #historicalVersionCountForEventIdentifiers}. If an
+     * event identifier has no associated value within this map, the event has
+     * no visible historical versions.
+     */
+    private final Map<String, Integer> visibleHistoricalVersionCountForEventIdentifiers = new HashMap<>();
+
+    /**
      * Set of identifiers for all events that have "Ending" status.
      */
     private final Set<String> eventIdentifiersWithEndingStatus = new HashSet<>();
@@ -591,14 +580,14 @@ public class SessionEventManager implements
 
     private final Map<String, Map<String, String>> eventModifyingScriptsForEventIdentifiers = new HashMap<>();
 
-    /*
+    /**
      * The messenger for displaying questions and warnings to the user and
      * retrieving answers. This allows the viz side (App Builder) to be
      * responsible for these dialogs, but gives the event manager and other
      * managers access to them without creating a dependency on the
-     * gov.noaa.gsd.viz.hazards plugin. Since all parts of Hazard Services can
-     * use the same code for creating these dialogs, it makes it easier for them
-     * to be stubbed for testing.
+     * <code>gov.noaa.gsd.viz.hazards</code> plugin. Since all parts of Hazard
+     * Services can use the same code for creating these dialogs, it makes it
+     * easier for them to be stubbed for testing.
      */
     private IMessenger messenger;
 
@@ -669,89 +658,37 @@ public class SessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEventsByStatus(HazardStatus state) {
+    public HazardHistoryList getEventHistoryById(String eventId) {
+        return dbManager.getByEventID(eventId);
+    }
+
+    @Override
+    public int getHistoricalVersionCountForEvent(String eventIdentifier) {
+        Integer count = historicalVersionCountForEventIdentifiers
+                .get(eventIdentifier);
+        return (count == null ? 0 : count);
+    }
+
+    @Override
+    public int getVisibleHistoricalVersionCountForEvent(String eventIdentifier) {
+        Integer count = visibleHistoricalVersionCountForEventIdentifiers
+                .get(eventIdentifier);
+        return (count == null ? 0 : count);
+    }
+
+    @Override
+    public Collection<ObservedHazardEvent> getEventsByStatus(
+            HazardStatus status, boolean includeUntyped) {
         Collection<ObservedHazardEvent> allEvents = getEvents();
         Collection<ObservedHazardEvent> events = new ArrayList<>(
                 allEvents.size());
         for (ObservedHazardEvent event : allEvents) {
-            if (event.getStatus().equals(state)) {
+            if (event.getStatus().equals(status)
+                    && (includeUntyped || (event.getHazardType() != null))) {
                 events.add(event);
             }
         }
         return events;
-    }
-
-    @Override
-    public List<ObservedHazardEvent> getSelectedEvents() {
-
-        /*
-         * TODO: Consider having getEventsForCurrentSettings() return a list as
-         * well. It's questionable as to whether that method should return a
-         * list, because maybe implying an inherent ordering of the events is
-         * incorrect; however, the order is relied upon (since the code here
-         * iterates through all those events) to return a consistently ordered
-         * set of events. Perhaps the order should be set via the GUI, since the
-         * console allows sorting of events, and maybe the order in which those
-         * events occur should provide the order in which the selected events,
-         * which are after all in the console list, occur.
-         * 
-         * TODO: Consider having this list rebuilt each time selection changes
-         * (by doing so before sending off a SessionSelectedEventsModified
-         * message in SessionEventManager), and then simply returning an
-         * unmodifiable version of that list each time this method is called. Or
-         * better yet, simply use the same list each time, modifying it as
-         * appropriate when the selected events are changing, and again simply
-         * returning an unmodifiable view of it to callers of this method. In
-         * this case, any caller that wished to cache the selected events list
-         * for comparison to updates to it later (i.e. classes such as
-         * HazardDetailPresenter) would need to make a copy of what they got
-         * from invoking this method.
-         */
-        Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
-        List<ObservedHazardEvent> events = new ArrayList<>(allEvents.size());
-        for (ObservedHazardEvent event : allEvents) {
-            if (Boolean.TRUE.equals(event
-                    .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
-                events.add(event);
-            }
-        }
-        return events;
-    }
-
-    @Override
-    public boolean isSelected(ObservedHazardEvent event) {
-        return getSelectedEvents().contains(event);
-
-    }
-
-    @Override
-    public void setSelectedEvents(
-            Collection<ObservedHazardEvent> selectedEvents,
-            IOriginator originator) {
-        for (ObservedHazardEvent event : getSelectedEvents()) {
-            if (!selectedEvents.contains(event)) {
-                event.addHazardAttribute(HAZARD_EVENT_SELECTED, false,
-                        originator);
-            }
-        }
-        for (ObservedHazardEvent event : selectedEvents) {
-            event.addHazardAttribute(HAZARD_EVENT_SELECTED, true, originator);
-
-            /*
-             * Once selected, a potential event or set of events should be set
-             * to PENDING.
-             */
-            if (event.getStatus() == HazardStatus.POTENTIAL) {
-                event.setStatus(HazardStatus.PENDING, Originator.OTHER);
-            }
-        }
-    }
-
-    @Override
-    public void setSelectedEventForIDs(Collection<String> selectedEventIDs,
-            IOriginator originator) {
-        Collection<ObservedHazardEvent> selectedEvents = fromIDs(selectedEventIDs);
-        setSelectedEvents(selectedEvents, originator);
     }
 
     @Override
@@ -796,7 +733,6 @@ public class SessionEventManager implements
     @Override
     public List<ObservedHazardEvent> getEventsForCurrentSettings() {
         List<ObservedHazardEvent> result = getEvents();
-
         filterEventsForConfig(result);
         return result;
     }
@@ -866,14 +802,11 @@ public class SessionEventManager implements
             originator = Originator.OTHER;
 
             /*
-             * Add the event, and add it to the selection as well. The old
-             * selection is fetched before the addition, because the addition
-             * will change the selection.
+             * Add the event, and add it to the selection as well.
              */
-            Collection<ObservedHazardEvent> selection = getSelectedEvents();
-            event = addEvent(baseEvent, originator);
-            selection.add(event);
-            setSelectedEvents(selection, originator);
+            event = addEvent(baseEvent, false, originator);
+            sessionManager.getSelectionManager().addEventToSelectedEvents(
+                    event.getEventID(), originator);
         }
 
         /*
@@ -1164,8 +1097,13 @@ public class SessionEventManager implements
 
     @Handler(priority = 1)
     public void settingsModified(SettingsModified notification) {
-        reloadHazardServicesEventId();
-        loadEventsForSettings(notification.getSettings());
+        if (notification.getChanged().contains(
+                ObservedSettings.Type.EVENT_IDENTIFIER_DISPLAY_TYPE)) {
+            reloadHazardServicesEventId();
+        }
+        if (notification.getChanged().contains(ObservedSettings.Type.FILTERS)) {
+            loadEventsForSettings(notification.getSettings());
+        }
     }
 
     /**
@@ -1190,10 +1128,10 @@ public class SessionEventManager implements
     }
 
     /**
-     * Respond to the addition of a hazard event by firing off a notification
-     * that the list of selected events has changed, if appropriate, as well as
-     * by updating the event's start and end time editability boundaries, and by
-     * modifying the event conflict tracking data as appropriate.
+     * Respond to the addition of a hazard event by updating the event's start
+     * and end time editability boundaries, by ensuring that the event end time
+     * "until further notice" flag is appropriate, and by modifying the event
+     * conflict tracking data as appropriate.
      * 
      * @param change
      *            Change that occurred.
@@ -1201,13 +1139,6 @@ public class SessionEventManager implements
     @Handler(priority = 1)
     public void hazardAdded(SessionEventAdded change) {
         ensureEventEndTimeUntilFurtherNoticeAppropriate(change.getEvent(), true);
-        if (Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
-                HAZARD_EVENT_SELECTED))) {
-            notificationSender
-                    .postNotificationAsync(new SessionSelectedEventsModified(
-                            this, Sets.newHashSet(change.getEvent()
-                                    .getEventID()), change.getOriginator()));
-        }
         updateTimeBoundariesForEvents(change.getEvent(), false);
         updateDurationChoicesForEvent(change.getEvent(), false);
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
@@ -1225,13 +1156,6 @@ public class SessionEventManager implements
      */
     @Handler(priority = 1)
     public void hazardRemoved(SessionEventRemoved change) {
-        if (Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
-                HAZARD_EVENT_SELECTED))) {
-            notificationSender
-                    .postNotificationAsync(new SessionSelectedEventsModified(
-                            this, Sets.newHashSet(change.getEvent()
-                                    .getEventID()), change.getOriginator()));
-        }
         timeResolutionsForEventIdentifiers.remove(change.getEvent()
                 .getEventID());
         updateSavedTimesForEventIfIssued(change.getEvent(), true);
@@ -1316,8 +1240,12 @@ public class SessionEventManager implements
                     .getGeneratedProducts()) {
                 ProductGeneratorEntry pgEntry = pgTable
                         .get(generatedProductList.getProductInfo());
-                if (pgEntry.getChangeHazardStatus() == true) {
-                    for (IEvent event : generatedProductList.getEventSet()) {
+                if (pgEntry.getChangeHazardStatus()) {
+                    EventSet<IEvent> eventSet = generatedProductList
+                            .getEventSet();
+                    Set<String> newlyDeselectedEventIdentifiers = new HashSet<>(
+                            eventSet.size(), 1.0f);
+                    for (IEvent event : eventSet) {
                         IHazardEvent hazardEvent = (IHazardEvent) event;
                         ObservedHazardEvent oEvent = getEventById(hazardEvent
                                 .getEventID());
@@ -1352,9 +1280,8 @@ public class SessionEventManager implements
                                 && Boolean.TRUE.equals(configManager
                                         .getSettings()
                                         .getDeselectAfterIssuing())) {
-                            oEvent.addHazardAttribute(
-                                    HazardConstants.HAZARD_EVENT_SELECTED,
-                                    false);
+                            newlyDeselectedEventIdentifiers.add(oEvent
+                                    .getEventID());
                         }
 
                         /*
@@ -1379,7 +1306,7 @@ public class SessionEventManager implements
                             /*
                              * TODO Fix this later. (Tracy) For some reason the
                              * Hazard Event for PHI does not have it's issue
-                             * time ime set at this juncture, and results in an
+                             * time set at this juncture, and results in an
                              * exception.
                              */
                             // updateTimeRangeBoundariesOfJustIssuedEvent(
@@ -1390,6 +1317,16 @@ public class SessionEventManager implements
                         } else if (wasReissued) {
                             persistEvent(oEvent);
                         }
+                    }
+
+                    /*
+                     * If there are any events to be deselected, do so.
+                     */
+                    if (newlyDeselectedEventIdentifiers.isEmpty() == false) {
+                        sessionManager.getSelectionManager()
+                                .removeEventsFromSelectedEvents(
+                                        newlyDeselectedEventIdentifiers,
+                                        Originator.OTHER);
                     }
                 }
             }
@@ -1480,20 +1417,110 @@ public class SessionEventManager implements
     }
 
     @Override
-    public MegawidgetSpecifierManager getMegawidgetSpecifiers(
-            ObservedHazardEvent event) {
-        MegawidgetSpecifierManager manager = megawidgetSpecifiersForEventIdentifiers
-                .get(event.getEventID());
-        if (manager != null) {
-            return manager;
+    public MegawidgetSpecifierManager getMegawidgetSpecifiers(IHazardEvent event) {
+
+        /*
+         * If the specified event is an observed hazard event, then it is an
+         * active, modifiable event being managed by this manager, so its
+         * megawidget specifier manager may be found in the cache, and if not,
+         * the manager should be fetched and allowed to potentially modify the
+         * event. Otherwise, the event is not an active event; it should be
+         * treated as an uneditable historical event snapshot, and thus the
+         * megawidget specifier manager should simply be fetched and returned,
+         * not cached and not given a chance to modify the hazard event.
+         */
+        if (event instanceof ObservedHazardEvent) {
+            MegawidgetSpecifierManager manager = megawidgetSpecifiersForEventIdentifiers
+                    .get(event.getEventID());
+            if (manager != null) {
+                return manager;
+            }
+            updateEventMetadata((ObservedHazardEvent) event);
+            return megawidgetSpecifiersForEventIdentifiers.get(event
+                    .getEventID());
+        } else {
+            return configManager.getMetadataForHazardEvent(event)
+                    .getMegawidgetSpecifierManager();
         }
-        updateEventMetadata(event);
-        return megawidgetSpecifiersForEventIdentifiers.get(event.getEventID());
     }
 
     @Override
-    public List<String> getDurationChoices(ObservedHazardEvent event) {
-        return durationChoicesForEventIdentifiers.get(event.getEventID());
+    public List<String> getDurationChoices(IHazardEvent event) {
+
+        /*
+         * Get the duration choices for the hazard event that are cached. If
+         * nothing is found that way, and the hazard event is not an editable
+         * one, get the list of possible duration choices for the hazard event's
+         * type, and prune it down to the single choice that matches the event's
+         * current duration.
+         */
+        List<String> durationChoices = durationChoicesForEventIdentifiers
+                .get(event.getEventID());
+        if ((durationChoices == null)
+                && (event instanceof ObservedHazardEvent == false)) {
+            durationChoices = configManager.getDurationChoices(event);
+            if (durationChoices.isEmpty() == false) {
+
+                /*
+                 * Get a map of the choice strings to their associated time
+                 * deltas in milliseconds. The map will iterate in the order the
+                 * choices are specified in the list used to generate it.
+                 */
+                Map<String, Long> deltasForDurations = getDeltasForDurationChoices(
+                        event, durationChoices);
+                if (deltasForDurations == null) {
+                    return null;
+                }
+
+                /*
+                 * Iterate through the choices, checking each in turn to see if
+                 * its associated delta is the current event duration. If one is
+                 * found, use that as the sole choice.
+                 */
+                long eventDelta = event.getEndTime().getTime()
+                        - event.getStartTime().getTime();
+                for (Map.Entry<String, Long> entry : deltasForDurations
+                        .entrySet()) {
+                    if (entry.getValue() == eventDelta) {
+                        return Lists.newArrayList(entry.getKey());
+                    }
+                }
+                durationChoices = Collections.emptyList();
+            }
+        }
+        return durationChoices;
+    }
+
+    /**
+     * Get the map of the specified duration choices to their time deltas in
+     * milliseconds.
+     * 
+     * @param event
+     *            Event for which the deltas are being fetched.
+     * @param durationChoices
+     *            List of duration choices to be turned into deltas.
+     * @return Map of the duration choices to their associated time deltas in
+     *         milliseconds, or <code>null</code> if an error occurs.
+     */
+    private Map<String, Long> getDeltasForDurationChoices(IHazardEvent event,
+            List<String> durationChoices) {
+
+        /*
+         * Get a map of the choice strings to their associated time deltas in
+         * milliseconds. The map will iterate in the order the choices are
+         * specified in the list used to generate it.
+         */
+        Map<String, Long> deltasForDurations = null;
+        try {
+            deltasForDurations = durationChoiceValidator
+                    .convertToAvailableMapForProperty(durationChoices);
+        } catch (MegawidgetPropertyException e) {
+            statusHandler.error(
+                    "invalid list of duration choices for event of type "
+                            + HazardEventUtilities.getHazardType(event), e);
+            return null;
+        }
+        return deltasForDurations;
     }
 
     @Override
@@ -1657,10 +1684,8 @@ public class SessionEventManager implements
 
         boolean eventModified = event.isModified();
         Map<String, Serializable> attributes = event.getHazardAttributes();
-        Map<String, Object> newAttributes = new HashMap<>(attributes.size());
-        for (String name : attributes.keySet()) {
-            newAttributes.put(name, attributes.get(name));
-        }
+        Map<String, Object> newAttributes = new HashMap<String, Object>(
+                attributes);
         populateTimeAttributesStartingStates(manager.getSpecifiers(),
                 newAttributes, event.getStartTime().getTime(), event
                         .getEndTime().getTime());
@@ -1783,34 +1808,13 @@ public class SessionEventManager implements
      * the appropriate time being set to "until further notice" or, if the flag
      * has been set to false, an appropriate default time. Also ensure that any
      * metadata state changes that should trigger a metadata reload, or that
-     * should trigger a recommender run, do so. Finally, generate notifications
-     * that the list of selected hazard events has changed if the selected
-     * attribute is found to have been altered.
+     * should trigger a recommender run, do so.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler(priority = 1)
     public void hazardAttributesChanged(SessionEventAttributesModified change) {
-
-        /*
-         * If the hazard selection attribute has changed and it is within the
-         * current set of all events being managed, send out a notification of
-         * indicating that selected events have changed, and update the
-         * conflicts for selected events map. The reason that the check is made
-         * for whether the event is currently being managed is to avoid such
-         * updates when an event has its attribute changes before it is added or
-         * after it is removed.
-         */
-        if (change.containsAttribute(HAZARD_EVENT_SELECTED)
-                && getEvents().contains(change.getEvent())) {
-            notificationSender
-                    .postNotificationAsync(new SessionSelectedEventsModified(
-                            this, Sets.newHashSet(change.getEvent()
-                                    .getEventID()), change.getOriginator()));
-            updateConflictingEventsForSelectedEventIdentifiers(
-                    change.getEvent(), false);
-        }
 
         /*
          * If the end time "until further notice" flag has changed value but was
@@ -2267,71 +2271,103 @@ public class SessionEventManager implements
          * Get the identifiers of the events that were selected before this
          * change.
          */
-        Set<String> oldSelectedEventIds = getEventIdentifiers(getSelectedEvents());
+        Set<String> oldSelectedEventIdentifiers = new HashSet<>(sessionManager
+                .getSelectionManager().getSelectedEventIdentifiers());
 
         /*
          * Iterate through the events, adding any that were not part of the
-         * event list before.
-         * 
-         * TODO: Why does this not remove events that were previously part of
-         * the event list, but no longer make it through the filters?
+         * event list before. Also track which events that were being managed
+         * previously are not included in the events returned from the query.
          */
-        synchronized (events) {
-            for (Entry<String, HazardHistoryList> entry : eventsMap.entrySet()) {
-                HazardHistoryList list = entry.getValue();
-                IHazardEvent event = list.get(list.size() - 1);
-                if (getEventById(event.getEventID()) != null) {
-                    // already have this one.
-                    continue;
+        Set<ObservedHazardEvent> leftoverEvents = new HashSet<>(events);
+        Set<String> selectedEventIdentifiers = new HashSet<>();
+        for (Entry<String, HazardHistoryList> entry : eventsMap.entrySet()) {
+
+            /*
+             * Get the history list for the event, and if the event is already
+             * in the session events list, do nothing more with it besides
+             * adding it to the set of selected events if it was selected
+             * before.
+             */
+            HazardHistoryList historyList = entry.getValue();
+            IHazardEvent event = historyList.get(historyList.size() - 1);
+            String eventIdentifier = event.getEventID();
+            ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
+            if (oldEvent != null) {
+                leftoverEvents.remove(oldEvent);
+                if (oldSelectedEventIdentifiers.contains(eventIdentifier)) {
+                    selectedEventIdentifiers.add(eventIdentifier);
                 }
-                event = addEvent(event, false, Originator.DATABASE);
-                for (IHazardEvent histEvent : list) {
-                    if (HazardStatus.issuedButNotEndedOrElapsed(histEvent
-                            .getStatus())) {
-                        event.addHazardAttribute(ATTR_ISSUED, true);
-                        break;
-                    }
+                continue;
+            }
+
+            /*
+             * Add the event, and if it has been issued, set its has-been-issued
+             * flag.
+             */
+            event = addEvent(event, false, Originator.DATABASE);
+            for (IHazardEvent historicalEvent : historyList) {
+                if (HazardStatus.issuedButNotEndedOrElapsed(historicalEvent
+                        .getStatus())) {
+                    event.addHazardAttribute(ATTR_ISSUED, true);
+                    break;
                 }
             }
-            for (ObservedHazardEvent event : events) {
-                scheduleExpirationTask(event);
+
+            /*
+             * Remember the hazard event's history list's size, and the number
+             * of visible historical events in the history list.
+             */
+            updateHistoricalVersionCountsForEvent(eventIdentifier, historyList);
+        }
+
+        /*
+         * For the remaining old events (those not included in the ones returned
+         * by the query), filter them for the current settings.
+         */
+        filterEventsForConfig(leftoverEvents);
+        for (ObservedHazardEvent event : leftoverEvents) {
+            String eventIdentifier = event.getEventID();
+            if (oldSelectedEventIdentifiers.contains(eventIdentifier)) {
+                selectedEventIdentifiers.add(eventIdentifier);
             }
         }
 
         /*
-         * Get the identifiers of the now selected events, and ensure they are
-         * not in the list of modified events.
+         * Schedule expiration tasks for the events.
          */
-        Set<String> selectedEventIds = getEventIdentifiers(getSelectedEvents());
-        Iterator<String> iter = eventModifications.iterator();
-        while (iter.hasNext()) {
-            String identifier = iter.next();
-            if (selectedEventIds.contains(identifier) == false) {
-                iter.remove();
-            }
+        for (ObservedHazardEvent event : events) {
+            scheduleExpirationTask(event);
         }
 
         /*
-         * Determine which events changed selection state and send out a
-         * notification of this change.
+         * Set the new selected events
          */
-        Set<String> changedSelectionStateEventIds = Sets.symmetricDifference(
-                oldSelectedEventIds, selectedEventIds);
-        if (changedSelectionStateEventIds.isEmpty() == false) {
-            notificationSender
-                    .postNotificationAsync(new SessionSelectedEventsModified(
-                            this, changedSelectionStateEventIds,
-                            Originator.OTHER));
-        }
+        sessionManager.getSelectionManager().setSelectedEventIdentifiers(
+                selectedEventIdentifiers, Originator.OTHER);
     }
 
-    private Set<String> getEventIdentifiers(
-            Collection<ObservedHazardEvent> events) {
-        Set<String> eventIdentifiers = new HashSet<>(events.size(), 1.0f);
-        for (ObservedHazardEvent event : events) {
-            eventIdentifiers.add(event.getEventID());
+    /**
+     * Update the historical version count and the visible historical version
+     * count for the specified hazard event.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event.
+     * @param historyList
+     *            History list for the event.
+     */
+    private void updateHistoricalVersionCountsForEvent(String eventIdentifier,
+            HazardHistoryList historyList) {
+        historicalVersionCountForEventIdentifiers.put(eventIdentifier,
+                historyList.size());
+        int visibleCount = 0;
+        for (IHazardEvent historicalEvent : historyList) {
+            if (historicalEvent.isVisibleInHistoryList()) {
+                visibleCount++;
+            }
         }
-        return eventIdentifiers;
+        visibleHistoricalVersionCountForEventIdentifiers.put(eventIdentifier,
+                visibleCount);
     }
 
     @Override
@@ -2368,6 +2404,7 @@ public class SessionEventManager implements
     protected ObservedHazardEvent addEvent(IHazardEvent event, boolean select,
             IOriginator originator) {
         ObservedHazardEvent oevent = new ObservedHazardEvent(event, this);
+        oevent.setInsertTime(null);
 
         /*
          * Need to account for the case where the event being added already
@@ -2381,7 +2418,7 @@ public class SessionEventManager implements
             ObservedHazardEvent existingEvent = getEventById(eventID);
             if (existingEvent != null) {
                 SessionEventUtilities.mergeHazardEvents(this, oevent,
-                        existingEvent, false, false, originator);
+                        existingEvent, false, false, true, originator);
                 return existingEvent;
             }
         } else {
@@ -2502,20 +2539,7 @@ public class SessionEventManager implements
         }
         oevent.setHazardMode(productClass, false, originator);
 
-        /*
-         * Unselect all other events if this event is to be selected and
-         * add-to-selected is not set.
-         */
-        synchronized (events) {
-            if (select
-                    && (addCreatedEventsToSelected == false)
-                    && (Boolean.TRUE.equals(settings.getAddToSelected()) == false)) {
-                for (IHazardEvent e : events) {
-                    e.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
-                }
-            }
-            events.add(oevent);
-        }
+        events.add(oevent);
 
         /*
          * Notify listeners that the event has been added.
@@ -2524,11 +2548,8 @@ public class SessionEventManager implements
                 oevent, originator));
 
         /*
-         * Unset the selected and checked attributes, and set the issued flag as
-         * appropriate.
+         * Unset the checked attribute, and set the issued flag as appropriate.
          */
-        oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, false, false,
-                originator);
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, false, false,
                 originator);
         oevent.addHazardAttribute(ATTR_ISSUED,
@@ -2536,11 +2557,22 @@ public class SessionEventManager implements
                 false, originator);
 
         /*
-         * Set the selected flag if appropriate, and check the hazard as well.
+         * If the event is to be selected, either select only it, or add it to
+         * the current selection, as appropriate.
          */
         if (select) {
-            oevent.addHazardAttribute(HAZARD_EVENT_SELECTED, true, false);
+            if ((addCreatedEventsToSelected == false)
+                    && (Boolean.TRUE.equals(settings.getAddToSelected()) == false)) {
+                sessionManager.getSelectionManager()
+                        .setSelectedEventIdentifiers(
+                                Sets.newHashSet(oevent.getEventID()),
+                                Originator.OTHER);
+            } else {
+                sessionManager.getSelectionManager().addEventToSelectedEvents(
+                        oevent.getEventID(), Originator.OTHER);
+            }
         }
+
         oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, true);
 
         /*
@@ -2565,6 +2597,46 @@ public class SessionEventManager implements
                     this, oevent, Collections.<String> emptySet(), originator));
         }
         return oevent;
+    }
+
+    /**
+     * Handle the addition or modification of an event in the database.
+     * 
+     * @param event
+     *            Hazard event added to or modified in the database.
+     */
+    void handleEventAdditionToDatabase(IHazardEvent event) {
+        ObservedHazardEvent oldEvent = getEventById(event.getEventID());
+        if (oldEvent != null) {
+            SessionEventUtilities.mergeHazardEvents(this, event, oldEvent,
+                    true, true, false, Originator.DATABASE);
+            notificationSender
+                    .postNotificationAsync(new SessionEventHistoryModified(
+                            this, getEventById(event.getEventID()),
+                            Originator.DATABASE));
+        } else {
+            addEvent(event, Originator.DATABASE);
+        }
+
+        /*
+         * Update the history list and visible history list size records for the
+         * hazard event.
+         */
+        updateHistoricalVersionCountsForEvent(event.getEventID(),
+                getEventHistoryById(event.getEventID()));
+    }
+
+    /**
+     * Handle the removal of an event from the database.
+     * 
+     * @param event
+     *            Hazard event removed from the database.
+     */
+    void handleEventRemovalFromDatabase(IHazardEvent event) {
+        ObservedHazardEvent oldEvent = getEventById(event.getEventID());
+        if (oldEvent != null) {
+            removeEvent(oldEvent, Originator.DATABASE);
+        }
     }
 
     @Override
@@ -2597,7 +2669,17 @@ public class SessionEventManager implements
     private void removeEvent(IHazardEvent event, boolean delete,
             IOriginator originator) {
         synchronized (events) {
-            if (events.remove(event)) {
+            if (events.contains(event)) {
+
+                /*
+                 * Deselect the event if it was selected, and remove it.
+                 */
+                String eventIdentifier = event.getEventID();
+                sessionManager.getSelectionManager()
+                        .removeEventFromSelectedEvents(eventIdentifier,
+                                Originator.OTHER);
+                events.remove(event);
+
                 /*
                  * TODO this should never delete operation issued events.
                  */
@@ -2605,7 +2687,6 @@ public class SessionEventManager implements
                  * TODO this should not delete the whole list, just any pending
                  * or proposed items on the end of the list.
                  */
-                String eventIdentifier = event.getEventID();
                 if (delete) {
                     HazardHistoryList histList = dbManager
                             .getByEventID(eventIdentifier);
@@ -2629,6 +2710,15 @@ public class SessionEventManager implements
                         .postNotificationAsync(new SessionEventRemoved(this,
                                 event, originator));
             }
+
+            /*
+             * Remove the history list size records for the hazard event, since
+             * they are no longer needed.
+             */
+            historicalVersionCountForEventIdentifiers
+                    .remove(event.getEventID());
+            visibleHistoricalVersionCountForEventIdentifiers.remove(event
+                    .getEventID());
         }
     }
 
@@ -2663,7 +2753,8 @@ public class SessionEventManager implements
      */
     protected void hazardEventModified(SessionEventModified notification) {
         IHazardEvent event = notification.getEvent();
-        addModification(event.getEventID(), notification.getOriginator());
+        sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
+                event.getEventID(), notification.getOriginator());
         if (event instanceof ObservedHazardEvent) {
             ((ObservedHazardEvent) event).setModified(true);
         }
@@ -2692,7 +2783,8 @@ public class SessionEventManager implements
     protected void hazardEventAttributeModified(
             SessionEventAttributesModified notification) {
         IHazardEvent event = notification.getEvent();
-        addModification(event.getEventID(), notification.getOriginator());
+        sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
+                event.getEventID(), notification.getOriginator());
         if (events.contains(notification.getEvent())) {
             notificationSender.postNotificationAsync(notification);
         }
@@ -2711,10 +2803,15 @@ public class SessionEventManager implements
     @SuppressWarnings("unchecked")
     protected void hazardEventStatusModified(
             SessionEventStatusModified notification, boolean persist) {
-        if (persist) {
 
-            ObservedHazardEvent event = notification.getEvent();
-            HazardStatus newStatus = event.getStatus();
+        /*
+         * Determine whether or not the event should be persisted, and deselect
+         * it if it is ended and, VTEC-wise, canceled.
+         */
+        boolean removedFromSelection = false;
+        ObservedHazardEvent event = notification.getEvent();
+        HazardStatus newStatus = event.getStatus();
+        if (persist) {
 
             boolean needsPersist = false;
             switch (newStatus) {
@@ -2736,11 +2833,12 @@ public class SessionEventManager implements
                  * Only deselect if canceled.
                  */
                 if ((vtecCodes != null) && vtecCodes.contains("CAN")) {
-                    event.addHazardAttribute(
-                            HazardConstants.HAZARD_EVENT_SELECTED, false);
+                    removedFromSelection = true;
+                    sessionManager.getSelectionManager()
+                            .removeEventFromSelectedEvents(event.getEventID(),
+                                    Originator.OTHER);
                 }
-                ObservedHazardEvent hazardEvent = event;
-                hazardEvent.setModified(false);
+                event.setModified(false);
                 needsPersist = true;
 
                 break;
@@ -2752,11 +2850,28 @@ public class SessionEventManager implements
             }
         }
 
-        addModification(notification.getEvent().getEventID(),
-                notification.getOriginator());
+        /*
+         * If the new status is visible in the settings, make this event the
+         * last accessed event; otherwise, deselect the event if it has not
+         * already been deselected, as it should no longer be visible in the UI.
+         */
+        if (configManager.getSettings().getVisibleStatuses()
+                .contains(newStatus.getValue())) {
+            sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
+                    event.getEventID(), notification.getOriginator());
+        } else if (removedFromSelection == false) {
+            sessionManager.getSelectionManager().removeEventFromSelectedEvents(
+                    event.getEventID(), Originator.OTHER);
+        }
+
+        /*
+         * If the event is being managed, post the notification about the status
+         * change.
+         */
         if (events.contains(notification.getEvent())) {
             notificationSender.postNotificationAsync(notification);
         }
+
         updateConflictingEventsForSelectedEventIdentifiers(
                 notification.getEvent(), false);
     }
@@ -2769,7 +2884,10 @@ public class SessionEventManager implements
      */
     private void persistEvent(ObservedHazardEvent event) {
         try {
+            boolean visibleInHistoryList = event.isVisibleInHistoryList();
+            event.setVisibleInHistoryList(true);
             dbManager.storeEvent(createEventCopyToBePersisted(event));
+            event.setVisibleInHistoryList(visibleInHistoryList);
             scheduleExpirationTask(event);
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -2869,48 +2987,6 @@ public class SessionEventManager implements
             }
         };
         return timeListener;
-    }
-
-    /**
-     * Add the specified event identifier to the head of the stack of modified
-     * events, removing it from elsewhere in the stack if it is found further
-     * down.
-     * 
-     * @param eventId
-     *            Identifier to be added.
-     * @param originator
-     *            Originator of the modification.
-     */
-    private void addModification(String eventId, IOriginator originator) {
-        if (eventId.equals(eventModifications.peek()) == false) {
-            eventModifications.remove(eventId);
-            eventModifications.push(eventId);
-            notificationSender
-                    .postNotificationAsync(new SessionLastChangedEventModified(
-                            this, originator));
-        }
-    }
-
-    @Override
-    public ObservedHazardEvent getLastModifiedSelectedEvent() {
-        if (eventModifications.isEmpty()) {
-            return null;
-        }
-        ObservedHazardEvent event = getEventById(eventModifications.peek());
-        if (event != null
-                && Boolean.TRUE.equals(event
-                        .getHazardAttribute(HAZARD_EVENT_SELECTED))) {
-            return event;
-        } else {
-            eventModifications.pop();
-            return getLastModifiedSelectedEvent();
-        }
-    }
-
-    @Override
-    public void setLastModifiedSelectedEvent(ObservedHazardEvent event,
-            IOriginator originator) {
-        addModification(event.getEventID(), originator);
     }
 
     @Override
@@ -3380,16 +3456,22 @@ public class SessionEventManager implements
                             .add(thisEvent.getEventID());
                 }
                 if (SessionEventUtilities.isPastExpirationTime(thisEvent) == true) {
-                    thisEvent.addHazardAttribute(
-                            HazardConstants.HAZARD_EVENT_SELECTED, false,
-                            Originator.OTHER);
                     identifiersWithExpiredTimes.add(thisEvent.getEventID());
                 }
             }
 
-            if (identifiersWithChangedBoundaries.isEmpty()
-                    && (identifiersWithExpiredTimes.isEmpty() == false)) {
-                postTimeRangeBoundariesModifiedNotification(identifiersWithExpiredTimes);
+            /*
+             * If at least one event was found with an expired time, remove any
+             * such events from the selection set, and send out a notification
+             * of said events' time range boundaries having changed.
+             */
+            if (identifiersWithExpiredTimes.isEmpty() == false) {
+                sessionManager.getSelectionManager()
+                        .removeEventsFromSelectedEvents(
+                                identifiersWithExpiredTimes, Originator.OTHER);
+                if (identifiersWithChangedBoundaries.isEmpty()) {
+                    postTimeRangeBoundariesModifiedNotification(identifiersWithExpiredTimes);
+                }
             }
         } else {
 
@@ -3557,17 +3639,9 @@ public class SessionEventManager implements
                  * deltas in milliseconds. The map will iterate in the order the
                  * choices are specified in the list used to generate it.
                  */
-                Map<String, Long> deltasForDurations = null;
-                try {
-                    deltasForDurations = durationChoiceValidator
-                            .convertToAvailableMapForProperty(durationChoices);
-                } catch (MegawidgetPropertyException e) {
-                    statusHandler
-                            .error("invalid list of duration choices for event of type "
-                                    + HazardEventUtilities.getHazardType(event),
-                                    e);
-                    durationChoicesForEventIdentifiers.put(event.getEventID(),
-                            Collections.<String> emptyList());
+                Map<String, Long> deltasForDurations = getDeltasForDurationChoices(
+                        event, durationChoices);
+                if (deltasForDurations == null) {
                     return;
                 }
 
@@ -3604,6 +3678,11 @@ public class SessionEventManager implements
      * Update the map of selected event identifiers to their collections of
      * conflicting events. This is to be called whenever something that affects
      * the selected events' potential conflicts changes.
+     * <p>
+     * TODO: Currently, the parameters are not used; the map is simply rebuilt.
+     * This could certainly benefit from a less brute-force approach; see inline
+     * comments within the method.
+     * </p>
      * 
      * @param event
      *            Event that has been added, removed, or modified.
@@ -3611,8 +3690,8 @@ public class SessionEventManager implements
      *            Flag indicating whether or not the change is the removal of
      *            the event.
      */
-    private void updateConflictingEventsForSelectedEventIdentifiers(
-            IHazardEvent event, boolean removed) {
+    void updateConflictingEventsForSelectedEventIdentifiers(IHazardEvent event,
+            boolean removed) {
 
         /*
          * TODO: If this is found to take too much time, an optimization could
@@ -3632,7 +3711,8 @@ public class SessionEventManager implements
                 conflictingEventsForSelectedEventIdentifiers);
         conflictingEventsForSelectedEventIdentifiers.clear();
 
-        Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+        Collection<ObservedHazardEvent> selectedEvents = sessionManager
+                .getSelectionManager().getSelectedEvents();
 
         for (IHazardEvent eventToCheck : selectedEvents) {
 
@@ -3995,7 +4075,8 @@ public class SessionEventManager implements
 
     @Override
     public void endEvent(ObservedHazardEvent event, IOriginator originator) {
-        event.addHazardAttribute(HAZARD_EVENT_SELECTED, false);
+        sessionManager.getSelectionManager().removeEventFromSelectedEvents(
+                event.getEventID(), Originator.OTHER);
         event.setStatus(HazardStatus.ENDED, true, true, originator);
         clearUndoRedo(event);
         event.setModified(false);
@@ -4009,11 +4090,11 @@ public class SessionEventManager implements
 
     @Override
     public Set<String> getEventIdsAllowingProposal() {
-        List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+        List<ObservedHazardEvent> selectedEvents = sessionManager
+                .getSelectionManager().getSelectedEvents();
         Set<String> set = new HashSet<String>(selectedEvents.size());
         for (ObservedHazardEvent event : selectedEvents) {
             HazardStatus status = event.getStatus();
-
             if (isProposedStateAllowed(event, status)) {
                 set.add(event.getEventID());
             }
@@ -4051,29 +4132,16 @@ public class SessionEventManager implements
                     .isHazardTypeValid(event));
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #selectedEventGeometriesHighResolutionVisible()
-     */
     @Override
     public void setHighResolutionGeometriesVisibleForSelectedEvents(
             IOriginator originator) {
 
-        for (ObservedHazardEvent selectedEvent : getSelectedEvents()) {
+        for (ObservedHazardEvent selectedEvent : sessionManager
+                .getSelectionManager().getSelectedEvents()) {
             makeHighResolutionVisible(selectedEvent, originator);
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #setHighResolutionGeometryVisibleForCurrentEvent()
-     */
     @Override
     public void setHighResolutionGeometryVisibleForCurrentEvent(
             IOriginator originator) {
@@ -4081,19 +4149,11 @@ public class SessionEventManager implements
 
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #selectedEventGeometriesLowResolutionVisible()
-     */
     @Override
     public boolean setLowResolutionGeometriesVisibleForSelectedEvents(
             IOriginator originator) {
-        Collection<ObservedHazardEvent> selectedEvents = getSelectedEvents();
-
-        for (ObservedHazardEvent selectedEvent : selectedEvents) {
+        for (ObservedHazardEvent selectedEvent : sessionManager
+                .getSelectionManager().getSelectedEvents()) {
             Geometry lowResolutionGeometry;
             try {
                 lowResolutionGeometry = buildLowResolutionEventGeometry(selectedEvent);
@@ -4108,13 +4168,6 @@ public class SessionEventManager implements
         return true;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #setLowResolutionGeometryVisibleForCurrentEvent()
-     */
     @Override
     public boolean setLowResolutionGeometryVisibleForCurrentEvent(
             IOriginator originator) {
@@ -4176,7 +4229,8 @@ public class SessionEventManager implements
     @Override
     public void updateSelectedHazardUGCs() {
 
-        for (IHazardEvent hazardEvent : getSelectedEvents()) {
+        for (IHazardEvent hazardEvent : sessionManager.getSelectionManager()
+                .getSelectedEvents()) {
             String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
 
             if (hazardType != null) {
@@ -4248,7 +4302,8 @@ public class SessionEventManager implements
     @Override
     public void addOrRemoveEnclosingUGCs(Coordinate location,
             IOriginator originator) {
-        List<ObservedHazardEvent> selectedEvents = getSelectedEvents();
+        List<ObservedHazardEvent> selectedEvents = sessionManager
+                .getSelectionManager().getSelectedEvents();
         if (selectedEvents.size() != 1) {
 
             /*
@@ -4367,7 +4422,7 @@ public class SessionEventManager implements
             if (result.isEmpty()) {
                 throw new HazardGeometryOutsideCWAException();
             }
-            if (!(result instanceof GeometryCollection)) {
+            if (result instanceof GeometryCollection == false) {
                 result = geometryFactory
                         .createGeometryCollection(new Geometry[] { result });
             }
@@ -4423,8 +4478,8 @@ public class SessionEventManager implements
      * 
      * This method uses a VisvalingamWhyattSimplifier algorithm to reduce the
      * number of points used to render a polygon. This method is called from
-     * <code>buildSelectedHazardProductGeometries</code>. Not all Hazard
-     * Services geometries are reduced to 20 points.
+     * {@link #buildLowResolutionEventGeometry(ObservedHazardEvent)}. Not all
+     * event geometries are reduced to 20 points.
      * 
      * @param geometry
      * @param hazardTypeEntry
@@ -4505,15 +4560,6 @@ public class SessionEventManager implements
                 .getIntersectingMapGeometriesForUgcs(hazardEvent).keySet());
     }
 
-    private Collection<ObservedHazardEvent> fromIDs(Collection<String> eventIDs) {
-        Collection<ObservedHazardEvent> events = new ArrayList<>(
-                eventIDs.size());
-        for (String eventId : eventIDs) {
-            events.add(getEventById(eventId));
-        }
-        return events;
-    }
-
     private Geometry addGoosenecksAsNecessary(Geometry productGeometry) {
         if ((!(productGeometry instanceof GeometryCollection))
                 || (productGeometry.getNumGeometries() == 0)) {
@@ -4558,7 +4604,7 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events) {
+    public void saveEvents(List<IHazardEvent> events, boolean forceVisibility) {
 
         /*
          * Get copies of the events to be saved that are database-friendly.
@@ -4579,9 +4625,17 @@ public class SessionEventManager implements
 
             /*
              * Make a copy of the event of the right type, and strip out
-             * whatever cannot or should not be saved.
+             * whatever cannot or should not be saved. Also ensure that it is
+             * visible in the history list if visibility is to be forced.
              */
+            boolean visibleInHistoryList = event.isVisibleInHistoryList();
+            if (forceVisibility) {
+                event.setVisibleInHistoryList(true);
+            }
             dbEvents.add(createEventCopyToBePersisted(event));
+            if (forceVisibility) {
+                event.setVisibleInHistoryList(visibleInHistoryList);
+            }
         }
 
         /*
@@ -4589,6 +4643,21 @@ public class SessionEventManager implements
          */
         if (dbEvents.isEmpty() == false) {
             dbManager.storeEvents(dbEvents);
+        }
+    }
+
+    @Override
+    public void revertEventToLastSaved(String eventIdentifier) {
+        if (getVisibleHistoricalVersionCountForEvent(eventIdentifier) > 0) {
+            HazardHistoryList list = getEventHistoryById(eventIdentifier);
+            for (int index = list.size() - 1; index >= 0; index--) {
+                if (list.get(index).isVisibleInHistoryList()) {
+                    SessionEventUtilities.mergeHazardEvents(this,
+                            list.get(index), getEventById(eventIdentifier),
+                            false, false, false, Originator.OTHER);
+                    return;
+                }
+            }
         }
     }
 
@@ -4639,9 +4708,15 @@ public class SessionEventManager implements
          * events in the session event manager), or otherwise removed.
          */
         dbEvent.removeHazardAttribute(ATTR_ISSUED);
-        dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
         dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
         dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
+
+        /*
+         * TODO: Remove this once the HAZARD_EVENT_SELECTED attribute has been
+         * entirely done away with.
+         */
+        dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+
         return dbEvent;
     }
 

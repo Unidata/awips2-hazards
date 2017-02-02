@@ -10,20 +10,21 @@
 package gov.noaa.gsd.viz.hazards.console;
 
 import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Command;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Toggle;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.VtecFormatMode;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Range;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 
 /**
  * Console view, an interface describing the methods that a class must implement
@@ -46,12 +47,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
  * May 05, 2015    6898    Chris.Cody        Pan & Scale Visible and Selected Time
  * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to
  *                                           settings.
+ * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
+ *                                           design concerns, untangle spaghetti, and
+ *                                           add history list viewing.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
+public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E>,
+        IConsoleTree {
 
     // Public Methods
 
@@ -59,7 +64,7 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * Initialize the view.
      * 
      * @param presenter
-     *            Presenter managing this view.
+     *            Console presenter.
      * @param selectedTime
      *            Selected time as epoch time in milliseconds.
      * @param currentTime
@@ -67,47 +72,25 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
-     * @param hazardEvents
-     *            Hazard events, each in dictionary form.
-     * @param startTimeBoundariesForEventIds
-     *            Map of event identifiers to their start time range boundaries.
-     * @param endTimeBoundariesForEventIds
-     *            Map of event identifiers to their end time range boundaries.
      * @param timeResolution
      *            Overall time resolution.
-     * @param timeResolutionsForEventIds
-     *            Map of event identifiers to their time resolutions.
-     * @param currentSettings
-     *            Currently selected settings.
-     * @param availableSettings
-     *            All available settings.
-     * @param jsonFilters
-     *            JSON string holding a list of dictionaries providing filter
-     *            megawidget specifiers.
-     * @param activeAlerts
-     *            Currently active alerts.
-     * @param eventIdentifiersAllowingUntilFurtherNotice
-     *            Set of the hazard event identifiers that at any given moment
-     *            allow the toggling of their "until further notice" mode. The
-     *            set is unmodifiable; attempts to modify it will result in an
-     *            {@link UnsupportedOperationException}. Note that this set is
-     *            kept up-to-date, and thus will always contain only those
-     *            events that can have their "until further notice" mode toggled
-     *            at the instant at which it is checked.
+     * @param filterSpecifiers
+     *            List of maps, each one holding a specifier for a megawidget
+     *            representing a filter.
+     * @param currentSite
+     *            Current site identifier.
+     * @param backupSites
+     *            Backup sites, used to populate the change sites menu.
      * @param temporalControlsInToolBar
      *            Flag indicating whether or not temporal display controls are
      *            to be shown in the toolbar. If false, they are shown in the
      *            temporal display composite itself.
      */
     public void initialize(ConsolePresenter presenter, Date selectedTime,
-            Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
-            Map<String, Range<Long>> startTimeBoundariesForEventIds,
-            Map<String, Range<Long>> endTimeBoundariesForEventIds,
+            Date currentTime, long visibleTimeRange,
             TimeResolution timeResolution,
-            Map<String, TimeResolution> timeResolutionsForEventIds,
-            ObservedSettings currentSettings, List<Settings> availableSettings,
-            String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
-            Set<String> eventIdentifiersAllowingUntilFurtherNotice,
+            ImmutableList<Map<String, Object>> filterSpecifiers,
+            String currentSite, ImmutableList<String> backupSites,
             boolean temporalControlsInToolBar);
 
     /**
@@ -123,132 +106,58 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E> {
             List<? extends IMainUiContributor<C, E>> contributors, E type);
 
     /**
+     * Set the command invocation handler.
+     * 
+     * @param commandInvocationHandler
+     *            Command invocation handler.
+     */
+    public void setCommandInvocationHandler(
+            ICommandInvocationHandler<Command> commandInvocationHandler);
+
+    /**
+     * Set the review and correct products invocation handler.
+     * 
+     * @param reviewAndCorrectProductsInvocationHandler
+     *            Review and correct products invocation handler.
+     */
+    public void setReviewAndCorrectProductsInvocationHandler(
+            ICommandInvocationHandler<List<ProductData>> reviewAndCorrectProductsInvocationHandler);
+
+    /**
+     * Set the toggle state change handler.
+     * 
+     * @param toggleStateChangeHandler
+     *            Toggle state change handler.
+     */
+    public void setToggleChangeHandler(
+            IStateChangeHandler<Toggle, Boolean> toggleStateChangeHandler);
+
+    /**
+     * Set the VTEC mode state change handler.
+     * 
+     * @param vtecModeStateChangeHandler
+     *            VTEC mode state change handler.
+     */
+    public void setVtecModeChangeHandler(
+            IStateChangeHandler<String, VtecFormatMode> vtecModeStateChangeHandler);
+
+    /**
+     * Get the site state changer.
+     * 
+     * @return Site state changer.
+     */
+    public IStateChanger<String, String> getSiteChanger();
+
+    /**
      * Ensure the view is visible.
      */
     public void ensureVisible();
 
     /**
-     * Update the current time.
+     * Set the name of the current settings to that specified.
      * 
-     * @param currentTime
-     *            New current time.
+     * @param settingsName
+     *            Name of the current settings.
      */
-    public void updateCurrentTime(Date currentTime);
-
-    /**
-     * Update the selected time range.
-     * 
-     * @param start
-     *            Start time of the selected time range, or <code>null</code> if
-     *            there is no selected time range.
-     * @param end
-     *            End time of the selected time range, or <code>null</code> if
-     *            there is no selected time range.
-     */
-    public void updateSelectedTimeRange(Date start, Date end);
-
-    /**
-     * Update the visible time delta.
-     * 
-     * @param visibleTimeDelta
-     *            Unix timestamp in milliseconds holding the amount of time
-     *            visible at once in the time line.
-     */
-    public void updateVisibleTimeDelta(long visibleTimeDelta);
-
-    /**
-     * Update the time resolution.
-     * 
-     * @param timeResolution
-     *            Time resolution.
-     * @param currentTime
-     *            Current time.
-     */
-    public void updateTimeResolution(TimeResolution timeResolution,
-            Date currentTime);
-
-    /**
-     * Update the visible time range.
-     * 
-     * @param earliestVisibleTime
-     *            Unix timestamp in milliseconds holding the earliest visible
-     *            time in the time line.
-     * @param latestVisibleTime
-     *            Unix timestamp in milliseconds holding the latest visible time
-     *            in the time line.
-     */
-    public void updateVisibleTimeRange(long earliestVisibleTime,
-            long latestVisibleTime);
-
-    /**
-     * Update the time range boundaries for the events.
-     * 
-     * @param eventIds
-     *            Identifiers of the events that have had their time range
-     *            boundaries changed.
-     */
-    public void updateEventTimeRangeBoundaries(Set<String> eventIds);
-
-    /**
-     * Get the list of the current hazard events.
-     * 
-     * @return List of the current hazard events.
-     */
-    public List<Dict> getHazardEvents();
-
-    /**
-     * Set the hazard events to those specified.
-     * 
-     * @param eventsAsDicts
-     *            List of maps, each representing a hazard event.
-     * @param currentSettings
-     *            Currently selected settings.
-     */
-    public void setHazardEvents(List<Dict> eventsAsDicts,
-            ObservedSettings currentSettings);
-
-    /**
-     * Update the specified hazard event.
-     * 
-     * @param hazardEventJSON
-     *            JSON string holding a dictionary defining an event. The
-     *            dictionary must contain an <code>eventID</code> key mapping to
-     *            the event identifier as a value. All other mappings specify
-     *            properties that are to have their values to those associated
-     *            with the properties in the dictionary.
-     */
-    public void updateHazardEvent(String hazardEventJSON);
-
-    /**
-     * Set the list of currently active alerts.
-     * 
-     * @param activeAlerts
-     *            List of currently active alerts.
-     */
-    public void setActiveAlerts(ImmutableList<IHazardAlert> activeAlerts);
-
-    /**
-     * Get the current settings.
-     * 
-     * @return Current settings.
-     */
-    public ObservedSettings getCurrentSettings();
-
-    /**
-     * Set the settings to those specified.
-     * 
-     * @param currentSettingsID
-     *            Identifier of the new current settings.
-     * @param settings
-     *            List of settings.
-     */
-    public void setSettings(String currentSettingsID, List<Settings> settings);
-
-    /**
-     * Update the title of the implementing GUI.
-     * 
-     * @param title
-     *            New title.
-     */
-    public void updateTitle(String title);
+    public void setSettingsName(String settingsName);
 }

@@ -12,6 +12,8 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 
+import com.vividsolutions.jts.geom.Polygon;
+
 /**
  * Description: Information about a mutable (editable or movable) drawable near
  * a particular point.

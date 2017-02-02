@@ -52,7 +52,8 @@
 #    09/02/16       15934          Chris.Golden   Changed to include methods handling
 #                                                 advanced geometries in place of JTS
 #                                                 and shapely geometries.
-# 
+#    02/01/17       15556          Chris.Golden   Added visible-in-history-list flag. Also
+#                                                 added insert time record and getter.
 #
 
 import JUtil, datetime
@@ -114,12 +115,17 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     def getDisplayEventID(self):
         return self.jobj.getDisplayEventID()
     
-
     def getStatus(self):
         return self.getHazardStatus()
     
     def setStatus(self, hazardStatus):
         self.setHazardStatus(hazardStatus)
+        
+    def isVisibleInHistoryList(self):
+        return self.jobj.isVisibleInHistoryList()
+    
+    def setVisibleInHistoryList(self, visible):
+        self.jobj.setVisibleInHistoryList(visible)
 
     def getHazardStatus(self):
         return self.jobj.getStatus().name()
@@ -150,6 +156,18 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
         
     def getHazardType(self):
         return self.jobj.getHazardType()
+        
+    def getInsertTime(self):
+        '''
+        @summary Get the time at which the hazard event was last persisted to the database.
+        Note that no corresponding setInsertTime() is provided, since this is not something
+        that should be set within the context of a recommender, product generator, etc.
+        @return Persist time, or None if the hazard event has not been persisted.
+        '''
+        timestamp = self.jobj.getInsertTime()
+        if timestamp is None:
+            return None
+        return datetime.datetime.utcfromtimestamp(timestamp.getTime() / 1000.0)
         
     def getCreationTime(self):
         return datetime.datetime.utcfromtimestamp(self.jobj.getCreationTime().getTime() / 1000.0)
@@ -335,6 +353,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getSiteID()
         elif lowerKey == 'status':
             return self.getStatus()
+        elif lowerKey == 'visibleinhistorylist':
+            return self.isVisibleInHistoryList()
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
             return self.getPhenomenon()
         elif lowerKey == 'significance' or lowerKey == 'sig':
@@ -343,6 +363,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getSubType()
         elif lowerKey == 'creationtime':
             return self.getCreationTime()
+        elif lowerKey == 'inserttime':
+            return self.getInsertTime()
         elif lowerKey == 'endtime':
             return self.getEndTime()
         elif lowerKey == 'starttime': 
@@ -370,6 +392,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             self.setSiteID(value)
         elif lowerKey == 'status':
             self.setStatus(value)
+        elif lowerKey == 'visibleinhistorylist':
+            self.setVisibleInHistoryList(value)
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
             self.setPhenomenon(value)
         elif lowerKey == 'significance' or lowerKey == 'sig':

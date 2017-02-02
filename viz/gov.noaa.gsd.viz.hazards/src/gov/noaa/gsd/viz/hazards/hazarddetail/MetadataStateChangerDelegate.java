@@ -18,6 +18,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.util.Pair;
+
 /**
  * A metadata state changer delegate, used by a {@link HazardDetailView} object
  * to represent metadata state changers within its associated
@@ -40,6 +42,7 @@ import java.util.Map;
  *                                      reinitialize if unchanged, so that when
  *                                      a hazard event is selected, it triggers
  *                                      the reinitialization.
+ * Feb 03, 2017   15556    Chris.Golden Added editability parameter.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,7 +50,7 @@ import java.util.Map;
  */
 class MetadataStateChangerDelegate
         extends
-        QualifiedStateChangerDelegate<String, String, Serializable, IMetadataStateChanger>
+        QualifiedStateChangerDelegate<Pair<String, Integer>, String, Serializable, IMetadataStateChanger>
         implements IMetadataStateChanger {
 
     // Public Constructors
@@ -61,7 +64,7 @@ class MetadataStateChangerDelegate
      *            Handler invocation scheduler.
      */
     public MetadataStateChangerDelegate(
-            ViewPartQualifiedWidgetDelegateHelper<String, String, HazardDetailViewPart, IMetadataStateChanger> helper,
+            ViewPartQualifiedWidgetDelegateHelper<Pair<String, Integer>, String, HazardDetailViewPart, IMetadataStateChanger> helper,
             IRunnableAsynchronousScheduler handlerScheduler) {
         super(helper, handlerScheduler);
     }
@@ -69,30 +72,32 @@ class MetadataStateChangerDelegate
     // Public Methods
 
     @Override
-    public void setMegawidgetSpecifierManager(final String eventIdentifier,
+    public void setMegawidgetSpecifierManager(
+            final Pair<String, Integer> eventVersionIdentifier,
             final MegawidgetSpecifierManager specifierManager,
             final Map<String, Serializable> metadataStates,
-            final boolean reinitializeIfUnchanged) {
-        runOrScheduleTask(new QualifiedPrincipalRunnableTask<String, String, IMetadataStateChanger>() {
+            final boolean editable, final boolean reinitializeIfUnchanged) {
+        runOrScheduleTask(new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
 
             @Override
             public void run() {
-                getPrincipal().setMegawidgetSpecifierManager(eventIdentifier,
-                        specifierManager, metadataStates,
-                        reinitializeIfUnchanged);
+                getPrincipal().setMegawidgetSpecifierManager(
+                        eventVersionIdentifier, specifierManager,
+                        metadataStates, editable, reinitializeIfUnchanged);
             }
         });
     }
 
     @Override
-    public void changeMegawidgetMutableProperties(final String eventIdentifier,
+    public void changeMegawidgetMutableProperties(
+            final Pair<String, Integer> eventVersionIdentifier,
             final Map<String, Map<String, Object>> mutableProperties) {
-        runOrScheduleTask(new QualifiedPrincipalRunnableTask<String, String, IMetadataStateChanger>() {
+        runOrScheduleTask(new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
 
             @Override
             public void run() {
                 getPrincipal().changeMegawidgetMutableProperties(
-                        eventIdentifier, mutableProperties);
+                        eventVersionIdentifier, mutableProperties);
             }
         });
     }

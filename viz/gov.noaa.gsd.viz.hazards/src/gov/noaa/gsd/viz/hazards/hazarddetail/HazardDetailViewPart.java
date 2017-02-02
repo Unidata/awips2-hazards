@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
@@ -52,8 +53,12 @@ import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
+import gov.noaa.gsd.viz.widgets.CustomizableTabFolder;
+import gov.noaa.gsd.viz.widgets.CustomizableTabFolderRenderer;
+import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
 
 import java.io.Serializable;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -63,12 +68,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CTabFolder;
-import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.layout.FillLayout;
@@ -89,6 +94,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.icon.IconUtil;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
@@ -251,6 +257,10 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           explicit-end-time-type hazard event with
  *                                           either time resolution, or duration-time-type
  *                                           hazard event with either time resolution.
+ * Feb 01, 2017  15556     Chris.Golden      Added awareness of selection of historical
+ *                                           snapshots of events, so that the view may
+ *                                           display such snapshots differently from the
+ *                                           way it displays current events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -413,7 +423,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private static final String CONFLICT_ICON_IMAGE_FILE_NAME = "hidConflict.png";
 
     /**
-     * Conflict tooltip.
+     * Historical snapshot tooltip text prefix.
+     */
+    private static final String HISTORICAL_SNAPSHOT__PREFIX_TOOLTIP = "Historical snapshot persisted ";
+
+    /**
+     * Conflict tooltip text.
      */
     private static final String CONFLICT_TOOLTIP = "Conflicts with other hazard(s)";
 
@@ -639,10 +654,25 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private Color standardSelectedColor;
 
     /**
-     * Identifier of the event that is currently topmost in the tab folder and
-     * thus visible.
+     * Italic version of the font used by the tab folder.
      */
-    private String visibleEventIdentifier;
+    private Font italicTabFont;
+
+    /**
+     * Date formatter for date-time strings with minutes resolution.
+     */
+    private DateFormat minutesDateTimeFormatter;
+
+    /**
+     * Date formatter for date-time strings with seconds resolution.
+     */
+    private DateFormat secondsDateTimeFormatter;
+
+    /**
+     * Identifier of the event version that is currently topmost in the tab
+     * folder and thus visible.
+     */
+    private Pair<String, Integer> visibleEventVersionIdentifier;
 
     /**
      * Flag indicating whether or not tab pages are currently being created or
@@ -653,7 +683,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Tab folder holding the different hazard events, one per tab page.
      */
-    private CTabFolder eventTabFolder;
+    private CustomizableTabFolder eventTabFolder;
 
     /**
      * Composite holding the contents of a tab page. The different pages all use
@@ -737,11 +767,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private StackLayout metadataPanelLayout;
 
     /**
-     * Map of hazard event identifiers to their metadata megawidgets' display
-     * settings; the latter are recorded whenever a metadata megawidget manager
-     * is destroyed.
+     * Map of hazard event version identifiers to their metadata megawidgets'
+     * display settings; the latter are recorded whenever a metadata megawidget
+     * manager is destroyed.
      */
-    private final Map<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsForEventIds = new HashMap<>();
+    private final Map<Pair<String, Integer>, Map<String, IDisplaySettings>> megawidgetDisplaySettingsForEventVersionIdentifiers = new HashMap<>();
 
     /**
      * Minimum visible time in the time range.
@@ -777,9 +807,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * <p>
-     * Cache of megawidget managers associated with event identifiers. Only the
-     * most recently used megawidget managers are cached away; the maximum
-     * number that can be cached is {@link #MAXIMUM_EVENT_METADATA_CACHE_SIZE}.
+     * Cache of megawidget managers associated with event version identifiers.
+     * Only the most recently used megawidget managers are cached away; the
+     * maximum number that can be cached is
+     * {@link #MAXIMUM_EVENT_METADATA_CACHE_SIZE}.
      * </p>
      * <p>
      * Note that this cache must be used carefully; its anonymous class has not
@@ -802,7 +833,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * {@link LinkedHashMap#values()} may be used in such cases.
      * </p>
      */
-    private final LinkedHashMap<String, MegawidgetManager> megawidgetManagersForEventIds = new LinkedHashMap<String, MegawidgetManager>(
+    private final LinkedHashMap<Pair<String, Integer>, MegawidgetManager> megawidgetManagersForEventVersionIdentifiers = new LinkedHashMap<Pair<String, Integer>, MegawidgetManager>(
             MAXIMUM_EVENT_METADATA_CACHE_SIZE + 1, 0.75f, true) {
 
         // Private Static Constants
@@ -814,10 +845,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         // Public Methods
 
+        @SuppressWarnings("unchecked")
         @Override
         public final MegawidgetManager remove(Object key) {
             if (containsKey(key)) {
-                prepareMegawidgetManagerForRemoval((String) key, get(key));
+                prepareMegawidgetManagerForRemoval((Pair<String, Integer>) key,
+                        get(key));
             }
             return super.remove(key);
         }
@@ -826,7 +859,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         @Override
         protected final boolean removeEldestEntry(
-                Map.Entry<String, MegawidgetManager> eldest) {
+                Map.Entry<Pair<String, Integer>, MegawidgetManager> eldest) {
             if (size() > MAXIMUM_EVENT_METADATA_CACHE_SIZE) {
                 prepareMegawidgetManagerForRemoval(eldest.getKey(),
                         eldest.getValue());
@@ -838,19 +871,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Map of event identifiers to maps holding extra data for the associated
-     * metadata megawidgets. This is provided at initialization, and then used
-     * when metadata megawidget managers are instantiated if they are for an
-     * event identifier for which an entry is found in this map. It is updated
-     * whenever a megawidget manager is disposed of, so as to save any extra
-     * data that said manager's megawidgets had. Since it is passed in by
-     * reference at initialization time, the client can keep a reference around
-     * to it when this instance is disposed of, and pass the same map to the
-     * next instance of this class, allowing extra data to persist for the
+     * Map of event version identifiers to maps holding extra data for the
+     * associated metadata megawidgets. This is provided at initialization, and
+     * then used when metadata megawidget managers are instantiated if they are
+     * for an event version identifier for which an entry is found in this map.
+     * It is updated whenever a megawidget manager is disposed of, so as to save
+     * any extra data that said manager's megawidgets had. Since it is passed in
+     * by reference at initialization time, the client can keep a reference
+     * around to it when this instance is disposed of, and pass the same map to
+     * the next instance of this class, allowing extra data to persist for the
      * entire session regardless of how many different hazard detail view parts
      * are created and deleted.
      */
-    private Map<String, Map<String, Map<String, Object>>> extraDataForEventIds;
+    private Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers;
 
     /**
      * Map of commands to buttons that issue these commands.
@@ -860,49 +893,54 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * Metadata megawidgets' display settings state change handler. The
-     * identifier is that of the hazard event having its display settings
-     * changed.
+     * identifier is that of the hazard event version having its display
+     * settings changed.
      */
-    private IStateChangeHandler<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsChangeHandler;
+    private IStateChangeHandler<Pair<String, Integer>, Map<String, IDisplaySettings>> megawidgetDisplaySettingsChangeHandler;
 
     /**
      * Metadata megawidgets' display settings state changer. The identifier is
-     * that of the hazard event.
+     * that of the hazard event version.
      */
-    private final IStateChanger<String, Map<String, IDisplaySettings>> megawidgetdisplaySettingsChanger = new IStateChanger<String, Map<String, IDisplaySettings>>() {
+    private final IStateChanger<Pair<String, Integer>, Map<String, IDisplaySettings>> megawidgetdisplaySettingsChanger = new IStateChanger<Pair<String, Integer>, Map<String, IDisplaySettings>>() {
 
         @Override
-        public void setEnabled(String identifier, boolean enable) {
+        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot enable/disable scroll origin");
         }
 
         @Override
-        public void setEditable(String identifier, boolean editable) {
+        public void setEditable(Pair<String, Integer> identifier,
+                boolean editable) {
             throw new UnsupportedOperationException(
                     "cannot change editability of scroll origin");
         }
 
         @Override
-        public Map<String, IDisplaySettings> getState(String identifier) {
-            return megawidgetDisplaySettingsForEventIds.get(identifier);
+        public Map<String, IDisplaySettings> getState(
+                Pair<String, Integer> identifier) {
+            return megawidgetDisplaySettingsForEventVersionIdentifiers
+                    .get(identifier);
         }
 
         @Override
-        public void setState(String identifier,
+        public void setState(Pair<String, Integer> identifier,
                 Map<String, IDisplaySettings> value) {
-            megawidgetDisplaySettingsForEventIds.put(identifier, value);
+            megawidgetDisplaySettingsForEventVersionIdentifiers.put(identifier,
+                    value);
         }
 
         @Override
         public void setStates(
-                Map<String, Map<String, IDisplaySettings>> valuesForIdentifiers) {
-            megawidgetDisplaySettingsForEventIds.putAll(valuesForIdentifiers);
+                Map<Pair<String, Integer>, Map<String, IDisplaySettings>> valuesForIdentifiers) {
+            megawidgetDisplaySettingsForEventVersionIdentifiers
+                    .putAll(valuesForIdentifiers);
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, Map<String, IDisplaySettings>> handler) {
+                IStateChangeHandler<Pair<String, Integer>, Map<String, IDisplaySettings>> handler) {
             megawidgetDisplaySettingsChangeHandler = handler;
         }
     };
@@ -956,14 +994,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     };
 
     /**
-     * Selected event state change handler. The identifier is ignored.
+     * Visible event state change handler. The identifier is ignored.
      */
-    private IStateChangeHandler<String, String> tabChangeHandler;
+    private IStateChangeHandler<String, Pair<String, Integer>> visibleEventChangeHandler;
 
     /**
      * Visible event state changer. The identifier is ignored.
      */
-    private final IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> visibleEventChanger = new IChoiceStateChanger<String, String, String, DisplayableEventIdentifier>() {
+    private final IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> visibleEventChanger = new IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier>() {
 
         @Override
         public void setEnabled(String identifier, boolean enable) {
@@ -978,169 +1016,179 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setChoices(String identifier, List<String> choices,
+        public void setChoices(String identifier,
+                List<Pair<String, Integer>> choices,
                 List<DisplayableEventIdentifier> choiceDisplayables,
-                String value) {
+                Pair<String, Integer> value) {
             setTabs(choices, choiceDisplayables, value);
         }
 
         @Override
-        public String getState(String identifier) {
-            return visibleEventIdentifier;
+        public Pair<String, Integer> getState(String identifier) {
+            return visibleEventVersionIdentifier;
         }
 
         @Override
-        public void setState(String identifier, String value) {
+        public void setState(String identifier, Pair<String, Integer> value) {
             setSelectedTab(value);
         }
 
         @Override
-        public void setStates(Map<String, String> valuesForIdentifiers) {
+        public void setStates(
+                Map<String, Pair<String, Integer>> valuesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states for tabs");
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, String> handler) {
-            tabChangeHandler = handler;
+                IStateChangeHandler<String, Pair<String, Integer>> handler) {
+            visibleEventChangeHandler = handler;
         }
     };
 
     /**
      * Category combo box state change handler. The identifier is that of the
-     * hazard event being changed.
+     * hazard event version being changed.
      */
-    private IStateChangeHandler<String, String> categoryChangeHandler;
+    private IStateChangeHandler<Pair<String, Integer>, String> categoryChangeHandler;
 
     /**
      * Category combo box state changer. The identifier is that of the hazard
-     * event.
+     * event version.
      */
-    private final IChoiceStateChanger<String, String, String, String> categoryChanger = new IChoiceStateChanger<String, String, String, String>() {
+    private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> categoryChanger = new IChoiceStateChanger<Pair<String, Integer>, String, String, String>() {
 
         @Override
-        public void setEnabled(String identifier, boolean enable) {
-            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
+        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+            if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 categoryMegawidget.setEnabled(enable);
             }
         }
 
         @Override
-        public void setEditable(String identifier, boolean editable) {
-            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
+        public void setEditable(Pair<String, Integer> identifier,
+                boolean editable) {
+            if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 categoryMegawidget.setEditable(editable);
             }
         }
 
         @Override
-        public void setChoices(String identifier, List<String> choices,
-                List<String> choiceDisplayables, String value) {
-            if (identifier.equals(visibleEventIdentifier)) {
+        public void setChoices(Pair<String, Integer> identifier,
+                List<String> choices, List<String> choiceDisplayables,
+                String value) {
+            if (identifier.equals(visibleEventVersionIdentifier)) {
                 setCategories(choices);
                 setSelectedCategory(value);
             }
         }
 
         @Override
-        public String getState(String identifier) {
+        public String getState(Pair<String, Integer> identifier) {
             throw new UnsupportedOperationException(
                     "cannot get state of category");
         }
 
         @Override
-        public void setState(String identifier, String value) {
-            if (identifier.equals(visibleEventIdentifier)) {
+        public void setState(Pair<String, Integer> identifier, String value) {
+            if (identifier.equals(visibleEventVersionIdentifier)) {
                 setSelectedCategory(value);
             }
         }
 
         @Override
-        public void setStates(Map<String, String> valuesForIdentifiers) {
+        public void setStates(
+                Map<Pair<String, Integer>, String> valuesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states for category");
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, String> handler) {
+                IStateChangeHandler<Pair<String, Integer>, String> handler) {
             categoryChangeHandler = handler;
         }
     };
 
     /**
      * Type combo box state change handler. The identifier is that of the hazard
-     * event being changed.
+     * event version being changed.
      */
-    private IStateChangeHandler<String, String> typeChangeHandler;
+    private IStateChangeHandler<Pair<String, Integer>, String> typeChangeHandler;
 
     /**
-     * Type combo box state changer. The identifier is that of the hazard event.
+     * Type combo box state changer. The identifier is that of the hazard event
+     * version.
      */
-    private final IChoiceStateChanger<String, String, String, String> typeChanger = new IChoiceStateChanger<String, String, String, String>() {
+    private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> typeChanger = new IChoiceStateChanger<Pair<String, Integer>, String, String, String>() {
 
         @Override
-        public void setEnabled(String identifier, boolean enable) {
-            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
+        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+            if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 typeMegawidget.setEnabled(enable);
             }
         }
 
         @Override
-        public void setEditable(String identifier, boolean editable) {
-            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
+        public void setEditable(Pair<String, Integer> identifier,
+                boolean editable) {
+            if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 typeMegawidget.setEditable(editable);
             }
         }
 
         @Override
-        public void setChoices(String identifier, List<String> choices,
-                List<String> choiceDisplayables, String value) {
-            if (identifier.equals(visibleEventIdentifier)) {
+        public void setChoices(Pair<String, Integer> identifier,
+                List<String> choices, List<String> choiceDisplayables,
+                String value) {
+            if (identifier.equals(visibleEventVersionIdentifier)) {
                 setTypes(choices, choiceDisplayables);
                 setSelectedType(value);
             }
         }
 
         @Override
-        public String getState(String identifier) {
+        public String getState(Pair<String, Integer> identifier) {
             throw new UnsupportedOperationException("cannot get state of type");
         }
 
         @Override
-        public void setState(String identifier, String value) {
-            if (identifier.equals(visibleEventIdentifier)) {
+        public void setState(Pair<String, Integer> identifier, String value) {
+            if (identifier.equals(visibleEventVersionIdentifier)) {
                 setSelectedType(value);
             }
         }
 
         @Override
-        public void setStates(Map<String, String> valuesForIdentifiers) {
+        public void setStates(
+                Map<Pair<String, Integer>, String> valuesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states for type");
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, String> handler) {
+                IStateChangeHandler<Pair<String, Integer>, String> handler) {
             typeChangeHandler = handler;
         }
     };
 
     /**
      * Time range state change handler. The identifier is that of the hazard
-     * event being changed.
+     * event version being changed.
      */
-    private IStateChangeHandler<String, TimeRange> timeRangeChangeHandler;
+    private IStateChangeHandler<Pair<String, Integer>, TimeRange> timeRangeChangeHandler;
 
     /**
-     * Time range state changer. The identifier is that of the hazard event.
+     * Time range state changer. The identifier is that of the hazard event
+     * version.
      */
-    private final IStateChanger<String, TimeRange> timeRangeChanger = new IStateChanger<String, TimeRange>() {
+    private final IStateChanger<Pair<String, Integer>, TimeRange> timeRangeChanger = new IStateChanger<Pair<String, Integer>, TimeRange>() {
 
         @Override
-        public void setEnabled(String identifier, boolean enable) {
-            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
+        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+            if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 for (MultiTimeMegawidget megawidget : timeMegawidgets) {
                     megawidget.setEnabled(enable);
                 }
@@ -1148,8 +1196,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setEditable(String identifier, boolean editable) {
-            if (isAlive() && identifier.equals(visibleEventIdentifier)) {
+        public void setEditable(Pair<String, Integer> identifier,
+                boolean editable) {
+            if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 for (MultiTimeMegawidget megawidget : timeMegawidgets) {
                     megawidget.setEditable(editable);
                 }
@@ -1157,77 +1206,78 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public TimeRange getState(String identifier) {
+        public TimeRange getState(Pair<String, Integer> identifier) {
             throw new UnsupportedOperationException(
                     "cannot get state of time range");
         }
 
         @Override
-        public void setState(String identifier, TimeRange value) {
-            if (identifier.equals(visibleEventIdentifier)) {
+        public void setState(Pair<String, Integer> identifier, TimeRange value) {
+            if (identifier.equals(visibleEventVersionIdentifier)) {
                 setTimeRange(value);
             }
         }
 
         @Override
-        public void setStates(Map<String, TimeRange> valuesForIdentifiers) {
+        public void setStates(
+                Map<Pair<String, Integer>, TimeRange> valuesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states for time range");
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, TimeRange> handler) {
+                IStateChangeHandler<Pair<String, Integer>, TimeRange> handler) {
             timeRangeChangeHandler = handler;
         }
     };
 
     /**
      * Time range allowable boundaries state changer. The qualifier is the
-     * identifier of the hazard event, while the identifier indicates the
-     * boundary.
+     * identifier of the hazard event version, while the identifier indicates
+     * the boundary.
      */
-    private final IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> timeRangeBoundariesChanger = new IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>>() {
+    private final IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>> timeRangeBoundariesChanger = new IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>>() {
 
         @Override
-        public void setEnabled(String qualifier, TimeRangeBoundary identifier,
-                boolean enable) {
+        public void setEnabled(Pair<String, Integer> qualifier,
+                TimeRangeBoundary identifier, boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot enable/disable time range boundaries");
         }
 
         @Override
-        public void setEditable(String qualifier, TimeRangeBoundary identifier,
-                boolean editable) {
+        public void setEditable(Pair<String, Integer> qualifier,
+                TimeRangeBoundary identifier, boolean editable) {
             throw new UnsupportedOperationException(
                     "cannot change editability of time range boundaries");
         }
 
         @Override
-        public Range<Long> getState(String qualifier,
+        public Range<Long> getState(Pair<String, Integer> qualifier,
                 TimeRangeBoundary identifier) {
             throw new UnsupportedOperationException(
                     "cannot get state of time range boundaries");
         }
 
         @Override
-        public void setState(String qualifier, TimeRangeBoundary identifier,
-                Range<Long> value) {
+        public void setState(Pair<String, Integer> qualifier,
+                TimeRangeBoundary identifier, Range<Long> value) {
             throw new UnsupportedOperationException(
                     "cannot change single state for time range boundaries");
         }
 
         @Override
-        public void setStates(String qualifier,
+        public void setStates(Pair<String, Integer> qualifier,
                 Map<TimeRangeBoundary, Range<Long>> valuesForIdentifiers) {
-            if (qualifier.equals(visibleEventIdentifier)) {
+            if (qualifier.equals(visibleEventVersionIdentifier)) {
                 setTimeRangeBoundaries(valuesForIdentifiers);
             }
         }
 
         @Override
         public void setStateChangeHandler(
-                IQualifiedStateChangeHandler<String, TimeRangeBoundary, Range<Long>> handler) {
+                IQualifiedStateChangeHandler<Pair<String, Integer>, TimeRangeBoundary, Range<Long>> handler) {
             throw new UnsupportedOperationException(
                     "time range boundaries are never modified by the view");
         }
@@ -1277,51 +1327,55 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * Duration combo box state changer. The identifier is that of the hazard
-     * event.
+     * event version.
      */
-    private final IChoiceStateChanger<String, String, String, String> durationChanger = new IChoiceStateChanger<String, String, String, String>() {
+    private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> durationChanger = new IChoiceStateChanger<Pair<String, Integer>, String, String, String>() {
 
         @Override
-        public void setEnabled(String identifier, boolean enable) {
+        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot enable or disable duration");
         }
 
         @Override
-        public void setEditable(String identifier, boolean editable) {
+        public void setEditable(Pair<String, Integer> identifier,
+                boolean editable) {
             throw new UnsupportedOperationException(
                     "cannot change editability of duration");
         }
 
         @Override
-        public void setChoices(String identifier, List<String> choices,
-                List<String> choiceDisplayables, String value) {
-            if (identifier.equals(visibleEventIdentifier) && (choices != null)) {
+        public void setChoices(Pair<String, Integer> identifier,
+                List<String> choices, List<String> choiceDisplayables,
+                String value) {
+            if (identifier.equals(visibleEventVersionIdentifier)
+                    && (choices != null)) {
                 setDurationChoices(choices);
             }
         }
 
         @Override
-        public String getState(String identifier) {
+        public String getState(Pair<String, Integer> identifier) {
             throw new UnsupportedOperationException(
                     "cannot get state of duration");
         }
 
         @Override
-        public void setState(String identifier, String value) {
+        public void setState(Pair<String, Integer> identifier, String value) {
             throw new UnsupportedOperationException(
                     "cannot set state of duration");
         }
 
         @Override
-        public void setStates(Map<String, String> valuesForIdentifiers) {
+        public void setStates(
+                Map<Pair<String, Integer>, String> valuesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot set state of duration");
         }
 
         @Override
         public void setStateChangeHandler(
-                IStateChangeHandler<String, String> handler) {
+                IStateChangeHandler<Pair<String, Integer>, String> handler) {
             throw new UnsupportedOperationException(
                     "cannot set handler for duration changes");
         }
@@ -1329,63 +1383,66 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     /**
      * Metadata state change handler. The qualifier is the identifier of the
-     * hazard event being changed, while the identifier is the metadata that was
-     * changed.
+     * hazard event version being changed, while the identifier is the metadata
+     * that was changed.
      */
-    private IQualifiedStateChangeHandler<String, String, Serializable> metadataChangeHandler;
+    private IQualifiedStateChangeHandler<Pair<String, Integer>, String, Serializable> metadataChangeHandler;
 
     /**
      * Metadata state changer. The qualifier is the identifier of the hazard
-     * event, while the identifier is that of the metadata.
+     * event version, while the identifier is that of the metadata.
      */
     private final IMetadataStateChanger metadataChanger = new IMetadataStateChanger() {
 
         @Override
-        public void setEnabled(String qualifier, String identifier,
-                boolean enable) {
+        public void setEnabled(Pair<String, Integer> qualifier,
+                String identifier, boolean enable) {
             setMetadataEnabledState(qualifier, identifier, enable);
         }
 
         @Override
-        public void setEditable(String qualifier, String identifier,
-                boolean editable) {
+        public void setEditable(Pair<String, Integer> qualifier,
+                String identifier, boolean editable) {
             setMetadataEditabilityState(qualifier, identifier, editable);
         }
 
         @Override
-        public Serializable getState(String qualifier, String identifier) {
+        public Serializable getState(Pair<String, Integer> qualifier,
+                String identifier) {
             return getMetadataValue(qualifier, identifier);
         }
 
         @Override
-        public void setState(String qualifier, String identifier,
-                Serializable value) {
+        public void setState(Pair<String, Integer> qualifier,
+                String identifier, Serializable value) {
             setMetadataValue(qualifier, identifier, value);
         }
 
         @Override
-        public void setStates(String qualifier,
+        public void setStates(Pair<String, Integer> qualifier,
                 Map<String, Serializable> valuesForIdentifiers) {
             setMetadataValues(qualifier, valuesForIdentifiers);
         }
 
         @Override
         public void setStateChangeHandler(
-                IQualifiedStateChangeHandler<String, String, Serializable> handler) {
+                IQualifiedStateChangeHandler<Pair<String, Integer>, String, Serializable> handler) {
             metadataChangeHandler = handler;
         }
 
         @Override
-        public void setMegawidgetSpecifierManager(String qualifier,
+        public void setMegawidgetSpecifierManager(
+                Pair<String, Integer> qualifier,
                 MegawidgetSpecifierManager specifierManager,
-                Map<String, Serializable> metadataStates,
+                Map<String, Serializable> metadataStates, boolean editable,
                 boolean reinitializeIfUnchanged) {
             setMetadataSpecifierManager(qualifier, specifierManager,
-                    metadataStates, reinitializeIfUnchanged);
+                    metadataStates, editable, reinitializeIfUnchanged);
         }
 
         @Override
-        public void changeMegawidgetMutableProperties(String qualifier,
+        public void changeMegawidgetMutableProperties(
+                Pair<String, Integer> qualifier,
                 Map<String, Map<String, Object>> mutableProperties) {
             changeMetadataMutableProperties(qualifier, mutableProperties);
         }
@@ -1458,13 +1515,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 String identifier, Object state) {
             if (identifier.equals(CATEGORY_IDENTIFIER)) {
                 if (categoryChangeHandler != null) {
-                    categoryChangeHandler.stateChanged(visibleEventIdentifier,
-                            (String) state);
+                    categoryChangeHandler.stateChanged(
+                            visibleEventVersionIdentifier, (String) state);
                 }
             } else if (identifier.equals(TYPE_IDENTIFIER)) {
                 if (typeChangeHandler != null) {
-                    typeChangeHandler.stateChanged(visibleEventIdentifier,
-                            (String) state);
+                    typeChangeHandler.stateChanged(
+                            visibleEventVersionIdentifier, (String) state);
                 }
             } else if (identifier.equals(START_TIME_STATE)
                     || identifier.equals(END_TIME_STATE)) {
@@ -1487,8 +1544,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     setTimeRange(multiTimeMegawidget, range);
                 }
                 if (timeRangeChangeHandler != null) {
-                    timeRangeChangeHandler.stateChanged(visibleEventIdentifier,
-                            range);
+                    timeRangeChangeHandler.stateChanged(
+                            visibleEventVersionIdentifier, range);
                 }
             } else if (identifier
                     .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
@@ -1499,8 +1556,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             untilFurtherNotice);
                 }
                 if (metadataChangeHandler != null) {
-                    metadataChangeHandler.stateChanged(visibleEventIdentifier,
-                            identifier, (Serializable) state);
+                    metadataChangeHandler.stateChanged(
+                            visibleEventVersionIdentifier, identifier,
+                            (Serializable) state);
                 }
             } else {
                 throw new IllegalArgumentException(
@@ -1530,8 +1588,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     setTimeRange(multiTimeMegawidget, range);
                 }
                 if (timeRangeChangeHandler != null) {
-                    timeRangeChangeHandler.stateChanged(visibleEventIdentifier,
-                            range);
+                    timeRangeChangeHandler.stateChanged(
+                            visibleEventVersionIdentifier, range);
                 }
             } else {
                 throw new IllegalArgumentException(
@@ -1565,8 +1623,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             boolean showStartEndTimeScale,
             boolean buildForWideViewing,
             boolean includeIssueButton,
-            Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
+            Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers) {
         initialized = true;
+
+        /*
+         * Initialize the date-time formatters.
+         */
+        minutesDateTimeFormatter = Utils
+                .getGmtDateTimeFormatterWithMinutesResolution();
+        secondsDateTimeFormatter = Utils
+                .getGmtDateTimeFormatterWithSecondsResolution();
 
         /*
          * Remember the passed-in parameters.
@@ -1576,7 +1642,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         this.currentTimeProvider = currentTimeProvider;
         this.showStartEndTimeScale = showStartEndTimeScale;
         this.buildForWideViewing = buildForWideViewing;
-        this.extraDataForEventIds = extraDataForEventIdentifiers;
+        this.extraDataForEventVersionIdentifiers = extraDataForEventVersionIdentifiers;
         this.includeIssueButton = includeIssueButton;
 
         /*
@@ -1595,7 +1661,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
     @Override
     public void dispose() {
-        for (Map.Entry<String, MegawidgetManager> entry : megawidgetManagersForEventIds
+        for (Map.Entry<Pair<String, Integer>, MegawidgetManager> entry : megawidgetManagersForEventVersionIdentifiers
                 .entrySet()) {
             recordDisplaySettingsAndExtraDataForEvent(entry.getKey(),
                     entry.getValue());
@@ -1604,7 +1670,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             resource.dispose();
         }
         visibleTimeRangeChangeHandler = null;
-        tabChangeHandler = null;
+        visibleEventChangeHandler = null;
         categoryChangeHandler = null;
         typeChangeHandler = null;
         timeRangeChangeHandler = null;
@@ -1643,12 +1709,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * for all its tabs, and simply reconfigures the panels therein for each
          * different tab selection.
          */
-        eventTabFolder = new CTabFolder(tabTop, SWT.TOP);
+        eventTabFolder = new CustomizableTabFolder(tabTop, SWT.TOP);
+        eventTabFolder.setRenderer(new CustomizableTabFolderRenderer(
+                eventTabFolder));
+        FontData fontData = eventTabFolder.getFont().getFontData()[0];
+        italicTabFont = new Font(eventTabFolder.getDisplay(), new FontData(
+                fontData.getName(), fontData.getHeight(), SWT.ITALIC));
+        resources.add(italicTabFont);
         standardUnselectedColor = eventTabFolder.getBackground();
         standardSelectedColor = eventTabFolder.getSelectionBackground();
         eventTabFolder.setBorderVisible(true);
         eventTabFolder.setTabHeight(eventTabFolder.getTabHeight() + 8);
         eventTabFolder.addSelectionListener(new SelectionAdapter() {
+
+            @SuppressWarnings("unchecked")
             @Override
             public void widgetSelected(SelectionEvent e) {
 
@@ -1666,12 +1740,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                  * identifier associated with that tab as a notification that a
                  * new tab is showing.
                  */
-                CTabItem item = eventTabFolder.getSelection();
-                if ((CTabItem) e.item == item) {
-                    visibleEventIdentifier = (String) item.getData();
-                    if (tabChangeHandler != null) {
-                        tabChangeHandler.stateChanged(null,
-                                visibleEventIdentifier);
+                CustomizableTabItem item = eventTabFolder.getSelection();
+                if ((CustomizableTabItem) e.item == item) {
+                    visibleEventVersionIdentifier = (Pair<String, Integer>) item
+                            .getData();
+                    if (visibleEventChangeHandler != null) {
+                        visibleEventChangeHandler.stateChanged(null,
+                                visibleEventVersionIdentifier);
                     }
                 }
             }
@@ -1819,7 +1894,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * 
      * @return Detail view scroll origin state changer.
      */
-    public IStateChanger<String, Map<String, IDisplaySettings>> getMegawidgetDisplaySettingsChanger() {
+    public IStateChanger<Pair<String, Integer>, Map<String, IDisplaySettings>> getMegawidgetDisplaySettingsChanger() {
         return megawidgetdisplaySettingsChanger;
     }
 
@@ -1829,27 +1904,27 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> getVisibleEventChanger() {
+    public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> getVisibleEventChanger() {
         return visibleEventChanger;
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, String> getCategoryChanger() {
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getCategoryChanger() {
         return categoryChanger;
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, String> getTypeChanger() {
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getTypeChanger() {
         return typeChanger;
     }
 
     @Override
-    public IStateChanger<String, TimeRange> getTimeRangeChanger() {
+    public IStateChanger<Pair<String, Integer>, TimeRange> getTimeRangeChanger() {
         return timeRangeChanger;
     }
 
     @Override
-    public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
+    public IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
         return timeRangeBoundariesChanger;
     }
 
@@ -1859,7 +1934,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, String> getDurationChanger() {
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getDurationChanger() {
         return durationChanger;
     }
 
@@ -1943,7 +2018,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Parent composite into which the panel will be inserted.
      * @param megawidgetCreationParams
      *            Parameters needed for megawidget creation.
-     * @param megawidgetToAlign
+     * @param megawidgetsToAlign
      *            List of megawidgets that are to be visually aligned. The
      *            method adds the time scale or time range megawidget (whichever
      *            it creates) to this list so that they may all be aligned by
@@ -2108,16 +2183,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Set the tabs to those specified.
      * 
      * @param choices
-     *            Event identifiers; one tab per identifier is needed, in the
-     *            given order.
+     *            Event version identifiers; one tab per identifier is needed,
+     *            in the given order.
      * @param choiceDisplayables
      *            Displayables for the tabs; each one is the displayable for the
-     *            event identifier in <code>choices</code> at the corresponding
-     *            index.
+     *            event version identifier in <code>choices</code> at the
+     *            corresponding index.
      */
-    private void setTabs(List<String> choices,
+    private void setTabs(List<Pair<String, Integer>> choices,
             List<DisplayableEventIdentifier> choiceDisplayables,
-            String visibleEventIdentifier) {
+            Pair<String, Integer> visibleEventVersionIdentifier) {
 
         /*
          * Do nothing if the tab folder is nonexistent or disposed.
@@ -2134,7 +2209,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         /*
          * Determine whether or not the tabs need to be recreated.
          */
-        CTabItem[] tabItems = eventTabFolder.getItems();
+        CustomizableTabItem[] tabItems = eventTabFolder.getItems();
         boolean recreateTabs = (tabItems.length != choices.size());
         if (recreateTabs == false) {
             for (int j = 0; j < choices.size(); j++) {
@@ -2152,12 +2227,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         boolean conflictExists = false;
         if (recreateTabs) {
             tabsBeingChanged = true;
-            for (CTabItem tabItem : tabItems) {
+            for (CustomizableTabItem tabItem : tabItems) {
                 tabItem.dispose();
             }
-            this.visibleEventIdentifier = null;
+            this.visibleEventVersionIdentifier = null;
             for (int j = 0; j < choices.size(); j++) {
-                CTabItem tabItem = new CTabItem(eventTabFolder, SWT.NONE);
+                CustomizableTabItem tabItem = new CustomizableTabItem(
+                        eventTabFolder, SWT.NONE);
                 tabItem.setText(choiceDisplayables.get(j).getDescription());
                 tabItem.setData(choices.get(j));
                 tabItem.setControl(tabPagePanel);
@@ -2174,18 +2250,39 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
 
         /*
          * Iterate through the tabs, marking any that are for events with
-         * conflicts with the appropriate icon and tooltip.
+         * conflicts with the appropriate icon and tooltip, and any that are for
+         * historical snapshots of events with a different font and a different
+         * text color.
          */
         tabItems = eventTabFolder.getItems();
         for (int j = 0; j < choiceDisplayables.size(); j++) {
             if (j < tabItems.length) {
-                if (choiceDisplayables.get(j).isConflicting()) {
+                if (choiceDisplayables.get(j).getPersistTimestamp() != null) {
+                    tabItems[j].setImage(null);
+                    tabItems[j].setSelectionForeground(Display.getDefault()
+                            .getSystemColor(SWT.COLOR_DARK_GRAY));
+                    tabItems[j].setForeground(Display.getDefault()
+                            .getSystemColor(SWT.COLOR_DARK_GRAY));
+                    tabItems[j].setFont(italicTabFont);
+                    tabItems[j]
+                            .setToolTipText(HISTORICAL_SNAPSHOT__PREFIX_TOOLTIP
+                                    + (timeResolution == TimeResolution.MINUTES ? minutesDateTimeFormatter
+                                            : secondsDateTimeFormatter)
+                                            .format(choiceDisplayables.get(j)
+                                                    .getPersistTimestamp()));
+                } else if (choiceDisplayables.get(j).isConflicting()) {
                     conflictExists = true;
                     tabItems[j].setImage(CONFLICT_TAB_ICON);
                     tabItems[j].setToolTipText(CONFLICT_TOOLTIP);
+                    tabItems[j].setSelectionForeground(null);
+                    tabItems[j].setForeground(null);
+                    tabItems[j].setFont(null);
                 } else {
                     tabItems[j].setImage(null);
                     tabItems[j].setToolTipText(null);
+                    tabItems[j].setSelectionForeground(null);
+                    tabItems[j].setForeground(null);
+                    tabItems[j].setFont(null);
                 }
             }
         }
@@ -2206,7 +2303,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         /*
          * Set the currently selected tab, and turn redraw back on.
          */
-        setSelectedTab(visibleEventIdentifier);
+        setSelectedTab(visibleEventVersionIdentifier);
         eventTabFolder.setRedraw(true);
     }
 
@@ -2214,15 +2311,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Set the tab folder to show the tab that goes with the specified event
      * identifier as the topmost (visible) tab page.
      * 
-     * @param visibleEventIdentifier
-     *            Event identifier associated with the tab page that is to be
-     *            visible.
+     * @param visibleEventVersionIdentifier
+     *            Event version identifier associated with the tab page that is
+     *            to be visible.
      */
-    private void setSelectedTab(String visibleEventIdentifier) {
+    private void setSelectedTab(
+            Pair<String, Integer> visibleEventVersionIdentifier) {
         if (isAlive()) {
-            for (CTabItem tabItem : eventTabFolder.getItems()) {
-                if (tabItem.getData().equals(visibleEventIdentifier)) {
-                    this.visibleEventIdentifier = visibleEventIdentifier;
+            for (CustomizableTabItem tabItem : eventTabFolder.getItems()) {
+                if (tabItem.getData().equals(visibleEventVersionIdentifier)) {
+                    this.visibleEventVersionIdentifier = visibleEventVersionIdentifier;
                     eventTabFolder.setSelection(tabItem);
                     break;
                 }
@@ -2634,22 +2732,28 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Set the metadata specifier manager as that specified for an event
+     * Set the metadata specifier manager as that specified for an event version
      * identifier.
      * 
-     * @param eventIdentifier
-     *            Event identifier for which the metadata specifier manager is
-     *            being set.
+     * @param eventVersionIdentifier
+     *            Event version identifier for which the metadata specifier
+     *            manager is being set.
      * @param specifierManager
      *            Megawidget specifier manager to be used.
      * @param metadataStates
-     *            States for the metadata. , @param reinitializeIfUnchanged Flag
-     *            indicating whether or not the metadata manager, if unchanged
-     *            as a result of this call, should reinitialize its components.
+     *            States for the metadata.
+     * @param editable
+     *            Flag indicating whether or not the widgets to be created based
+     *            upon the metadata specifier manager should be editable.
+     * @param reinitializeIfUnchanged
+     *            Flag indicating whether or not the metadata manager, if
+     *            unchanged as a result of this call, should reinitialize its
+     *            components.
      */
-    private void setMetadataSpecifierManager(String eventIdentifier,
+    private void setMetadataSpecifierManager(
+            Pair<String, Integer> eventVersionIdentifier,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Serializable> metadataStates,
+            Map<String, Serializable> metadataStates, final boolean editable,
             boolean reinitializeIfUnchanged) {
 
         /*
@@ -2663,7 +2767,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * If the specifiers for the currently visible event are being set, stop
          * redraws for the moment.
          */
-        if (eventIdentifier.equals(visibleEventIdentifier)) {
+        if (eventVersionIdentifier.equals(visibleEventVersionIdentifier)) {
             metadataPanel.setRedraw(false);
         }
 
@@ -2673,8 +2777,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * manager and accompanying panel (if there are any new specifiers). If
          * it is the same, reuse it.
          */
-        MegawidgetManager megawidgetManager = megawidgetManagersForEventIds
-                .get(eventIdentifier);
+        MegawidgetManager megawidgetManager = megawidgetManagersForEventVersionIdentifiers
+                .get(eventVersionIdentifier);
         Composite panel = null;
         if (((megawidgetManager != null) && (megawidgetManager
                 .getSpecifierManager() != specifierManager))
@@ -2695,10 +2799,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
              */
             Map<String, Map<String, Object>> oldExtraDataMap = null;
             if (megawidgetManager != null) {
-                megawidgetManagersForEventIds.remove(eventIdentifier);
-                extraDataForEventIds.remove(eventIdentifier);
+                megawidgetManagersForEventVersionIdentifiers
+                        .remove(eventVersionIdentifier);
+                extraDataForEventVersionIdentifiers
+                        .remove(eventVersionIdentifier);
             } else {
-                oldExtraDataMap = extraDataForEventIds.get(eventIdentifier);
+                oldExtraDataMap = extraDataForEventVersionIdentifiers
+                        .get(eventVersionIdentifier);
             }
 
             /*
@@ -2728,10 +2835,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 public void commandInvoked(
                                         MegawidgetManager manager,
                                         String identifier) {
-                                    if (notifierInvocationHandler != null) {
+                                    if (editable
+                                            && (notifierInvocationHandler != null)) {
                                         notifierInvocationHandler
                                                 .commandInvoked(new EventScriptInfo(
-                                                        visibleEventIdentifier,
+                                                        visibleEventVersionIdentifier
+                                                                .getFirst(),
                                                         identifier,
                                                         manager.getMutableProperties()));
                                     }
@@ -2741,9 +2850,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 public void stateElementChanged(
                                         MegawidgetManager manager,
                                         String identifier, Object state) {
-                                    if (metadataChangeHandler != null) {
+                                    if (editable
+                                            && (metadataChangeHandler != null)) {
                                         metadataChangeHandler.stateChanged(
-                                                visibleEventIdentifier,
+                                                visibleEventVersionIdentifier,
                                                 identifier,
                                                 (Serializable) state);
                                     }
@@ -2753,7 +2863,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 public void stateElementsChanged(
                                         MegawidgetManager manager,
                                         Map<String, ?> statesForIdentifiers) {
-                                    if (metadataChangeHandler != null) {
+                                    if (editable
+                                            && (metadataChangeHandler != null)) {
                                         Map<String, Serializable> map = new HashMap<>(
                                                 statesForIdentifiers.size());
                                         for (Map.Entry<String, ?> entry : statesForIdentifiers
@@ -2763,7 +2874,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                                             .getValue());
                                         }
                                         metadataChangeHandler.statesChanged(
-                                                visibleEventIdentifier, map);
+                                                visibleEventVersionIdentifier,
+                                                map);
                                     }
                                 }
 
@@ -2797,11 +2909,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                                     + exception, exception);
                                 }
                             }, minimumVisibleTime, maximumVisibleTime);
+                    if (editable == false) {
+                        megawidgetManager.setEditable(false);
+                    }
                 } catch (Exception e) {
                     statusHandler.error(
                             "Could not create hazard metadata megawidgets "
-                                    + "for event ID = " + eventIdentifier
-                                    + ": " + e, e);
+                                    + "for event ID = "
+                                    + eventVersionIdentifier + ": " + e, e);
                     panel.dispose();
                     panel = null;
                 }
@@ -2814,13 +2929,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     if (oldExtraDataMap != null) {
                         megawidgetManager.setExtraData(oldExtraDataMap);
                     }
-                    Map<String, IDisplaySettings> displaySettings = megawidgetDisplaySettingsForEventIds
-                            .get(eventIdentifier);
+                    Map<String, IDisplaySettings> displaySettings = megawidgetDisplaySettingsForEventVersionIdentifiers
+                            .get(eventVersionIdentifier);
                     if (displaySettings != null) {
                         megawidgetManager.setDisplaySettings(displaySettings);
                     }
-                    megawidgetManagersForEventIds.put(eventIdentifier,
-                            megawidgetManager);
+                    megawidgetManagersForEventVersionIdentifiers.put(
+                            eventVersionIdentifier, megawidgetManager);
                 }
             }
         } else if (megawidgetManager != null) {
@@ -2844,7 +2959,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * the "until further notice" megawidgets appropriately, update the
          * layout, and turn redraw back on.
          */
-        if (eventIdentifier.equals(visibleEventIdentifier)) {
+        if (eventVersionIdentifier.equals(visibleEventVersionIdentifier)) {
             setEndTimeUntilFurtherNotice(metadataStates
                     .get(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
             layoutMetadataPanel(panel);
@@ -2853,24 +2968,23 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Set the metadata specifier manager as that specified for an event
-     * identifier.
+     * Set the metadata mutable properties to that specified for an event
+     * version identifier.
      * 
-     * @param eventIdentifier
-     *            Event identifier for which the metadata specifier manager is
+     * @param eventVersionIdentifier
+     *            Event version identifier for which the mutable properties are
      *            being set.
-     * @param specifierManager
-     *            Megawidget specifier manager to be used.
-     * @param metadataStates
-     *            States for the metadata.
+     * @param mutableProperties
+     *            Mutable properties to be used.
      */
-    private void changeMetadataMutableProperties(String eventIdentifier,
+    private void changeMetadataMutableProperties(
+            Pair<String, Integer> eventVersionIdentifier,
             Map<String, Map<String, Object>> mutableProperties) {
         if (isAlive() == false) {
             return;
         }
-        MegawidgetManager manager = megawidgetManagersForEventIds
-                .get(eventIdentifier);
+        MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers
+                .get(eventVersionIdentifier);
         if (manager != null) {
             try {
                 manager.setMutableProperties(mutableProperties);
@@ -2885,15 +2999,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Prepare the specified megawidget manager for removal.
      * 
-     * @param eventIdentifier
-     *            Event identifier with which the megawidget manager is
+     * @param eventVersionIdentifier
+     *            Event version identifier with which the megawidget manager is
      *            associated.
      * @param megawidgetManager
      *            Megawidget manager to be removed.
      */
-    private void prepareMegawidgetManagerForRemoval(String eventIdentifier,
+    private void prepareMegawidgetManagerForRemoval(
+            Pair<String, Integer> eventVersionIdentifier,
             MegawidgetManager megawidgetManager) {
-        recordDisplaySettingsAndExtraDataForEvent(eventIdentifier,
+        recordDisplaySettingsAndExtraDataForEvent(eventVersionIdentifier,
                 megawidgetManager);
         megawidgetManager.getParent().dispose();
     }
@@ -2917,45 +3032,48 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     }
 
     /**
-     * Record the specified event identifier's metadata megawidgets' display
-     * settings and extra data from the specified megawidget manager.
+     * Record the specified event version identifier's metadata megawidgets'
+     * display settings and extra data from the specified megawidget manager.
      * 
-     * @param eventIdentifier
-     *            Event identifier with which the megawidget manager is
+     * @param eventVersionIdentifier
+     *            Event version identifier with which the megawidget manager is
      *            associated.
      * @param megawidgetManager
      *            Megawidget manager to have its display settings and extra data
      *            recorded.
      */
     private void recordDisplaySettingsAndExtraDataForEvent(
-            String eventIdentifier, MegawidgetManager megawidgetManager) {
+            Pair<String, Integer> eventVersionIdentifier,
+            MegawidgetManager megawidgetManager) {
         Map<String, IDisplaySettings> displaySettings = megawidgetManager
                 .getDisplaySettings();
-        megawidgetDisplaySettingsForEventIds.put(eventIdentifier,
-                displaySettings);
+        megawidgetDisplaySettingsForEventVersionIdentifiers.put(
+                eventVersionIdentifier, displaySettings);
         if (megawidgetDisplaySettingsChangeHandler != null) {
             megawidgetDisplaySettingsChangeHandler.stateChanged(
-                    eventIdentifier, displaySettings);
+                    eventVersionIdentifier, displaySettings);
         }
         Map<String, Map<String, Object>> extraData = megawidgetManager
                 .getExtraData();
         if (extraData.isEmpty() == false) {
-            extraDataForEventIds.put(eventIdentifier, extraData);
+            extraDataForEventVersionIdentifiers.put(eventVersionIdentifier,
+                    extraData);
         }
     }
 
     /**
      * Get the specified metadata element value.
      * 
-     * @param eventIdentifier
-     *            Event identifier.
+     * @param eventVersionIdentifier
+     *            Event version identifier.
      * @param metadataIdentifier
      *            Identifier of the metadata element for which to get the value.
      * @return Value of the metadata element.
      */
-    private Serializable getMetadataValue(String eventIdentifier,
+    private Serializable getMetadataValue(
+            Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier) {
-        if (eventIdentifier.equals(visibleEventIdentifier) == false) {
+        if (eventVersionIdentifier.equals(visibleEventVersionIdentifier) == false) {
             return null;
         }
         if (metadataIdentifier
@@ -2971,9 +3089,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                 + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
                                 + " megawidget value", e);
             }
-        } else if (visibleEventIdentifier != null) {
-            MegawidgetManager manager = megawidgetManagersForEventIds
-                    .get(visibleEventIdentifier);
+        } else if (visibleEventVersionIdentifier != null) {
+            MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers
+                    .get(visibleEventVersionIdentifier);
             if (manager != null) {
                 try {
                     return (Serializable) manager
@@ -2991,17 +3109,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Set the enabled state of the specified metadata element to the specified
      * value.
      * 
-     * @param eventIdentifier
-     *            Event identifier.
+     * @param eventVersionIdentifier
+     *            Event version identifier.
      * @param metadataIdentifier
      *            Identifier of the metadata element to be set.
      * @param enable
      *            Flag indicating whether or not the element should be enabled.
      */
-    private void setMetadataEnabledState(String eventIdentifier,
+    private void setMetadataEnabledState(
+            Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier, boolean enable) {
         if ((isAlive() == false)
-                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
+                || (eventVersionIdentifier
+                        .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
         if (metadataIdentifier
@@ -3022,17 +3142,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Set the editability state of the specified metadata element to the
      * specified value.
      * 
-     * @param eventIdentifier
-     *            Event identifier.
+     * @param eventVersionIdentifier
+     *            Event version identifier.
      * @param metadataIdentifier
      *            Identifier of the metadata element to be set.
      * @param editable
      *            Flag indicating whether or not the element should be editable.
      */
-    private void setMetadataEditabilityState(String eventIdentifier,
+    private void setMetadataEditabilityState(
+            Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier, boolean editable) {
         if ((isAlive() == false)
-                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
+                || (eventVersionIdentifier
+                        .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
         if (metadataIdentifier
@@ -3052,25 +3174,26 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Set the specified metadata element to the specified value.
      * 
-     * @param eventIdentifier
-     *            Event identifier.
+     * @param eventVersionIdentifier
+     *            Event version identifier.
      * @param metadataIdentifier
      *            Identifier of the metadata element to be set.
      * @param value
      *            New value of the metadata element.
      */
-    private void setMetadataValue(String eventIdentifier,
+    private void setMetadataValue(Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier, Serializable value) {
         if ((isAlive() == false)
-                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
+                || (eventVersionIdentifier
+                        .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
         if (metadataIdentifier
                 .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNotice(value);
-        } else if (visibleEventIdentifier != null) {
-            MegawidgetManager manager = megawidgetManagersForEventIds
-                    .get(visibleEventIdentifier);
+        } else if (visibleEventVersionIdentifier != null) {
+            MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers
+                    .get(visibleEventVersionIdentifier);
             if (manager != null) {
                 Map<String, Object> map = new HashMap<>();
                 map.put(metadataIdentifier, value);
@@ -3088,15 +3211,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     /**
      * Set the specified metadata elements to the specified values.
      * 
-     * @param eventIdentifier
-     *            Event identifier.
+     * @param eventVersionIdentifier
+     *            Event version identifier.
      * @param valuesForIdentifiers
      *            Map of metadata element identifiers to their new values.
      */
-    private void setMetadataValues(String eventIdentifier,
+    private void setMetadataValues(
+            Pair<String, Integer> eventVersionIdentifier,
             Map<String, Serializable> valuesForIdentifiers) {
         if ((isAlive() == false)
-                || (eventIdentifier.equals(visibleEventIdentifier) == false)) {
+                || (eventVersionIdentifier
+                        .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
         int numElements = valuesForIdentifiers.size();
@@ -3106,9 +3231,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             setEndTimeUntilFurtherNotice(valuesForIdentifiers
                     .get(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
         }
-        if ((numElements > 0) && (visibleEventIdentifier != null)) {
-            MegawidgetManager manager = megawidgetManagersForEventIds
-                    .get(visibleEventIdentifier);
+        if ((numElements > 0) && (visibleEventVersionIdentifier != null)) {
+            MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers
+                    .get(visibleEventVersionIdentifier);
             if (manager != null) {
                 try {
                     manager.modifyState(valuesForIdentifiers);
@@ -3132,7 +3257,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             megawidget.setVisibleTimeRange(minimumVisibleTime,
                     maximumVisibleTime);
         }
-        for (MegawidgetManager manager : megawidgetManagersForEventIds.values()) {
+        for (MegawidgetManager manager : megawidgetManagersForEventVersionIdentifiers
+                .values()) {
             manager.setVisibleTimeRange(minimumVisibleTime, maximumVisibleTime);
         }
     }

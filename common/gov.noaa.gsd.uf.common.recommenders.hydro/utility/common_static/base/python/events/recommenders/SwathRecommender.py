@@ -210,6 +210,10 @@ class Recommender(RecommenderTemplate.Recommender):
                     self.editableObjects = True
                 
         for event in eventSet:   
+
+            # Ensure that unless countermanded below, the event is not visible in
+            # the history list when it is persisted.
+            event.setVisibleInHistoryList(False)
                                     
             if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
                 continue
@@ -244,7 +248,17 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
                 
             elif trigger == 'hazardEventModification':
+
+                # Remember the automation level before potentially changing it. 
+                previousAutomationLevel = event.get('automationLevel')
                 changes = self.adjustForEventModification(event, eventSetAttrs)
+                
+                # Ensure that if the automation level has changed (and was not
+                # previously unset), the event will be visible in the history
+                # list.
+                if previousAutomationLevel is not None and previousAutomationLevel != event.get('automationLevel'):
+                    event.setVisibleInHistoryList(True)
+                    
                 if not changes:
                     # Handle other dialog buttons
                     self.handleAdditionalEventModifications(event, resultEventSet)
@@ -407,6 +421,9 @@ class Recommender(RecommenderTemplate.Recommender):
         
     def setUserOwned(self, event):         
         event.set('automationLevel', 'userOwned')
+
+        # TODO: Should set visibility-in-history-list flag to True here, or in whatever
+        # code calls this method.
         if event.get('objectID') and not event.get('objectID').startswith('M'):
             event.set('objectID', 'M' + event.get('objectID'))
         print "SR calling setActivation for setting userOwned"

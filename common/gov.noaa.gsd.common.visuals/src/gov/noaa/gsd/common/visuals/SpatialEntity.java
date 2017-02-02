@@ -401,7 +401,7 @@ public class SpatialEntity<I> {
      * @param other
      *            Spatial entity to be copied.
      */
-    SpatialEntity(SpatialEntity<I> other) {
+    private SpatialEntity(SpatialEntity<I> other) {
         identifier = other.identifier;
         geometry = other.geometry;
         borderColor = other.borderColor;

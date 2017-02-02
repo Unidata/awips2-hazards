@@ -245,10 +245,7 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
     // Protected Methods
 
     /**
-     * Set the manipulation points to those specified.
-     * 
-     * @param manipulationPoints
-     *            New manipulation points.
+     * Update the manipulation points.
      */
     protected void updateManipulationPoints() {
         this.manipulationPoints.clear();

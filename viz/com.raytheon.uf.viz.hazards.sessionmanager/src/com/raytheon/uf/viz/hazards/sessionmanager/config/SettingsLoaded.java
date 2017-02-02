@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
+import java.util.EnumSet;
+
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -30,11 +32,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 13, 2013 1257       bsteffen    Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 13, 2013 1257       bsteffen     Initial creation
  * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager,
  *                                      and to include originator.
+ * Feb 01, 2017 15556      Chris.Golden Changed to pass set of changed settings elements
+ *                                      to superclass constructor.
  * </pre>
  * 
  * @author bsteffen
@@ -46,7 +50,7 @@ public class SettingsLoaded extends SettingsModified {
     public SettingsLoaded(
             ISessionConfigurationManager<ObservedSettings> manager,
             IOriginator originator) {
-        super(manager, originator);
+        super(manager, EnumSet.allOf(ObservedSettings.Type.class), originator);
     }
 
 }

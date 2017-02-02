@@ -21,6 +21,7 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
+import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Description: Ellipse, with the center point described as a latitude-longitude
@@ -343,7 +344,7 @@ public class Ellipse implements IRotatable, IScaleable {
     /**
      * Get the radius of the ellipse in {@link #units} at the specified angle.
      * 
-     * @param angle
+     * @param angleRadians
      *            Angle in radians.
      * @return Radius of the ellipse.
      */

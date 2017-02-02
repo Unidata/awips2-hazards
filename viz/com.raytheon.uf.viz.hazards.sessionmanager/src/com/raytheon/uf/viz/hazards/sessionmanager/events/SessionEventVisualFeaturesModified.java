@@ -9,10 +9,17 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import java.util.Collections;
+import java.util.Set;
+
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+
 /**
- * Description: Notification that will be sent out through the SessionManager to notify all
- * components that the visual features associated with a particular hazard event have
- * changed.
+ * Description: Notification that will be sent out through the SessionManager to
+ * notify all components that the visual features associated with a particular
+ * hazard event have changed.
  * 
  * <pre>
  * 
@@ -27,14 +34,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
  * @author Chris.Golden
  * @version 1.0
  */
-
-import java.util.Collections;
-import java.util.Set;
-
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
-
 public class SessionEventVisualFeaturesModified extends SessionEventModified
         implements ISessionNotification {
 

@@ -33,10 +33,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 07, 2015 6979       Robert.Blum Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 07, 2015 6979       Robert.Blum  Initial creation.
+ * Feb 01, 2017 15556      Chris.Golden Added copy constructor.
  * </pre>
  * 
  * @author Robert.Blum
@@ -62,6 +62,12 @@ public class EditableEntryMap implements Serializable {
             LinkedHashMap<KeyInfo, Serializable> editableEntries) {
         this.format = format;
         this.editableEntries = editableEntries;
+    }
+
+    public EditableEntryMap(EditableEntryMap other) {
+        this.format = other.format;
+        this.editableEntries = (other.editableEntries == null ? null
+                : new LinkedHashMap<>(other.editableEntries));
     }
 
     public LinkedHashMap<KeyInfo, Serializable> getEditableEntries() {

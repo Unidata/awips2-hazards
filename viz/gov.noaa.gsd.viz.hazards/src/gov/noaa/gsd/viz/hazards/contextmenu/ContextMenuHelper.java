@@ -20,11 +20,13 @@
 package gov.noaa.gsd.viz.hazards.contextmenu;
 
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -35,16 +37,25 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
- * Give the context menus for different places in Hazard Services
+ * Give the context menus for different places in Hazard Services.
+ * 
+ * TODO: It would perhaps be better in terms of adhering to the H.S. MVP
+ * architecture to separate the SWT-specific (i.e. view-related) code out of
+ * this and end up with two classes, one that generates abstract menu items, the
+ * other that is an SWT helper that turns the abstract ones into concrete SWT
+ * menu items.
  * 
  * <pre>
  * 
@@ -72,6 +83,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      spatial-display-specific menu item creation or
  *                                      handling; these menu items are now created and
  *                                      handled within the spatial display components.
+ * Feb 01, 2017 15556      Chris.Golden Cleaned up, added revert to latest saved copy
+ *                                      menu item, changed to use new selection manager,
+ *                                      and added handling of selected historical versions
+ *                                      of hazard events.
  * </pre>
  * 
  * @author mnash
@@ -93,6 +108,8 @@ public class ContextMenuHelper {
         END_ALL_SELECTED_HAZARDS(),
 
         REVERT_ALL_SELECTED_HAZARDS(),
+
+        REVERT_THIS_HAZARD_TO_LAST_SAVED("Revert Selected to Last Saved"),
 
         END_THIS_HAZARD(appendThis(EventCommand.END)),
 
@@ -198,6 +215,11 @@ public class ContextMenuHelper {
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
 
     /**
+     * Session selection manager.
+     */
+    private final ISessionSelectionManager<ObservedHazardEvent> selectionManager;
+
+    /**
      * Runnable asynchronous scheduler, used to schedule the execution of any
      * actions that are invoked via the context menu.
      */
@@ -208,8 +230,6 @@ public class ContextMenuHelper {
     /**
      * Construct a standard instance.
      * 
-     * @param Presenter
-     *            that is to use the created helper.
      * @param sessionManager
      *            Session manager.
      * @param scheduler
@@ -221,6 +241,7 @@ public class ContextMenuHelper {
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
             IRunnableAsynchronousScheduler scheduler) {
         this.eventManager = sessionManager.getEventManager();
+        this.selectionManager = sessionManager.getSelectionManager();
         this.scheduler = scheduler;
     }
 
@@ -238,11 +259,25 @@ public class ContextMenuHelper {
             IOriginator originator) {
         List<IContributionItem> items = new ArrayList<>();
 
+        if (originator == UIOriginator.CONSOLE) {
+            Set<String> selectedEventIdentifiers = selectionManager
+                    .getSelectedEventIdentifiers();
+            if (selectedEventIdentifiers.size() == 1) {
+                String identifier = selectedEventIdentifiers.iterator().next();
+                boolean enabled = (selectionManager
+                        .isSelected(new Pair<String, Integer>(identifier, null)) && (eventManager
+                        .getVisibleHistoricalVersionCountForEvent(identifier) > 0));
+                addContributionItem(items,
+                        ContextMenuSelections.REVERT_THIS_HAZARD_TO_LAST_SAVED
+                                .getValue(), enabled, originator);
+            }
+        }
+
         boolean saveAllPendingAdded = false;
         ObservedHazardEvent currentEvent = null;
         if (eventManager.isCurrentEvent()) {
             currentEvent = eventManager.getCurrentEvent();
-            if (eventManager.isSelected(currentEvent)) {
+            if (selectionManager.isSelected(currentEvent)) {
                 HazardStatus status = currentEvent.getStatus();
                 switch (status) {
 
@@ -255,12 +290,12 @@ public class ContextMenuHelper {
                         addContributionItem(items,
                                 ContextMenuSelections.PROPOSE_THIS_HAZARD
                                         .getValue(), originator);
+                        addContributionItem(items,
+                                ContextMenuSelections.SAVE_THIS_HAZARD
+                                        .getValue(), originator);
                     }
-                    addContributionItem(items,
-                            ContextMenuSelections.SAVE_THIS_HAZARD.getValue(),
-                            originator);
                     Collection<ObservedHazardEvent> pendingEvents = eventManager
-                            .getEventsByStatus(HazardStatus.PENDING);
+                            .getEventsByStatus(HazardStatus.PENDING, false);
                     if (pendingEvents.size() > 1) {
                         addContributionItem(items,
                                 ContextMenuSelections.SAVE_ALL_PENDING_HAZARDS
@@ -297,29 +332,38 @@ public class ContextMenuHelper {
         }
 
         EnumSet<HazardStatus> states = EnumSet.noneOf(HazardStatus.class);
-        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+        EnumSet<HazardStatus> saveableStates = EnumSet
+                .noneOf(HazardStatus.class);
+        for (ObservedHazardEvent event : selectionManager.getSelectedEvents()) {
 
             /*
-             * Don't consider the current event when tallying states since the
+             * Do not consider the current event when tallying states since the
              * user can already apply operations to the current event from the
-             * logic above.
+             * logic above. Also do not consider hazard events for which the
+             * current version is not selected.
              */
-            if (currentEvent != null && event.equals(currentEvent)) {
+            if ((currentEvent != null) && event.equals(currentEvent)) {
                 continue;
-            } else {
-                states.add(event.getStatus());
+            }
+            if ((originator == UIOriginator.CONSOLE)
+                    && (selectionManager.isSelected(new Pair<String, Integer>(
+                            event.getEventID(), null)) == false)) {
+                continue;
+            }
+            states.add(event.getStatus());
+            if (event.getHazardType() != null) {
+                saveableStates.add(event.getStatus());
             }
         }
-        int n;
-        String text;
         if (states.contains(HazardStatus.PENDING)) {
-            n = numSelectedEventsForStatus(HazardStatus.PENDING);
-            String textWithoutCommand = String
-                    .format(" %d Selected Pending", n);
-            text = EventCommand.DELETE.value + textWithoutCommand;
+            int numEvents = getNumberOfSelectedEventsForStatus(HazardStatus.PENDING);
+            String textWithoutCommand = String.format(" %d Selected Pending",
+                    numEvents);
+            String text = EventCommand.DELETE.value + textWithoutCommand;
             addContributionItem(items, text, originator);
             boolean areProposableEvents = false;
-            for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+            for (ObservedHazardEvent event : selectionManager
+                    .getSelectedEvents()) {
                 if (event.getStatus().equals(HazardStatus.PENDING)
                         && event.getHazardType() != null) {
                     areProposableEvents = true;
@@ -330,11 +374,13 @@ public class ContextMenuHelper {
                 text = EventCommand.PROPOSE.value + textWithoutCommand;
                 addContributionItem(items, text, originator);
             }
-            text = EventCommand.SAVE.value + textWithoutCommand;
-            addContributionItem(items, text, originator);
+            if (saveableStates.contains(HazardStatus.PENDING)) {
+                text = EventCommand.SAVE.value + textWithoutCommand;
+                addContributionItem(items, text, originator);
+            }
             if (saveAllPendingAdded == false) {
                 Collection<ObservedHazardEvent> pendingEvents = eventManager
-                        .getEventsByStatus(HazardStatus.PENDING);
+                        .getEventsByStatus(HazardStatus.PENDING, false);
                 if (pendingEvents.size() > 1) {
                     addContributionItem(items,
                             ContextMenuSelections.SAVE_ALL_PENDING_HAZARDS
@@ -343,27 +389,28 @@ public class ContextMenuHelper {
             }
         }
         if (states.contains(HazardStatus.ISSUED)) {
-            n = numSelectedEventsForStatus(HazardStatus.ISSUED);
-            text = String.format("%s %d Selected Issued",
-                    EventCommand.END.value, n);
+            int numEvents = getNumberOfSelectedEventsForStatus(HazardStatus.ISSUED);
+            String text = String.format("%s %d Selected Issued",
+                    EventCommand.END.value, numEvents);
             addContributionItem(items, text, originator);
         }
 
         if (states.contains(HazardStatus.ENDING)) {
-            n = numSelectedEventsForStatus(HazardStatus.ENDING);
-            text = String.format("%s %d Selected Ending",
-                    EventCommand.REVERT.value, n);
+            int numEvents = getNumberOfSelectedEventsForStatus(HazardStatus.ENDING);
+            String text = String.format("%s %d Selected Ending",
+                    EventCommand.REVERT.value, numEvents);
             addContributionItem(items, text, originator);
         }
 
         if (states.contains(HazardStatus.PROPOSED)) {
-            n = numSelectedEventsForStatus(HazardStatus.PROPOSED);
-            text = String.format("%s %d Selected Proposed",
-                    EventCommand.DELETE.value, n);
+            int numEvents = getNumberOfSelectedEventsForStatus(HazardStatus.PROPOSED);
+            String text = String.format("%s %d Selected Proposed",
+                    EventCommand.DELETE.value, numEvents);
             addContributionItem(items, text, originator);
         }
 
-        if (eventManager.getEventsByStatus(HazardStatus.POTENTIAL).isEmpty() == false) {
+        if (eventManager.getEventsByStatus(HazardStatus.POTENTIAL, true)
+                .isEmpty() == false) {
             items.add(newAction(
                     ContextMenuHelper.ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
                             .getValue(), originator));
@@ -396,24 +443,7 @@ public class ContextMenuHelper {
         return null;
     }
 
-    /**
-     * Create a new top-level action with the specified text.
-     * 
-     * @param text
-     *            Text label for the new action.
-     * @param originator
-     *            Originator of the action.
-     * @return New action.
-     */
-    public IAction newTopLevelAction(String text, final IOriginator originator) {
-        IAction action = new Action(text) {
-            @Override
-            public void run() {
-                executeAction(getText(), originator);
-            }
-        };
-        return action;
-    }
+    // Private Methods
 
     /**
      * Create a new action contribution item with the specified text.
@@ -424,17 +454,34 @@ public class ContextMenuHelper {
      *            Originator of the action.
      * @return New action.
      */
-    public IContributionItem newAction(String text, final IOriginator originator) {
+    private IContributionItem newAction(String text,
+            final IOriginator originator) {
+        return newAction(text, true, originator);
+    }
+
+    /**
+     * Create a new action contribution item with the specified text and enabled
+     * state.
+     * 
+     * @param text
+     *            Text label for the new action.
+     * @param enabled
+     *            Flag indicating whether or not the action should be enabled.
+     * @param originator
+     *            Originator of the action.
+     * @return New action.
+     */
+    private IContributionItem newAction(String text, boolean enabled,
+            final IOriginator originator) {
         IAction action = new Action(text) {
             @Override
             public void run() {
                 executeAction(getText(), originator);
             }
         };
+        action.setEnabled(enabled);
         return new ActionContributionItem(action);
     }
-
-    // Private Methods
 
     /**
      * Execute an action with the specified textx label using the appropriate
@@ -461,9 +508,9 @@ public class ContextMenuHelper {
      *            Status for which to count selected events.
      * @return Number of selected events with the specified status.
      */
-    private int numSelectedEventsForStatus(HazardStatus status) {
+    private int getNumberOfSelectedEventsForStatus(HazardStatus status) {
         int count = 0;
-        for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+        for (ObservedHazardEvent event : selectionManager.getSelectedEvents()) {
             if (event.getStatus().equals(status)) {
                 count += 1;
             }
@@ -488,6 +535,25 @@ public class ContextMenuHelper {
     }
 
     /**
+     * Add the a contribution item with the specified label and enabled state to
+     * the specified list.
+     * 
+     * @param items
+     *            List to which to add the new contribution item.
+     * @param label
+     *            Text label of the new contribution item.
+     * @param enabled
+     *            Flag indicating whether or not the new contribution item
+     *            should be enabled.
+     * @param originator
+     *            Originator of the action for the created contribution item.
+     */
+    private void addContributionItem(List<IContributionItem> items,
+            String label, boolean enabled, IOriginator originator) {
+        items.add(newAction(label, enabled, originator));
+    }
+
+    /**
      * Handle the action represented by the specified menu label.
      * 
      * @param menuLabel
@@ -499,19 +565,29 @@ public class ContextMenuHelper {
         if (menuLabel.equals(ContextMenuSelections.END_THIS_HAZARD.getValue())) {
             ObservedHazardEvent event = eventManager.getCurrentEvent();
             initiateEndingProcess(event, originator);
-            eventManager.setSelectedEvents(Lists.newArrayList(event),
+            selectionManager.setSelectedEvents(Sets.newHashSet(event),
                     originator);
+        } else if (menuLabel
+                .equals(ContextMenuSelections.REVERT_THIS_HAZARD_TO_LAST_SAVED
+                        .getValue())) {
+            Set<String> eventIdentifiers = selectionManager
+                    .getSelectedEventIdentifiers();
+            if (eventIdentifiers.size() == 1) {
+                eventManager.revertEventToLastSaved(eventIdentifiers.iterator()
+                        .next());
+            }
         } else if (menuLabel
                 .contains(ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
                         .getValue())) {
-            for (ObservedHazardEvent event : eventManager
-                    .getEventsByStatus(HazardStatus.POTENTIAL)) {
+            for (ObservedHazardEvent event : eventManager.getEventsByStatus(
+                    HazardStatus.POTENTIAL, true)) {
                 eventManager.removeEvent(event, originator);
             }
         } else if (menuLabel.contains(EventCommand.END.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.ISSUED.getValue())) {
-            for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+            for (ObservedHazardEvent event : selectionManager
+                    .getSelectedEvents()) {
 
                 /*
                  * It's possible, for example, for the selected hazards to be a
@@ -521,8 +597,8 @@ public class ContextMenuHelper {
                     initiateEndingProcess(event, originator);
                 }
             }
-            eventManager.setSelectedEvents(eventManager.getSelectedEvents(),
-                    originator);
+            selectionManager.setSelectedEvents(
+                    selectionManager.getSelectedEvents(), originator);
 
         } else if (menuLabel.contains(ContextMenuSelections.REVERT_THIS_HAZARD
                 .getValue())) {
@@ -532,7 +608,8 @@ public class ContextMenuHelper {
         } else if (menuLabel.contains(EventCommand.REVERT.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.ENDING.getValue())) {
-            for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+            for (ObservedHazardEvent event : selectionManager
+                    .getSelectedEvents()) {
                 if (event.getStatus().equals(HazardStatus.ENDING)) {
                     revertEndingProcess(event, originator);
                 }
@@ -546,7 +623,8 @@ public class ContextMenuHelper {
         } else if (menuLabel.contains(EventCommand.DELETE.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.PENDING.getValue())) {
-            for (ObservedHazardEvent event : eventManager.getSelectedEvents()) {
+            for (ObservedHazardEvent event : selectionManager
+                    .getSelectedEvents()) {
                 if (event.getStatus().equals(HazardStatus.PENDING)) {
                     eventManager.removeEvent(event, originator);
                 }
@@ -560,20 +638,20 @@ public class ContextMenuHelper {
         } else if (menuLabel.contains(EventCommand.PROPOSE.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.PENDING.getValue())) {
-            eventManager.proposeEvents(eventManager.getSelectedEvents(),
+            eventManager.proposeEvents(selectionManager.getSelectedEvents(),
                     originator);
 
         } else if (menuLabel.equals(ContextMenuSelections.SAVE_THIS_HAZARD
                 .getValue())) {
             List<IHazardEvent> events = Lists
                     .<IHazardEvent> newArrayList(eventManager.getCurrentEvent());
-            eventManager.saveEvents(events);
+            eventManager.saveEvents(events, true);
         } else if (menuLabel.contains(EventCommand.SAVE.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.PENDING.getValue())) {
             List<IHazardEvent> events = new ArrayList<IHazardEvent>(
-                    eventManager.getEventsByStatus(HazardStatus.PENDING));
-            eventManager.saveEvents(events);
+                    eventManager.getEventsByStatus(HazardStatus.PENDING, false));
+            eventManager.saveEvents(events, true);
         }
     }
 

@@ -49,6 +49,7 @@ import org.eclipse.ui.internal.WorkbenchPage;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
 
 /**
@@ -131,6 +132,10 @@ import com.raytheon.uf.viz.core.VizApp;
  * Apr 15, 2015   3508     Chris.Golden      Added "hazard detail to be wide" flag.
  * Oct 19, 2016  21873     Chris.Golden      Added time resolution tracking tied to
  *                                           events.
+ * Feb 01, 2017  15556     Chris.Golden      Added awareness of selection of historical
+ *                                           snapshots of events, so that the view may
+ *                                           display such snapshots differently from the
+ *                                           way it displays current events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -223,11 +228,11 @@ public class HazardDetailView extends
     private boolean includeIssueButton;
 
     /**
-     * Map pairing event identifiers with any extra data they may have used in
-     * previous view instantiations, allowing such data to persist between
-     * different views.
+     * Map pairing event version identifiers with any extra data they may have
+     * used in previous view instantiations, allowing such data to persist
+     * between different views.
      */
-    private Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers;
+    private Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers;
 
     /**
      * View part listener.
@@ -316,28 +321,29 @@ public class HazardDetailView extends
     };
 
     /**
-     * Map of hazard event identifiers to their metadata megawidgets' display
-     * settings; the latter are forwarded to this object by the principal
-     * whenever the latter is about to delete a megawidget manager, so that the
-     * same display settings for that event may be restored if that event is
-     * shown again.
+     * Map of hazard event version identifiers to their metadata megawidgets'
+     * display settings; the latter are forwarded to this object by the
+     * principal whenever the latter is about to delete a megawidget manager, so
+     * that the same display settings for that event version may be restored if
+     * that event is shown again.
      */
-    private final Map<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsForEventIds = new HashMap<>();
+    private final Map<Pair<String, Integer>, Map<String, IDisplaySettings>> megawidgetDisplaySettingsForEventVersionIdentifiers = new HashMap<>();
 
     /**
      * Metadata megawidgets' display settings change handler.
      */
-    private final IStateChangeHandler<String, Map<String, IDisplaySettings>> megawidgetDisplaySettingsChangeHandler = new IStateChangeHandler<String, Map<String, IDisplaySettings>>() {
+    private final IStateChangeHandler<Pair<String, Integer>, Map<String, IDisplaySettings>> megawidgetDisplaySettingsChangeHandler = new IStateChangeHandler<Pair<String, Integer>, Map<String, IDisplaySettings>>() {
 
         @Override
-        public void stateChanged(String identifier,
+        public void stateChanged(Pair<String, Integer> identifier,
                 Map<String, IDisplaySettings> value) {
-            megawidgetDisplaySettingsForEventIds.put(identifier, value);
+            megawidgetDisplaySettingsForEventVersionIdentifiers.put(identifier,
+                    value);
         }
 
         @Override
         public void statesChanged(
-                Map<String, Map<String, IDisplaySettings>> valuesForIdentifiers) {
+                Map<Pair<String, Integer>, Map<String, IDisplaySettings>> valuesForIdentifiers) {
             throw new UnsupportedOperationException();
         }
     };
@@ -418,12 +424,12 @@ public class HazardDetailView extends
     /**
      * Visible event state changer delegate.
      */
-    private final IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> visibleEventChanger = new ChoiceStateChangerDelegate<>(
+    private final IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> visibleEventChanger = new ChoiceStateChangerDelegate<>(
             new ViewPartWidgetDelegateHelper<>(
-                    new Callable<IChoiceStateChanger<String, String, String, DisplayableEventIdentifier>>() {
+                    new Callable<IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier>>() {
 
                         @Override
-                        public IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> call()
+                        public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> call()
                                 throws Exception {
                             return getViewPart().getVisibleEventChanger();
                         }
@@ -432,12 +438,12 @@ public class HazardDetailView extends
     /**
      * Category state changer delegate.
      */
-    private final IChoiceStateChanger<String, String, String, String> categoryChanger = new ChoiceStateChangerDelegate<>(
+    private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> categoryChanger = new ChoiceStateChangerDelegate<>(
             new ViewPartWidgetDelegateHelper<>(
-                    new Callable<IChoiceStateChanger<String, String, String, String>>() {
+                    new Callable<IChoiceStateChanger<Pair<String, Integer>, String, String, String>>() {
 
                         @Override
-                        public IChoiceStateChanger<String, String, String, String> call()
+                        public IChoiceStateChanger<Pair<String, Integer>, String, String, String> call()
                                 throws Exception {
                             return getViewPart().getCategoryChanger();
                         }
@@ -446,12 +452,12 @@ public class HazardDetailView extends
     /**
      * Type state changer delegate.
      */
-    private final IChoiceStateChanger<String, String, String, String> typeChanger = new ChoiceStateChangerDelegate<>(
+    private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> typeChanger = new ChoiceStateChangerDelegate<>(
             new ViewPartWidgetDelegateHelper<>(
-                    new Callable<IChoiceStateChanger<String, String, String, String>>() {
+                    new Callable<IChoiceStateChanger<Pair<String, Integer>, String, String, String>>() {
 
                         @Override
-                        public IChoiceStateChanger<String, String, String, String> call()
+                        public IChoiceStateChanger<Pair<String, Integer>, String, String, String> call()
                                 throws Exception {
                             return getViewPart().getTypeChanger();
                         }
@@ -460,12 +466,12 @@ public class HazardDetailView extends
     /**
      * Time range state changer delegate.
      */
-    private final IStateChanger<String, TimeRange> timeRangeChanger = new StateChangerDelegate<>(
+    private final IStateChanger<Pair<String, Integer>, TimeRange> timeRangeChanger = new StateChangerDelegate<>(
             new ViewPartWidgetDelegateHelper<>(
-                    new Callable<IStateChanger<String, TimeRange>>() {
+                    new Callable<IStateChanger<Pair<String, Integer>, TimeRange>>() {
 
                         @Override
-                        public IStateChanger<String, TimeRange> call()
+                        public IStateChanger<Pair<String, Integer>, TimeRange> call()
                                 throws Exception {
                             return getViewPart().getTimeRangeChanger();
                         }
@@ -474,12 +480,12 @@ public class HazardDetailView extends
     /**
      * Time range boundaries state changer delegate.
      */
-    private final IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> timeRangeBoundariesChanger = new QualifiedStateChangerDelegate<>(
+    private final IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>> timeRangeBoundariesChanger = new QualifiedStateChangerDelegate<>(
             new ViewPartQualifiedWidgetDelegateHelper<>(
-                    new Callable<IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>>>() {
+                    new Callable<IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>>>() {
 
                         @Override
-                        public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> call()
+                        public IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>> call()
                                 throws Exception {
                             return getViewPart()
                                     .getTimeRangeBoundariesChanger();
@@ -503,12 +509,12 @@ public class HazardDetailView extends
     /**
      * Duration state changer delegate.
      */
-    private final IChoiceStateChanger<String, String, String, String> durationChanger = new ChoiceStateChangerDelegate<>(
+    private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> durationChanger = new ChoiceStateChangerDelegate<>(
             new ViewPartWidgetDelegateHelper<>(
-                    new Callable<IChoiceStateChanger<String, String, String, String>>() {
+                    new Callable<IChoiceStateChanger<Pair<String, Integer>, String, String, String>>() {
 
                         @Override
-                        public IChoiceStateChanger<String, String, String, String> call()
+                        public IChoiceStateChanger<Pair<String, Integer>, String, String, String> call()
                                 throws Exception {
                             return getViewPart().getDurationChanger();
                         }
@@ -653,7 +659,7 @@ public class HazardDetailView extends
             boolean showStartEndTimeScale,
             boolean buildForWideViewing,
             boolean includeIssueButton,
-            Map<String, Map<String, Map<String, Object>>> extraDataForEventIdentifiers) {
+            Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers) {
         this.minVisibleTime = minVisibleTime;
         this.maxVisibleTime = maxVisibleTime;
         if (minVisibleTime == maxVisibleTime) {
@@ -663,7 +669,7 @@ public class HazardDetailView extends
         this.currentTimeProvider = currentTimeProvider;
         this.showStartEndTimeScale = showStartEndTimeScale;
         this.buildForWideViewing = buildForWideViewing;
-        this.extraDataForEventIdentifiers = extraDataForEventIdentifiers;
+        this.extraDataForEventVersionIdentifiers = extraDataForEventVersionIdentifiers;
         this.includeIssueButton = includeIssueButton;
 
         /*
@@ -726,27 +732,27 @@ public class HazardDetailView extends
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, DisplayableEventIdentifier> getVisibleEventChanger() {
+    public IChoiceStateChanger<String, Pair<String, Integer>, Pair<String, Integer>, DisplayableEventIdentifier> getVisibleEventChanger() {
         return visibleEventChanger;
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, String> getCategoryChanger() {
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getCategoryChanger() {
         return categoryChanger;
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, String> getTypeChanger() {
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getTypeChanger() {
         return typeChanger;
     }
 
     @Override
-    public IStateChanger<String, TimeRange> getTimeRangeChanger() {
+    public IStateChanger<Pair<String, Integer>, TimeRange> getTimeRangeChanger() {
         return timeRangeChanger;
     }
 
     @Override
-    public IQualifiedStateChanger<String, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
+    public IQualifiedStateChanger<Pair<String, Integer>, TimeRangeBoundary, Range<Long>> getTimeRangeBoundariesChanger() {
         return timeRangeBoundariesChanger;
     }
 
@@ -756,7 +762,7 @@ public class HazardDetailView extends
     }
 
     @Override
-    public IChoiceStateChanger<String, String, String, String> getDurationChanger() {
+    public IChoiceStateChanger<Pair<String, Integer>, String, String, String> getDurationChanger() {
         return durationChanger;
     }
 
@@ -809,7 +815,7 @@ public class HazardDetailView extends
         getViewPart().initialize(minVisibleTime, maxVisibleTime,
                 currentTimeProvider, showStartEndTimeScale,
                 buildForWideViewing, includeIssueButton,
-                extraDataForEventIdentifiers);
+                extraDataForEventVersionIdentifiers);
 
         /*
          * Register the megawidget display settings change handler with the view
@@ -822,7 +828,7 @@ public class HazardDetailView extends
         getViewPart().getMegawidgetDisplaySettingsChanger()
                 .setStateChangeHandler(megawidgetDisplaySettingsChangeHandler);
         getViewPart().getMegawidgetDisplaySettingsChanger().setStates(
-                megawidgetDisplaySettingsForEventIds);
+                megawidgetDisplaySettingsForEventVersionIdentifiers);
     }
 
     /**

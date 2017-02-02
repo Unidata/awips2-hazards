@@ -105,6 +105,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      geometries instead of JTS geometries.
  * Sep 21, 2016 15934      Chris.Golden Changed to work with new version of
  *                                      AdvancedGeometryUtilities.
+ * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag.
  * </pre>
  * 
  * @author mnash
@@ -139,6 +140,16 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @XmlAttribute
     @SlotAttribute(HazardConstants.UNIQUE_ID)
     private String uniqueID = UUID.randomUUID().toString();
+
+    /**
+     * Flag indicating whether or not this hazard event should be visible in the
+     * history list. This is only meaningful if this hazard event has been
+     * persisted.
+     */
+    @DynamicSerializeElement
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_VISIBLE_IN_HISTORY_LIST)
+    private boolean visibleInHistoryList = true;
 
     /**
      * The status of the record at this point in time
@@ -243,6 +254,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.INSERT_TIME)
+    @SlotAttributeConverter(DateSlotConverter.class)
     private Date insertTime;
 
     /**
@@ -288,10 +300,12 @@ public class HazardEvent implements IHazardEvent, IValidator {
     public HazardEvent(IHazardEvent event) {
         this();
         setEventID(event.getEventID());
+        setVisibleInHistoryList(event.isVisibleInHistoryList());
         setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
+        setInsertTime(event.getInsertTime());
         setGeometry(event.getGeometry());
         setVisualFeatures(event.getVisualFeatures());
         setPhenomenon(event.getPhenomenon());
@@ -602,6 +616,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
         result = prime * result + ((status == null) ? 0 : status.hashCode());
         result = prime * result + ((subType == null) ? 0 : subType.hashCode());
         result = prime * result
+                + Boolean.valueOf(visibleInHistoryList).hashCode();
+        result = prime * result
                 + ((uniqueID == null) ? 0 : uniqueID.hashCode());
         return result;
     }
@@ -715,6 +731,9 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } else if (!subType.equals(other.subType)) {
             return false;
         }
+        if (visibleInHistoryList != other.visibleInHistoryList) {
+            return false;
+        }
         return true;
     }
 
@@ -773,5 +792,15 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public String getWorkStation() {
         return workStation;
+    }
+
+    @Override
+    public boolean isVisibleInHistoryList() {
+        return visibleInHistoryList;
+    }
+
+    @Override
+    public void setVisibleInHistoryList(boolean visible) {
+        this.visibleInHistoryList = visible;
     }
 }

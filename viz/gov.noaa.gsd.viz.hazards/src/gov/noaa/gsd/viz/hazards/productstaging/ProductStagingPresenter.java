@@ -85,6 +85,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014   4124     Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Feb 01, 2017  15556     Chris.Golden      Changed to work with new selection manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -211,8 +212,8 @@ public class ProductStagingPresenter extends
                         hideAndUnsetPreviewOrIssueOngoing();
                         break;
                     }
-                    eventManager.setSelectedEvents(selectedEvents,
-                            UIOriginator.STAGING_DIALOG);
+                    getModel().getSelectionManager().setSelectedEvents(
+                            selectedEvents, UIOriginator.STAGING_DIALOG);
 
                     /*
                      * Attempt to create products using the selected events; if

@@ -821,7 +821,7 @@ public abstract class RangeMegawidget<T extends Number & Comparable<T>> extends
      *            Map of state identifiers to their new minimums; for each state
      *            identifier, the new minimum must be less than or equal to the
      *            corresponding entry in <code>maximumValues</code>.
-     * @param maximumValuess
+     * @param maximumValues
      *            Map of state identifiers to their new maximums; for each state
      *            identifier, the new maximum must be greater than or equal to
      *            the corresponding entry in <code>minimumValues</code>.

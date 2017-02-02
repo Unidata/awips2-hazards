@@ -53,20 +53,21 @@ public class MegawidgetSpecifierManager {
      * Megawidget identifier to be used for a scrollable megawidget that is
      * wrapped around a list of raw specifiers by
      * {@link #makeRawSpecifiersScrollable(List, Map)} and
-     * {@link #makeRawSpecifiersScrollable(List)}.
+     * {@link #makeRawSpecifiersScrollable(List, int, int, int, int)}.
      */
     private static final String SCROLLABLE_WRAPPER_IDENTIFIER = "__scrollableWrapper__";
 
     /**
      * Megawidget type to be used for a scrollable megawidget that is wrapped
      * around a list of raw specifiers by
-     * {@link #makeRawSpecifiersScrollable(List)}.
+     * {@link #makeRawSpecifiersScrollable(List, Map)}.
      */
     private static final String SCROLLABLE_WRAPPER_TYPE = "Composite";
 
     /**
      * Specifier parameters for a scrollable megawidget that is wrapped around a
-     * list of raw specifiers by {@link #makeRawSpecifiersScrollable(List)}.
+     * list of raw specifiers by {@link #makeRawSpecifiersScrollable(List, Map)}
+     * .
      */
     private static final ImmutableMap<String, Object> SCROLLABLE_WRAPPER_PARAMETERS;
     static {

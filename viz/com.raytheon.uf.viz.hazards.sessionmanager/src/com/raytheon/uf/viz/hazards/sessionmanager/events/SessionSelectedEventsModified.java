@@ -11,6 +11,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import java.util.Set;
 
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -29,12 +30,17 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Aug 18, 2016   19537    Chris.Golden Added set of identifiers of hazard
  *                                      events that have had their selection
  *                                      state changed.
+ * Feb 01, 2017   15556    Chris.Golden Changed to be based upon new superclass.
+ *                                      Also added a new selected versions
+ *                                      set, indicating which versions of
+ *                                      which hazard events have changed
+ *                                      selection.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionSelectedEventsModified extends SessionEventsModified {
+public class SessionSelectedEventsModified extends SessionSelectionModified {
 
     // Private Variables
 
@@ -43,24 +49,46 @@ public class SessionSelectedEventsModified extends SessionEventsModified {
      */
     private final Set<String> eventIdentifiers;
 
+    /**
+     * Identifiers of current and historical versions of events that have had
+     * their selection state changed. Each such identifier consists of the event
+     * identifier (just as is found within {@link #eventIdentifiers} paired with
+     * either <code>null</code>, if it indicates the current version, or the
+     * index of the version in the reversed history list of the event, if it
+     * indicates a historical version.
+     */
+    private final Set<Pair<String, Integer>> currentAndHistoricalEventIdentifiers;
+
     // Public Constructors
 
     /**
      * Construct a standard instance.
      * 
-     * @param eventManager
-     *            Event manager.
+     * @param selectionManager
+     *            Selection manager.
      * @param eventIdentifiers
      *            Identifiers of the hazard events that have had their selection
-     *            state changed.
+     *            state changed. May be an empty set, if nothing has changed in
+     *            terms of current versions of events that are selected.
+     * @param currentAndHistoricalEventIdentifiers
+     *            Identifiers of current and historical versions of events that
+     *            have had their selection state changed. Each such identifier
+     *            consists of the event identifier (just as is found within
+     *            <code>eventIdentifiers</code> paired with either
+     *            <code>null</code> , if it indicates the current version, or
+     *            the index of the version in the reversed history list of the
+     *            event, if it indicates a historical version.
      * @param originator
      *            Originator of the event.
      */
     public SessionSelectedEventsModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            Set<String> eventIdentifiers, IOriginator originator) {
-        super(eventManager, originator);
+            ISessionSelectionManager<ObservedHazardEvent> selectionManager,
+            Set<String> eventIdentifiers,
+            Set<Pair<String, Integer>> currentAndHistoricalEventIdentifiers,
+            IOriginator originator) {
+        super(selectionManager, originator);
         this.eventIdentifiers = eventIdentifiers;
+        this.currentAndHistoricalEventIdentifiers = currentAndHistoricalEventIdentifiers;
     }
 
     // Public Methods
@@ -73,5 +101,20 @@ public class SessionSelectedEventsModified extends SessionEventsModified {
      */
     public Set<String> getEventIdentifiers() {
         return eventIdentifiers;
+    }
+
+    /**
+     * Get the identifiers of current and historical versions of events that
+     * have had their selection state changed. Each such identifier consists of
+     * the event identifier (just as is found within the set provided by
+     * {@link #getEventIdentifiers()} paired with either <code>null</code>, if
+     * it indicates the current version, or the index of the version in the
+     * reversed history list of the event, if it indicates a historical version.
+     * 
+     * @return Identifiers of current and historical versions of the hazard
+     *         events.
+     */
+    public Set<Pair<String, Integer>> getCurrentAndHistoricalEventIdentifiers() {
+        return currentAndHistoricalEventIdentifiers;
     }
 }

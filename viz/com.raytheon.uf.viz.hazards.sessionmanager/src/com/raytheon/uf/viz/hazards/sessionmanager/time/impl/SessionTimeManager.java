@@ -28,7 +28,6 @@ import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -49,6 +48,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
@@ -126,6 +126,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      ensure it always lies on unit boundaries (e.g.
  *                                      if time resolution is minutes, it must lie on
  *                                      a minute boundary).
+ * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager. Also
+ *                                      moved code that was in the console here that
+ *                                      deals with settings loading, as it should be
+ *                                      handled in the model.
  * </pre>
  * 
  * @author bsteffen
@@ -421,8 +425,11 @@ public class SessionTimeManager implements ISessionTimeManager {
      */
     @Handler(priority = 1)
     public void selectedEventsModified(SessionSelectedEventsModified change) {
+        if (change.getEventIdentifiers().isEmpty()) {
+            return;
+        }
         SelectedTime newSelectedTime = getSelectedTimeIntersectingEvents(change
-                .getEventManager().getSelectedEvents());
+                .getSelectionManager().getSelectedEvents());
         if (newSelectedTime.equals(selectedTime) == false) {
             setSelectedTime(newSelectedTime, Originator.OTHER);
             ensureVisibleTimeRangeIncludesLowerSelectedTime();
@@ -437,10 +444,11 @@ public class SessionTimeManager implements ISessionTimeManager {
      */
     @Handler(priority = 1)
     public void eventTimeRangeModified(SessionEventTimeRangeModified change) {
-        List<ObservedHazardEvent> events = change.getEventManager()
-                .getSelectedEvents();
-        if (events.contains(change.getEvent())) {
-            setSelectedTime(getSelectedTimeIntersectingEvents(events),
+        Set<String> eventIdentifiers = sessionManager.getSelectionManager()
+                .getSelectedEventIdentifiers();
+        if (eventIdentifiers.contains(change.getEvent().getEventID())) {
+            setSelectedTime(getSelectedTimeIntersectingEvents(sessionManager
+                    .getSelectionManager().getSelectedEvents()),
                     Originator.OTHER);
         }
     }
@@ -474,6 +482,27 @@ public class SessionTimeManager implements ISessionTimeManager {
                 setSelectedTime(new SelectedTime(selectedTime),
                         Originator.OTHER);
             }
+        }
+
+        /*
+         * If a new settings has been loaded, update the visible time range to
+         * match the time delta included in the new settings.
+         */
+        if (change instanceof SettingsLoaded) {
+
+            /*
+             * Get the new visible time range boundaries.
+             */
+            long visibleTimeDelta = change.getSettings()
+                    .getDefaultTimeDisplayDuration();
+            long lower = this.selectedTime.getLowerBound()
+                    - (visibleTimeDelta / 4L);
+            long upper = lower + visibleTimeDelta - 1L;
+
+            /*
+             * Use the new visible time range boundaries.
+             */
+            setVisibleTimeRange(new TimeRange(lower, upper), Originator.OTHER);
         }
     }
 

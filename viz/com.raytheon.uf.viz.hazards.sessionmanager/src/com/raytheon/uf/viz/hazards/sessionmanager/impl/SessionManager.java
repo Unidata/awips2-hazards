@@ -25,7 +25,6 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,11 +71,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurati
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -140,7 +141,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * Aug 15, 2016 18376      Chris.Golden Added code to unsubscribe session sub-managers from the
  *                                      event bus to aide in garbage collection.
- * Oct 19, 2016 21873     Chris.Golden  Changed construction of time manager to take this object.
+ * Feb 01, 2017 15556      Chris.Golden Changed construction of time manager to take this object.
+ *                                      Also added use of new session selection manager.
  * </pre>
  * 
  * @author bsteffen
@@ -174,6 +176,8 @@ public class SessionManager implements
     private final SessionNotificationSender sender;
 
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
+
+    private final ISessionSelectionManager<ObservedHazardEvent> selectionManager;
 
     private final ISessionTimeManager timeManager;
 
@@ -223,17 +227,19 @@ public class SessionManager implements
             IDisplayResourceContextProvider displayResourceContextProvider,
             IFrameContextProvider frameContextProvider, IMessenger messenger,
             BoundedReceptionEventBus<Object> eventBus) {
-        // TODO switch the bus to async
-        // bus = new AsyncEventBus(Executors.newSingleThreadExecutor());
         this.eventBus = eventBus;
         sender = new SessionNotificationSender(eventBus);
         timeManager = new SessionTimeManager(this, sender);
         configManager = new SessionConfigurationManager(this, pathManager,
                 timeManager, sender);
-        eventManager = new SessionEventManager(this, timeManager,
-                configManager, hazardEventManager, sender, messenger);
+        SessionEventManager eventManager = new SessionEventManager(this,
+                timeManager, configManager, hazardEventManager, sender,
+                messenger);
+        this.eventManager = eventManager;
+        selectionManager = new SessionSelectionManager(eventManager, sender);
         productManager = new SessionProductManager(this, timeManager,
-                configManager, eventManager, sender, messenger);
+                configManager, eventManager, selectionManager, sender,
+                messenger);
         recommenderManager = new SessionRecommenderManager(this, messenger,
                 eventBus);
         alertsManager = new HazardSessionAlertsManager(sender, timeManager);
@@ -269,6 +275,11 @@ public class SessionManager implements
     @Override
     public ISessionEventManager<ObservedHazardEvent> getEventManager() {
         return eventManager;
+    }
+
+    @Override
+    public ISessionSelectionManager<ObservedHazardEvent> getSelectionManager() {
+        return selectionManager;
     }
 
     @Override
@@ -431,44 +442,32 @@ public class SessionManager implements
 
     @Override
     public void undo() {
-        Collection<ObservedHazardEvent> events = eventManager
+        Collection<ObservedHazardEvent> events = selectionManager
                 .getSelectedEvents();
-
         if (events.size() == 1) {
-            Iterator<ObservedHazardEvent> eventIter = events.iterator();
-            ObservedHazardEvent obsEvent = eventIter.next();
-            obsEvent.undo();
+            events.iterator().next().undo();
         }
-
     }
 
     @Override
     public void redo() {
-        Collection<ObservedHazardEvent> events = eventManager
+        Collection<ObservedHazardEvent> events = selectionManager
                 .getSelectedEvents();
-
-        /*
-         * Limited to single selected hazard events.
-         */
         if (events.size() == 1) {
-            Iterator<ObservedHazardEvent> eventIter = events.iterator();
-            ObservedHazardEvent obsEvent = eventIter.next();
-            obsEvent.redo();
+            events.iterator().next().redo();
         }
-
     }
 
     @Override
     public Boolean isUndoable() {
-        Collection<ObservedHazardEvent> hazardEvents = eventManager
+        Collection<ObservedHazardEvent> hazardEvents = selectionManager
                 .getSelectedEvents();
 
         /*
          * Limited to single selected hazard events.
          */
         if (hazardEvents.size() == 1) {
-            Iterator<ObservedHazardEvent> iterator = hazardEvents.iterator();
-            return iterator.next().isUndoable();
+            return hazardEvents.iterator().next().isUndoable();
         }
 
         return false;
@@ -477,15 +476,14 @@ public class SessionManager implements
     @Override
     public Boolean isRedoable() {
 
-        Collection<ObservedHazardEvent> hazardEvents = eventManager
+        Collection<ObservedHazardEvent> hazardEvents = selectionManager
                 .getSelectedEvents();
 
         /*
          * Limit to single selection.
          */
         if (hazardEvents.size() == 1) {
-            Iterator<ObservedHazardEvent> iterator = hazardEvents.iterator();
-            return iterator.next().isRedoable();
+            return hazardEvents.iterator().next().isRedoable();
         }
 
         return false;
@@ -538,7 +536,7 @@ public class SessionManager implements
              * modified, save now.
              */
             if ((addedEvents != null) && (addedEvents.isEmpty() == false)) {
-                eventManager.saveEvents(addedEvents);
+                eventManager.saveEvents(addedEvents, false);
             }
 
             /*

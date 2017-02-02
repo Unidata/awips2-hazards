@@ -30,6 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
@@ -53,6 +54,8 @@ public class ContextMenuHelperTest {
 
     private ISessionEventManager eventManager;
 
+    private ISessionSelectionManager selectionManager;
+
     private ContextMenuHelper contextMenuHelper;
 
     private List<IHazardEvent> events;
@@ -64,7 +67,8 @@ public class ContextMenuHelperTest {
         events = new ArrayList<>();
         ISessionManager sessionManager = mock(ISessionManager.class);
         eventManager = mock(ISessionEventManager.class);
-        when(eventManager.getSelectedEvents()).thenReturn(events);
+        selectionManager = mock(ISessionSelectionManager.class);
+        when(selectionManager.getSelectedEvents()).thenReturn(events);
         when(sessionManager.getEventManager()).thenReturn(eventManager);
         contextMenuHelper = new ContextMenuHelper(sessionManager,
                 new IRunnableAsynchronousScheduler() {
@@ -94,11 +98,11 @@ public class ContextMenuHelperTest {
     @Test
     public void multipleSelected() {
         ObservedHazardEvent event0 = buildEvent(HazardStatus.PENDING);
-        when(eventManager.isSelected(event0)).thenReturn(true);
+        when(selectionManager.isSelected(event0)).thenReturn(true);
         events.add(event0);
 
         ObservedHazardEvent event1 = buildEvent(HazardStatus.ISSUED);
-        when(eventManager.isSelected(event1)).thenReturn(true);
+        when(selectionManager.isSelected(event1)).thenReturn(true);
         events.add(event1);
 
         when(eventManager.getCurrentEvent()).thenReturn(event1);
@@ -117,11 +121,11 @@ public class ContextMenuHelperTest {
         assertTrue(selections.contains("End 1 Selected Issued"));
 
         ObservedHazardEvent event2 = buildEvent(HazardStatus.PENDING);
-        when(eventManager.isSelected(event2)).thenReturn(true);
+        when(selectionManager.isSelected(event2)).thenReturn(true);
         events.add(event2);
 
         ObservedHazardEvent event3 = buildEvent(HazardStatus.ISSUED);
-        when(eventManager.isSelected(event3)).thenReturn(true);
+        when(selectionManager.isSelected(event3)).thenReturn(true);
         events.add(event3);
 
         selections = buildSelections();
@@ -142,7 +146,7 @@ public class ContextMenuHelperTest {
     @Test
     public void oneSelectedHazardIsPending() {
         ObservedHazardEvent event = buildSingleEvent(HazardStatus.PENDING);
-        when(eventManager.isSelected(event)).thenReturn(true);
+        when(selectionManager.isSelected(event)).thenReturn(true);
         selections = buildSelections();
         assertEquals(selections.size(), 1);
 
@@ -203,7 +207,7 @@ public class ContextMenuHelperTest {
         events.add(event);
         when(eventManager.getCurrentEvent()).thenReturn(event);
         when(eventManager.isCurrentEvent()).thenReturn(true);
-        when(eventManager.isSelected(event)).thenReturn(true);
+        when(selectionManager.isSelected(event)).thenReturn(true);
         return event;
     }
 
@@ -231,7 +235,7 @@ public class ContextMenuHelperTest {
 
     @Test
     public void noSelected() {
-        when(eventManager.getSelectedEvents()).thenReturn(
+        when(selectionManager.getSelectedEvents()).thenReturn(
                 Collections.EMPTY_LIST);
         List<IContributionItem> items = contextMenuHelper
                 .getSelectedHazardManagementItems(Originator.OTHER);

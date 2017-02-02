@@ -40,6 +40,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -76,6 +77,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
@@ -90,7 +92,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingMo
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
@@ -197,6 +198,14 @@ import com.vividsolutions.jts.geom.Point;
  *                                           hazard event to not trigger a hazard area recalculation.
  * Oct 19, 2016 21873      Chris.Golden      Adjusted selected time rounding to work with different
  *                                           hazard event types' different time resolutions.
+ * Feb 01, 2017 15556      Chris.Golden      Changed to use new selection manager. Also changed to
+ *                                           take advantage of new finer-grained settings change
+ *                                           messages. Also moved bring to front and send to back
+ *                                           sorting here from session manager. Also added setting
+ *                                           of view's selected time when initializing, to avoid
+ *                                           exceptions that could occur if the user added or
+ *                                           removed vertices from a spatial entity soon after
+ *                                           starting Hazard Services.
  * </pre>
  * 
  * @author Chris.Golden
@@ -473,6 +482,34 @@ public class SpatialPresenter extends
      */
     private ISpatialDisplayHandler displayHandler;
 
+    /**
+     * Comparator to be used to send selected events to the front of the list.
+     */
+    private final Comparator<ObservedHazardEvent> sendSelectedToFront = new Comparator<ObservedHazardEvent>() {
+
+        @Override
+        public int compare(ObservedHazardEvent o1, ObservedHazardEvent o2) {
+            boolean s1 = selectedEventIdentifiers.contains(o1.getEventID());
+            boolean s2 = selectedEventIdentifiers.contains(o2.getEventID());
+            if (s1) {
+                if (s2) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            } else if (s2) {
+                return -1;
+            }
+            return 0;
+        }
+    };
+
+    /**
+     * Comparator to be used to send selected events to the back of the list.
+     */
+    private final Comparator<ObservedHazardEvent> sendSelectedToBack = Collections
+            .reverseOrder(sendSelectedToFront);
+
     // Public Constructors
 
     /**
@@ -511,6 +548,14 @@ public class SpatialPresenter extends
     @Handler
     public void sessionSelectedEventsModified(
             SessionSelectedEventsModified change) {
+
+        /*
+         * If nothing has changed in terms of selection of current versions of
+         * events, do nothing.
+         */
+        if (change.getEventIdentifiers().isEmpty()) {
+            return;
+        }
 
         setUndoRedoEnableState();
         updateSelectedEvents();
@@ -677,18 +722,11 @@ public class SpatialPresenter extends
         }
 
         /*
-         * Update the displayables.
-         * 
-         * TODO: If the SettingsModified class is modified to carry a
-         * finer-grained specification of what changed (for example, if it had
-         * an enum like AffectedComponent { SPATIAL_DISPLAY, etc. } and then
-         * carried as part of its state an EnumSet<AffectedComponent>, this
-         * could be changed to rebuild the displayables only when one of the
-         * affected components was the spatial display. (Because many of the
-         * changes to an ObservedSettings that trigger a SettingsModified
-         * notification should have no effect on the current displayables.)
+         * Update the displayables if appropriate.
          */
-        updateAllDisplayables();
+        if (change.getChanged().contains(ObservedSettings.Type.FILTERS)) {
+            updateAllDisplayables();
+        }
     }
 
     /**
@@ -827,6 +865,12 @@ public class SpatialPresenter extends
         spatialEntityManager.setView(view);
 
         /*
+         * Tell the view about the selected time.
+         */
+        lastSelectedTime = getModel().getTimeManager().getSelectedTime();
+        getView().setSelectedTime(new Date(lastSelectedTime.getLowerBound()));
+
+        /*
          * Bind the invocation and change handlers to the appropriate invokers
          * and changers in the view.
          */
@@ -906,6 +950,8 @@ public class SpatialPresenter extends
          */
         final ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
                 .getEventManager();
+        ISessionSelectionManager<ObservedHazardEvent> selectionManager = getModel()
+                .getSelectionManager();
         if (entityIdentifier instanceof IHazardEventEntityIdentifier) {
             eventManager
                     .setCurrentEvent(((IHazardEventEntityIdentifier) entityIdentifier)
@@ -973,7 +1019,7 @@ public class SpatialPresenter extends
          */
         EnumSet<GeometryResolution> resolutionsFound = EnumSet
                 .noneOf(GeometryResolution.class);
-        List<ObservedHazardEvent> selectedEvents = eventManager
+        List<ObservedHazardEvent> selectedEvents = selectionManager
                 .getSelectedEvents();
         for (ObservedHazardEvent event : selectedEvents) {
             GeometryResolution resolution = getGeometryResolutionForEvent(event);
@@ -1060,14 +1106,13 @@ public class SpatialPresenter extends
          * Create the send to menu items, if any, on a submenu.
          */
         List<IContributionItem> sendToItems = new ArrayList<>(2);
-        if (eventManager.getSelectedEvents().isEmpty() == false) {
+        if (selectionManager.getSelectedEvents().isEmpty() == false) {
             sendToItems.add(createContributionItem(CONTEXT_MENU_SEND_TO_BACK,
                     new Runnable() {
 
                         @Override
                         public void run() {
-                            eventManager.sortEvents(
-                                    SessionEventManager.SEND_SELECTED_BACK,
+                            eventManager.sortEvents(sendSelectedToBack,
                                     UIOriginator.SPATIAL_DISPLAY);
                         }
                     }, scheduler));
@@ -1076,8 +1121,7 @@ public class SpatialPresenter extends
 
                         @Override
                         public void run() {
-                            eventManager.sortEvents(
-                                    SessionEventManager.SEND_SELECTED_FRONT,
+                            eventManager.sortEvents(sendSelectedToFront,
                                     UIOriginator.SPATIAL_DISPLAY);
                         }
                     }, scheduler));
@@ -1307,8 +1351,17 @@ public class SpatialPresenter extends
                                 .getEventIdentifier());
             }
         }
-        getModel().getEventManager().setSelectedEventForIDs(eventIdentifiers,
-                UIOriginator.SPATIAL_DISPLAY);
+
+        /*
+         * Ensure that the model is still around before attempting to select the
+         * event identifiers, since this method may be called as Hazard Services
+         * is closing.
+         */
+        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getModel();
+        if (sessionManager != null) {
+            getModel().getSelectionManager().setSelectedEventIdentifiers(
+                    eventIdentifiers, UIOriginator.SPATIAL_DISPLAY);
+        }
     }
 
     /**
@@ -1467,8 +1520,8 @@ public class SpatialPresenter extends
         /*
          * If there is not exactly one selected event, do nothing.
          */
-        Collection<ObservedHazardEvent> selectedEvents = getModel()
-                .getEventManager().getSelectedEvents();
+        List<ObservedHazardEvent> selectedEvents = getModel()
+                .getSelectionManager().getSelectedEvents();
         if (selectedEvents.size() != 1) {
             return null;
         }
@@ -1477,7 +1530,7 @@ public class SpatialPresenter extends
          * If the event's geometry was created using select-by-area, then get
          * the necessary information and return it.
          */
-        ObservedHazardEvent event = selectedEvents.iterator().next();
+        ObservedHazardEvent event = selectedEvents.get(0);
         if (event.getHazardAttributes().containsKey(
                 HazardConstants.GEOMETRY_REFERENCE_KEY)) {
             String eventIdentifier = event.getEventID();
@@ -1534,8 +1587,6 @@ public class SpatialPresenter extends
      * 
      * @param event
      *            Event to be added.
-     * @param originator
-     *            Originator of this addition.
      * @return Resulting new (or if adding geometry to selected, existingt)
      *         event from the event manager.
      */
@@ -1554,10 +1605,10 @@ public class SpatialPresenter extends
         if ((Boolean.TRUE.equals(getModel().getConfigurationManager()
                 .getSettings().getAddGeometryToSelected()))
                 && (event.getHazardType() == null)
-                && (getModel().getEventManager().getSelectedEvents().size() == 1)) {
+                && (getModel().getSelectionManager().getSelectedEvents().size() == 1)) {
 
-            ObservedHazardEvent existingEvent = getModel().getEventManager()
-                    .getSelectedEvents().iterator().next();
+            ObservedHazardEvent existingEvent = getModel()
+                    .getSelectionManager().getSelectedEvents().get(0);
 
             IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
             IAdvancedGeometry newGeometries = event.getGeometry();
@@ -1604,11 +1655,9 @@ public class SpatialPresenter extends
      * Center and zoom the display given the currently selected hazard events.
      */
     private void updateCenteringAndZoomLevel() {
-        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                .getEventManager();
-        List<ObservedHazardEvent> selectedEvents = eventManager
-                .getSelectedEvents();
-        if (!selectedEvents.isEmpty()) {
+        List<ObservedHazardEvent> selectedEvents = getModel()
+                .getSelectionManager().getSelectedEvents();
+        if (selectedEvents.isEmpty() == false) {
             List<Geometry> geometriesOfSelected = new ArrayList<>();
             for (ObservedHazardEvent selectedEvent : selectedEvents) {
                 geometriesOfSelected.add(selectedEvent.getFlattenedGeometry());
@@ -1632,14 +1681,11 @@ public class SpatialPresenter extends
     private void updateSelectedEvents() {
 
         /*
-         * Compile a set of selected events.
+         * Get the set of selected events.
          */
         selectedEventIdentifiers.clear();
-        Set<ObservedHazardEvent> selectedEvents = new HashSet<>(getModel()
-                .getEventManager().getSelectedEvents());
-        for (ObservedHazardEvent hazardEvent : selectedEvents) {
-            selectedEventIdentifiers.add(hazardEvent.getEventID());
-        }
+        selectedEventIdentifiers.addAll(getModel().getSelectionManager()
+                .getSelectedEventIdentifiers());
 
         /*
          * Enable the edit-multi-point-geometry buttons only if there is exactly

@@ -7,29 +7,29 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.Sort;
 import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
 import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
 import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IActionBars;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -68,12 +68,16 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           the session manager more likely.
  * Oct 19, 2016  21873     Chris.Golden      Added time resolution tracking tied to
  *                                           settings.
+ * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
+ *                                           design concerns, untangle spaghetti, and
+ *                                           add history list viewing.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ConsoleViewPart extends DockTrackingViewPart {
+public class ConsoleViewPart extends DockTrackingViewPart implements
+        IConsoleTree {
 
     // Public Static Constants
 
@@ -81,15 +85,6 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * Identifier of the view.
      */
     public static final String ID = "gov.noaa.gsd.viz.hazards.console.view";
-
-    // Private Static Constants
-
-    /**
-     * Logging mechanism.
-     */
-    @SuppressWarnings("unused")
-    private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ConsoleViewPart.class);
 
     // Private Variables
 
@@ -101,30 +96,40 @@ public class ConsoleViewPart extends DockTrackingViewPart {
     /**
      * Name of the current site being used.
      */
-    private String currentSite = null;
+    private String currentSite;
 
     /**
      * Action bars manager.
      */
-    private IActionBars actionBars = null;
+    private IActionBars actionBars;
 
     /**
-     * Temporal display.
+     * Body of the console.
      */
-    private TemporalDisplay temporalDisplay = null;
+    private ConsoleBody body;
 
     /**
      * Mode listener, used to respond to CAVE mode changes.
      */
-    private ModeListener modeListener = null;
+    private ModeListener modeListener;
+
+    /**
+     * View that is using this as its user interface manifestation.
+     * 
+     * @deprecated Should no longer be needed once the
+     *             {@link #getContextMenuItems(String, Date)} is not being used.
+     */
+    @Deprecated
+    private ConsoleView view;
 
     // Public Methods
 
     /**
      * Initialize the view.
      * 
-     * @param presenter
-     *            Presenter managing this view part.
+     * @param view
+     *            View that is using this view part as its user interface
+     *            manifestation.
      * @param selectedTime
      *            Selected time
      * @param currentTime
@@ -132,86 +137,60 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
-     * @param hazardEvents
-     *            Hazard events, each in dictionary form.
-     * @param startTimeBoundariesForEventIds
-     *            Map of event identifiers to their start time range boundaries.
-     * @param endTimeBoundariesForEventIds
-     *            Map of event identifiers to their end time range boundaries.
      * @param timeResolution
      *            Overall time resolution.
-     * @param timeResolutionsForEventIds
-     *            Map of event identifiers to their time resolutions.
-     * @param currentSettings
-     *            Currently selected settings.
-     * @param availableSettings
-     *            All available settings.
-     * @param jsonFilters
-     *            JSON string holding a list of dictionaries providing filter
-     *            megawidget specifiers.
-     * @param activeAlerts
-     *            Currently active alerts.
-     * @param eventIdentifiersAllowingUntilFurtherNotice
-     *            Set of the hazard event identifiers that at any given moment
-     *            allow the toggling of their "until further notice" mode. The
-     *            set is unmodifiable; attempts to modify it will result in an
-     *            {@link UnsupportedOperationException}. Note that this set is
-     *            kept up-to-date, and thus will always contain only those
-     *            events that can have their "until further notice" mode toggled
-     *            at the instant at which it is checked.
+     * @param filterSpecifiers
+     *            List of maps, each map holding a megawidget specifier that is
+     *            to act as a filter.
+     * @param currentSite
+     *            Current site identifier.
      * @param temporalControlsInToolBar
      *            Flag indicating whether or not temporal display controls are
      *            to be shown in the toolbar. If false, they are shown in the
      *            temporal display composite itself.
      */
-    public void initialize(ConsolePresenter presenter, Date selectedTime,
-            Date currentTime, long visibleTimeRange, List<Dict> hazardEvents,
-            Map<String, Range<Long>> startTimeBoundariesForEventIds,
-            Map<String, Range<Long>> endTimeBoundariesForEventIds,
+    public void initialize(ConsoleView view, Date selectedTime,
+            Date currentTime, long visibleTimeRange,
             TimeResolution timeResolution,
-            Map<String, TimeResolution> timeResolutionsForEventIds,
-            ObservedSettings currentSettings, List<Settings> availableSettings,
-            String jsonFilters, ImmutableList<IHazardAlert> activeAlerts,
-            Set<String> eventIdentifiersAllowingUntilFurtherNotice,
-            boolean temporalControlsInToolBar) {
-        this.currentSite = LocalizationManager
-                .getContextName(LocalizationLevel.SITE);
-        String currentSettingsID = currentSettings.getSettingsID();
-        setSettings(currentSettingsID, availableSettings);
-        temporalDisplay.initialize(presenter, selectedTime, currentTime,
-                visibleTimeRange, hazardEvents, startTimeBoundariesForEventIds,
-                endTimeBoundariesForEventIds, timeResolution,
-                timeResolutionsForEventIds, currentSettings, jsonFilters,
-                activeAlerts, eventIdentifiersAllowingUntilFurtherNotice,
-                temporalControlsInToolBar);
+            ImmutableList<Map<String, Object>> filterSpecifiers,
+            String currentSite, boolean temporalControlsInToolBar) {
+        this.view = view;
+        this.currentSite = currentSite;
+        body.initialize(selectedTime, currentTime, visibleTimeRange,
+                timeResolution, filterSpecifiers, temporalControlsInToolBar);
     }
 
     @Override
     public void createPartControl(Composite parent) {
         super.createPartControl(parent);
 
-        // Get the action bars and create the body of this view part.
+        /*
+         * Get the action bars and create the body of this view part.
+         */
         actionBars = getViewSite().getActionBars();
-        temporalDisplay = new TemporalDisplay();
-        temporalDisplay.createDisplayComposite(parent);
+        body = new ConsoleBody(this);
+        body.createDisplayComposite(parent);
 
-        // Create a CAVE mode listener, which will set the foreground
-        // and background colors appropriately according to the CAVE
-        // mode whenever a paint event occurs. This is done with the
-        // grandparent of this parent, because this ensures that the
-        // part's toolbar gets colored appropriately as well.
+        /*
+         * Create a CAVE mode listener, which will set the foreground and
+         * background colors appropriately according to the CAVE mode whenever a
+         * paint event occurs. This is done with the grandparent of this parent,
+         * because this ensures that the part's toolbar gets colored
+         * appropriately as well.
+         */
         modeListener = new ModeListener(parent.getParent().getParent());
     }
 
     @Override
     public void setFocus() {
-        temporalDisplay.setFocus();
+        body.setFocus();
     }
 
     @Override
     public void dispose() {
-        modeListener.dispose();
-        temporalDisplay.dispose();
+        if (modeListener != null) {
+            modeListener.dispose();
+        }
         super.dispose();
     }
 
@@ -236,191 +215,105 @@ public class ConsoleViewPart extends DockTrackingViewPart {
      */
     public void setToolBarActions(final Map<String, Action> map,
             ComboAction selectedTimeModeAction) {
-        temporalDisplay.setToolBarActions(map, selectedTimeModeAction);
+        body.setToolBarActions(map, selectedTimeModeAction);
     }
 
     /**
-     * Get the minimum visible time.
+     * Set the name of the current settings to that specified.
      * 
-     * @return Minimum visible time.
+     * @param settingsName
+     *            Name of the current settings.
      */
-    public long getMinimumVisibleTime() {
-        return temporalDisplay.getMinimumVisibleTime();
-    }
+    public void setSettingsName(String settingsName) {
+        selectedSettingName = settingsName;
 
-    /**
-     * Get the maximum visible time.
-     * 
-     * @return Maximum visible time.
-     */
-    public long getMaximumVisibleTime() {
-        return temporalDisplay.getMaximumVisibleTime();
-    }
-
-    /**
-     * Update the visible time delta.
-     * 
-     * @param newVisibleTimeRange
-     *            Unix timestamp in milliseconds holding the amount of time
-     *            visible at once in the time line.
-     */
-    public void updateVisibleTimeDelta(long visibleTimeDelta) {
-        temporalDisplay.updateVisibleTimeDelta(visibleTimeDelta);
-    }
-
-    /**
-     * Update the visible time range.
-     * 
-     * @param newEarliestVisibleTime
-     *            Unix timestamp in milliseconds holding the earliest visible
-     *            time in the time line.
-     * @param newLatestVisibleTime
-     *            Unix timestamp in milliseconds holding the latest visible time
-     *            in the time line.
-     */
-    public void updateVisibleTimeRange(long earliestVisibleTime,
-            long latestVisibleTime) {
-        temporalDisplay.updateVisibleTimeRange(earliestVisibleTime,
-                latestVisibleTime);
-    }
-
-    /**
-     * Update the current time.
-     * 
-     * @param currentTime
-     *            JSON string holding the current time.
-     */
-    public void updateCurrentTime(Date currentTime) {
-        temporalDisplay.updateCurrentTime(currentTime);
-    }
-
-    /**
-     * Update the selected time range.
-     * 
-     * @param start
-     *            Start time of the selected time range, or <code>null</code> if
-     *            there is no selected time range.
-     * @param end
-     *            End time of the selected time range, or <code>null</code> if
-     *            there is no selected time range.
-     */
-    public void updateSelectedTimeRange(Date start, Date end) {
-        temporalDisplay.updateSelectedTimeRange(start, end);
-    }
-
-    /**
-     * Update the time range boundaries for the events.
-     * 
-     * @param eventIds
-     *            Identifiers of the events that have had their time range
-     *            boundaries changed.
-     */
-    public void updateEventTimeRangeBoundaries(Set<String> eventIds) {
-        temporalDisplay.updateEventTimeRangeBoundaries(eventIds);
-    }
-
-    /**
-     * Update the time resolution.
-     * 
-     * @param timeResolution
-     *            Time resolution.
-     * @param currentTime
-     *            Current time.
-     */
-    public void updateTimeResolution(TimeResolution timeResolution,
-            Date currentTime) {
-        temporalDisplay.updateTimeResolution(timeResolution, currentTime);
-    }
-
-    /**
-     * Get the list of the current hazard events.
-     * 
-     * @return List of the current hazard events.
-     */
-    public List<Dict> getHazardEvents() {
-        return temporalDisplay.getEvents();
-    }
-
-    /**
-     * Add the specified hazard events.
-     * 
-     * @param hazardEvents
-     *            Hazard events, each in dictionary form.
-     * @param currentSettings
-     *            Currently selected settings.
-     */
-    public void updateConsoleForChanges(List<Dict> hazardEvents,
-            ObservedSettings currentSettings) {
-        temporalDisplay.clearEvents();
-        temporalDisplay.updateHazardEvents(hazardEvents);
-        temporalDisplay.updateSettings(currentSettings);
-        temporalDisplay.updateConsole();
-    }
-
-    /**
-     * Update the specified hazard event.
-     * 
-     * @param hazardEvent
-     *            JSON string holding a dictionary defining an event. The
-     *            dictionary must contain an <code>eventID</code> key mapping to
-     *            the event identifier as a value. All other mappings specify
-     *            properties that are to have their values to those associated
-     *            with the properties in the dictionary.
-     */
-    public void updateHazardEvent(String hazardEvent) {
-        temporalDisplay.updateEvent(hazardEvent);
-    }
-
-    /**
-     * Update the list of currently active alerts.
-     * 
-     * @param activeAlerts
-     *            List of currently active alerts.
-     */
-    public void updateActiveAlerts(ImmutableList<IHazardAlert> activeAlerts) {
-        temporalDisplay.updateActiveAlerts(activeAlerts);
-    }
-
-    /**
-     * @return the settings currently in use.
-     */
-    public ObservedSettings getCurrentSettings() {
-        return temporalDisplay.getCurrentSettings();
-    }
-
-    /**
-     * Set the settings to those specified.
-     * 
-     * @param currentSettingsID
-     * @param availableSettings
-     */
-    public void setSettings(String currentSettingsID,
-            List<Settings> availableSettings) {
-
-        if (currentSettingsID == null) {
-            return;
-        }
-
-        // Get the names and identifiers of the settings.
-        for (Settings settings : availableSettings) {
-
-            if (currentSettingsID.equals(settings.getSettingsID())) {
-                selectedSettingName = settings.getDisplayName();
-                break;
-            }
-
-        }
-
-        // Show as the text the currently selected setting
-        // name, if any.
+        /*
+         * Show as the text the currently selected setting name, if any.
+         */
         if (selectedSettingName != null) {
             setTitleText();
         }
     }
 
-    public void updateSite(String site) {
-        this.currentSite = site;
+    @Override
+    public ICommandInvoker<Sort> getSortInvoker() {
+        return (body != null ? body.getSortInvoker() : null);
+    }
+
+    @Override
+    public IStateChanger<TimeRangeType, Range<Long>> getTimeRangeChanger() {
+        return (body != null ? body.getTimeRangeChanger() : null);
+    }
+
+    @Override
+    public IStateChanger<String, ConsoleColumns> getColumnsChanger() {
+        return (body != null ? body.getColumnsChanger() : null);
+    }
+
+    @Override
+    public IStateChanger<String, Object> getColumnFiltersChanger() {
+        return (body != null ? body.getColumnFiltersChanger() : null);
+    }
+
+    @Override
+    public IListStateChanger<String, TabularEntity> getTreeContentsChanger() {
+        return (body != null ? body.getTreeContentsChanger() : null);
+    }
+
+    @Override
+    public void setCurrentTime(Date currentTime) {
+        body.setCurrentTime(currentTime);
+    }
+
+    @Override
+    public void setTimeResolution(TimeResolution timeResolution,
+            Date currentTime) {
+        body.setTimeResolution(timeResolution, currentTime);
+    }
+
+    @Override
+    public void setSorts(ImmutableList<Sort> sorts) {
+        body.setSorts(sorts);
+    }
+
+    @Override
+    public void setActiveCountdownTimers(
+            ImmutableMap<String, CountdownTimer> countdownTimersForEventIdentifiers) {
+        body.setActiveCountdownTimers(countdownTimersForEventIdentifiers);
+    }
+
+    // Package-Private Methods
+
+    /**
+     * Handle the site identifier changing.
+     * 
+     * @param siteIdentifier
+     *            New site identifier.
+     */
+    void siteChanged(String siteIdentifier) {
+        this.currentSite = siteIdentifier;
         setTitleText();
+    }
+
+    /**
+     * Get the context menu items appropriate to the specified event.
+     * 
+     * @param identifier
+     *            Identifier of the tabular entity that was chosen with the
+     *            context menu invocation, or <code>null</code> if none was
+     *            chosen.
+     * @param persistedTimestamp
+     *            Timestamp indicating when the entity was persisted; may be
+     *            <code>null</code>.
+     * @return Actions for the menu items to be shown.
+     * @deprecated See
+     *             {@link ConsolePresenter#getContextMenuItems(String, Date, IRunnableAsynchronousScheduler)}
+     *             .
+     */
+    @Deprecated
+    List<IContributionItem> getContextMenuItems(String identifier,
+            Date persistedTimestamp) {
+        return view.getContextMenuItems(identifier, persistedTimestamp);
     }
 
     // Private Methods

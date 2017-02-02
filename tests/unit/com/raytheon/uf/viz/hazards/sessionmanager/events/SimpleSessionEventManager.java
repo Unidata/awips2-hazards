@@ -37,6 +37,7 @@ import java.util.Set;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -95,12 +96,12 @@ public class SimpleSessionEventManager implements
 
     @Override
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(
-            ObservedHazardEvent hazardEvent) {
+            IHazardEvent hazardEvent) {
         return null;
     }
 
     @Override
-    public List<String> getDurationChoices(ObservedHazardEvent event) {
+    public List<String> getDurationChoices(IHazardEvent event) {
         return Collections.emptyList();
     }
 
@@ -156,17 +157,6 @@ public class SimpleSessionEventManager implements
 
     public void reset() {
         events.clear();
-    }
-
-    @Override
-    public ObservedHazardEvent getLastModifiedSelectedEvent() {
-        return null;
-    }
-
-    @Override
-    public void setLastModifiedSelectedEvent(ObservedHazardEvent event,
-            IOriginator originator) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -245,19 +235,13 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEventsByStatus(HazardStatus state) {
+    public HazardHistoryList getEventHistoryById(String eventId) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public List<ObservedHazardEvent> getSelectedEvents() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setSelectedEvents(
-            Collection<ObservedHazardEvent> selectedEvents,
-            IOriginator originator) {
+    public Collection<ObservedHazardEvent> getEventsByStatus(
+            HazardStatus status, boolean includeUntyped) {
         throw new UnsupportedOperationException();
     }
 
@@ -299,19 +283,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public boolean isSelected(ObservedHazardEvent event) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public boolean isValidGeometryChange(IAdvancedGeometry geometry,
             ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setSelectedEventForIDs(Collection<String> selectedEventIDs,
-            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -378,7 +351,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events) {
+    public void saveEvents(List<IHazardEvent> events, boolean forceVisibility) {
         throw new UnsupportedOperationException();
     }
 
@@ -395,6 +368,21 @@ public class SimpleSessionEventManager implements
 
     @Override
     public Map<String, TimeResolution> getTimeResolutionsForEventIds() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int getHistoricalVersionCountForEvent(String eventIdentifier) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int getVisibleHistoricalVersionCountForEvent(String eventIdentifier) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void revertEventToLastSaved(String eventIdentifier) {
         throw new UnsupportedOperationException();
     }
 }

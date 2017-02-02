@@ -107,6 +107,11 @@ public class WidgetUtilities {
     private static final long HOUR_INTERVAL = TimeUnit.HOURS.toMillis(1);
 
     /**
+     * Number of milliseconds in a day.
+     */
+    private static final long DAY_INTERVAL = TimeUnit.DAYS.toMillis(1);
+
+    /**
      * Snap value calculator for time line rulers with resolutions of seconds.
      */
     private static final ISnapValueCalculator TIME_LINE_SNAP_VALUE_CALCULATOR_SECONDS = new TimeLineRulerSnapValueCalculator(
@@ -117,6 +122,16 @@ public class WidgetUtilities {
      */
     private static final ISnapValueCalculator TIME_LINE_SNAP_VALUE_CALCULATOR_MINUTES = new TimeLineRulerSnapValueCalculator(
             MINUTE_INTERVAL);
+
+    /**
+     * Minimum visible time range in milliseconds.
+     */
+    private static final long MIN_VISIBLE_TIME_RANGE = 1L * MINUTE_INTERVAL;
+
+    /**
+     * Maximum visible time range in milliseconds.
+     */
+    private static final long MAX_VISIBLE_TIME_RANGE = 8L * DAY_INTERVAL;
 
     // Public Static Methods
 
@@ -130,18 +145,10 @@ public class WidgetUtilities {
      *            Minimum time the ruler may show.
      * @param maximumTime
      *            Maximum time the ruler may show.
-     * @param minimumVisibleTimeRange
-     *            Minimum time range the ruler may show (that is, what will it
-     *            show at maximum zoom).
-     * @param maximumVisibleTimeRange
-     *            Maximum time range the ruler may show (that is, what will it
-     *            show at minimum zoom).
      * @return Time line ruler.
      */
     public static MultiValueRuler createTimeLineRuler(Composite parent,
-            long minimumTime, long maximumTime,
-            final long minimumVisibleTimeRange,
-            final long maximumVisibleTimeRange) {
+            long minimumTime, long maximumTime) {
 
         /*
          * Create the colors for the time line ruler hatch marks, and add them
@@ -230,12 +237,12 @@ public class WidgetUtilities {
                 long range;
                 if (zoomIn) {
                     range = getTimeLineRulerZoomedInRange(ruler);
-                    if (range < minimumVisibleTimeRange) {
+                    if (range < MIN_VISIBLE_TIME_RANGE) {
                         return 0L;
                     }
                 } else {
                     range = getTimeLineRulerZoomedOutRange(ruler);
-                    if (range > maximumVisibleTimeRange) {
+                    if (range > MAX_VISIBLE_TIME_RANGE) {
                         return 0L;
                     }
                 }
@@ -265,6 +272,24 @@ public class WidgetUtilities {
         });
 
         return ruler;
+    }
+
+    /**
+     * Get the minimum visible time range in milliseconds for time line rulers.
+     * 
+     * @return Minimum visible time range in milliseconds for time line rulers.
+     */
+    public static long getTimeLineRulerMinimumVisibleTimeRange() {
+        return MIN_VISIBLE_TIME_RANGE;
+    }
+
+    /**
+     * Get the maximum visible time range in milliseconds for time line rulers.
+     * 
+     * @return Maximum visible time range in milliseconds for time line rulers.
+     */
+    public static long getTimeLineRulerMaximumVisibleTimeRange() {
+        return MAX_VISIBLE_TIME_RANGE;
     }
 
     /**

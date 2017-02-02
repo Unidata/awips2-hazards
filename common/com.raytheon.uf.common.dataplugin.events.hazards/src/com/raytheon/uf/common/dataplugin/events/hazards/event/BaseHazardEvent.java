@@ -70,6 +70,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      geometries instead of JTS geometries.
  * Sep 21, 2016 15934      Chris.Golden Changed to work with new version of
  *                                      AdvancedGeometryUtilities.
+ * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag. Also
+ *                                      added insert time record.
  * </pre>
  * 
  * @author mnash
@@ -77,6 +79,8 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 
 public class BaseHazardEvent implements IHazardEvent {
+
+    private boolean visibleInHistoryList = true;
 
     private Date startTime;
 
@@ -102,6 +106,8 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private Date creationTime;
 
+    private Date insertTime;
+
     private ProductClass hazardMode;
 
     private String userName;
@@ -119,6 +125,7 @@ public class BaseHazardEvent implements IHazardEvent {
         this();
         setEventID(event.getEventID());
         setSiteID(event.getSiteID());
+        setVisibleInHistoryList(event.isVisibleInHistoryList());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
@@ -134,6 +141,17 @@ public class BaseHazardEvent implements IHazardEvent {
         if (event.getHazardAttributes() != null) {
             getHazardAttributes().putAll(event.getHazardAttributes());
         }
+        insertTime = event.getInsertTime();
+    }
+
+    @Override
+    public boolean isVisibleInHistoryList() {
+        return visibleInHistoryList;
+    }
+
+    @Override
+    public void setVisibleInHistoryList(boolean visible) {
+        this.visibleInHistoryList = visible;
     }
 
     @Override
@@ -376,6 +394,8 @@ public class BaseHazardEvent implements IHazardEvent {
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
+        result = prime * result
+                + Boolean.valueOf(visibleInHistoryList).hashCode();
         return result;
     }
 
@@ -474,6 +494,9 @@ public class BaseHazardEvent implements IHazardEvent {
         } else if (!subtype.equals(other.subtype)) {
             return false;
         }
+        if (visibleInHistoryList != other.visibleInHistoryList) {
+            return false;
+        }
         return true;
     }
 
@@ -484,19 +507,12 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public void setInsertTime(Date date) {
-
-        /*
-         * TODO No-op
-         */
+        this.insertTime = date;
     }
 
     @Override
     public Date getInsertTime() {
-
-        /*
-         * TODO No-op
-         */
-        return null;
+        return insertTime;
     }
 
     @Override

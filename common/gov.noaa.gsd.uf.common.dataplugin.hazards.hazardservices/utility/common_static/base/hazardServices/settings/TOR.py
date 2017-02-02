@@ -18,9 +18,6 @@ TOR = {
     "settingsID" : "TOR",
     "perspectiveIDs" : ["com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane"],
     "displayName": "", 
-    "hidHazardCategories": [
-        "Short Fused"
-    ], 
     "visibleTypes": [
         "TO.W", 
         "SV.W", 
@@ -127,17 +124,20 @@ TOR = {
         "VTEC Codes": {
             "type": "string", 
             "fieldName": "vtecCodes", 
-            "sortDir": "none"
+            "sortDir": "none",
+            "displayEmptyAs": "[]"
         }, 
         "ETNs": {
             "type": "string", 
             "fieldName": "etns", 
-            "sortDir": "none"
+            "sortDir": "none",
+            "displayEmptyAs": "[]"
         }, 
         "PILs": {
             "type": "string", 
             "fieldName": "pils", 
-            "sortDir": "none"
+            "sortDir": "none",
+            "displayEmptyAs": "[]"
         }, 
         "Time to Expiration": {
             "sortDir": "none", 

@@ -10,7 +10,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 
 import java.io.Serializable;
 import java.util.Collections;
@@ -80,6 +79,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      range boundaries were not yet calculated for an
  *                                      event that was being merged, since the setting
  *                                      of its type had not occurred yet.
+ * Feb 01, 2017 15556      Chris.Golden Added persist-on-status-change flag to merge
+ *                                      method, as well as adding the copying of the
+ *                                      "visible in history list" flag upon a merge.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -88,8 +90,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 public class SessionEventUtilities {
 
     private static final Set<String> ATTRIBUTES_TO_RETAIN = ImmutableSet.of(
-            HAZARD_EVENT_CHECKED, HAZARD_EVENT_SELECTED,
-            ISessionEventManager.ATTR_ISSUED);
+            HAZARD_EVENT_CHECKED, ISessionEventManager.ATTR_ISSUED);
 
     /**
      * Merge the contents of the new event into the old event, using the
@@ -112,6 +113,10 @@ public class SessionEventUtilities {
      *            features, the old event's visual features will be kept. If
      *            <code>false</code>, the new event's visual features list will
      *            always be used in place of the old one's.
+     * @param persistOnStatusChange
+     *            Flag indicating whether or not the event should be saved to
+     *            the database (persisted) if its status is being changed as a
+     *            result of this merge.
      * @param originator
      *            Originator of this action.
      */
@@ -119,7 +124,10 @@ public class SessionEventUtilities {
             ISessionEventManager<ObservedHazardEvent> eventManager,
             IHazardEvent newEvent, ObservedHazardEvent oldEvent,
             boolean forceMerge, boolean keepVisualFeatures,
-            IOriginator originator) {
+            boolean persistOnStatusChange, IOriginator originator) {
+
+        oldEvent.setVisibleInHistoryList(newEvent.isVisibleInHistoryList());
+
         oldEvent.setSiteID(newEvent.getSiteID(), originator);
 
         /*
@@ -181,8 +189,8 @@ public class SessionEventUtilities {
          * This is relevant when you set the clock back.
          */
         if (isEnded(oldEvent) == false) {
-            oldEvent.setStatus(newEvent.getStatus(), true, true,
-                    Originator.OTHER);
+            oldEvent.setStatus(newEvent.getStatus(), true,
+                    persistOnStatusChange, Originator.OTHER);
         }
     }
 

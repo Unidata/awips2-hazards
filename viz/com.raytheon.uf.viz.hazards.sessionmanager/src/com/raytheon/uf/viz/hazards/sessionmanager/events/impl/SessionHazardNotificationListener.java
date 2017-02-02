@@ -32,7 +32,6 @@ import com.raytheon.uf.viz.core.notification.NotificationException;
 import com.raytheon.uf.viz.core.notification.NotificationMessage;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
@@ -63,6 +62,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      until Redmine issue #21271 is resolved
  *                                      and garbage collection problems no
  *                                      longer exist.
+ * Feb 01, 2017 15556      Chris.Golden Cleaned up, added note about race
+ *                                      condition to be addressed in future.
  * </pre>
  * 
  * @author bsteffen
@@ -73,17 +74,15 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionHazardNotificationListener.class);
 
-    private final Reference<ISessionEventManager<ObservedHazardEvent>> manager;
+    private final Reference<SessionEventManager> manager;
 
-    public SessionHazardNotificationListener(
-            ISessionEventManager<ObservedHazardEvent> manager) {
+    public SessionHazardNotificationListener(SessionEventManager manager) {
         this(manager, true);
     }
 
-    public SessionHazardNotificationListener(
-            ISessionEventManager<ObservedHazardEvent> manager, boolean observe) {
-        this.manager = new WeakReference<ISessionEventManager<ObservedHazardEvent>>(
-                manager);
+    public SessionHazardNotificationListener(SessionEventManager manager,
+            boolean observe) {
+        this.manager = new WeakReference<SessionEventManager>(manager);
         if (observe) {
             NotificationManagerJob.addObserver(HazardNotification.HAZARD_TOPIC,
                     this);
@@ -93,6 +92,13 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     /*
      * TODO: Remove use of manager.isShutDown() within method body once garbage
      * collection issues have been sorted out; see Redmine issue #21271.
+     * 
+     * TODO: If this method is called from a thread other than the session
+     * manager worker thread, there is a race condition here; checking to see if
+     * the manager is shut down and then responding accordingly in another
+     * thread is inherently risky. This also means that the call to the
+     * handleNotification() method here should occur within the session manager
+     * worker thread.
      */
     @Override
     public void notificationArrived(NotificationMessage[] messages) {
@@ -115,30 +121,44 @@ public class SessionHazardNotificationListener implements INotificationObserver 
         }
     }
 
+    /**
+     * Handle the specified notification.
+     * <p>
+     * TODO: This is only <code>public</code> because it is used by test classes
+     * outside this package. Some other way should be found to test it, so that
+     * this may be rendered package-private or private.
+     * </p>
+     * <p>
+     * TODO: If this method is called from a thread other than the session
+     * manager worker thread, there is a race condition here; checking to see if
+     * the manager has a version of a particular hazard event and then
+     * responding accordingly in another thread is inherently risky.
+     * </p>
+     * 
+     * @param notification
+     *            Notification that has arrived.
+     */
     public void handleNotification(HazardNotification notification) {
-        ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
-        IHazardEvent newEvent = notification.getEvent();
-        ObservedHazardEvent oldEvent = manager.getEventById(newEvent
-                .getEventID());
         if (CAVEMode.getMode() == CAVEMode.PRACTICE
                 && notification.isPracticeMode() == false) {
             return;
         }
+        IHazardEvent newEvent = notification.getEvent();
+        SessionEventManager manager = this.manager.get();
+        if (manager == null) {
+            return;
+        }
+
+        /*
+         * TODO: Handle the DELETE_ALL notification type.
+         */
         switch (notification.getType()) {
         case DELETE:
-            if (oldEvent != null) {
-                manager.removeEvent(oldEvent, Originator.DATABASE);
-            }
+            manager.handleEventRemovalFromDatabase(newEvent);
             break;
         case UPDATE:
         case STORE:
-            if (oldEvent != null) {
-                SessionEventUtilities.mergeHazardEvents(manager, newEvent,
-                        oldEvent, true, true, Originator.DATABASE);
-                return;
-            }
-            manager.addEvent(newEvent, Originator.DATABASE);
-            break;
+            manager.handleEventAdditionToDatabase(newEvent);
         }
     }
 

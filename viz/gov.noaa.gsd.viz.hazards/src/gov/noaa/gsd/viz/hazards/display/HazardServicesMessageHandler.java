@@ -7,31 +7,19 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_FULL_TYPE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_IDENTIFIER;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_START_TIME;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NATIONAL;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.display.action.ConsoleAction;
 import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
-import gov.noaa.gsd.viz.hazards.display.action.HazardDetailAction;
+import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
 import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
 import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.product.ReviewAction;
-import gov.noaa.gsd.viz.hazards.servicebackup.ChangeSiteAction;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,17 +27,13 @@ import java.util.Set;
 
 import net.engio.mbassy.listener.Handler;
 
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -60,7 +44,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGener
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -71,8 +54,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationConfi
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
 
@@ -220,6 +201,11 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            this class down.
  * Aug 15, 2016 18376      Chris.Golden       Removed unsubscribing from the event bus when H.S.
  *                                            closes, as this is already being done in dispose().
+ * Feb 01, 2017 15556      Chris.Golden       Removed obsolete code that was refactored out of
+ *                                            relevance in the ongoing quest to shrink this class
+ *                                            down to nothing. Also moved some code into the
+ *                                            HazardServicesAppBuilder and presenters, as
+ *                                            appropriate.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -243,10 +229,6 @@ public final class HazardServicesMessageHandler {
     private HazardServicesAppBuilder appBuilder = null;
 
     private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
-
-    private final ISessionEventManager<ObservedHazardEvent> sessionEventManager;
-
-    private final ISessionTimeManager sessionTimeManager;
 
     private final ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager;
 
@@ -275,8 +257,6 @@ public final class HazardServicesMessageHandler {
         this.sessionManager = appBuilder.getSessionManager();
         this.sessionProductManager = sessionManager.getProductManager();
         this.sessionRecommenderManager = sessionManager.getRecommenderManager();
-        this.sessionEventManager = sessionManager.getEventManager();
-        this.sessionTimeManager = sessionManager.getTimeManager();
         this.sessionConfigurationManager = sessionManager
                 .getConfigurationManager();
         this.eventBus = appBuilder.getEventBus();
@@ -284,10 +264,10 @@ public final class HazardServicesMessageHandler {
         this.eventBus.subscribe(this);
 
         if (sessionConfigurationManager.getStartUpConfig().isNational()) {
-            sessionConfigurationManager.setSiteID(NATIONAL);
+            sessionConfigurationManager.setSiteID(NATIONAL, Originator.OTHER);
         } else {
             sessionConfigurationManager.setSiteID(LocalizationManager
-                    .getInstance().getCurrentSite());
+                    .getInstance().getCurrentSite(), Originator.OTHER);
         }
 
         /*
@@ -337,39 +317,10 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Changes the state of the selected events to the state given by the state
-     * parameter
+     * Generates products for preview.
      */
-    private void changeSelectedEventsToProposedState(IOriginator originator) {
-
-        Collection<ObservedHazardEvent> events = sessionEventManager
-                .getSelectedEvents();
-
-        for (ObservedHazardEvent event : events) {
-            sessionEventManager.proposeEvent(event, originator);
-        }
-
-        appBuilder.closeProductEditorView();
-    }
-
-    /**
-     * Issues the events upon user confirmation.
-     */
-    private void issueEvents() {
-        if (continueIfThereAreHazardConflicts()) {
-            sessionManager.generate(true);
-        }
-    }
-
-    /**
-     * This method is called when the user clicks "Reset" on the Tool bar to
-     * reset the hazards to the canned case for the given setting.
-     * 
-     * @param type
-     *            Type of entities to reset. *
-     */
-    private void reset(String type) {
-        sessionManager.reset();
+    private void preview() {
+        sessionManager.generate(false);
     }
 
     /**
@@ -391,7 +342,6 @@ public final class HazardServicesMessageHandler {
 
         appBuilder.notifyModelChanged(EnumSet.of(
                 HazardConstants.Element.SETTINGS,
-                HazardConstants.Element.VISIBLE_TIME_DELTA,
                 HazardConstants.Element.CURRENT_SETTINGS));
 
     }
@@ -419,195 +369,15 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Update the selected time range.
-     * 
-     * @param selectedTimeStart_ms
-     *            Start of the selected time range, or -1 if no range exists.
-     * @param selectedTimeEnd_ms
-     *            End of the selected time range, or -1 if no range exists.
-     */
-    private void updateSelectedTimeRange(String selectedTimeStart_ms,
-            String selectedTimeEnd_ms) {
-        SelectedTime selectedRange = new SelectedTime(
-                Long.valueOf(selectedTimeStart_ms),
-                Long.valueOf(selectedTimeEnd_ms));
-        sessionTimeManager.setSelectedTime(selectedRange, UIOriginator.CONSOLE);
-    }
-
-    /**
-     * This method is called when the visible time range is changed in the
-     * Temporal Window.
-     */
-    private void updateVisibleTimeRange(long startTime, long endTime) {
-        TimeRange visibleRange = new TimeRange(startTime, endTime);
-        sessionTimeManager.setVisibleTimeRange(visibleRange,
-                UIOriginator.CONSOLE);
-    }
-
-    /**
-     * Updates information for an event taking into consideration the
-     * UIOriginator.
-     * 
-     * @param map
-     *            The portions of the event which are being updated.
-     * @param isUserInitiated
-     *            Flag indicating whether or not the updated data are the result
-     *            of a user-edit.
-     * @return
-     */
-    private void updateEventData(Map<String, Serializable> map,
-            boolean isUserInitiated, IOriginator originator) {
-        _updateEventData(map, isUserInitiated, originator);
-    }
-
-    /**
-     * Update event data. This event should no longer be required once we move
-     * away from map representations of hazard events and use POJOs instead.
-     * (Also, all of this code will be directly executed by the presenters
-     * anyway when we change over to direct manipulation of the model by
-     * presenters.)
-     */
-    @SuppressWarnings("unchecked")
-    @Deprecated
-    private void _updateEventData(Map<String, Serializable> map,
-            Boolean isUserInitiated, IOriginator originator) {
-        ObservedHazardEvent oEvent = sessionEventManager
-                .getEventById((String) map
-                        .get(HazardConstants.HAZARD_EVENT_IDENTIFIER));
-        if (oEvent == null) {
-            return;
-        }
-        Date newStartTime = null, newEndTime = null;
-        for (String key : map.keySet()) {
-            if (HazardConstants.HAZARD_EVENT_IDENTIFIER.equals(key)) {
-                ;
-            } else if (HAZARD_EVENT_FULL_TYPE.equals(key)) {
-                String fullType = (String) map.get(key);
-                String[] phenSigSubType = HazardEventUtilities
-                        .getHazardPhenSigSubType(fullType);
-                sessionEventManager.setEventType(oEvent, phenSigSubType[0],
-                        phenSigSubType[1], phenSigSubType[2], originator);
-            } else if (HAZARD_EVENT_START_TIME.equals(key)) {
-                newStartTime = new Date(((Number) map.get(key)).longValue());
-            } else if (HAZARD_EVENT_END_TIME.equals(key)) {
-                newEndTime = new Date(((Number) map.get(key)).longValue());
-            } else if (map.get(key) instanceof Collection) {
-                List<String> stringList = new ArrayList<>(
-                        (Collection<String>) map.get(key));
-
-                /*
-                 * Do no pass data as arrays. It is better to pass them as
-                 * lists. Using arrays causes problems. For instance, an event
-                 * passed to the the Product Generation Framework will have its
-                 * cta array converted to a Python list. When returned to the
-                 * HMI, this Python list is converted to a Java list. So, arrays
-                 * are not consistently handled. The type is not preserved.
-                 */
-                oEvent.addHazardAttribute(key, (Serializable) stringList);
-            } else {
-                Object primitive = map.get(key);
-                if (primitive.getClass() == String.class) {
-                    oEvent.addHazardAttribute(key, (String) primitive);
-                } else if (primitive.getClass() == Boolean.class) {
-                    oEvent.addHazardAttribute(key, (Boolean) primitive);
-                } else if (primitive.getClass() == Float.class) {
-                    oEvent.addHazardAttribute(key, (Float) primitive);
-                } else if (primitive.getClass() == Double.class) {
-                    oEvent.addHazardAttribute(key, (Double) primitive);
-                } else if (primitive instanceof Number) {
-                    Object currentVal = oEvent.getHazardAttribute(key);
-                    if (currentVal instanceof Integer) {
-                        oEvent.addHazardAttribute(key,
-                                ((Number) primitive).intValue());
-                    } else if (currentVal instanceof Long) {
-                        oEvent.addHazardAttribute(key,
-                                ((Number) primitive).longValue());
-                    } else if (currentVal instanceof Date) {
-                        oEvent.addHazardAttribute(key, new Date(
-                                ((Number) primitive).longValue()));
-                    }
-                } else {
-                    throw new UnsupportedOperationException(
-                            "not implemented for key = "
-                                    + key
-                                    + " with value \""
-                                    + primitive
-                                    + "\" of type "
-                                    + (primitive == null ? "null" : primitive
-                                            .getClass().getSimpleName()));
-                }
-            }
-        }
-
-        /*
-         * Set the start and end time atomically, since setting one before the
-         * other could result in a rejection of the first of the two because the
-         * resulting range in between the actions of setting them each would be
-         * invalid.
-         * 
-         * TODO: When this method goes away and its functionality taken on by
-         * the ConsolePresenter (i.e. when refactoring of the console happens to
-         * bring it into line with the MVP architecture), a false result from
-         * the setEventTimeRange() invocation should merely result in the
-         * setting of the console's copy of the time range back to the original
-         * value, without having to explicitly do so asynchronously, since that
-         * will all be taken care of by the various IStateChanger
-         * thread-boundary-crossing classes.
-         */
-        if ((newStartTime != null) || (newEndTime != null)) {
-            if (newStartTime == null) {
-                newStartTime = oEvent.getStartTime();
-            }
-            if (newEndTime == null) {
-                newEndTime = oEvent.getEndTime();
-            }
-            if (sessionEventManager.setEventTimeRange(oEvent, newStartTime,
-                    newEndTime, originator) == false) {
-                VizApp.runAsync(new Runnable() {
-                    @Override
-                    public void run() {
-                        appBuilder.notifyModelChanged(EnumSet
-                                .of(HazardConstants.Element.EVENTS));
-                    }
-                });
-            }
-        }
-
-        if (isUserInitiated) {
-            oEvent.setModified(true);
-        }
-
-    }
-
-    /**
      * Respond to the current setting having changed.
      * 
      * @param settings
      * @param originator
      */
-    public void changeCurrentSettings(ISettings settings, IOriginator originator) {
+    void changeCurrentSettings(ISettings settings, IOriginator originator) {
         sessionConfigurationManager.getSettings().apply(settings, originator);
         appBuilder.notifyModelChanged(EnumSet
                 .of(HazardConstants.Element.CURRENT_SETTINGS));
-    }
-
-    private void updateSite(String site) {
-        sessionConfigurationManager.getSettings().getVisibleSites().add(site);
-        appBuilder.notifyModelChanged(EnumSet.of(HazardConstants.Element.SITE));
-    }
-
-    /**
-     * Generates products for preview.
-     */
-    private void preview() {
-        sessionManager.generate(false);
-    }
-
-    /**
-     * Changes the state of an event to "Issued".
-     */
-    private void setIssuedState() {
-        issueEvents();
     }
 
     /**
@@ -620,11 +390,8 @@ public final class HazardServicesMessageHandler {
      */
     private void handleProductDisplayAction(ProductEditorAction action) {
         switch (action.getHazardAction()) {
-        case PROPOSE:
-            changeSelectedEventsToProposedState(action.getOriginator());
-            break;
         case ISSUE:
-            if (this.continueIfThereAreHazardConflicts()) {
+            if (appBuilder.shouldContinueIfThereAreHazardConflicts()) {
 
                 // Check for Non Hazard Generator types
                 ProductGeneratorTable pgTable = sessionManager
@@ -683,90 +450,6 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Update the visible time delta.
-     */
-    void updateConsoleVisibleTimeDelta() {
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.VISIBLE_TIME_DELTA));
-    }
-
-    /**
-     * Examines all hazards looking for potential conflicts.
-     * 
-     * @param
-     * @return
-     */
-    private void checkHazardConflicts() {
-
-        ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
-                .getEventManager();
-
-        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
-                .getAllConflictingEvents();
-
-        if (!conflictMap.isEmpty()) {
-            launchConflictingHazardsDialog(conflictMap, false);
-        }
-
-    }
-
-    /**
-     * Toggles on/off automatic conflict checking.
-     */
-    private void toggleAutoCheckConflicts() {
-        sessionManager.toggleAutoHazardChecking();
-    }
-
-    /**
-     * Toggle on/off the display of hazard hatch areas.
-     * 
-     * @param
-     * @return
-     */
-    private void toggleHatchedAreaDisplay() {
-        sessionManager.toggleHatchedAreaDisplay();
-    }
-
-    private void exportApplicationSiteData() {
-        String siteId = getSiteId();
-        sessionManager.exportApplicationSiteData(siteId);
-    }
-
-    /**
-     * Process a user request (ConsoleAction) to import Hazard Services
-     * Localization for a list of backed up Site Id values.
-     */
-    private void importApplicationBackupSiteData() {
-        List<String> backupSiteIdList = retrieveBackupSiteIdList(false);
-        sessionManager.importApplicationBackupSiteData(backupSiteIdList);
-    }
-
-    /**
-     * Examines all hazards looking for potential conflicts. Returns the user's
-     * decision as to whether or not to continue with the conflicts.
-     * 
-     * @param
-     * @return The user's decision to continue (true) or not (false) if there
-     *         are existing
-     */
-    private Boolean continueIfThereAreHazardConflicts() {
-
-        Boolean userResponse = true;
-
-        ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
-                .getEventManager();
-
-        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
-                .getAllConflictingEvents();
-
-        if (!conflictMap.isEmpty()) {
-            userResponse = launchConflictingHazardsDialog(conflictMap, true);
-        }
-
-        return userResponse;
-    }
-
-    /**
      * Respond to the settings being modified.
      * 
      * @param change
@@ -817,157 +500,39 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Handle a received console display action. This method is called
-     * implicitly by the event bus when actions of this type are sent across the
-     * latter.
-     * 
-     * @param consoleAction
-     *            Action received.
-     */
-    @Handler
-    public void consoleActionOccurred(final ConsoleAction consoleAction) {
-        switch (consoleAction.getActionType()) {
-        case RESET:
-            reset(consoleAction.getId());
-            break;
-
-        case CHANGE_MODE:
-            if (consoleAction.getId().equals(ConsoleAction.CHECK_CONFLICTS)) {
-                checkHazardConflicts();
-            } else if (consoleAction.getId().equals(
-                    ConsoleAction.AUTO_CHECK_CONFLICTS)) {
-                toggleAutoCheckConflicts();
-            } else if (consoleAction.getId().equals(
-                    ConsoleAction.SHOW_HATCHED_AREA)) {
-                toggleHatchedAreaDisplay();
-            }
-            break;
-
-        case VISIBLE_TIME_RANGE_CHANGED:
-
-            long startTime = Long.parseLong(consoleAction.getStartTime());
-            long endTime = Long.parseLong(consoleAction.getEndTime());
-            updateVisibleTimeRange(startTime, endTime);
-            break;
-
-        case SELECTED_TIME_RANGE_CHANGED:
-            updateSelectedTimeRange(consoleAction.getStartTime(),
-                    consoleAction.getEndTime());
-            break;
-
-        case CHECK_BOX: {
-            Map<String, Serializable> eventInfo = new HashMap<>();
-            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
-            eventInfo.put(HAZARD_EVENT_CHECKED, consoleAction.getChecked());
-            updateEventData(eventInfo, true, consoleAction.getOriginator());
-
-            break;
-        }
-
-        case SELECTED_EVENTS_CHANGED:
-
-            List<String> selectedEventIDs = Lists.newArrayList(consoleAction
-                    .getSelectedEventIDs());
-            sessionEventManager.setSelectedEventForIDs(selectedEventIDs,
-                    UIOriginator.CONSOLE);
-
-            break;
-
-        case EVENT_TIME_RANGE_CHANGED: {
-            Map<String, Serializable> eventInfo = new HashMap<>();
-            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
-            eventInfo.put(HAZARD_EVENT_START_TIME,
-                    Long.parseLong(consoleAction.getStartTime()));
-            eventInfo.put(HAZARD_EVENT_END_TIME,
-                    Long.parseLong(consoleAction.getEndTime()));
-            updateEventData(eventInfo, true, consoleAction.getOriginator());
-            break;
-        }
-
-        case EVENT_END_TIME_UNTIL_FURTHER_NOTICE_CHANGED: {
-            Map<String, Serializable> eventInfo = new HashMap<>();
-            eventInfo.put(HAZARD_EVENT_IDENTIFIER, consoleAction.getId());
-            eventInfo.put(HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                    consoleAction.getChecked());
-            updateEventData(eventInfo, true, consoleAction.getOriginator());
-            break;
-        }
-
-        case SITE_CHANGED:
-            updateSite(consoleAction.getId());
-            break;
-
-        case CLOSE:
-            appBuilder.dispose();
-            break;
-
-        case RUN_AUTOMATED_TESTS:
-        case RUN_PRODUCT_GENERATION_TESTS:
-            /*
-             * Nothing to do here
-             */
-            break;
-
-        case SITE_DATA_OPERATION:
-
-            if (consoleAction.getId().equals(ConsoleAction.EXPORT_SITE_CONFIG)) {
-                exportApplicationSiteData();
-            } else if (consoleAction.getId().equals(
-                    ConsoleAction.IMPORT_SITE_CONFIG)) {
-
-                importApplicationBackupSiteData();
-            }
-            break;
-        default:
-            throw new IllegalArgumentException("Unexpected action type "
-                    + consoleAction.getActionType());
-        }
-
-    }
-
-    /**
      * Handle a received hazard detail action. This method is called implicitly
      * by the event bus when actions of this type are sent across the latter.
      * 
-     * @param hazardDetailAction
+     * @param productAction
      *            Action received.
      */
+    @SuppressWarnings("unchecked")
     @Handler
-    public void hazardDetailActionOccurred(
-            final HazardDetailAction hazardDetailAction) {
-        switch (hazardDetailAction.getActionType()) {
+    public void productActionOccurred(final ProductAction productAction) {
+        switch (productAction.getActionType()) {
         case PREVIEW:
+
+            /*
+             * Called from the hazard detail and product editor dialog.
+             */
             preview();
             break;
 
-        case PROPOSE:
-            changeSelectedEventsToProposedState(hazardDetailAction
-                    .getOriginator());
-            break;
-
-        case ISSUE:
-            setIssuedState();
-            break;
-
-        case REVIEW:
-            Map<String, Serializable> parameters = hazardDetailAction
-                    .getParameters();
-            ArrayList<ProductData> productData = (ArrayList<ProductData>) parameters
-                    .get(ReviewAction.PRODUCT_DATA_PARAM);
-            sessionProductManager.generateProductFromProductData(productData,
-                    true, false);
-            break;
         case VIEW:
-            Map<String, Serializable> params = hazardDetailAction
-                    .getParameters();
+
+            /*
+             * TODO: Move to presenter for product viewer selection dialog when
+             * the latter is refactored for MVP.
+             */
+            Map<String, Serializable> params = productAction.getParameters();
             ArrayList<ProductData> viewableProductData = (ArrayList<ProductData>) params
-                    .get(ReviewAction.PRODUCT_DATA_PARAM);
+                    .get(ProductViewerSelectionDlg.PRODUCT_DATA_PARAM);
             sessionProductManager.generateProductFromProductData(
                     viewableProductData, false, true);
             break;
         default:
             throw new IllegalArgumentException("Unsupported actionType "
-                    + hazardDetailAction.getActionType());
+                    + productAction.getActionType());
         }
 
     }
@@ -1007,7 +572,7 @@ public final class HazardServicesMessageHandler {
             final ProductGenerationConfirmation productGenerationConfirmation) {
         // Product Editor needs closed if issuing from it.
         this.sessionManager.setPreviewOngoing(false);
-        this.appBuilder.closeProductEditorView();
+        this.appBuilder.closeProductEditor();
     }
 
     @Handler
@@ -1107,20 +672,6 @@ public final class HazardServicesMessageHandler {
 
     }
 
-    @Handler
-    public void changeSiteOccurred(ChangeSiteAction action) {
-        sessionManager.getConfigurationManager().setSiteID(action.getSite());
-        ObservedSettings currentSetting = sessionManager
-                .getConfigurationManager().getSettings();
-        Set<String> visibleSites = currentSetting.getVisibleSites();
-        visibleSites.add(action.getSite());
-        currentSetting.setVisibleSites(visibleSites);
-        ConsoleAction cAction = new ConsoleAction(
-                ConsoleAction.ActionType.SITE_CHANGED);
-        cAction.setId(action.getSite());
-        consoleActionOccurred(cAction);
-    }
-
     /**
      * Retrieves the setting for the current perspective. If this perspective is
      * not specified by any Setting, then this method defaults to the first
@@ -1152,124 +703,5 @@ public final class HazardServicesMessageHandler {
          * information available. Is that dangerous?
          */
         return settingsList.get(0).getSettingsID();
-    }
-
-    /**
-     * Launches a dialog displaying conflicting hazards. It is up to the user as
-     * to whether or not to fix them.
-     * 
-     * @param conflictingHazardMap
-     *            A map of hazards and hazards which conflict with them.
-     * @param requiresConfirmation
-     *            Indicates whether or not this dialog should require user
-     *            confirmation (Yes or No).
-     * @return The return value from the dialog based on the user's selection.
-     */
-    private Boolean launchConflictingHazardsDialog(
-            final Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap,
-            final Boolean requiresConfirmation) {
-
-        Boolean userSelection = true;
-
-        if (!conflictingHazardMap.isEmpty()) {
-            StringBuffer message = new StringBuffer(
-                    "Conflicting Hazards: The following hazard conflicts exist: ");
-
-            if (requiresConfirmation) {
-                message.append("Continue?\n");
-            } else {
-                message.append("\n");
-            }
-
-            for (IHazardEvent hazardEvent : conflictingHazardMap.keySet()) {
-
-                String phenSig = HazardEventUtilities
-                        .getHazardType(hazardEvent);
-                message.append("Event ID:" + hazardEvent.getEventID() + "("
-                        + phenSig + ") Conflicts With: ");
-
-                Map<IHazardEvent, Collection<String>> conflictingHazards = conflictingHazardMap
-                        .get(hazardEvent);
-
-                for (IHazardEvent conflictingHazard : conflictingHazards
-                        .keySet()) {
-                    String conflictingPhenSig = HazardEventUtilities
-                            .getHazardType(conflictingHazard);
-                    message.append("Event ID:" + conflictingHazard.getEventID()
-                            + "(" + conflictingPhenSig + ") ");
-
-                    Collection<String> conflictingAreas = conflictingHazards
-                            .get(conflictingHazard);
-
-                    /*
-                     * TODO - Future work to be done under RM 7306. The below
-                     * label needs to be updated based on the ugcType of the
-                     * hazard. It could be a county, forecast zone, or fire wx
-                     * zone.
-                     */
-                    if (!conflictingAreas.isEmpty()) {
-                        message.append("\n\tForecast Zones:");
-
-                        for (String area : conflictingAreas) {
-                            message.append(" " + area);
-                        }
-                    }
-
-                }
-
-                message.append("\n");
-            }
-
-            if (requiresConfirmation) {
-                userSelection = appBuilder.getUserAnswerToQuestion(message
-                        .toString());
-
-            } else {
-                appBuilder.warnUser("Conflicting Hazards", message.toString());
-            }
-        }
-
-        return userSelection;
-    }
-
-    /**
-     * Return the currently configured Site Id value.
-     * 
-     * @return 3 character Site Id
-     */
-    private String getSiteId() {
-        return sessionConfigurationManager.getSiteID();
-    }
-
-    /**
-     * Return the list of Hazard Services Backed Up Site Id values.
-     * 
-     * Backed Up Site Id values are pulled from Localization:
-     * cave_static/.../hazardServces/backupSites.xml The "..." could be "base"
-     * or "site/<SITE_ID>, or user based.
-     * 
-     * @param includeLocalSite
-     *            boolean flag. When True; will include the current Site Id
-     * @param defaultToBase
-     *            boolean flag. When True and no Site specific values are found
-     *            that are configured for the current site; it will use the
-     *            backupSites.xml values from the base file.
-     * @return
-     */
-    private List<String> retrieveBackupSiteIdList(boolean includeLocalSite) {
-
-        List<String> backupSiteIdList = Arrays.asList(sessionManager
-                .getConfigurationManager().getStartUpConfig().getBackupSites());
-
-        if (includeLocalSite == true) {
-            String site = getSiteId();
-            backupSiteIdList.add(site);
-        }
-        if ((backupSiteIdList == null) || (backupSiteIdList.isEmpty())) {
-            statusHandler
-                    .warn("No configured Hazard Services Back up Site Id values found in StartUpConfig.");
-        }
-
-        return backupSiteIdList;
     }
 }

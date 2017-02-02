@@ -507,7 +507,7 @@ public class GraphSpecifier extends StatefulMegawidgetSpecifier implements
      * @param key
      *            Key within <code>parameters</code> under which to find the
      *            non-negative integer value.
-     * @param defValue
+     * @param defaultValue
      *            If present, this is the default value to be returned if <code>
      *            object</code> is <code>null</code>; if this parameter is
      *            <code>null</code>, then finding no value for <code>object
