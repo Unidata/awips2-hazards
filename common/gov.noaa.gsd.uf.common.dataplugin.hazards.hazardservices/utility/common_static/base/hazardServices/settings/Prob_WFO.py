@@ -59,7 +59,7 @@ Prob_WFO = {
     ],
     "visibleStatuses": [
         "potential",
-        "proposed",
+        #"proposed",
         "pending",
         "issued",
         "ending",

@@ -447,7 +447,7 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('probSeverAttrs',recommended)
         
         if recommended.get('belowThreshold'):
-            event.setStatus('PENDING')
+            event.setStatus('PROPOSED')
         else:
             event.setStatus('ISSUED')
         
