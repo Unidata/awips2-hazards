@@ -385,4 +385,12 @@ public class SimpleSessionEventManager implements
     public void revertEventToLastSaved(String eventIdentifier) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void mergeHazardEvents(IHazardEvent newEvent,
+            ObservedHazardEvent oldEvent, boolean forceMerge,
+            boolean keepVisualFeatures, boolean persistOnStatusChange,
+            IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -35,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -116,6 +117,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      count for a hazard event. Also moved selection methods to
  *                                      new selection manager, and added method for reverting an
  *                                      event to the most recent saved version.
+ * Feb 17, 2017 21676      Chris.Golden Changed to place old SessionEventUtilities merge method
+ *                                      into this interface.
  * </pre>
  * 
  * @author bsteffen
@@ -149,6 +152,37 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return
      */
     public E addEvent(IHazardEvent event, IOriginator originator);
+
+    /**
+     * Merge the contents of the new event into the old event, using the
+     * specified originator for any notifications that are sent out as a result.
+     * 
+     * @param newEvent
+     *            Event to be merged into the old event.
+     * @param oldEvent
+     *            Event into which to merge the new event.
+     * @param forceMerge
+     *            If <code>true</code>, the event manager will not be used to
+     *            set time range and hazard type, meaning the values from the
+     *            new event will not be checked for correctness before being
+     *            merged into the old event. If <code>false</code>, such checks
+     *            will occur.
+     * @param keepVisualFeatures
+     *            If <code>true</code>, then if the new event has no visual
+     *            features, the old event's visual features will be kept. If
+     *            <code>false</code>, the new event's visual features list will
+     *            always be used in place of the old one's.
+     * @param persistOnStatusChange
+     *            Flag indicating whether or not the event should be saved to
+     *            the database (persisted) if its status is being changed as a
+     *            result of this merge.
+     * @param originator
+     *            Originator of this action.
+     */
+    public void mergeHazardEvents(IHazardEvent newEvent,
+            ObservedHazardEvent oldEvent, boolean forceMerge,
+            boolean keepVisualFeatures, boolean persistOnStatusChange,
+            IOriginator originator);
 
     /**
      * Get the event with the given ID or null if there is no such event in the

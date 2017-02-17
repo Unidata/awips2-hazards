@@ -92,7 +92,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -232,12 +231,12 @@ import com.vividsolutions.jts.geom.Puntal;
  * Nov 17, 2016 26313      Chris.Golden Changed to work with the new capacity of hazard types to be associated
  *                                      with more than one UGC type.
  * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
+ * Feb 17, 2017 21676      Chris.Golden Changed to use session event manager's new merge method.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
 public class SessionProductManager implements ISessionProductManager {
 
     private static final IUFStatusHandler statusHandler = UFStatus
@@ -838,9 +837,8 @@ public class SessionProductManager implements ISessionProductManager {
                                 updatedEvent,
                                 (SessionEventManager) eventManager);
 
-                        SessionEventUtilities.mergeHazardEvents(eventManager,
-                                newEvent, sessionEvent, false, false, true,
-                                Originator.OTHER);
+                        eventManager.mergeHazardEvents(newEvent, sessionEvent,
+                                false, false, true, Originator.OTHER);
 
                         /*
                          * This ensures that the "replaces" string is removed

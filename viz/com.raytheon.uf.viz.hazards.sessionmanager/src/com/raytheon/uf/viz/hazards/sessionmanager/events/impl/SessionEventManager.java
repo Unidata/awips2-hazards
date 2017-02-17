@@ -71,6 +71,7 @@ import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.time.DateUtils;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
@@ -457,16 +458,26 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      for historical snapshots of events. Fixed bug that did not
  *                                      remove an event from the selection set if its status changed
  *                                      to one that was invisible under the current settings.
+ * Feb 17, 2017   21676    Chris.Golden Moved SessionEventUtilities methods into this class, making
+ *                                      them member methods instead of statics, since the former class
+ *                                      has no reason to have its methods separate from this class's
+ *                                      methods. Also changed the newly-brought-in merge method to
+ *                                      update the recorded end time/duration of a hazard event that
+ *                                      has changed status to issued, to avoid exceptions when a
+ *                                      hazard event arrives from the database already issued and the
+ *                                      clock ticks over to the next minute.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
 public class SessionEventManager implements
         ISessionEventManager<ObservedHazardEvent> {
 
     // Private Static Constants
+
+    private static final Set<String> ATTRIBUTES_TO_RETAIN_ON_MERGE = ImmutableSet
+            .of(HAZARD_EVENT_CHECKED, ISessionEventManager.ATTR_ISSUED);
 
     private static final String POINT_ID = "id";
 
@@ -2417,8 +2428,8 @@ public class SessionEventManager implements
         if ((eventID != null) && (eventID.length() > 0)) {
             ObservedHazardEvent existingEvent = getEventById(eventID);
             if (existingEvent != null) {
-                SessionEventUtilities.mergeHazardEvents(this, oevent,
-                        existingEvent, false, false, true, originator);
+                mergeHazardEvents(oevent, existingEvent, false, false, true,
+                        originator);
                 return existingEvent;
             }
         } else {
@@ -2489,10 +2500,10 @@ public class SessionEventManager implements
         if (oevent.getStatus() == null) {
             oevent.setStatus(HazardStatus.PENDING, false, false, originator);
         }
-        if (SessionEventUtilities.isEnded(oevent)) {
+        if (isEnded(oevent)) {
             oevent.setStatus(HazardStatus.ENDED);
         }
-        if (SessionEventUtilities.isElapsed(oevent)) {
+        if (isElapsed(oevent)) {
             oevent.setStatus(HazardStatus.ELAPSED);
         }
 
@@ -2599,6 +2610,131 @@ public class SessionEventManager implements
         return oevent;
     }
 
+    @Override
+    public void mergeHazardEvents(IHazardEvent newEvent,
+            ObservedHazardEvent oldEvent, boolean forceMerge,
+            boolean keepVisualFeatures, boolean persistOnStatusChange,
+            IOriginator originator) {
+
+        oldEvent.setSiteID(newEvent.getSiteID(), originator);
+
+        /*
+         * Set the hazard type and time range via the session manager if not a
+         * forced merge.
+         */
+        if (forceMerge) {
+            oldEvent.setHazardType(newEvent.getPhenomenon(),
+                    newEvent.getSignificance(), newEvent.getSubType(),
+                    originator);
+            oldEvent.setTimeRange(newEvent.getStartTime(),
+                    newEvent.getEndTime(), originator);
+        } else {
+            setEventType(oldEvent, newEvent.getPhenomenon(),
+                    newEvent.getSignificance(), newEvent.getSubType(),
+                    originator);
+            setEventTimeRange(oldEvent, newEvent.getStartTime(),
+                    newEvent.getEndTime(), originator);
+        }
+
+        oldEvent.setCreationTime(newEvent.getCreationTime(), originator);
+        oldEvent.setGeometry(newEvent.getGeometry(), originator);
+
+        /*
+         * If the keep visual features flag is set, only use the visual features
+         * of the new event if there is at least one, retaining the old event's
+         * features if the new one has none. If the flag is not set, always use
+         * the new event's visual feature list.
+         */
+        if ((keepVisualFeatures == false)
+                || ((newEvent.getVisualFeatures() != null) && (newEvent
+                        .getVisualFeatures().isEmpty() == false))) {
+            oldEvent.setVisualFeatures(newEvent.getVisualFeatures(), originator);
+        }
+
+        oldEvent.setHazardMode(newEvent.getHazardMode(), originator);
+
+        /*
+         * Get a copy of the old attributes, and the new ones, then transfer any
+         * attributes that are to be retained (if they are not already in the
+         * new attributes) from the old to the new. Then set the resulting map
+         * as the old hazard's attributes.
+         */
+        Map<String, Serializable> oldAttr = oldEvent.getHazardAttributes();
+        if (oldAttr == null) {
+            oldAttr = Collections.emptyMap();
+        }
+        Map<String, Serializable> newAttr = newEvent.getHazardAttributes();
+        newAttr = (newAttr != null ? new HashMap<>(newAttr)
+                : new HashMap<String, Serializable>());
+        for (String key : ATTRIBUTES_TO_RETAIN_ON_MERGE) {
+            if ((newAttr.containsKey(key) == false) && oldAttr.containsKey(key)) {
+                newAttr.put(key, oldAttr.get(key));
+            }
+        }
+        oldEvent.setHazardAttributes(newAttr, originator);
+
+        /*
+         * Change the status only if the event is not already ended (this could
+         * be relevant if the CAVE clock is set back) and if it is not the same
+         * as the previous status. If the status of the old event is changed,
+         * update its saved end time/duration if it is issued.
+         */
+        if ((isEnded(oldEvent) == false)
+                && (oldEvent.getStatus().equals(newEvent.getStatus()) == false)) {
+            oldEvent.setStatus(newEvent.getStatus(), true,
+                    persistOnStatusChange, Originator.OTHER);
+            updateSavedTimesForEventIfIssued(oldEvent, false);
+        }
+    }
+
+    /**
+     * Determine if the specified hazard event has ended.
+     * 
+     * @param event
+     *            Event to be checked.
+     * @return <code>true</code> if the event has ended, <code>false</code>
+     *         otherwise.
+     */
+    private boolean isEnded(IHazardEvent event) {
+        return (event.getStatus() == HazardStatus.ENDED);
+    }
+
+    /**
+     * Determine if the specified hazard event has elapsed based on its end time
+     * and the current CAVE clock time.
+     * 
+     * @param event
+     *            Event to be checked.
+     * @return <code>true</code> if the event is set to a status of
+     *         {@link HazardStatus#ELAPSED} or if the current CAVE clock time is
+     *         later than the event's end time, <code>false</code> otherwise.
+     */
+    private boolean isElapsed(IHazardEvent event) {
+        Date currTime = SimulatedTime.getSystemTime().getTime();
+        HazardStatus status = event.getStatus();
+        if ((status == HazardStatus.ELAPSED)
+                || (HazardStatus.issuedButNotEndedOrElapsed(status) && (event
+                        .getEndTime().before(currTime)))) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isPastExpirationTime(IHazardEvent event) {
+        long currTimeLong = SimulatedTime.getSystemTime().getMillis();
+
+        Long expirationTimeLong = (Long) event
+                .getHazardAttribute(HazardConstants.EXPIRATION_TIME);
+        if ((expirationTimeLong != null) && (expirationTimeLong < currTimeLong)) {
+            long expirationTime = expirationTimeLong.longValue();
+            if (expirationTime < currTimeLong) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Handle the addition or modification of an event in the database.
      * 
@@ -2608,8 +2744,8 @@ public class SessionEventManager implements
     void handleEventAdditionToDatabase(IHazardEvent event) {
         ObservedHazardEvent oldEvent = getEventById(event.getEventID());
         if (oldEvent != null) {
-            SessionEventUtilities.mergeHazardEvents(this, event, oldEvent,
-                    true, true, false, Originator.DATABASE);
+            mergeHazardEvents(event, oldEvent, true, true, false,
+                    Originator.DATABASE);
             notificationSender
                     .postNotificationAsync(new SessionEventHistoryModified(
                             this, getEventById(event.getEventID()),
@@ -3455,7 +3591,7 @@ public class SessionEventManager implements
                     identifiersWithChangedBoundaries
                             .add(thisEvent.getEventID());
                 }
-                if (SessionEventUtilities.isPastExpirationTime(thisEvent) == true) {
+                if (isPastExpirationTime(thisEvent) == true) {
                     identifiersWithExpiredTimes.add(thisEvent.getEventID());
                 }
             }
@@ -4652,9 +4788,9 @@ public class SessionEventManager implements
             HazardHistoryList list = getEventHistoryById(eventIdentifier);
             for (int index = list.size() - 1; index >= 0; index--) {
                 if (list.get(index).isVisibleInHistoryList()) {
-                    SessionEventUtilities.mergeHazardEvents(this,
-                            list.get(index), getEventById(eventIdentifier),
-                            false, false, false, Originator.OTHER);
+                    mergeHazardEvents(list.get(index),
+                            getEventById(eventIdentifier), false, false, false,
+                            Originator.OTHER);
                     return;
                 }
             }
