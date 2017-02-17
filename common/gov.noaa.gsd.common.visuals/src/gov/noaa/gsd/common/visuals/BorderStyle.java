@@ -17,6 +17,15 @@ import com.google.common.collect.ImmutableList;
 
 /**
  * Description: Possible border styles.
+ * <p>
+ * <strong>Note</strong>: The ordering of the values must not change, as the
+ * ordinals are used in serialization and deserialization of
+ * {@link VisualFeature} instances. Also, if more than 256 different values are
+ * specified, serialization and deserialization as done by
+ * {@link VisualFeaturesListBinarySerializer} and
+ * {@link VisualFeaturesListBinaryDeserializer} will need to be changed to use
+ * more than one byte.
+ * </p>
  * 
  * <pre>
  * 
@@ -25,6 +34,13 @@ import com.google.common.collect.ImmutableList;
  * ------------ ---------- ------------ --------------------------
  * Mar 10, 2016   15676    Chris.Golden Initial creation.
  * Mar 22, 2016   15676    Chris.Golden Added dotted border style.
+ * Feb 13, 2017   28892    Chris.Golden Added comment about need to maintain
+ *                                      ordering of values so that serialization
+ *                                      and deserialization will work between
+ *                                      versions of enclosing objects. Also
+ *                                      added static method to allow value to
+ *                                      be looked up by ordinal without using
+ *                                      values() each time.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,6 +64,13 @@ public enum BorderStyle {
             INSTANCES_FOR_DESCRIPTIONS.put(value.description, value);
         }
     }
+
+    /**
+     * List of all possible values, indexed by their ordinals. This is cached
+     * because {@link #values()} creates a new array each time it is called.
+     */
+    private static final List<BorderStyle> ALL_VALUES = ImmutableList
+            .copyOf(values());
 
     // Private Variables
 
@@ -77,6 +100,26 @@ public enum BorderStyle {
      */
     public static List<String> getDescriptions() {
         return ImmutableList.copyOf(INSTANCES_FOR_DESCRIPTIONS.keySet());
+    }
+
+    /**
+     * Get the value with the specified ordinal. Invoking this method rather
+     * than {@link #values()} is preferable because the latter creates a new
+     * array each time it is called.
+     * 
+     * @param ordinal
+     *            Ordinal for which to fetch the value.
+     * @return Value.
+     * @throws IllegalArgumentException
+     *             If the ordinal value is not within range.
+     */
+    public static BorderStyle getValueForOrdinal(int ordinal)
+            throws IllegalArgumentException {
+        if ((ordinal < 0) || (ordinal >= ALL_VALUES.size())) {
+            throw new IllegalArgumentException("ordinal value " + ordinal
+                    + " is out of range");
+        }
+        return ALL_VALUES.get(ordinal);
     }
 
     // Private Constructors

@@ -26,7 +26,6 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
-import gov.noaa.gsd.common.visuals.VisualFeaturesListSlotConverter;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -49,8 +48,8 @@ import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.geometryadapters.GeometryAdapter;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter.HazardAttributeSlotConverter;
-import com.raytheon.uf.common.geospatial.adapter.GeometryAdapter;
 import com.raytheon.uf.common.registry.annotations.RegistryObject;
 import com.raytheon.uf.common.registry.annotations.RegistryObjectVersion;
 import com.raytheon.uf.common.registry.annotations.SlotAttribute;
@@ -106,6 +105,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 21, 2016 15934      Chris.Golden Changed to work with new version of
  *                                      AdvancedGeometryUtilities.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag.
+ * Feb 13, 2017 28892      Chris.Golden Removed slot converter for visual features
+ *                                      list, as visual features should not be
+ *                                      put in slots.
  * </pre>
  * 
  * @author mnash
@@ -240,16 +242,18 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     /**
      * Visual features list of the hazard.
+     * <p>
+     * No slot attribute or slot converter is provided because there is no
+     * reason why visual features should have their own slots.
+     * </p>
      */
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = VisualFeaturesListAdapter.class)
     @XmlAttribute
-    @SlotAttribute(HazardConstants.VISUAL_FEATURES)
-    @SlotAttributeConverter(VisualFeaturesListSlotConverter.class)
     private VisualFeaturesList visualFeatures;
 
     /**
-     * The time this hazard was inserted into the repository
+     * The time this hazard was inserted into the repository.
      */
     @DynamicSerializeElement
     @XmlElement

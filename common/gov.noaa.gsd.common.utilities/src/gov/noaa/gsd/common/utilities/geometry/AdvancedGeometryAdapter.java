@@ -9,12 +9,13 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
-import gov.noaa.gsd.common.utilities.JsonConverter;
+import java.io.IOException;
 
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
 /**
- * Description: Advanced geometry adapter for JAXB.
+ * Description: Advanced geometry adapter for serializing and deserializing
+ * {@link IAdvancedGeometry} objects.
  * 
  * <pre>
  * 
@@ -22,6 +23,12 @@ import javax.xml.bind.annotation.adapters.XmlAdapter;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 01, 2016   15934    Chris.Golden Initial creation.
+ * Feb 13, 2017   28892    Chris.Golden Changed to use the binary translator
+ *                                      to do the marshaling and unmarshaling,
+ *                                      as well as using base-64-encoded
+ *                                      strings for the serialization
+ *                                      instead of JSON in order to reduce
+ *                                      the footprint of serialized objects.
  * </pre>
  * 
  * @author Chris.Golden
@@ -31,12 +38,14 @@ public class AdvancedGeometryAdapter extends
         XmlAdapter<String, IAdvancedGeometry> {
 
     @Override
-    public IAdvancedGeometry unmarshal(String g) throws Exception {
-        return JsonConverter.fromJson(g, IAdvancedGeometry.class);
+    public IAdvancedGeometry unmarshal(String g) throws IOException {
+        return AdvancedGeometryBinaryTranslator
+                .deserializeFromCompressedBytesInBase64String(g);
     }
 
     @Override
-    public String marshal(IAdvancedGeometry g) throws Exception {
-        return JsonConverter.toJson(g);
+    public String marshal(IAdvancedGeometry g) throws IOException {
+        return AdvancedGeometryBinaryTranslator
+                .serializeToCompressedBytesInBase64String(g);
     }
 }

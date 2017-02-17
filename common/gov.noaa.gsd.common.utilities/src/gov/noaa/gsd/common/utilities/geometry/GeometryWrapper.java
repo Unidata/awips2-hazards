@@ -9,9 +9,17 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
+import gov.noaa.gsd.common.utilities.SerializableBytes;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.ObjectStreamException;
+import java.io.OutputStream;
 import java.io.Serializable;
 
 import org.codehaus.jackson.annotate.JsonCreator;
@@ -26,13 +34,18 @@ import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.geom.Puntal;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
+import com.vividsolutions.jts.io.InputStreamInStream;
+import com.vividsolutions.jts.io.OutputStreamOutStream;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
 
 /**
- * Description: Wrapper for a {@link Geometry}.
+ * Description: Wrapper for a {@link Geometry}. Note that this class is
+ * serializable both in the conventional sense (implementing
+ * {@link Serializable}, and in the byte stream sense (implementing
+ * {@link IBinarySerializable}).
  * 
  * <pre>
  * 
@@ -50,6 +63,13 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
  *                                      that axis while resizing.
  * Oct 13, 2016   15928    Chris.Golden Fixed bug caused by serialization problems
  *                                      with NaN in coordinates.
+ * Feb 13, 2017   28892    Chris.Golden Changed to implement IBinarySerializable.
+ *                                      Also removed SerializableBytes as an inner
+ *                                      class and made it its own class, as it
+ *                                      could be reused elsewhere. As per Effective
+ *                                      Java book's recommendation, used a
+ *                                      serialization proxy to allow the member
+ *                                      variables to be final.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,93 +79,74 @@ import com.vividsolutions.jts.operation.valid.IsValidOp;
 @DynamicSerializeTypeAdapter(factory = AdvancedGeometrySerializationAdapter.class)
 public class GeometryWrapper implements IRotatable, IScaleable {
 
-    // Private Classes
+    // Private Static Classes
 
     /**
-     * Serializable array of bytes.
+     * Serialization proxy for instances of this class. Among other things, use
+     * of a proxy in this manner allows an enclosing class that requires custom
+     * serialization/deserialization to have its fields declared
+     * <code>final</code> instead of having them be mutable merely for the sake
+     * of implementing <code>readObject()</code>, or having to play reflection
+     * tricks or use the <code>sun.misc.Unsafe</code> class to get around
+     * assignment to <code>final</code> fields.
      */
-    private class SerializableBytes implements Serializable {
+    private static class SerializationProxy implements Serializable {
 
         // Private Static Constants
 
         /**
-         * Serialization version UID.
+         * Serial version UID.
          */
-        private static final long serialVersionUID = -5954561615947845039L;
+        private static final long serialVersionUID = 1977940569704025471L;
 
         // Private Variables
 
         /**
-         * Array of bytes.
+         * Byte representation of enclosing class's {@link #geometry}.
          */
-        private byte[] bytes;
-
-        // Public Constructors
+        private final SerializableBytes geometryBytes;
 
         /**
-         * Construct an instance.
+         * Center point.
          */
-        public SerializableBytes(byte[] bytes) {
-            this.bytes = bytes;
-        }
-
-        // Public Methods
+        private final Coordinate centerPoint;
 
         /**
-         * Get the underlying byte array.
+         * Rotation.
+         */
+        private final double rotation;
+
+        // Package-Private Constructors
+
+        /**
+         * Construct a standard instance.
          * 
-         * @return Byte array.
+         * @param geometryWrapper
+         *            Geometry wrapper.
          */
-        public byte[] getBytes() {
-            return bytes;
+        SerializationProxy(GeometryWrapper geometryWrapper) {
+            geometryBytes = new SerializableBytes(WKB_WRITER.get().write(
+                    geometryWrapper.geometry));
+            centerPoint = geometryWrapper.centerPoint;
+            rotation = geometryWrapper.rotation;
         }
 
         // Private Methods
 
         /**
-         * Write out the object for serialization purposes. The length of the
-         * byte array is written, then the array itself if not zero-length.
+         * In response to deserialization, return an instance of the enclosing
+         * class instead of the object of this type that was deserialized.
          * 
-         * @param stream
-         *            Stream to which to write out the object.
-         * @throws IOException
-         *             If the object cannot be written out.
+         * @return Instance of the enclosing class that is generated from this
+         *         object, which in turn was just deserialized.
          */
-        private void writeObject(ObjectOutputStream stream) throws IOException {
-            if ((bytes == null) || (bytes.length == 0)) {
-                stream.writeInt(0);
-            } else {
-                stream.writeInt(bytes.length);
-                stream.write(bytes);
-            }
-        }
-
-        /**
-         * Read in the object for deserialization purposes. The length of the
-         * byte array is read, then the array itself if the length is not zero.
-         * 
-         * @param stream
-         *            Stream from which to read in the object.
-         * @throws IOException
-         *             If the object cannot be read in.
-         * @throws ClassNotFoundException
-         *             If the class of a serialized object cannot be found.
-         */
-        private void readObject(ObjectInputStream stream) throws IOException,
-                ClassNotFoundException {
-
-            /*
-             * Read in the length needed, and then if it is greater than zero,
-             * read in the bytes. Multiple passes may be needed to read in the
-             * entire buffer, as the stream's read() methods are not guaranteed
-             * to return all the bytes in one pass.
-             */
-            int length = stream.readInt();
-            bytes = new byte[length];
-            if (length > 0) {
-                for (int count = 0, thisCount = 0; count < length; count += thisCount) {
-                    thisCount = stream.read(bytes, count, length - count);
-                }
+        private Object readResolve() throws ObjectStreamException {
+            try {
+                return new GeometryWrapper(WKB_READER.get().read(
+                        geometryBytes.getBytes()), centerPoint, rotation);
+            } catch (ParseException e) {
+                throw new InvalidObjectException(
+                        "unable to parse wrapped JTS geometry: " + e);
             }
         }
     }
@@ -185,37 +186,25 @@ public class GeometryWrapper implements IRotatable, IScaleable {
     /**
      * Serial version UID.
      */
-    private static final long serialVersionUID = 205008170162262896L;
+    private static final long serialVersionUID = -4044983979872008566L;
 
     // Private Variables
 
     /**
      * Geometry.
-     * <p>
-     * <strong>NOTE</strong>: This field would be declared <code>final</code> if
-     * it did not need to be altered by {@link #readObject(ObjectInputStream)}.
-     * </p>
      */
-    private Geometry geometry;
+    private final Geometry geometry;
 
     /**
      * Center point of the bounding box of the shape, around which any rotation
      * is done.
-     * <p>
-     * <strong>NOTE</strong>: This field would be declared <code>final</code> if
-     * it did not need to be altered by {@link #readObject(ObjectInputStream)}.
-     * </p>
      */
-    private Coordinate centerPoint;
+    private final Coordinate centerPoint;
 
     /**
      * Rotation in counterclockwise radians.
-     * <p>
-     * <strong>NOTE</strong>: This field would be declared <code>final</code> if
-     * it did not need to be altered by {@link #readObject(ObjectInputStream)}.
-     * </p>
      */
-    private double rotation;
+    private final double rotation;
 
     // Public Constructors
 
@@ -253,6 +242,34 @@ public class GeometryWrapper implements IRotatable, IScaleable {
                 firstPoint.y).transform(centerPoint, centerPoint);
     }
 
+    /**
+     * Construct an instance by deserializing from the specified input stream.
+     * It is assumed that the serialization that is being deserialized was
+     * produced by {@link #toBinary(OutputStream)}. This constructor must be
+     * included because this class implements {@link IBinarySerializable}.
+     * 
+     * @param bytesInputStream
+     *            Byte array input stream from which to deserialize.
+     * @throws IOException
+     *             If a deserialization error occurs.
+     */
+    public GeometryWrapper(ByteArrayInputStream bytesInputStream)
+            throws IOException {
+        try {
+            this.geometry = WKB_READER.get().read(
+                    new InputStreamInStream(bytesInputStream));
+        } catch (ParseException e) {
+            throw new IOException("unable to parse serialized geometry", e);
+        }
+        this.centerPoint = new Coordinate(
+                PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
+                        ByteOrder.BIG_ENDIAN),
+                PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
+                        ByteOrder.BIG_ENDIAN), 0.0);
+        this.rotation = PrimitiveAndStringBinaryTranslator.readDouble(
+                bytesInputStream, ByteOrder.BIG_ENDIAN);
+    }
+
     // Private Constructors
 
     /**
@@ -261,6 +278,8 @@ public class GeometryWrapper implements IRotatable, IScaleable {
      * 
      * @param geometry
      *            Geometry defining the shape; cannot be <code>null</code>.
+     * @param centerPoint
+     *            Center point of the shape.
      * @param rotation
      *            Rotation in counterclockwise radians; must be in the range
      *            <code>[0, 2 * Pi)</code>.
@@ -432,6 +451,18 @@ public class GeometryWrapper implements IRotatable, IScaleable {
     }
 
     @Override
+    public void toBinary(OutputStream outputStream) throws IOException {
+        WKB_WRITER.get().write(geometry,
+                new OutputStreamOutStream(outputStream));
+        PrimitiveAndStringBinaryTranslator.writeDouble(centerPoint.x,
+                outputStream, ByteOrder.BIG_ENDIAN);
+        PrimitiveAndStringBinaryTranslator.writeDouble(centerPoint.y,
+                outputStream, ByteOrder.BIG_ENDIAN);
+        PrimitiveAndStringBinaryTranslator.writeDouble(rotation, outputStream,
+                ByteOrder.BIG_ENDIAN);
+    }
+
+    @Override
     public String toString() {
         return geometry.toString();
     }
@@ -439,45 +470,28 @@ public class GeometryWrapper implements IRotatable, IScaleable {
     // Private Methods
 
     /**
-     * Write out the object for serialization purposes. This is required because
-     * the {@link Geometry} object found within {@link #geometry} cannot easily
-     * be deserialized (sometimes resulting in {@link ClassNotFoundException}
-     * being thrown).
+     * Ensure that serialization attempts end up providing an instance of
+     * {@link SerializationProxy} instead.
      * 
-     * @param stream
-     *            Stream to which to write out the object.
-     * @throws IOException
-     *             If the object cannot be written out.
+     * @return Instance of the proxy to be serialized instead of this object.
      */
-    private void writeObject(ObjectOutputStream stream) throws IOException {
-        stream.writeObject(new SerializableBytes(WKB_WRITER.get().write(
-                geometry)));
-        stream.writeObject(centerPoint);
-        stream.writeDouble(rotation);
+    private Object writeReplace() {
+        return new SerializationProxy(this);
     }
 
     /**
-     * Read in the object for deserialization purposes. This is required because
-     * the {@link Geometry} object found within {@link #geometry} cannot easily
-     * be deserialized (sometimes resulting in {@link ClassNotFoundException}
-     * being thrown).
+     * Since this object should never be deserialized directly, but rather an
+     * instance of its {@link SerializationProxy} should be deserialized and
+     * converted to an instance of this object, throw an error if anything
+     * attempts a direct deserialization.
      * 
      * @param stream
-     *            Stream from which to read in the object.
-     * @throws IOException
-     *             If the object cannot be read in.
-     * @throws ClassNotFoundException
-     *             If the class of a serialized object cannot be found.
+     *            Input stream.
+     * @throws InvalidObjectException
+     *             Whenever invoked.
      */
-    private void readObject(ObjectInputStream stream) throws IOException,
-            ClassNotFoundException {
-        SerializableBytes bytes = (SerializableBytes) stream.readObject();
-        try {
-            geometry = WKB_READER.get().read(bytes.getBytes());
-        } catch (ParseException e) {
-            throw new IOException("could not read in geometry", e);
-        }
-        centerPoint = (Coordinate) stream.readObject();
-        rotation = stream.readDouble();
+    private void readObject(ObjectInputStream stream)
+            throws InvalidObjectException {
+        throw new InvalidObjectException("proxy required");
     }
 }

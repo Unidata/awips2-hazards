@@ -18,7 +18,6 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -206,6 +205,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            down to nothing. Also moved some code into the
  *                                            HazardServicesAppBuilder and presenters, as
  *                                            appropriate.
+ * Feb 13, 2017 28892      Chris.Golden       Removed unneeded code.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -247,12 +247,10 @@ public final class HazardServicesMessageHandler {
      * @param settings
      *            Settings with which to start; if <code>null</code>, the
      *            default settings for the current perspective are used.
-     * @param currentTime
-     *            The current time, based on the CAVE current time.
      * 
      */
     public HazardServicesMessageHandler(HazardServicesAppBuilder appBuilder,
-            ObservedSettings settings, Date currentTime) {
+            ObservedSettings settings) {
         this.appBuilder = appBuilder;
         this.sessionManager = appBuilder.getSessionManager();
         this.sessionProductManager = sessionManager.getProductManager();

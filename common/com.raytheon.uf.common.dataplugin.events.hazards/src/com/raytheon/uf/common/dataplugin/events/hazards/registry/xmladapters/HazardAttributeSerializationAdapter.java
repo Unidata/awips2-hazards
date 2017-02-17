@@ -77,7 +77,7 @@ public class HazardAttributeSerializationAdapter implements
                 try {
                     oos.close();
                 } catch (IOException e) {
-                    statusHandler.error("Error closing output stream",e);
+                    statusHandler.error("Error closing output stream", e);
                 }
             }
         }
@@ -98,13 +98,13 @@ public class HazardAttributeSerializationAdapter implements
             } catch (Exception e) {
                 throw new SerializationException(
                         "Error deserializing Class Object", e);
-            } finally{
+            } finally {
                 // Only close ois since its closure will cascade to bais
-                if(ois != null){
+                if (ois != null) {
                     try {
                         ois.close();
                     } catch (IOException e) {
-                        statusHandler.error("Error closing input stream",e);
+                        statusHandler.error("Error closing input stream", e);
                     }
                 }
             }

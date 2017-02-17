@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryAdapter;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 
 import java.io.IOException;
@@ -51,6 +52,7 @@ import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.common.dataplugin.events.IValidator;
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.geometryadapters.GeometryAdapter;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.xmladapters.HazardAttributeSerializationAdapter;
 import com.raytheon.uf.common.registry.annotations.RegistryObject;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -58,7 +60,6 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKTReader;
 
 /**
  * <p>
@@ -124,6 +125,13 @@ import com.vividsolutions.jts.io.WKTReader;
  *                                       long integers prior to serialization,
  *                                       and then change them back following
  *                                       deserialization.
+ * Feb 13, 2017   28892    Chris.Golden  Changed to use the new geometry adapter
+ *                                       and advanced geometry adapter for
+ *                                       serialization and deserialization of
+ *                                       attribute elements that are geometries
+ *                                       or advanced geometries, in order to
+ *                                       make the serialized forms of these
+ *                                       objects smaller.
  * </pre>
  * 
  * @author mnash
@@ -320,7 +328,12 @@ public class HazardAttribute implements IValidator, Serializable {
 
             @Override
             public String preprocess(Object object) {
-                return object.toString();
+                try {
+                    return GEOMETRY_ADAPTER.marshal((Geometry) object);
+                } catch (IOException e) {
+                    throw new IllegalStateException(
+                            "could not marshal Geometry to base64 string", e);
+                }
             }
         });
         map.put(Substitution.ADVANCED_GEOMETRY, new IPreprocessor() {
@@ -328,10 +341,11 @@ public class HazardAttribute implements IValidator, Serializable {
             @Override
             public String preprocess(Object object) {
                 try {
-                    return JsonConverter.toJson(object);
+                    return ADVANCED_GEOMETRY_ADAPTER
+                            .marshal((IAdvancedGeometry) object);
                 } catch (IOException e) {
                     throw new IllegalStateException(
-                            "could not marshal object of type IAdvancedGeometry to JSON",
+                            "could not marshal IAdvancedGeometry to base64 string",
                             e);
                 }
             }
@@ -357,11 +371,10 @@ public class HazardAttribute implements IValidator, Serializable {
             @Override
             public Object postprocess(Object object) {
                 try {
-                    return WKT_READER.get().read((String) object);
-                } catch (ParseException e) {
+                    return GEOMETRY_ADAPTER.unmarshal((String) object);
+                } catch (IOException | ParseException e) {
                     throw new IllegalStateException(
-                            "could not unmarshal Well-Known-Text to Geometry",
-                            e);
+                            "could not unmarshal base64 string to Geometry", e);
                 }
             }
         });
@@ -370,11 +383,11 @@ public class HazardAttribute implements IValidator, Serializable {
             @Override
             public Object postprocess(Object object) {
                 try {
-                    return JsonConverter.fromJson((String) object,
-                            IAdvancedGeometry.class);
+                    return ADVANCED_GEOMETRY_ADAPTER.unmarshal((String) object);
                 } catch (IOException e) {
                     throw new IllegalStateException(
-                            "could not unmarshal JSON to IAdvancedGeometry", e);
+                            "could not unmarshal base64 string to IAdvancedGeometry",
+                            e);
                 }
             }
         });
@@ -396,16 +409,16 @@ public class HazardAttribute implements IValidator, Serializable {
     }
 
     /**
-     * Well-Known-Text reader, used for deserializing {@link Geometry} objects.
-     * This is thread-local because WKT readers are not thread-safe.
+     * Geometry adapter, used to serialize and deserialize {@link Geometry}
+     * objects.
      */
-    private static final ThreadLocal<WKTReader> WKT_READER = new ThreadLocal<WKTReader>() {
+    private static final GeometryAdapter GEOMETRY_ADAPTER = new GeometryAdapter();
 
-        @Override
-        protected WKTReader initialValue() {
-            return new WKTReader();
-        }
-    };
+    /**
+     * Advanced geometry adapter, used to serialize and deserialize
+     * {@link IAdvancedGeometry} objects.
+     */
+    private static final AdvancedGeometryAdapter ADVANCED_GEOMETRY_ADAPTER = new AdvancedGeometryAdapter();
 
     /**
      * Map pairing simple class types with their unmarshalling methods. A

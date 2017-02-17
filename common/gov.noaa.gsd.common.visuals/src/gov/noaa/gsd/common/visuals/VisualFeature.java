@@ -23,8 +23,6 @@ import java.util.Map;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.colormap.Color;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 
 /**
  * Description: Visual feature, instances of which provide arbitrary drawable,
@@ -80,13 +78,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  *                                      to only mark them as rotatable and/or
  *                                      scaleable when the visual feature is
  *                                      selected.
+ * Feb 13, 2017   28892    Chris.Golden Added static method to get the current
+ *                                      serialization version number. Also removed
+ *                                      annotations concerning serialization,
+ *                                      since the latter is done at the level of
+ *                                      the visual features list now.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-@DynamicSerialize
-@DynamicSerializeTypeAdapter(factory = VisualFeatureSerializationAdapter.class)
 public class VisualFeature implements Serializable {
 
     // Private Static Constants
@@ -705,6 +706,23 @@ public class VisualFeature implements Serializable {
      * <code>null</code>.
      */
     private TemporallyVariantProperty<Boolean> topmost;
+
+    // Package-Private Static Methods
+
+    /**
+     * Get the version number of this class. This number should be incremented
+     * as changes are made that affect serialization and deserialization via the
+     * {@link VisualFeaturesListBinarySerializer} and
+     * {@link VisualFeaturesListBinaryDeserializer} methods, so that when
+     * deserializing a version that is different from the current version, the
+     * deserializer can attempt to bring the deserialized version up to the
+     * latest by putting in default values for new fields, etc.
+     * 
+     * @return Version number of this class.
+     */
+    static short getClassSerializationVersionNumber() {
+        return 1;
+    }
 
     // Public Constructors
 

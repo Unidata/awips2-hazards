@@ -14,7 +14,6 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +32,9 @@ import com.google.common.reflect.TypeToken;
  * Description: Helper class for {@link VisualFeaturesListJsonConverter}
  * providing methods to serialize instances of {@link VisualFeaturesList} into
  * JSON strings.
+ * <p>
+ * Note that the methods in this class are thread-safe.
+ * </p>
  * 
  * <pre>
  * 
@@ -60,12 +62,16 @@ import com.google.common.reflect.TypeToken;
  *                                      flag.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries
  *                                      now used by visual features.
+ * Feb 13, 2017   28892    Chris.Golden Extracted logic that is needed by other
+ *                                      serializers into a new base class,
+ *                                      VisualFeaturesListSerializer, and made
+ *                                      this class extend the new base class.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-class VisualFeaturesListJsonSerializer {
+class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
 
     // Private Interfaces
 
@@ -395,22 +401,8 @@ class VisualFeaturesListJsonSerializer {
                         @Override
                         public TemporallyVariantProperty<ImmutableList<String>> fetchPropertyValue(
                                 VisualFeature visualFeature) {
-                            TemporallyVariantProperty<ImmutableList<VisualFeature>> features = visualFeature
-                                    .getTemplates();
-                            if (features == null) {
-                                return null;
-                            }
-                            TemporallyVariantProperty<ImmutableList<String>> templates = new TemporallyVariantProperty<>(
-                                    convertVisualFeaturesToIdentifiers(features
-                                            .getDefaultProperty()));
-                            for (Map.Entry<Range<Date>, ImmutableList<VisualFeature>> entry : features
-                                    .getPropertiesForTimeRanges().entrySet()) {
-                                templates.addPropertyForTimeRange(
-                                        entry.getKey(),
-                                        convertVisualFeaturesToIdentifiers(entry
-                                                .getValue()));
-                            }
-                            return templates;
+                            return VisualFeaturesListJsonSerializer
+                                    .getIdentifiersOfVisualFeatureTemplates(visualFeature);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_GEOMETRY,
@@ -714,27 +706,6 @@ class VisualFeaturesListJsonSerializer {
          * Close up and complete the JSON object.
          */
         jsonGenerator.writeEndObject();
-    }
-
-    /**
-     * Convert the specified list of visual features to a list of the features'
-     * identifiers.
-     * 
-     * @param features
-     *            List of visual feature identifiers; may be <code>null</code>.
-     * @return List of identifiers, or <code>null</code> if the specified list
-     *         was <code>null</code>.
-     */
-    private static ImmutableList<String> convertVisualFeaturesToIdentifiers(
-            List<VisualFeature> features) {
-        List<String> identifiers = null;
-        if (features != null) {
-            identifiers = new ArrayList<>(features.size());
-            for (VisualFeature feature : features) {
-                identifiers.add(feature.getIdentifier());
-            }
-        }
-        return ImmutableList.copyOf(identifiers);
     }
 
     /**

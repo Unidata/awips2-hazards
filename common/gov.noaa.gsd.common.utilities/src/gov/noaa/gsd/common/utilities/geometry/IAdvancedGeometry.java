@@ -9,6 +9,11 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
 
 import org.codehaus.jackson.JsonFactory;
@@ -56,6 +61,23 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * implementations to, when turned into JSON, include their fully qualified
  * class names under the "class" property.
  * </p>
+ * <p>
+ * <strong>Note</strong>: Because implementations must also implement
+ * {@link IBinarySerializable}, each concrete implementation subclass must
+ * include a constructor that takes a {@link ByteArrayInputStream} as its sole
+ * parameter, and which creates an instance using the bytes found within said
+ * stream; see that interface's documentation for details.
+ * </p>
+ * <p>
+ * The reason for implementing both {@link Serializable} and
+ * <code>IBinarySerializable</code> is that it provides flexibility. Currently,
+ * standard Java object-based serialization/deserialization is used for
+ * <code>IAdvancedGeometry</code> objects that are hazard attribute values, for
+ * example, whereas <code>IAdvancedGeometry</code> objects that are associated
+ * with first class fields of a hazard event, or which are part of a visual
+ * feature, use <code>IBinarySerializable</code> serialization/deserialization,
+ * which tends to be faster.
+ * </p>
  * 
  * <pre>
  * 
@@ -66,13 +88,14 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Sep 29, 2016   15928    Chris.Golden Added method to retrieve center point.
  * Oct 13, 2016   15928    Chris.Golden Fixed bug caused by no serialization of
  *                                      center point.
+ * Feb 13, 2017   28892    Chris.Golden Changed to extend IBinarySerializable.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "class")
-public interface IAdvancedGeometry extends Serializable {
+public interface IAdvancedGeometry extends Serializable, IBinarySerializable {
 
     /**
      * Get a deep copy of the advanced geometry.
@@ -189,4 +212,8 @@ public interface IAdvancedGeometry extends Serializable {
      */
     @JsonIgnore
     public String getValidityProblemDescription();
+
+    @Override
+    @JsonIgnore
+    public void toBinary(OutputStream outputStream) throws IOException;
 }

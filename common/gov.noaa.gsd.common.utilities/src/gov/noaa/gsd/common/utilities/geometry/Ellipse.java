@@ -9,6 +9,14 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +33,10 @@ import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Description: Ellipse, with the center point described as a latitude-longitude
- * coordinate and the width and height described in specified units.
+ * coordinate and the width and height described in specified units. Note that
+ * this class is serializable both in the conventional sense (implementing
+ * {@link Serializable}, and in the byte stream sense (implementing
+ * {@link IBinarySerializable}).
  * 
  * <pre>
  * 
@@ -46,6 +57,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      to cause geometries to flip over the
  *                                      appropriate axis if the user crosses
  *                                      that axis while resizing.
+ * Feb 13, 2017   28892    Chris.Golden Changed to implement IBinarySerializable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -136,6 +148,38 @@ public class Ellipse implements IRotatable, IScaleable {
          * Ensure rotation is between 0 (inclusive) and 2 * Pi (exclusive).
          */
         this.rotation = (rotation + (2.0 * Math.PI)) % (2.0 * Math.PI);
+    }
+
+    /**
+     * Construct an instance by deserializing from the specified input stream.
+     * It is assumed that the serialization that is being deserialized was
+     * produced by {@link #toBinary(OutputStream)}. This constructor must be
+     * included because this class implements {@link IBinarySerializable}.
+     * 
+     * @param bytesInputStream
+     *            Byte array input stream from which to deserialize.
+     * @throws IOException
+     *             If a deserialization error occurs.
+     */
+    public Ellipse(ByteArrayInputStream bytesInputStream) throws IOException {
+        this.centerPoint = new Coordinate(
+                PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
+                        ByteOrder.BIG_ENDIAN),
+                PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
+                        ByteOrder.BIG_ENDIAN), 0.0);
+        this.width = PrimitiveAndStringBinaryTranslator.readDouble(
+                bytesInputStream, ByteOrder.BIG_ENDIAN);
+        this.height = PrimitiveAndStringBinaryTranslator.readDouble(
+                bytesInputStream, ByteOrder.BIG_ENDIAN);
+        try {
+            this.units = LinearUnit
+                    .getValueForOrdinal(PrimitiveAndStringBinaryTranslator
+                            .readByte(bytesInputStream));
+        } catch (IllegalArgumentException e) {
+            throw new IOException("unknown linear unit", e);
+        }
+        this.rotation = PrimitiveAndStringBinaryTranslator.readDouble(
+                bytesInputStream, ByteOrder.BIG_ENDIAN);
     }
 
     // Public Methods
@@ -330,6 +374,22 @@ public class Ellipse implements IRotatable, IScaleable {
             builder.append("no units specified");
         }
         return builder.toString();
+    }
+
+    @Override
+    public void toBinary(OutputStream outputStream) throws IOException {
+        PrimitiveAndStringBinaryTranslator.writeDouble(centerPoint.x,
+                outputStream, ByteOrder.BIG_ENDIAN);
+        PrimitiveAndStringBinaryTranslator.writeDouble(centerPoint.y,
+                outputStream, ByteOrder.BIG_ENDIAN);
+        PrimitiveAndStringBinaryTranslator.writeDouble(width, outputStream,
+                ByteOrder.BIG_ENDIAN);
+        PrimitiveAndStringBinaryTranslator.writeDouble(height, outputStream,
+                ByteOrder.BIG_ENDIAN);
+        PrimitiveAndStringBinaryTranslator.writeByte((short) units.ordinal(),
+                outputStream);
+        PrimitiveAndStringBinaryTranslator.writeDouble(rotation, outputStream,
+                ByteOrder.BIG_ENDIAN);
     }
 
     @Override

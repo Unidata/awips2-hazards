@@ -9,6 +9,13 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +36,9 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 /**
  * Description: Container of one or more instances of {@link IAdvancedGeometry},
  * similar to a JTS {@link GeometryCollection}'s relationship to
- * {@link Geometry}.
+ * {@link Geometry}. Note that this class is serializable both in the
+ * conventional sense (implementing {@link Serializable}, and in the byte stream
+ * sense (implementing {@link IBinarySerializable}).
  * 
  * <pre>
  * 
@@ -41,6 +50,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Oct 13, 2016   15928    Chris.Golden Fixed bug caused by serialization problems
  *                                      with NaN in coordinates.
  * Feb 01, 2017   15556    Chris.Golden Improved generic parameter usage.
+ * Feb 13, 2017   28892    Chris.Golden Changed to implement IBinarySerializable.
  * </pre>
  * 
  * @author Chris.Golden
@@ -78,8 +88,8 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
      *            Child advanced geometries; must be a non-empty list.
      */
     @JsonCreator
-    public <G extends IAdvancedGeometry & Serializable> AdvancedGeometryCollection(
-            @JsonProperty("children") List<G> children) {
+    public AdvancedGeometryCollection(
+            @JsonProperty("children") List<? extends IAdvancedGeometry> children) {
         this.children = ImmutableList.<IAdvancedGeometry> copyOf(children);
 
         /*
@@ -98,6 +108,34 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
         }
         Coordinate center = envelope.centre();
         centerPoint = new Coordinate(center.x, center.y, 0.0);
+    }
+
+    /**
+     * Construct an instance by deserializing from the specified input stream.
+     * It is assumed that the serialization that is being deserialized was
+     * produced by {@link #toBinary(OutputStream)}. This constructor must be
+     * included because this class implements {@link IBinarySerializable}.
+     * 
+     * @param bytesInputStream
+     *            Byte array input stream from which to deserialize.
+     * @throws IOException
+     *             If a deserialization error occurs.
+     */
+    public AdvancedGeometryCollection(ByteArrayInputStream bytesInputStream)
+            throws IOException {
+        int count = PrimitiveAndStringBinaryTranslator.readInteger(
+                bytesInputStream, ByteOrder.BIG_ENDIAN);
+        List<IAdvancedGeometry> children = new ArrayList<>(count);
+        for (int j = 0; j < count; j++) {
+            children.add(AdvancedGeometryBinaryTranslator
+                    .deserializeFromBinaryStream(bytesInputStream));
+        }
+        this.children = ImmutableList.copyOf(children);
+        this.centerPoint = new Coordinate(
+                PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
+                        ByteOrder.BIG_ENDIAN),
+                PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
+                        ByteOrder.BIG_ENDIAN));
     }
 
     // Public Methods
@@ -242,6 +280,20 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
             }
         }
         return builder.toString();
+    }
+
+    @Override
+    public void toBinary(OutputStream outputStream) throws IOException {
+        PrimitiveAndStringBinaryTranslator.writeInteger(children.size(),
+                outputStream, ByteOrder.BIG_ENDIAN);
+        for (IAdvancedGeometry geometry : children) {
+            AdvancedGeometryBinaryTranslator.serializeToBinaryStream(geometry,
+                    outputStream);
+        }
+        PrimitiveAndStringBinaryTranslator.writeDouble(centerPoint.x,
+                outputStream, ByteOrder.BIG_ENDIAN);
+        PrimitiveAndStringBinaryTranslator.writeDouble(centerPoint.y,
+                outputStream, ByteOrder.BIG_ENDIAN);
     }
 
     @Override

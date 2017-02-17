@@ -12,7 +12,8 @@ package gov.noaa.gsd.common.visuals;
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
 /**
- * Description: Visual features list adapter for JAXB.
+ * Description: Visual features list adapter for serializing and deserializing
+ * {@link VisualFeaturesList} objects.
  * 
  * <pre>
  * 
@@ -20,6 +21,12 @@ import javax.xml.bind.annotation.adapters.XmlAdapter;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 17, 2016   15676    Chris.Golden Initial creation.
+ * Feb 13, 2017   28892    Chris.Golden Changed to use the binary translator
+ *                                      to do the marshaling and unmarshaling,
+ *                                      as well as using base-64-encoded
+ *                                      strings for the serialization
+ *                                      instead of JSON in order to reduce
+ *                                      the footprint of serialized objects.
  * </pre>
  * 
  * @author Chris.Golden
@@ -30,11 +37,13 @@ public class VisualFeaturesListAdapter extends
 
     @Override
     public VisualFeaturesList unmarshal(String v) throws Exception {
-        return VisualFeaturesListJsonConverter.fromJson(v);
+        return VisualFeaturesListBinaryTranslator
+                .deserializeFromCompressedBytesInBase64String(v);
     }
 
     @Override
     public String marshal(VisualFeaturesList v) throws Exception {
-        return VisualFeaturesListJsonConverter.toJson(v);
+        return VisualFeaturesListBinaryTranslator
+                .serializeToCompressedBytesInBase64String(v);
     }
 }

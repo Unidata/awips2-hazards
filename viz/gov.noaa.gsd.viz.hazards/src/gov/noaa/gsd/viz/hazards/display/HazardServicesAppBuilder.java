@@ -120,7 +120,6 @@ import com.raytheon.uf.common.python.PyUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
-import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPane;
@@ -309,6 +308,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             hazard detail handler interfaces. Also moved methods
  *                                             from HazardServicesMessageHandler here as appropriate,
  *                                             and removed anything not being used.
+ * Feb 13, 2017 28892      Chris.Golden        Removed unneeded code.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -594,11 +594,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private boolean disposing = false;
 
     /**
-     * Current time
-     */
-    private Date currentTime;
-
-    /**
      * Viz resource associated with this builder.
      */
     private SpatialDisplay spatialDisplay;
@@ -771,13 +766,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * the user can interact with the CAVE status line clock only in
          * practice mode.
          */
-        currentTime = SimulatedTime.getSystemTime().getTime();
         this.sessionManager = SessionManagerFactory.getSessionManager(this,
                 spatialContextProvider, displayResourceContextProvider,
                 frameContextProvider, eventBus);
         messageHandler = new HazardServicesMessageHandler(this,
                 ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
-                        .getSettings(), currentTime);
+                        .getSettings());
 
         /**
          * Get a true/false, or OK/cancel, or yes/no answer from the user.

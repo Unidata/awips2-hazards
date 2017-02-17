@@ -11,6 +11,9 @@ package gov.noaa.gsd.common.visuals;
 
 import java.util.ArrayList;
 
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
+
 /**
  * Description: List of visual features. Each of the elements must have an
  * identifier that is unique within the list.
@@ -24,11 +27,18 @@ import java.util.ArrayList;
  * Mar 26, 2016   15676    Chris.Golden Added convenience lookup methods.
  * Jun 10, 2016   19537    Chris.Golden Changed convenience method to just
  *                                      do a replace instead of a lookup.
+ * Feb 13, 2017   28892    Chris.Golden Added annotations concerning
+ *                                      serialization, since the latter is
+ *                                      done at this level now, instead of
+ *                                      at the level of individual visual
+ *                                      features.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
+@DynamicSerialize
+@DynamicSerializeTypeAdapter(factory = VisualFeaturesListSerializationAdapter.class)
 public class VisualFeaturesList extends ArrayList<VisualFeature> {
 
     // Private Static Constants
@@ -37,6 +47,28 @@ public class VisualFeaturesList extends ArrayList<VisualFeature> {
      * Serialization version UID.
      */
     private static final long serialVersionUID = -2655616243967777587L;
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance with the default capacity that is empty.
+     */
+    public VisualFeaturesList() {
+
+        /*
+         * No action.
+         */
+    }
+
+    /**
+     * Construct a standard instance with the specified capacity that is empty.
+     * 
+     * @param capacity
+     *            Initial capacity.
+     */
+    public VisualFeaturesList(int capacity) {
+        super(capacity);
+    }
 
     // Public Methods
 

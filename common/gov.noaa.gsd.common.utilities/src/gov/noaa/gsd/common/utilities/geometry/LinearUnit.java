@@ -10,14 +10,23 @@
 package gov.noaa.gsd.common.utilities.geometry;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Various linear units, each providing a method to determine the
  * lat-lon point offset from a starting lat-lon point.
+ * <p>
+ * <strong>Note</strong>: The ordering of the values must not change, as the
+ * ordinals are used in serialization and deserialization of
+ * {@link IAdvancedGeometry} instances. Also, if more than 256 different values
+ * are specified, serialization as done by {@link Ellipse} will need to be
+ * changed to use more than one byte.
+ * </p>
  * 
  * <pre>
  * 
@@ -31,6 +40,13 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      method used to calculate an offset
  *                                      lat-lon point (it was yielding results
  *                                      with incorrect signs in some cases).
+ * Feb 13, 2017   28892    Chris.Golden Added comment about need to maintain
+ *                                      ordering of values so that serialization
+ *                                      and deserialization will work between
+ *                                      versions of enclosing objects. Also
+ *                                      added static method to allow value to
+ *                                      be looked up by ordinal without using
+ *                                      values() each time.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,6 +71,13 @@ public enum LinearUnit {
         }
         INSTANCES_FOR_IDENTIFIERS = ImmutableMap.copyOf(map);
     }
+
+    /**
+     * List of all possible values, indexed by their ordinals. This is cached
+     * because {@link #values()} creates a new array each time it is called.
+     */
+    private static final List<LinearUnit> ALL_VALUES = ImmutableList
+            .copyOf(values());
 
     // Private Variables
 
@@ -81,6 +104,26 @@ public enum LinearUnit {
      */
     public static LinearUnit getInstanceWithIdentifier(String identifier) {
         return INSTANCES_FOR_IDENTIFIERS.get(identifier);
+    }
+
+    /**
+     * Get the value with the specified ordinal. Invoking this method rather
+     * than {@link #values()} is preferable because the latter creates a new
+     * array each time it is called.
+     * 
+     * @param ordinal
+     *            Ordinal for which to fetch the value.
+     * @return Value.
+     * @throws IllegalArgumentException
+     *             If the ordinal value is not within range.
+     */
+    public static LinearUnit getValueForOrdinal(int ordinal)
+            throws IllegalArgumentException {
+        if ((ordinal < 0) || (ordinal >= ALL_VALUES.size())) {
+            throw new IllegalArgumentException("ordinal value " + ordinal
+                    + " is out of range");
+        }
+        return ALL_VALUES.get(ordinal);
     }
 
     // Private Constructors

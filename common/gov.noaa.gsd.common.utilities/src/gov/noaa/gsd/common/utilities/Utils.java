@@ -80,10 +80,12 @@ public class Utils {
     }
 
     /**
-     * Get the index of the specified element within the specified array. Note
-     * that the search uses identity equality (<code>==</code>) not equivalence,
-     * so the element being searched for must be within the array in order to
-     * get back a valid index, not just equivalent to an object in the array.
+     * Get the index of the specified element within the specified array.
+     * 
+     * <strong>Note</strong>: The search uses identity (<code>==</code>)
+     * equality, not equivalence, so the element being searched for must be
+     * within the array in order to get back a valid index, not just equivalent
+     * to an object in the array.
      * 
      * @param element
      *            Element to be searched for in the array.
