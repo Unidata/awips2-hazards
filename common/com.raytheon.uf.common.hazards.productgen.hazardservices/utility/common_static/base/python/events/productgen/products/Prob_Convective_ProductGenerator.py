@@ -8,7 +8,7 @@ import HazardDataAccess
 import TimeUtils
 from ProbUtils import ProbUtils
 from VisualFeatures import VisualFeatures
-import json, pickle, os
+import json, pickle, os, sys
 import datetime
 
 class Product(Prob_Generator.Product):
@@ -119,7 +119,7 @@ class Product(Prob_Generator.Product):
             # TO DO --convert hazard end time to millis
             hazardEvent.set('expirationTime', int(TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getEndTime())))
             hazardAttrs = hazardEvent.getHazardAttributes()
-            self.objectID = hazardEvent.get('objectID') if hazardEvent.get('objectID') else hazardEvent.getDisplayEventID()
+            
             self.automationLevel = hazardEvent.get('automationLevel', 'userOwned')
             self.percentage = hazardEvent.get('probabilities', '54')
             # Convert to a string
@@ -139,6 +139,15 @@ class Product(Prob_Generator.Product):
                 self.flush()
                 hazardEvent.setStatus('ENDED')
                            
+            
+            ### Requested by Greg:
+            ### "There should be an 'M' appended to the ID of any object that is wholly or partially manual"
+            hazardObjectID = hazardEvent.get('objectID', hazardEvent.getDisplayEventID())
+            if hazardObjectID != 'automated':
+                if not hazardObjectID.startswith('M'):
+                    hazardEvent.set('objectID', 'M'+hazardObjectID) 
+            self.objectID = hazardEvent.get('objectID')
+
             productDict = collections.OrderedDict()
             self._initializeProductDict(productDict, eventSetAttributes)
             productDict['productText'] =  self.getText()
@@ -256,6 +265,7 @@ class Product(Prob_Generator.Product):
         hazardEvent.set('editableObject', False)
         hazardEvent.set('settingMotionVector', False)
         hazardEvent.set('upstreamPolys', [])
+        hazardEvent.set('status', 'ISSUED')
                 
     def storeIssuedHazards(self,probHazardEvents):
         pu = ProbUtils()

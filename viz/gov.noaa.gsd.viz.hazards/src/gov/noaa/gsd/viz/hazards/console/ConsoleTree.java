@@ -3981,8 +3981,10 @@ class ConsoleTree implements IConsoleTree {
         for (Map.Entry<TabularEntity, TreeItem> entry : treeItemsForEntities
                 .entrySet()) {
             TreeEditor editor = treeEditorsForEntities.get(entry.getKey());
-            editor.setEditor(editor.getEditor(), entry.getValue(),
-                    tree.getColumnCount() - 1);
+            if (editor != null) {
+                editor.setEditor(editor.getEditor(), entry.getValue(),
+                        tree.getColumnCount() - 1);
+            }
         }
 
         /*

@@ -782,7 +782,7 @@ class ProbUtils(object):
     ######################################################
             
 
-    def createIntervalPolys(self, event, eventSetAttrs, nudge, swathPresetClass, startTime_ms, 
+    def createIntervalPolys(self, event, eventSetAttrs, swathPresetClass, startTime_ms, 
                              timeIntervals, timeDirection='forecast'):
         '''
         This method creates the forecast or upstream polygons given 
@@ -790,7 +790,6 @@ class ProbUtils(object):
                -- a direction and direction uncertainty
                -- a speed and a speed uncertainty
           -- eventSetAttrs
-          -- nudge -- whether or not this is a nudge
           -- swathPresetClass
           -- startTime_ms 
           -- a list of timeIntervals -- list of intervals (in secs) relative to given start time for
@@ -816,7 +815,7 @@ class ProbUtils(object):
         spdUVal = self.getDefaultMotionVectorKey(event, 'convectiveObjectSpdKtsUnc')
                             
         ### Get initial shape.  
-        # This represents the shape at the event start time resulting from the last nudge.
+        # This represents the shape at the event start time resulting from the last
         shape = event.getGeometry()
                 
         # Convert the shape to a shapely polygon.
@@ -991,8 +990,6 @@ class ProbUtils(object):
         return appDict.get(key, default)
     
     def getDefaultMotionVectorKey(self, event, key): 
-        print "PU getDefaultMotionVectorKey", key, int(event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0))))
-        self.flush()
         return int(event.get(key, self.getApplicationValue(key, self.defaultValueDict().get(key,0)))) 
     
     #########################################

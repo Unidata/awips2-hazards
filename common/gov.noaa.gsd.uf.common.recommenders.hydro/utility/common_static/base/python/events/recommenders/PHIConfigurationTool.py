@@ -67,7 +67,7 @@ class Recommender(RecommenderTemplate.Recommender):
         lowThresholdDict["label"] = "Set Low Threshold Value"
         lowThresholdDict["fieldType"] = "IntegerSpinner"
         lowThresholdDict["minValue"] = 0
-        lowThresholdDict["maxValue"] = 100
+        lowThresholdDict["maxValue"] = 101
         lowThresholdDict["values"] = self._configUtils.getLowThreshold()
         lowThresholdDict["showScale"] = True
         lowThresholdDict["incrementDelta"] = 10
@@ -138,7 +138,7 @@ class Recommender(RecommenderTemplate.Recommender):
         lowerRightLonDict["fieldName"] = "phiConfigLowerRightLon"
         lowerRightLonDict["label"] = "Lower Right Lon"
         lowerRightLonDict["fieldType"] = "Text"
-        lowerRightLonDict["values"] = -1
+        lowerRightLonDict["values"] = self.setPhiConfigLowerRightLon(self._configUtils.getDomainULLon(), self._configUtils.getDomainLonPoints())
         lowerRightLonDict["editable"] = False
         valueDict["phiConfigLowerRightLon"] = lowerRightLonDict["values"]
         fieldDictList.append(lowerRightLonDict)
@@ -147,7 +147,8 @@ class Recommender(RecommenderTemplate.Recommender):
         lowerRightLatDict["fieldName"] = "phiConfigLowerRightLat"
         lowerRightLatDict["label"] = "Lower Right Lat"
         lowerRightLatDict["fieldType"] = "Text"
-        lowerRightLatDict["values"] = -1
+        lowerRightLatDict["values"] = self.setPhiConfigLowerRightLat(self._configUtils.getDomainULLat(), self._configUtils.getDomainLatPoints())
+
         lowerRightLatDict["editable"] = False
         valueDict["phiConfigLowerRightLat"] = lowerRightLatDict["values"]
         fieldDictList.append(lowerRightLatDict)
@@ -195,6 +196,12 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def toString(self):
         return "PHIConfigurationTool"
+    
+    def setPhiConfigLowerRightLat(self, ulLatVal, latPts):
+        return ulLatVal - (0.01 * latPts)
+    
+    def setPhiConfigLowerRightLon(self, ulLonVal, lonPts):
+        return ulLonVal + (0.01 * lonPts)
     
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     returnDict = {}

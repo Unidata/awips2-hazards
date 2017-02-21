@@ -1823,18 +1823,30 @@ class MetaData(object):
 
 
     def convectiveGetAttrs(self):
-        attrs = self.hazardEvent.getHazardAttributes()
-        wdir = attrs.get('convectiveObjectDir')
-        wspd = attrs.get('convectiveObjectSpdKts')
+        attrs = self.hazardEvent.getHazardAttributes().get('probSeverAttrs', {})
+        #=======================================================================
+        # wdir = attrs.get('convectiveObjectDir')
+        # wspd = attrs.get('convectiveObjectSpdKts')
+        # if wdir:
+        #     vals.append(['wdir',wdir])
+        # if wspd:
+        #     vals.append(['wspd',wspd])
+        # if not wdir and not wspd:
+        #     vals.append(['N/A', 'N/A'])
+        #=======================================================================
         
         vals = []
+        for k,v in attrs.iteritems():
+            if isinstance(v, datetime.datetime):
+                v = str(v)
+            if isinstance(v, long):
+                v = str(datetime.datetime.fromtimestamp(v/1000))
+                
+            vals.append([k, v])
         
-        if wdir:
-            vals.append(['wdir',wdir])
-        if wspd:
-            vals.append(['wspd',wspd])
-        if not wdir and not wspd:
+        if len(vals) == 0:
             vals.append(['N/A', 'N/A'])
+        
                         
         tbl = {
             "fieldType": "Table",
@@ -1845,7 +1857,25 @@ class MetaData(object):
             "values": vals,
         }
         
-        return tbl
+        eb = {
+                "fieldType": "ExpandBar",
+                "fieldName": "expandBar1",
+                "leftMargin": 10,
+                "rightMargin": 10,
+                "topMargin": 5,
+                "bottomMargin": 5,
+                "expandHorizontally": False,
+                "expandVertically": False,
+                "pages": [
+                           {
+                            "pageName": "ProbSevere Attrs",
+                            "pageFields": [tbl]
+                            } 
+                         ]
+              }
+                
+        
+        return eb
         
     # Prob_Severe and Prob_Tornado
     def convectiveControls(self): 
@@ -1890,7 +1920,8 @@ class MetaData(object):
         self.flush()
         self.probUtils.setActivation(self.hazardEvent)
         activate = self.hazardEvent.get('activate', False)      
-        activateModify = self.hazardEvent.get('activateModify', False)      
+        activateModify = self.hazardEvent.get('activateModify', False)   
+        status = self.hazardEvent.getStatus()         
         mwList = [
             {
              "fieldType": "HiddenField",
@@ -1901,6 +1932,11 @@ class MetaData(object):
              "fieldType": "HiddenField",
              "fieldName": "activateModify",
              "values": activateModify,
+             },
+            {
+             "fieldType": "HiddenField",
+             "fieldName": "status",
+             "values": status,
              },
             {
              "fieldType": "HiddenField",
@@ -2432,11 +2468,33 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     os.sys.__stdout__.flush()
     if hazardSelected or modifyButtonChosen or autoShapeChosen: 
         
-        if hazardSelected: 
+        if hazardSelected:
+            automationLevel = mutableProperties.get('automationLevel', {}).get('values')
+            status = mutableProperties.get('status', {}).get('values') 
+            
             activate = mutableProperties.get('activate', {}).get('values')
             activateModify = mutableProperties.get('activateModify', {}).get('values')
-#             # Set the selectSemaphore to be picked up by SwathRecommender which will adjust the Visual Features
-#             returnDict['selectSemaphore'] = {'values': True}
+            
+            print "CM status, automationLevel", status, automationLevel
+            os.sys.__stdout__.flush()
+            if status == 'PENDING':
+                if automationLevel == 'userOwned' or automationLevel is None:
+                    activate = True
+                    activateModify = False
+                elif automationLevel == 'automated':
+                    activate = False
+                    activateModify = False
+                else:
+                    activate = False
+                    activateModify = True
+            elif status == 'ISSUED':
+                activate = False
+                activateModify = True
+            else: # status Ending, Ended, Elapsed
+                activate = False
+                activateModify = False   
+                
+            returnDict['selectSemaphore'] = {'values' : True}    
 
         elif modifyButtonChosen:
             activate = True
