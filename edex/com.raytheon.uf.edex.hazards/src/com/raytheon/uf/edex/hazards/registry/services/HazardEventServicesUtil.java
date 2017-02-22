@@ -45,10 +45,11 @@ import com.raytheon.uf.common.serialization.JAXBManager;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access.
+ * Feb 16, 2017 29138     Chris.Golden  Changed to work with new hazard event
+ *                                      services.
  * </pre>
  * 
  * @author bphillip
@@ -179,8 +180,8 @@ class HazardEventServicesUtil {
      * 
      * In the value table in the ebxml registry database, each type of object
      * (integer, string, boolean, etc.) has their own column to store data in.
-     * This method is retrieves the correct column to query on based on the
-     * type of the argument passed in.
+     * This method is retrieves the correct column to query on based on the type
+     * of the argument passed in.
      * 
      * @param value
      *            The value
@@ -242,7 +243,8 @@ class HazardEventServicesUtil {
      */
     protected static String getHazardEventResponse(
             List<RegistryObjectType> result) throws HazardEventServiceException {
-        HazardEventResponse response = new HazardEventResponse();
+        HazardEventResponse response = HazardEventResponse
+                .createIncludingAllHistoricalAndLatest();
         response.setEvents(getHazardEvents(result));
         return marshal(response);
     }
@@ -258,7 +260,7 @@ class HazardEventServicesUtil {
      */
     protected static String getRegistryObjectResponse(
             List<RegistryObjectType> result) throws HazardEventServiceException {
-        HazardEventResponse response = new HazardEventResponse();
+        HazardEventResponse response = HazardEventResponse.create();
         response.setRegistryObjects(result);
         return marshal(response);
     }

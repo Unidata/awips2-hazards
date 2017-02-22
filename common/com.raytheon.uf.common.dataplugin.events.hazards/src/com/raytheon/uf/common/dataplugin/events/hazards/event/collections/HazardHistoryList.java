@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -40,20 +41,22 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Oct 31, 2012            mnash     Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Oct 31, 2012            mnash        Initial creation
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Feb 16, 2017 29138     Chris.Golden  Changed to use HazardEvent instead of
+ *                                      IHazardEvent, since only the former
+ *                                      has a unique identifier.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
 @DynamicSerialize
-public class HazardHistoryList implements List<IHazardEvent> {
+public class HazardHistoryList implements List<HazardEvent> {
     @DynamicSerializeElement
-    private List<IHazardEvent> events = new LinkedList<IHazardEvent>();
+    private List<HazardEvent> events = new LinkedList<HazardEvent>();
 
     public IEvent getEventAtTime(Date date) {
         for (int i = 0; i < size(); i++) {
@@ -88,7 +91,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.ArrayList#add(int, java.lang.Object)
      */
     @Override
-    public void add(int index, IHazardEvent element) {
+    public void add(int index, HazardEvent element) {
         events.add(index, element);
         sort();
     }
@@ -99,7 +102,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.ArrayList#addAll(int, java.util.Collection)
      */
     @Override
-    public boolean addAll(int index, Collection<? extends IHazardEvent> c) {
+    public boolean addAll(int index, Collection<? extends HazardEvent> c) {
         boolean success = false;
         if (c != null) {
             success = events.addAll(index, c);
@@ -114,7 +117,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.ArrayList#addAll(java.util.Collection)
      */
     @Override
-    public boolean addAll(Collection<? extends IHazardEvent> c) {
+    public boolean addAll(Collection<? extends HazardEvent> c) {
         boolean success = false;
         if (c != null) {
             success = events.addAll(c);
@@ -129,7 +132,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.ArrayList#add(java.lang.Object)
      */
     @Override
-    public boolean add(IHazardEvent e) {
+    public boolean add(HazardEvent e) {
         // events are sorted by time, so we need to compare when we add that way
         // they are stored correctly
         boolean success = events.add(e);
@@ -179,7 +182,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.List#iterator()
      */
     @Override
-    public Iterator<IHazardEvent> iterator() {
+    public Iterator<HazardEvent> iterator() {
         return events.iterator();
     }
 
@@ -259,7 +262,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.List#get(int)
      */
     @Override
-    public IHazardEvent get(int index) {
+    public HazardEvent get(int index) {
         return events.get(index);
     }
 
@@ -269,7 +272,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.List#set(int, java.lang.Object)
      */
     @Override
-    public IHazardEvent set(int index, IHazardEvent element) {
+    public HazardEvent set(int index, HazardEvent element) {
         return events.set(index, element);
     }
 
@@ -279,7 +282,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.List#remove(int)
      */
     @Override
-    public IHazardEvent remove(int index) {
+    public HazardEvent remove(int index) {
         return events.remove(index);
     }
 
@@ -309,7 +312,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.List#listIterator()
      */
     @Override
-    public ListIterator<IHazardEvent> listIterator() {
+    public ListIterator<HazardEvent> listIterator() {
         return events.listIterator();
     }
 
@@ -319,7 +322,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.List#listIterator(int)
      */
     @Override
-    public ListIterator<IHazardEvent> listIterator(int index) {
+    public ListIterator<HazardEvent> listIterator(int index) {
         return events.listIterator(index);
     }
 
@@ -329,14 +332,14 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @see java.util.List#subList(int, int)
      */
     @Override
-    public List<IHazardEvent> subList(int fromIndex, int toIndex) {
+    public List<HazardEvent> subList(int fromIndex, int toIndex) {
         return events.subList(fromIndex, toIndex);
     }
 
     /**
      * @return the events
      */
-    public List<IHazardEvent> getEvents() {
+    public List<HazardEvent> getEvents() {
         return events;
     }
 
@@ -344,7 +347,7 @@ public class HazardHistoryList implements List<IHazardEvent> {
      * @param events
      *            the events to set
      */
-    public void setEvents(List<IHazardEvent> events) {
+    public void setEvents(List<HazardEvent> events) {
         this.events = events;
     }
 }

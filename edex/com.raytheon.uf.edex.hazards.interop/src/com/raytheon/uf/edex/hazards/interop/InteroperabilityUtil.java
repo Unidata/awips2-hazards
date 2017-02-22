@@ -29,7 +29,9 @@ import java.util.Map;
 import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -48,16 +50,17 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 08, 2014           bkowal       Initial creation
- * Apr 22, 2014 3357      bkowal       Implemented ETN comparison to compare hazard events.
- * Dec 18, 2014 #2826     dgilling     Change fields used in interoperability.
- * Feb 22, 2015   6561    mpduff       Use insertTime to find latest events.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Apr 08, 2014           bkowal        Initial creation
+ * Apr 22, 2014   3357    bkowal        Implemented ETN comparison to compare hazard events.
+ * Dec 18, 2014   2826    dgilling      Change fields used in interoperability.
+ * Feb 22, 2015   6561    mpduff        Use insertTime to find latest events.
+ * May 29, 2015   6895    Ben.Phillippe Refactored Hazard Service data access
+ * Oct 14, 2015  12494    Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Feb 16, 2017  29138    Chris.Golden  Changed to work with new hazard event manager.
  * </pre>
  * 
  * @author bkowal
@@ -79,7 +82,7 @@ public final class InteroperabilityUtil {
             IHazardEventManager manager, final String siteID,
             final String phenomnenon, final String significance,
             final String etn, final INTEROPERABILITY_TYPE type) {
-        List<IHazardEvent> hazardEvents = queryInteroperabilityByETNForHazards(
+        List<HazardEvent> hazardEvents = queryInteroperabilityByETNForHazards(
                 manager, siteID, phenomnenon, significance, etn, type);
         if (hazardEvents == null || hazardEvents.isEmpty()) {
             return null;
@@ -88,7 +91,7 @@ public final class InteroperabilityUtil {
         return hazardEvents.get(0);
     }
 
-    public static List<IHazardEvent> queryInteroperabilityByETNForHazards(
+    public static List<HazardEvent> queryInteroperabilityByETNForHazards(
             IHazardEventManager manager, final String siteID,
             final String phenomenon, final String significance,
             final String etn, final INTEROPERABILITY_TYPE type) {
@@ -112,35 +115,18 @@ public final class InteroperabilityUtil {
             return null;
         }
 
-        List<IHazardEvent> retrievedHazardEvents = new ArrayList<>();
+        List<HazardEvent> retrievedHazardEvents = new ArrayList<>();
         for (IHazardsInteroperabilityRecord record : records) {
             final String hazardEventID = record.getHazardEventID();
 
-            Map<String, HazardHistoryList> hazardEventsMap = manager
-                    .query(new HazardEventQueryRequest(
-                            HazardConstants.HAZARD_EVENT_IDENTIFIER,
-                            hazardEventID));
+            HazardEventQueryRequest request = new HazardEventQueryRequest(
+                    HazardConstants.HAZARD_EVENT_IDENTIFIER, hazardEventID);
+            request.setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
+            Map<String, HazardEvent> hazardEventsMap = manager
+                    .queryLatest(request);
             if (hazardEventsMap != null && hazardEventsMap.isEmpty() == false
                     && hazardEventsMap.containsKey(hazardEventID)) {
-
-                /*
-                 * Retrieve the most recent hazard from the history list.
-                 */
-                HazardHistoryList historyList = hazardEventsMap
-                        .get(hazardEventID);
-                if (historyList != null && historyList.isEmpty() == false) {
-                    IHazardEvent mostRecentEvent = historyList.get(0);
-                    Long latestTime = mostRecentEvent.getInsertTime().getTime();
-                    for (int count = 1; count < historyList.size(); count++) {
-                        IHazardEvent hazardEvent = historyList.get(count);
-                        Long hazardTime = hazardEvent.getInsertTime().getTime();
-                        if (hazardTime > latestTime) {
-                            latestTime = hazardTime;
-                            mostRecentEvent = hazardEvent;
-                        }
-                    }
-                    retrievedHazardEvents.add(mostRecentEvent);
-                }
+                retrievedHazardEvents.add(hazardEventsMap.get(hazardEventID));
             }
         }
 
@@ -163,14 +149,17 @@ public final class InteroperabilityUtil {
             IHazardEventManager manager, final String siteID,
             final String phen, final String sig, final String newETNs) {
         Map<String, HazardHistoryList> events = manager
-                .query(new HazardEventQueryRequest(HazardConstants.SITE_ID,
-                        siteID).and(HazardConstants.PHENOMENON, phen).and(
+                .queryHistory(new HazardEventQueryRequest(
+                        HazardConstants.SITE_ID, siteID).and(
+                        HazardConstants.PHENOMENON, phen).and(
                         HazardConstants.SIGNIFICANCE, sig));
         if (events == null || events.isEmpty()) {
             return null;
         }
 
-        /* Compare the Hazard ETNs. */
+        /*
+         * Compare the Hazard ETNs.
+         */
         Iterator<String> eventIDIterator = events.keySet().iterator();
         while (eventIDIterator.hasNext()) {
             String eventID = eventIDIterator.next();

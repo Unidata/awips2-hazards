@@ -41,6 +41,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
@@ -62,19 +63,21 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 22, 2013            mnash     Initial creation
- * March 3, 2014 3034      bkowal    Improved comparisons of existing hazards.
- *                                   GFE hazards do not initially have ETNs.
- * Mar 24, 2014  3323      bkowal    Use the mode to retrieve the correct
- *                                   GridParmInfo.
- * Apr 08, 2014  3357      bkowal    Updated to use the new interoperability tables.
- * Dec 04, 2014  2826      dgilling  Remove unneeded methods.
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * May 22, 2013            mnash         Initial creation
+ * March 3, 2014 3034      bkowal        Improved comparisons of existing hazards.
+ *                                       GFE hazards do not initially have ETNs.
+ * Mar 24, 2014  3323      bkowal        Use the mode to retrieve the correct
+ *                                       GridParmInfo.
+ * Apr 08, 2014  3357      bkowal        Updated to use the new interoperability tables.
+ * Dec 04, 2014  2826      dgilling      Remove unneeded methods.
  * May 29, 2015  6895      Ben.Phillippe Refactored Hazard Service data access
- * Aug 13, 2015  8836      Chris.Cody  Changes for a configurable Event Id
- * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries
- *                                      now used in hazard events.
+ * Aug 13, 2015  8836      Chris.Cody    Changes for a configurable Event Id
+ * Sep 14, 2016 15934      Chris.Golden  Changed to work with advanced geometries
+ *                                       now used in hazard events.
+ * Feb 16, 2017 29138      Chris.Golden  Changed to work with new hazard
+ *                                       event manager.
  * </pre>
  * 
  * @author mnash
@@ -216,7 +219,7 @@ public class GFEHazardsCreator {
                         return;
                     }
 
-                    IHazardEvent event = createEvent(manager, rec,
+                    HazardEvent event = createEvent(manager, rec,
                             newHazardGfeGeometry, practice);
 
                     final TimeRange hazardGfeTimeRange = GFERecordUtil
@@ -224,7 +227,7 @@ public class GFEHazardsCreator {
                                     event.getEndTime(),
                                     gridParmInfo.getTimeConstraints());
 
-                    List<IHazardEvent> eventsToUpdate = this.getEventsToUpdate(
+                    List<HazardEvent> eventsToUpdate = this.getEventsToUpdate(
                             manager, event, hazardGfeTimeRange.getStart(),
                             hazardGfeTimeRange.getEnd(), rec.getEtn());
 
@@ -243,14 +246,14 @@ public class GFEHazardsCreator {
                         statusHandler.info("Creating event: "
                                 + event.getEventID());
 
-                        manager.storeEvent(event);
+                        manager.storeEvents(event);
 
                         InteroperabilityUtil.newOrUpdateInteroperabilityRecord(
                                 event, rec.getEtn(), INTEROPERABILITY_TYPE.GFE);
                     } else {
-                        for (IHazardEvent eventToUpdate : eventsToUpdate) {
+                        for (HazardEvent eventToUpdate : eventsToUpdate) {
                             if (this.updateHazardWithProduct(eventToUpdate, rec)) {
-                                manager.updateEvent(eventToUpdate);
+                                manager.updateEvents(eventToUpdate);
                             }
 
                             InteroperabilityUtil
@@ -264,14 +267,14 @@ public class GFEHazardsCreator {
         }
     }
 
-    private List<IHazardEvent> getEventsToUpdate(HazardEventManager manager,
+    private List<HazardEvent> getEventsToUpdate(HazardEventManager manager,
             IHazardEvent potentialEvent, final Date startDate,
             final Date endDate, final String etn) {
         /*
          * Attempt to retrieve the associated hazard from the gfe
          * interoperability table, if there is one.
          */
-        List<IHazardEvent> events = GfeInteroperabilityUtil
+        List<HazardEvent> events = GfeInteroperabilityUtil
                 .queryForInteroperabilityHazards(potentialEvent.getSiteID(),
                         potentialEvent.getPhenomenon(),
                         potentialEvent.getSignificance(), startDate, endDate,
@@ -384,9 +387,9 @@ public class GFEHazardsCreator {
      * @param geom
      * @return
      */
-    private IHazardEvent createEvent(IHazardEventManager manager,
+    private HazardEvent createEvent(IHazardEventManager manager,
             AbstractWarningRecord rec, Geometry geom, boolean practice) {
-        IHazardEvent event = manager.createEvent();
+        HazardEvent event = manager.createEvent();
         event.setSiteID(rec.getXxxid());
         event.setPhenomenon(rec.getPhen());
         event.setSignificance(rec.getSig());

@@ -28,7 +28,7 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_KEYS;
@@ -44,12 +44,13 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 08, 2014            bkowal       Initial creation
- * Dec 12, 2014  #2826     dgilling     Change fields used for interoperability.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Apr 08, 2014            bkowal        Initial creation
+ * Dec 12, 2014   2826     dgilling      Change fields used for interoperability.
+ * May 29, 2015   6895     Ben.Phillippe Refactored Hazard Service data access
+ * Feb 16, 2017  29138     Chris.Golden  Changed to work with new hazard
+ *                                       event manager.
  * </pre>
  * 
  * @author bkowal
@@ -64,7 +65,7 @@ public final class GfeInteroperabilityUtil {
     protected GfeInteroperabilityUtil() {
     }
 
-    public static List<IHazardEvent> queryForInteroperabilityHazards(
+    public static List<HazardEvent> queryForInteroperabilityHazards(
             String siteID, String phenomenon, String significance,
             Date startDate, Date endDate, HazardEventManager hazardEventManager) {
         Map<String, Serializable> parameters = new HashMap<String, Serializable>();
@@ -94,7 +95,7 @@ public final class GfeInteroperabilityUtil {
         Map<String, HazardHistoryList> associatedEvents = new HashMap<>();
         for (IHazardsInteroperabilityRecord record : records) {
             Map<String, HazardHistoryList> events = hazardEventManager
-                    .query(new HazardEventQueryRequest(
+                    .queryHistory(new HazardEventQueryRequest(
                             HazardConstants.HAZARD_EVENT_IDENTIFIER, record
                                     .getHazardEventID()));
             if (events.isEmpty() == false) {
@@ -108,9 +109,9 @@ public final class GfeInteroperabilityUtil {
     /*
      * Builds a list of events to examine while handling the HazardHistoryList.
      */
-    public static List<IHazardEvent> evaluateReturnedEvents(
+    public static List<HazardEvent> evaluateReturnedEvents(
             Map<String, HazardHistoryList> events) {
-        List<IHazardEvent> hazardEventsToIterateOver = null;
+        List<HazardEvent> hazardEventsToIterateOver = null;
 
         /*
          * determine how many hazards need to be reviewed.

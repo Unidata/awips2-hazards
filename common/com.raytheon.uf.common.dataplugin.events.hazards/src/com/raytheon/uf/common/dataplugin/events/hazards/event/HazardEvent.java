@@ -108,6 +108,14 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 13, 2017 28892      Chris.Golden Removed slot converter for visual features
  *                                      list, as visual features should not be
  *                                      put in slots.
+ * Feb 16, 2017 29138      Chris.Golden Removed the visible-in-history-list flag
+ *                                      since use of the history list is being
+ *                                      reduced with advent of ability to save
+ *                                      a "latest version" to the database that
+ *                                      is not part of the history list. Also
+ *                                      added ability to configure instances to
+ *                                      indicate they are "latest version" ones,
+ *                                      that is, not to be in the history list.
  * </pre>
  * 
  * @author mnash
@@ -121,6 +129,13 @@ import com.vividsolutions.jts.geom.Geometry;
         HazardConstants.HAZARD_EVENT_IDENTIFIER, HazardConstants.UNIQUE_ID })
 @RegistryObjectVersion(value = 1.0f)
 public class HazardEvent implements IHazardEvent, IValidator {
+
+    /**
+     * Value for the {@link HazardEvent#uniqueID} indicating that this is the
+     * latest version of the hazard event that has been persisted (not part of
+     * the history list).
+     */
+    public static final String LATEST_VERSION = "latest";
 
     /**
      * The issuing site ID
@@ -142,16 +157,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @XmlAttribute
     @SlotAttribute(HazardConstants.UNIQUE_ID)
     private String uniqueID = UUID.randomUUID().toString();
-
-    /**
-     * Flag indicating whether or not this hazard event should be visible in the
-     * history list. This is only meaningful if this hazard event has been
-     * persisted.
-     */
-    @DynamicSerializeElement
-    @XmlAttribute
-    @SlotAttribute(HazardConstants.HAZARD_EVENT_VISIBLE_IN_HISTORY_LIST)
-    private boolean visibleInHistoryList = true;
 
     /**
      * The status of the record at this point in time
@@ -304,7 +309,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
     public HazardEvent(IHazardEvent event) {
         this();
         setEventID(event.getEventID());
-        setVisibleInHistoryList(event.isVisibleInHistoryList());
         setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
@@ -356,6 +360,14 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     public void setUniqueID(String uniqueID) {
         this.uniqueID = uniqueID;
+    }
+
+    public boolean isLatestVersion() {
+        return uniqueID.equals(LATEST_VERSION);
+    }
+
+    public void setLatestVersion() {
+        uniqueID = LATEST_VERSION;
     }
 
     @Override
@@ -620,8 +632,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         result = prime * result + ((status == null) ? 0 : status.hashCode());
         result = prime * result + ((subType == null) ? 0 : subType.hashCode());
         result = prime * result
-                + Boolean.valueOf(visibleInHistoryList).hashCode();
-        result = prime * result
                 + ((uniqueID == null) ? 0 : uniqueID.hashCode());
         return result;
     }
@@ -735,9 +745,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } else if (!subType.equals(other.subType)) {
             return false;
         }
-        if (visibleInHistoryList != other.visibleInHistoryList) {
-            return false;
-        }
         return true;
     }
 
@@ -796,15 +803,5 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public String getWorkStation() {
         return workStation;
-    }
-
-    @Override
-    public boolean isVisibleInHistoryList() {
-        return visibleInHistoryList;
-    }
-
-    @Override
-    public void setVisibleInHistoryList(boolean visible) {
-        this.visibleInHistoryList = visible;
     }
 }

@@ -22,7 +22,7 @@ package com.raytheon.uf.edex.hazards.interop.warngen;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.edex.hazards.interop.AbstractLegacyAppInteropSrv;
@@ -50,6 +50,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Jan 23, 2015 2826       dgilling     Refactor based on AbstractLegacyAppInteropSrv.
  * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries now used in
  *                                      hazard events.
+ * Feb 16, 2017 29138      Chris.Golden Changed to work with new hazard event manager.
  * </pre>
  * 
  * @author mnash
@@ -108,7 +109,7 @@ public final class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
      * .uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager)
      */
     @Override
-    protected IHazardEvent addAppSpecificHazardAttributes(IHazardEvent event,
+    protected HazardEvent addAppSpecificHazardAttributes(HazardEvent event,
             AbstractWarningRecord warningRecord, IHazardEventManager manager) {
         event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(
                 new GeometryFactory()

@@ -34,6 +34,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
@@ -56,10 +57,11 @@ import com.raytheon.uf.edex.site.SiteAwareRegistry;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jan 28, 2015  #2826     dgilling     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jan 28, 2015   2826     dgilling     Initial creation
+ * Feb 16, 2017  29138     Chris.Golden Changed to work with new hazard
+ *                                      event manager.
  * </pre>
  * 
  * @author dgilling
@@ -143,7 +145,7 @@ public abstract class AbstractLegacyAppInteropSrv {
                             + existingEvent.getEventID());
                     eventToStore = existingEvent;
                 } else {
-                    IHazardEvent newEvent = null;
+                    HazardEvent newEvent = null;
                     try {
                         newEvent = buildHazardEventFromWarningRecord(record,
                                 manager);
@@ -154,7 +156,7 @@ public abstract class AbstractLegacyAppInteropSrv {
                     }
 
                     if (newEvent != null) {
-                        boolean stored = manager.storeEvent(newEvent);
+                        boolean stored = manager.storeEvents(newEvent);
                         if (stored) {
                             statusHandler.info("Created Hazard "
                                     + newEvent.getEventID());
@@ -254,11 +256,11 @@ public abstract class AbstractLegacyAppInteropSrv {
      *             If the {@code IHazardEvent} could not be created for any
      *             reason.
      */
-    protected final IHazardEvent buildHazardEventFromWarningRecord(
+    protected final HazardEvent buildHazardEventFromWarningRecord(
             final AbstractWarningRecord warningRecord,
             IHazardEventManager manager) throws Exception {
 
-        IHazardEvent event = manager.createEvent();
+        HazardEvent event = manager.createEvent();
 
         String value = HazardEventUtilities.determineEtn(
                 warningRecord.getXxxid(), warningRecord.getAct(),
@@ -349,8 +351,8 @@ public abstract class AbstractLegacyAppInteropSrv {
      * @return The {@code IHazardEvent} that matches the information contained
      *         in the specified {@code AbstractWarningRecord}.
      */
-    protected abstract IHazardEvent addAppSpecificHazardAttributes(
-            IHazardEvent event, final AbstractWarningRecord warningRecord,
+    protected abstract HazardEvent addAppSpecificHazardAttributes(
+            HazardEvent event, final AbstractWarningRecord warningRecord,
             final IHazardEventManager manager);
 
     /**

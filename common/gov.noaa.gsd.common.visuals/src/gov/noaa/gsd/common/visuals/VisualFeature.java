@@ -736,7 +736,7 @@ public class VisualFeature implements Serializable {
     public VisualFeature(VisualFeature original) {
 
         /*
-         * All immutable properties of the original feature are simply
+         * All publicly immutable properties of the original feature are simply
          * referenced by this new object, since their immutability guarantees
          * that sharing the objects will not cause problems.
          */
@@ -762,9 +762,9 @@ public class VisualFeature implements Serializable {
         this.topmost = original.topmost;
 
         /*
-         * Mutable properties must be copied down to the point where immutable
-         * components are encountered. Geometries for all practical purposes
-         * immutable.
+         * Publicly mutable properties must be copied down to the point where
+         * immutable components are encountered. Geometries for all practical
+         * purposes immutable.
          */
         this.geometry = new TemporallyVariantProperty<>(
                 original.geometry.getDefaultProperty());

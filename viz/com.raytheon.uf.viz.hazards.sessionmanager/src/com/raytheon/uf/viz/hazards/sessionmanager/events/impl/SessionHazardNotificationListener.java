@@ -23,7 +23,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -64,6 +64,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      longer exist.
  * Feb 01, 2017 15556      Chris.Golden Cleaned up, added note about race
  *                                      condition to be addressed in future.
+ * Feb 16, 2017 29138      Chris.Golden Changed to use HazardEvent instead of
+ *                                      IHazardEvent, since only the former
+ *                                      has a unique identifier.
  * </pre>
  * 
  * @author bsteffen
@@ -143,7 +146,7 @@ public class SessionHazardNotificationListener implements INotificationObserver 
                 && notification.isPracticeMode() == false) {
             return;
         }
-        IHazardEvent newEvent = notification.getEvent();
+        HazardEvent newEvent = notification.getEvent();
         SessionEventManager manager = this.manager.get();
         if (manager == null) {
             return;

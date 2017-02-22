@@ -39,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -73,6 +74,10 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  *                                      appropriate.
  * Feb 01, 2017 15556     Chris.Golden  Changed to always update insert time of
  *                                      events.
+ * Feb 16, 2017 29138     Chris.Golden  Revamped to slim down the response to a
+ *                                      query so that it does not carry extra
+ *                                      serialized objects with it that are not
+ *                                      needed.
  * </pre>
  * 
  * @author bphillip
@@ -135,7 +140,7 @@ public class HazardEventServices implements IHazardEventServices {
             throws HazardEventServiceException {
         statusHandler.info("Creating " + events.size() + " HazardEvents: ");
         String userName = wsContext.getUserPrincipal().getName();
-        HazardEventResponse response = new HazardEventResponse();
+        HazardEventResponse response = HazardEventResponse.create();
         try {
             validateEvents(events);
             for (HazardEvent event : events) {
@@ -172,7 +177,7 @@ public class HazardEventServices implements IHazardEventServices {
             throws HazardEventServiceException {
         statusHandler.info("Deleting " + events.size() + " HazardEvents.");
         String userName = wsContext.getUserPrincipal().getName();
-        HazardEventResponse response = new HazardEventResponse();
+        HazardEventResponse response = HazardEventResponse.create();
         try {
             validateEvents(events);
             response.addExceptions(registryHandler.removeObjects(userName,
@@ -191,7 +196,7 @@ public class HazardEventServices implements IHazardEventServices {
     @WebMethod(operationName = "deleteAll")
     public HazardEventResponse deleteAll() throws HazardEventServiceException {
         statusHandler.info("Deleting all HazardEvents from the Registry");
-        HazardEventResponse deleteAllResponse = new HazardEventResponse();
+        HazardEventResponse deleteAllResponse = HazardEventResponse.create();
         try {
             HazardEventResponse retrieveResponse = retrieve(new HazardEventQueryRequest());
 
@@ -230,7 +235,7 @@ public class HazardEventServices implements IHazardEventServices {
             throws HazardEventServiceException {
         statusHandler.info("Updating " + events.size() + " HazardEvents: ");
         String userName = wsContext.getUserPrincipal().getName();
-        HazardEventResponse response = new HazardEventResponse();
+        HazardEventResponse response = HazardEventResponse.create();
         try {
             validateEvents(events);
             for (HazardEvent event : events) {
@@ -275,7 +280,10 @@ public class HazardEventServices implements IHazardEventServices {
             @WebParam(name = "request") HazardEventQueryRequest request)
             throws HazardEventServiceException {
         statusHandler.info("Executing Query for HazardEvents:\n " + request);
-        HazardEventResponse response = new HazardEventResponse();
+        HazardEventResponse response = (request.isSizeOnlyRequired() ? HazardEventResponse
+                .createSizeOnlyIncludingAsSpecified(request.getInclude())
+                : HazardEventResponse.createIncludingAsSpecified(request
+                        .getInclude()));
         try {
             String query = HazardEventServicesUtil.createAttributeQuery(
                     practice, request.getQueryParams());
@@ -284,8 +292,11 @@ public class HazardEventServices implements IHazardEventServices {
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Deleting Events", e);
         }
-        return checkResponse("QUERY", "Retrieved "
-                + response.getEvents().size() + " HazardEvents.", response);
+        return checkResponse(
+                "QUERY",
+                (request.isSizeOnlyRequired() ? "Retrieved sizes of history lists."
+                        : "Retrieved " + response.getEvents().size()
+                                + " HazardEvents."), response);
     }
 
     @Override
@@ -302,9 +313,10 @@ public class HazardEventServices implements IHazardEventServices {
         Integer eventId = 0;
         if (task.getExtraInfo() == null || task.getExtraInfo().isEmpty()) {
 
-            List<HazardEvent> events = retrieve(
-                    new HazardEventQueryRequest(HazardConstants.SITE_ID, siteID))
-                    .getEvents();
+            HazardEventQueryRequest request = new HazardEventQueryRequest(
+                    HazardConstants.SITE_ID, siteID);
+            request.setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
+            List<HazardEvent> events = retrieve(request).getEvents();
 
             if (events.isEmpty()) {
                 // starting at 1 if none exists in the database
@@ -336,10 +348,9 @@ public class HazardEventServices implements IHazardEventServices {
                             highestValue = curSerialIdInt;
                         }
                     } catch (NumberFormatException nfe) {
-                        this.statusHandler
-                                .info("Unknown stored Hazard Event Id "
-                                        + currentEventIdString
-                                        + " unable to parse serial ID.");
+                        statusHandler.info("Unknown stored Hazard Event Id "
+                                + currentEventIdString
+                                + " unable to parse serial ID.");
                     }
                 }
                 eventId = highestValue + 1;
@@ -356,12 +367,6 @@ public class HazardEventServices implements IHazardEventServices {
         return (serialEventIdString);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.common.dataplugin.events.hazards.registry.
-     * IHazardEventServices#lookupRegion(java.lang.String, java.lang.String)
-     */
     @Override
     @WebMethod(operationName = "lookupRegion")
     public String lookupRegion(@WebParam(name = "siteID") String siteID) {

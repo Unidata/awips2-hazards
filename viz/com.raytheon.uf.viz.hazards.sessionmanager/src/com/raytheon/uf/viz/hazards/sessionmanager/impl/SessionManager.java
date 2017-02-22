@@ -25,10 +25,13 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -143,6 +146,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      event bus to aide in garbage collection.
  * Feb 01, 2017 15556      Chris.Golden Changed construction of time manager to take this object.
  *                                      Also added use of new session selection manager.
+ * Feb 16, 2017 29138      Chris.Golden Changed to allow recommenders to specify that they want
+ *                                      resulting events to be saved to either the "latest
+ *                                      version" set in the database, or the history list in the
+ *                                      database.
  * </pre>
  * 
  * @author bsteffen
@@ -500,18 +507,41 @@ public class SessionManager implements
         if (events != null) {
 
             /*
+             * Get the attributes of the event set indicating whether any or all
+             * events are to be saved to history lists or to the latest version
+             * set, and determine if said attributes indicate that all events
+             * provided in the event set should be saved in one of the two ways,
+             * if specific ones should be saved one or both ways, or none of
+             * them should be saved.
+             */
+            Serializable addToHistoryAttribute = events
+                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_HISTORY);
+            Serializable addToDatabaseAttribute = events
+                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_DATABASE);
+            boolean addToHistory = Boolean.TRUE.equals(addToHistoryAttribute);
+            boolean addToDatabase = ((addToHistory == false) && Boolean.TRUE
+                    .equals(addToDatabaseAttribute));
+
+            /*
+             * Create a list to hold the events to be saved if all events are
+             * specified as requiring saving. If instead specific events are
+             * specified that are to be saved one or both ways, create a map
+             * that will be used to pair the identifiers of events that are
+             * created with the events themselves.
+             */
+            List<IHazardEvent> addedEvents = (addToHistory || addToDatabase ? new ArrayList<IHazardEvent>(
+                    events.size()) : null);
+            Map<String, IHazardEvent> addedEventsForIdentifiers = ((addedEvents == null)
+                    && ((addToHistoryAttribute instanceof List) || (addToDatabaseAttribute instanceof List)) ? new HashMap<String, IHazardEvent>(
+                    events.size(), 1.0f) : null);
+
+            /*
              * Iterate through the hazard events provided as the result, adding
              * hazard warning areas for each, setting their user name and
-             * workstation, and then telling the event manager to add them. If
-             * the recommender has asked that the results be saved to the
-             * database, track the events that are added or modified.
+             * workstation, and then telling the event manager to add them.
              */
             IOriginator originator = new RecommenderOriginator(
                     recommenderIdentifier);
-            List<IHazardEvent> addedEvents = (Boolean.TRUE
-                    .equals(events
-                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_DATABASE)) ? new ArrayList<IHazardEvent>(
-                    events.size()) : null);
             for (IEvent event : events) {
                 if (event instanceof IHazardEvent) {
                     IHazardEvent hazardEvent = (IHazardEvent) event;
@@ -526,17 +556,51 @@ public class SessionManager implements
                             hazardEvent, originator);
                     if (addedEvents != null) {
                         addedEvents.add(addedEvent);
+                    } else if (addedEventsForIdentifiers != null) {
+                        addedEventsForIdentifiers.put(addedEvent.getEventID(),
+                                addedEvent);
                     }
                 }
             }
 
             /*
-             * If the recommender wants the results saved to the database and
-             * there is indeed at least one hazard event that was added or
-             * modified, save now.
+             * If the recommender indicated that all events it returned should
+             * be saved (to history lists or to the latest version set), do so.
+             * Otherwise, if the recommender specified the events to be saved to
+             * history lists and/or to the latest version set, get the events
+             * that go with the identifiers specified, and save them as
+             * appropriate.
              */
             if ((addedEvents != null) && (addedEvents.isEmpty() == false)) {
-                eventManager.saveEvents(addedEvents, false);
+                eventManager.saveEvents(addedEvents, addToHistory);
+            } else if ((addedEventsForIdentifiers != null)
+                    && (addedEventsForIdentifiers.isEmpty() == false)) {
+                if (addToHistoryAttribute instanceof List) {
+                    eventManager.saveEvents(
+                            getEventsFromIdentifiers(
+                                    (List<?>) addToHistoryAttribute,
+                                    addedEventsForIdentifiers), true);
+                } else if (addToDatabaseAttribute instanceof List) {
+
+                    /*
+                     * Ensure that if a hazard identifier is present in both
+                     * this list and the list for history list saving, it is
+                     * removed from this list, since it has already been saved
+                     * above.
+                     */
+                    List<?> addToDatabaseList = null;
+                    if (addToHistoryAttribute instanceof List) {
+                        Set<?> pruned = Sets.difference(new HashSet<>(
+                                (List<?>) addToDatabaseAttribute),
+                                new HashSet<>((List<?>) addToHistoryAttribute));
+                        addToDatabaseList = new ArrayList<>(pruned);
+                    } else {
+                        addToDatabaseList = (List<?>) addToDatabaseAttribute;
+                    }
+                    eventManager.saveEvents(
+                            getEventsFromIdentifiers(addToDatabaseList,
+                                    addedEventsForIdentifiers), false);
+                }
             }
 
             /*
@@ -733,5 +797,37 @@ public class SessionManager implements
             statusHandler.error(
                     "Error Importing Hazard Services Site Data files.", e);
         }
+    }
+
+    /**
+     * Given the specified event identifiers and map of event identifiers to
+     * their events, get a list of any events specified by the former that have
+     * an entry in the latter.
+     * 
+     * @param eventIdentifiers
+     *            Event identifiers for which to find events. The element type
+     *            is unknown as this makes invocation easier, since this
+     *            parameter is cast from {@link Object} by callers.
+     * @param eventsForIdentifiers
+     *            Map of event identifiers to their corresponding events.
+     * @return List of events that go with the event identifiers and that are
+     *         found in the map.
+     */
+    private List<IHazardEvent> getEventsFromIdentifiers(
+            List<?> eventIdentifiers,
+            Map<String, IHazardEvent> eventsForIdentifiers) {
+
+        Set<String> identifiersToSave = new HashSet<>(
+                eventsForIdentifiers.size(), 1.0f);
+        for (Object element : eventIdentifiers) {
+            identifiersToSave.add(element.toString());
+        }
+        List<IHazardEvent> eventsToSave = new ArrayList<>(
+                identifiersToSave.size());
+        for (String identifier : Sets.intersection(
+                eventsForIdentifiers.keySet(), identifiersToSave)) {
+            eventsToSave.add(eventsForIdentifiers.get(identifier));
+        }
+        return eventsToSave;
     }
 }

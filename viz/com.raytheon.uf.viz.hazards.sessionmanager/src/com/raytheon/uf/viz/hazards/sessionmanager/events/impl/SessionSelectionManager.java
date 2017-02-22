@@ -45,6 +45,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 09, 2017   15556    Chris.Golden Initial creation.
+ * Feb 16, 2017   29138    Chris.Golden Changed to not persist hazard
+ *                                      events to database when
+ *                                      changing from potential to
+ *                                      pending status.
  * </pre>
  * 
  * @author Chris.Golden
@@ -754,7 +758,7 @@ public class SessionSelectionManager implements
          */
         for (ObservedHazardEvent event : selectedEvents) {
             if (event.getStatus() == HazardStatus.POTENTIAL) {
-                event.setStatus(HazardStatus.PENDING, Originator.OTHER);
+                event.setStatus(HazardStatus.PENDING, false, Originator.OTHER);
             }
         }
 
@@ -939,7 +943,8 @@ public class SessionSelectionManager implements
                         selectedEventVersionIdentifier.getSecond());
             }
             if (selectedEvent.getStatus() == HazardStatus.POTENTIAL) {
-                selectedEvent.setStatus(HazardStatus.PENDING, Originator.OTHER);
+                selectedEvent.setStatus(HazardStatus.PENDING, false,
+                        Originator.OTHER);
             }
         } else {
             throw new IllegalStateException(
@@ -1064,7 +1069,8 @@ public class SessionSelectionManager implements
                         eventIdentifier);
                 this.selectedEvents.add(insertionIndex, event);
                 if (event.getStatus() == HazardStatus.POTENTIAL) {
-                    event.setStatus(HazardStatus.PENDING, Originator.OTHER);
+                    event.setStatus(HazardStatus.PENDING, false,
+                            Originator.OTHER);
                 }
                 insertionIndex++;
                 selectedSomething = true;

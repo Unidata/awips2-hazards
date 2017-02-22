@@ -68,6 +68,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Feb 16, 2017 29138      Chris.Golden Changed to work with new version of the
+ *                                      hazard event manager.
  * </pre>
  * 
  * @author bsteffen
@@ -476,7 +478,8 @@ public class HazardEventUtilities {
         String value = "";
         boolean createNew = false;
         if (HazardConstants.NEW_ACTION.equals(action) == false) {
-            Map<String, HazardHistoryList> map = manager.getBySiteID(site);
+            Map<String, HazardHistoryList> map = manager.getHistoryBySiteID(
+                    site, true);
             for (Entry<String, HazardHistoryList> entry : map.entrySet()) {
                 HazardHistoryList list = entry.getValue();
                 for (IHazardEvent ev : list) {

@@ -108,6 +108,9 @@ import com.google.common.collect.ImmutableMap;
  * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
  * Feb 01, 2017 15556     Chris.Golden  Removed obsolete elements, and added constants for the
  *                                      console refactor.
+ * Feb 16, 2017 29138     Chris.Golden  Removed unneeded visibility-in-history-list constant and
+ *                                      added new recommender result event set attribute name
+ *                                      for saving to the history list.
  * </pre>
  * 
  * @author mnash
@@ -192,6 +195,8 @@ public final class HazardConstants {
     // Recommender result attribute names
 
     public static final String RECOMMENDER_RESULT_SAVE_TO_DATABASE = "saveToDatabase";
+
+    public static final String RECOMMENDER_RESULT_SAVE_TO_HISTORY = "saveToHistory";
 
     /**
      * Types of changes or events that may trigger a recommender execution.
@@ -564,7 +569,7 @@ public final class HazardConstants {
 
     /*
      * The following are used for any further filters that are required using
-     * the getEventsByFilter() method, as well as defining the fields in both
+     * the getHistoryByFilter() method, as well as defining the fields in both
      * the database implementation and the registry implementation
      */
 
@@ -627,11 +632,6 @@ public final class HazardConstants {
      * Category key for hazard
      */
     public static final String HAZARD_EVENT_CATEGORY = "hazardCategory";
-
-    /**
-     * Flag indicating visibility in history list key for hazard.
-     */
-    public static final String HAZARD_EVENT_VISIBLE_IN_HISTORY_LIST = "visibleInHistoryList";
 
     /**
      * Type key for hazard

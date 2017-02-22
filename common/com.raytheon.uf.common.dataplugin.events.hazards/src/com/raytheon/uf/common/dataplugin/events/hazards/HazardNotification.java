@@ -20,7 +20,7 @@
 package com.raytheon.uf.common.dataplugin.events.hazards;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -31,11 +31,13 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 27, 2013            mnash     Initial creation
- * Mar 24, 2014 3323       bkowal    The mode is now required.
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 27, 2013            mnash        Initial creation
+ * Mar 24, 2014 3323       bkowal       The mode is now required.
+ * Feb 16, 2017 29138     Chris.Golden  Changed to use HazardEvent instead of
+ *                                      IHazardEvent, since only the former
+ *                                      has a unique identifier.
  * </pre>
  * 
  * @author mnash
@@ -51,7 +53,7 @@ public class HazardNotification {
     }
 
     @DynamicSerializeElement
-    private IHazardEvent event;
+    private HazardEvent event;
 
     @DynamicSerializeElement
     private NotificationType type;
@@ -65,7 +67,7 @@ public class HazardNotification {
     public HazardNotification() {
     }
 
-    public HazardNotification(IHazardEvent event, NotificationType type,
+    public HazardNotification(HazardEvent event, NotificationType type,
             Mode mode) {
         this.event = event;
         this.type = type;
@@ -100,7 +102,7 @@ public class HazardNotification {
     /**
      * @return the event
      */
-    public IHazardEvent getEvent() {
+    public HazardEvent getEvent() {
         return event;
     }
 
@@ -108,7 +110,7 @@ public class HazardNotification {
      * @param event
      *            the event to set
      */
-    public void setEvent(IHazardEvent event) {
+    public void setEvent(HazardEvent event) {
         this.event = event;
     }
 

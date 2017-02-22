@@ -148,6 +148,11 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      of status to not persist the hazard event
  *                                      if the status is reverting from "ending"
  *                                      to something other than "ended".
+ * Feb 16, 2017 29138      Chris.Golden Removed notion of visibility in history
+ *                                      list (since all events in history list
+ *                                      are now visible). Also added public
+ *                                      method to allow setting of status with
+ *                                      persistence optional.
  * </pre>
  * 
  * @author bsteffen
@@ -472,6 +477,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
 
     public void setStatus(HazardStatus status, IOriginator originator) {
         setStatus(status, true, true, originator);
+    }
+
+    public void setStatus(HazardStatus status, boolean persist,
+            IOriginator originator) {
+        setStatus(status, true, persist, originator);
     }
 
     public void setPhenomenon(String phenomenon, IOriginator originator) {
@@ -1218,15 +1228,5 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
     @Override
     public Date getInsertTime() {
         return delegate.getInsertTime();
-    }
-
-    @Override
-    public boolean isVisibleInHistoryList() {
-        return delegate.isVisibleInHistoryList();
-    }
-
-    @Override
-    public void setVisibleInHistoryList(boolean visible) {
-        delegate.setVisibleInHistoryList(visible);
     }
 }

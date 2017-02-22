@@ -36,6 +36,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
+import org.eclipse.swt.widgets.Widget;
 
 import com.google.common.collect.Range;
 
@@ -74,6 +75,8 @@ import com.google.common.collect.Range;
  *                                      during validation the lower one is
  *                                      found to be greater than the upper
  *                                      one.
+ * Feb 16, 2017  29138     Chris.Golden Fixed attempt to use component widget
+ *                                      when the latter was disposed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -346,6 +349,7 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
             spinnerFocusListener = new FocusAdapter() {
                 @Override
                 public void focusLost(FocusEvent e) {
+                    final Widget widget = e.widget;
                     Display.getCurrent().asyncExec(new Runnable() {
                         @Override
                         public void run() {
@@ -355,10 +359,12 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
                              * focus was not placed on another spinner within
                              * the same megawidget.
                              */
-                            if (spinnersForStateIdentifiers
-                                    .containsValue(Display.getCurrent()
-                                            .getFocusControl()) == false) {
-                                changeEndingStatesUsingSpinnerValues();
+                            if (widget.isDisposed() == false) {
+                                if (spinnersForStateIdentifiers
+                                        .containsValue(Display.getCurrent()
+                                                .getFocusControl()) == false) {
+                                    changeEndingStatesUsingSpinnerValues();
+                                }
                             }
                         }
                     });

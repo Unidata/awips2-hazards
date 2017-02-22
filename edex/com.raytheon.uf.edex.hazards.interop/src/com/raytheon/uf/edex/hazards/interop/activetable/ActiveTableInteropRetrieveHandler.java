@@ -31,6 +31,7 @@ import com.raytheon.uf.common.activetable.GetActiveTableDictResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.VtecInteroperabilityActiveTableRequest;
@@ -60,10 +61,11 @@ import com.raytheon.uf.edex.hazards.interop.InteroperabilityUtil;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Dec 12, 2014  #2826     dgilling     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Dec 12, 2014   2826     dgilling     Initial creation
+ * Feb 16, 2017  29138     Chris.Golden Changed to work with new hazard
+ *                                      event manager.
  * </pre>
  * 
  * @author dgilling
@@ -171,7 +173,7 @@ public final class ActiveTableInteropRetrieveHandler implements
             if (cachedEvent != null) {
                 matchingHazardEvent = cachedEvent;
             } else {
-                List<IHazardEvent> hazardEvents = InteroperabilityUtil
+                List<HazardEvent> hazardEvents = InteroperabilityUtil
                         .queryInteroperabilityByETNForHazards(hazEventMgr,
                                 siteID, phen, sig, etn, null);
                 if (!CollectionUtil.isNullOrEmpty(hazardEvents)) {

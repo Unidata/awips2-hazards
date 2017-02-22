@@ -425,9 +425,6 @@ class Recommender(RecommenderTemplate.Recommender):
 #===============================================================================
 #     def setUserOwned(self, event):         
 #         event.set('automationLevel', 'userOwned')
-# 
-#         # TODO: Should set visibility-in-history-list flag to True here, or in whatever
-#         # code calls this method.
 #         if event.get('objectID') and not event.get('objectID').startswith('M'):
 #             event.set('objectID', 'M' + event.get('objectID'))
 #         print "SR calling setActivation for setting userOwned"
@@ -634,7 +631,6 @@ class Recommender(RecommenderTemplate.Recommender):
             event.setStatus('ELAPSED')
             event.set('status', 'ELAPSED')
             resultEventSet.add(event)
-            resultEventSet.addAttribute("saveToDatabase", True)    
             return        
 
     def ensureLastGraphProbZeroAndUneditable(self, event):

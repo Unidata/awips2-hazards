@@ -87,6 +87,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      menu item, changed to use new selection manager,
  *                                      and added handling of selected historical versions
  *                                      of hazard events.
+ * Feb 16, 2017 29138      Chris.Golden Changed to remove notion of visibility of events
+ *                                      in the history list, since all events in the
+ *                                      history list are now visible. Also changed to
+ *                                      not persist events upon status changes when they
+ *                                      should not be saved to the database.
  * </pre>
  * 
  * @author mnash
@@ -266,7 +271,7 @@ public class ContextMenuHelper {
                 String identifier = selectedEventIdentifiers.iterator().next();
                 boolean enabled = (selectionManager
                         .isSelected(new Pair<String, Integer>(identifier, null)) && (eventManager
-                        .getVisibleHistoricalVersionCountForEvent(identifier) > 0));
+                        .getHistoricalVersionCountForEvent(identifier) > 0));
                 addContributionItem(items,
                         ContextMenuSelections.REVERT_THIS_HAZARD_TO_LAST_SAVED
                                 .getValue(), enabled, originator);
@@ -665,7 +670,7 @@ public class ContextMenuHelper {
      */
     private void initiateEndingProcess(ObservedHazardEvent event,
             IOriginator originator) {
-        event.setStatus(HazardStatus.ENDING, originator);
+        event.setStatus(HazardStatus.ENDING, false, originator);
     }
 
     /**
@@ -678,6 +683,6 @@ public class ContextMenuHelper {
      */
     private void revertEndingProcess(ObservedHazardEvent event,
             IOriginator originator) {
-        event.setStatus(HazardStatus.ISSUED, originator);
+        event.setStatus(HazardStatus.ISSUED, false, originator);
     }
 }

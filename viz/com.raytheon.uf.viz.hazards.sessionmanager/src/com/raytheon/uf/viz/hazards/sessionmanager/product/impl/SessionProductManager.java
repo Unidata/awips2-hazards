@@ -65,7 +65,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
@@ -232,6 +231,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      with more than one UGC type.
  * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
  * Feb 17, 2017 21676      Chris.Golden Changed to use session event manager's new merge method.
+ * Feb 17, 2017 29138      Chris.Golden Changed to use more efficient query of database hazards.
  * </pre>
  * 
  * @author bsteffen
@@ -687,12 +687,9 @@ public class SessionProductManager implements ISessionProductManager {
                         .getProductFormats(productGeneratorName));
 
                 for (String eventID : productData.getEventIDs()) {
-                    // Get the hazardEvents
-                    HazardHistoryList historyList = manager
-                            .getByEventID(eventID);
-                    if (historyList != null && historyList.isEmpty() == false) {
-                        IHazardEvent hazardEvent = historyList.get(historyList
-                                .size() - 1);
+                    IHazardEvent hazardEvent = manager.getLatestByEventID(
+                            eventID, true);
+                    if (hazardEvent != null) {
                         productEventSet.add(hazardEvent);
                         genProductListEventSet.add(hazardEvent);
                         prodGenInfoHazardEvents.add(hazardEvent);

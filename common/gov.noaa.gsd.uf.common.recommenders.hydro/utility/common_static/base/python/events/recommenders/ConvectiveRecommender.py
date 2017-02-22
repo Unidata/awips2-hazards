@@ -175,7 +175,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         
         st = time.time()
-        mergedEventSet = self.mergeHazardEventsNew2(currentEvents, recommendedEventsDict)
+        identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEventSet = self.mergeHazardEventsNew2(currentEvents, recommendedEventsDict)
 
         LogUtils.logMessage('Finnished ', 'mergeHazardEvent',' Took Seconds', time.time()-st)
         
@@ -186,11 +186,21 @@ class Recommender(RecommenderTemplate.Recommender):
             mergedEventSet = swathRec.execute(mergedEventSet, None, None)
             LogUtils.logMessage('Finnished ', 'swathRec.execute',' Took Seconds', time.time()-st)
         
-        # Ensure that any resulting events are saved to the database.
         for e in mergedEventSet:
             print ')))) ', e.get('objectID'), e.getStatus()
-        mergedEventSet.addAttribute("saveToDatabase", True)
-        
+
+        ### Ensure that any resulting events are saved to the history list or the database
+        ### (the latter as latest versions of those events).  If one or both categories have
+        ### no identifiers, set them to nothing in case the Swath Recommender set that
+        ### attribute, as this recommender knows which ones should be saved in which category.
+        if (identifiersOfEventsToSaveToHistory):
+            mergedEventSet.addAttribute("saveToHistory", identifiersOfEventsToSaveToHistory)
+        else:
+            mergedEventSet.addAttribute("saveToHistory", None)
+        if (identifiersOfEventsToSaveToDatabase):
+            mergedEventSet.addAttribute("saveToDatabase", identifiersOfEventsToSaveToDatabase)
+        else:
+            mergedEventSet.addAttribute("saveToDatabase", None)
         return mergedEventSet
     
 
@@ -502,9 +512,13 @@ class Recommender(RecommenderTemplate.Recommender):
         event.setStartTime(self.latestDLTDT)
         endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
         event.setEndTime(endTime)
-        
+      
+    ### Update the current events, and return a list of identifiers of
+    ### events that are to be saved to the database.  
     def updateCurrentEvents(self, intersectionDict, mergedEvents):
         dataLayerTimeMS = int(self.dataLayerTime )
+        
+        identifiersOfEventsToSaveToDatabase = []
         
         for ID, vals in intersectionDict.iteritems():
             currentEvent = vals['currentEvent']
@@ -552,15 +566,27 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.updateAttributesAndMechanics(currentEvent, recommendedAttrs, dataLayerTimeMS)
             
             if automationLevel == 'automated':
+                
+                ### Update the automated event, and if its status changed,
+                ### add it to the list of events to be saved.
                 self.updateAutomated(currentEvent, recommendedAttrs, dataLayerTimeMS)
+                identifiersOfEventsToSaveToDatabase.append(currentEvent.getEventID())
             
             if automationLevel == 'userOwned':
                 self.updateUserOwned(currentEvent, recommendedAttrs, dataLayerTimeMS)
                 
-            mergedEvents.add(currentEvent)  
+            mergedEvents.add(currentEvent)
+            
+            return identifiersOfEventsToSaveToDatabase
             
             
 
+    # Create an event set of new hazard events to be merged, together with
+    # existing events that are to be elapsed. Return a tuple of three elements,
+    # the first being a list of identifiers of events that are to be saved to
+    # history, the second being a list of identifiers of events that are to be
+    # saved to the database as latest versions, and the third being the event
+    # set itself.
     def mergeHazardEventsNew2(self, currentEventsList, recommendedEventsDict):
         intersectionDict = {}
         recommendedObjectIDsList = sorted(recommendedEventsDict.keys())
@@ -600,20 +626,27 @@ class Recommender(RecommenderTemplate.Recommender):
 
             mergedEvents.add(currentEvent)
 
-
-        ### Update the current events with the attributes of the recommended events
-        #self.updateCurrentEvents(intersectionDict, mergedEvents, currentTime)
-        self.updateCurrentEvents(intersectionDict, mergedEvents)
+        ### Update the current events with the attributes of the recommended events.
+        ### This returns a list of identifiers of events that are to be saved to the
+        ### database (not history list).  
+        #identifiersOfEventsToSaveToDatabase = self.updateCurrentEvents(intersectionDict, mergedEvents, currentTime)
+        identifiersOfEventsToSaveToDatabase = self.updateCurrentEvents(intersectionDict, mergedEvents)
         
-
+        # Create a list of hazard event identifiers that are to be saved
+        # to the history list.
+        identifiersOfEventsToSaveToHistory = []
+        
         ### Loop through remaining/unmatched recommendedEvents
         ### if recommended geometry overlaps an existing *manual* geometry
         ### ignore it. 
         for recID in recommendedObjectIDsList:
             recommendedValues = recommendedEventsDict[recID]
             recommendedEvent = None
-            
+
             if len(manualEventsList) == 0:
+                
+                ### If an event is created, add it to the event set and add
+                ### it to the list of events to be saved to history.
                 print '1111111: Calling makeHazardEvent for:', recID
                 recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
                 
@@ -626,17 +659,16 @@ class Recommender(RecommenderTemplate.Recommender):
                     ### if the geometries DO NOT intersect, add recommended
                     if not evtGeom.intersects(recGeom):
                 	print '2222222: Calling makeHazardEvent for:', recID
-                        recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
+                    recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
 
             if recommendedEvent:
                 mergedEvents.add(recommendedEvent)
+                identifiersOfEventsToSaveToHistory.append(recommendedEvent.getEventID())
 
         for e in mergedEvents:
            print '%%%%%:', e.get('objectID'), e.getStatus()
-
-        return mergedEvents
-
-
+                    
+        return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
     
 #    def mergeHazardEventsNew(self, currentEventsList, recommendedEventsDict):
 #        intersectionDict = {}

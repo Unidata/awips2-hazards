@@ -30,6 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionHazardNotificationListener;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -78,14 +79,14 @@ public class SessionHazardNotificationListenerTest {
         listener = new SessionHazardNotificationListener(eventManager, false);
     }
 
-    private IHazardEvent getDummyEvent() {
+    private HazardEvent getDummyEvent() {
         IHazardEvent event = new BaseHazardEvent();
         event.setEventID(TEST_EVENT_ID);
         event.setPhenomenon(TEST_PHEN1);
         event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(
                 geometryFactory.createPoint(new Coordinate()), 0));
 
-        return event;
+        return new HazardEvent(event);
     }
 
     /**
@@ -109,7 +110,7 @@ public class SessionHazardNotificationListenerTest {
         eventManager.reset();
         eventManager.addEvent(getDummyEvent(), null);
 
-        IHazardEvent event = getDummyEvent();
+        HazardEvent event = getDummyEvent();
         event.setPhenomenon(TEST_PHEN2);
 
         listener.handleNotification(new HazardNotification(event,
@@ -177,7 +178,7 @@ public class SessionHazardNotificationListenerTest {
         eventManager.reset();
         eventManager.addEvent(getDummyEvent(), null);
 
-        IHazardEvent event = getDummyEvent();
+        HazardEvent event = getDummyEvent();
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL2);
         listener.handleNotification(new HazardNotification(event,
                 NotificationType.UPDATE, Mode.PRACTICE));
@@ -210,7 +211,8 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testChangeAttribute() {
         eventManager.reset();
-        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
+        HazardEvent event = new HazardEvent(eventManager.addEvent(
+                getDummyEvent(), null));
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL1);
 
         event = getDummyEvent();

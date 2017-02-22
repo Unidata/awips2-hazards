@@ -24,7 +24,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -40,12 +40,15 @@ import com.raytheon.uf.edex.core.EdexException;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 27, 2013            mnash     Initial creation
- * Mar 24, 2014 #3323      bkowal    Mode is now required to construct HazardNotification
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Jun 27, 2013            mnash         Initial creation
+ * Mar 24, 2014  3323      bkowal        Mode is now required to construct
+ *                                       HazardNotification
+ * May 29, 2015  6895      Ben.Phillippe Refactored Hazard Service data access
+ * Feb 16, 2017 29138      Chris.Golden  Changed to use HazardEvent instead of
+ *                                       IHazardEvent, since only the former
+ *                                       has a unique identifier.
  * </pre>
  * 
  * @author mnash
@@ -93,7 +96,7 @@ public class HazardNotifier {
      * @param mode
      *            The mode
      */
-    public void notify(IHazardEvent event, NotificationType type, Mode mode) {
+    public void notify(HazardEvent event, NotificationType type, Mode mode) {
         if (event == null) {
             throw new IllegalArgumentException("Cannot publish a null event");
         }

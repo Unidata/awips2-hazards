@@ -9,20 +9,17 @@
  */
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.*
+import gov.noaa.gsd.common.utilities.DateTimes
+import gov.noaa.gsd.viz.hazards.utilities.HazardEventsBuilderForTesting
+import gov.noaa.gsd.viz.hazards.utilities.Utilities
 
 import org.joda.time.DateTime
 
-
-
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList
 import com.raytheon.uf.common.time.TimeRange
 import com.vividsolutions.jts.geom.Geometry
-
-import gov.noaa.gsd.common.utilities.DateTimes;
-import gov.noaa.gsd.viz.hazards.utilities.HazardEventsBuilderForTesting;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
 
 /**
  * Description: Tests of {@link InMemoryHazardEventManager}
@@ -57,7 +54,7 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
 
     def "Basic" () {
         when: "Get all"
-        Map<String, HazardHistoryList> allEvents = hazardEventManager.getAll()
+        Map<String, HazardHistoryList> allEvents = hazardEventManager.getAllHistory()
 
         then: "Correct number of events"
         allEvents.size() == 16
@@ -71,7 +68,7 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
         dt = dateTimes.newDateTime(1297151700000)
         Date endDatetime = dt.toDate()
         Map<String, HazardHistoryList> filteredEvents =
-                hazardEventManager.getByTime(startDatetime, endDatetime);
+                hazardEventManager.getHistoryByTime(startDatetime, endDatetime, false);
         IHazardEvent event3 = filteredEvents.get("3").get(0)
 
         then: "Get correct subset"
@@ -80,7 +77,7 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
 
         when: "Time range"
         TimeRange timeRange = new TimeRange(startDatetime, endDatetime)
-        filteredEvents = hazardEventManager.getByTimeRange(timeRange);
+        filteredEvents = hazardEventManager.getHistoryByTimeRange(timeRange, false);
 
         then:
         filteredEvents.size() == 4
@@ -88,28 +85,28 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
 
     def "Filter by eventID" () {
         when: "Existing event"
-        HazardHistoryList eventList = hazardEventManager.getByEventID("11")
+        HazardHistoryList eventList = hazardEventManager.getHistoryByEventID("11", false)
         IHazardEvent event = eventList.get(0)
 
         then: "Correct event"
         eventList.size() == 1
 
         when: "Get a non-existent event"
-        eventList = hazardEventManager.getByEventID("999")
+        eventList = hazardEventManager.getHistoryByEventID("999", false)
 
         then:
         eventList.size() == 0
     }
 
     def "Filter by state" () {
-        Map<String, HazardHistoryList> events = hazardEventManager.getBySiteID("RAH")
+        Map<String, HazardHistoryList> events = hazardEventManager.getHistoryBySiteID("RAH", false)
 
         expect:
         events.size() == 4
     }
 
     def "Filter by significance" () {
-        Map<String, HazardHistoryList> events = hazardEventManager.getBySignificance("Y")
+        Map<String, HazardHistoryList> events = hazardEventManager.getHistoryBySignificance("Y", false)
 
         expect:
         events.size() == 1
@@ -117,7 +114,7 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
     }
 
     def "Filter by phensig" () {
-        Map<String, HazardHistoryList> events = hazardEventManager.getByPhensig("FL", "W")
+        Map<String, HazardHistoryList> events = hazardEventManager.getHistoryByPhenSig("FL", "W", false)
 
         expect:
         events.size() == 1
@@ -125,10 +122,10 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
     }
 
     def "Filter by geometry" () {
-        HazardHistoryList eventList = hazardEventManager.getByEventID("11")
+        HazardHistoryList eventList = hazardEventManager.getHistoryByEventID("11", false)
         IHazardEvent event = eventList.get(0)
         Geometry geometry = event.getGeometry()
-        Map<String, HazardHistoryList> events = hazardEventManager.getByGeometry(geometry)
+        Map<String, HazardHistoryList> events = hazardEventManager.getHistoryByGeometry(geometry, false)
 
         expect:
         events.size() == 2
@@ -137,18 +134,18 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
 
     def "Remove, store, update" () {
         when: "Remove"
-        HazardHistoryList eventList = hazardEventManager.getByEventID("11")
+        HazardHistoryList eventList = hazardEventManager.getHistoryByEventID("11", false)
         IHazardEvent event = eventList.get(0)
-        hazardEventManager.removeEvent(event)
-        Map<String, HazardHistoryList> allEvents = hazardEventManager.getAll()
+        hazardEventManager.removeEvents(event)
+        Map<String, HazardHistoryList> allEvents = hazardEventManager.getAllHistory()
 
         then:
         allEvents.size() == 15
         allEvents.get("11") == null
 
         when: "Store"
-        hazardEventManager.storeEvent(event)
-        allEvents = hazardEventManager.getAll()
+        hazardEventManager.storeEvents(event)
+        allEvents = hazardEventManager.getAllHistory()
 
         then:
         allEvents.size() == 16
@@ -156,15 +153,15 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
 
         when: "Update"
         event.setSiteID("OMA")
-        hazardEventManager.updateEvent(event)
-        event = hazardEventManager.getByEventID("11").get(0)
+        hazardEventManager.updateEvents(event)
+        event = hazardEventManager.getHistoryByEventID("11", false).get(0)
 
         then:
         event.getSiteID() == "OMA"
 
         when: "Remove all"
         hazardEventManager.removeAllEvents()
-        allEvents = hazardEventManager.getAll()
+        allEvents = hazardEventManager.getAllHistory()
 
         then:
         allEvents.size() == 0
@@ -175,7 +172,7 @@ class InMemoryHazardEventManagerTest extends spock.lang.Specification {
         boolean exceptionFound = false
 
         try {
-            hazardEventManager.updateEvent(event)
+            hazardEventManager.updateEvents(event)
         }
         catch (IllegalArgumentException e) {
             exceptionFound = true

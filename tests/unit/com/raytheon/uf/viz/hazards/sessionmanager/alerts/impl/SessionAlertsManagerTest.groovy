@@ -83,7 +83,7 @@ class SessionAlertsManagerTest extends spock.lang.Specification {
         event0 = buildHazardEvent(EVENT_O,
                 new DateTime(2013, 7, 25, 15, 0, 0, 0))
 
-        hazardEventManager.storeEvent(event0)
+        hazardEventManager.storeEvents(event0)
 
         mockSessionTimeManager(new DateTime(2013, 7, 25, 14, 52, 0, 0))
 

@@ -84,8 +84,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -466,6 +468,13 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      has changed status to issued, to avoid exceptions when a
  *                                      hazard event arrives from the database already issued and the
  *                                      clock ticks over to the next minute.
+ * Feb 17, 2017   29138    Chris.Golden Removed notion of visible history list (since all events
+ *                                      in history list are now visible). Also changed to work with
+ *                                      new hazard event manager (interface to the database). Added
+ *                                      support for saving to "latest version" set in database, not
+ *                                      just to history list. Also changed to avoid persisting to
+ *                                      the database upon status changes that should never cause such
+ *                                      persistence.
  * </pre>
  * 
  * @author bsteffen
@@ -554,23 +563,18 @@ public class SessionEventManager implements
             null);
 
     /**
+     * Map pairing event identifiers with the "latest version" of the hazard
+     * events as last fetched from the database.
+     */
+    private final Map<String, HazardEvent> latestVersionsFromDatabaseForEventIdentifiers = new HashMap<>();
+
+    /**
      * Map pairing event identifiers for all the {@link #events} with historical
      * versions with the number of historical versions. If an event identifier
      * has no associated value within this map, the event has no historical
      * versions.
      */
-    private final Map<String, Integer> historicalVersionCountForEventIdentifiers = new HashMap<>();
-
-    /**
-     * Map pairing event identifiers for all the {@link #events} with historical
-     * versions with the number of visible historical versions, that is, those
-     * that should be viewable by the user in any display of the history list.
-     * This number will always be less than or equal to the number found at the
-     * same key in {@link #historicalVersionCountForEventIdentifiers}. If an
-     * event identifier has no associated value within this map, the event has
-     * no visible historical versions.
-     */
-    private final Map<String, Integer> visibleHistoricalVersionCountForEventIdentifiers = new HashMap<>();
+    private final Map<String, Integer> historicalVersionCountsForEventIdentifiers = new HashMap<>();
 
     /**
      * Set of identifiers for all events that have "Ending" status.
@@ -670,19 +674,12 @@ public class SessionEventManager implements
 
     @Override
     public HazardHistoryList getEventHistoryById(String eventId) {
-        return dbManager.getByEventID(eventId);
+        return dbManager.getHistoryByEventID(eventId, false);
     }
 
     @Override
     public int getHistoricalVersionCountForEvent(String eventIdentifier) {
-        Integer count = historicalVersionCountForEventIdentifiers
-                .get(eventIdentifier);
-        return (count == null ? 0 : count);
-    }
-
-    @Override
-    public int getVisibleHistoricalVersionCountForEvent(String eventIdentifier) {
-        Integer count = visibleHistoricalVersionCountForEventIdentifiers
+        Integer count = historicalVersionCountsForEventIdentifiers
                 .get(eventIdentifier);
         return (count == null ? 0 : count);
     }
@@ -2276,7 +2273,7 @@ public class SessionEventManager implements
                 .and(HazardConstants.PHEN_SIG, visibleTypes)
                 .and(HazardConstants.HAZARD_EVENT_STATUS, statuses);
         Map<String, HazardHistoryList> eventsMap = dbManager
-                .query(queryRequest);
+                .queryHistory(queryRequest);
 
         /*
          * Get the identifiers of the events that were selected before this
@@ -2301,7 +2298,7 @@ public class SessionEventManager implements
              * before.
              */
             HazardHistoryList historyList = entry.getValue();
-            IHazardEvent event = historyList.get(historyList.size() - 1);
+            HazardEvent event = historyList.get(historyList.size() - 1);
             String eventIdentifier = event.getEventID();
             ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
             if (oldEvent != null) {
@@ -2313,23 +2310,35 @@ public class SessionEventManager implements
             }
 
             /*
-             * Add the event, and if it has been issued, set its has-been-issued
-             * flag.
+             * Add the event, and if it has ever been issued, set its
+             * has-been-issued flag.
              */
-            event = addEvent(event, false, Originator.DATABASE);
+            IHazardEvent addedEvent = addEvent(event, false,
+                    Originator.DATABASE);
             for (IHazardEvent historicalEvent : historyList) {
                 if (HazardStatus.issuedButNotEndedOrElapsed(historicalEvent
                         .getStatus())) {
-                    event.addHazardAttribute(ATTR_ISSUED, true);
+                    addedEvent.addHazardAttribute(ATTR_ISSUED, true);
                     break;
                 }
             }
 
             /*
-             * Remember the hazard event's history list's size, and the number
-             * of visible historical events in the history list.
+             * Remember the hazard event's history list's size (subtracting 1 if
+             * the last item in the history list is not a historical snapshot).
+             * Also associate the event identifier with the non-historical event
+             * at the end of the history list for later reference if, again, the
+             * last item in the history list is not a historical snapshot.
              */
-            updateHistoricalVersionCountsForEvent(eventIdentifier, historyList);
+            if (event.isLatestVersion()) {
+                historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
+                        historyList.size() - 1);
+                latestVersionsFromDatabaseForEventIdentifiers.put(
+                        eventIdentifier, event);
+            } else {
+                historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
+                        historyList.size());
+            }
         }
 
         /*
@@ -2356,29 +2365,6 @@ public class SessionEventManager implements
          */
         sessionManager.getSelectionManager().setSelectedEventIdentifiers(
                 selectedEventIdentifiers, Originator.OTHER);
-    }
-
-    /**
-     * Update the historical version count and the visible historical version
-     * count for the specified hazard event.
-     * 
-     * @param eventIdentifier
-     *            Identifier of the event.
-     * @param historyList
-     *            History list for the event.
-     */
-    private void updateHistoricalVersionCountsForEvent(String eventIdentifier,
-            HazardHistoryList historyList) {
-        historicalVersionCountForEventIdentifiers.put(eventIdentifier,
-                historyList.size());
-        int visibleCount = 0;
-        for (IHazardEvent historicalEvent : historyList) {
-            if (historicalEvent.isVisibleInHistoryList()) {
-                visibleCount++;
-            }
-        }
-        visibleHistoricalVersionCountForEventIdentifiers.put(eventIdentifier,
-                visibleCount);
     }
 
     @Override
@@ -2501,10 +2487,10 @@ public class SessionEventManager implements
             oevent.setStatus(HazardStatus.PENDING, false, false, originator);
         }
         if (isEnded(oevent)) {
-            oevent.setStatus(HazardStatus.ENDED);
+            oevent.setStatus(HazardStatus.ENDED, false, originator);
         }
         if (isElapsed(oevent)) {
-            oevent.setStatus(HazardStatus.ELAPSED);
+            oevent.setStatus(HazardStatus.ELAPSED, false, originator);
         }
 
         /*
@@ -2741,25 +2727,41 @@ public class SessionEventManager implements
      * @param event
      *            Hazard event added to or modified in the database.
      */
-    void handleEventAdditionToDatabase(IHazardEvent event) {
-        ObservedHazardEvent oldEvent = getEventById(event.getEventID());
+    void handleEventAdditionToDatabase(HazardEvent event) {
+
+        /*
+         * If the event is being managed already, merge the new version with the
+         * existing one, and if it is a historical snapshot, post a notification
+         * indicating that the history list for this event has changed. If it is
+         * not already being managed, add it to the session.
+         */
+        String eventIdentifier = event.getEventID();
+        ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
         if (oldEvent != null) {
             mergeHazardEvents(event, oldEvent, true, true, false,
                     Originator.DATABASE);
-            notificationSender
-                    .postNotificationAsync(new SessionEventHistoryModified(
-                            this, getEventById(event.getEventID()),
-                            Originator.DATABASE));
+            if (event.isLatestVersion() == false) {
+                notificationSender
+                        .postNotificationAsync(new SessionEventHistoryModified(
+                                this, getEventById(event.getEventID()),
+                                Originator.DATABASE));
+            }
         } else {
             addEvent(event, Originator.DATABASE);
         }
 
         /*
-         * Update the history list and visible history list size records for the
-         * hazard event.
+         * If the added event is not a historical snapshot, associate it with
+         * its event identifier so that it may be referenced later; otherwise,
+         * update the history list size record for the hazard event.
          */
-        updateHistoricalVersionCountsForEvent(event.getEventID(),
-                getEventHistoryById(event.getEventID()));
+        if (event.isLatestVersion()) {
+            latestVersionsFromDatabaseForEventIdentifiers.put(eventIdentifier,
+                    event);
+        } else {
+            historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
+                    dbManager.getHistorySizeByEventID(eventIdentifier, false));
+        }
     }
 
     /**
@@ -2768,10 +2770,26 @@ public class SessionEventManager implements
      * @param event
      *            Hazard event removed from the database.
      */
-    void handleEventRemovalFromDatabase(IHazardEvent event) {
+    void handleEventRemovalFromDatabase(HazardEvent event) {
+
+        /*
+         * If the database is merely indicating that a latest version of a
+         * hazard event has been removed, disassociate it from its event
+         * identifier, but do nothing else.
+         */
+        if (event.isLatestVersion()) {
+            latestVersionsFromDatabaseForEventIdentifiers.remove(event
+                    .getEventID());
+            return;
+        }
+
+        /*
+         * If an entire hazard event is being removed, remove it from the
+         * session as well.
+         */
         ObservedHazardEvent oldEvent = getEventById(event.getEventID());
         if (oldEvent != null) {
-            removeEvent(oldEvent, Originator.DATABASE);
+            removeEvent(oldEvent, false, Originator.DATABASE);
         }
     }
 
@@ -2824,8 +2842,8 @@ public class SessionEventManager implements
                  * or proposed items on the end of the list.
                  */
                 if (delete) {
-                    HazardHistoryList histList = dbManager
-                            .getByEventID(eventIdentifier);
+                    HazardHistoryList histList = dbManager.getHistoryByEventID(
+                            eventIdentifier, true);
                     if (histList != null && !histList.isEmpty()) {
                         dbManager.removeEvents(histList);
                     }
@@ -2848,12 +2866,12 @@ public class SessionEventManager implements
             }
 
             /*
-             * Remove the history list size records for the hazard event, since
-             * they are no longer needed.
+             * Remove the history list size record and the latest version record
+             * for the hazard event, since they are no longer needed.
              */
-            historicalVersionCountForEventIdentifiers
-                    .remove(event.getEventID());
-            visibleHistoricalVersionCountForEventIdentifiers.remove(event
+            latestVersionsFromDatabaseForEventIdentifiers.remove(event
+                    .getEventID());
+            historicalVersionCountsForEventIdentifiers.remove(event
                     .getEventID());
         }
     }
@@ -2959,7 +2977,7 @@ public class SessionEventManager implements
                 needsPersist = true;
                 break;
             case ELAPSED:
-                needsPersist = true;
+                needsPersist = false;
                 break;
             case ENDED:
                 List<String> vtecCodes = (List<String>) event
@@ -3013,17 +3031,25 @@ public class SessionEventManager implements
     }
 
     /**
-     * Persist the specified event by storing it to the database.
+     * Persist the specified event by storing it to the database, placing it on
+     * the history list.
      * 
      * @param event
      *            Event to be persisted.
      */
     private void persistEvent(ObservedHazardEvent event) {
         try {
-            boolean visibleInHistoryList = event.isVisibleInHistoryList();
-            event.setVisibleInHistoryList(true);
-            dbManager.storeEvent(createEventCopyToBePersisted(event));
-            event.setVisibleInHistoryList(visibleInHistoryList);
+
+            /*
+             * If there is a "latest version" stored in the database, then
+             * remove it before adding to the history list.
+             */
+            HazardEvent latestVersion = latestVersionsFromDatabaseForEventIdentifiers
+                    .get(event.getEventID());
+            if (latestVersion != null) {
+                dbManager.removeEvents(latestVersion);
+            }
+            dbManager.storeEvents(createEventCopyToBePersisted(event, true));
             scheduleExpirationTask(event);
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -4039,48 +4065,38 @@ public class SessionEventManager implements
             final HazardEventQueryRequest queryRequest) {
 
         /*
-         * Retrieve matching events from the Hazard Event Manager Also, include
-         * those from the session state.
+         * Iterate through all the events being managed in this session,
+         * compiling a list of those that have not ended, as well as set of all
+         * these non-ended event's identifiers.
          */
-        Map<String, HazardHistoryList> eventMap = this.dbManager
-                .query(queryRequest);
         List<IHazardEvent> eventsToCheck = new ArrayList<IHazardEvent>(
                 getEvents());
-        Map<String, IHazardEvent> sessionEventMap = new HashMap<>();
+        Set<String> eventIdentifiersToBeChecked = new HashSet<>(
+                eventsToCheck.size(), 1.0f);
 
         for (IHazardEvent sessionEvent : new ArrayList<IHazardEvent>(
                 eventsToCheck)) {
             if (sessionEvent.getStatus() != HazardStatus.ENDED) {
-                sessionEventMap.put(sessionEvent.getEventID(), sessionEvent);
+                eventIdentifiersToBeChecked.add(sessionEvent.getEventID());
             } else {
                 eventsToCheck.remove(sessionEvent);
             }
         }
 
-        for (String eventID : eventMap.keySet()) {
-            if (!sessionEventMap.containsKey(eventID)) {
-                HazardHistoryList historyList = eventMap.get(eventID);
-
-                // Find the hazard in the history list with the most recent time
-                if (historyList != null && historyList.isEmpty() == false) {
-                    IHazardEvent eventFromManager = historyList.get(0);
-                    Long latestTime = eventFromManager.getInsertTime()
-                            .getTime();
-
-                    for (int count = 1; count < historyList.size(); count++) {
-                        IHazardEvent hazardEvent = historyList.get(count);
-                        Long hazardTime = hazardEvent.getInsertTime().getTime();
-
-                        if (hazardTime > latestTime) {
-                            latestTime = hazardTime;
-                            eventFromManager = hazardEvent;
-                        }
-                    }
-
-                    if (eventFromManager.getStatus() != HazardStatus.ENDED) {
-                        eventsToCheck.add(eventFromManager);
-                    }
-                }
+        /*
+         * Retrieve the latest versions of matching events from the database
+         * manager, and for any that are not ended and with identifiers that are
+         * not already in session, add them to the list of events to be checked.
+         */
+        queryRequest
+                .setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
+        Map<String, HazardEvent> eventMap = this.dbManager
+                .queryLatest(queryRequest);
+        for (Map.Entry<String, HazardEvent> entry : eventMap.entrySet()) {
+            if ((eventIdentifiersToBeChecked.contains(entry.getKey()) == false)
+                    && (entry.getValue() != null)
+                    && (entry.getValue().getStatus() != HazardStatus.ENDED)) {
+                eventsToCheck.add(entry.getValue());
             }
         }
 
@@ -4740,12 +4756,12 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events, boolean forceVisibility) {
+    public void saveEvents(List<IHazardEvent> events, boolean addToHistory) {
 
         /*
          * Get copies of the events to be saved that are database-friendly.
          */
-        List<IHazardEvent> dbEvents = new ArrayList<IHazardEvent>(events.size());
+        List<HazardEvent> dbEvents = new ArrayList<>(events.size());
         for (IHazardEvent event : events) {
 
             /*
@@ -4762,38 +4778,42 @@ public class SessionEventManager implements
             /*
              * Make a copy of the event of the right type, and strip out
              * whatever cannot or should not be saved. Also ensure that it is
-             * visible in the history list if visibility is to be forced.
+             * added to the history list if such is asked for.
              */
-            boolean visibleInHistoryList = event.isVisibleInHistoryList();
-            if (forceVisibility) {
-                event.setVisibleInHistoryList(true);
-            }
-            dbEvents.add(createEventCopyToBePersisted(event));
-            if (forceVisibility) {
-                event.setVisibleInHistoryList(visibleInHistoryList);
-            }
+            dbEvents.add(createEventCopyToBePersisted(event, addToHistory));
         }
 
         /*
-         * Save the events to the database.
+         * Save the events to the database, deleting the latest versions of the
+         * same events if the events to be persisted are being added to their
+         * respective history lists.
          */
         if (dbEvents.isEmpty() == false) {
+            if (addToHistory) {
+                List<HazardEvent> eventsToBeRemoved = new ArrayList<>(
+                        dbEvents.size());
+                for (HazardEvent dbEvent : dbEvents) {
+                    HazardEvent latestVersion = latestVersionsFromDatabaseForEventIdentifiers
+                            .get(dbEvent.getEventID());
+                    if (latestVersion != null) {
+                        eventsToBeRemoved.add(latestVersion);
+                    }
+                }
+                if (eventsToBeRemoved.isEmpty() == false) {
+                    dbManager.removeEvents(eventsToBeRemoved);
+                }
+            }
             dbManager.storeEvents(dbEvents);
         }
     }
 
     @Override
     public void revertEventToLastSaved(String eventIdentifier) {
-        if (getVisibleHistoricalVersionCountForEvent(eventIdentifier) > 0) {
+        if (getHistoricalVersionCountForEvent(eventIdentifier) > 0) {
             HazardHistoryList list = getEventHistoryById(eventIdentifier);
-            for (int index = list.size() - 1; index >= 0; index--) {
-                if (list.get(index).isVisibleInHistoryList()) {
-                    mergeHazardEvents(list.get(index),
-                            getEventById(eventIdentifier), false, false, false,
-                            Originator.OTHER);
-                    return;
-                }
-            }
+            mergeHazardEvents(list.get(list.size() - 1),
+                    getEventById(eventIdentifier), false, false, false,
+                    Originator.OTHER);
         }
     }
 
@@ -4801,11 +4821,15 @@ public class SessionEventManager implements
      * Create a persistence-friendly copy of the specified event.
      * 
      * @param event
-     *            Event to be created.
+     *            Event to be copied.
+     * @param addToHistory
+     *            Flag indicating whether or not the copy is intended for
+     *            addition to the history list for the hazard.
      * @return Persistence-friendly copy of the event.
      */
-    private IHazardEvent createEventCopyToBePersisted(IHazardEvent event) {
-        IHazardEvent dbEvent = dbManager.createEvent(event);
+    private HazardEvent createEventCopyToBePersisted(IHazardEvent event,
+            boolean addToHistory) {
+        HazardEvent dbEvent = dbManager.createEvent(event);
 
         /*
          * TODO: Visual features should not need to be removed, but they cause
@@ -4852,6 +4876,14 @@ public class SessionEventManager implements
          * entirely done away with.
          */
         dbEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+
+        /*
+         * If the copy is not intended to be added to the history list, mark it
+         * as a latest version.
+         */
+        if (addToHistory == false) {
+            dbEvent.setLatestVersion();
+        }
 
         return dbEvent;
     }

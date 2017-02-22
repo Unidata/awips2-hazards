@@ -72,6 +72,11 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      AdvancedGeometryUtilities.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag. Also
  *                                      added insert time record.
+ * Feb 16, 2017 29138      Chris.Golden Removed the visible-in-history-list flag
+ *                                      since use of the history list is being
+ *                                      reduced with advent of ability to save
+ *                                      a "latest version" to the database that
+ *                                      is not part of the history list.
  * </pre>
  * 
  * @author mnash
@@ -79,8 +84,6 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 
 public class BaseHazardEvent implements IHazardEvent {
-
-    private boolean visibleInHistoryList = true;
 
     private Date startTime;
 
@@ -125,7 +128,6 @@ public class BaseHazardEvent implements IHazardEvent {
         this();
         setEventID(event.getEventID());
         setSiteID(event.getSiteID());
-        setVisibleInHistoryList(event.isVisibleInHistoryList());
         setEndTime(event.getEndTime());
         setStartTime(event.getStartTime());
         setCreationTime(event.getCreationTime());
@@ -142,16 +144,6 @@ public class BaseHazardEvent implements IHazardEvent {
             getHazardAttributes().putAll(event.getHazardAttributes());
         }
         insertTime = event.getInsertTime();
-    }
-
-    @Override
-    public boolean isVisibleInHistoryList() {
-        return visibleInHistoryList;
-    }
-
-    @Override
-    public void setVisibleInHistoryList(boolean visible) {
-        this.visibleInHistoryList = visible;
     }
 
     @Override
@@ -394,8 +386,6 @@ public class BaseHazardEvent implements IHazardEvent {
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
-        result = prime * result
-                + Boolean.valueOf(visibleInHistoryList).hashCode();
         return result;
     }
 
@@ -492,9 +482,6 @@ public class BaseHazardEvent implements IHazardEvent {
                 return false;
             }
         } else if (!subtype.equals(other.subtype)) {
-            return false;
-        }
-        if (visibleInHistoryList != other.visibleInHistoryList) {
             return false;
         }
         return true;

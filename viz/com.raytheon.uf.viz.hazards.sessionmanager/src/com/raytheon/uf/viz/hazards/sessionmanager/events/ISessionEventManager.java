@@ -119,6 +119,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      event to the most recent saved version.
  * Feb 17, 2017 21676      Chris.Golden Changed to place old SessionEventUtilities merge method
  *                                      into this interface.
+ * Feb 17, 2017 29138      Chris.Golden Removed notion of visible history list (since all events
+ *                                      in history list are now visible). Also added support for
+ *                                      saving to history list versus new "latest version" set
+ *                                      in database.
  * </pre>
  * 
  * @author bsteffen
@@ -179,10 +183,9 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param originator
      *            Originator of this action.
      */
-    public void mergeHazardEvents(IHazardEvent newEvent,
-            ObservedHazardEvent oldEvent, boolean forceMerge,
-            boolean keepVisualFeatures, boolean persistOnStatusChange,
-            IOriginator originator);
+    public void mergeHazardEvents(IHazardEvent newEvent, E oldEvent,
+            boolean forceMerge, boolean keepVisualFeatures,
+            boolean persistOnStatusChange, IOriginator originator);
 
     /**
      * Get the event with the given ID or null if there is no such event in the
@@ -212,18 +215,6 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return Number of historical versions.
      */
     public int getHistoricalVersionCountForEvent(String eventIdentifier);
-
-    /**
-     * Get the number of visible historical versions (that is, the subset of the
-     * snapshots in the history list that are visible) that exist for the
-     * specified event.
-     * 
-     * @param eventIdentifier
-     *            Identifier of the event for which the number of visible
-     *            historical versions is to be fetched.
-     * @return Number of visible historical versions.
-     */
-    public int getVisibleHistoricalVersionCountForEvent(String eventIdentifier);
 
     /**
      * Set the specified event to have the specified category. As a side effect,
@@ -734,13 +725,12 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * 
      * @param events
      *            Events to be saved.
-     * @param forceVisibility
+     * @param addToHistory
      *            Flag indicating whether or not the snapshots of the events
-     *            created to be saved to the database should have their
-     *            "visible in history list" flag set to <code>true</code> or
-     *            whether said flag should be left untouched.
+     *            created to be saved to the database should be part of their
+     *            respective events' history lists.
      */
-    public void saveEvents(List<IHazardEvent> events, boolean forceVisibility);
+    public void saveEvents(List<IHazardEvent> events, boolean addToHistory);
 
     /**
      * Revert the event with the specified identifier to the most recently saved

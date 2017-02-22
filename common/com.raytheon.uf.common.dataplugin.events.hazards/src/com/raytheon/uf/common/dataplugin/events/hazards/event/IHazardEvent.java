@@ -64,6 +64,11 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 12, 2016 15934      Chris.Golden Changed hazard events to use advanced
  *                                      geometries instead of JTS geometries.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag.
+ * Feb 16, 2017 29138      Chris.Golden Removed the visible-in-history-list flag
+ *                                      since use of the history list is being
+ *                                      reduced with advent of ability to save
+ *                                      a "latest version" to the database that
+ *                                      is not part of the history list.
  * </pre>
  * 
  * @author mnash
@@ -80,17 +85,6 @@ public interface IHazardEvent extends IEvent {
             return o1Time.compareTo(o2Time);
         }
     };
-
-    /**
-     * Determine whether or not this event should be visible to the user in the
-     * history list. The result is ignored unless this object represents an
-     * entry in the history list, that is, not the latest version of the hazard
-     * event.
-     * 
-     * @return <code>true</code> if the hazard event should be visible to the
-     *         user in the history list, <code>false</code> otherwise.
-     */
-    public boolean isVisibleInHistoryList();
 
     public Geometry getFlattenedGeometry();
 
@@ -166,8 +160,6 @@ public interface IHazardEvent extends IEvent {
     public String getWorkStation();
 
     public void setTimeRange(Date startTime, Date endTime);
-
-    public void setVisibleInHistoryList(boolean visible);
 
     public void setGeometry(IAdvancedGeometry geometry);
 

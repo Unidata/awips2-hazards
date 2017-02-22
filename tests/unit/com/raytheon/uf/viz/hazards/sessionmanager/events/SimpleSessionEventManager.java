@@ -351,7 +351,7 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events, boolean forceVisibility) {
+    public void saveEvents(List<IHazardEvent> events, boolean addToHistory) {
         throw new UnsupportedOperationException();
     }
 
@@ -373,11 +373,6 @@ public class SimpleSessionEventManager implements
 
     @Override
     public int getHistoricalVersionCountForEvent(String eventIdentifier) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getVisibleHistoricalVersionCountForEvent(String eventIdentifier) {
         throw new UnsupportedOperationException();
     }
 

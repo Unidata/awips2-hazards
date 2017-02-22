@@ -22,6 +22,7 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.R
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SITE_ID;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.hazardStatusFromString;
 import gov.noaa.gsd.common.utilities.DateTimes;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
 
 import java.io.Serializable;
@@ -127,7 +128,7 @@ public class HazardEventsBuilderForTesting {
                     List<List<Double>> points = shape
                             .getDynamicallyTypedValue("points");
                     Geometry geometry = buildGeometry(points);
-                    event.setGeometry(geometry);
+                    event.setGeometry(new GeometryWrapper(geometry, 0.0));
                 } else if (key.equals(RISE_ABOVE) || key.equals(CREST)
                         || key.equals(FALL_BELOW)) {
                     Number value = eventDict.getDynamicallyTypedValue(key);

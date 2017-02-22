@@ -23,6 +23,7 @@ import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
@@ -35,11 +36,17 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Oct 8, 2012            mnash     Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Oct 8, 2012            mnash         Initial creation.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Feb 16, 2017  29138    Chris.Golden  Revamped to allow for the querying of
+ *                                      historical versions of events, or
+ *                                      latest (non-historical) versions, or
+ *                                      both. Also added a method to allow for
+ *                                      querying the size of a history list,
+ *                                      so that the whole history list does not
+ *                                      have to be shipped back to the client.
  * </pre>
  * 
  * @author mnash
@@ -47,78 +54,147 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  */
 
 public interface IHazardEventManager extends
-        IEventManager<IHazardEvent, HazardHistoryList> {
+        IEventManager<IHazardEvent, HazardEvent, HazardHistoryList> {
 
     /**
-     * Executes a query on the registry
+     * Execute the specified query of the registry for history lists of hazard
+     * events.
      * 
      * @param request
-     *            The query request
-     * @return Map of eventID to events
+     *            Query request to be executed.
+     * @return Map of event identifiers to their history lists.
      */
-    Map<String, HazardHistoryList> query(HazardEventQueryRequest request);
+    Map<String, HazardHistoryList> queryHistory(HazardEventQueryRequest request);
 
     /**
-     * Retrieve all hazards with the issuing site that was passed in
+     * Execute the specified query of the registry for the latest versions of
+     * hazard events.
+     * 
+     * @param request
+     *            Query request to be executed.
+     * @return Map of event identifiers to their history lists.
+     */
+    Map<String, HazardEvent> queryLatest(HazardEventQueryRequest request);
+
+    /**
+     * Retrieve the history lists of all hazards with the specified site
+     * identifier.
      * 
      * @param site
-     *            - a {@link String}
-     * @return the history of hazards in a map keyed by the event id
+     *            Site identifier.
+     * @param includeLatestVersion
+     *            Flag indicating whether or not non-historical latest versions
+     *            should be included in the history lists (in each case as the
+     *            last item).
+     * @return Map of event identifiers to their history lists.
      */
-    Map<String, HazardHistoryList> getBySiteID(String site);
+    Map<String, HazardHistoryList> getHistoryBySiteID(String site,
+            boolean includeLatestVersion);
 
     /**
-     * Retrieve all hazards with phenomenon that was passed in
+     * Retrieve the history lists of all hazards with specified phenomenon.
      * 
      * @param phenomenon
-     *            - a {@link String}
-     * @return the history of hazards in a map keyed by the event id
+     *            Phenomenon.
+     * @param includeLatestVersion
+     *            Flag indicating whether or not non-historical latest versions
+     *            should be included in the history lists (in each case as the
+     *            last item).
+     * @return Map of event identifiers to their history lists.
      */
-    Map<String, HazardHistoryList> getByPhenomenon(String phenomenon);
+    Map<String, HazardHistoryList> getHistoryByPhenomenon(String phenomenon,
+            boolean includeLatestVersion);
 
     /**
-     * Retrieve all hazards with significance that was passed in
+     * Retrieve the history lists of all hazards with the specified
+     * significance.
+     * 
+     * @param significance
+     *            Significance.
+     * @param includeLatestVersion
+     *            Flag indicating whether or not non-historical latest versions
+     *            should be included in the history lists (in each case as the
+     *            last item).
+     * @return Map of event identifiers to their history lists.
+     */
+    Map<String, HazardHistoryList> getHistoryBySignificance(
+            String significance, boolean includeLatestVersion);
+
+    /**
+     * Retrieve the history lists of all hazards with specified phenomenon and
+     * signficance (phensig).
      * 
      * @param phenomenon
-     *            - a {@link String}
-     * @return the history of hazards in a map keyed by the event id
+     *            Phenomenon.
+     * @param significance
+     *            Significance.
+     * @param includeLatestVersion
+     *            Flag indicating whether or not non-historical latest versions
+     *            should be included in the history lists (in each case as the
+     *            last item).
+     * @return Map of event identifiers to their history lists.
      */
-    Map<String, HazardHistoryList> getBySignificance(String significance);
+    Map<String, HazardHistoryList> getHistoryByPhenSig(String phen, String sig,
+            boolean includeLatestVersion);
 
     /**
-     * Retrieve all hazards with the phensig that was passed in
+     * Retrieve the history list for the specified event identifier.
      * 
-     * @param phen
-     *            - a {@link String}
-     * @param sig
-     *            - a {@link String}
-     * @return the history of hazards in a map keyed by the event id
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param includeLatestVersion
+     *            Flag indicating whether or not non-historical latest versions
+     *            should be included in the history list (as the last item).
+     * @return History list for the specified hazard identifier.
      */
-    Map<String, HazardHistoryList> getByPhensig(String phen, String sig);
+    HazardHistoryList getHistoryByEventID(String eventIdentifier,
+            boolean includeLatestVersion);
 
     /**
-     * Takes and eventId and returns all hazards that use that event id. This
-     * returns a {@link HazardHistoryList}, which is an ordered list of the
-     * history of the hazard.
+     * Retrieve the size of the history list for the specified event identifier
+     * This may be used in place of
+     * {@link #getHistoryByEventID(String, boolean)} in situations where the
+     * size of the history list is desired, but the event versions themselves
+     * are not needed, since this method requires no transport of serialized
+     * hazard events.
      * 
-     * @param eventId
-     *            - a {@link String}
-     * @return the history of hazards in a list
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param includeLatestVersion
+     *            Flag indicating whether or not non-historical latest versions
+     *            should be included in the size of the history list.
+     * @return Size of the history list for the specified hazard identifier.
      */
-    HazardHistoryList getByEventID(String eventId);
+    int getHistorySizeByEventID(String eventIdentifier,
+            boolean includeLatestVersion);
 
     /**
-     * Stores a set of events that were grouped together.
+     * Retrieve the latest version of the specified event identifier.
+     * 
+     * @param eventIdentifier
+     *            Event identifier.
+     * @param includeHistoricalVersion
+     *            Flag indicating whether or not historical latest version
+     *            should be included if that is later than the non-historical
+     *            latest version.
+     * @return Latest version of the hazard event.
+     */
+    HazardEvent getLatestByEventID(String eventIdentifier,
+            boolean includeHistoricalVersion);
+
+    /**
+     * Store the specified set of events.
      * 
      * @param set
-     *            - a {@link EventSet<IHazardEvent>}
+     *            Set of events.
      */
-    void storeEventSet(EventSet<IHazardEvent> set);
+    void storeEventSet(EventSet<HazardEvent> set);
 
     /**
-     * Removes all events, should not be implemented in certain cases.
+     * Remove all events. This may not be implemented in all cases.
      * 
-     * @return
+     * @return <code>true</code> if the events were removed, <code>false</code>
+     *         otherwise.
      */
     boolean removeAllEvents();
 }

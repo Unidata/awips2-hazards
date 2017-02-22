@@ -64,6 +64,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 16, 2016   15556    Chris.Golden Initial creation.
+ * Feb 16, 2017   29138    Chris.Golden Changed to remove notion of visibility
+ *                                      of events in the history list, since
+ *                                      all events in the history list are now
+ *                                      visible.
  * </pre>
  * 
  * @author Chris.Golden
@@ -542,19 +546,17 @@ class TabularEntityManager {
             int count = 0;
             int oldEntityIndex = oldHistoricalEntities.size() - 1;
             for (IHazardEvent historicalEvent : historicalEvents) {
-                if (historicalEvent.isVisibleInHistoryList()) {
-                    TabularEntity historicalEntity = null;
-                    if (oldEntityIndex == -1) {
-                        historicalEntity = buildTabularEntityForEvent(
-                                historicalEvent, count, null, null);
-                        tabularEntitiesForIdentifiers.put(new Pair<>(
-                                eventIdentifier, count), historicalEntity);
-                    } else {
-                        historicalEntity = oldHistoricalEntities
-                                .get(oldEntityIndex--);
-                    }
-                    historicalEntities.add(historicalEntity);
+                TabularEntity historicalEntity = null;
+                if (oldEntityIndex == -1) {
+                    historicalEntity = buildTabularEntityForEvent(
+                            historicalEvent, count, null, null);
+                    tabularEntitiesForIdentifiers.put(new Pair<>(
+                            eventIdentifier, count), historicalEntity);
+                } else {
+                    historicalEntity = oldHistoricalEntities
+                            .get(oldEntityIndex--);
                 }
+                historicalEntities.add(historicalEntity);
                 count++;
             }
             Collections.reverse(historicalEntities);
@@ -707,19 +709,16 @@ class TabularEntityManager {
                         .size());
                 int count = 0;
                 for (IHazardEvent historicalEvent : historicalEvents) {
-                    if (historicalEvent.isVisibleInHistoryList()) {
-                        Pair<String, Integer> historicalIdentifier = new Pair<>(
-                                eventIdentifier, count);
-                        TabularEntity oldHistoricalEntity = tabularEntitiesForIdentifiers
-                                .get(historicalIdentifier);
-                        TabularEntity entity = (historicalIndices
-                                .contains(count) ? buildTabularEntityForEvent(
-                                historicalEvent, count, oldHistoricalEntity,
-                                null) : oldHistoricalEntity);
-                        historicalEntities.add(entity);
-                        tabularEntitiesForIdentifiers.put(historicalIdentifier,
-                                entity);
-                    }
+                    Pair<String, Integer> historicalIdentifier = new Pair<>(
+                            eventIdentifier, count);
+                    TabularEntity oldHistoricalEntity = tabularEntitiesForIdentifiers
+                            .get(historicalIdentifier);
+                    TabularEntity entity = (historicalIndices.contains(count) ? buildTabularEntityForEvent(
+                            historicalEvent, count, oldHistoricalEntity, null)
+                            : oldHistoricalEntity);
+                    historicalEntities.add(entity);
+                    tabularEntitiesForIdentifiers.put(historicalIdentifier,
+                            entity);
                     count++;
                 }
                 Collections.reverse(historicalEntities);
@@ -1230,7 +1229,9 @@ class TabularEntityManager {
          */
         String eventIdentifier = event.getEventID();
         List<TabularEntity> historicalEntities = null;
-        if (showHistoryList) {
+        if (showHistoryList
+                && (sessionManager.getEventManager()
+                        .getHistoricalVersionCountForEvent(eventIdentifier) > 0)) {
             HazardHistoryList historicalEvents = sessionManager
                     .getEventManager().getEventHistoryById(eventIdentifier);
             if ((historicalEvents != null)
@@ -1240,17 +1241,15 @@ class TabularEntityManager {
                                 .size()));
                 int count = 0;
                 for (IHazardEvent historicalEvent : historicalEvents) {
-                    if (historicalEvent.isVisibleInHistoryList()) {
-                        Pair<String, Integer> historicalIdentifier = new Pair<>(
-                                eventIdentifier, count);
-                        TabularEntity entity = buildTabularEntityForEvent(
-                                historicalEvent, count,
-                                tabularEntitiesForIdentifiers
-                                        .get(historicalIdentifier), null);
-                        historicalEntities.add(entity);
-                        this.tabularEntitiesForIdentifiers.put(
-                                historicalIdentifier, entity);
-                    }
+                    Pair<String, Integer> historicalIdentifier = new Pair<>(
+                            eventIdentifier, count);
+                    TabularEntity entity = buildTabularEntityForEvent(
+                            historicalEvent, count,
+                            tabularEntitiesForIdentifiers
+                                    .get(historicalIdentifier), null);
+                    historicalEntities.add(entity);
+                    this.tabularEntitiesForIdentifiers.put(
+                            historicalIdentifier, entity);
                     count++;
                 }
                 Collections.reverse(historicalEntities);

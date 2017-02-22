@@ -40,6 +40,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductC
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -114,6 +115,7 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      appropriate.
  * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries now used in
  *                                      hazard events.
+ * Feb 16, 2017 29138      Chris.Golden Changed to work with new hazard event manager.
  * </pre>
  * 
  * @author jsanchez
@@ -401,7 +403,7 @@ public class HazardEventHandler {
                 final String hazardType = discreteKey.toString();
                 String[] hazardParts = StringUtil.split(hazardType, '.');
 
-                List<IHazardEvent> events = null;
+                List<HazardEvent> events = null;
                 synchronized (this) {
                     events = GfeInteroperabilityUtil
                             .queryForInteroperabilityHazards(siteID,
@@ -427,11 +429,11 @@ public class HazardEventHandler {
                  * Track the hazards that may be updated and the hazards that
                  * will definitely be updated.
                  */
-                List<IHazardEvent> updateCandidates = new ArrayList<>();
-                List<IHazardEvent> hazardsToUpdate = new ArrayList<>();
+                List<HazardEvent> updateCandidates = new ArrayList<>();
+                List<HazardEvent> hazardsToUpdate = new ArrayList<>();
 
                 /* Track the hazards that will be created. */
-                List<IHazardEvent> hazardsToCreate = new ArrayList<>();
+                List<HazardEvent> hazardsToCreate = new ArrayList<>();
                 /*
                  * Track associated gfe interoperability records that may also
                  * be created.
@@ -444,7 +446,7 @@ public class HazardEventHandler {
                 if (events == null) {
                     // no hazard(s) to update; create a new hazard.
 
-                    IHazardEvent hazardEvent = this.createNewHazard(
+                    HazardEvent hazardEvent = this.createNewHazard(
                             hazardEventManager, hazardState, startDate,
                             endDate, siteID, hazardType, hazardMultiPolygon,
                             this.determineHazardsMode(parmID) == Mode.PRACTICE);
@@ -473,7 +475,7 @@ public class HazardEventHandler {
                      * that were found.
                      */
                     try {
-                        for (IHazardEvent iterateHazardEvent : events) {
+                        for (HazardEvent iterateHazardEvent : events) {
                             updateCandidates.add(iterateHazardEvent);
                             Geometry hazardGeometry = iterateHazardEvent
                                     .getProductGeometry();
@@ -518,7 +520,7 @@ public class HazardEventHandler {
                     // a hazard based on requirements - so, a list will be
                     // sufficient to track the hazards that need to be
                     // updated.
-                    for (IHazardEvent updateCandidateHazardEvent : updateCandidates) {
+                    for (HazardEvent updateCandidateHazardEvent : updateCandidates) {
                         Date creationTime = new Date();
 
                         if (updateCandidateHazardEvent.getStatus() == HazardStatus.PENDING) {
@@ -559,7 +561,7 @@ public class HazardEventHandler {
                          * determine if a hazard geometry does not completely
                          * match the grid region that it is associated with.
                          */
-                        IHazardEvent hazardEvent = this
+                        HazardEvent hazardEvent = this
                                 .createNewHazard(
                                         hazardEventManager,
                                         hazardState,
@@ -617,7 +619,7 @@ public class HazardEventHandler {
             return;
         }
 
-        List<IHazardEvent> events = GfeInteroperabilityUtil
+        List<HazardEvent> events = GfeInteroperabilityUtil
                 .queryForInteroperabilityHazards(siteID, null, null, startDate,
                         endDate, hazardEventManager);
 
@@ -626,11 +628,11 @@ public class HazardEventHandler {
         }
     }
 
-    private IHazardEvent createNewHazard(HazardEventManager hazardEventManager,
+    private HazardEvent createNewHazard(HazardEventManager hazardEventManager,
             HazardStatus hazardState, Date startDate, Date endDate,
             String siteID, String hazardType, Geometry hazardMultiPolygon,
             boolean practice) {
-        IHazardEvent hazardEvent = hazardEventManager.createEvent();
+        HazardEvent hazardEvent = hazardEventManager.createEvent();
 
         try {
             hazardEvent.setEventID(HazardServicesEventIdUtil.getNewEventID());

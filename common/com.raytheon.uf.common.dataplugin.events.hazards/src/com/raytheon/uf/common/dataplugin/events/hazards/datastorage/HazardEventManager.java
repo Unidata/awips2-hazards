@@ -22,8 +22,8 @@ package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +61,13 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 14, 2016  15934    Chris.Golden  Changed to handle advanced geometries
  *                                      now used by hazard events in place of
  *                                      JTS geometries.
- * 
+ * Feb 16, 2017  29138    Chris.Golden  Revamped to allow for the querying of
+ *                                      historical versions of events, or
+ *                                      latest (non-historical) versions, or
+ *                                      both. Also added a method to allow for
+ *                                      querying the size of a history list,
+ *                                      so that the whole history list does not
+ *                                      have to be shipped back to the client.
  * </pre>
  * 
  * @author mnash
@@ -69,45 +75,111 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 public class HazardEventManager implements IHazardEventManager {
 
-    /** The logger */
-    private static final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(HazardEventManager.class);
+    // Public Enumerated Types
 
-    /** Data Access Services */
-    private final IHazardEventServices hazardDataAccess;
-
-    /** Enum denoting what mode CAVE is in */
-    public static enum Mode {
+    /**
+     * Possible modes that CAVE may be in.
+     */
+    public enum Mode {
         OPERATIONAL, PRACTICE
     }
 
+    /*
+     * What to include in the hazard events returned from a query.
+     */
+    public enum Include {
+        HISTORICAL_AND_LATEST_EVENTS, HISTORICAL_EVENTS, LATEST_EVENTS, LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
+    }
+
+    // Private Static Constants
+
     /**
-     * Creates a new HazardEventManager for the given mode
+     * Logger,
+     */
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(HazardEventManager.class);
+
+    // Private Variables
+
+    /**
+     * Data access services.
+     */
+    private final IHazardEventServices hazardDataAccess;
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
      * 
      * @param mode
-     *            The mode
+     *            Mode.
      */
     public HazardEventManager(Mode mode) {
         this.hazardDataAccess = HazardServicesClient
                 .getHazardEventServices(mode);
     }
 
-    /**
-     * Creates an event based on the mode.
-     */
+    // Public Methods
+
     @Override
-    public IHazardEvent createEvent() {
+    public HazardEvent createEvent() {
         return new HazardEvent();
     }
 
     @Override
-    public IHazardEvent createEvent(IHazardEvent event) {
+    public HazardEvent createEvent(IHazardEvent event) {
         return new HazardEvent(event);
     }
 
     @Override
-    public Map<String, HazardHistoryList> query(HazardEventQueryRequest request) {
-        Map<String, HazardHistoryList> events = new HashMap<String, HazardHistoryList>();
+    public boolean storeEvents(HazardEvent... events) {
+        return storeEvents(Arrays.asList(events));
+    }
+
+    @Override
+    public boolean storeEvents(List<HazardEvent> events) {
+        try {
+            return checkResponse(hazardDataAccess.storeEventList(events));
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean updateEvents(HazardEvent... events) {
+        return updateEvents(Arrays.asList(events));
+    }
+
+    @Override
+    public boolean updateEvents(List<HazardEvent> events) {
+        try {
+            return checkResponse(hazardDataAccess.updateEventList(events));
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean removeEvents(HazardEvent... events) {
+        return removeEvents(Arrays.asList(events));
+    }
+
+    @Override
+    public boolean removeEvents(List<HazardEvent> events) {
+        try {
+            return checkResponse(hazardDataAccess.deleteEventList(events));
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
+        return false;
+    }
+
+    @Override
+    public Map<String, HazardHistoryList> queryHistory(
+            HazardEventQueryRequest request) {
+        Map<String, HazardHistoryList> events = Collections.emptyMap();
         try {
             HazardEventResponse response = hazardDataAccess.retrieve(request);
             if (response.success()) {
@@ -122,128 +194,158 @@ public class HazardEventManager implements IHazardEventManager {
     }
 
     @Override
-    public Map<String, HazardHistoryList> getEventsByFilter(
-            Map<String, List<Object>> filters) {
-        HazardEventQueryRequest req = new HazardEventQueryRequest();
-        for (Entry<String, List<Object>> entry : filters.entrySet()) {
-            req.and(entry.getKey(), entry.getValue());
-        }
-        return query(req);
-    }
-
-    @Override
-    public boolean storeEvent(IHazardEvent... event) {
-        return storeEvents(Arrays.asList(event));
-    }
-
-    @Override
-    public boolean storeEvents(List<IHazardEvent> events) {
+    public Map<String, HazardEvent> queryLatest(HazardEventQueryRequest request) {
+        Map<String, HazardEvent> events = Collections.emptyMap();
         try {
-            return checkResponse(hazardDataAccess
-                    .storeEventList(makeHazardEventList(events)));
+            HazardEventResponse response = hazardDataAccess.retrieve(request);
+            if (response.success()) {
+                events = response.getLatestMap();
+            } else {
+                checkResponse(response);
+            }
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
-        return false;
+        return events;
     }
 
     @Override
-    public boolean updateEvent(IHazardEvent... event) {
-        return updateEvents(Arrays.asList(event));
-    }
-
-    @Override
-    public boolean updateEvents(List<IHazardEvent> events) {
-        try {
-            return checkResponse(hazardDataAccess
-                    .updateEventList(makeHazardEventList(events)));
-        } catch (Exception e) {
-            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+    public Map<String, HazardHistoryList> getHistoryByFilter(
+            Map<String, List<?>> filters, boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest();
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
         }
-        return false;
-    }
-
-    @Override
-    public boolean removeEvent(IHazardEvent... event) {
-        return removeEvents(Arrays.asList(event));
-    }
-
-    @Override
-    public boolean removeEvents(List<IHazardEvent> events) {
-        try {
-            return checkResponse(hazardDataAccess
-                    .deleteEventList(makeHazardEventList(events)));
-        } catch (Exception e) {
-            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        for (Entry<String, List<?>> entry : filters.entrySet()) {
+            request.and(entry.getKey(), entry.getValue());
         }
-        return false;
+        return queryHistory(request);
     }
 
     @Override
-    public Map<String, HazardHistoryList> getBySiteID(String site) {
-        return this.query(new HazardEventQueryRequest(HazardConstants.SITE_ID,
-                site));
+    public Map<String, HazardHistoryList> getHistoryBySiteID(String site,
+            boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                HazardConstants.SITE_ID, site);
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        return queryHistory(request);
     }
 
     @Override
-    public Map<String, HazardHistoryList> getByPhenomenon(String phenomenon) {
-        return this.query(new HazardEventQueryRequest(
-                HazardConstants.PHENOMENON, phenomenon));
+    public Map<String, HazardHistoryList> getHistoryByPhenomenon(
+            String phenomenon, boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                HazardConstants.PHENOMENON, phenomenon);
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        return queryHistory(request);
     }
 
     @Override
-    public Map<String, HazardHistoryList> getBySignificance(String significance) {
-        return this.query(new HazardEventQueryRequest(
-                HazardConstants.SIGNIFICANCE, significance));
+    public Map<String, HazardHistoryList> getHistoryBySignificance(
+            String significance, boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                HazardConstants.SIGNIFICANCE, significance);
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        return queryHistory(request);
     }
 
     @Override
-    public Map<String, HazardHistoryList> getByPhensig(String phen, String sig) {
-        return this.query(new HazardEventQueryRequest(
-                HazardConstants.PHENOMENON, phen).and(
-                HazardConstants.SIGNIFICANCE, sig));
+    public Map<String, HazardHistoryList> getHistoryByPhenSig(
+            String phenomenon, String significance, boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                HazardConstants.PHENOMENON, phenomenon).and(
+                HazardConstants.SIGNIFICANCE, significance);
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        return queryHistory(request);
     }
 
     @Override
-    public HazardHistoryList getByEventID(String eventId) {
-        return this.query(
-                new HazardEventQueryRequest().and(
-                        HazardConstants.HAZARD_EVENT_IDENTIFIER, eventId)).get(
-                eventId);
-
-    }
-
-    @Override
-    public Map<String, HazardHistoryList> getByGeometry(Geometry geometry) {
-        return this.query(new HazardEventQueryRequest().and(
+    public Map<String, HazardHistoryList> getHistoryByGeometry(
+            Geometry geometry, boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
                 HazardConstants.GEOMETRY,
-                AdvancedGeometryUtilities.createGeometryWrapper(geometry, 0)));
+                AdvancedGeometryUtilities.createGeometryWrapper(geometry, 0));
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        return queryHistory(request);
     }
 
     @Override
-    public Map<String, HazardHistoryList> getByTime(Date startTime, Date endTime) {
-        return this.query(new HazardEventQueryRequest().and(
+    public Map<String, HazardHistoryList> getHistoryByTime(Date startTime,
+            Date endTime, boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
                 HazardConstants.HAZARD_EVENT_START_TIME, ">", startTime).and(
-                HazardConstants.HAZARD_EVENT_END_TIME, "<", endTime));
+                HazardConstants.HAZARD_EVENT_END_TIME, "<", endTime);
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        return queryHistory(request);
     }
 
     @Override
-    public Map<String, HazardHistoryList> getByTimeRange(TimeRange range) {
-        return getByTime(range.getStart(), range.getEnd());
+    public Map<String, HazardHistoryList> getHistoryByTimeRange(
+            TimeRange range, boolean includeLatestVersion) {
+        return getHistoryByTime(range.getStart(), range.getEnd(),
+                includeLatestVersion);
     };
 
     @Override
-    public void storeEventSet(EventSet<IHazardEvent> set) {
-        Iterator<IHazardEvent> eventIter = set.iterator();
+    public HazardHistoryList getHistoryByEventID(String eventIdentifier,
+            boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
+                HazardConstants.HAZARD_EVENT_IDENTIFIER, eventIdentifier);
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        return queryHistory(request).get(eventIdentifier);
+    }
+
+    @Override
+    public int getHistorySizeByEventID(String eventIdentifier,
+            boolean includeLatestVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
+                HazardConstants.HAZARD_EVENT_IDENTIFIER, eventIdentifier);
+        if (includeLatestVersion == false) {
+            request.setInclude(Include.HISTORICAL_EVENTS);
+        }
+        request.setSizeOnlyRequired(true);
+        return queryHistorySize(request).get(eventIdentifier);
+    }
+
+    @Override
+    public HazardEvent getLatestByEventID(String eventIdentifier,
+            boolean includeHistoricalVersion) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
+                HazardConstants.HAZARD_EVENT_IDENTIFIER, eventIdentifier);
+        request.setInclude(includeHistoricalVersion ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
+                : Include.LATEST_EVENTS);
+        return queryLatest(request).get(eventIdentifier);
+    }
+
+    @Override
+    public void storeEventSet(EventSet<HazardEvent> set) {
+        Iterator<HazardEvent> eventIter = set.iterator();
         while (eventIter.hasNext()) {
-            IHazardEvent event = eventIter.next();
-            storeEvent(event);
+            HazardEvent event = eventIter.next();
+            storeEvents(event);
         }
     }
 
     @Override
-    public Map<String, HazardHistoryList> getAll() {
-        return query(new HazardEventQueryRequest());
+    public Map<String, HazardHistoryList> getAllHistory(
+            boolean includeLatestVersion) {
+        return queryHistory(new HazardEventQueryRequest(
+                includeLatestVersion ? Include.HISTORICAL_AND_LATEST_EVENTS
+                        : Include.HISTORICAL_EVENTS));
     }
 
     @Override
@@ -256,24 +358,40 @@ public class HazardEventManager implements IHazardEventManager {
         return false;
     }
 
+    // Private Methods
+
     /**
-     * Converts IHazardEvent objects to HazardEvent objects
+     * Submit the specified query request and get a map of event identifiers to
+     * the sizes of the history lists back.
      * 
-     * @param events
-     *            The list of IHazardEvent objects
-     * @return The List of HazardEvent objects
+     * @param request
+     *            Request to be submitted.
+     * @return Map of event identifiers to the sizes of their history lists.
      */
-    @SuppressWarnings("unchecked")
-    private List<HazardEvent> makeHazardEventList(List<IHazardEvent> events) {
-        return (List<HazardEvent>) (List<?>) events;
+    private Map<String, Integer> queryHistorySize(
+            HazardEventQueryRequest request) {
+        Map<String, Integer> historySizesForEventIdentifiers = Collections
+                .emptyMap();
+        try {
+            HazardEventResponse response = hazardDataAccess.retrieve(request);
+            if (response.success()) {
+                historySizesForEventIdentifiers = response.getHistorySizeMap();
+            } else {
+                checkResponse(response);
+            }
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
+        return historySizesForEventIdentifiers;
     }
 
     /**
-     * Checks the response from the web server and logs any errors
+     * Check the specified response from the web server and log any errors.
      * 
      * @param response
-     *            The response to check
-     * @return True if the response indicates success, else false
+     *            Response to be checked.
+     * @return <code>true</code> if the response indicates success,
+     *         <code>false</code> otherwise.
      */
     private boolean checkResponse(HazardEventResponse response) {
         if (!response.success()) {

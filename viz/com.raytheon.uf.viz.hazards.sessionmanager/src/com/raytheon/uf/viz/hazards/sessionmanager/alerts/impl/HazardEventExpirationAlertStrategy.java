@@ -21,9 +21,10 @@ import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
@@ -52,9 +53,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * July 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
- * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * Nov  14, 2013   1472     bkowal     Renamed hazard subtype to subType
+ * Jul 19, 2013    1325    daniel.s.schaffer@noaa.gov      Initial creation
+ * Nov 04, 2013   2182     daniel.s.schaffer@noaa.gov      Started refactoring
+ * Nov  14, 2013   1472    bkowal     Renamed hazard subtype to subType
  * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
  *                                                    Also, fix to issue 2448
  * March 19, 2014 3277     bkowal      Eliminate false errors due to standard
@@ -63,12 +64,13 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                                    alerts would appear when 
  *                                                    you leave hazard services 
  *                                                    and come back much later.
- * 
  * Dec 05, 2014  4124      Chris.Golden Changed to work with parameterized config
  *                                         manager.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * Aug 06, 2015 9968      Chris.Cody    Changes for processing ENDED/ELAPSED events
- * Sep 15, 2015 7629     Robert.Blum   Updates for saving pending hazards.
+ * May 29, 2015 6895       Ben.Phillippe Refactored Hazard Service data access
+ * Aug 06, 2015 9968       Chris.Cody    Changes for processing ENDED/ELAPSED events
+ * Sep 15, 2015 7629       Robert.Blum   Updates for saving pending hazards.
+ * Feb 16, 2017 29138      Chris.Golden  Changed to use more efficient database
+ *                                       query.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -123,22 +125,18 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
     @Override
     public void initializeAlerts() {
 
-        /**
-         * 
+        /*
          * Tack on a filter to look for issued hazards.
          */
-        Collection<HazardHistoryList> hazardHistories = hazardEventManager
-                .query(new HazardEventQueryRequest(
-                        HazardConstants.HAZARD_EVENT_STATUS,
-                        "in",
-                        new Object[] { HazardStatus.ISSUED, HazardStatus.ENDING }))
-                .values();
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                HazardConstants.HAZARD_EVENT_STATUS, "in", new Object[] {
+                        HazardStatus.ISSUED, HazardStatus.ENDING });
+        request.setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
+        Collection<HazardEvent> hazardEvents = hazardEventManager.queryLatest(
+                request).values();
 
-        for (HazardHistoryList hazardHistoryList : hazardHistories) {
-            IHazardEvent hazardEvent = hazardHistoryList.get(hazardHistoryList
-                    .size() - 1);
+        for (HazardEvent hazardEvent : hazardEvents) {
             generateAlertsForIssuedHazardEvent(hazardEvent);
-
         }
     }
 
