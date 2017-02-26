@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
 import java.util.List;
 
@@ -68,6 +69,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * Feb 01, 2017 15556      Chris.Golden Added selection manager.
+ * Feb 21, 2017 29138      Chris.Golden Added method to get runnable asynchronous
+ *                                      scheduler.
  * </pre>
  * 
  * @author bsteffen
@@ -76,6 +79,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 
 public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
         extends IUndoRedoable {
+
+    /**
+     * Get the runnable asynchronous scheduler used to enqueue tasks on the
+     * session manager thread.
+     * 
+     * @return Runnable asynchronous scheduler.
+     */
+    public IRunnableAsynchronousScheduler getRunnableAsynchronousScheduler();
 
     /**
      * Get a manager for interacting with the events

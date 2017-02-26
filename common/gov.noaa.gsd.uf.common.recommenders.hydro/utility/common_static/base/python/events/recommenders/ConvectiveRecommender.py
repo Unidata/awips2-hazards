@@ -394,6 +394,12 @@ class Recommender(RecommenderTemplate.Recommender):
         if values.get('belowThreshold'):
             print '\t', ID, 'Below Threshold', self.lowThreshold, 'returning None'
             return None
+
+        try:        
+            polygon = loads(values.pop('polygons'))
+        except:
+            print 'POLYPOLYPOLY  Unable to load polygons. Returning None.  POLYPOLYPOLY'
+            return None
         
         sys.stdout.flush()
         probSevereTime = values.get('startTime', self.dataLayerTime)
@@ -407,13 +413,13 @@ class Recommender(RecommenderTemplate.Recommender):
         
         hazardEvent.setPhenomenon("Prob_Severe")
         
-        polygon = loads(values.pop('polygons'))
         hazardEvent.setGeometry(polygon)
         hazardEvent.set('convectiveObjectDir', values.get('wdir'))
         hazardEvent.set('convectiveObjectSpdKts', values.get('wspd'))
         hazardEvent.set('probSeverAttrs',values)
         hazardEvent.set('objectID', ID)
         hazardEvent.setStatus('ISSUED')
+        hazardEvent.set('statusForHiddenField', 'ISSUED')
         
         hazardEvent.set('automationLevel', 'automated')
         
@@ -501,8 +507,10 @@ class Recommender(RecommenderTemplate.Recommender):
         
         if recommended.get('belowThreshold'):
             event.setStatus('PROPOSED')
+            event.set('statusForHiddenField', 'PROPOSED')
         else:
             event.setStatus('ISSUED')
+            event.set('statusForHiddenField', 'ISSUED')
         
         graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
         event.set('convectiveProbTrendGraph', graphProbs)
@@ -525,8 +533,6 @@ class Recommender(RecommenderTemplate.Recommender):
 
             print '\n!!!!!!!  ID[1]: ', ID, '>>>>', currentEvent.getStatus()
             if currentEvent.getStatus() == 'ELAPSED':
-                print '\tMerging elapsed event'
-                mergedEvents.add(currentEvent)
                 continue
             
             ### DISCOVERED ON 20170218:
@@ -577,7 +583,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 
             mergedEvents.add(currentEvent)
             
-            return identifiersOfEventsToSaveToDatabase
+        return identifiersOfEventsToSaveToDatabase
             
             
 
@@ -591,23 +597,31 @@ class Recommender(RecommenderTemplate.Recommender):
         intersectionDict = {}
         recommendedObjectIDsList = sorted(recommendedEventsDict.keys())
         unmatchedEvents = []
-        manualEventsList = []
+        manualEventGeomsList = []
         mergedEvents = EventSet(None)
 
         currentTimeMS = int(self.currentTime.strftime('%s'))*1000
         mergedEvents.addAttribute('currentTime', currentTimeMS)
         mergedEvents.addAttribute('trigger', 'autoUpdate')
         
+        identifiersOfEventsToSaveToDatabase = []
+        
         for currentEvent in currentEventsList:
             print '\n\t[1]:', currentEvent.get('objectID')
 
             if currentEvent.get('automationLevel') == 'userOwned':
-                print 'Manual Event.  Storing and mocing on...'
-                manualEventsList.append(currentEvent)
+                print 'Manual Event.  Storing and moving on...'
+                evtGeom = currentEvent.getGeometry().asShapely()
+                manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
                 continue
             
             currentEventObjectID = currentEvent.get('objectID')
             print '######### currentEventObjectID ######', currentEventObjectID
+            print '\t0-->', str(currentEventObjectID)
+            print '\t1-->', recommendedObjectIDsList
+            print '\t2-->', str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList]))
+
+
             #if currentEventObjectID in recommendedObjectIDsList:
             ### Account for prepended 'M' to automated events that are level 3 or 2 automation.
             if str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList])):
@@ -620,17 +634,21 @@ class Recommender(RecommenderTemplate.Recommender):
                 
                 ### Remove ID from rec list so remaining list is "newOnly"
                 recommendedObjectIDsList.remove(rawRecommendedID)
+                mergedEvents.add(currentEvent)
+                
             else:
                 print '\t!!!!!!!  ELAPSING   !!!!!'
-                currentEvent.setStatus('ELAPSED')
-
-            mergedEvents.add(currentEvent)
+                if currentEvent.getStatus() != 'ELAPSED':
+                    currentEvent.setStatus('ELAPSED')
+                    currentEvent.set('statusForHiddenField', 'ELAPSED')
+                    mergedEvents.add(currentEvent)
+                    identifiersOfEventsToSaveToDatabase.append(currentEvent.getEventID())
 
         ### Update the current events with the attributes of the recommended events.
         ### This returns a list of identifiers of events that are to be saved to the
         ### database (not history list).  
         #identifiersOfEventsToSaveToDatabase = self.updateCurrentEvents(intersectionDict, mergedEvents, currentTime)
-        identifiersOfEventsToSaveToDatabase = self.updateCurrentEvents(intersectionDict, mergedEvents)
+        identifiersOfEventsToSaveToDatabase.extend(self.updateCurrentEvents(intersectionDict, mergedEvents))
         
         # Create a list of hazard event identifiers that are to be saved
         # to the history list.
@@ -643,7 +661,7 @@ class Recommender(RecommenderTemplate.Recommender):
             recommendedValues = recommendedEventsDict[recID]
             recommendedEvent = None
 
-            if len(manualEventsList) == 0:
+            if len(manualEventGeomsList) == 0:
                 
                 ### If an event is created, add it to the event set and add
                 ### it to the list of events to be saved to history.
@@ -653,12 +671,15 @@ class Recommender(RecommenderTemplate.Recommender):
             else:
                 ### Get recommended geometry
                 recGeom = loads(recommendedValues.get('polygons'))
-                for event in manualEventsList:
-                    mergedEvents.add(event)
-                    evtGeom = event.getGeometry().asShapely()
-                    ### if the geometries DO NOT intersect, add recommended
-                    if not evtGeom.intersects(recGeom):
-                	print '2222222: Calling makeHazardEvent for:', recID
+                makeNew = True
+                for eventDict in manualEventGeomsList:
+                    ### if recommended geometry intersects with Prob_Severe geometry, don't make new Haz Evt
+                    hazType = eventDict.get('hazType', None)
+                    evtGeom = eventDict.get('geom')
+                    if hazType == 'Prob_Severe' and evtGeom.intersects(recGeom):
+                        makeNew = False
+                if makeNew:
+                    print '2222222: Calling makeHazardEvent for:', recID
                     recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
 
             if recommendedEvent:

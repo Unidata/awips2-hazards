@@ -55,6 +55,7 @@ Prob_WFO = {
         "Status",
         "Start Time",
         "End Time",
+        "Workstation",
         "DataLayer Status",
     ],
     "visibleStatuses": [

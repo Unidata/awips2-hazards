@@ -31,7 +31,8 @@
 #    12/05/13        2527          bkowal         Use JUtil to convert Hazards
 #    4/8/15          7091          hansen         Added getHazardEventsBySite
 #    05/13/15        8161          mduff          Changes for Jep upgrade.
-# 
+#    02/27/17       29138          Chris.Golden   Changed to work with new
+#                                                 version of HazardEventManager.
 #
 
 import JUtil
@@ -40,15 +41,14 @@ Mode = HazardEventManager.Mode
 
 def getHazardEvent(eventId, mode):        
     manager = HazardEventManager(Mode.valueOf(mode))
-    historyList = manager.getByEventID(eventId)
-    if ((historyList == None) or (historyList.size() == 0)):
+    event = manager.getLatestByEventID(eventId, True)
+    if event is None:
         return None
-    
-    return JUtil.javaObjToPyVal(historyList.get(historyList.size() - 1))
+    return JUtil.javaObjToPyVal(event)
 
 def getHazardEventsBySite(siteID, mode):
     manager = HazardEventManager(Mode.valueOf(mode))
-    hazardEventMap = manager.getBySiteID(siteID)
+    hazardEventMap = manager.getLatestBySiteID(siteID, True)
     if ((hazardEventMap == None) or (hazardEventMap.size() == 0)):
         return []
     hazardEvents = []
@@ -56,6 +56,5 @@ def getHazardEventsBySite(siteID, mode):
     iterator = entrySet.iterator()
     while iterator.hasNext():
         item = iterator.next()
-        historyList = item.getValue()
-        hazardEvents.append(JUtil.javaObjToPyVal(historyList.get(historyList.size() - 1)))    
+        hazardEvents.append(JUtil.javaObjToPyVal(item.getValue()))
     return hazardEvents

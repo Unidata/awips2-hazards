@@ -199,6 +199,7 @@ class Recommender(RecommenderTemplate.Recommender):
             self.attributeIdentifiers = []
 
         resultEventSet = EventSetFactory.createEventSet(None)
+        self.saveToDatabase = True
         
         # IF there are any editable objects, we do not want to set the selected time ahead for
         #   a timeInterval update
@@ -228,10 +229,12 @@ class Recommender(RecommenderTemplate.Recommender):
             
             
             # Origin Database
-            #  From another machine: create Visual Features
+            #  From another machine: create Visual Features, do not save
+            # to database.
             if origin == 'database':
                 self.setVisualFeatures(event)
                 resultEventSet.add(event)
+                self.saveToDatabase = False
                 continue
                        
             # Adjust Hazard Event Attributes
@@ -287,7 +290,8 @@ class Recommender(RecommenderTemplate.Recommender):
             # Add revised event to result
             resultEventSet.add(event)
             
-        resultEventSet.addAttribute("saveToDatabase", True)
+        if self.saveToDatabase:
+            resultEventSet.addAttribute("saveToDatabase", True)
 
         return resultEventSet      
     
@@ -329,30 +333,37 @@ class Recommender(RecommenderTemplate.Recommender):
         Return True if the event needs to be processed
         Otherwise return False
         '''            
+        
+        # Make sure that already elapsed events are never processed.
+        if event.getStatus() == "ELAPSED":
+            return False  
+
         # For event modification or visual feature change, 
         #   we only want to process the one event identified in the eventSetAttrs,
-        #   so skip all others         
+        #   so skip all others       
         if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange']:
             eventIdentifier = eventSetAttrs.get('eventIdentifier')            
             if eventIdentifier and eventIdentifier != event.getEventID():
                 return False
-        # Skip previously ended, elapsed events 
-        eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
+
         # Check for Elapsed 
+        eventEndTime_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()))
         if self.currentTime - eventEndTime_ms > self.elapsedTimeLimit():
             # Set to Elapsed 
             event.setStatus('ELAPSED')
-            event.set('status', 'ELAPSED')
+            event.set('statusForHiddenField', 'ELAPSED')
             resultEventSet.add(event)
-        if event.getStatus() in ['ELAPSED', 'ENDED', 'POTENTIAL']:                
-            if event.getStatus() == 'ELAPSED':
-                resultEventSet.add(event)
             return False
+
+        # Skip previously ended, potential events 
+        if event.getStatus() in ['ENDED', 'POTENTIAL']:                
+            return False
+
         # Check for end time < current time and end the event
         if eventEndTime_ms < self.currentTime:
             # Set to ended
             event.setStatus('ENDED')
-            event.set('status', 'ENDED')
+            event.set('statusForHiddenField', 'ENDED')
             resultEventSet.add(event)
             # BUG ALERT?? Should we still process it?
         return True                  
@@ -629,7 +640,7 @@ class Recommender(RecommenderTemplate.Recommender):
             print "SR Setting to Elapsed"
             self.flush()
             event.setStatus('ELAPSED')
-            event.set('status', 'ELAPSED')
+            event.set('statusForHiddenField', 'ELAPSED')
             resultEventSet.add(event)
             return        
 

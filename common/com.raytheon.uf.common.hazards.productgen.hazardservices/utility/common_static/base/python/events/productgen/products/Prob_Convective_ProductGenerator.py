@@ -138,6 +138,7 @@ class Product(Prob_Generator.Product):
                 print "Prob Convective Product Generator setting status to Ended", hazardEvent.getEventID()
                 self.flush()
                 hazardEvent.setStatus('ENDED')
+                hazardEvent.set('statusForHiddenField', 'ENDED')
                            
             
             ### Requested by Greg:
@@ -265,7 +266,7 @@ class Product(Prob_Generator.Product):
         hazardEvent.set('editableObject', False)
         hazardEvent.set('settingMotionVector', False)
         hazardEvent.set('upstreamPolys', [])
-        hazardEvent.set('status', 'ISSUED')
+        hazardEvent.set('statusForHiddenField', 'ISSUED')
                 
     def storeIssuedHazards(self,probHazardEvents):
         pu = ProbUtils()

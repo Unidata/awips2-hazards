@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -150,6 +151,18 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      resulting events to be saved to either the "latest
  *                                      version" set in the database, or the history list in the
  *                                      database.
+ * Feb 21, 2017 29138      Chris.Golden Added method to get runnable asynchronous scheduler. Also
+ *                                      fixed null exception that occurred if a recommender passed
+ *                                      back a null value as one of the elements in the list of
+ *                                      event identifiers to be saved to the database or to the
+ *                                      history list.
+ * Mar 08, 2017 29138      Chris.Golden Added startup config option to allow persistence behavior
+ *                                      to be tweaked via configuration. Also added code to ensure
+ *                                      that any specification of null for a hazard event identifier
+ *                                      in a recommender result's "saveToDatabase" or "saveToHistory"
+ *                                      is treated as meaning "save to database/history all events
+ *                                      with no assigned identifiers", meaning any brand new events
+ *                                      created by the recommender.
  * </pre>
  * 
  * @author bsteffen
@@ -157,6 +170,31 @@ import com.raytheon.viz.core.mode.CAVEMode;
  */
 public class SessionManager implements
         ISessionManager<ObservedHazardEvent, ObservedSettings> {
+
+    /**
+     * Scheduler to be used to ensure that result notifications are published on
+     * the main thread. For now, the main thread is the UI thread; when this is
+     * changed, this will be rendered obsolete, as at that point there will need
+     * to be a blocking queue of {@link Runnable} instances available to allow
+     * the new worker thread to be fed jobs. At that point, this should be
+     * replaced with an object that enqueues the <code>Runnable</code>s,
+     * probably a singleton that may be accessed by the various components in
+     * gov.noaa.gsd.viz.hazards and elsewhere (presumably passed to the session
+     * manager when the latter is created).
+     */
+    @Deprecated
+    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
+
+        @Override
+        public void schedule(Runnable runnable) {
+
+            /*
+             * Since the UI thread is currently the thread being used for nearly
+             * everything, just run any asynchronous tasks there.
+             */
+            VizApp.runAsync(runnable);
+        }
+    };
 
     /**
      * Files in localization to be removed when the events are reset from the
@@ -249,7 +287,8 @@ public class SessionManager implements
                 messenger);
         recommenderManager = new SessionRecommenderManager(this, messenger,
                 eventBus);
-        alertsManager = new HazardSessionAlertsManager(sender, timeManager);
+        alertsManager = new HazardSessionAlertsManager(sender,
+                getRunnableAsynchronousScheduler(), timeManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
                 new HazardEventExpirationAlertStrategy(alertsManager,
                         timeManager, configManager, hazardEventManager,
@@ -277,6 +316,11 @@ public class SessionManager implements
         registerForNotification(recommenderManager);
         registerForNotification(alertsManager);
 
+    }
+
+    @Override
+    public IRunnableAsynchronousScheduler getRunnableAsynchronousScheduler() {
+        return RUNNABLE_ASYNC_SCHEDULER;
     }
 
     @Override
@@ -523,6 +567,69 @@ public class SessionManager implements
                     .equals(addToDatabaseAttribute));
 
             /*
+             * TODO: Remove this when "persistenceBehavior" is removed from
+             * startup config, once testing and debugging yield the correct
+             * solution to handling persistence.
+             * 
+             * If no persistence is desired, ensure that none is done;
+             * otherwise, if history-only persistence is desired, set the
+             * addToHistory flag true if the addToDatabase flag was true, or if
+             * addToDatabase has a list of event identifiers, either use it as
+             * the list for addToHistory (if the latter had no associated list)
+             * or merge the two.
+             */
+            String persistenceBehavior = configManager.getStartUpConfig()
+                    .getPersistenceBehavior();
+            if ("none".equals(persistenceBehavior)) {
+                addToHistoryAttribute = addToDatabaseAttribute = null;
+                addToHistory = addToDatabase = false;
+            } else if ("history".equals(persistenceBehavior)) {
+                if (addToDatabase) {
+                    addToHistory = true;
+                    addToDatabase = false;
+                } else if ((addToHistory == false)
+                        && (addToDatabaseAttribute instanceof List)) {
+                    if (addToHistoryAttribute == null) {
+                        addToHistoryAttribute = addToDatabaseAttribute;
+                    } else {
+                        List<Object> list = new ArrayList<>(
+                                (List<?>) addToHistoryAttribute);
+                        list.addAll((List<?>) addToDatabaseAttribute);
+                        addToHistoryAttribute = (Serializable) list;
+                    }
+                }
+                addToDatabaseAttribute = null;
+            }
+
+            /*
+             * Determine whether or not all hazard events that are brand new
+             * (i.e., just created by the recommender) should be saved to either
+             * the history list or the database.
+             */
+            boolean saveAllNewToHistory = false;
+            if (addToHistoryAttribute instanceof List) {
+                for (Object identifier : (List<?>) addToHistoryAttribute) {
+                    if (identifier == null) {
+                        saveAllNewToHistory = true;
+                        break;
+                    }
+                }
+            }
+            boolean saveAllNewToDatabase = false;
+            if ((saveAllNewToHistory == false)
+                    && (addToDatabaseAttribute instanceof List)) {
+                for (Object identifier : (List<?>) addToDatabaseAttribute) {
+                    if (identifier == null) {
+                        saveAllNewToDatabase = true;
+                        break;
+                    }
+                }
+            }
+            List<IHazardEvent> addedNewEvents = (saveAllNewToHistory
+                    || saveAllNewToDatabase ? new ArrayList<IHazardEvent>()
+                    : null);
+
+            /*
              * Create a list to hold the events to be saved if all events are
              * specified as requiring saving. If instead specific events are
              * specified that are to be saved one or both ways, create a map
@@ -552,15 +659,36 @@ public class SessionManager implements
                     hazardEvent.setUserName(LocalizationManager.getInstance()
                             .getCurrentUser());
                     hazardEvent.setWorkStation(VizApp.getHostName());
+                    boolean isNew = (hazardEvent.getEventID() == null);
                     ObservedHazardEvent addedEvent = eventManager.addEvent(
                             hazardEvent, originator);
-                    if (addedEvents != null) {
+
+                    /*
+                     * If the event is new and new events are to be all saved to
+                     * history or database, add it to the new events list;
+                     * otherwise, if all events (new or existing) are to be
+                     * saved to history or database, add it to the list for all
+                     * events; otherwise, if only some events are to be saved to
+                     * one or both, place it in the map of identifiers to
+                     * events.
+                     */
+                    if (isNew && (addedNewEvents != null)) {
+                        addedNewEvents.add(addedEvent);
+                    } else if (addedEvents != null) {
                         addedEvents.add(addedEvent);
                     } else if (addedEventsForIdentifiers != null) {
                         addedEventsForIdentifiers.put(addedEvent.getEventID(),
                                 addedEvent);
                     }
                 }
+            }
+
+            /*
+             * If all brand new hazard events are to be saved to the history or
+             * database, perform the save.
+             */
+            if (addedNewEvents != null) {
+                eventManager.saveEvents(addedNewEvents, saveAllNewToHistory);
             }
 
             /*
@@ -820,7 +948,9 @@ public class SessionManager implements
         Set<String> identifiersToSave = new HashSet<>(
                 eventsForIdentifiers.size(), 1.0f);
         for (Object element : eventIdentifiers) {
-            identifiersToSave.add(element.toString());
+            if (element != null) {
+                identifiersToSave.add(element.toString());
+            }
         }
         List<IHazardEvent> eventsToSave = new ArrayList<>(
                 identifiersToSave.size());

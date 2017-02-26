@@ -47,6 +47,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  *                                      querying the size of a history list,
  *                                      so that the whole history list does not
  *                                      have to be shipped back to the client.
+ * Feb 27, 2017  29138    Chris.Golden  Added method to get latest hazard
+ *                                      events by site ID.
  * </pre>
  * 
  * @author mnash
@@ -181,6 +183,21 @@ public interface IHazardEventManager extends
      */
     HazardEvent getLatestByEventID(String eventIdentifier,
             boolean includeHistoricalVersion);
+
+    /**
+     * Retrieve the latest version of all hazards with the specified site
+     * identifier.
+     * 
+     * @param site
+     *            Site identifier.
+     * @param includeHistoricalVersions
+     *            Flag indicating whether or not historical latest versions
+     *            should be included if they are later than the non-historical
+     *            latest versions.
+     * @return Map of event identifiers to their latest versions.
+     */
+    Map<String, HazardEvent> getLatestBySiteID(String site,
+            boolean includeHistoricalVersions);
 
     /**
      * Store the specified set of events.

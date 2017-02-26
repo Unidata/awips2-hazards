@@ -1935,7 +1935,7 @@ class MetaData(object):
              },
             {
              "fieldType": "HiddenField",
-             "fieldName": "status",
+             "fieldName": "statusForHiddenField",
              "values": status,
              },
             {
@@ -2470,7 +2470,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         
         if hazardSelected:
             automationLevel = mutableProperties.get('automationLevel', {}).get('values')
-            status = mutableProperties.get('status', {}).get('values') 
+            status = mutableProperties.get('statusForHiddenField', {}).get('values') 
             
             activate = mutableProperties.get('activate', {}).get('values')
             activateModify = mutableProperties.get('activateModify', {}).get('values')

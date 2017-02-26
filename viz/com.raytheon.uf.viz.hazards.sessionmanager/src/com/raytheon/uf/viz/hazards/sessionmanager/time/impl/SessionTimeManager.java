@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 
 import java.util.Collection;
@@ -46,7 +45,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -130,6 +128,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      moved code that was in the console here that
  *                                      deals with settings loading, as it should be
  *                                      handled in the model.
+ * Feb 21, 2017 29138      Chris.Golden Added use of session manager's runnable
+ *                                      asynchronous scheduler.
  * </pre>
  * 
  * @author bsteffen
@@ -138,31 +138,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 public class SessionTimeManager implements ISessionTimeManager {
 
     // Private Static Constants
-
-    /**
-     * Scheduler to be used to ensure that timer notifications are published on
-     * the main thread. For now, the main thread is the UI thread; when this is
-     * changed, this will be rendered obsolete, as at that point there will need
-     * to be a blocking queue of {@link Runnable} instances available to allow
-     * the new worker thread to be fed jobs. At that point, this should be
-     * replaced with an object that enqueues the <code>Runnable</code>s,
-     * probably a singleton that may be accessed by the various components in
-     * gov.noaa.gsd.viz.hazards and elsewhere (presumably passed to the session
-     * manager when the latter is created).
-     */
-    @Deprecated
-    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
-
-        @Override
-        public void schedule(Runnable runnable) {
-
-            /*
-             * Since the UI thread is currently the thread being used for nearly
-             * everything, just run any asynchronous tasks there.
-             */
-            VizApp.runAsync(runnable);
-        }
-    };
 
     /**
      * Provider of the current time.
@@ -408,7 +383,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         /*
          * Schedule a running of the task immediately.
          */
-        RUNNABLE_ASYNC_SCHEDULER.schedule(task);
+        sessionManager.getRunnableAsynchronousScheduler().schedule(task);
     }
 
     @Override
@@ -588,21 +563,22 @@ public class SessionTimeManager implements ISessionTimeManager {
             TimerTask timerTask = new TimerTask() {
                 @Override
                 public void run() {
-                    RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
-                        @Override
-                        public void run() {
-                            notificationSender
-                                    .postNotificationAsync((timeResolution == TimeResolution.MINUTES ? new CurrentTimeMinuteTicked(
-                                            Originator.OTHER,
-                                            SessionTimeManager.this)
-                                            : new CurrentTimeSecondTicked(
+                    sessionManager.getRunnableAsynchronousScheduler().schedule(
+                            new Runnable() {
+                                @Override
+                                public void run() {
+                                    notificationSender
+                                            .postNotificationAsync((timeResolution == TimeResolution.MINUTES ? new CurrentTimeMinuteTicked(
                                                     Originator.OTHER,
-                                                    SessionTimeManager.this)));
-                            if (timeResolution == TimeResolution.MINUTES) {
-                                runScheduledTasks(false);
-                            }
-                        }
-                    });
+                                                    SessionTimeManager.this)
+                                                    : new CurrentTimeSecondTicked(
+                                                            Originator.OTHER,
+                                                            SessionTimeManager.this)));
+                                    if (timeResolution == TimeResolution.MINUTES) {
+                                        runScheduledTasks(false);
+                                    }
+                                }
+                            });
                 }
             };
 

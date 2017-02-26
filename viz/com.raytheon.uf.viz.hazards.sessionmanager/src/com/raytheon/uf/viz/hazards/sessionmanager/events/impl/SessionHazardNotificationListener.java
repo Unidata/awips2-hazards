@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
@@ -67,6 +69,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Feb 16, 2017 29138      Chris.Golden Changed to use HazardEvent instead of
  *                                      IHazardEvent, since only the former
  *                                      has a unique identifier.
+ * Feb 21, 2017 29138      Chris.Golden Changed to take runnable asynchronous
+ *                                      scheduler in construction and use it
+ *                                      to ensure that notifications are
+ *                                      handled on the correct thread.
  * </pre>
  * 
  * @author bsteffen
@@ -79,13 +85,18 @@ public class SessionHazardNotificationListener implements INotificationObserver 
 
     private final Reference<SessionEventManager> manager;
 
-    public SessionHazardNotificationListener(SessionEventManager manager) {
-        this(manager, true);
+    private final Reference<IRunnableAsynchronousScheduler> scheduler;
+
+    public SessionHazardNotificationListener(SessionEventManager manager,
+            IRunnableAsynchronousScheduler scheduler) {
+        this(manager, scheduler, true);
     }
 
     public SessionHazardNotificationListener(SessionEventManager manager,
-            boolean observe) {
+            IRunnableAsynchronousScheduler scheduler, boolean observe) {
         this.manager = new WeakReference<SessionEventManager>(manager);
+        this.scheduler = new WeakReference<IRunnableAsynchronousScheduler>(
+                scheduler);
         if (observe) {
             NotificationManagerJob.addObserver(HazardNotification.HAZARD_TOPIC,
                     this);
@@ -95,47 +106,52 @@ public class SessionHazardNotificationListener implements INotificationObserver 
     /*
      * TODO: Remove use of manager.isShutDown() within method body once garbage
      * collection issues have been sorted out; see Redmine issue #21271.
-     * 
-     * TODO: If this method is called from a thread other than the session
-     * manager worker thread, there is a race condition here; checking to see if
-     * the manager is shut down and then responding accordingly in another
-     * thread is inherently risky. This also means that the call to the
-     * handleNotification() method here should occur within the session manager
-     * worker thread.
      */
     @Override
-    public void notificationArrived(NotificationMessage[] messages) {
-        ISessionEventManager<ObservedHazardEvent> manager = this.manager.get();
-        if ((manager == null) || manager.isShutDown()) {
+    public void notificationArrived(final NotificationMessage[] messages) {
+
+        /*
+         * Handle the notifications in the proper thread to avoid race
+         * conditions.
+         */
+        IRunnableAsynchronousScheduler scheduler = this.scheduler.get();
+        if (scheduler == null) {
             NotificationManagerJob.removeObserver(
                     HazardNotification.HAZARD_TOPIC, this);
-            return;
-        }
-        for (NotificationMessage message : messages) {
-            try {
-                Object payload = message.getMessagePayload();
-                if (payload instanceof HazardNotification) {
-                    handleNotification((HazardNotification) payload);
+        } else {
+            scheduler.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    ISessionEventManager<ObservedHazardEvent> manager = SessionHazardNotificationListener.this.manager
+                            .get();
+                    if ((manager == null) || manager.isShutDown()) {
+                        NotificationManagerJob.removeObserver(
+                                HazardNotification.HAZARD_TOPIC,
+                                SessionHazardNotificationListener.this);
+                        return;
+                    }
+                    for (NotificationMessage message : messages) {
+                        try {
+                            Object payload = message.getMessagePayload();
+                            if (payload instanceof HazardNotification) {
+                                handleNotification((HazardNotification) payload);
+                            }
+                        } catch (NotificationException e) {
+                            statusHandler.handle(Priority.ERROR,
+                                    e.getLocalizedMessage(), e);
+                        }
+                    }
                 }
-            } catch (NotificationException e) {
-                statusHandler
-                        .handle(Priority.ERROR, e.getLocalizedMessage(), e);
-            }
+            });
         }
     }
 
     /**
-     * Handle the specified notification.
+     * Handle the specified hazard event notification.
      * <p>
      * TODO: This is only <code>public</code> because it is used by test classes
      * outside this package. Some other way should be found to test it, so that
      * this may be rendered package-private or private.
-     * </p>
-     * <p>
-     * TODO: If this method is called from a thread other than the session
-     * manager worker thread, there is a race condition here; checking to see if
-     * the manager has a version of a particular hazard event and then
-     * responding accordingly in another thread is inherently risky.
      * </p>
      * 
      * @param notification

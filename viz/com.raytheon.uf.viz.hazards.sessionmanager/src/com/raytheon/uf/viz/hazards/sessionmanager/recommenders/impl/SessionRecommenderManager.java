@@ -10,7 +10,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 import java.io.Serializable;
@@ -37,7 +36,6 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
-import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
@@ -94,6 +92,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      messenger instance passed in (which is the
  *                                      app builder) more likely.
  * Feb 01, 2017   15556    Chris.Golden Minor cleanup.
+ * Feb 21, 2017   29138    Chris.Golden Added use of session manager's runnable
+ *                                      asynchronous scheduler.
  * </pre>
  * 
  * @author Chris.Golden
@@ -108,31 +108,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * {@link #sequentialRecommendersForExecutionContextIdentifiers} map.
      */
     private static final int MAXIMUM_SEQUENTIAL_RECOMMENDERS_MAP_SIZE = 100;
-
-    /**
-     * Scheduler to be used to ensure that result notifications are published on
-     * the main thread. For now, the main thread is the UI thread; when this is
-     * changed, this will be rendered obsolete, as at that point there will need
-     * to be a blocking queue of {@link Runnable} instances available to allow
-     * the new worker thread to be fed jobs. At that point, this should be
-     * replaced with an object that enqueues the <code>Runnable</code>s,
-     * probably a singleton that may be accessed by the various components in
-     * gov.noaa.gsd.viz.hazards and elsewhere (presumably passed to the session
-     * manager when the latter is created).
-     */
-    @Deprecated
-    private static final IRunnableAsynchronousScheduler RUNNABLE_ASYNC_SCHEDULER = new IRunnableAsynchronousScheduler() {
-
-        @Override
-        public void schedule(Runnable runnable) {
-
-            /*
-             * Since the UI thread is currently the thread being used for nearly
-             * everything, just run any asynchronous tasks there.
-             */
-            VizApp.runAsync(runnable);
-        }
-    };
 
     // Private Static Variables
 
@@ -385,7 +360,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                          * Ensure that the thread used to process the result is
                          * the one used by the session manager.
                          */
-                        SessionRecommenderManager.RUNNABLE_ASYNC_SCHEDULER
+                        sessionManager.getRunnableAsynchronousScheduler()
                                 .schedule(new Runnable() {
 
                                     @Override

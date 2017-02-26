@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl;
 
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+
 import java.util.List;
 import java.util.Map;
 
@@ -49,11 +51,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * July 08, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
- * Nov 20, 2013   2159     daniel.s.schaffer@noaa.gov Now interoperable with DRT
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * July 08, 2013   1325    daniel.s.schaffer@noaa.gov Initial creation
+ * Nov 20, 2013    2159    daniel.s.schaffer@noaa.gov Now interoperable with DRT
+ * Feb 21, 2017   29138    Chris.Golden Added use of session manager's runnable
+ *                                      asynchronous scheduler to avoid having
+ *                                      notifications processed outside the
+ *                                      session manager's worker thread.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -94,6 +99,8 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
      */
     private INotificationHandler notificationHandler;
 
+    private final IRunnableAsynchronousScheduler scheduler;
+
     /**
      * Creates to create a {@link IHazardAlertJob} containing an
      * {@link IHazardAlert} when it is scheduled.
@@ -110,9 +117,11 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
 
     public HazardSessionAlertsManager(
             ISessionNotificationSender notificationSender,
+            IRunnableAsynchronousScheduler scheduler,
             ISessionTimeManager sessionTimeManager) {
 
         this.notificationSender = notificationSender;
+        this.scheduler = scheduler;
         this.sessionTimeManager = sessionTimeManager;
         this.alertStrategies = Maps.newHashMap();
         this.notificationHandler = new NotificationHandler(this);
@@ -249,16 +258,29 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
     }
 
     @Override
-    public void notificationArrived(NotificationMessage[] messages) {
-        try {
-            for (NotificationMessage notificationMessage : messages) {
-                Object payload = notificationMessage.getMessagePayload();
-                handleNotification(payload);
+    public void notificationArrived(final NotificationMessage[] messages) {
 
+        /*
+         * Handle the notifications in the proper thread to avoid race
+         * conditions.
+         */
+        scheduler.schedule(new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    for (NotificationMessage notificationMessage : messages) {
+                        Object payload = notificationMessage
+                                .getMessagePayload();
+                        handleNotification(payload);
+
+                    }
+                } catch (NotificationException e) {
+                    throw new IllegalArgumentException(
+                            "Unexpected message payload ", e);
+                }
             }
-        } catch (NotificationException e) {
-            throw new IllegalArgumentException("Unexpected message payload ", e);
-        }
+        });
     }
 
     @Override

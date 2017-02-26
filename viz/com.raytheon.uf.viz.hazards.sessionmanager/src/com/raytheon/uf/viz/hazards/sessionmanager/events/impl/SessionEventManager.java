@@ -475,6 +475,13 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      just to history list. Also changed to avoid persisting to
  *                                      the database upon status changes that should never cause such
  *                                      persistence.
+ * Feb 21, 2017   29138    Chris.Golden Changed to pass runnable asynchronous scheduler to notification
+ *                                      listener, and to remove latest version of hazard event from
+ *                                      database when removing historical versions. Also changed to
+ *                                      not select events added as a result of a database notification,
+ *                                      and ensured that events saved as a result of the user or a
+ *                                      recommender requesting persistence have no issueTime attribute,
+ *                                      whereas events being saved because they were just issued do.
  * </pre>
  * 
  * @author bsteffen
@@ -650,7 +657,8 @@ public class SessionEventManager implements
         this.timeManager = timeManager;
         this.dbManager = dbManager;
         this.notificationSender = notificationSender;
-        new SessionHazardNotificationListener(this);
+        new SessionHazardNotificationListener(this,
+                sessionManager.getRunnableAsynchronousScheduler());
         SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
                 createTimeListener());
         this.messenger = messenger;
@@ -2371,7 +2379,8 @@ public class SessionEventManager implements
     public ObservedHazardEvent addEvent(IHazardEvent event,
             IOriginator originator) {
         HazardStatus status = event.getStatus();
-        if (status == null || status == HazardStatus.PENDING) {
+        if (((status == null) || (status == HazardStatus.PENDING))
+                && (originator != Originator.DATABASE)) {
             return addEvent(event, true, originator);
         } else {
             return addEvent(event, false, originator);
@@ -2847,6 +2856,8 @@ public class SessionEventManager implements
                     if (histList != null && !histList.isEmpty()) {
                         dbManager.removeEvents(histList);
                     }
+                    dbManager.removeEvents(createEventCopyToBePersisted(event,
+                            false, false));
                 }
                 updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
                         (ObservedHazardEvent) event, true);
@@ -3049,7 +3060,8 @@ public class SessionEventManager implements
             if (latestVersion != null) {
                 dbManager.removeEvents(latestVersion);
             }
-            dbManager.storeEvents(createEventCopyToBePersisted(event, true));
+            dbManager.storeEvents(createEventCopyToBePersisted(event, true,
+                    true));
             scheduleExpirationTask(event);
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -4780,7 +4792,9 @@ public class SessionEventManager implements
              * whatever cannot or should not be saved. Also ensure that it is
              * added to the history list if such is asked for.
              */
-            dbEvents.add(createEventCopyToBePersisted(event, addToHistory));
+            HazardEvent persistableEvent = createEventCopyToBePersisted(event,
+                    addToHistory, false);
+            dbEvents.add(persistableEvent);
         }
 
         /*
@@ -4825,10 +4839,13 @@ public class SessionEventManager implements
      * @param addToHistory
      *            Flag indicating whether or not the copy is intended for
      *            addition to the history list for the hazard.
+     * @param justIssued
+     *            Flag indicating whether or not the copy is to be saved because
+     *            the event was just issued.
      * @return Persistence-friendly copy of the event.
      */
     private HazardEvent createEventCopyToBePersisted(IHazardEvent event,
-            boolean addToHistory) {
+            boolean addToHistory, boolean justIssued) {
         HazardEvent dbEvent = dbManager.createEvent(event);
 
         /*
@@ -4867,7 +4884,9 @@ public class SessionEventManager implements
          * (e.g. selected and checked status should be tracked outside the
          * events in the session event manager), or otherwise removed.
          */
-        dbEvent.removeHazardAttribute(ATTR_ISSUED);
+        if (justIssued == false) {
+            dbEvent.removeHazardAttribute(ATTR_ISSUED);
+        }
         dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
         dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
 

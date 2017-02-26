@@ -44,6 +44,8 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Sep 14, 2015 3473       Chris.Cody   Implement Hazard Services Import/Export through Central Registry server.
  * Sep 28, 2015 10302,8167 hansen       Added values to be optionally included in Settings - visibleSites, possibleSites, mapCenter, eventIdDisplayType
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
+ * Mar 08, 2017 29138      Chris.Golden Added startup config option to allow persistence behavior
+ *                                      to be tweaked via configuration.
  * </pre>
  * 
  * @author bsteffen
@@ -95,6 +97,9 @@ public class StartUpConfig {
 
     @JsonProperty("timeResolution")
     private TimeResolution timeResolution;
+
+    @JsonProperty("persistenceBehavior")
+    private String persistenceBehavior;
 
     public Console getConsole() {
         return console;
@@ -221,5 +226,13 @@ public class StartUpConfig {
 
     public void setTimeResolution(TimeResolution timeResolution) {
         this.timeResolution = timeResolution;
+    }
+
+    public String getPersistenceBehavior() {
+        return persistenceBehavior;
+    }
+
+    public void setPersistenceBehavior(String persistenceBehavior) {
+        this.persistenceBehavior = persistenceBehavior;
     }
 }

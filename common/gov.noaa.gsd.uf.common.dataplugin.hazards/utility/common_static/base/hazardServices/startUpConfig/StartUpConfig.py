@@ -98,5 +98,14 @@ StartUpConfig = {
     "disseminationOrder" : [ 'FFW', 'FLW', 'FFS', 'FLS', 'FFA'],
     
     "Alerts": [],
+    
+    #########################
+    # Temporary switch for persistence behavior for recommenders
+    # "normal": "saveToDatabase" and "saveToHistory" behave as intended
+    # "history": both "saveToDatabase" and "saveToHistory" result in saves to
+    #            the history list.
+    # "none":    neither "saveToDatabase" nor "saveToHistory" do anything; no persisting
+    #            is done in response to either of them
+    "persistenceBehavior": "normal"
 
     }

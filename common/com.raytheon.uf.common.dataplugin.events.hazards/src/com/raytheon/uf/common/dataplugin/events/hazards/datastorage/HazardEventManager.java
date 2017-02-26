@@ -68,6 +68,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      querying the size of a history list,
  *                                      so that the whole history list does not
  *                                      have to be shipped back to the client.
+ * Feb 27, 2017  29138    Chris.Golden  Added method to get latest hazard
+ *                                      events by site ID.
  * </pre>
  * 
  * @author mnash
@@ -329,6 +331,16 @@ public class HazardEventManager implements IHazardEventManager {
         request.setInclude(includeHistoricalVersion ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
                 : Include.LATEST_EVENTS);
         return queryLatest(request).get(eventIdentifier);
+    }
+
+    @Override
+    public Map<String, HazardEvent> getLatestBySiteID(String site,
+            boolean includeHistoricalVersions) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                HazardConstants.SITE_ID, site);
+        request.setInclude(includeHistoricalVersions ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
+                : Include.LATEST_EVENTS);
+        return queryLatest(request);
     }
 
     @Override
