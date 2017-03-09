@@ -482,6 +482,11 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      and ensured that events saved as a result of the user or a
  *                                      recommender requesting persistence have no issueTime attribute,
  *                                      whereas events being saved because they were just issued do.
+ * Mar 15, 2017   29138    Chris.Golden Fixed bug with database query requests that included particular
+ *                                      statuses in the query parameters and that returned earlier
+ *                                      versions of hazard events with the requested statuses, even
+ *                                      though the latest versions of said hazard events have the wrong
+ *                                      statuses.
  * </pre>
  * 
  * @author bsteffen
@@ -2263,23 +2268,17 @@ public class SessionEventManager implements
         }
 
         /*
-         * Include visible statuses in the query filter.
-         */
-        Set<String> visibleStatuses = settings.getVisibleStatuses();
-        if (visibleStatuses == null || visibleStatuses.isEmpty()) {
-            return;
-        }
-        List<Object> statuses = new ArrayList<Object>(visibleStatuses.size());
-        for (String state : visibleStatuses) {
-            statuses.add(HazardStatus.valueOf(state.toUpperCase()));
-        }
-
-        /*
          * Add the filters to the query, and make the request.
+         * 
+         * Note that the allowable statuses cannot be included in the query,
+         * because this would result in hazard events that have a latest version
+         * with a currently invisible status to be included in the results if
+         * earlier versions of the same event had currently visible statuses.
+         * Instead, those with invisible statuses are weeded out in the
+         * iteration through the returned events that follows.
          */
-        queryRequest.and(HazardConstants.SITE_ID, visibleSites)
-                .and(HazardConstants.PHEN_SIG, visibleTypes)
-                .and(HazardConstants.HAZARD_EVENT_STATUS, statuses);
+        queryRequest.and(HazardConstants.SITE_ID, visibleSites).and(
+                HazardConstants.PHEN_SIG, visibleTypes);
         Map<String, HazardHistoryList> eventsMap = dbManager
                 .queryHistory(queryRequest);
 
@@ -2291,22 +2290,42 @@ public class SessionEventManager implements
                 .getSelectionManager().getSelectedEventIdentifiers());
 
         /*
-         * Iterate through the events, adding any that were not part of the
-         * event list before. Also track which events that were being managed
-         * previously are not included in the events returned from the query.
+         * Determine which statuses events may have in order to be visible.
+         */
+        Set<String> visibleStatuses = settings.getVisibleStatuses();
+        if (visibleStatuses == null || visibleStatuses.isEmpty()) {
+            return;
+        }
+        Set<HazardStatus> statuses = EnumSet.noneOf(HazardStatus.class);
+        for (String state : visibleStatuses) {
+            statuses.add(HazardStatus.valueOf(state.toUpperCase()));
+        }
+
+        /*
+         * Iterate through the events, adding any that have visible statuses and
+         * that were not part of the event list before. Also track which events
+         * that were being managed previously are not included in the events
+         * returned from the query.
          */
         Set<ObservedHazardEvent> leftoverEvents = new HashSet<>(events);
         Set<String> selectedEventIdentifiers = new HashSet<>();
         for (Entry<String, HazardHistoryList> entry : eventsMap.entrySet()) {
 
             /*
-             * Get the history list for the event, and if the event is already
-             * in the session events list, do nothing more with it besides
-             * adding it to the set of selected events if it was selected
-             * before.
+             * Get the history list for the event, and ensure that the event has
+             * an allowable status.
              */
             HazardHistoryList historyList = entry.getValue();
             HazardEvent event = historyList.get(historyList.size() - 1);
+            if (statuses.contains(event.getStatus()) == false) {
+                continue;
+            }
+
+            /*
+             * If the event is already in the session events list, do nothing
+             * more with it besides adding it to the set of selected events if
+             * it was selected before.
+             */
             String eventIdentifier = event.getEventID();
             ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
             if (oldEvent != null) {
@@ -3920,7 +3939,9 @@ public class SessionEventManager implements
          * Find the union of the session events and those retrieved from the
          * hazard event manager. Ignore "Ended" events.
          */
-        List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(new HazardEventQueryRequest());
+        List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
+                new HazardEventQueryRequest(),
+                EnumSet.allOf(HazardStatus.class));
 
         for (IHazardEvent eventToCheck : eventsToCheck) {
 
@@ -3977,18 +3998,17 @@ public class SessionEventManager implements
                      */
                     HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
                             HazardConstants.HAZARD_EVENT_START_TIME, ">",
-                            eventToCompare.getStartTime())
-                            .and(HazardConstants.HAZARD_EVENT_END_TIME, "<",
-                                    eventToCompare.getEndTime())
-                            .and(HazardConstants.PHEN_SIG, hazardConflictList)
-                            .and(HazardConstants.HAZARD_EVENT_STATUS,
-                                    new Object[] { HazardStatus.ISSUED,
-                                            HazardStatus.ELAPSED,
-                                            HazardStatus.ENDING,
-                                            HazardStatus.ENDED,
-                                            HazardStatus.PROPOSED });
+                            eventToCompare.getStartTime()).and(
+                            HazardConstants.HAZARD_EVENT_END_TIME, "<",
+                            eventToCompare.getEndTime()).and(
+                            HazardConstants.PHEN_SIG, hazardConflictList);
+                    Set<HazardStatus> allowableStatuses = EnumSet.of(
+                            HazardStatus.ISSUED, HazardStatus.ELAPSED,
+                            HazardStatus.ENDING, HazardStatus.ENDED,
+                            HazardStatus.PROPOSED);
 
-                    List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(queryRequest);
+                    List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
+                            queryRequest, allowableStatuses);
 
                     /*
                      * Loop over the existing events.
@@ -4068,13 +4088,21 @@ public class SessionEventManager implements
      * 
      * Other sources of hazard event information could be added to this as need.
      * 
-     * @param hazardQueryBuilder
-     *            Used to filter the the hazards retrieved from the
-     *            HazardEventManager
-     * @return
+     * @param queryRequest
+     *            Query to be submitted to the hazard event manager to get the
+     *            events.
+     * @param allowableStatuses
+     *            Allowable statuses of the events to be retrieved. Note that
+     *            this cannot, unfortunately, be a part of the query, since
+     *            making it so would mean that for a given event, the latest
+     *            version would be returned from the hazard event manager that
+     *            had one of the allowable statuses, even when the event had a
+     *            newer version that had a disallowed status.
+     * @return Events to be checked for conflict testing.
      */
     private List<IHazardEvent> getEventsToCheckForConflicts(
-            final HazardEventQueryRequest queryRequest) {
+            final HazardEventQueryRequest queryRequest,
+            Set<HazardStatus> allowableStatuses) {
 
         /*
          * Iterate through all the events being managed in this session,
@@ -4097,17 +4125,18 @@ public class SessionEventManager implements
 
         /*
          * Retrieve the latest versions of matching events from the database
-         * manager, and for any that are not ended and with identifiers that are
-         * not already in session, add them to the list of events to be checked.
+         * manager, and for any that are not ended, with allowable statuses, and
+         * with identifiers that are not already in session, add them to the
+         * list of events to be checked.
          */
         queryRequest
                 .setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
-        Map<String, HazardEvent> eventMap = this.dbManager
-                .queryLatest(queryRequest);
+        Map<String, HazardEvent> eventMap = dbManager.queryLatest(queryRequest);
         for (Map.Entry<String, HazardEvent> entry : eventMap.entrySet()) {
             if ((eventIdentifiersToBeChecked.contains(entry.getKey()) == false)
                     && (entry.getValue() != null)
-                    && (entry.getValue().getStatus() != HazardStatus.ENDED)) {
+                    && (entry.getValue().getStatus() != HazardStatus.ENDED)
+                    && allowableStatuses.contains(entry.getValue().getStatus())) {
                 eventsToCheck.add(entry.getValue());
             }
         }

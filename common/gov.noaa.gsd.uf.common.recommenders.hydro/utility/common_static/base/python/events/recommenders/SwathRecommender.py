@@ -355,8 +355,8 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.add(event)
             return False
 
-        # Skip previously ended, potential events 
-        if event.getStatus() in ['ENDED', 'POTENTIAL']:                
+        # Skip ending, previously ended, and potential events 
+        if event.getStatus() in ['ENDING', 'ENDED', 'POTENTIAL']:
             return False
 
         # Check for end time < current time and end the event

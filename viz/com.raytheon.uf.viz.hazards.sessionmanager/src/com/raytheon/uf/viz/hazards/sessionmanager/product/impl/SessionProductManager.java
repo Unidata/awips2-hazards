@@ -90,7 +90,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -232,6 +231,9 @@ import com.vividsolutions.jts.geom.Puntal;
  * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
  * Feb 17, 2017 21676      Chris.Golden Changed to use session event manager's new merge method.
  * Feb 17, 2017 29138      Chris.Golden Changed to use more efficient query of database hazards.
+ * Mar 15, 2017 29138      Chris.Golden Removed creation of observed hazard event object for
+ *                                      merging process, as said type is no longer needed for
+ *                                      the parameters to the merge method.
  * </pre>
  * 
  * @author bsteffen
@@ -830,12 +832,9 @@ public class SessionProductManager implements ISessionProductManager {
                     if (sessionEvent.getEventID().equals(
                             updatedEvent.getEventID())) {
 
-                        ObservedHazardEvent newEvent = new ObservedHazardEvent(
-                                updatedEvent,
-                                (SessionEventManager) eventManager);
-
-                        eventManager.mergeHazardEvents(newEvent, sessionEvent,
-                                false, false, true, Originator.OTHER);
+                        eventManager.mergeHazardEvents(updatedEvent,
+                                sessionEvent, false, false, true,
+                                Originator.OTHER);
 
                         /*
                          * This ensures that the "replaces" string is removed

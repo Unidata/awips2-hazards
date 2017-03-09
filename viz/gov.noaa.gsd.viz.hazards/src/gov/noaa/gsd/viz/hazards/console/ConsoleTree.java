@@ -2960,6 +2960,11 @@ class ConsoleTree implements IConsoleTree {
         }
 
         /*
+         * Remove the time scale and associated editor.
+         */
+        removeTimeScaleAndAssociatedEditor(entity);
+
+        /*
          * Get the item that goes with the entity, removing its linkage with the
          * entity, and then dispose of it.
          */
@@ -2973,11 +2978,6 @@ class ConsoleTree implements IConsoleTree {
         if (entity.isSelected()) {
             deselectedTreeItems.add(item);
         }
-
-        /*
-         * Remove the time scale and associated editor.
-         */
-        removeTimeScaleAndAssociatedEditor(entity);
     }
 
     /**
@@ -4694,9 +4694,37 @@ class ConsoleTree implements IConsoleTree {
     private void removeTimeScaleAndAssociatedEditor(TabularEntity entity) {
         TreeEditor editor = treeEditorsForEntities.remove(entity);
         MultiValueScale scale = (MultiValueScale) editor.getEditor();
-        treeItemsForScales.remove(scale);
+        TreeItem treeItem = treeItemsForScales.remove(scale);
         scale.dispose();
         editor.dispose();
+
+        /*
+         * Annoyingly, it seems that any time scale widgets acting as editors
+         * for the last column in rows below this row do not get moved up, and
+         * furthermore that they cannot be forced to do so by being asked to
+         * redraw, or having their enclosing TreeEditors lay themselves out. The
+         * only way found thus far to get them to update their visuals is to
+         * have each one's enclosing TreeEditor remove the time scale and then
+         * re-add it.
+         */
+        boolean foundItem = false;
+        for (TreeItem item : tree.getItems()) {
+            if (treeItem == item) {
+                foundItem = true;
+            } else if (foundItem) {
+                TabularEntity thisEntity = entitiesForTreeItems.get(item);
+                if (thisEntity != null) {
+                    TreeEditor thisEditor = treeEditorsForEntities
+                            .get(thisEntity);
+                    if (thisEditor != null) {
+                        Control thisScale = thisEditor.getEditor();
+                        thisEditor.setEditor(null);
+                        thisEditor.setEditor(thisScale, item,
+                                tree.getColumnCount() - 1);
+                    }
+                }
+            }
+        }
     }
 
     /**

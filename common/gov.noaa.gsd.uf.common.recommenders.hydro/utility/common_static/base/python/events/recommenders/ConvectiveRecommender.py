@@ -183,7 +183,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if len(mergedEventSet.events) > 0:
             st = time.time()
             swathRec = SwathRecommender()
-            mergedEventSet = swathRec.execute(mergedEventSet, None, None)
+            swathRec.execute(mergedEventSet, None, None)
             LogUtils.logMessage('Finnished ', 'swathRec.execute',' Took Seconds', time.time()-st)
         
         for e in mergedEventSet:
