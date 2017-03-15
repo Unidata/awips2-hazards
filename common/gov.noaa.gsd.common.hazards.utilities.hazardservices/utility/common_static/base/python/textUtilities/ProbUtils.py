@@ -60,8 +60,8 @@ class ProbUtils(object):
             if event.getEndTime() <= timestamp:
                 continue
             
-#            if event.getStatus().upper() != 'ISSUED':
-#                continue
+            if event.getStatus().upper() != 'ISSUED':
+                continue
             
             hazardType = event.getHazardType()
             probGridSnap, probGridSwath = self.getOutputProbGrids(event, timeStamp)
@@ -660,7 +660,7 @@ class ProbUtils(object):
             dist = self.getHaversineDistance(p1, p2)
             speed = dist/((t2-t1)/1000)
             bearing = self.getBearing(p1, p2)
-            u, v = self.get_uv(speed, bearing)
+            u, v = self.MagDirToUV(speed, bearing)
 
             uList.append(u)
             vList.append(v)
@@ -707,6 +707,43 @@ class ProbUtils(object):
         weightedAvg = np.average(arr, weights=weights)
         weightedVar = np.average((arr-weightedAvg)**2, weights=weights)
         return {'weightedAverage':weightedAvg, 'stdDev': math.sqrt(weightedVar)}
+
+    #############################################
+    ## Conversion methods from GFE SmartScript ##
+
+    def MagDirToUV(self, mag, dir):
+        DEG_TO_RAD = np.pi / 180.0
+        # Note sign change for components so math to meteor. coords works
+        uw = - sin(dir * DEG_TO_RAD) * mag
+        vw = - cos(dir * DEG_TO_RAD) * mag
+        return (uw, vw)
+
+    def UVToMagDir(self, u, v):
+        RAD_TO_DEG = 180.0 / np.pi
+        # Sign change to make math to meteor. coords work
+        u = -u
+        v = -v
+        if type(u) is np.ndarray or type(v) is np.ndarray:
+            speed = np.sqrt(u * u + v * v)
+            dir = np.arctan2(u, v) * RAD_TO_DEG
+            dir[np.greater_equal(dir, 360)] -= 360
+            dir[np.less(dir, 0)] += 360
+        else:
+            speed = math.sqrt(u * u + v * v)
+            dir = math.atan2(u, v) * RAD_TO_DEG
+            while dir < 0.0:
+                dir = dir + 360.0
+            while dir >= 360.0:
+                dir = dir - 360.0
+        return (speed, dir)
+
+    def convertMsecToKts(self, value_Msec):
+        # Convert from meters/sec to Kts
+        return value_Msec * 3600.0 / 1852.0
+
+
+    #############################################
+
 
     def get_uv(self, Spd, DirGeo):
         '''
@@ -767,15 +804,9 @@ class ProbUtils(object):
         dlat = lat2 - lat1
         a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
         c = 2 * math.asin(math.sqrt(a))
-        meters = 6367000 * c # 6367000 Earth's radius in meters
+        meters = 6371000 * c # Earth's radius in meters
         return meters
 
-    def sind(self, x):
-        return math.sin(radians(x))
-
-    def cosd(self, x):
-        return math.cos(radians(x))
-    
 
     ######################################################
     # Compute Interval (forecast and upstream ) Polygons #
@@ -917,9 +948,15 @@ class ProbUtils(object):
         @param threat Polygon in Google coordinates.
         @return Polygon in Google coordinates.
         '''
-        speedVal = float(speedVal)
+        
+        ### BugAlert: this 1.25x multiplier is an empirical value suggested by Greg
+        ### after playing with the distance tool.  Need to find
+        ### source of 80% slowdown of downstream polygons.
+        speedVal = float(speedVal) * 1.25
+#        speedVal = float(speedVal)
         dirVal = float(dirVal)
         dis = secs * speedVal * 0.514444444
+        
         xDis = dis * math.cos(math.radians(270.0 - dirVal))
         yDis = dis * math.sin(math.radians(270.0 - dirVal))
         xDis2 = secs * spdUVal * 0.514444444
@@ -947,7 +984,7 @@ class ProbUtils(object):
         if rotVal < 0:
             rotVal = rotVal + 360
         threat = sa.rotate(threat,rotVal,origin='centroid')
-
+        
         return threat
             
     def convertFeatureTime(self, startTime_ms, secs):
@@ -1072,14 +1109,17 @@ class ProbUtils(object):
 
     def setUpDomain(self):                            
         self.setUpDomainValues()
-        self.ulLat = self.initial_ulLat + self.buff
-        self.ulLon = self.initial_ulLon - self.buff        
-        self.xMin1 = self.ulLon 
-        self.xMax1 = self.xMin1 + (0.01 * self.lonPoints) 
-        self.yMax1 = self.ulLat 
-        self.yMin1 = self.yMax1 - (0.01 * self.latPoints) 
+        self.ulLat = self.initial_ulLat
+        self.ulLon = self.initial_ulLon
+        self.lrLat = self.initial_lrLat
+        self.lrLon = self.initial_lrLon
+        self.xMin1 = self.ulLon - self.buff   
+        self.xMax1 = self.lrLon + self.buff
+        self.yMax1 = self.ulLat + self.buff
+        self.yMin1 = self.lrLat - self.buff
         self.lons = np.arange(self.xMin1,self.xMax1,0.01)
         self.lats = np.arange(self.yMin1+0.01,self.yMax1+0.01,0.01)                
+        
         sys.stdout.flush()
 
 
@@ -1088,10 +1128,10 @@ class ProbUtils(object):
         domainDict = cu.getConfigDict()
         self.OUTPUTDIR = domainDict.get(cu.outputDirKey)
         self.buff = domainDict.get(cu.domainBufferKey)
-        self.lonPoints = domainDict.get(cu.domainLonPointsKey)
-        self.latPoints = domainDict.get(cu.domainLatPointsKey)
         self.initial_ulLon = domainDict.get(cu.domainULLonKey)
         self.initial_ulLat = domainDict.get(cu.domainULLatKey)
+        self.initial_lrLon = domainDict.get(cu.domainLRLonKey)
+        self.initial_lrLat = domainDict.get(cu.domainLRLatKey)
         self.lowThreshold = domainDict.get(cu.lowThreshKey)
         sys.stdout.flush()
 

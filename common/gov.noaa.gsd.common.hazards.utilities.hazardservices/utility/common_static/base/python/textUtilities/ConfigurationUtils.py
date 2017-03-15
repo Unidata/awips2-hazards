@@ -12,45 +12,46 @@ class ConfigUtils(object):
         self.ContentsDict = {}
         self.defaultLowThreshold = 40
         self.defaultPHIOutputDir = '/scratch/PHIGridTesting'
-        self.defaultDomainBuffer = 1.0
-        self.defaltDomainLonPoints = 1200
-        self.defaltDomainLatPoints = 1000
+        self.defaultDomainBuffer = 0.5
         self.defaultDomainULLon = -104.0
-        self.defaultDomainULLat = 43.0
+        self.defaultDomainULLat = 37.0
+        self.defaultDomainLRLon = -92.0
+        self.defaultDomainLRLat = 27.0
+        
         
         self.lowThreshKey = 'lowThreshold'
         self.outputDirKey = 'OUTPUTDIR'
         self.domainBufferKey = 'domainBuffer'
-        self.domainLonPointsKey = 'domainLonPoints'
-        self.domainLatPointsKey = 'domainLatPoints'
         self.domainULLonKey = 'domainULLon'
         self.domainULLatKey = 'domainULLat'
+        self.domainLRLonKey = 'domainLRLon'
+        self.domainLRLatKey = 'domainLRLat'
         self.defaultContents = {
                                  self.lowThreshKey: self.defaultLowThreshold,
                                  self.outputDirKey: self.defaultPHIOutputDir,
                                  self.domainBufferKey: self.defaultDomainBuffer,
-                                 self.domainLonPointsKey: self.defaltDomainLonPoints,
-                                 self.domainLatPointsKey: self.defaltDomainLatPoints,
                                  self.domainULLonKey: self.defaultDomainULLon,
-                                 self.domainULLatKey: self.defaultDomainULLat
+                                 self.domainULLatKey: self.defaultDomainULLat,
+                                 self.domainLRLonKey: self.defaultDomainLRLon,
+                                 self.domainLRLatKey: self.defaultDomainLRLat
                                  }
 
     def setConfigDict(self, lowThresh = None,
                             initial_ulLon = None, 
                             initial_ulLat = None, 
+                            initial_lrLon = None, 
+                            initial_lrLat = None, 
                             OUTPUTDIR = None, 
                             buff = None, 
-                            lonPoints = None, 
-                            latPoints = None
                             ):
         
         self.ContentsDict[self.lowThreshKey] = lowThresh if lowThresh is not None else self.defaultLowThreshold
         self.ContentsDict[self.outputDirKey] = OUTPUTDIR if OUTPUTDIR is not None else self.defaultPHIOutputDir
         self.ContentsDict[self.domainBufferKey] = buff if buff is not None else self.defaultDomainBuffer
-        self.ContentsDict[self.domainLonPointsKey] = lonPoints if lonPoints is not None else self.defaltDomainLonPoints
-        self.ContentsDict[self.domainLatPointsKey] = latPoints if latPoints is not None else self.defaltDomainLatPoints
         self.ContentsDict[self.domainULLonKey] = initial_ulLon if initial_ulLon is not None else self.defaultDomainULLon
         self.ContentsDict[self.domainULLatKey] = initial_ulLat if initial_ulLat is not None else self.defaultDomainULLat
+        self.ContentsDict[self.domainLRLonKey] = initial_lrLon if initial_lrLon is not None else self.defalltDomainLRLon
+        self.ContentsDict[self.domainLRLatKey] = initial_lrLat if initial_lrLat is not None else self.defalltDomainLRLat
         self.writeJson()
 
     def setLowThreshold(self, val=None):
@@ -68,16 +69,6 @@ class ConfigUtils(object):
         self.ContentsDict[self.domainBufferKey] = val  if val is not None else self.defaultDomainBuffer
         self.writeJson()
 
-    def setDomainLonPoints(self, val=None):
-        self.readJson()
-        self.ContentsDict[self.domainLonPointsKey] = val if val is not None else self.defaltDomainLonPoints
-        self.writeJson()
-
-    def setDomainLatPoints(self, val=None):
-        self.readJson()
-        self.ContentsDict[self.domainLatPointsKey] = val if val is not None else self.defaltDomainLatPoints
-        self.writeJson()
-
     def setDomainULLon(self, val=None):
         self.readJson()
         self.ContentsDict[self.domainULLonKey] = val if val is not None else self.defaultDomainULLon
@@ -86,6 +77,16 @@ class ConfigUtils(object):
     def setDomainULLat(self, val=None):
         self.readJson()
         self.ContentsDict[self.domainULLatKey] = val if val is not None else self.defaultDomainULLat
+        self.writeJson()
+
+    def setDomainLRLon(self, val=None):
+        self.readJson()
+        self.ContentsDict[self.domainLRLonKey] = val if val is not None else self.defaultDomainLRLon
+        self.writeJson()
+
+    def setDomainLRLat(self, val=None):
+        self.readJson()
+        self.ContentsDict[self.domainLRLatKey] = val if val is not None else self.defaultDomainLRLat
         self.writeJson()
 
     def getConfigDict(self):
@@ -104,14 +105,6 @@ class ConfigUtils(object):
         self.readJson()
         return self.ContentsDict.get(self.domainBufferKey, self.defaultDomainBuffer)
 
-    def getDomainLonPoints(self):
-        self.readJson()
-        return self.ContentsDict.get(self.domainLonPointsKey, self.defaltDomainLonPoints )
-
-    def getDomainLatPoints(self):
-        self.readJson()
-        return self.ContentsDict.get(self.domainLatPointsKey, self.defaltDomainLatPoints)
-
     def getDomainULLon(self):
         self.readJson()
         return self.ContentsDict.get(self.domainULLonKey, self.defaultDomainULLon)
@@ -119,6 +112,14 @@ class ConfigUtils(object):
     def getDomainULLat(self):
         self.readJson()
         return self.ContentsDict.get(self.domainULLatKey, self.defaultDomainULLat)
+
+    def getDomainLRLon(self):
+        self.readJson()
+        return self.ContentsDict.get(self.domainLRLonKey, self.defaultDomainLRLon)
+
+    def getDomainLRLat(self):
+        self.readJson()
+        return self.ContentsDict.get(self.domainLRLatKey, self.defaultDomainLRLat)
 
     def getOutputDir(self):
         self.readJson()

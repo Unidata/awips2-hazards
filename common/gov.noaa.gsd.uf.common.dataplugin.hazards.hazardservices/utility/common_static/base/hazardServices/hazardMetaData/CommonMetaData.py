@@ -2015,7 +2015,7 @@ class MetaData(object):
         grp = {
             "fieldType": "Button",
             "fieldName": "cancelButton",
-            "label": "     CANCEL     ",
+            "label": "*** End Object ***",
             "enable": enable,
             #"refreshMetadata": True,
             "modifyRecommender": 'SwathRecommender',

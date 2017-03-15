@@ -216,16 +216,13 @@ class Recommender(RecommenderTemplate.Recommender):
             wdir = self.defaultWindDir()
             wspd = self.defaultWindSpeed() #kts
         else:
-            #u = float(eastMotions)
-            #v = -1.*float(southMotions)
-            u = -1.*float(eastMotions)
-            v = -1.*float(southMotions)
-            wspd = int(round(math.sqrt(u**2 + v**2) * 1.94384)) # to knots
-            wdir = int(round(math.degrees(math.atan2(-u, -v))))
-            if wdir < 0:
-                wdir += 360
+            ### Note: traditionally u, v calculations have v > 0 = Northward
+            ### For some reason, ProbSevere has "southMotions" where
+            ### > 0 = Southward.  Multiplying by -1. here to correct this.
+            wspd, wdir = self.probUtils.UVToMagDir(float(eastMotions), -1.*float(southMotions))
+            wspd = self.probUtils.convertMsecToKts(wspd)
                 
-        return {'wdir':wdir, 'wspd':wspd}
+        return {'wdir':int(round(wdir)), 'wspd':int(round(wspd))}
 
 
 
@@ -607,7 +604,6 @@ class Recommender(RecommenderTemplate.Recommender):
         identifiersOfEventsToSaveToDatabase = []
         
         for currentEvent in currentEventsList:
-            print '\n\t[1]:', currentEvent.get('objectID')
 
             if currentEvent.get('automationLevel') == 'userOwned':
                 print 'Manual Event.  Storing and moving on...'
@@ -691,83 +687,6 @@ class Recommender(RecommenderTemplate.Recommender):
                     
         return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
     
-#    def mergeHazardEventsNew(self, currentEventsList, recommendedEventsDict):
-#        intersectionDict = {}
-#        recommendedObjectIDsList = sorted(recommendedEventsDict.keys())
-#        automatedCurrentOnlyList = []
-#        manualList = []
-#        mergedEvents = EventSet(None)
-#
-#        currentTimeMS = int(self.currentTime.strftime('%s'))*1000
-#        mergedEvents.addAttribute('currentTime', currentTimeMS)
-#        mergedEvents.addAttribute('trigger', 'autoUpdate')
-#        
-#        
-#        ### First, find the overlap between currentEvents and recommended events
-#        for currentEvent in currentEventsList:
-#
-#            if currentEvent.get('automationLevel') == 'userOwned':
-#                manualList.append(currentEvent)
-#                continue
-#            
-#            currentEventObjectID = currentEvent.get('objectID')
-#            print '######### currentEventObjectID ######', currentEventObjectID
-#            #if currentEventObjectID in recommendedObjectIDsList:
-#            ### Account for prepended 'M' to automated events that are level 3 or 2 automation.
-#            if str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList])):
-#                ### If current event has match in rec event, add to dict for later processing
-#                ### should avoid 'userOwned' since they are filtered out with previous if statement
-#                rawRecommendedID = currentEventObjectID[1:] if str(currentEventObjectID).startswith('M') else currentEventObjectID
-#                print "\t#### rawRecommendedID", rawRecommendedID
-#                #pprint.pprint(recommendedEventsDict)
-#                intersectionDict[currentEventObjectID] = {'currentEvent': currentEvent, 'recommendedAttrs': recommendedEventsDict[rawRecommendedID]}
-#                
-#                ### Remove ID from rec list so remaining list is "newOnly"
-#                recommendedObjectIDsList.remove(rawRecommendedID)
-#            else:
-#                automatedCurrentOnlyList.append(currentEvent)
-#                
-#
-#        
-#        
-#        ### Loop through remaining/unmatched recommendedEvents
-#        ### if recommended geometry overlaps an existing *manual* geometry
-#        ### ignore it. 
-#        for recID in recommendedObjectIDsList:
-#            recommendedValues = recommendedEventsDict[recID]
-#            ### Get recommended geometry
-#            recGeom = loads(recommendedValues.get('polygons'))
-#            
-#
-#            if len(automatedCurrentOnlyList) == 0:
-#                recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
-#                if recommendedEvent:
-#                    mergedEvents.add(recommendedEvent)
-#                
-#            else:
-#                ### The only events left in this list should be
-#                ###  1) those that are full manual
-#                ###  2) formerly automated at some level but no longer have
-#                ###     a corresponding ProbSevere ID and should be "removed".
-#                for event in automatedCurrentOnlyList:
-#                    print 'vvvvvv ', event.get('objectID'), ' vvvvvvvv'
-#		    print '\t', event.get('probabilities'), event.get('automationLevel'), 'userOwned' not in event.get('automationLevel')
-#                    print '\tSETTING TO ELAPSED'
-#                    event.setStatus('ELAPSED')
-#                    print '\t\tstatus update 1',event.getStatus()
-#                        ### userOwned events get precedent over automated
-#                    else:
-#                        ### Add the userOwned geometry to the EventSet
-#                        evtGeom = event.getGeometry().asShapely()
-#                        ### if the geometries DO NOT intersect, add recommended
-#                        if not evtGeom.intersects(recGeom):
-#                            recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
-#                            if recommendedEvent:
-#                                mergedEvents.add(recommendedEvent)
-#                    print '\t\tUPDATED STATUS',event.getStatus()
-#                    mergedEvents.add(event)
-#                    
-#        return mergedEvents
         
     def isEditableSelected(self, event):
         selected = event.get('selected', False)

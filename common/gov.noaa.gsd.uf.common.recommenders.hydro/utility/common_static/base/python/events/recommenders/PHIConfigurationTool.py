@@ -15,10 +15,18 @@ DEFAULTPHIGRIDOUTPUTPATH = '/scratch/PHIGridTesting'
 LOWTHRESHSOURCE = "phiConfigLowThreshold"
 ULLONSOURCE = "phiConfigUpperLeftLon"
 ULLATSOURCE = "phiConfigUpperLeftLat"
+LRLONSOURCE = "phiConfigLowerRightLon"
+LRLATSOURCE = "phiConfigLowerRightLat"
 NUMLONPOINTSSOURCE = "phiConfigNumLonPoints"
 NUMLATPOINTSSOURCE = "phiConfigNumLatPoints"
 BUFFERSOURCE = "phiConfigDomainBuffer"
 OUTDIRSOURCE = "phiConfigPHIOutputGridLocation"
+
+LONMAX = -67.5
+LONMIN = -129.0
+LATMAX = 50.0
+LATMIN = 27.0
+
  
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -76,10 +84,10 @@ class Recommender(RecommenderTemplate.Recommender):
         
         upperLeftLonDict = {}
         upperLeftLonDict["fieldName"] = ULLONSOURCE
-        upperLeftLonDict["label"] = "Set Upper Left Longitude"
+        upperLeftLonDict["label"] = "Set Upper Left LONGitude"
         upperLeftLonDict["fieldType"] = "FractionSpinner"
-        upperLeftLonDict["minValue"] = -129.0
-        upperLeftLonDict["maxValue"] = -67.5
+        upperLeftLonDict["minValue"] = LONMIN
+        upperLeftLonDict["maxValue"] = LONMAX
         upperLeftLonDict["values"] = self._configUtils.getDomainULLon()
         upperLeftLonDict["showScale"] = True
         upperLeftLonDict["incrementDelta"] = 0.1
@@ -88,39 +96,39 @@ class Recommender(RecommenderTemplate.Recommender):
         
         upperLeftLatDict = {}
         upperLeftLatDict["fieldName"] = ULLATSOURCE
-        upperLeftLatDict["label"] = "Set Upper Left Latitude"
+        upperLeftLatDict["label"] = "Set Upper Left LATitude"
         upperLeftLatDict["fieldType"] = "FractionSpinner"
-        upperLeftLatDict["minValue"] = 27.0
-        upperLeftLatDict["maxValue"] = 50.0
+        upperLeftLatDict["minValue"] = LATMIN
+        upperLeftLatDict["maxValue"] = LATMAX
         upperLeftLatDict["values"] = self._configUtils.getDomainULLat()
         upperLeftLatDict["showScale"] = True
         upperLeftLatDict["incrementDelta"] = 0.1
         valueDict[ULLATSOURCE] = upperLeftLatDict["values"]
         fieldDictList.append(upperLeftLatDict)
         
-        numLonPointsDict = {}
-        numLonPointsDict["fieldName"] = NUMLONPOINTSSOURCE
-        numLonPointsDict["label"] = "Set Number of Longitude Points"
-        numLonPointsDict["fieldType"] = "IntegerSpinner"
-        numLonPointsDict["minValue"] = 100
-        numLonPointsDict["maxValue"] = 1500
-        numLonPointsDict["values"] = self._configUtils.getDomainLonPoints()
-        numLonPointsDict["showScale"] = True
-        numLonPointsDict["incrementDelta"] = 1
-        valueDict[NUMLONPOINTSSOURCE] = numLonPointsDict["values"]
-        fieldDictList.append(numLonPointsDict)
+        lowerRightLonDict = {}
+        lowerRightLonDict["fieldName"] = LRLONSOURCE
+        lowerRightLonDict["label"] = "Set Lower Right LONGitude"
+        lowerRightLonDict["fieldType"] = "FractionSpinner"
+        lowerRightLonDict["minValue"] = LONMIN
+        lowerRightLonDict["maxValue"] = LONMAX
+        lowerRightLonDict["values"] = self._configUtils.getDomainLRLon()
+        lowerRightLonDict["showScale"] = True
+        lowerRightLonDict["incrementDelta"] = 0.1
+        valueDict[LRLONSOURCE] = lowerRightLonDict["values"]
+        fieldDictList.append(lowerRightLonDict)
         
-        numLatPointsDict = {}
-        numLatPointsDict["fieldName"] = NUMLATPOINTSSOURCE
-        numLatPointsDict["label"] = "Set Number of Latitude Points"
-        numLatPointsDict["fieldType"] = "IntegerSpinner"
-        numLatPointsDict["minValue"] = 100
-        numLatPointsDict["maxValue"] = 1500
-        numLatPointsDict["values"] = self._configUtils.getDomainLatPoints()
-        numLatPointsDict["showScale"] = True
-        numLatPointsDict["incrementDelta"] = 1
-        valueDict[NUMLATPOINTSSOURCE] = numLatPointsDict["values"]
-        fieldDictList.append(numLatPointsDict)
+        lowerRightLatDict = {}
+        lowerRightLatDict["fieldName"] = LRLATSOURCE
+        lowerRightLatDict["label"] = "Set Lower Right LATitude"
+        lowerRightLatDict["fieldType"] = "FractionSpinner"
+        lowerRightLatDict["minValue"] = LATMIN
+        lowerRightLatDict["maxValue"] = LATMAX
+        lowerRightLatDict["values"] = self._configUtils.getDomainLRLat()
+        lowerRightLatDict["showScale"] = True
+        lowerRightLatDict["incrementDelta"] = 0.1
+        valueDict[LRLATSOURCE] = lowerRightLatDict["values"]
+        fieldDictList.append(lowerRightLatDict)
         
         bufferDict = {}
         bufferDict["fieldName"] = BUFFERSOURCE
@@ -133,27 +141,6 @@ class Recommender(RecommenderTemplate.Recommender):
         bufferDict["incrementDelta"] = 0.25
         valueDict[BUFFERSOURCE] = bufferDict["values"]
         fieldDictList.append(bufferDict)
-        
-        lowerRightLonDict = {}
-        lowerRightLonDict["fieldName"] = "phiConfigLowerRightLon"
-        lowerRightLonDict["label"] = "Lower Right Lon"
-        lowerRightLonDict["fieldType"] = "Text"
-        lowerRightLonDict["values"] = self.setPhiConfigLowerRightLon(self._configUtils.getDomainULLon(), self._configUtils.getDomainLonPoints())
-        lowerRightLonDict["editable"] = False
-        valueDict["phiConfigLowerRightLon"] = lowerRightLonDict["values"]
-        fieldDictList.append(lowerRightLonDict)
-
-        lowerRightLatDict = {}
-        lowerRightLatDict["fieldName"] = "phiConfigLowerRightLat"
-        lowerRightLatDict["label"] = "Lower Right Lat"
-        lowerRightLatDict["fieldType"] = "Text"
-        lowerRightLatDict["values"] = self.setPhiConfigLowerRightLat(self._configUtils.getDomainULLat(), self._configUtils.getDomainLatPoints())
-
-        lowerRightLatDict["editable"] = False
-        valueDict["phiConfigLowerRightLat"] = lowerRightLatDict["values"]
-        fieldDictList.append(lowerRightLatDict)
-        
-
         
         outputDirDict = {}
         outputDirDict["fieldName"] = OUTDIRSOURCE
@@ -185,10 +172,10 @@ class Recommender(RecommenderTemplate.Recommender):
                                           lowThresh = dialogInputMap.get(LOWTHRESHSOURCE),
                                           initial_ulLon = dialogInputMap.get(ULLONSOURCE),
                                           initial_ulLat = dialogInputMap.get(ULLATSOURCE),
+                                          initial_lrLon = dialogInputMap.get(LRLONSOURCE),
+                                          initial_lrLat = dialogInputMap.get(LRLATSOURCE),
                                           OUTPUTDIR = dialogInputMap.get(OUTDIRSOURCE),
                                           buff = dialogInputMap.get(BUFFERSOURCE),
-                                          lonPoints = dialogInputMap.get(NUMLONPOINTSSOURCE),
-                                          latPoints = dialogInputMap.get(NUMLATPOINTSSOURCE),
                                           )
         
 
@@ -197,28 +184,41 @@ class Recommender(RecommenderTemplate.Recommender):
     def toString(self):
         return "PHIConfigurationTool"
     
-    def setPhiConfigLowerRightLat(self, ulLatVal, latPts):
-        return ulLatVal - (0.01 * latPts)
-    
-    def setPhiConfigLowerRightLon(self, ulLonVal, lonPts):
-        return ulLonVal + (0.01 * lonPts)
-    
+     
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     returnDict = {}
     if triggerIdentifiers == None:
         return returnDict
     
-    if 'phiConfigUpperLeftLat' in triggerIdentifiers or "phiConfigNumLatPoints" in triggerIdentifiers:
+    if 'phiConfigUpperLeftLat' in triggerIdentifiers:
         ulLatVal = mutableProperties['phiConfigUpperLeftLat']['values']
-        latPts = mutableProperties['phiConfigNumLatPoints']['values']
-        lrLatVal =  ulLatVal - (0.01 * latPts)
+        lrLatVal = mutableProperties['phiConfigLowerRightLat']['values']
+        if ulLatVal <= lrLatVal + 1:
+            lrLatVal =  ulLatVal - 1.0
         returnDict['phiConfigLowerRightLat'] = {'values': lrLatVal}
 
-    if 'phiConfigUpperLeftLon' in triggerIdentifiers or "phiConfigNumLonPoints" in triggerIdentifiers:
+    if 'phiConfigLowerRightLat' in triggerIdentifiers:
+        ulLatVal = mutableProperties['phiConfigUpperLeftLat']['values']
+        lrLatVal = mutableProperties['phiConfigLowerRightLat']['values']
+        if ulLatVal <= lrLatVal + 1:
+            ulLatVal =  lrLatVal + 1.0
+        returnDict['phiConfigUpperLeftLat'] = {'values': ulLatVal}
+
+    if 'phiConfigUpperLeftLon' in triggerIdentifiers:
         ulLonVal = mutableProperties['phiConfigUpperLeftLon']['values']
-        lonPts = mutableProperties['phiConfigNumLonPoints']['values']
-        lrLonVal =  ulLonVal + (0.01 * lonPts)
-        returnDict['phiConfigLowerRightLon'] = {'values':lrLonVal}
+        lrLonVal = mutableProperties['phiConfigLowerRightLon']['values']
+        if ulLonVal >= lrLonVal - 1:
+            lrLonVal =  ulLonVal + 1.0
+        returnDict['phiConfigLowerRightLon'] = {'values': lrLonVal}
+
+    if 'phiConfigLowerRightLon' in triggerIdentifiers:
+        ulLonVal = mutableProperties['phiConfigUpperLeftLon']['values']
+        lrLonVal = mutableProperties['phiConfigLowerRightLon']['values']
+        if ulLonVal >= lrLonVal - 1:
+            ulLonVal =  lrLonVal - 1.0
+        returnDict['phiConfigUpperLeftLon'] = {'values': ulLonVal}
+
+
 
     return returnDict
-        
+      
