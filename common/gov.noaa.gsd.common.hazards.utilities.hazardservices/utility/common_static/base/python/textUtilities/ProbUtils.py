@@ -664,7 +664,7 @@ class ProbUtils(object):
 
             uList.append(u)
             vList.append(v)
-
+            
             
         uStatsDict = self.weightedAvgAndStdDev(uList)
         vStatsDict = self.weightedAvgAndStdDev(vList)
@@ -714,8 +714,8 @@ class ProbUtils(object):
     def MagDirToUV(self, mag, dir):
         DEG_TO_RAD = np.pi / 180.0
         # Note sign change for components so math to meteor. coords works
-        uw = - sin(dir * DEG_TO_RAD) * mag
-        vw = - cos(dir * DEG_TO_RAD) * mag
+        uw = - math.sin(dir * DEG_TO_RAD) * mag
+        vw = - math.cos(dir * DEG_TO_RAD) * mag
         return (uw, vw)
 
     def UVToMagDir(self, u, v):
@@ -780,7 +780,7 @@ class ProbUtils(object):
 
         bearing = math.atan2(math.sin(lon2-lon1)*math.cos(lat2), math.cos(lat1)*math.sin(lat2)-math.sin(lat1)*math.cos(lat2)*math.cos(lon2-lon1))
         bearing = math.degrees(bearing)
-        bearing = bearing % 360
+        bearing = (bearing+180) % 360
         return bearing
     
     def getHaversineDistance(self, poly1, poly2):

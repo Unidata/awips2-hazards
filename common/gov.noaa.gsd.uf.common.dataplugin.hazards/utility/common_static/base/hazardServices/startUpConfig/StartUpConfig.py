@@ -106,6 +106,6 @@ StartUpConfig = {
     #            the history list.
     # "none":    neither "saveToDatabase" nor "saveToHistory" do anything; no persisting
     #            is done in response to either of them
-    "persistenceBehavior": "normal"
+    "persistenceBehavior": "history"
 
     }
