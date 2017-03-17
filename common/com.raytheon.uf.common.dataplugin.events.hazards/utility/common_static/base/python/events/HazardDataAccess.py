@@ -33,6 +33,8 @@
 #    05/13/15        8161          mduff          Changes for Jep upgrade.
 #    02/27/17       29138          Chris.Golden   Changed to work with new
 #                                                 version of HazardEventManager.
+#    03/16/17       29138          Chris.Golden   Added method to retrieve
+#                                                 latest historical version.
 #
 
 import JUtil
@@ -45,6 +47,13 @@ def getHazardEvent(eventId, mode):
     if event is None:
         return None
     return JUtil.javaObjToPyVal(event)
+
+def getMostRecentHistoricalHazardEvent(eventId, mode):
+    manager = HazardEventManager(Mode.valueOf(mode))
+    events = manager.getHistoryByEventID(eventId, False)
+    if not events:
+        return None
+    return JUtil.javaObjToPyVal(events[-1])
 
 def getHazardEventsBySite(siteID, mode):
     manager = HazardEventManager(Mode.valueOf(mode))

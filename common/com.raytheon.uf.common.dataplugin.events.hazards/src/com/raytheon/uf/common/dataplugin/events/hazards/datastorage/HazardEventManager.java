@@ -24,6 +24,7 @@ import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -70,12 +71,28 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      have to be shipped back to the client.
  * Feb 27, 2017  29138    Chris.Golden  Added method to get latest hazard
  *                                      events by site ID.
+ * Mar 16, 2017  29138    Chris.Golden  Added workaround code to differentiate
+ *                                      historical versions of events from
+ *                                      latest versions; this is needed until
+ *                                      the latest version saving is fixed.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
 public class HazardEventManager implements IHazardEventManager {
+
+    // Public Static Constants
+
+    /**
+     * Attribute of a hazard event which, if not null, indicates that the event
+     * is a historical version.
+     * 
+     * @deprecated Should not be needed once saving an event as "latest" is
+     *             available again.
+     */
+    @Deprecated
+    public static final String HISTORICAL = "historical";
 
     // Public Enumerated Types
 
@@ -192,6 +209,36 @@ public class HazardEventManager implements IHazardEventManager {
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
+
+        /*
+         * TODO: Remove this code once the HISTORICAL attribute is not being
+         * used.
+         * 
+         * Iterate through the history lists returned, pruning out all latest
+         * version (ahistorical) hazard events, or if the latest one is wanted
+         * as well, all but the most recent "latest version". This is needed
+         * because "latest" ones are currently being saved to the history list
+         * if StartUpConfig options are set to force this.
+         */
+        boolean needLatest = (request.getInclude() != Include.HISTORICAL_EVENTS);
+        for (HazardHistoryList historyList : events.values()) {
+            Iterator<HazardEvent> iterator = historyList.iterator();
+            Collections.reverse(historyList);
+            while (iterator.hasNext()) {
+                HazardEvent event = iterator.next();
+                if (event.getHazardAttribute(HISTORICAL) == null) {
+                    if (needLatest) {
+                        needLatest = false;
+                    } else {
+                        iterator.remove();
+                    }
+                } else {
+                    event.removeHazardAttribute(HISTORICAL);
+                }
+            }
+            Collections.reverse(historyList);
+        }
+
         return events;
     }
 
@@ -384,16 +431,36 @@ public class HazardEventManager implements IHazardEventManager {
             HazardEventQueryRequest request) {
         Map<String, Integer> historySizesForEventIdentifiers = Collections
                 .emptyMap();
-        try {
-            HazardEventResponse response = hazardDataAccess.retrieve(request);
-            if (response.success()) {
-                historySizesForEventIdentifiers = response.getHistorySizeMap();
-            } else {
-                checkResponse(response);
-            }
-        } catch (Exception e) {
-            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+
+        /*
+         * TODO: Remove this code once the HISTORICAL attribute is not being
+         * used, and replace it with the commented-out code below it.
+         * 
+         * Iterate through the history lists returned, getting the size for
+         * each. This is done instead of querying the sizes (the commented-out
+         * code) because the latter would yield sizes of history lists if all
+         * "latest" versions that might be found within said lists are included,
+         * which they should not be. This will not be needed once "latest"
+         * versions are no longer saved to history lists.
+         */
+        historySizesForEventIdentifiers = new HashMap<>();
+        request.setSizeOnlyRequired(false);
+        for (Map.Entry<String, HazardHistoryList> entry : queryHistory(request)
+                .entrySet()) {
+            historySizesForEventIdentifiers.put(entry.getKey(), entry
+                    .getValue().size());
         }
+        // try {
+        // HazardEventResponse response = hazardDataAccess.retrieve(request);
+        // if (response.success()) {
+        // historySizesForEventIdentifiers = response.getHistorySizeMap();
+        // } else {
+        // checkResponse(response);
+        // }
+        // } catch (Exception e) {
+        // statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        // }
+
         return historySizesForEventIdentifiers;
     }
 

@@ -52,6 +52,7 @@ class ProbUtils(object):
         timestamp = datetime.datetime.utcfromtimestamp(timestamp)
         timeStamp = timestamp.replace(second=0)
 
+        mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
         
         for event in eventSet:
             
@@ -60,7 +61,16 @@ class ProbUtils(object):
             if event.getEndTime() <= timestamp:
                 continue
             
+            # Ensure the event is currently issued.
             if event.getStatus().upper() != 'ISSUED':
+                continue
+
+            # Get the most recent entry in the history list for the event,
+            # since that is the one upon which the grid should be based.
+            # If it has never been added to the history list, then it
+            # should not result in any grid generation.
+            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(eventID, mode)
+            if event is None:
                 continue
             
             hazardType = event.getHazardType()

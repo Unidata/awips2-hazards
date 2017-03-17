@@ -163,6 +163,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      is treated as meaning "save to database/history all events
  *                                      with no assigned identifiers", meaning any brand new events
  *                                      created by the recommender.
+ * Mar 16, 2017 29138      Chris.Golden Removed code related to startup config option to allow
+ *                                      persistence behavior to be tweaked via configuration from
+ *                                      this class; use of this temporary option has been moved
+ *                                      into the session event manager.
  * </pre>
  * 
  * @author bsteffen
@@ -565,41 +569,6 @@ public class SessionManager implements
             boolean addToHistory = Boolean.TRUE.equals(addToHistoryAttribute);
             boolean addToDatabase = ((addToHistory == false) && Boolean.TRUE
                     .equals(addToDatabaseAttribute));
-
-            /*
-             * TODO: Remove this when "persistenceBehavior" is removed from
-             * startup config, once testing and debugging yield the correct
-             * solution to handling persistence.
-             * 
-             * If no persistence is desired, ensure that none is done;
-             * otherwise, if history-only persistence is desired, set the
-             * addToHistory flag true if the addToDatabase flag was true, or if
-             * addToDatabase has a list of event identifiers, either use it as
-             * the list for addToHistory (if the latter had no associated list)
-             * or merge the two.
-             */
-            String persistenceBehavior = configManager.getStartUpConfig()
-                    .getPersistenceBehavior();
-            if ("none".equals(persistenceBehavior)) {
-                addToHistoryAttribute = addToDatabaseAttribute = null;
-                addToHistory = addToDatabase = false;
-            } else if ("history".equals(persistenceBehavior)) {
-                if (addToDatabase) {
-                    addToHistory = true;
-                    addToDatabase = false;
-                } else if ((addToHistory == false)
-                        && (addToDatabaseAttribute instanceof List)) {
-                    if (addToHistoryAttribute == null) {
-                        addToHistoryAttribute = addToDatabaseAttribute;
-                    } else {
-                        List<Object> list = new ArrayList<>(
-                                (List<?>) addToHistoryAttribute);
-                        list.addAll((List<?>) addToDatabaseAttribute);
-                        addToHistoryAttribute = (Serializable) list;
-                    }
-                }
-                addToDatabaseAttribute = null;
-            }
 
             /*
              * Determine whether or not all hazard events that are brand new

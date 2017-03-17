@@ -84,6 +84,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -487,6 +488,9 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      versions of hazard events with the requested statuses, even
  *                                      though the latest versions of said hazard events have the wrong
  *                                      statuses.
+ * Mar 16, 2017   29138    Chris.Golden Added workaround code to differentiate historical versions of
+ *                                      events from latest versions; this is needed until the latest
+ *                                      version saving is fixed.
  * </pre>
  * 
  * @author bsteffen
@@ -3073,14 +3077,19 @@ public class SessionEventManager implements
             /*
              * If there is a "latest version" stored in the database, then
              * remove it before adding to the history list.
+             * 
+             * TODO: Remove the use of the HISTORICAL attribute once saving
+             * latest version capability is restored.
              */
             HazardEvent latestVersion = latestVersionsFromDatabaseForEventIdentifiers
                     .get(event.getEventID());
             if (latestVersion != null) {
                 dbManager.removeEvents(latestVersion);
             }
-            dbManager.storeEvents(createEventCopyToBePersisted(event, true,
-                    true));
+            HazardEvent eventCopy = createEventCopyToBePersisted(event, true,
+                    true);
+            eventCopy.addHazardAttribute(HazardEventManager.HISTORICAL, true);
+            dbManager.storeEvents(eventCopy);
             scheduleExpirationTask(event);
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -4800,6 +4809,23 @@ public class SessionEventManager implements
     public void saveEvents(List<IHazardEvent> events, boolean addToHistory) {
 
         /*
+         * TODO: Remove this when "persistenceBehavior" is removed from startup
+         * config, once testing and debugging yield the correct solution to
+         * handling persistence.
+         * 
+         * If no persistence is desired, do nothing; otherwise, if only history
+         * list persistesnce is desired, remember this for later.
+         */
+        boolean forceHistorical = false;
+        String persistenceBehavior = configManager.getStartUpConfig()
+                .getPersistenceBehavior();
+        if ("none".equals(persistenceBehavior)) {
+            return;
+        } else if ("history".equals(persistenceBehavior)) {
+            forceHistorical = true;
+        }
+
+        /*
          * Get copies of the events to be saved that are database-friendly.
          */
         List<HazardEvent> dbEvents = new ArrayList<>(events.size());
@@ -4820,10 +4846,29 @@ public class SessionEventManager implements
              * Make a copy of the event of the right type, and strip out
              * whatever cannot or should not be saved. Also ensure that it is
              * added to the history list if such is asked for.
+             * 
+             * TODO: Remove the "|| forceHistorical" from here once true save
+             * latest version capability is restored.
              */
             HazardEvent persistableEvent = createEventCopyToBePersisted(event,
-                    addToHistory, false);
+                    (addToHistory || forceHistorical), false);
             dbEvents.add(persistableEvent);
+        }
+
+        /*
+         * TODO: Remove this once latest event version saving is possible again.
+         * 
+         * Add the historical attribute to the hazard event copies that are to
+         * be persisted if they really are meant to be historical.
+         */
+        if (addToHistory) {
+            for (HazardEvent event : dbEvents) {
+                event.addHazardAttribute(HazardEventManager.HISTORICAL, true);
+            }
+        } else {
+            for (HazardEvent event : dbEvents) {
+                event.removeHazardAttribute(HazardEventManager.HISTORICAL);
+            }
         }
 
         /*
