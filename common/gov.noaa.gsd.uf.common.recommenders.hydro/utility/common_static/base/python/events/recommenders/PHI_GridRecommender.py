@@ -26,6 +26,7 @@ import RiverForecastUtils
 import JUtil
 import pickle
 import AdvancedGeometry
+import HazardDataAccess
      
 class Recommender(RecommenderTemplate.Recommender):
     
@@ -107,11 +108,21 @@ class Recommender(RecommenderTemplate.Recommender):
         outDict = {}
         
         issuedTime = datetime.datetime.utcfromtimestamp(probHazardEvents.getAttributes().get("currentTime")/1000).strftime('%m%d%Y_%H%M')
-
+        mode = probHazardEvents.getAttributes().get('hazardMode', 'PRACTICE').upper()
+        
         for hazardEvent in probHazardEvents:
             
             if hazardEvent.getStatus().upper() != 'ISSUED':
                 continue
+            
+            # Get the most recent entry in the history list for the event,
+            # since that is the one upon which the grid should be based.
+            # If it has never been added to the history list, then it
+            # should not result in any grid generation.
+            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(hazardEvent.getEventID(), mode)
+            if event is None:
+                continue
+            
             
             outDictInit = {k:hazardEvent.__getitem__(k) for k in attrKeys}
             outDict = self.convertAdvancedGeometry(outDictInit)

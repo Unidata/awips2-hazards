@@ -69,7 +69,7 @@ class ProbUtils(object):
             # since that is the one upon which the grid should be based.
             # If it has never been added to the history list, then it
             # should not result in any grid generation.
-            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(eventID, mode)
+            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), mode)
             if event is None:
                 continue
             
