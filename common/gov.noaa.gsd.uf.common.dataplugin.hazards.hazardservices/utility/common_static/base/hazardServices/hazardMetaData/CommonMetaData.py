@@ -1967,7 +1967,7 @@ class MetaData(object):
         automationLevelLabels = {
                 'userOwned': 'User Owned',
                 'automated': 'Automated',
-                'attributesAndMechanics': 'Attributes and Mechanics',
+                'attributesAndGeometry': 'Attributes and Geometry',
                 'attributesOnly':'Attributes Only',
                 }
         automationLabel = automationLevelLabels[self.hazardEvent.get('automationLevel', 'userOwned')]
@@ -1980,7 +1980,7 @@ class MetaData(object):
 
     def getAutoShape(self, enable):
         automationLevel = self.hazardEvent.get('automationLevel', 'automated')
-        if automationLevel in ['automated', 'attributesAndMechanics']:
+        if automationLevel in ['automated', 'attributesAndGeometry']:
             autoShape = True
         else:
             autoShape = False
@@ -2500,12 +2500,14 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             activate = True
             activateModify = False
         
-        elif autoShapeChosen:
-            autoShape = mutableProperties.get('autoShape', {}).get('values')
-            for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
-                    "convectiveObjectSpdKtsUnc"]:
-                # Enable these if autoShape is off i.e. the user owns the mechanics
-                returnDict[key] = {'enable': not autoShape}
+        #=======================================================================
+        # elif autoShapeChosen:
+        #     autoShape = mutableProperties.get('autoShape', {}).get('values')
+        #     for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+        #             "convectiveObjectSpdKtsUnc"]:
+        #         # Enable these if autoShape is off i.e. the user owns the mechanics
+        #         returnDict[key] = {'enable': not autoShape}
+        #=======================================================================
         
         if hazardSelected or modifyButtonChosen:        
             for key in ['autoShape', "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
@@ -2513,12 +2515,18 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                 "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
                 "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
                 returnDict[key] = {'enable' : activate}
-            autoShape = mutableProperties.get('autoShape', {}).get('values')
-            if not autoShape:
-                for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
-                    "convectiveObjectSpdKtsUnc"]:
-                    # Enable these if autoShape is off i.e. the user owns the mechanics
-                    returnDict[key] = {'enable': activate}                
+            #===================================================================
+            # autoShape = mutableProperties.get('autoShape', {}).get('values')
+            # if not autoShape:
+            #     for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+            #         "convectiveObjectSpdKtsUnc"]:
+            #         # Enable these if autoShape is off i.e. the user owns the mechanics
+            #         returnDict[key] = {'enable': activate}                
+            #===================================================================
+            for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+                "convectiveObjectSpdKtsUnc"]:
+                # Enable these if autoShape is off i.e. the user owns the mechanics
+                returnDict[key] = {'enable': activate}                
 
             returnDict['modifyButton'] = {'enable' : activateModify}
         return returnDict
