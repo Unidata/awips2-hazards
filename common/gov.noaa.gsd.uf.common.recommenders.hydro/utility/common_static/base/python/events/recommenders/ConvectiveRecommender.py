@@ -61,7 +61,7 @@ if sysTime < 1478186880:
 else:
     SOURCEPATH = '/realtime-a2/hdf5/probsevere'
 
-AUTOMATION_LEVELS = ['userOwned','attributesOnly','attributesAndMechanics','automated']
+AUTOMATION_LEVELS = ['userOwned','attributesOnly','attributesAndGeometry','automated']
 
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -162,7 +162,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         self.dataLayerTime = sorted(dlt)[-1] if len(dlt) else self.currentTime
         self.latestDLTDT = datetime.datetime.fromtimestamp(self.dataLayerTime/1000)
-        print '\n\n\tDATALAYERTIME:', self.latestDLTDT
+        print '\n\n\t[CR] DATALAYERTIME:', self.latestDLTDT
         
         latestCurrentEventTime = self.getLatestTimestampOfCurrentEvents(eventSet, currentEvents)
 
@@ -187,7 +187,7 @@ class Recommender(RecommenderTemplate.Recommender):
             LogUtils.logMessage('Finnished ', 'swathRec.execute',' Took Seconds', time.time()-st)
         
         for e in mergedEventSet:
-            print ')))) ', e.get('objectID'), e.getStatus()
+            print '[CR-1] )))) ', e.get('objectID'), e.getStatus()
 
         ### Ensure that any resulting events are saved to the history list or the database
         ### (the latter as latest versions of those events).  If one or both categories have
@@ -385,8 +385,8 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def makeHazardEvent(self, ID, values):
         
-        print '\n========= MAKING HAZARD EVENT ========'
-        print '\t>>>>', ID, '<<<<\n'
+        #print '\n========= MAKING HAZARD EVENT ========'
+        #print '\t>>>>', ID, '<<<<\n'
         
         if values.get('belowThreshold'):
             print '\t', ID, 'Below Threshold', self.lowThreshold, 'returning None'
@@ -453,8 +453,10 @@ class Recommender(RecommenderTemplate.Recommender):
         pass
 
 
-    def updateAttributesAndMechanics(self, event, recommended, dataLayerTime):
+    def updateAttributesAndGeometry(self, event, recommended, dataLayerTime):
+        print '\tGeom BEFORE:', event.getGeometry().asShapely()
         self.updateEventGeometry(event, recommended)
+        print '\tGeom AFTER:', event.getGeometry().asShapely()
         self.updateAttributesOnly(event, recommended, dataLayerTime)
 
 
@@ -478,8 +480,7 @@ class Recommender(RecommenderTemplate.Recommender):
         #print '*******'
         
         event.set('probSeverAttrs',probSevereAttrs)
-        
-        
+                
         ### Special Cases
         if 'convectiveObjectDir' not in manualAttrs:
             event.set('convectiveObjectDir', recommended.get('wdir'))
@@ -528,7 +529,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for ID, vals in intersectionDict.iteritems():
             currentEvent = vals['currentEvent']
 
-            print '\n!!!!!!!  ID[1]: ', ID, '>>>>', currentEvent.getStatus()
+            #print '\n!!!!!!!  ID[1]: ', ID, '>>>>', currentEvent.getStatus()
             if currentEvent.getStatus() == 'ELAPSED':
                 continue
             
@@ -541,7 +542,7 @@ class Recommender(RecommenderTemplate.Recommender):
             ### tell the Convective Recommedner to bypass THIS event
             ### if THIS event activateModify=0
             if currentEvent.get('activateModify') == 0:
-                print '\tNot updating this hazard event in Convective Recommender...'
+                #print '\tNot updating this hazard event in Convective Recommender...'
                 continue
             
             
@@ -565,8 +566,9 @@ class Recommender(RecommenderTemplate.Recommender):
             if automationLevel == 'attributesOnly':
                 self.updateAttributesOnly(currentEvent, recommendedAttrs, dataLayerTimeMS)
             
-            if automationLevel == 'attributesAndMechanics':
-                self.updateAttributesAndMechanics(currentEvent, recommendedAttrs, dataLayerTimeMS)
+            if automationLevel == 'attributesAndGeometry':
+                print '\n\t!!!!!  CALLING attributesAndGeometry'
+                self.updateAttributesAndGeometry(currentEvent, recommendedAttrs, dataLayerTimeMS)
             
             if automationLevel == 'automated':
                 
@@ -606,16 +608,16 @@ class Recommender(RecommenderTemplate.Recommender):
         for currentEvent in currentEventsList:
 
             if currentEvent.get('automationLevel') == 'userOwned':
-                print 'Manual Event.  Storing and moving on...'
+                #print 'Manual Event.  Storing and moving on...'
                 evtGeom = currentEvent.getGeometry().asShapely()
                 manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
                 continue
             
             currentEventObjectID = currentEvent.get('objectID')
-            print '######### currentEventObjectID ######', currentEventObjectID
-            print '\t0-->', str(currentEventObjectID)
-            print '\t1-->', recommendedObjectIDsList
-            print '\t2-->', str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList]))
+            #print '######### currentEventObjectID ######', currentEventObjectID
+            #print '\t0-->', str(currentEventObjectID)
+            #print '\t1-->', recommendedObjectIDsList
+            #print '\t2-->', str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList]))
 
 
             #if currentEventObjectID in recommendedObjectIDsList:
@@ -624,7 +626,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 ### If current event has match in rec event, add to dict for later processing
                 ### should avoid 'userOwned' since they are filtered out with previous if statement
                 rawRecommendedID = currentEventObjectID[1:] if str(currentEventObjectID).startswith('M') else currentEventObjectID
-                print "\t#### rawRecommendedID", rawRecommendedID
+                #print "\t#### rawRecommendedID", rawRecommendedID
                 #pprint.pprint(recommendedEventsDict)
                 intersectionDict[currentEventObjectID] = {'currentEvent': currentEvent, 'recommendedAttrs': recommendedEventsDict[rawRecommendedID]}
                 
@@ -633,7 +635,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 mergedEvents.add(currentEvent)
                 
             else:
-                print '\t!!!!!!!  ELAPSING   !!!!!'
+                #print '\t!!!!!!!  ELAPSING   !!!!!'
                 if currentEvent.getStatus() != 'ELAPSED':
                     currentEvent.setStatus('ELAPSED')
                     currentEvent.set('statusForHiddenField', 'ELAPSED')
@@ -661,7 +663,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 
                 ### If an event is created, add it to the event set and add
                 ### it to the list of events to be saved to history.
-                print '1111111: Calling makeHazardEvent for:', recID
+                #print '1111111: Calling makeHazardEvent for:', recID
                 recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
                 
             else:
@@ -675,7 +677,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     if hazType == 'Prob_Severe' and evtGeom.intersects(recGeom):
                         makeNew = False
                 if makeNew:
-                    print '2222222: Calling makeHazardEvent for:', recID
+                    #print '2222222: Calling makeHazardEvent for:', recID
                     recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
 
             if recommendedEvent:
@@ -683,7 +685,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 identifiersOfEventsToSaveToHistory.append(recommendedEvent.getEventID())
 
         for e in mergedEvents:
-           print '%%%%%:', e.get('objectID'), e.getStatus()
+           print '[CR-2] %%%%%:', e.get('objectID'), e.getStatus()
                     
         return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
     

@@ -24,16 +24,9 @@ from SwathRecommender import Recommender as SwathRecommender
 from ProbUtils import ProbUtils
 import RiverForecastUtils
 import JUtil
+import pickle
+import AdvancedGeometry
      
-### FIXME: set path in configuration somewhere
-#OUTPUTDIR = '/scratch/PHIGridTesting'
-### FIXME: need better (dynamic or configurable) way to set domain corner
-#buff = 1.
-#lonPoints = 1200
-#latPoints = 1000
-#ulLat = 44.5 + buff
-#ulLon = -104.0 - buff
-
 class Recommender(RecommenderTemplate.Recommender):
     
     def __init__(self):
@@ -41,8 +34,6 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'PHIGridRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
-        
-        #self._ProbUtils = ProbUtils()
         
 
     def defineScriptMetadata(self):
@@ -102,32 +93,52 @@ class Recommender(RecommenderTemplate.Recommender):
 #         sys.stderr.flush()
                 
         ProbUtils().processEvents(eventSet, writeToFile=True)
-
-#===============================================================================
-#         siteID = eventSet.getAttributes().get('siteID')
-#         mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
-#         databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode)
-#         filteredDBEvents = []
-# 
-#         thisEventSetIDs = [evt.getEventID() for evt in eventSet]
-#         print 'Prob_Convective Product Generator -- DBEvents:'
-#         for evt in databaseEvents:
-#             if evt.getStatus().lower() in ["elapsed", "ending", "ended"]:
-#                 continue
-#             if evt.getEventID() not in thisEventSetIDs:
-#               filteredDBEvents.append(evt)  
-# 
-#         eventSet.addAll(filteredDBEvents)
-#         eventSet.addAttribute('issueTime', datetime.datetime.utcfromtimestamp(self._issueTime/1000))
-# 
-# 
-#         pu = ProbUtils()
-#         
-#         pu.processEvents(eventSet, writeToFile=True)
-#===============================================================================
-
+        self.storeIssuedHazards(eventSet)
 
         return 
+    
+    def storeIssuedHazards(self,probHazardEvents):
+        pu = ProbUtils()
+
+        ## Dump just this event to disk since only one hazard in events set?
+        attrKeys = ['site', 'status', 'phenomenon', 'significance', 'subtype',
+                    'creationtime', 'endtime', 'starttime', 'geometry', 'eventid',
+                    'username', 'workstation', 'attributes']
+        outDict = {}
+        
+        issuedTime = datetime.datetime.utcfromtimestamp(probHazardEvents.getAttributes().get("currentTime")/1000).strftime('%m%d%Y_%H%M')
+
+        for hazardEvent in probHazardEvents:
+            
+            if hazardEvent.getStatus().upper() != 'ISSUED':
+                continue
+            
+            outDictInit = {k:hazardEvent.__getitem__(k) for k in attrKeys}
+            outDict = self.convertAdvancedGeometry(outDictInit)
+            
+            filename = outDict.get('phenomenon') + '_' + hazardEvent.get('objectID') + '_' + issuedTime
+            OUTPUTDIR = os.path.join(pu.getOutputDir(), 'IssuedEventsPickle/All')
+            if not os.path.exists(OUTPUTDIR):
+                try:
+                    os.makedirs(OUTPUTDIR)
+                except:
+                    sys.stderr.write('Could not create PHI grids output directory:' +OUTPUTDIR+ '.  No output written')
+
+            pickle.dump( outDict, open(OUTPUTDIR+'/'+filename, 'wb'))
+    
+    def convertAdvancedGeometry(self, it):
+        if (isinstance(it, tuple)):
+            return tuple([self.convertAdvancedGeometry(elem) for elem in it])
+        elif (isinstance(it, list)):
+            return [self.convertAdvancedGeometry(elem) for elem in it]
+        elif (isinstance(it, dict)):
+            return {k: self.convertAdvancedGeometry(v) for k, v in it.items()}
+        else:
+            if isinstance(it, AdvancedGeometry.AdvancedGeometry):
+                return it.asShapely()
+            else:
+                return it
+        
     
     def flush(self):
         import os
