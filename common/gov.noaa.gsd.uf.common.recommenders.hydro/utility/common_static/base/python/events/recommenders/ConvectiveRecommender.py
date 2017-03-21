@@ -446,8 +446,6 @@ class Recommender(RecommenderTemplate.Recommender):
         except:
             print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommended.get('polygons')), recommended.get('polygons')
             sys.stdout.flush()
-        
-
 
     def updateUserOwned(self, event, recommended, dataLayerTimeMS):
         pass
@@ -492,9 +490,11 @@ class Recommender(RecommenderTemplate.Recommender):
             graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
             event.set('convectiveProbTrendGraph', graphProbs)
             
-        event.setStartTime(self.latestDLTDT)
-        endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-        event.setEndTime(endTime)
+        automationLevel = event.get('automationLevel')
+        if automationLevel in ['automated', 'attributesAndGeometry']:
+            event.setStartTime(self.latestDLTDT)
+            endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+            event.setEndTime(endTime)
 
     def updateAutomated(self, event, recommended, probSevereTime):
         self.updateEventGeometry(event, recommended)

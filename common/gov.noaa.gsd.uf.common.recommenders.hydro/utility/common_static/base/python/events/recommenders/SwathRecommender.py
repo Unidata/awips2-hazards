@@ -431,17 +431,39 @@ class Recommender(RecommenderTemplate.Recommender):
             self.probUtils.roundEventTimes(event)
             self.eventSt_ms = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
         print "SR event start, current", self.eventSt_ms, self.currentTime
+        self.flush() 
+
+    def setAttributesAndGeometry(self, event):
+        event.set('automationLevel', 'attributesAndGeometry')
+        manualAttrs = event.get('manualAttributes', [])  
+        manualAttrs += ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']
+        event.set('manualAttributes', manualAttrs)
+        if event.get('objectID') and not event.get('objectID').startswith('M'):
+            event.set('objectID', 'M' + event.get('objectID'))
+        print "SR calling setActivation for setting attributesAndGeometry"
         self.flush()
-        
-#===============================================================================
-#     def setUserOwned(self, event):         
-#         event.set('automationLevel', 'userOwned')
-#         if event.get('objectID') and not event.get('objectID').startswith('M'):
-#             event.set('objectID', 'M' + event.get('objectID'))
-#         print "SR calling setActivation for setting userOwned"
-#         self.flush()
-#         self.probUtils.setActivation(event)
-#===============================================================================
+        self.probUtils.setActivation(event)              
+
+    def checkUserOwned(self, event): 
+        automationLevel = event.get('automationLevel')
+        if automationLevel in ['automated', 'attributesAndGeometry']:
+            return
+        manualAttrs = event.get('manualAttrs')
+        userOwned = True
+        for attr in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc',
+                      'duration', 'convectiveProbTrendGraph', 'convectiveWarningDecisionDiscussion']:
+             if attr not in manualAttrs:
+                userOwned = False
+                break
+        if not userOwned:
+             return   
+                    
+        event.set('automationLevel', 'userOwned')
+        if event.get('objectID') and not event.get('objectID').startswith('M'):
+             event.set('objectID', 'M' + event.get('objectID'))
+        print "SR calling setActivation for setting userOwned"
+        self.flush()
+        self.probUtils.setActivation(event)
             
     def adjustForFrameChange(self, event, eventSetAttrs):
         # Assumption is that D2D frame change was used to get to the latest data layer
@@ -494,51 +516,40 @@ class Recommender(RecommenderTemplate.Recommender):
         if 'selected' in self.attributeIdentifiers:
             return False               
         
-        #Handle Reset Motion Vector
-        if 'resetMotionVector' in self.attributeIdentifiers: 
-            for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
-                default = self.probUtils.defaultValueDict().get(key)
-                event.set(key, default)
-            event.set('settingMotionVector', True)
-            motionVectorCentroids = event.get('motionVectorCentroids', []) 
-            motionVectorTimes = event.get('motionVectorTimes', [])
-            print "SR Resetting motion vector -- existing", motionVectorCentroids
-            self.flush()
-            if motionVectorCentroids:
-                motionVectorCentroids = [motionVectorCentroids[-1]]
-                motionVectorTimes = [motionVectorTimes[-1]]
-                event.set('motionVectorCentroids', motionVectorCentroids) 
-                event.set('motionVectorTimes', motionVectorTimes) 
-            return True
-#===============================================================================
-#         if 'resetMotionVector' in self.attributeIdentifiers: 
-#             for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-#                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
-#                 default = self.probUtils.defaultValueDict().get(key)
-#                 event.set(key, default)
-#             event.set('settingMotionVector', True)
-#             motionVectorCentroids = event.get('motionVectorCentroids', []) 
-#             motionVectorTimes = event.get('motionVectorTimes', [])
-#             print "SR Resetting motion vector -- existing", motionVectorCentroids
-#             self.flush()
-# 
-#             #  Add the geometry if empty motionVectorCentroids
-#             if not motionVectorCentroids:
-#                   motionVectorCentroids = [event.getGeometry().asShapely().centroid]
-#                   st = self.probUtils.convertFeatureTime(self.eventSt_ms, 0)
-#                   et = self.probUtils.convertFeatureTime(self.eventSt_ms, self.probUtils.timeStep())
-#                   motionVectorTimes = [(st, et)]          
-#             # Take last motionVectorCentroid which should be the geometry
-#             else:
-#                 motionVectorCentroids = [motionVectorCentroids[-1]]
-#                 motionVectorTimes = [motionVectorTimes[-1]]
-#                 event.set('motionVectorCentroids', motionVectorCentroids) 
-#                 event.set('motionVectorTimes', motionVectorTimes) 
-#             return True
-#===============================================================================
+#        #Handle Reset Motion Vector
+#        if 'resetMotionVector' in self.attributeIdentifiers: 
+#            for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+#                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
+#                default = self.probUtils.defaultValueDict().get(key)
+#                event.set(key, default)
+#            event.set('settingMotionVector', True)
+#            motionVectorCentroids = event.get('motionVectorCentroids', []) 
+#            motionVectorTimes = event.get('motionVectorTimes', [])
+#            print "SR Resetting motion vector -- existing", motionVectorCentroids
+#            self.flush()
+#            if motionVectorCentroids:
+#                motionVectorCentroids = [motionVectorCentroids[-1]]
+#                motionVectorTimes = [motionVectorTimes[-1]]
+#                event.set('motionVectorCentroids', motionVectorCentroids) 
+#                event.set('motionVectorTimes', motionVectorTimes) 
+#            return True
 
-        
+        if 'resetMotionVector' in self.attributeIdentifiers: 
+             for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
+                 default = self.probUtils.defaultValueDict().get(key)
+                 event.set(key, default)
+             event.set('settingMotionVector', True) 
+
+             motionVectorCentroids = [event.getGeometry().asShapely().centroid]
+             st = self.probUtils.convertFeatureTime(self.eventSt_ms, 0)
+             et = self.probUtils.convertFeatureTime(self.eventSt_ms, self.probUtils.timeStep())
+             motionVectorTimes = [(st, et)]          
+             event.set('motionVectorCentroids', motionVectorCentroids) 
+             event.set('motionVectorTimes', motionVectorTimes) 
+             if event.get('automationLevel') == 'automated': 
+                 self.setAttributesAndGeometry(event)
+             return True        
         
         # Handle Modify Button
         if 'modifyButton' in self.attributeIdentifiers:  # User Hit modify button
@@ -652,11 +663,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 manualAttrs += changedAttrs
                 event.set('manualAttributes', manualAttrs)
                 if event.get('automationLevel') == 'automated':
-                    event.set('automationLevel', 'attributesAndGeometry')
-                    print "SR calling setActivation for changing automation level to attributesAndGeometry"
-                    self.flush()
-                    self.probUtils.setActivation(event)
-                                
+                    self.setAttributesAndGeometry(event)                                
             return True
         
         return False
@@ -722,8 +729,8 @@ class Recommender(RecommenderTemplate.Recommender):
         # Forecast Polys
         forecastPolys = event.get('forecastPolys', [])
         forecastTimes = event.get('forecastTimes', [])
-        #print 'SR Advancing forecastTimes', forecastTimes
-        #self.flush()
+        print 'SR Advancing forecastTimes', forecastTimes
+        self.flush()
         if not forecastPolys or not forecastTimes:
             return
         index = 0
@@ -766,8 +773,8 @@ class Recommender(RecommenderTemplate.Recommender):
             index = len(newPastPolys) - maxPast
             newPastPolys = newPastPolys[index:]
             newPastTimes = newPastTimes[index:]
-        #print "SR advance pastTimes", newPastTimes
-        #self.flush()
+        print "SR advance pastTimes", newPastTimes
+        self.flush()
         event.set('pastPolys', newPastPolys)
         event.set('pastTimes', newPastTimes)
       
@@ -804,13 +811,13 @@ class Recommender(RecommenderTemplate.Recommender):
             while i <= durationSecs:
                 timeIntervals.append(i)
                 # If object start time is Prob Severe time, put first forecast polygon on the dataLayerTime
-                if i == 0 and event.get('automationLevel') not in ['userOwned', 'attributesAndGeometry'] \
+                if i == 0 and event.get('automationLevel') not in ['userOwned', 'attributesOnly', 'attributesAndGeometry'] \
                    and self.latestDataLayerTime > self.eventSt_ms:
                         i += int((self.latestDataLayerTime - self.eventSt_ms) / 1000)
                 else:
                     i += timeStep
-        #print "SR getIntervalPolys", timeDirection, timeIntervals
-        #self.flush()
+        print "SR getIntervalPolys", timeDirection, timeIntervals
+        self.flush()
         if timeIntervals:
             self.probUtils.createIntervalPolys(event, eventSetAttrs, SwathPreset(),
                                              self.eventSt_ms, timeIntervals, timeDirection)
@@ -889,6 +896,9 @@ class Recommender(RecommenderTemplate.Recommender):
                             graphProbs = event.get("graphProbsAtIssuance")
                             # LogUtils.logMessage('[2]', graphProbs)
                             event.set('convectiveProbTrendGraph', graphProbs)
+                automationLevel = event.get('automationLevel')
+                if automationLevel == 'automated':
+                    self.setAttributesAndGeometry(event)               
                                         
         print "SR Feature ST", featureSt, self.probUtils.displayMsTime(featureSt)
         self.flush()
@@ -1022,7 +1032,7 @@ class Recommender(RecommenderTemplate.Recommender):
         startTimeShapeFound = False
         firstForecastSt_ms = self.eventSt_ms
 
-        print "SR eventSt_ms", self.probUtils.displayMsTime(self.eventSt_ms), self.eventSt_ms
+        print "SR Forecast Visual Features  eventSt_ms", self.probUtils.displayMsTime(self.eventSt_ms), self.eventSt_ms
         print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'], event.get('automationLevel')
         self.flush()
            
@@ -1030,8 +1040,9 @@ class Recommender(RecommenderTemplate.Recommender):
             poly = forecastPolys[i]
             polySt_ms, polyEt_ms = forecastTimes[i]
 
-            #print "SR forecast i, polySt, eventSt", i, self.probUtils.displayMsTime(polySt_ms), polySt_ms, polySt_ms == self.eventSt_ms
-            #self.flush()
+            if i <= 1:
+                print "SR forecast i, polySt, eventSt", i, self.probUtils.displayMsTime(polySt_ms), polySt_ms, polySt_ms == self.eventSt_ms
+                self.flush()
             if polySt_ms == self.eventSt_ms:
                 startTimeShapeFound = True
             
@@ -1185,10 +1196,7 @@ class Recommender(RecommenderTemplate.Recommender):
                }
             }
             if featuresDisplay.get('trackPoints'):
-                features.append(trackPointFeature)
-
-                
-     
+                features.append(trackPointFeature)    
         return features
 
     def swathFeature(self, event, startTime_ms, forecastPolys):
@@ -1259,7 +1267,7 @@ class Recommender(RecommenderTemplate.Recommender):
         upstreamTimes = event.get('upstreamTimes', [])
         previousFeatures = []
         
-        if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'] and event.get('settingMotionVector'):
+        if self.editableHazard and event.get('settingMotionVector'):
             resettingMotionVector = True
         else:
             resettingMotionVector = False
