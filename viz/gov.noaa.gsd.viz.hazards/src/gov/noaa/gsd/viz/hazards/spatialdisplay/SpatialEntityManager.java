@@ -104,6 +104,10 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      concern).
  * Nov 17, 2016   26313    Chris.Golden Changed to work with revamped
  *                                      GeoMapUtilities.
+ * Mar 16, 2017   15528    Chris.Golden Changed over from having the
+ *                                      checked attribute as part of hazard
+ *                                      events to having checked status
+ *                                      tracked by the event manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -574,17 +578,23 @@ class SpatialEntityManager {
             boolean indexMayHaveChanged, boolean forceReplacement) {
 
         /*
-         * Find the event within the list of events that may be visible in the
-         * spatial display, and create spatial entities for it if it is found.
+         * If the event is checked, find it within the list of events that may
+         * be visible in the spatial display, and create spatial entities for
+         * it.
          */
-        List<ObservedHazardEvent> events = sessionManager.getEventManager()
-                .getCheckedEvents();
-        int eventIndex = events.indexOf(event);
         CreationResult creationResult = null;
         List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingEntities = null;
         List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedEntities = null;
         List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedEntities = null;
-        if (eventIndex != -1) {
+        int eventIndex = -1;
+        List<ObservedHazardEvent> events = null;
+        if (sessionManager.getEventManager().isEventChecked(event)) {
+
+            /*
+             * Get the index of the event in the list of checked events.
+             */
+            events = sessionManager.getEventManager().getCheckedEvents();
+            eventIndex = events.indexOf(event);
 
             /*
              * Create the updated spatial entities for the event, if any.

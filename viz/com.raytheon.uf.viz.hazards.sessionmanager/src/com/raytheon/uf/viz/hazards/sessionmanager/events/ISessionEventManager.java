@@ -35,7 +35,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -123,6 +122,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      in history list are now visible). Also added support for
  *                                      saving to history list versus new "latest version" set
  *                                      in database.
+ * Mar 16, 2017 15528      Chris.Golden Added methods to get and set checked state of a hazard
+ *                                      event.
  * </pre>
  * 
  * @author bsteffen
@@ -674,6 +675,27 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return true if the user is currently pointing to an event
      */
     public boolean isCurrentEvent();
+
+    /**
+     * Determine whether or not the specified event is currently checked.
+     * 
+     * @param event
+     *            Event for which to determine its checked status.
+     * @return <code>true</code> if the event is currently checked,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isEventChecked(IHazardEvent event);
+
+    /**
+     * Set the checked status of the specified event.
+     * 
+     * @param event
+     *            Event to have its checked status set.
+     * @param checked
+     *            Flag indicating whether or not the event is to be checked.
+     */
+    public void setEventChecked(IHazardEvent event, boolean checked,
+            IOriginator originator);
 
     /**
      * Determine whether the specified hazard event may accept the specified

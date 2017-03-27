@@ -80,6 +80,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventCheckedStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
@@ -206,6 +207,10 @@ import com.vividsolutions.jts.geom.Point;
  *                                           exceptions that could occur if the user added or
  *                                           removed vertices from a spatial entity soon after
  *                                           starting Hazard Services.
+ * Mar 16, 2017 15528      Chris.Golden      Added notification handler for checked-status changes
+ *                                           to hazard events, now that checked status is being
+ *                                           tracked by the event manager instead of as part of
+ *                                           hazard events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -638,6 +643,19 @@ public class SpatialPresenter extends
     @Handler
     public void sessionEventStatusModified(SessionEventStatusModified change) {
         setUndoRedoEnableState();
+        spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
+                false);
+    }
+
+    /**
+     * Respond to an event's checked state changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventCheckedStateModified(
+            SessionEventCheckedStateModified change) {
         spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
                 false);
     }

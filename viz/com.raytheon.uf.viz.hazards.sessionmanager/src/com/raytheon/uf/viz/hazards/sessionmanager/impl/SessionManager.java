@@ -628,6 +628,8 @@ public class SessionManager implements
                     hazardEvent.setUserName(LocalizationManager.getInstance()
                             .getCurrentUser());
                     hazardEvent.setWorkStation(VizApp.getHostName());
+                    hazardEvent
+                            .removeHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED);
                     boolean isNew = (hazardEvent.getEventID() == null);
                     ObservedHazardEvent addedEvent = eventManager.addEvent(
                             hazardEvent, originator);

@@ -262,6 +262,17 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
+    public boolean isEventChecked(IHazardEvent event) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setEventChecked(IHazardEvent event, boolean checked,
+            IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public ObservedHazardEvent getCurrentEvent() {
         throw new UnsupportedOperationException();
     }

@@ -88,6 +88,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventUnsavedChangesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -162,6 +163,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
  *                                           design concerns, untangle spaghetti, and
  *                                           add history list viewing.
+ * Mar 16, 2017   15528    Chris.Golden      Added notification handler for the unsaved
+ *                                           changes flag of a hazard event changing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1035,6 +1038,18 @@ public class ConsolePresenter extends
     @Handler
     public void sessionEventHistoryModified(SessionEventHistoryModified change) {
         tabularEntityManager.updateChildEntityListForEvent(change.getEvent());
+    }
+
+    /**
+     * Respond to an event's unsaved changes flag changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventUnsavedChangesModified(
+            SessionEventUnsavedChangesModified change) {
+        tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
     }
 
     // Protected Methods

@@ -1926,23 +1926,27 @@ class MetaData(object):
             {
              "fieldType": "HiddenField",
              "fieldName": "activate",
-             "values": activate, 
+             "values": activate,
+             "doesNotAffectModifyFlag": True,
              },
             {
              "fieldType": "HiddenField",
              "fieldName": "activateModify",
              "values": activateModify,
+             "doesNotAffectModifyFlag": True,
              },
             {
              "fieldType": "HiddenField",
              "fieldName": "statusForHiddenField",
              "values": status,
+             "doesNotAffectModifyFlag": True,
              },
             {
              "fieldType": "HiddenField",
              "fieldName": "selectSemaphore",
              "values": False,
              "modifyRecommender": 'SwathRecommender',
+             "doesNotAffectModifyFlag": True,
              },
 
         ]        

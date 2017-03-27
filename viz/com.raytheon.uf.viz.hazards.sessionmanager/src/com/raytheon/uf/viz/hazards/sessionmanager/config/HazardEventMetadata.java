@@ -32,6 +32,10 @@ import java.util.Set;
  * Feb 17, 2015    3847    Chris.Golden Added edit-rise-crest-fall metadata trigger.
  * Nov 10, 2015   12762    Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes.
+ * Mar 27, 2017   15528    Chris.Golden Added gathering of set of metadata megawidget
+ *                                      identifiers for which modification of their
+ *                                      underlying values does not affect their
+ *                                      enclosing hazard event's modify flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -51,6 +55,12 @@ public class HazardEventMetadata {
      * of them is changed or invoked.
      */
     private final Set<String> refreshTriggeringMetadataKeys;
+
+    /**
+     * Set of metadata keys that, when their associated values are modified,
+     * affect the enclosing hazard event modified flag.
+     */
+    private final Set<String> affectingModifyFlagMetadataKeys;
 
     /**
      * Map of metadata keys that are to trigger the running of recommenders when
@@ -85,6 +95,9 @@ public class HazardEventMetadata {
      * @param refreshTriggeringMetadataKeys
      *            Set of metadata keys that are to trigger a metadata reload
      *            when any one of them is changed or invoked.
+     * @param affectingModifyFlagMetadataKeys
+     *            Set of metadata keys that, when their associated values are
+     *            modified, affect the enclosing hazard event modified flag.
      * @param recommendersTriggeredForMetadataKeys
      *            Map of metadata keys that are to trigger the running of
      *            recommenders to the recommenders that are to be run.
@@ -100,6 +113,7 @@ public class HazardEventMetadata {
     public HazardEventMetadata(
             MegawidgetSpecifierManager megawidgetSpecifierManager,
             Set<String> refreshTriggeringMetadataKeys,
+            Set<String> affectingModifyFlagMetadataKeys,
             Map<String, String> recommendersTriggeredForMetadataKeys,
             Set<String> editRiseCrestFallTriggeringMetadataKeys,
             File scriptFile,
@@ -107,6 +121,7 @@ public class HazardEventMetadata {
         this.megawidgetSpecifierManager = megawidgetSpecifierManager;
         this.recommendersTriggeredForMetadataKeys = recommendersTriggeredForMetadataKeys;
         this.refreshTriggeringMetadataKeys = refreshTriggeringMetadataKeys;
+        this.affectingModifyFlagMetadataKeys = affectingModifyFlagMetadataKeys;
         this.editRiseCrestFallTriggeringMetadataKeys = editRiseCrestFallTriggeringMetadataKeys;
         this.scriptFile = scriptFile;
         this.eventModifyingFunctionNamesForIdentifiers = eventModifyingFunctionNamesForIdentifiers;
@@ -131,6 +146,16 @@ public class HazardEventMetadata {
      */
     public final Set<String> getRefreshTriggeringMetadataKeys() {
         return refreshTriggeringMetadataKeys;
+    }
+
+    /**
+     * Get the set of metadata keys that when changed do not affect the
+     * enclosing hazard event's modified flag.
+     * 
+     * @return Set of metadata keys.
+     */
+    public final Set<String> getAffectingModifyFlagMetadataKeys() {
+        return affectingModifyFlagMetadataKeys;
     }
 
     /**

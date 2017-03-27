@@ -45,6 +45,7 @@ import com.raytheon.uf.common.colormap.Color;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 12, 2016   15556    Chris.Golden Initial creation.
+ * Mar 16, 2017   15528    Chris.Golden Added unsaved flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,6 +71,11 @@ public class TabularEntity {
      * is ignored if {@link #historyIndex} is <code>null</code>.
      */
     private final Date persistedTimestamp;
+
+    /**
+     * Flag indicating whether or not this entity has unsaved changes.
+     */
+    private boolean unsaved;
 
     /**
      * Time range covered by the event.
@@ -152,6 +158,9 @@ public class TabularEntity {
      * @param persistedTimestamp
      *            Timestamp for when the tabular entity to be created was
      *            persisted; may be <code>null</code>.
+     * @param unsaved
+     *            Flag indicating whether or not this entity has unsaved
+     *            changes.
      * @param timeRange
      *            Time range to be used.
      * @param endTimeUntilFurtherNotice
@@ -188,7 +197,7 @@ public class TabularEntity {
      * @return Tabular entity with the specified parameters.
      */
     public static TabularEntity build(String identifier, Integer historyIndex,
-            Date persistedTimestamp, Range<Long> timeRange,
+            Date persistedTimestamp, boolean unsaved, Range<Long> timeRange,
             boolean endTimeUntilFurtherNotice, boolean timeRangeIntervalLocked,
             Range<Long> lowerTimeBoundaries, Range<Long> upperTimeBoundaries,
             TimeResolution timeResolution, boolean allowUntilFurtherNotice,
@@ -197,6 +206,7 @@ public class TabularEntity {
             List<TabularEntity> children) {
         TabularEntity tabularEntity = new TabularEntity(identifier,
                 historyIndex, persistedTimestamp);
+        tabularEntity.setUnsaved(unsaved);
         tabularEntity.setTimeRange(timeRange);
         tabularEntity.setTimeRangeIntervalLocked(timeRangeIntervalLocked);
         tabularEntity.setEndTimeUntilFurtherNotice(endTimeUntilFurtherNotice);
@@ -249,6 +259,9 @@ public class TabularEntity {
      *            entity. If <code>tabularEntity</code> is not <code>null</code>
      *            , this timestamp must be the equivalent of that returned by
      *            the latter's {@link #getPersistedTimestamp()}.
+     * @param unsaved
+     *            Flag indicating whether or not this entity has unsaved
+     *            changes.
      * @param timeRange
      *            Time range to be used.
      * @param endTimeUntilFurtherNotice
@@ -290,10 +303,11 @@ public class TabularEntity {
      */
     public static TabularEntity build(TabularEntity tabularEntity,
             String identifier, Integer historyIndex, Date persistedTimestamp,
-            Range<Long> timeRange, boolean endTimeUntilFurtherNotice,
-            boolean timeRangeIntervalLocked, Range<Long> lowerTimeBoundaries,
-            Range<Long> upperTimeBoundaries, TimeResolution timeResolution,
-            boolean allowUntilFurtherNotice, boolean selected, boolean checked,
+            boolean unsaved, Range<Long> timeRange,
+            boolean endTimeUntilFurtherNotice, boolean timeRangeIntervalLocked,
+            Range<Long> lowerTimeBoundaries, Range<Long> upperTimeBoundaries,
+            TimeResolution timeResolution, boolean allowUntilFurtherNotice,
+            boolean selected, boolean checked,
             Map<String, Serializable> attributes, Color color,
             List<TabularEntity> children) {
 
@@ -313,6 +327,9 @@ public class TabularEntity {
          * if not. If one has already been created in the course of this method,
          * it will simply be reused. Then set the property to the desired value.
          */
+        tabularEntity = createIfNeeded(original, tabularEntity,
+                (original == null ? null : original.isUnsaved()), unsaved);
+        tabularEntity.setUnsaved(unsaved);
         tabularEntity = createIfNeeded(original, tabularEntity,
                 (original == null ? null : original.getTimeRange()), timeRange);
         tabularEntity.setTimeRange(timeRange);
@@ -561,6 +578,7 @@ public class TabularEntity {
         identifier = other.identifier;
         historyIndex = other.historyIndex;
         persistedTimestamp = other.persistedTimestamp;
+        unsaved = other.unsaved;
         timeRange = other.timeRange;
         endTimeUntilFurtherNotice = other.endTimeUntilFurtherNotice;
         timeRangeIntervalLocked = other.timeRangeIntervalLocked;
@@ -587,6 +605,7 @@ public class TabularEntity {
                 && Utils.equal(historyIndex, otherEntity.historyIndex)
                 && Utils.equal(persistedTimestamp,
                         otherEntity.persistedTimestamp)
+                && Utils.equal(unsaved, otherEntity.unsaved)
                 && Utils.equal(timeRange, otherEntity.timeRange)
                 && Utils.equal(endTimeUntilFurtherNotice,
                         otherEntity.endTimeUntilFurtherNotice)
@@ -610,7 +629,7 @@ public class TabularEntity {
         return (int) ((Utils.getHashCode(identifier)
                 + Utils.getHashCode(historyIndex)
                 + Utils.getHashCode(persistedTimestamp)
-                + Utils.getHashCode(timeRange)
+                + Utils.getHashCode(unsaved) + Utils.getHashCode(timeRange)
                 + Utils.getHashCode(endTimeUntilFurtherNotice)
                 + Utils.getHashCode(timeRangeIntervalLocked)
                 + Utils.getHashCode(lowerTimeBoundaries)
@@ -656,6 +675,16 @@ public class TabularEntity {
      */
     public Date getPersistedTimestamp() {
         return persistedTimestamp;
+    }
+
+    /**
+     * Determine whether or not the entity has unsaved changes.
+     * 
+     * @return <code>true</code> if the entity has unsaved changes,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isUnsaved() {
+        return unsaved;
     }
 
     /**
@@ -778,6 +807,17 @@ public class TabularEntity {
     }
 
     // Private Methods
+
+    /**
+     * Set the flag that indicates whether or not the entity has unsaved
+     * changes.
+     * 
+     * @param unsaved
+     *            Flag indicating whether or not the entity has unsaved changes.
+     */
+    public void setUnsaved(boolean unsaved) {
+        this.unsaved = unsaved;
+    }
 
     /**
      * Set the time range.

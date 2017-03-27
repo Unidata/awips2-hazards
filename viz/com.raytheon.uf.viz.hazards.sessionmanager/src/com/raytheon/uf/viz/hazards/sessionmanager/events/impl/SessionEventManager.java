@@ -27,7 +27,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_ALL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_INTERSECTION;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_NONE;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ISSUE_TIME;
@@ -122,6 +121,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventCheckedStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
@@ -131,6 +131,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtra
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventUnsavedChangesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
@@ -149,7 +150,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeMinuteTicked;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeReset;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -491,6 +491,14 @@ import com.vividsolutions.jts.geom.Polygon;
  * Mar 16, 2017   29138    Chris.Golden Added workaround code to differentiate historical versions of
  *                                      events from latest versions; this is needed until the latest
  *                                      version saving is fixed.
+ * Mar 17, 2017   15528    Chris.Golden Removed "checked" as an attribute of hazard events, and made
+ *                                      checked state instead tracked by this object in a set. Also
+ *                                      removed synchronized blocks, as synchronization should not be
+ *                                      needed if all work is done on the same thread. Added code to
+ *                                      ensure that hazard events are marked as modified when
+ *                                      appropriate, and have their modified flag reset when not.
+ *                                      Finally, added tracking of which event attributes should not
+ *                                      alter an event's modified flag when their values are changed.
  * </pre>
  * 
  * @author bsteffen
@@ -502,7 +510,7 @@ public class SessionEventManager implements
     // Private Static Constants
 
     private static final Set<String> ATTRIBUTES_TO_RETAIN_ON_MERGE = ImmutableSet
-            .of(HAZARD_EVENT_CHECKED, ISessionEventManager.ATTR_ISSUED);
+            .of(ISessionEventManager.ATTR_ISSUED, ISSUE_TIME);
 
     private static final String POINT_ID = "id";
 
@@ -593,6 +601,11 @@ public class SessionEventManager implements
     private final Map<String, Integer> historicalVersionCountsForEventIdentifiers = new HashMap<>();
 
     /**
+     * Set of identifiers for all events that are currently checked.
+     */
+    private final Set<String> checkedEventIdentifiers = new HashSet<>();
+
+    /**
      * Set of identifiers for all events that have "Ending" status.
      */
     private final Set<String> eventIdentifiersWithEndingStatus = new HashSet<>();
@@ -602,6 +615,8 @@ public class SessionEventManager implements
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
 
     private final Map<String, Set<String>> metadataReloadTriggeringIdentifiersForEventIdentifiers = new HashMap<>();
+
+    private final Map<String, Set<String>> metadataIdentifiersAffectingModifyFlagsForEventIdentifiers = new HashMap<>();
 
     private final Map<String, Map<String, String>> recommendersForTriggerIdentifiersForEventIdentifiers = new HashMap<>();
 
@@ -721,8 +736,7 @@ public class SessionEventManager implements
         Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
         List<ObservedHazardEvent> events = new ArrayList<>(allEvents.size());
         for (ObservedHazardEvent event : allEvents) {
-            if (Boolean.TRUE.equals(event
-                    .getHazardAttribute(HAZARD_EVENT_CHECKED))) {
+            if (checkedEventIdentifiers.contains(event.getEventID())) {
                 events.add(event);
             }
         }
@@ -1286,8 +1300,6 @@ public class SessionEventManager implements
                         if (hazardStatus.equals(HazardStatus.PENDING)
                                 || hazardStatus.equals(HazardStatus.PROPOSED)) {
                             oEvent.setStatus(HazardStatus.ISSUED);
-                            oEvent.clearUndoRedo();
-                            oEvent.setModified(false);
                             wasPreIssued = true;
                         } else if (isChangeToEndedStatusNeeded(hazardEvent)) {
                             oEvent.setStatus(HazardStatus.ENDED);
@@ -1658,6 +1670,9 @@ public class SessionEventManager implements
         metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .put(event.getEventID(),
                         metadata.getRefreshTriggeringMetadataKeys());
+        metadataIdentifiersAffectingModifyFlagsForEventIdentifiers.put(
+                event.getEventID(),
+                metadata.getAffectingModifyFlagMetadataKeys());
         recommendersForTriggerIdentifiersForEventIdentifiers.put(
                 event.getEventID(),
                 metadata.getRecommendersTriggeredForMetadataKeys());
@@ -2577,10 +2592,8 @@ public class SessionEventManager implements
                 oevent, originator));
 
         /*
-         * Unset the checked attribute, and set the issued flag as appropriate.
+         * Set the issued flag as appropriate.
          */
-        oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, false, false,
-                originator);
         oevent.addHazardAttribute(ATTR_ISSUED,
                 HazardStatus.issuedButNotEndedOrElapsed(oevent.getStatus()),
                 false, originator);
@@ -2602,7 +2615,10 @@ public class SessionEventManager implements
             }
         }
 
-        oevent.addHazardAttribute(HAZARD_EVENT_CHECKED, true);
+        /*
+         * Add the event to the set of checked events.
+         */
+        checkedEventIdentifiers.add(oevent.getEventID());
 
         /*
          * Determine whether this event allows until-further-notice and record
@@ -2762,6 +2778,13 @@ public class SessionEventManager implements
     void handleEventAdditionToDatabase(HazardEvent event) {
 
         /*
+         * TODO: Remove once the HISTORICAL attribute is no longer being used.
+         */
+        boolean historical = Boolean.TRUE.equals(event
+                .getHazardAttribute(HazardEventManager.HISTORICAL));
+        event.removeHazardAttribute(HazardEventManager.HISTORICAL);
+
+        /*
          * If the event is being managed already, merge the new version with the
          * existing one, and if it is a historical snapshot, post a notification
          * indicating that the history list for this event has changed. If it is
@@ -2783,16 +2806,24 @@ public class SessionEventManager implements
         }
 
         /*
+         * TODO: Uncomment the isLatestVersion() code once the HISTORICAL
+         * attribute is no longer being used.
+         * 
          * If the added event is not a historical snapshot, associate it with
          * its event identifier so that it may be referenced later; otherwise,
-         * update the history list size record for the hazard event.
+         * update the history list size record for the hazard event, and if it
+         * has an issue time, assume it is not modified.
          */
-        if (event.isLatestVersion()) {
+        if (historical == false) {
+            // if (event.isLatestVersion()) {
             latestVersionsFromDatabaseForEventIdentifiers.put(eventIdentifier,
                     event);
         } else {
             historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
                     dbManager.getHistorySizeByEventID(eventIdentifier, false));
+            if (event.getHazardAttribute(ISSUE_TIME) != null) {
+                oldEvent.setModified(false);
+            }
         }
     }
 
@@ -2805,11 +2836,22 @@ public class SessionEventManager implements
     void handleEventRemovalFromDatabase(HazardEvent event) {
 
         /*
+         * TODO: Remove once the HISTORICAL attribute is no longer being used.
+         */
+        boolean historical = Boolean.TRUE.equals(event
+                .getHazardAttribute(HazardEventManager.HISTORICAL));
+        event.removeHazardAttribute(HazardEventManager.HISTORICAL);
+
+        /*
+         * TODO: Uncomment the isLatestVersion() code once the HISTORICAL
+         * attribute is no longer being used.
+         * 
          * If the database is merely indicating that a latest version of a
          * hazard event has been removed, disassociate it from its event
          * identifier, but do nothing else.
          */
-        if (event.isLatestVersion()) {
+        if (historical == false) {
+            // if (event.isLatestVersion()) {
             latestVersionsFromDatabaseForEventIdentifiers.remove(event
                     .getEventID());
             return;
@@ -2854,68 +2896,64 @@ public class SessionEventManager implements
      */
     private void removeEvent(IHazardEvent event, boolean delete,
             IOriginator originator) {
-        synchronized (events) {
-            if (events.contains(event)) {
-
-                /*
-                 * Deselect the event if it was selected, and remove it.
-                 */
-                String eventIdentifier = event.getEventID();
-                sessionManager.getSelectionManager()
-                        .removeEventFromSelectedEvents(eventIdentifier,
-                                Originator.OTHER);
-                events.remove(event);
-
-                /*
-                 * TODO this should never delete operation issued events.
-                 */
-                /*
-                 * TODO this should not delete the whole list, just any pending
-                 * or proposed items on the end of the list.
-                 */
-                if (delete) {
-                    HazardHistoryList histList = dbManager.getHistoryByEventID(
-                            eventIdentifier, true);
-                    if (histList != null && !histList.isEmpty()) {
-                        dbManager.removeEvents(histList);
-                    }
-                    dbManager.removeEvents(createEventCopyToBePersisted(event,
-                            false, false));
-                }
-                updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
-                        (ObservedHazardEvent) event, true);
-                megawidgetSpecifiersForEventIdentifiers.remove(eventIdentifier);
-                metadataReloadTriggeringIdentifiersForEventIdentifiers
-                        .remove(eventIdentifier);
-                recommendersForTriggerIdentifiersForEventIdentifiers
-                        .remove(eventIdentifier);
-                editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
-                        .remove(eventIdentifier);
-                scriptFilesForEventIdentifiers.remove(eventIdentifier);
-                eventModifyingScriptsForEventIdentifiers
-                        .remove(eventIdentifier);
-                notificationSender
-                        .postNotificationAsync(new SessionEventRemoved(this,
-                                event, originator));
-            }
+        if (events.contains(event)) {
 
             /*
-             * Remove the history list size record and the latest version record
-             * for the hazard event, since they are no longer needed.
+             * Deselect the event if it was selected, remove it from the checked
+             * event identifiers set if it was there, and remove it.
              */
-            latestVersionsFromDatabaseForEventIdentifiers.remove(event
-                    .getEventID());
-            historicalVersionCountsForEventIdentifiers.remove(event
-                    .getEventID());
+            String eventIdentifier = event.getEventID();
+            sessionManager.getSelectionManager().removeEventFromSelectedEvents(
+                    eventIdentifier, Originator.OTHER);
+            checkedEventIdentifiers.remove(eventIdentifier);
+            events.remove(event);
+
+            /*
+             * TODO this should never delete operation issued events.
+             */
+            /*
+             * TODO this should not delete the whole list, just any pending or
+             * proposed items on the end of the list.
+             */
+            if (delete) {
+                HazardHistoryList histList = dbManager.getHistoryByEventID(
+                        eventIdentifier, true);
+                if (histList != null && !histList.isEmpty()) {
+                    dbManager.removeEvents(histList);
+                }
+                dbManager.removeEvents(createEventCopyToBePersisted(event,
+                        false, false));
+            }
+            updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
+                    (ObservedHazardEvent) event, true);
+            megawidgetSpecifiersForEventIdentifiers.remove(eventIdentifier);
+            metadataReloadTriggeringIdentifiersForEventIdentifiers
+                    .remove(eventIdentifier);
+            metadataIdentifiersAffectingModifyFlagsForEventIdentifiers
+                    .remove(eventIdentifier);
+            recommendersForTriggerIdentifiersForEventIdentifiers
+                    .remove(eventIdentifier);
+            editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
+                    .remove(eventIdentifier);
+            scriptFilesForEventIdentifiers.remove(eventIdentifier);
+            eventModifyingScriptsForEventIdentifiers.remove(eventIdentifier);
+            notificationSender.postNotificationAsync(new SessionEventRemoved(
+                    this, event, originator));
         }
+
+        /*
+         * Remove the history list size record and the latest version record for
+         * the hazard event, since they are no longer needed.
+         */
+        latestVersionsFromDatabaseForEventIdentifiers
+                .remove(event.getEventID());
+        historicalVersionCountsForEventIdentifiers.remove(event.getEventID());
     }
 
     @Override
     public void sortEvents(Comparator<ObservedHazardEvent> comparator,
             IOriginator originator) {
-        synchronized (events) {
-            Collections.sort(events, comparator);
-        }
+        Collections.sort(events, comparator);
         notificationSender
                 .postNotificationAsync(new SessionEventsOrderingModified(this,
                         originator));
@@ -2923,9 +2961,7 @@ public class SessionEventManager implements
 
     @Override
     public List<ObservedHazardEvent> getEvents() {
-        synchronized (events) {
-            return new ArrayList<ObservedHazardEvent>(events);
-        }
+        return new ArrayList<ObservedHazardEvent>(events);
     }
 
     /**
@@ -2938,22 +2974,33 @@ public class SessionEventManager implements
      * source of the change. Additional logic (method calls, etc.) may therefore
      * be added to this method's implementation as necessary if said logic must
      * be run whenever an event is so modified.
+     * 
+     * @param notification
+     *            Notification to be sent out about the modification.
      */
     protected void hazardEventModified(SessionEventModified notification) {
-        IHazardEvent event = notification.getEvent();
+        ObservedHazardEvent event = notification.getEvent();
         sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
                 event.getEventID(), notification.getOriginator());
-        if (event instanceof ObservedHazardEvent) {
-            ((ObservedHazardEvent) event).setModified(true);
-        }
-        /*
-         * TODO The casting here is indicative of a larger problem. Fix it.
-         */
-        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
-                (ObservedHazardEvent) event, false);
+        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event, false);
         ensureEventEndTimeUntilFurtherNoticeAppropriate(event, false);
         if (events.contains(event)) {
             notificationSender.postNotificationAsync(notification);
+        }
+    }
+
+    /**
+     * Receive notification that the specified event that its unsaved changes
+     * (modified) flag has changed.
+     * 
+     * @param event
+     *            Event that has experienced a change.
+     */
+    protected void hazardEventModifiedFlagChanged(ObservedHazardEvent event) {
+        if (events.contains(event)) {
+            notificationSender
+                    .postNotificationAsync(new SessionEventUnsavedChangesModified(
+                            this, event, Originator.OTHER));
         }
     }
 
@@ -3026,7 +3073,6 @@ public class SessionEventManager implements
                             .removeEventFromSelectedEvents(event.getEventID(),
                                     Originator.OTHER);
                 }
-                event.setModified(false);
                 needsPersist = true;
 
                 break;
@@ -3094,6 +3140,22 @@ public class SessionEventManager implements
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
+    }
+
+    /**
+     * Get the set of hazard attribute names for the specified hazard event
+     * that, when modified, should not alter said event's modified flag.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event for which to fetch the set of
+     *            attribute names.
+     * @return Set of attribute names; may be empty.
+     */
+    protected Set<String> getHazardAttributesAffectingModifyFlag(
+            String eventIdentifier) {
+        Set<String> result = metadataIdentifiersAffectingModifyFlagsForEventIdentifiers
+                .get(eventIdentifier);
+        return (result != null ? result : Collections.<String> emptySet());
     }
 
     /**
@@ -4280,14 +4342,10 @@ public class SessionEventManager implements
         sessionManager.getSelectionManager().removeEventFromSelectedEvents(
                 event.getEventID(), Originator.OTHER);
         event.setStatus(HazardStatus.ENDED, true, true, originator);
-        clearUndoRedo(event);
-        event.setModified(false);
     }
 
     @Override
     public void issueEvent(ObservedHazardEvent event, IOriginator originator) {
-        event.clearUndoRedo();
-        event.setModified(false);
     }
 
     @Override
@@ -4314,8 +4372,6 @@ public class SessionEventManager implements
         HazardStatus status = event.getStatus();
         if (isProposedStateAllowed(event, status)) {
             event.setStatus(HazardStatus.PROPOSED, true, true, originator);
-            clearUndoRedo(event);
-            event.setModified(false);
         }
     }
 
@@ -4426,6 +4482,29 @@ public class SessionEventManager implements
     @Override
     public boolean isCurrentEvent() {
         return currentEvent != null;
+    }
+
+    @Override
+    public boolean isEventChecked(IHazardEvent event) {
+        return checkedEventIdentifiers.contains(event.getEventID());
+    }
+
+    @Override
+    public void setEventChecked(IHazardEvent event, boolean checked,
+            IOriginator originator) {
+        String eventIdentifier = event.getEventID();
+        boolean oldChecked = checkedEventIdentifiers.contains(eventIdentifier);
+        if (oldChecked != checked) {
+            if (checked) {
+                checkedEventIdentifiers.add(eventIdentifier);
+            } else {
+                checkedEventIdentifiers.remove(eventIdentifier);
+            }
+            notificationSender
+                    .postNotificationAsync(new SessionEventCheckedStateModified(
+                            this, getEventById(eventIdentifier),
+                            Originator.OTHER));
+        }
     }
 
     @Override
@@ -4656,17 +4735,6 @@ public class SessionEventManager implements
         hazardEvent.addHazardAttribute(VISIBLE_GEOMETRY,
                 HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE, originator);
 
-    }
-
-    /**
-     * Clears the undo/redo stack for the hazard event.
-     * 
-     * @param event
-     *            Event for which to clear the undo/redo stack
-     * @return
-     */
-    private void clearUndoRedo(IUndoRedoable event) {
-        event.clearUndoRedo();
     }
 
     private boolean isLowResComputationNeeded(
@@ -4954,14 +5022,11 @@ public class SessionEventManager implements
          * semantic value to the Java code.
          * 
          * Any attributes currently used by Java code should either be promoted
-         * to first-class fields within the hazard event, tracked elsewhere
-         * (e.g. selected and checked status should be tracked outside the
-         * events in the session event manager), or otherwise removed.
+         * to first-class fields within the hazard event, or otherwise removed.
          */
         if (justIssued == false) {
             dbEvent.removeHazardAttribute(ATTR_ISSUED);
         }
-        dbEvent.removeHazardAttribute(HAZARD_EVENT_CHECKED);
         dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
 
         /*

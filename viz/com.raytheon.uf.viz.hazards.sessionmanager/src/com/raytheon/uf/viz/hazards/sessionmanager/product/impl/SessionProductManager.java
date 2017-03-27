@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_CHECKED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
@@ -234,6 +233,7 @@ import com.vividsolutions.jts.geom.Puntal;
  * Mar 15, 2017 29138      Chris.Golden Removed creation of observed hazard event object for
  *                                      merging process, as said type is no longer needed for
  *                                      the parameters to the merge method.
+ * Mar 16, 2017 15528      Chris.Golden Removed "checked" as an attribute of hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -1636,7 +1636,6 @@ public class SessionProductManager implements ISessionProductManager {
                 event.removeHazardAttribute(HazardConstants.PILS);
             }
             event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
-            event.removeHazardAttribute(HAZARD_EVENT_CHECKED);
             event.removeHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
 
             /*

@@ -59,6 +59,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
@@ -261,6 +262,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      latter, startup-config).
  * Feb 01, 2017 15556      Chris.Golden Changed to include originator when setting
  *                                      the site identifier.
+ * Mar 27, 2017 15528      Chris.Golden Added gathering of set of metadata megawidget
+ *                                      identifiers for which modification of their
+ *                                      underlying values does not affect their
+ *                                      enclosing hazard event's modify flag.
  * </pre>
  * 
  * @author bsteffen
@@ -327,7 +332,7 @@ public class SessionConfigurationManager implements
 
     private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
-            Collections.<String> emptySet(),
+            Collections.<String> emptySet(), Collections.<String> emptySet(),
             Collections.<String, String> emptyMap(),
             Collections.<String> emptySet(), null, null);
 
@@ -890,6 +895,7 @@ public class SessionConfigurationManager implements
                     : new HazardEventMetadata(
                             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
                             Collections.<String> emptySet(),
+                            Collections.<String> emptySet(),
                             Collections.<String, String> emptyMap(),
                             Collections.<String> emptySet(), scriptFile,
                             eventModifyingFunctionNamesForIdentifiers));
@@ -900,6 +906,13 @@ public class SessionConfigurationManager implements
 
         Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
+        Set<String> allMetadataKeys = getMegawidgetIdentifiers(specifiersList);
+        Set<String> notAffectingModifyFlagMetadataKeys = getMegawidgetIdentifiersWithParameter(
+                specifiersList,
+                HazardConstants.METADATA_NOT_CONSIDERED_MODIFICATION);
+        Set<String> affectingModifyFlagMetadataKeys = new HashSet<>(
+                Sets.difference(allMetadataKeys,
+                        notAffectingModifyFlagMetadataKeys));
         Map<String, String> recommendersTriggeredForMetadataKeys = getValuesForMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.RECOMMENDER_RUN_TRIGGER);
         Set<String> editRiseCrestFallMetadataKeys = getMegawidgetIdentifiersWithParameter(
@@ -910,6 +923,7 @@ public class SessionConfigurationManager implements
                     specifiersList, IControlSpecifier.class,
                     timeManager.getCurrentTimeProvider(), sideEffectsApplier),
                     refreshTriggeringMetadataKeys,
+                    affectingModifyFlagMetadataKeys,
                     recommendersTriggeredForMetadataKeys,
                     editRiseCrestFallMetadataKeys, scriptFile,
                     eventModifyingFunctionNamesForIdentifiers);
@@ -918,6 +932,21 @@ public class SessionConfigurationManager implements
                     + hazardEvent.getEventID() + ":" + e, e);
             return EMPTY_HAZARD_EVENT_METADATA;
         }
+    }
+
+    /**
+     * Get the set of megawidget identifiers from the specified list, which may
+     * contain raw specifiers and their descendants, of any megawidget
+     * specifiers.
+     * 
+     * @param list
+     *            List to be checked.
+     * @return Set of megawidget identifiers.
+     */
+    private Set<String> getMegawidgetIdentifiers(List<?> list) {
+        Set<String> identifiers = new HashSet<>();
+        addMegawidgetIdentifiersToSet(list, identifiers);
+        return identifiers;
     }
 
     /**
@@ -958,6 +987,45 @@ public class SessionConfigurationManager implements
         addMegawidgetIdentifiersIncludingParameterToMap(list, parameterName,
                 valuesForTriggerIdentifiers);
         return valuesForTriggerIdentifiers;
+    }
+
+    /**
+     * Find any raw megawidget specifiers in the specified object, which may be
+     * a list of some sort (the items within which must be checked recursively);
+     * a map of some sort (in which case it itself may be a raw specifier,
+     * and/or its values must be checked recursively), or a primitive (which
+     * never has any raw specifiers in it), and add any found specifiers'
+     * identifiers to the specified set.
+     * 
+     * @param object
+     *            Object to be checked.
+     * @param identifiers
+     *            Set of identifiers to which to add any found specifiers.
+     */
+    private <V> void addMegawidgetIdentifiersToSet(Object object,
+            Set<String> identifiers) {
+
+        /*
+         * If the object is a map and it has a field name, add the field name
+         * and iterate through the other values, adding any identifiers found
+         * therein; otherwise, if it is a list, iterate through the list values,
+         * adding any identifiers found therein.
+         */
+        if (object instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) object;
+
+            if (map.containsKey(HazardConstants.FIELD_NAME)) {
+                identifiers.add((String) map.get(HazardConstants.FIELD_NAME));
+            }
+
+            for (Object value : map.values()) {
+                addMegawidgetIdentifiersToSet(value, identifiers);
+            }
+        } else if (object instanceof List) {
+            for (Object item : (List<?>) object) {
+                addMegawidgetIdentifiersToSet(item, identifiers);
+            }
+        }
     }
 
     /**

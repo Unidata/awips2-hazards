@@ -88,6 +88,7 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
@@ -138,6 +139,8 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 20, 2016   15556    Chris.Golden Initial creation.
+ * Mar 16, 2017   15528    Chris.Golden Added ability to show issued events with unsaved
+ *                                      changes in bold.
  * </pre>
  * 
  * @author Chris.Golden
@@ -611,11 +614,11 @@ class ConsoleTree implements IConsoleTree {
     private int countdownTimerColumnIndex = -1;
 
     /**
-     * Last recorded width of the column holding the countdown timers; this is
-     * merely the last width given by the {@link SWT#EraseItem} event when the
-     * column in question was the countdown timer column.
+     * Map of column indices to the last recorded widths of the columns; each
+     * such value is merely the last width given by the {@link SWT#EraseItem}
+     * event for that column.
      */
-    private int countdownTimerColumnWidth;
+    private final Map<Integer, Integer> columnWidthsForColumnIndices = new HashMap<>();
 
     /**
      * List of sorts currently in use.
@@ -748,6 +751,11 @@ class ConsoleTree implements IConsoleTree {
      * handle the time ruler embedded in the last column header.
      */
     private Image spacerImage;
+
+    /**
+     * Bold font for table rows representing entities that have unsaved changes.
+     */
+    private Font boldFont;
 
     /**
      * Tree rows that are currently selected.
@@ -1813,105 +1821,180 @@ class ConsoleTree implements IConsoleTree {
         }
 
         /*
+         * Create the bold font to be used for rows representing entities that
+         * have unsaved changes.
+         */
+        TreeItem sampleTreeItem = new TreeItem(tree, SWT.NONE);
+        Font baseFont = sampleTreeItem.getFont();
+        FontData fontData = baseFont.getFontData()[0];
+        boldFont = new Font(baseFont.getDevice(), fontData.getName(),
+                fontData.getHeight(), SWT.BOLD);
+        resources.add(boldFont);
+        sampleTreeItem.dispose();
+
+        /*
          * Add a listener to handle painting of the background of tree cells
-         * when those cells are for active, unselected countdown timers.
+         * when those cells are for active, unselected countdown timers, or are
+         * part of bolded rows.
          */
         tree.addListener(SWT.EraseItem, new Listener() {
             @Override
             public void handleEvent(Event event) {
 
                 /*
-                 * If the cell is not a countdown timer cell, or the cell does
-                 * not have custom display properties, handle the erase
-                 * normally.
+                 * Determine whether this is a countdown timer cell; if it is
+                 * not, or the cell does not have custom display properties, or
+                 * the row is not a bolded row, handle the paint normally.
                  */
                 countdownTimerDisplayProperties = null;
-                if ((event.index != countdownTimerColumnIndex)
-                        || (countdownTimersDisplayManager == null)) {
-                    return;
-                }
-                countdownTimerDisplayProperties = countdownTimersDisplayManager
-                        .getDisplayPropertiesForEvent(entitiesForTreeItems.get(
-                                event.item).getIdentifier());
-                if (countdownTimerDisplayProperties == null) {
+                boolean countdown = ((event.index == countdownTimerColumnIndex) && (countdownTimersDisplayManager != null));
+                boolean unsaved = entitiesForTreeItems.get(event.item)
+                        .isUnsaved();
+                if ((countdown == false) && (unsaved == false)) {
                     return;
                 }
 
                 /*
                  * Save the width of this column, because the PaintItem event
-                 * that follows for this cell will only hold the width of the
-                 * text to be drawn, not the width of the entire column.
+                 * that follows for this cell will need it (that event only
+                 * holds the width of the text to be drawn, not the width of the
+                 * entire column).
                  */
-                countdownTimerColumnWidth = event.width;
+                columnWidthsForColumnIndices.put(event.index, event.width);
 
                 /*
-                 * If the cell is selected or the background color is white, use
-                 * the standard background, but make sure the foreground is not
-                 * drawn in the default manner.
+                 * If the cell is a countdown timer cell, but does not have
+                 * custom display properties, handle the erase normally unless
+                 * it is also part of a bolded row, in which case just treat it
+                 * as the latter.
                  */
-                if (((event.detail & SWT.SELECTED) != 0)
-                        || (countdownTimerDisplayProperties
-                                .getBackgroundColor().equals(Display
-                                .getCurrent().getSystemColor(SWT.COLOR_WHITE)))) {
+                if (countdown) {
+                    countdownTimerDisplayProperties = countdownTimersDisplayManager
+                            .getDisplayPropertiesForEvent(entitiesForTreeItems
+                                    .get(event.item).getIdentifier());
+                    if (countdownTimerDisplayProperties == null) {
+                        if (unsaved) {
+                            countdown = false;
+                        } else {
+                            return;
+                        }
+                    }
+                }
+
+                /*
+                 * If the cell is a countdown timer cell and it is selected or
+                 * the background color is white, use the standard background,
+                 * but make sure the foreground is not drawn in the default
+                 * manner.
+                 */
+                if (countdown
+                        && (((event.detail & SWT.SELECTED) != 0) || countdownTimerDisplayProperties
+                                .getBackgroundColor().equals(
+                                        Display.getCurrent().getSystemColor(
+                                                SWT.COLOR_WHITE)))) {
                     event.detail &= ~(SWT.FOREGROUND | SWT.HOT);
                     return;
                 }
 
                 /*
-                 * Paint the background using the appropriate color.
+                 * Paint the background, using a custom color if this is a
+                 * countdown timer cell.
                  */
-                Color oldBackground = event.gc.getBackground();
-                event.gc.setBackground(countdownTimerDisplayProperties
-                        .getBackgroundColor());
+                Color oldBackground = null;
+                if (countdown) {
+                    oldBackground = event.gc.getBackground();
+                    event.gc.setBackground(countdownTimerDisplayProperties
+                            .getBackgroundColor());
+                }
                 event.gc.fillRectangle(event.x, event.y, event.width,
                         event.height);
-                event.gc.setBackground(oldBackground);
+                if (countdown) {
+                    event.gc.setBackground(oldBackground);
+                }
                 event.detail &= ~(SWT.BACKGROUND | SWT.FOREGROUND | SWT.HOT);
             }
         });
 
         /*
          * Add a listener to handle painting of the foreground of tree cells
-         * when those cells are for active countdown timers.
+         * when those cells are for active countdown timers, and to use bold
+         * font for those items that represent entities that have unsaved
+         * changes.
          */
         tree.addListener(SWT.PaintItem, new Listener() {
             @Override
             public void handleEvent(Event event) {
 
                 /*
-                 * If the cell is not a countdown timer cell, or the cell does
-                 * not have custom display properties, handle the erase
-                 * normally.
+                 * Determine whether this is a countdown timer cell; if it is
+                 * not, or the cell does not have custom display properties, or
+                 * the row is not a bolded row, handle the paint normally.
                  */
-                if ((event.index != countdownTimerColumnIndex)
-                        || (countdownTimerDisplayProperties == null)) {
+                boolean countdown = ((event.index == countdownTimerColumnIndex) && (countdownTimerDisplayProperties != null));
+                if ((countdown == false)
+                        && (entitiesForTreeItems.get(event.item).isUnsaved() == false)) {
                     return;
                 }
 
                 /*
-                 * Paint the foreground using the appropriate color. If the
-                 * foreground color is black, no blinking is occurring, and the
-                 * item is selected, use white instead.
+                 * Paint the foreground using the appropriate color. If this is
+                 * a countdown timer column and the foreground color is black,
+                 * no blinking is occurring, and the item is selected, use white
+                 * instead; if the row is a bolded row, use white instead of
+                 * black if the row is selected.
                  */
                 Color oldForeground = event.gc.getForeground();
                 Font oldFont = event.gc.getFont();
-                Color foreground = countdownTimerDisplayProperties
-                        .getForegroundColor();
-                if (((event.detail & SWT.SELECTED) != 0)
-                        && (countdownTimerDisplayProperties.isBlinking() == false)
-                        && foreground.equals(Display.getCurrent()
-                                .getSystemColor(SWT.COLOR_BLACK))) {
-                    foreground = Display.getCurrent().getSystemColor(
-                            SWT.COLOR_WHITE);
+                Color foreground = null;
+                if (countdown) {
+                    foreground = countdownTimerDisplayProperties
+                            .getForegroundColor();
+                    if (((event.detail & SWT.SELECTED) != 0)
+                            && (countdownTimerDisplayProperties.isBlinking() == false)
+                            && foreground.equals(Display.getCurrent()
+                                    .getSystemColor(SWT.COLOR_BLACK))) {
+                        foreground = Display.getCurrent().getSystemColor(
+                                SWT.COLOR_WHITE);
+                    }
+                } else {
+                    foreground = Display
+                            .getCurrent()
+                            .getSystemColor(
+                                    ((event.detail & SWT.SELECTED) != 0 ? SWT.COLOR_WHITE
+                                            : SWT.COLOR_BLACK));
                 }
                 event.gc.setForeground(foreground);
-                event.gc.setFont(countdownTimerDisplayProperties.getFont());
+
+                /*
+                 * Use the countdown timer font if appropriate, or the bold font
+                 * otherwise.
+                 */
+                event.gc.setFont(countdown ? countdownTimerDisplayProperties
+                        .getFont() : boldFont);
+
+                /*
+                 * Get the extent of the text, and paint the text in the
+                 * vertical center of the row, and either left-, right-, or
+                 * horizontal-center-adjusted.
+                 */
                 String text = ((TreeItem) event.item).getText(event.index);
                 Point size = event.gc.stringExtent(text);
                 int textWidth = size.x + 5;
                 int yOffset = (event.height - size.y) / 2;
-                event.gc.drawText(text, event.x + countdownTimerColumnWidth
-                        - textWidth, event.y + yOffset, true);
+                int alignment = tree.getColumn(event.index).getAlignment();
+                event.gc.drawText(
+                        text,
+                        event.x
+                                + (alignment == SWT.LEFT ? 0
+                                        : (columnWidthsForColumnIndices
+                                                .get(event.index) - textWidth)
+                                                / (alignment == SWT.RIGHT ? 1
+                                                        : 2)), event.y
+                                + yOffset, true);
+
+                /*
+                 * Reset the color and font.
+                 */
                 event.gc.setForeground(oldForeground);
                 event.gc.setFont(oldFont);
             }
@@ -2899,6 +2982,18 @@ class ConsoleTree implements IConsoleTree {
         for (String name : visibleColumnNames) {
             updateCell(getIndexOfColumnInTree(name),
                     columnDefinitionsForNames.get(name), item, entity);
+        }
+
+        /*
+         * If the unsaved flag changed value, force the tree to redraw the row,
+         * because this will ensure that all cells in the row get redrawn,
+         * wehther or not the individual cells changed their contents.
+         */
+        if (oldEntity.isUnsaved() != entity.isUnsaved()) {
+            Rectangle rowBounds = item.getBounds();
+            Rectangle treeBounds = tree.getClientArea();
+            tree.redraw(treeBounds.x, rowBounds.y, treeBounds.width,
+                    rowBounds.height, false);
         }
 
         /*

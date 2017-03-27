@@ -111,6 +111,10 @@ import com.google.common.collect.ImmutableMap;
  * Feb 16, 2017 29138     Chris.Golden  Removed unneeded visibility-in-history-list constant and
  *                                      added new recommender result event set attribute name
  *                                      for saving to the history list.
+ * Mar 16, 2017 15528     Chris.Golden  Removed hazard event checked attribute, and added
+ *                                      metadata megawidget property to indicate that a
+ *                                      particular metadata value being changed does not affect
+ *                                      the modify flag of the enclosing hazard event.
  * </pre>
  * 
  * @author mnash
@@ -774,11 +778,6 @@ public final class HazardConstants {
     public static final String HAZARD_EVENT_SHAPES = "shapes";
 
     /**
-     * Event-is-checked key in hazard
-     */
-    public static final String HAZARD_EVENT_CHECKED = "checked";
-
-    /**
      * Color key in hazard
      */
     public static final String HAZARD_EVENT_COLOR = "color";
@@ -890,6 +889,8 @@ public final class HazardConstants {
     public static final String METADATA_KEY = "metadata";
 
     public static final String METADATA_RELOAD_TRIGGER = "refreshMetadata";
+
+    public static final String METADATA_NOT_CONSIDERED_MODIFICATION = "doesNotAffectModifyFlag";
 
     public static final String RECOMMENDER_RUN_TRIGGER = "modifyRecommender";
 

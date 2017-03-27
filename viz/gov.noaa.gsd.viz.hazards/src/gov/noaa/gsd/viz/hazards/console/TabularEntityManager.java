@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.util.Pair;
@@ -68,6 +69,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                      of events in the history list, since
  *                                      all events in the history list are now
  *                                      visible.
+ * Mar 16, 2017   15528    Chris.Golden Added support for indicating unsaved
+ *                                      changes in a hazard event. Also changed
+ *                                      over from having the checked attribute as
+ *                                      part of hazard events to having checked
+ *                                      status tracked by the event manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1048,29 +1054,27 @@ class TabularEntityManager {
                         indicesForEvents.get(entity.getIdentifier()), entity);
 
                 /*
-                 * If the entity has changed its checked or until further notice
-                 * states, change the appropriate attributes of the
-                 * corresponding event.
+                 * If the entity has changed its until further notice state,
+                 * change the appropriate attribute of the corresponding event.
                  */
                 ObservedHazardEvent event = eventManager.getEventById(entity
                         .getIdentifier());
-                Map<String, Serializable> changedAttributes = null;
-                if (oldEntity.isChecked() != entity.isChecked()) {
-                    changedAttributes = new HashMap<>();
-                    changedAttributes.put(HazardConstants.HAZARD_EVENT_CHECKED,
-                            entity.isChecked());
-                }
                 if (oldEntity.isEndTimeUntilFurtherNotice() != entity
                         .isEndTimeUntilFurtherNotice()) {
-                    if (changedAttributes == null) {
-                        changedAttributes = new HashMap<>();
-                    }
+                    Map<String, Serializable> changedAttributes = new HashMap<>();
                     changedAttributes
                             .put(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
                                     entity.isEndTimeUntilFurtherNotice());
-                }
-                if (changedAttributes != null) {
                     event.addHazardAttributes(changedAttributes,
+                            UIOriginator.CONSOLE);
+                }
+
+                /*
+                 * If the entity's checked state has changed, tell the session
+                 * event manager about the change.
+                 */
+                if (oldEntity.isChecked() != entity.isChecked()) {
+                    eventManager.setEventChecked(event, entity.isChecked(),
                             UIOriginator.CONSOLE);
                 }
 
@@ -1296,7 +1300,8 @@ class TabularEntityManager {
         String eventIdentifier = event.getEventID();
         ISessionConfigurationManager<?> configManager = sessionManager
                 .getConfigurationManager();
-        ISessionEventManager<?> eventManager = sessionManager.getEventManager();
+        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
+                .getEventManager();
         ISessionSelectionManager<?> selectionManager = sessionManager
                 .getSelectionManager();
         Range<Long> timeRange = Range.closed(event.getStartTime().getTime(),
@@ -1354,11 +1359,18 @@ class TabularEntityManager {
         /*
          * Create the tabular entity.
          */
+        boolean unsaved = false;
+        if ((historyIndex == null)
+                && ((event.getStatus() == HazardStatus.ISSUED) || (event
+                        .getStatus() == HazardStatus.ENDING))) {
+            unsaved = ((ObservedHazardEvent) event).isModified();
+        }
         return TabularEntity
                 .build(previousVersion,
                         eventIdentifier,
                         historyIndex,
                         event.getInsertTime(),
+                        unsaved,
                         timeRange,
                         Boolean.TRUE.equals(event
                                 .getHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)),
@@ -1374,9 +1386,9 @@ class TabularEntityManager {
                                 .contains(
                                         new Pair<String, Integer>(event
                                                 .getEventID(), historyIndex)),
-                        ((historyIndex == null) && Boolean.TRUE.equals(event
-                                .getHazardAttribute(HazardConstants.HAZARD_EVENT_CHECKED))),
-                        attributes, configManager.getColor(event), children);
+                        ((historyIndex == null) && eventManager
+                                .isEventChecked(event)), attributes,
+                        configManager.getColor(event), children);
     }
 
     /**
