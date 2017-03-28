@@ -2351,18 +2351,21 @@ class MetaData(object):
     def buildStormChars(self, typ, vals, enable):
         capType = typ.capitalize()
         labelDict = {'Wind':'Max Wind', 'Hail': 'Max Hail', 'Torn': 'Tornado'}
-        values = ["None"]
-        values.extend(vals)
+        fieldName = "convectiveStormChars"+capType
+        values = self.hazardEvent.get(fieldName, "None")
+        choices = ["None"]
+        choices.extend(vals)
         chars = {
             "fieldType": "ComboBox",
-            "fieldName": "convectiveStormChars"+capType,
+            "fieldName": fieldName,
             "label": labelDict.get(capType, 'THREAT'),
-            "choices": values,
-            "values": "None",
+            "choices": choices,
+            "values": values,
             "expandHorizontally": False,
             "enable": enable,
         }        
         return chars        
+
 
         
 def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):   

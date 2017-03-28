@@ -186,7 +186,6 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: A list of potential probabilistic hazard events. 
         '''                
         self.setPrintFlags()
-        self.printEventSet("\n*********************\nRunning SwathRecommender", eventSet, eventLevel=1)
                  
         eventSetAttrs = eventSet.getAttributes()
         trigger = eventSetAttrs.get('trigger')
@@ -195,6 +194,9 @@ class Recommender(RecommenderTemplate.Recommender):
         self.selectedTime = None if eventSetAttrs.get('selectedTime') is None else long(eventSetAttrs.get('selectedTime'))
         self.setDataLayerTimes(eventSetAttrs)                
         self.attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers', [])
+
+        self.printEventSet("\n*********************\nRunning SwathRecommender", eventSet, eventLevel=1)
+
         if self.attributeIdentifiers is None:
             self.attributeIdentifiers = []
 
@@ -240,7 +242,7 @@ class Recommender(RecommenderTemplate.Recommender):
             # Adjust Hazard Event Attributes
             
             if trigger == 'frameChange':
-                if not self.adjustForFrameChange(event, eventSetAttrs):
+                if not self.adjustForFrameChange(event, eventSetAttrs, resultEventSet):
                     continue
                     
             elif trigger == 'dataLayerUpdate':
@@ -465,7 +467,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.flush()
         self.probUtils.setActivation(event)
             
-    def adjustForFrameChange(self, event, eventSetAttrs):
+    def adjustForFrameChange(self, event, eventSetAttrs, resultEventSet):
         # Assumption is that D2D frame change was used to get to the latest data layer
         #
         # If hazard is editable AND automationLevel is 'userOwned' or 'attributesOnly'
@@ -484,6 +486,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     # This field is displayed in the Console to show if there has been a 
                     #   data layer update while the object has been being edited                    
                     event.set('dataLayerStatus', 'Synced')
+                    resultEventSet.add(event)
                     return True
         return False
         
@@ -504,6 +507,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.flush()
         elif self.editableHazard:
             self.visualCueForDataLayerUpdate(event)
+            resultEventSet.add(event)
             #resultEventSet.addAttribute('selectedTime', self.eventSt_ms)    
         
     def adjustForEventModification(self, event, eventSetAttrs):
@@ -1494,6 +1498,8 @@ class Recommender(RecommenderTemplate.Recommender):
             print "eventIdentifier: ", eventSetAttrs.get("eventIdentifier")
             print "origin: ", eventSetAttrs.get("origin")
             print "attributeIdentifiers: ", eventSetAttrs.get("attributeIdentifiers")
+            if self.selectedTime is not None:
+                print "selectedTime", self.probUtils.displayMsTime(self.selectedTime)
         if eventLevel:
             print "Events:", len(eventSet.getEvents())
             for event in eventSet:

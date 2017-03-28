@@ -28,6 +28,9 @@ from ConfigurationUtils import ConfigUtils
 from socket import gethostname
 from ufpy import qpidingest
 
+DEG_TO_RAD = np.pi / 180.0
+RAD_TO_DEG = 180.0 / np.pi
+
 class ProbUtils(object):
     def __init__(self):
         self.setUpDomain()
@@ -657,6 +660,8 @@ class ProbUtils(object):
         meanV = None
         uList = []
         vList = []
+        spdList = []
+        dirList = []
 
         ### Sort polygonTuples by startTime
         sortedPolys = sorted(polygonTuples, key=lambda tup: tup[1])
@@ -667,56 +672,58 @@ class ProbUtils(object):
             t1 = sortedPolys[i-1][1]
             p2 = sortedPolys[i][0]
             t2 = sortedPolys[i][1]
-            dist = self.getHaversineDistance(p1, p2)
+            dist = self.getHaversineDistance(p1, p2) # meters
             speed = dist/((t2-t1)/1000)
             bearing = self.getBearing(p1, p2)
-            u, v = self.MagDirToUV(speed, bearing)
 
-            uList.append(u)
-            vList.append(v)
+            spdList.append(speed)
+            dirList.append(bearing)
             
             
-        uStatsDict = self.weightedAvgAndStdDev(uList)
-        vStatsDict = self.weightedAvgAndStdDev(vList)
+        spdStats = self.weightedAvgAndStdDevSPD(spdList)
+        meanSpd = self.convertMsecToKts(spdStats.get('weightedAverage'))
+        stdSpd = self.convertMsecToKts(spdStats.get('stdDev'))
+        dirStats = self.weightedAvgAndStdDevDIR(dirList)
+        meanDir = dirStats.get('weightedAverage')
+        stdDir = dirStats.get('stdDev')
+        
 
-        meanU = uStatsDict['weightedAverage']
-        stdU = uStatsDict['stdDev']
-
-        meanV = vStatsDict['weightedAverage']
-        stdV = vStatsDict['stdDev']
-
-        meanDir = math.atan2(-1*meanU,-1*meanV) * (180 / math.pi)
-        meanSpd = math.sqrt(meanU**2 + meanV**2)
-
-        ### Default Uncertainties
-        if len(uList) == 1:
-            stdDir = 12
-            stdSpd = 2.16067
-                   
-        stdDir = math.atan2(stdV, stdU) * (180 / math.pi)
-        stdDir = 45 if stdDir < 45 else stdDir
+        stdDir = 45 if stdDir > 45 else stdDir
         stdDir = 12 if stdDir < 12 else stdDir
 
-        stdSpd = math.sqrt(stdU**2 + stdV**2)
-        stdSpd = 10.2889 if stdSpd > 10.2889 else stdSpd
-        stdSpd = 2.16067 if stdSpd < 2.16067 else stdSpd
+        stdSpd = 20 if stdSpd > 20 else stdSpd
+        stdSpd = 4 if stdSpd < 4 else stdSpd
 
         meanSpd = 102 if meanSpd > 102 else meanSpd
 
         
         return {
-                'convectiveObjectDir' : meanDir%360,
-                'convectiveObjectDirUnc' : (stdDir%360)/2,
-                'convectiveObjectSpdKts' : meanSpd*1.94384,
-                'convectiveObjectSpdKtsUnc' : (stdSpd*1.94384)/2
+                'convectiveObjectDir' : meanDir,
+                'convectiveObjectDirUnc' : stdDir,
+                'convectiveObjectSpdKts' : meanSpd,
+                'convectiveObjectSpdKtsUnc' : stdSpd
                 }    
 
-    def weightedAvgAndStdDev(self, xList):
-        arr = np.array(xList)
-        weights = range(1,len(arr)+1)
-        weightedAvg = np.average(arr, weights=weights)
-        weightedVar = np.average((arr-weightedAvg)**2, weights=weights)
-        return {'weightedAverage':weightedAvg, 'stdDev': math.sqrt(weightedVar)}
+
+    def weightedAvgAndStdDevSPD(self, xList):
+        spdList = np.array(xList)
+        weights = range(1,len(spdList)+1)
+        weightedAvg = np.average(spdList, weights=weights)
+        weightedStd = np.sqrt(np.average((spdList-weightedAvg)**2, weights=weights))
+        return {'weightedAverage':weightedAvg, 'stdDev': weightedStd}
+    
+    def weightedAvgAndStdDevDIR(self, xList):
+        dirList = np.array(xList)
+        weights = range(1,len(dirList)+1)
+        wrad = dirList*DEG_TO_RAD
+        wsin = np.average(np.sin(wrad), weights=weights)
+        wcos = np.average(np.cos(wrad), weights=weights)
+        wdir_avg = ((np.arctan2(wsin, wcos)*RAD_TO_DEG)+360)%360
+        e = np.sqrt(1-(wsin*wsin+wcos*wcos))
+        wdir_std = RAD_TO_DEG*np.arcsin(e)*(1+0.1547*np.power(e,3))
+        return {'weightedAverage':wdir_avg, 'stdDev': wdir_std}
+
+        
 
     #############################################
     ## Conversion methods from GFE SmartScript ##

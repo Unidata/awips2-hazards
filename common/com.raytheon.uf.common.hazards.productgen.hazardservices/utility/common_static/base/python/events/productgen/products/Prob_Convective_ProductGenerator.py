@@ -108,7 +108,7 @@ class Product(Prob_Generator.Product):
             
 
             ### Reset for next time HID appears
-            [hazardEvent.set(threat, None) for threat in threatFields]
+            #[hazardEvent.set(threat, None) for threat in threatFields]
             hazardEvent.set('convectivePastWarningDecisionDiscussion', prevDisc)
             hazardEvent.set('convectiveWarningDecisionDiscussion', '')
             
