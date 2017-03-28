@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.IllegalEventModificatio
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventOriginModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
@@ -156,6 +157,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 16, 2017 15528      Chris.Golden Fixed modification flag to be set properly
  *                                      when appropriate event attributes or
  *                                      fields change.
+ * Mar 28, 2017 32487      Chris.Golden Added use of SessionEventOriginModified
+ *                                      notification when the site identifier,
+ *                                      workstation, or user name are modified.
  * </pre>
  * 
  * @author bsteffen
@@ -575,8 +579,12 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         if (changed(getSiteID(), site)) {
             delegate.setSiteID(site);
             if (notify) {
-                eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this, originator));
+                eventManager
+                        .hazardEventModified(new SessionEventOriginModified(
+                                eventManager,
+                                this,
+                                SessionEventOriginModified.Element.SITE_IDENTIFIER,
+                                originator));
                 handleModification();
             }
             return true;
@@ -978,8 +986,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         if (changed(getUserName(), userName)) {
             delegate.setUserName(userName);
             if (notify) {
-                eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this, originator));
+                eventManager
+                        .hazardEventModified(new SessionEventOriginModified(
+                                eventManager, this,
+                                SessionEventOriginModified.Element.USER_NAME,
+                                originator));
                 handleModification();
             }
             return true;
@@ -992,8 +1003,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
         if (changed(getWorkStation(), workStation)) {
             delegate.setWorkStation(workStation);
             if (notify) {
-                eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this, originator));
+                eventManager
+                        .hazardEventModified(new SessionEventOriginModified(
+                                eventManager, this,
+                                SessionEventOriginModified.Element.WORKSTATION,
+                                originator));
                 handleModification();
             }
             return true;

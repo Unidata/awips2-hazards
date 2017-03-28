@@ -84,6 +84,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventOriginModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
@@ -165,6 +166,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           add history list viewing.
  * Mar 16, 2017   15528    Chris.Golden      Added notification handler for the unsaved
  *                                           changes flag of a hazard event changing.
+ * Mar 28, 2017   32487    Chris.Golden      Added handler for the new
+ *                                           SessionEventOriginModified notification
+ *                                           to update the console row when a hazard
+ *                                           event's site identifier, workstation, or
+ *                                           user name are modified.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1012,6 +1018,17 @@ public class ConsolePresenter extends
     @Handler
     public void sessionEventAllowUntilFurtherNoticeModified(
             SessionEventAllowUntilFurtherNoticeModified change) {
+        tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
+    }
+
+    /**
+     * Respond to an event's origin data changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventOriginModified(SessionEventOriginModified change) {
         tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
     }
 

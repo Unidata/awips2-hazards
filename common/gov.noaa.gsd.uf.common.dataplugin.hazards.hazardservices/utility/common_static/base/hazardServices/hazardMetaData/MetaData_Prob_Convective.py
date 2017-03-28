@@ -18,9 +18,9 @@ class MetaData(CommonMetaData.MetaData):
                     self.convectiveControls(),
                     self.convectiveGetAttrs()
                     ]
-        startTime = hazardEvent.getStartTime()
-        newEnd = startTime + datetime.timedelta(minutes=60)
-        hazardEvent.setEndTime(newEnd)
+        #startTime = hazardEvent.getStartTime()
+        #newEnd = startTime + datetime.timedelta(minutes=60)
+        #hazardEvent.setEndTime(newEnd)
 
         return {
                 METADATA_KEY: metaData,

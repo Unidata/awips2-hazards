@@ -214,7 +214,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         for event in eventSet:
 
-            print 'SRSRSRSRSR:', event.get('objectID'), event.getStatus()
+            print 'SR:', event.get('objectID'), event.getStatus()
                                     
             # Determine if we want to process this event or skip it
             if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
@@ -295,6 +295,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if self.saveToDatabase:
             resultEventSet.addAttribute("saveToDatabase", True)
 
+        self.printEventSet("*****\nFinishing SwathRecommender", eventSet, eventLevel=1)
         return resultEventSet      
     
     def setDataLayerTimes(self, eventSetAttrs):
@@ -520,29 +521,12 @@ class Recommender(RecommenderTemplate.Recommender):
         if 'selected' in self.attributeIdentifiers:
             return False               
         
-#        #Handle Reset Motion Vector
-#        if 'resetMotionVector' in self.attributeIdentifiers: 
-#            for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-#                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
-#                default = self.probUtils.defaultValueDict().get(key)
-#                event.set(key, default)
-#            event.set('settingMotionVector', True)
-#            motionVectorCentroids = event.get('motionVectorCentroids', []) 
-#            motionVectorTimes = event.get('motionVectorTimes', [])
-#            print "SR Resetting motion vector -- existing", motionVectorCentroids
-#            self.flush()
-#            if motionVectorCentroids:
-#                motionVectorCentroids = [motionVectorCentroids[-1]]
-#                motionVectorTimes = [motionVectorTimes[-1]]
-#                event.set('motionVectorCentroids', motionVectorCentroids) 
-#                event.set('motionVectorTimes', motionVectorTimes) 
-#            return True
 
         if 'resetMotionVector' in self.attributeIdentifiers: 
-             for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
-                 default = self.probUtils.defaultValueDict().get(key)
-                 event.set(key, default)
+#              for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+#                        'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']: 
+#                  default = self.probUtils.defaultValueDict().get(key)
+#                  event.set(key, default)
              event.set('settingMotionVector', True) 
 
              motionVectorCentroids = [event.getGeometry().asShapely().centroid]
@@ -917,6 +901,7 @@ class Recommender(RecommenderTemplate.Recommender):
             st, et = motionVectorTimes[i]
             motionVectorTuples.append((poly, st, et))
             print 'SR motionVector Poly, startTime:', poly.asShapely().centroid, self.probUtils.displayMsTime(st)
+            print 'SR    ', poly.asShapely()
             self.flush()
             
         # print "SR motionVectorTuples", len(motionVectorTuples)
@@ -1100,13 +1085,13 @@ class Recommender(RecommenderTemplate.Recommender):
             # Dashed relocated shape and centroid show up if editable 
             dragCapability = 'none'
             editable = False                
+            relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
+                                                                   createRelocatedShape(geometry, centroid))    
             if polySt_ms == self.eventSt_ms:
                 if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                     dragCapability = 'all'
-                    editable = True
-               
-            relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
-                                                                   createRelocatedShape(geometry, centroid))    
+                    editable = True            
+              
             relocatedFeature = {
               "identifier": "swathRec_relocated_" + str(polySt_ms),
               "visibilityConstraints": "selected",
