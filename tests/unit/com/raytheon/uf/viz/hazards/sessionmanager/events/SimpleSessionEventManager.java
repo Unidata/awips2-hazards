@@ -362,7 +362,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events, boolean addToHistory) {
+    public void saveEvents(List<IHazardEvent> events, boolean addToHistory,
+            boolean treatAsIssuance) {
         throw new UnsupportedOperationException();
     }
 
@@ -396,7 +397,7 @@ public class SimpleSessionEventManager implements
     public void mergeHazardEvents(IHazardEvent newEvent,
             ObservedHazardEvent oldEvent, boolean forceMerge,
             boolean keepVisualFeatures, boolean persistOnStatusChange,
-            IOriginator originator) {
+            boolean useModifiedValue, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 }

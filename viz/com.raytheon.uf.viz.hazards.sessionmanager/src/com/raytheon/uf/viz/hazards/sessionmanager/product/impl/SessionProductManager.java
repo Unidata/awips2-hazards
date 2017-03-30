@@ -234,6 +234,7 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      merging process, as said type is no longer needed for
  *                                      the parameters to the merge method.
  * Mar 16, 2017 15528      Chris.Golden Removed "checked" as an attribute of hazard events.
+ * Mar 30, 2017 15528      Chris.Golden Changed to work with new version of mergeHazardEvents().
  * </pre>
  * 
  * @author bsteffen
@@ -833,7 +834,7 @@ public class SessionProductManager implements ISessionProductManager {
                             updatedEvent.getEventID())) {
 
                         eventManager.mergeHazardEvents(updatedEvent,
-                                sessionEvent, false, false, true,
+                                sessionEvent, false, false, true, false,
                                 Originator.OTHER);
 
                         /*

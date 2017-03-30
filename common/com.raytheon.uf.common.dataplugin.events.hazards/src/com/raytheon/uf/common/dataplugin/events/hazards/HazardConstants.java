@@ -115,6 +115,9 @@ import com.google.common.collect.ImmutableMap;
  *                                      metadata megawidget property to indicate that a
  *                                      particular metadata value being changed does not affect
  *                                      the modify flag of the enclosing hazard event.
+ * Mar 30, 2017 15528     Chris.Golden  Added recommender result event set property to indicate
+ *                                      whether or not to treat saved events as issuances or
+ *                                      not.
  * </pre>
  * 
  * @author mnash
@@ -201,6 +204,8 @@ public final class HazardConstants {
     public static final String RECOMMENDER_RESULT_SAVE_TO_DATABASE = "saveToDatabase";
 
     public static final String RECOMMENDER_RESULT_SAVE_TO_HISTORY = "saveToHistory";
+
+    public static final String RECOMMENDER_RESULT_TREAT_AS_ISSUANCE = "treatAsIssuance";
 
     /**
      * Types of changes or events that may trigger a recommender execution.
@@ -576,6 +581,7 @@ public final class HazardConstants {
      * the getHistoryByFilter() method, as well as defining the fields in both
      * the database implementation and the registry implementation
      */
+    public static final String MODIFIED = "modified";
 
     public static final String SITE_ID = "siteID";
 

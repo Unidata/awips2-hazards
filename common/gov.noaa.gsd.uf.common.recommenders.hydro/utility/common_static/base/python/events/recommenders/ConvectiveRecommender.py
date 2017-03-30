@@ -201,6 +201,7 @@ class Recommender(RecommenderTemplate.Recommender):
             mergedEventSet.addAttribute("saveToDatabase", identifiersOfEventsToSaveToDatabase)
         else:
             mergedEventSet.addAttribute("saveToDatabase", None)
+        mergedEventSet.addAttribute("treatAsIssuance", True)
         return mergedEventSet
     
 

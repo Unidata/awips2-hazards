@@ -116,6 +116,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      added ability to configure instances to
  *                                      indicate they are "latest version" ones,
  *                                      that is, not to be in the history list.
+ * Mar 30, 2017 15528     Chris.Golden  Added modified flag as part of basic
+ *                                      hazard event, since this flag must be
+ *                                      persisted as part of the hazard event.
  * </pre>
  * 
  * @author mnash
@@ -136,6 +139,14 @@ public class HazardEvent implements IHazardEvent, IValidator {
      * the history list).
      */
     public static final String LATEST_VERSION = "latest";
+
+    /**
+     * Flag indicating whether or not the hazard event is in a modified state.
+     */
+    @DynamicSerializeElement
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.MODIFIED)
+    private boolean modified;
 
     /**
      * The issuing site ID
@@ -308,6 +319,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     public HazardEvent(IHazardEvent event) {
         this();
+        setModified(event.isModified());
         setEventID(event.getEventID());
         setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
@@ -327,6 +339,16 @@ public class HazardEvent implements IHazardEvent, IValidator {
             setHazardAttributes(new HashMap<String, Serializable>(
                     event.getHazardAttributes()));
         }
+    }
+
+    @Override
+    public boolean isModified() {
+        return modified;
+    }
+
+    @Override
+    public void setModified(boolean modified) {
+        this.modified = modified;
     }
 
     @Override
@@ -608,6 +630,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
+        result = prime * result + (modified ? 1 : 0);
         result = prime * result
                 + ((creationTime == null) ? 0 : creationTime.hashCode());
         result = prime * result + ((endTime == null) ? 0 : endTime.hashCode());
@@ -745,7 +768,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         } else if (!subType.equals(other.subType)) {
             return false;
         }
-        return true;
+        return (modified == other.modified);
     }
 
     @Override

@@ -637,14 +637,15 @@ class ProbUtils(object):
             initialPoly = initialShape.asShapely()
             if type(initialPoly) is shapely.geometry.collection.GeometryCollection:
                 initialPoly = initialPoly[0] 
+            if len(initialPoly.exterior.coords) <= numPoints:
+                return initialShape
             newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
             while len(newPoly.exterior.coords) > numPoints:
                 tolerance += 0.001
                 newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
         
             return AdvancedGeometry.createShapelyWrapper(newPoly, rotation)
-        return initialShape    
-
+        return initialShape
 
     ###############################
     # Compute Motion Vector       #

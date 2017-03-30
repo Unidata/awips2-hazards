@@ -74,6 +74,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                      over from having the checked attribute as
  *                                      part of hazard events to having checked
  *                                      status tracked by the event manager.
+ * Mar 30, 2017   15528    Chris.Golden Changed to always show "ending" status
+ *                                      events as modified (bold text).
  * </pre>
  * 
  * @author Chris.Golden
@@ -1361,9 +1363,9 @@ class TabularEntityManager {
          */
         boolean unsaved = false;
         if ((historyIndex == null)
-                && ((event.getStatus() == HazardStatus.ISSUED) || (event
-                        .getStatus() == HazardStatus.ENDING))) {
-            unsaved = ((ObservedHazardEvent) event).isModified();
+                && (((event.getStatus() == HazardStatus.ISSUED) && ((ObservedHazardEvent) event)
+                        .isModified()) || (event.getStatus() == HazardStatus.ENDING))) {
+            unsaved = true;
         }
         return TabularEntity
                 .build(previousVersion,

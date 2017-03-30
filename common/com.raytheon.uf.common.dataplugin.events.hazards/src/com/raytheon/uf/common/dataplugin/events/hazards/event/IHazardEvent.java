@@ -69,6 +69,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      reduced with advent of ability to save
  *                                      a "latest version" to the database that
  *                                      is not part of the history list.
+ * Mar 30, 2017 15528     Chris.Golden  Added modified flag as part of basic
+ *                                      hazard event, since this flag must be
+ *                                      persisted as part of the hazard event.
  * </pre>
  * 
  * @author mnash
@@ -85,6 +88,25 @@ public interface IHazardEvent extends IEvent {
             return o1Time.compareTo(o2Time);
         }
     };
+
+    /**
+     * Determine whether or not the hazard event is currently in a modified
+     * state.
+     * 
+     * @return <code>true</code> if the hazard event is modified,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isModified();
+
+    /**
+     * Set the flag indicating whether or not the hazard event is currently in a
+     * modified state.
+     * 
+     * @param modified
+     *            Flag indicating whether or not the hazard event is currently
+     *            in a modified state.
+     */
+    public void setModified(boolean modified);
 
     public Geometry getFlattenedGeometry();
 

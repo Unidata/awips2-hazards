@@ -499,6 +499,13 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      appropriate, and have their modified flag reset when not.
  *                                      Finally, added tracking of which event attributes should not
  *                                      alter an event's modified flag when their values are changed.
+ * Mar 30, 2017   15528    Chris.Golden Changed to reset modified flag when asked to do so during the
+ *                                      persistence of a hazard event. The modified flag for each
+ *                                      hazard event is now part of the state of the event saved to
+ *                                      the registry. Also fixed merged hazard events to include
+ *                                      setting of workstation and user name to that of new version of
+ *                                      event. Also made isEventChecked() only return true if the
+ *                                      specified event is visible given the current filtering.
  * </pre>
  * 
  * @author bsteffen
@@ -2462,7 +2469,7 @@ public class SessionEventManager implements
             ObservedHazardEvent existingEvent = getEventById(eventID);
             if (existingEvent != null) {
                 mergeHazardEvents(oevent, existingEvent, false, false, true,
-                        originator);
+                        false, originator);
                 return existingEvent;
             }
         } else {
@@ -2648,9 +2655,11 @@ public class SessionEventManager implements
     public void mergeHazardEvents(IHazardEvent newEvent,
             ObservedHazardEvent oldEvent, boolean forceMerge,
             boolean keepVisualFeatures, boolean persistOnStatusChange,
-            IOriginator originator) {
+            boolean useModifiedValue, IOriginator originator) {
 
         oldEvent.setSiteID(newEvent.getSiteID(), originator);
+        oldEvent.setUserName(newEvent.getUserName(), originator);
+        oldEvent.setWorkStation(newEvent.getWorkStation(), originator);
 
         /*
          * Set the hazard type and time range via the session manager if not a
@@ -2718,6 +2727,10 @@ public class SessionEventManager implements
             oldEvent.setStatus(newEvent.getStatus(), true,
                     persistOnStatusChange, Originator.OTHER);
             updateSavedTimesForEventIfIssued(oldEvent, false);
+        }
+
+        if (useModifiedValue) {
+            oldEvent.setModified(newEvent.isModified());
         }
     }
 
@@ -2793,7 +2806,7 @@ public class SessionEventManager implements
         String eventIdentifier = event.getEventID();
         ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
         if (oldEvent != null) {
-            mergeHazardEvents(event, oldEvent, true, true, false,
+            mergeHazardEvents(event, oldEvent, true, true, false, true,
                     Originator.DATABASE);
             if (event.isLatestVersion() == false) {
                 notificationSender
@@ -2821,9 +2834,6 @@ public class SessionEventManager implements
         } else {
             historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
                     dbManager.getHistorySizeByEventID(eventIdentifier, false));
-            if (event.getHazardAttribute(ISSUE_TIME) != null) {
-                oldEvent.setModified(false);
-            }
         }
     }
 
@@ -3132,6 +3142,7 @@ public class SessionEventManager implements
             if (latestVersion != null) {
                 dbManager.removeEvents(latestVersion);
             }
+            event.setModified(false);
             HazardEvent eventCopy = createEventCopyToBePersisted(event, true,
                     true);
             eventCopy.addHazardAttribute(HazardEventManager.HISTORICAL, true);
@@ -4486,7 +4497,12 @@ public class SessionEventManager implements
 
     @Override
     public boolean isEventChecked(IHazardEvent event) {
-        return checkedEventIdentifiers.contains(event.getEventID());
+        for (ObservedHazardEvent filteredEvent : getEventsForCurrentSettings()) {
+            if (filteredEvent.getEventID().equals(event.getEventID())) {
+                return checkedEventIdentifiers.contains(event.getEventID());
+            }
+        }
+        return false;
     }
 
     @Override
@@ -4874,7 +4890,8 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events, boolean addToHistory) {
+    public void saveEvents(List<IHazardEvent> events, boolean addToHistory,
+            boolean treatAsIssuance) {
 
         /*
          * TODO: Remove this when "persistenceBehavior" is removed from startup
@@ -4908,6 +4925,14 @@ public class SessionEventManager implements
                         + event.getEventID() + " to database, but "
                         + "cannot due to its status of \"potential\".");
                 continue;
+            }
+
+            /*
+             * If the save is to be treated as an issuance, reset the modified
+             * flags of the event.
+             */
+            if (treatAsIssuance) {
+                event.setModified(false);
             }
 
             /*
@@ -4968,7 +4993,7 @@ public class SessionEventManager implements
         if (getHistoricalVersionCountForEvent(eventIdentifier) > 0) {
             HazardHistoryList list = getEventHistoryById(eventIdentifier);
             mergeHazardEvents(list.get(list.size() - 1),
-                    getEventById(eventIdentifier), false, false, false,
+                    getEventById(eventIdentifier), false, false, false, true,
                     Originator.OTHER);
         }
     }

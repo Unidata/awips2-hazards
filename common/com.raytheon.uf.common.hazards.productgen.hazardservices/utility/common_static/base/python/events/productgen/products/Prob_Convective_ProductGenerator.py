@@ -267,6 +267,7 @@ class Product(Prob_Generator.Product):
         hazardEvent.set('settingMotionVector', False)
         hazardEvent.set('upstreamPolys', [])
         hazardEvent.set('statusForHiddenField', 'ISSUED')
+        hazardEvent.set('dataLayerStatus', 'Synced')
                 
     def storeIssuedHazards(self,probHazardEvents):
         pu = ProbUtils()

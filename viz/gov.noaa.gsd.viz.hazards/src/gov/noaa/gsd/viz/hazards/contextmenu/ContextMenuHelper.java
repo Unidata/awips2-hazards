@@ -92,6 +92,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      history list are now visible. Also changed to
  *                                      not persist events upon status changes when they
  *                                      should not be saved to the database.
+ * Mar 30, 2017 15528      Chris.Golden Changed to use new version of saveEvents().
  * </pre>
  * 
  * @author mnash
@@ -650,13 +651,13 @@ public class ContextMenuHelper {
                 .getValue())) {
             List<IHazardEvent> events = Lists
                     .<IHazardEvent> newArrayList(eventManager.getCurrentEvent());
-            eventManager.saveEvents(events, true);
+            eventManager.saveEvents(events, true, false);
         } else if (menuLabel.contains(EventCommand.SAVE.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.PENDING.getValue())) {
             List<IHazardEvent> events = new ArrayList<IHazardEvent>(
                     eventManager.getEventsByStatus(HazardStatus.PENDING, false));
-            eventManager.saveEvents(events, true);
+            eventManager.saveEvents(events, true, false);
         }
     }
 

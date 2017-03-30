@@ -124,6 +124,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      in database.
  * Mar 16, 2017 15528      Chris.Golden Added methods to get and set checked state of a hazard
  *                                      event.
+ * Mar 30, 2017 15528      Chris.Golden Changed to reset modified flag when asked to do so
+ *                                      during the persistence of a hazard event.
  * </pre>
  * 
  * @author bsteffen
@@ -181,12 +183,16 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            Flag indicating whether or not the event should be saved to
      *            the database (persisted) if its status is being changed as a
      *            result of this merge.
+     * @param useModifiedValue
+     *            Flag indicating whether or not the new event's modified flag
+     *            value should be used for the event it is being merged into.
      * @param originator
      *            Originator of this action.
      */
     public void mergeHazardEvents(IHazardEvent newEvent, E oldEvent,
             boolean forceMerge, boolean keepVisualFeatures,
-            boolean persistOnStatusChange, IOriginator originator);
+            boolean persistOnStatusChange, boolean useModifiedValue,
+            IOriginator originator);
 
     /**
      * Get the event with the given ID or null if there is no such event in the
@@ -751,8 +757,12 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            Flag indicating whether or not the snapshots of the events
      *            created to be saved to the database should be part of their
      *            respective events' history lists.
+     * @param treatAsIssuance
+     *            Flag indicating whether or not the save is part of the
+     *            issuance of the hazard events.
      */
-    public void saveEvents(List<IHazardEvent> events, boolean addToHistory);
+    public void saveEvents(List<IHazardEvent> events, boolean addToHistory,
+            boolean treatAsIssuance);
 
     /**
      * Revert the event with the specified identifier to the most recently saved

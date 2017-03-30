@@ -167,6 +167,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      persistence behavior to be tweaked via configuration from
  *                                      this class; use of this temporary option has been moved
  *                                      into the session event manager.
+ * Mar 30, 2017 15528      Chris.Golden Changed to reset modified flag when asked to do so by the
+ *                                      recommender when handling the result of said recommender.
  * </pre>
  * 
  * @author bsteffen
@@ -560,7 +562,8 @@ public class SessionManager implements
              * set, and determine if said attributes indicate that all events
              * provided in the event set should be saved in one of the two ways,
              * if specific ones should be saved one or both ways, or none of
-             * them should be saved.
+             * them should be saved. Do the same for the treating of events that
+             * are to be saved either way as issuances.
              */
             Serializable addToHistoryAttribute = events
                     .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_HISTORY);
@@ -571,29 +574,21 @@ public class SessionManager implements
                     .equals(addToDatabaseAttribute));
 
             /*
+             * Determine whether or not the events that are to be saved to the
+             * history list and/or to the latest version set are to be treated
+             * as issuances.
+             */
+            boolean treatAsIssuance = Boolean.TRUE
+                    .equals(events
+                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
+
+            /*
              * Determine whether or not all hazard events that are brand new
              * (i.e., just created by the recommender) should be saved to either
              * the history list or the database.
              */
-            boolean saveAllNewToHistory = false;
-            if (addToHistoryAttribute instanceof List) {
-                for (Object identifier : (List<?>) addToHistoryAttribute) {
-                    if (identifier == null) {
-                        saveAllNewToHistory = true;
-                        break;
-                    }
-                }
-            }
-            boolean saveAllNewToDatabase = false;
-            if ((saveAllNewToHistory == false)
-                    && (addToDatabaseAttribute instanceof List)) {
-                for (Object identifier : (List<?>) addToDatabaseAttribute) {
-                    if (identifier == null) {
-                        saveAllNewToDatabase = true;
-                        break;
-                    }
-                }
-            }
+            boolean saveAllNewToHistory = isListContainingNullElement(addToHistoryAttribute);
+            boolean saveAllNewToDatabase = ((saveAllNewToHistory == false) && isListContainingNullElement(addToDatabaseAttribute));
             List<IHazardEvent> addedNewEvents = (saveAllNewToHistory
                     || saveAllNewToDatabase ? new ArrayList<IHazardEvent>()
                     : null);
@@ -659,7 +654,8 @@ public class SessionManager implements
              * database, perform the save.
              */
             if (addedNewEvents != null) {
-                eventManager.saveEvents(addedNewEvents, saveAllNewToHistory);
+                eventManager.saveEvents(addedNewEvents, saveAllNewToHistory,
+                        treatAsIssuance);
             }
 
             /*
@@ -671,14 +667,16 @@ public class SessionManager implements
              * appropriate.
              */
             if ((addedEvents != null) && (addedEvents.isEmpty() == false)) {
-                eventManager.saveEvents(addedEvents, addToHistory);
+                eventManager.saveEvents(addedEvents, addToHistory,
+                        treatAsIssuance);
             } else if ((addedEventsForIdentifiers != null)
                     && (addedEventsForIdentifiers.isEmpty() == false)) {
                 if (addToHistoryAttribute instanceof List) {
                     eventManager.saveEvents(
                             getEventsFromIdentifiers(
                                     (List<?>) addToHistoryAttribute,
-                                    addedEventsForIdentifiers), true);
+                                    addedEventsForIdentifiers), true,
+                            treatAsIssuance);
                 } else if (addToDatabaseAttribute instanceof List) {
 
                     /*
@@ -698,7 +696,8 @@ public class SessionManager implements
                     }
                     eventManager.saveEvents(
                             getEventsFromIdentifiers(addToDatabaseList,
-                                    addedEventsForIdentifiers), false);
+                                    addedEventsForIdentifiers), false,
+                            treatAsIssuance);
                 }
             }
 
@@ -739,6 +738,28 @@ public class SessionManager implements
                 timeManager.setSelectedTime(selectedTime, originator);
             }
         }
+    }
+
+    /**
+     * Determine whether or not the specified list contains at least one null
+     * element.
+     * 
+     * @param list
+     *            Potential list to be examined; typed as an <code>Object</code>
+     *            for convenience, since callers will be using such.
+     * @return <code>true</code> if the list contains at least one null element,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isListContainingNullElement(Object list) {
+        if (list instanceof List == false) {
+            return false;
+        }
+        for (Object identifier : (List<?>) list) {
+            if (identifier == null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

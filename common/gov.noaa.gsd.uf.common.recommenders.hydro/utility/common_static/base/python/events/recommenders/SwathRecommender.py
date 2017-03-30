@@ -887,9 +887,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 automationLevel = event.get('automationLevel')
                 if automationLevel == 'automated':
                     self.setAttributesAndGeometry(event)               
-                                        
-        print "SR Feature ST", featureSt, self.probUtils.displayMsTime(featureSt)
-        self.flush()
         
         if len(motionVectorCentroids) <= 1:
             return True

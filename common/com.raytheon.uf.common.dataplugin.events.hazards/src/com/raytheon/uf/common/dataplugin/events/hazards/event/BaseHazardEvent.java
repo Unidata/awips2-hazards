@@ -77,6 +77,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      reduced with advent of ability to save
  *                                      a "latest version" to the database that
  *                                      is not part of the history list.
+ * Mar 30, 2017 15528     Chris.Golden  Added modified flag as part of basic
+ *                                      hazard event, since this flag must be
+ *                                      persisted as part of the hazard event.
  * </pre>
  * 
  * @author mnash
@@ -84,6 +87,8 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 
 public class BaseHazardEvent implements IHazardEvent {
+
+    private boolean modified;
 
     private Date startTime;
 
@@ -126,6 +131,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     public BaseHazardEvent(IHazardEvent event) {
         this();
+        setModified(event.isModified());
         setEventID(event.getEventID());
         setSiteID(event.getSiteID());
         setEndTime(event.getEndTime());
@@ -144,6 +150,16 @@ public class BaseHazardEvent implements IHazardEvent {
             getHazardAttributes().putAll(event.getHazardAttributes());
         }
         insertTime = event.getInsertTime();
+    }
+
+    @Override
+    public boolean isModified() {
+        return modified;
+    }
+
+    @Override
+    public void setModified(boolean modified) {
+        this.modified = modified;
     }
 
     @Override
@@ -386,6 +402,7 @@ public class BaseHazardEvent implements IHazardEvent {
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
+        result = prime * result + (modified ? 1 : 0);
         return result;
     }
 
@@ -484,7 +501,7 @@ public class BaseHazardEvent implements IHazardEvent {
         } else if (!subtype.equals(other.subtype)) {
             return false;
         }
-        return true;
+        return (modified == other.modified);
     }
 
     @Override

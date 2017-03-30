@@ -57,7 +57,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModif
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.modifiable.IModifiable;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
@@ -160,14 +159,15 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 28, 2017 32487      Chris.Golden Added use of SessionEventOriginModified
  *                                      notification when the site identifier,
  *                                      workstation, or user name are modified.
+ * Mar 30, 2017 15528      Chris.Golden Changed to have the modified setter and
+ *                                      getter part of IHazardEvent, not
+ *                                      IModifiable (which has been removed).
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
-public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
-        IModifiable {
+public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
     /**
      * Logging mechanism.
@@ -1295,7 +1295,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable,
      *            Flag indicating whether or not the event has been modified
      *            since the last time it was issued.
      */
-    void setModified(boolean modified) {
+    @Override
+    public void setModified(boolean modified) {
         if (this.modified != modified) {
             this.modified = modified;
             eventManager.hazardEventModifiedFlagChanged(this);
