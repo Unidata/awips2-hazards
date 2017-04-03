@@ -37,7 +37,12 @@ HazardMetaData =[
                 {"hazardTypes": [("SIGMET", "NonConvective")], "classMetaData": "MetaData_SIGMET_W"},
                 {"hazardTypes": [("SIGMET","Convective")], "classMetaData": "MetaData_Convective_SIGMET"},
                 {"hazardTypes": [("SIGMET","International")], "classMetaData": "MetaData_International_SIGMET"},
-                {"hazardTypes": [("AIRMET",)], "classMetaData": "MetaData_AIRMET"},
                 {"hazardTypes": [("LLWS",)], "classMetaData": "MetaData_LLWS"},
-
+                {"hazardTypes": [("Strong_Surface_Wind",)], "classMetaData": "MetaData_Strong_Surface_Wind"},
+                {"hazardTypes": [("Turbulence",)], "classMetaData": "MetaData_Turbulence"},
+                {"hazardTypes": [("Mountain_Obscuration",)], "classMetaData": "MetaData_Mountain_Obscuration"},
+                {"hazardTypes": [("IFR",)], "classMetaData": "MetaData_IFR"},
+                {"hazardTypes": [("Icing",)], "classMetaData": "MetaData_Icing"},
+                {"hazardTypes": [("Multiple_Freezing_Levels",)], "classMetaData": "MetaData_Multiple_Freezing_Levels"},
+                
 ]

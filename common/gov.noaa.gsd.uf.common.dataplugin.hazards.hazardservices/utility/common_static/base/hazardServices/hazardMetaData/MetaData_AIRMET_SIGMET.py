@@ -1384,13 +1384,656 @@ class MetaData(CommonMetaData.MetaData):
                 ]
         }     
         
-        return additionalRemarks             
+        return additionalRemarks
+
+    #####AIRMET PHENOMENA MEGAWIDGETS####    
+    ###LLWS MEGAWIDGET OPTIONS###
+    def getLLWSInputs(self, geomType):             
+        originatingOffice = self.getLLWSOffice()
+        #metaData = self.getLLWSMetaData()
+        
+        fields = [originatingOffice] #, metaData]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "llwsGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields,
+            }
+
+        return grp
     
+    def getLLWSOffice(self):   
+        office = {
+            "fieldType": "Group",
+            "fieldName": "llwsOfficeGroup",
+            "label": "",
+            "numColumns": 2,
+            "modifyRecommender": "CreateOutlookPolygonsTool",
+            "fields": [
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "llwsOffice",
+                        "label": "Originating Office:",
+                        "expandHorizontally": False,
+                        "values": 'KKCI',
+                        "choices": ["KKCI", "PAWU", "PHFO"],                        
+                        },
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "llwsZone",
+                        "label": "Area/Zone:",
+                        "expandHorizontally": False,
+                        "values": 'SFO',
+                        "choices": ['SFO','SLC','DFW','CHI','BOS','MIA'],
+                        },
+                       {"fieldType": "ComboBox",
+                        "fieldName": "llwsHour",
+                        "label": "Issuance Hour (UTC):",
+                        "expandHorizontally": False,
+                        "values": '0255',
+                        "choices": ['0255', '0855', '1455', '2055'],
+                        },                        
+                       {"fieldType": "ComboBox",
+                        "fieldName": "llwsType",
+                        "label": "Advisory Type:",
+                        "expandHorizontally": False,
+                        "values": 'New',
+                        "choices": ['New', 'Amendment', 'Correction', 'Cancellation'],
+                        },                      
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "llwsTimeConstraint",
+                        "label": "Time Constraint:",
+                        "expandHorizontally": False,
+                        "values": 'None',
+                        "choices": ["None","Occasional","After","Until","By","Continuing Beyond Advisory Until"], 
+                        },
+                       {
+                        "fieldType": "Text",
+                        "fieldName": "llwsTime",
+                        "label": "(UTC)",
+                        "enable": False,
+                        "visibleChars": 2,
+                        "maxChars": 2,
+                        "lines": 1,
+                        },
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "llwsIntensity",
+                        "label": "Intensity Trend?",
+                        "expandHorizontally": False,
+                        "values": 'None',
+                        "choices": ['None','No Change', 'Weaken', 'Intensify'],
+                        },
+                       {
+                        "fieldType": "Button",
+                        "fieldName": "llwsCreateOutlookPolygons",
+                        "label": "Create Outlook Polygons",
+                        "modifyRecommender": "CreateOutlookPolygonsTool"
+                        },
+                       {
+                        "fieldType": "Button",
+                        "fieldName": "llwsCreateSwathPolygons",
+                        "label": "Create Swaths",
+                        "modifyRecommender": "CreateSwathPolygonsTool"
+                        },                                                                                                                                                                  
+            ]
+        }
+        return office
+    
+    ###STRONG SURFACE WIND MEGAWIDGET OPTIONS###
+    def getSSWInputs(self, geomType):             
+        originatingOffice = self.getLLWSOffice()
+        #metaData = self.getSSWMetaData()
+        
+        fields = [originatingOffice] #, metaData]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "sswGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp   
+    
+    ###TURBULENCE MEGAWIDGET OPTIONS###
+    def getTurbulenceInputs(self, geomType):             
+        originatingOffice = self.getLLWSOffice()
+        metaData = self.getTurbulenceMetaData()
+        
+        fields = [originatingOffice, metaData]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "turbulenceGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp
+    
+    def getTurbulenceMetaData(self):
+        metaData = {
+                    "fieldType": "Group",
+                    "fieldName": "turbulenceMetaDataGroup",
+                    "label": "",
+                    "numColumns": 1,
+                    "fields": [                              
+                               {
+                                "fieldType": "DetailedComboBox",
+                                "fieldName": "turbulenceComboBox",
+                                "label": "Type/Severity:",
+                                "values": "moderateLowTurbulence",
+                                "numColumns": 1,
+                                "expandHorizontally": True,
+                                "choices": [
+                                            {
+                                             "identifier": "moderateLowTurbulence",
+                                             "displayString": "Moderate Low-Level",
+                                             "detailFields": [
+                                                              {
+                                                               "fieldType": "RadioButtons",
+                                                               "label": "Vertical Extent:",
+                                                               "fieldName": "moderateLowTurbulenceVerticalExtent",
+                                                               "choices": [
+                                                                           {
+                                                                            "identifier": "lowLevelTurbulenceBetween",
+                                                                            "displayString": "Between",
+                                                                            "detailFields": [
+                                                                                             {
+                                                                                              "fieldType": "ComboBox",
+                                                                                              "fieldName": "turbulenceBetweenFLBottom",
+                                                                                              "expandHorizontally": False,
+                                                                                              "label": "(Bottom)",
+                                                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                                          "FL500"],   
+                                                                                              "values": "SFC",                                                                                              
+                                                                                              },
+                                                                                             {
+                                                                                              "fieldType": "ComboBox",
+                                                                                              "fieldName": "turbulenceBelowFLTop",
+                                                                                              "expandHorizontally": False,
+                                                                                              "label": "And (Top)",
+                                                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                                          "FL500"],   
+                                                                                              "values": "FL100",                                                                                              
+                                                                                              },
+                                                                                             ]
+                                                                            },
+                                                                           {
+                                                                            "identifier": "lowLevelTurbulenceBelow",
+                                                                            "displayString": "Below",
+                                                                            "detailFields": [
+                                                                                             {
+                                                                                              "fieldType": "ComboBox",
+                                                                                              "fieldName": "turbulenceBelowFL",
+                                                                                              "expandHorizontally": False,
+                                                                                              "label": "",
+                                                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                                          "FL500"],   
+                                                                                              "values": "FL100",                                                                                              
+                                                                                              },
+                                                                                             ]
+                                                                            },
+                                                                           ]
+                                                               },                                                                                                                              
+                                                              ],
+                                                },
+                                               {
+                                                "identifier": "moderateHighTurbulence",
+                                                "displayString": "Moderate High-Level",
+                                                "detailFields": [
+                                                              {
+                                                               "fieldType": "RadioButtons",
+                                                               "label": "Vertical Extent:",
+                                                               "fieldName": "moderateHighTurbulenceVerticalExtent",
+                                                               "choices": [
+                                                                           {
+                                                                            "identifier": "highLevelTurbulenceBetween",
+                                                                            "displayString": "Between",
+                                                                            "detailFields": [
+                                                                                             {
+                                                                                              "fieldType": "ComboBox",
+                                                                                              "fieldName": "highLevelTurbulenceBetweenFLBottom",
+                                                                                              "expandHorizontally": False,
+                                                                                              "label": "(Bottom)",
+                                                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                                          "FL500"],           
+                                                                                              "values": "FL180",                                                                                              
+                                                                                              },
+                                                                                             {
+                                                                                              "fieldType": "ComboBox",
+                                                                                              "fieldName": "highLevelTurbulenceBelowFLTop",
+                                                                                              "expandHorizontally": False,
+                                                                                              "label": "And (Top)",
+                                                                                              "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                                                                          "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                                                                          "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                                                                          "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                                                                          "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                                                                          "FL500"],   
+                                                                                              "values": "FL300",                                                                                              
+                                                                                              },
+                                                                                             ]
+                                                                            },
+                                                                           ]
+                                                               },                                                                                                                              
+                                                              ],                                                
+                                                },
+                                               {
+                                                "identifier": "severeTurbulence",
+                                                "displayString": "Severe",
+                                                "detailFields": [                                                                                                                              
+                                                              ],                                                
+                                                 },
+                                          ],
+                                },
+                    ]
+                }       
+                    
+        return metaData         
+    
+    ###MOUNTAIN OBSCURATION MEGAWIDGET OPTIONS###
+    def getMountainObscurationInputs(self, geomType):             
+        originatingOffice = self.getLLWSOffice()
+        metaData = self.getMountainObscurationMetaData()
+        
+        fields = [originatingOffice, metaData]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "mountainObscurationGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp
+    
+    def getMountainObscurationMetaData(self):
+        metaData = {
+            "fieldType": "Group",
+            "fieldName": "mountainObscurationMetaDataGroup",
+            "label": "",
+            "numColumns": 1,
+            "fields": [
+                       {
+                        "fieldType": "CheckBoxes",
+                        "fieldName": "mountainObscurationPhenomenon",
+                        "label": "Phenomenon:",
+                        "choices": [
+                                    {
+                                    "identifier": "Clouds",
+                                    "displayString": "Clouds",
+                                     },
+                                    {
+                                    "identifier": "Precipitation",
+                                    "displayString": "Precipitation",
+                                     },
+                                    {
+                                    "identifier": "Smoke",
+                                    "displayString": "Smoke",
+                                     },
+                                    {
+                                    "identifier": "Haze",
+                                    "displayString": "Haze",
+                                     },
+                                    {
+                                    "identifier": "Mist",
+                                    "displayString": "Mist",
+                                     },
+                                    {
+                                    "identifier": "Fog",
+                                    "displayString": "Fog",
+                                     },
+                                    {
+                                    "identifier": "blowingSnow",
+                                    "displayString": "Blowing Snow",
+                                     },                                    
+                                    ]
+                        },                                                                                      
+            ]
+        }        
+                    
+        return metaData                     
+    
+    ###IFR MEGAWIDGET OPTIONS###
+    def getIFRInputs(self, geomType):             
+        originatingOffice = self.getLLWSOffice()
+        metaData = self.getIFRMetaData()
+        
+        fields = [originatingOffice, metaData]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "ifrGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp
+    
+    def getIFRMetaData(self):
+        metaData = {
+            "fieldType": "Group",
+            "fieldName": "ifrMetaDataGroup",
+            "label": "",
+            "numColumns": 1,
+            "fields": [
+                       {
+                        "fieldType": "CheckBoxes",
+                        "fieldName": "ifrCigsVis",
+                        "label": "Ceiling/Visibility Restrictions:",
+                        "choices": [
+                                    {
+                                     "identifier": "ceiling",
+                                     "displayString": "Ceilings Below (FL)",
+                                     "detailFields": [
+                                                      {
+                                                       "fieldType": "ComboBox",
+                                                       "fieldName": "ifrCeilingBelow",
+                                                       "choices": ["010","005"],
+                                                       "values": "010",
+                                                       }
+                                                      ] 
+                                     },
+                                    {
+                                     "identifier": "visibility",
+                                     "displayString": "Visibility Below (SM)",
+                                     "detailFields": [
+                                                      {
+                                                       "fieldType": "ComboBox",
+                                                       "fieldName": "ifrVisibilityBelow",
+                                                       "choices": ["3", "1"],
+                                                       "values": "3",
+                                                       }
+                                                      ]
+                                     },
+                                    ]
+                        },
+                       {
+                        "fieldType": "BoundedListBuilder",
+                        "fieldName": "ifrPhenomenon",
+                        "label": "Phenomenon:",
+                        "choices": ["Precipitation","Mist","Haze","Fog","Smoke","Blowing Snow","Light Rain", "Rain", "Heavy Rain",
+                                    "Light Snow", "Snow", "Heavy Snow", "Light Rainshowers", "Rainshowers", "Heavy Rainshowers"],
+                        "values": [],
+                        },                                                                                       
+            ]
+        }        
+                    
+        return metaData                         
+    
+    ###ICING MEGAWIDGET OPTIONS###
+    def getIcingInputs(self, geomType):             
+        originatingOffice = self.getLLWSOffice()
+        metaData = self.getIcingMetaData()
+        
+        fields = [originatingOffice, metaData]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "icingGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp
+    
+    def getIcingMetaData(self):
+        metaData = {
+            "fieldType": "Group",
+            "fieldName": "icingMetaDataGroup",
+            "label": "",
+            "numColumns": 1,
+            "fields": [
+                       
+                        {
+                         "fieldType": "Group",
+                         "fieldName": "icingLevelGroup",
+                         "label": "Icing Level Information",
+                         "fields": [
+                                    {
+                                     "fieldType": "ComboBox",
+                                     "fieldName": "icingComboBox",
+                                     "choices": [
+                                                 {
+                                                  "identifier": "between",
+                                                  "displayString": "Between",
+                                                  },
+                                                 {
+                                                  "identifier": "below",
+                                                  "displayString": "Below",                                      
+                                                  },
+                                                 {
+                                                  "identifier": "above",
+                                                  "displayString": "Above",                                      
+                                                  },                                     
+                                                 ],
+                                     "values": "between",
+                                     },
+                                     {
+                                      "fieldType": "ComboBox",
+                                      "fieldName": "icingBottom",
+                                      "expandHorizontally": False,
+                                      "label": "Bottom:",
+                                      "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                  "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                  "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                  "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                  "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                  "FL500"],
+                                      "values": "FL300",
+                                      },
+                                     {
+                                      "fieldType": "ComboBox",
+                                      "fieldName": "icingTop",
+                                      "expandHorizontally": False,
+                                      "label": "Top:",
+                                      "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                                  "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                                  "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                                  "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                                  "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                                  "FL500"],
+                                      "values": "FL300",
+                                      },                                                                        
+                                ]
+                         },                                                                
+            ]
+        }        
+                    
+        return metaData    
+    
+    ###MULTIPLE FREEZING LEVELS MEGAWIDGET OPTIONS###
+    def getMultipleFreezingLevelsInputs(self, geomType):             
+        originatingOffice = self.getLLWSOffice()
+        metaData = self.getMultipleFreezingLevelsMetaData()
+        
+        fields = [originatingOffice, metaData]
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "freezingLevelGroup",
+            "label": "",
+            "expandHorizontally": True,
+            "expandVertically": True,
+            "numColumns":1,
+            "fields": fields
+            }
+
+        return grp
+    
+    def getMultipleFreezingLevelsMetaData(self):
+        metaData = {
+            "fieldType": "Group",
+            "fieldName": "multipleFreezingLevelMetaDataGroup",
+            "label": "",
+            "numColumns": 2,
+            "fields": [
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "multipleFreezingLevelsBottom",
+                        "label": "Bottom:",
+                        "expandHorizontally": False,
+                        "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                    "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                    "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                    "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                    "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                    "FL500"],
+                        "values": "FL300", 
+                        },
+                       {
+                        "fieldType": "ComboBox",
+                        "fieldName": "multipleFreezingLevelsTop",
+                        "label": "Top:",
+                        "expandHorizontally": False,
+                        "choices": ["SFC", "FL010", "FL020", "FL030", "FL040", "FL050", "FL060", "FL070", "FL080", "FL090",
+                                    "FL100", "FL110", "FL120", "FL130", "FL140", "FL150", "FL160", "FL170", "FL180", "FL190",
+                                    "FL200", "FL210", "FL220", "FL230", "FL240", "FL250", "FL260", "FL270", "FL280", "FL290",
+                                    "FL300", "FL310", "FL320", "FL330", "FL340", "FL350", "FL360", "FL370", "FL380", "FL390",
+                                    "FL400", "FL410", "FL420", "FL430", "FL440", "FL450", "FL460", "FL470", "FL480", "FL490",
+                                    "FL500"],
+                        "values": "FL300", 
+                        },                                                                                     
+            ]
+        }        
+                    
+        return metaData                                      
+    
+###########################################################################    
 ## # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     
     import sys
     sys.stderr.writelines( ['Hello World!\n'])
+                
+    ###CONTROLLING LAYER SELECTIONS FOR ICING
+    if triggerIdentifiers is None or "icingComboBox" in triggerIdentifiers:
+        if triggerIdentifiers is None:
+            return None
+        else:
+            if "between" in mutableProperties["icingComboBox"]["values"]:
+                return {
+                      "icingBottom": {
+                                "enable": True,                               
+                      },
+                      "icingTop": {
+                                "enable": True,                               
+                      },                                                 
+                }            
+            elif "below" in mutableProperties["icingComboBox"]["values"]:
+                return {
+                      "icingBottom": {
+                                "enable": False,                               
+                      },
+                      "icingTop": {
+                                "enable": True,                               
+                      },                            
+                }            
+            elif "above" in mutableProperties["icingComboBox"]["values"]:
+                return {
+                      "icingBottom": {
+                                "enable": True,                               
+                      },
+                      "icingTop": {
+                                "enable": False,                               
+                      },                             
+                }
+                
+    ###CONTROLLING ZONES FOR AIRMET HAZARDS BASED ON ORIGINATING OFFICE(MWO)###
+    if triggerIdentifiers is None or "llwsOffice" in triggerIdentifiers:
+        if "KKCI" in mutableProperties["llwsOffice"]["values"]:
+            return {
+                  "llwsZone": {
+                            "choices": ['SFO','SLC','DFW','CHI','MIA','BOS'],
+                            "enable": True,
+                            "values": 'SFO',                                
+                  },
+                  "llwsHour": {
+                            "choices": ['0255', '0855', '1455', '2055'],
+                            "values": '0255',
+                  },                             
+            }
+        elif "PAWU" in mutableProperties["llwsOffice"]["values"]:
+            return {
+                  "llwsZone": {
+                            "choices": ['JNU','ANC','FAI'],
+                            "enable": True,
+                            "values": 'JNU',                               
+                  },
+                  "llwsHour": {
+                            "choices": ['0145/0245', '0745/0845', '1345/1445', '1945/2045'],
+                            "values": '0145/0245',
+                  },                                                   
+            }
+        else:
+            return {
+                  "llwsZone": {
+                            "choices": ['HNL'],
+                            "enable": False,
+                            "values": 'HNL',                                
+                  },
+                  "llwsHour": {
+                            "choices": ['0400', '1000', '1600', '2200'],
+                            "values": '0400',
+                  },                                                 
+            }     
+    
+    ###DISABLE TIME IF CHOOSING OCCASIONAL FOR LLWS
+    if triggerIdentifiers is None or "llwsTimeConstraint" in triggerIdentifiers:
+        if triggerIdentifiers is None:
+            return None
+        else:
+            if mutableProperties["llwsTimeConstraint"]["values"] == "Occasional":
+                return {
+                        "llwsTime": {
+                            "enable": False,         
+                            }
+                        }
+            else:
+                return {
+                        "llwsTime": {
+                            "enable": True,         
+                            }
+                        }            
+                
     
     ###FOR CONVECTIVE SIGMET MUST HAVE HAIL/WIND IF SEVERE IS CHECKED###
     if triggerIdentifiers is None or "convectiveSigmetEmbeddedSvr" in triggerIdentifiers:

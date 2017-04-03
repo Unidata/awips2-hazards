@@ -76,7 +76,20 @@ ProductGeneratorTable = {
             ],
             "previewFormatters": ["Legacy_International_SIGMET_Formatter", "International_SIGMET_XML_Formatter"],
             "issueFormatters": [], #["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],                                   
-            },                        
+            },
+        "AIRMET_ProductGenerator": {
+            "allowedHazards": [
+            ('LLWS', 'Aviation'),
+            ('Strong_Surface_Wind', 'Aviation'),
+            ('Turbulence', 'Aviation'),
+            ('Mountain_Obscuration', 'Aviation'),
+            ('IFR', 'Aviation'),
+            ('Icing', 'Aviation'),
+            ('Multiple_Freezing_Levels', 'Aviation'),
+            ],
+            "previewFormatters": ["Legacy_AIRMET_Formatter", "AIRMET_XML_Formatter"],
+            "issueFormatters": [], #["Legacy_AIRMET_Formatter"],                                   
+            },                         
                                                                                            
                          
         # WFO Legacy                                           

@@ -24,6 +24,13 @@ Aviation = {
         "SIGMET.NonConvective",
         "SIGMET.Convective",
         "SIGMET.International",
+        "LLWS",
+        "Strong_Surface_Wind",
+        "Turbulence",
+        "Mountain_Obscuration",
+        "IFR",
+        "Icing",
+        "Multiple_Freezing_Levels",
     ],
     "hazardCategoriesAndTypes": [
         {
@@ -31,9 +38,16 @@ Aviation = {
         "children": [
         "SIGMET.NonConvective",
         "SIGMET.Convective",
-        "SIGMET.International",       
+        "SIGMET.International",
+        "LLWS",
+        "Strong_Surface_Wind",
+        "Turbulence",
+        "Mountain_Obscuration",
+        "IFR",
+        "Icing",
+        "Multiple_Freezing_Levels",          
         ]
-        }
+        },
     ],
     "defaultTimeDisplayDuration": 172800000,
     "defaultCategory" : "Aviation",
@@ -183,11 +197,11 @@ Aviation = {
             "visible":True,
         },
         {
-            "toolName": "StormSurgeRecommender",
-            "displayName": "Storm Surge Recommender",
+            "toolName": "TurbulenceAndIcingRecommender",
+            "displayName": "TurbulenceAndIcingRecommender",
             "toolType": "RECOMMENDER",
             "visible":True,
-        },                                                                                                         
+        },                                                                                                                                                                           
     ],
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "ALWAYS_FULL"

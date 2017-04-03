@@ -43,7 +43,23 @@ HazardCategories = collections.OrderedDict(
         "Aviation": [("SIGMET","NonConvective"),
                      ("SIGMET","Convective"),
                      ("SIGMET","International"),
+                     ("LLWS",),
+                     ("Strong_Surface_Wind",),
+                     ("Turbulence",),
+                     ("Mountain_Obscuration",),
+                     ("IFR",),
+                     ("Icing",),
+                     ("Multiple_Freezing_Levels",), 
                      ],
+         
+#          "Aviation - AIRMET": [("LLWS",),
+#                                ("Strong_Surface_Wind",),
+#                                ("Turbulence",),
+#                                ("Mountain_Obscuration",),
+#                                ("IFR",),
+#                                ("Icing",),
+#                                ("Multiple_Freezing_Levels",),                               
+#                                ],
         
          
         ### WFO Deterministic

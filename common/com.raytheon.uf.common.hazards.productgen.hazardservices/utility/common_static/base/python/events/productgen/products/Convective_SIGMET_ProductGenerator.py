@@ -92,10 +92,10 @@ class Product(HydroGenerator.Product):
         metaDict = eventSet.getAttributes()
         self._issueFlag = metaDict.get('issueFlag')
         
-        ##raise exception error if trying to issue before HH:40
-        #millis = SimulatedTime.getSystemTime().getMillis()
-        #currentTime = datetime.datetime.utcfromtimestamp(millis / 1000)
-        #if currentTime.minute < 40 and self._issueFlag:
+        # #raise exception error if trying to issue before HH:40
+        # millis = SimulatedTime.getSystemTime().getMillis()
+        # currentTime = datetime.datetime.utcfromtimestamp(millis / 1000)
+        # if currentTime.minute < 40 and self._issueFlag:
         #    raise ValueError('You cannot issue products before HH:40. Wait until 40 minutes after the hour to issue.')
         
         if dialogInputMap:
@@ -104,7 +104,7 @@ class Product(HydroGenerator.Product):
             self._dialogInputMap = {}
             
         self._issueTime = long(metaDict.get("currentTime"))
-        self._validTime = eventSet.getAttributes().get("currentTime")/1000
+        self._validTime = eventSet.getAttributes().get("currentTime") / 1000
         
         domains = Domains.AviationDomains
         for domain in domains:
@@ -117,7 +117,7 @@ class Product(HydroGenerator.Product):
         productDict['productParts'] = parts
         eventDicts = [] 
         
-        #Find the latest startTime for the event
+        # Find the latest startTime for the event
         self._latestStartTime = None
         for event in self._inputHazardEvents:
             if self._latestStartTime is None:
@@ -183,15 +183,15 @@ class Product(HydroGenerator.Product):
                     vertices = shapely.geometry.base.dump_coords(featurePoly)
                     if any(isinstance(i, list) for i in vertices):
                         vertices = vertices[0]
-                    convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(event,vertices,self._originalGeomType,'modification')
-                    boundingStatement = AviationUtils.AviationUtils().boundingStatement(event,self._originalGeomType,TABLEFILE,vertices,'modification')
+                    convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(event, vertices, self._originalGeomType, 'modification')
+                    boundingStatement = AviationUtils.AviationUtils().boundingStatement(event, self._originalGeomType, TABLEFILE, vertices, 'modification')
                         
                     if self._originalGeomType != 'Polygon':
-                        poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
-                        AviationUtils.AviationUtils().updateVisualFeatures(event,vertices,poly)
+                        poly = AviationUtils.AviationUtils().createPolygon(vertices, self._width, self._originalGeomType)
+                        AviationUtils.AviationUtils().updateVisualFeatures(event, vertices, poly)
                     else:
                         poly = []
-                        AviationUtils.AviationUtils().updateVisualFeatures(event,vertices,poly)
+                        AviationUtils.AviationUtils().updateVisualFeatures(event, vertices, poly)
     
 ######################START ACTUAL PRODUCT GENERATION METHODS ###################################                                                          
  
@@ -206,13 +206,15 @@ class Product(HydroGenerator.Product):
             return False
         return True
     
-    def _geometry(self, hazardEvent):
-        if self._geomType != 'LineString':        
-            for g in hazardEvent.getFlattenedGeometry().geoms:
-                geometry = shapely.geometry.base.dump_coords(g)
-        else:
-            geometry = hazardEvent.get('polygon')
-            geometry.pop()
+    def _geometry(self, hazardEvent):      
+        for g in hazardEvent.getFlattenedGeometry().geoms:
+            geometry = shapely.geometry.base.dump_coords(g)
+#         if self._geomType != 'LineString':
+#             for g in hazardEvent.getFlattenedGeometry().geoms:
+#                 geometry = shapely.geometry.base.dump_coords(g)
+#         else:
+#             geometry = hazardEvent.get('polygon')
+#             geometry.pop()
         
         return geometry
     
@@ -266,7 +268,7 @@ class Product(HydroGenerator.Product):
     def _sigmetNumber(self, hazardEvent, domains):
         startTime = hazardEvent.getStartTime()
         startTimeTuple = hazardEvent.getStartTime().timetuple()
-        startTimeStr = str(startTimeTuple[2])+' '+str(startTimeTuple[3])+':'+str(startTimeTuple[4])
+        startTimeStr = str(startTimeTuple[2]) + ' ' + str(startTimeTuple[3]) + ':' + str(startTimeTuple[4])
         if hazardEvent.getStatus() in ["PENDING"]:
             if self._issueFlag == "True":
                 convectiveSigmetNumberStr = self._setConvectiveSigmetNumber(hazardEvent)
@@ -275,13 +277,13 @@ class Product(HydroGenerator.Product):
                 convectiveSigmetNumberStr = self._applyCount(convectiveSigmetNumberStr, domains)                                                        
         elif hazardEvent.getStatus() in ["ISSUED"]:
             validTime = hazardEvent.get('validTime')
-            validTime = validTime/1000
+            validTime = validTime / 1000
             validTime = datetime.datetime.fromtimestamp(validTime).strftime('%d %H:%M')
             if startTimeStr[:5] == validTime[:5]:
-                #if startTime and validTime are equal get the existing number          
+                # if startTime and validTime are equal get the existing number          
                 convectiveSigmetNumberStr = hazardEvent.get('convectiveSigmetNumberStr')
             else:
-                #if startTime and validTime are not equal, iterate to the next number
+                # if startTime and validTime are not equal, iterate to the next number
                 convectiveSigmetNumberStr = self._getConvectiveSigmetNumber(hazardEvent)
                 if self._issueFlag == 'True':
                     convectiveSigmetNumberStr = self._setConvectiveSigmetNumber(hazardEvent)
@@ -297,7 +299,7 @@ class Product(HydroGenerator.Product):
                 self._addCount(domains)
                 
         hazardEvent.set('convectiveSigmetNumberStr', convectiveSigmetNumberStr)
-        hazardEvent.set('validTime', time.mktime(hazardEvent.getStartTime().timetuple())*1000)            
+        hazardEvent.set('validTime', time.mktime(hazardEvent.getStartTime().timetuple()) * 1000)            
                 
         return convectiveSigmetNumberStr        
     
@@ -320,10 +322,10 @@ class Product(HydroGenerator.Product):
                 
                     if previousSigmetNumber == 99:
                         newSigmetNumber = 1
-                        if ('hundred'+self._convectiveSigmetDomain) in convectiveSigmetNumberDict:
-                            convectiveSigmetNumberDict[('hundred'+self._convectiveSigmetDomain)] = 2
+                        if ('hundred' + self._convectiveSigmetDomain) in convectiveSigmetNumberDict:
+                            convectiveSigmetNumberDict[('hundred' + self._convectiveSigmetDomain)] = 2
                         else:
-                            convectiveSigmetNumberDict[('hundred'+self._convectiveSigmetDomain)] = 1
+                            convectiveSigmetNumberDict[('hundred' + self._convectiveSigmetDomain)] = 1
                     else:
                         newSigmetNumber = previousSigmetNumber + 1
                     convectiveSigmetNumberDict[self._convectiveSigmetDomain] = newSigmetNumber
@@ -347,7 +349,7 @@ class Product(HydroGenerator.Product):
             with open('/scratch/convectiveSigmetNumber.txt', 'w') as outFile:
                 json.dump(convectiveSigmetNumberDict, outFile)
         
-        if ('hundred'+self._convectiveSigmetDomain) in convectiveSigmetNumberDict:
+        if ('hundred' + self._convectiveSigmetDomain) in convectiveSigmetNumberDict:
             newSigmetNumber = str(newSigmetNumber).zfill(2)
         else:
             newSigmetNumber = str(newSigmetNumber)
@@ -452,9 +454,9 @@ class Product(HydroGenerator.Product):
         elif self._geomType == "Point":
             for selection in self._convectiveSigmetEmbeddedSvr:
                 embeddedStr += hazardEmbeddedDict[selection]
-            self._convectiveSigmetWidth = int(self._convectiveSigmetWidth)*2
+            self._convectiveSigmetWidth = int(self._convectiveSigmetWidth) * 2
             self._convectiveSigmetWidth = str(self._convectiveSigmetWidth)
-            embeddedStr = embeddedStr + 'D'+self._convectiveSigmetWidth + ' NM '
+            embeddedStr = embeddedStr + 'D' + self._convectiveSigmetWidth + ' NM '
                     
         return embeddedStr
     
@@ -487,7 +489,7 @@ class Product(HydroGenerator.Product):
         
         if self._convectiveSigmetCloudTop == "topsTo":
             if len(str(self._convectiveSigmetCloudTopText)) == 2:
-                cloudTopStr = "TOPS TO FL" +"0"+str(self._convectiveSigmetCloudTopText) + '.'
+                cloudTopStr = "TOPS TO FL" + "0" + str(self._convectiveSigmetCloudTopText) + '.'
             else:
                 cloudTopStr = "TOPS TO FL" + str(self._convectiveSigmetCloudTopText) + '.'
         elif self._convectiveSigmetCloudTop == "topsAbove":
