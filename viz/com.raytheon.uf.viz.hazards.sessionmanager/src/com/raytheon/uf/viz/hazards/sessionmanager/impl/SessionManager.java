@@ -169,6 +169,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      into the session event manager.
  * Mar 30, 2017 15528      Chris.Golden Changed to reset modified flag when asked to do so by the
  *                                      recommender when handling the result of said recommender.
+ * Apr 04, 2017 32732      Chris.Golden Added constant for indicating whether or not the origin
+ *                                      (user name and workstation identifier) should be updated
+ *                                      when a recommender returns modified event(s).
  * </pre>
  * 
  * @author bsteffen
@@ -583,6 +586,14 @@ public class SessionManager implements
                             .getAttribute(HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
 
             /*
+             * Determine whether or not the events should have their user name
+             * and workstation set. This defaults to true.
+             */
+            boolean setOrigin = (Boolean.FALSE
+                    .equals(events
+                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_SET_ORIGIN)) == false);
+
+            /*
              * Determine whether or not all hazard events that are brand new
              * (i.e., just created by the recommender) should be saved to either
              * the history list or the database.
@@ -609,7 +620,8 @@ public class SessionManager implements
             /*
              * Iterate through the hazard events provided as the result, adding
              * hazard warning areas for each, setting their user name and
-             * workstation, and then telling the event manager to add them.
+             * workstation if appropriate, and then telling the event manager to
+             * add them.
              */
             IOriginator originator = new RecommenderOriginator(
                     recommenderIdentifier);
@@ -620,9 +632,11 @@ public class SessionManager implements
                             .buildInitialHazardAreas(hazardEvent);
                     hazardEvent.addHazardAttribute(HAZARD_AREA,
                             (Serializable) ugcHatchingAlgorithms);
-                    hazardEvent.setUserName(LocalizationManager.getInstance()
-                            .getCurrentUser());
-                    hazardEvent.setWorkStation(VizApp.getHostName());
+                    if (setOrigin) {
+                        hazardEvent.setUserName(LocalizationManager
+                                .getInstance().getCurrentUser());
+                        hazardEvent.setWorkStation(VizApp.getHostName());
+                    }
                     hazardEvent
                             .removeHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED);
                     boolean isNew = (hazardEvent.getEventID() == null);

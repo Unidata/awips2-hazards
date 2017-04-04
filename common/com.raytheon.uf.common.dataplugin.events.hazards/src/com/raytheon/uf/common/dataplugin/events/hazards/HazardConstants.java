@@ -118,6 +118,9 @@ import com.google.common.collect.ImmutableMap;
  * Mar 30, 2017 15528     Chris.Golden  Added recommender result event set property to indicate
  *                                      whether or not to treat saved events as issuances or
  *                                      not.
+ * Apr 04, 2017 32732     Chris.Golden  Added constant for indicating whether or not the origin
+ *                                      (user name and workstation identifier) should be updated
+ *                                      when a recommender returns modified event(s).
  * </pre>
  * 
  * @author mnash
@@ -206,6 +209,8 @@ public final class HazardConstants {
     public static final String RECOMMENDER_RESULT_SAVE_TO_HISTORY = "saveToHistory";
 
     public static final String RECOMMENDER_RESULT_TREAT_AS_ISSUANCE = "treatAsIssuance";
+
+    public static final String RECOMMENDER_RESULT_SET_ORIGIN = "setOrigin";
 
     /**
      * Types of changes or events that may trigger a recommender execution.

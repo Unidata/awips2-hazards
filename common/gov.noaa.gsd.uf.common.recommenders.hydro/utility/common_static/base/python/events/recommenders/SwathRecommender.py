@@ -232,10 +232,11 @@ class Recommender(RecommenderTemplate.Recommender):
             
             # Origin Database
             #  From another machine: create Visual Features, do not save
-            # to database.
+            # to database or set the origin.
             if origin == 'database':
                 self.setVisualFeatures(event)
                 resultEventSet.add(event)
+                resultEventSet.addAttribute("setOrigin", False)
                 self.saveToDatabase = False
                 continue
                        
@@ -253,7 +254,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
                 
             elif trigger == 'hazardEventModification':
-                changes = self.adjustForEventModification(event, eventSetAttrs)
+                changes = self.adjustForEventModification(event, eventSetAttrs, resultEventSet)
                 if not changes:
                     # Handle other dialog buttons
                     self.handleAdditionalEventModifications(event, resultEventSet)
@@ -511,8 +512,7 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.add(event)
             #resultEventSet.addAttribute('selectedTime', self.eventSt_ms)    
         
-    def adjustForEventModification(self, event, eventSetAttrs):
-        
+    def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
         print '\n---SR: Entering adjustForEventModification...'
         print self.attributeIdentifiers
         
@@ -582,6 +582,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.flush()
                 self.probUtils.setActivation(event)
                 event.set('selectSemaphore', False)
+                resultEventSet.addAttribute('setOrigin', False)
                 return True
             else:
                 return False
@@ -873,17 +874,17 @@ class Recommender(RecommenderTemplate.Recommender):
                 #  event geometry
                 if abs(featureSt - self.eventSt_ms) <= self.probUtils.timeDelta_ms():
                     event.setGeometry(featurePoly)
-                    # If nudging an issued event, restore the issuedDuration
-                    if not self.pendingHazard: 
-                        durationSecs = event.get("durationSecsAtIssuance")
-                        if durationSecs is not None:
-                            endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self.eventSt_ms + durationSecs * 1000,
-                                                                             delta=datetime.timedelta(seconds=1))
-                            event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS / 1000))
-                            # graphProbs = self.probUtils.getGraphProbsBasedOnDuration(event)
-                            graphProbs = event.get("graphProbsAtIssuance")
-                            # LogUtils.logMessage('[2]', graphProbs)
-                            event.set('convectiveProbTrendGraph', graphProbs)
+#                     # If nudging an issued event, restore the issuedDuration
+#                     if not self.pendingHazard: 
+#                         durationSecs = event.get("durationSecsAtIssuance")
+#                         if durationSecs is not None:
+#                             endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self.eventSt_ms + durationSecs * 1000,
+#                                                                              delta=datetime.timedelta(seconds=1))
+#                             event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS / 1000))
+#                             # graphProbs = self.probUtils.getGraphProbsBasedOnDuration(event)
+#                             graphProbs = event.get("graphProbsAtIssuance")
+#                             # LogUtils.logMessage('[2]', graphProbs)
+#                             event.set('convectiveProbTrendGraph', graphProbs)
                 automationLevel = event.get('automationLevel')
                 if automationLevel == 'automated':
                     self.setAttributesAndGeometry(event)               

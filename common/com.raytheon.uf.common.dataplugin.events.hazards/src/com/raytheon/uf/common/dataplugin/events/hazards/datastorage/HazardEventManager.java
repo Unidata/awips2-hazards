@@ -25,10 +25,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -75,6 +77,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      historical versions of events from
  *                                      latest versions; this is needed until
  *                                      the latest version saving is fixed.
+ * Apr 04, 2017  32732     Chris.Golden Fixed temporary code used to prune
+ *                                      event history lists of latest-version
+ *                                      snapshots so that it does not return
+ *                                      any empty history lists.
  * </pre>
  * 
  * @author mnash
@@ -218,12 +224,14 @@ public class HazardEventManager implements IHazardEventManager {
          * version (ahistorical) hazard events, or if the latest one is wanted
          * as well, all but the most recent "latest version". This is needed
          * because "latest" ones are currently being saved to the history list
-         * if StartUpConfig options are set to force this.
+         * if StartUpConfig options are set to force this. Remove any history
+         * lists that end up being empty as a result.
          */
         boolean needLatest = (request.getInclude() != Include.HISTORICAL_EVENTS);
-        for (HazardHistoryList historyList : events.values()) {
-            Iterator<HazardEvent> iterator = historyList.iterator();
-            Collections.reverse(historyList);
+        Set<String> toBeRemoved = new HashSet<>();
+        for (Map.Entry<String, HazardHistoryList> entry : events.entrySet()) {
+            Iterator<HazardEvent> iterator = entry.getValue().iterator();
+            Collections.reverse(entry.getValue());
             while (iterator.hasNext()) {
                 HazardEvent event = iterator.next();
                 if (event.getHazardAttribute(HISTORICAL) == null) {
@@ -236,7 +244,13 @@ public class HazardEventManager implements IHazardEventManager {
                     event.removeHazardAttribute(HISTORICAL);
                 }
             }
-            Collections.reverse(historyList);
+            Collections.reverse(entry.getValue());
+            if (entry.getValue().isEmpty()) {
+                toBeRemoved.add(entry.getKey());
+            }
+        }
+        for (String eventIdentifier : toBeRemoved) {
+            events.remove(eventIdentifier);
         }
 
         return events;
