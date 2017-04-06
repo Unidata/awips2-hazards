@@ -215,6 +215,7 @@ class Recommender(RecommenderTemplate.Recommender):
         for event in eventSet:
 
             print 'SR:', event.get('objectID'), event.getStatus()
+            self.lastSelectedTime = self.selectedTime
                                     
             # Determine if we want to process this event or skip it
             if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
@@ -261,6 +262,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     continue
                 if 'modifyButton' in self.attributeIdentifiers or (self.editableHazard and self.movedStartTime): 
                     resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
+                    self.lastSelectedTime = self.eventSt_ms
                     print "SR Setting selected time to eventSt"
                     self.flush()
                     
@@ -269,6 +271,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     continue
                 resultEventSet.addAttribute('selectedTime', self.dataLayerTimeToLeft)
                 print "SR Setting selected time to dataLayerTimeToLeft"
+                self.lastSelectedTime =  self.dataLayerTimeToLeft
                 self.flush()
                 
             elif trigger == 'autoUpdate':
@@ -291,6 +294,7 @@ class Recommender(RecommenderTemplate.Recommender):
             self.setVisualFeatures(event)         
                                 
             # Add revised event to result
+            event.set('lastSelectedTime', self.lastSelectedTime)
             resultEventSet.add(event)
             
         if self.saveToDatabase:
@@ -510,8 +514,11 @@ class Recommender(RecommenderTemplate.Recommender):
         elif self.editableHazard:
             self.visualCueForDataLayerUpdate(event)
             resultEventSet.add(event)
-            #resultEventSet.addAttribute('selectedTime', self.eventSt_ms)    
-        
+            #resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
+            
+            if event.get('lastSelectedTime') is not None:
+                 resultEventSet.addAttribute('selectedTime', event.get('lastSelectedTime'))
+
     def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
         print '\n---SR: Entering adjustForEventModification...'
         print self.attributeIdentifiers
