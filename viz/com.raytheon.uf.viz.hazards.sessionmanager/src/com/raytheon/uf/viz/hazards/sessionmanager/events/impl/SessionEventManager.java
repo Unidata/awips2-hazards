@@ -506,6 +506,13 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      setting of workstation and user name to that of new version of
  *                                      event. Also made isEventChecked() only return true if the
  *                                      specified event is visible given the current filtering.
+ * Apr 13, 2017   33142    Chris.Golden Changed removeEvent() to remove all copies of the hazard
+ *                                      event from the database, instead of having to painstakingly
+ *                                      go through and try to find all copies to remove. Also added
+ *                                      new method allowing the handling of notifications from the
+ *                                      database that all copies of a hazard event were removed. Also
+ *                                      added use of new method in session manager to remember the
+ *                                      identifiers of removed hazard events.
  * </pre>
  * 
  * @author bsteffen
@@ -2868,10 +2875,24 @@ public class SessionEventManager implements
         }
 
         /*
-         * If an entire hazard event is being removed, remove it from the
-         * session as well.
+         * TODO: There is no capability to remove individual historical
+         * snapshots of hazard events yet.
          */
-        ObservedHazardEvent oldEvent = getEventById(event.getEventID());
+        statusHandler.error(
+                "Cannot handle removal of historical snapshot of hazard event "
+                        + event.getEventID() + " from database.",
+                new UnsupportedOperationException("not yet implemented"));
+    }
+
+    /**
+     * Handle the removal of all copies of an event from the database.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event for which all copies were removed from
+     *            the database.
+     */
+    void handleEventRemovalAllCopiesFromDatabase(String eventIdentifier) {
+        ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
         if (oldEvent != null) {
             removeEvent(oldEvent, false, Originator.DATABASE);
         }
@@ -2906,6 +2927,7 @@ public class SessionEventManager implements
      */
     private void removeEvent(IHazardEvent event, boolean delete,
             IOriginator originator) {
+        sessionManager.rememberRemovedEventIdentifier(event.getEventID());
         if (events.contains(event)) {
 
             /*
@@ -2926,13 +2948,7 @@ public class SessionEventManager implements
              * proposed items on the end of the list.
              */
             if (delete) {
-                HazardHistoryList histList = dbManager.getHistoryByEventID(
-                        eventIdentifier, true);
-                if (histList != null && !histList.isEmpty()) {
-                    dbManager.removeEvents(histList);
-                }
-                dbManager.removeEvents(createEventCopyToBePersisted(event,
-                        false, false));
+                dbManager.removeAllCopiesOfEvent(eventIdentifier);
             }
             updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
                     (ObservedHazardEvent) event, true);

@@ -266,6 +266,16 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      identifiers for which modification of their
  *                                      underlying values does not affect their
  *                                      enclosing hazard event's modify flag.
+ * Apr 13, 2017 33142      Chris.Golden Changed to use sets holding hazard types
+ *                                      in place of mappings of hazard types to
+ *                                      booleans, as the set is simpler than the
+ *                                      map and is a better choice. Also added a
+ *                                      check at startup and whenever the hazard
+ *                                      categories or hazard types are reloaded to
+ *                                      ensure that the hazard categories' types are
+ *                                      all found within the hazard types definition
+ *                                      file, and to complain with an error message
+ *                                      if they are not.
  * </pre>
  * 
  * @author bsteffen
@@ -386,13 +396,13 @@ public class SessionConfigurationManager implements
 
     private Map<String, String> typeFirstRecommendersForHazardTypes;
 
-    private Map<String, Boolean> startTimeIsCurrentTimeForHazardTypes;
+    private Set<String> typesRequiringStartTimeIsCurrentTime;
 
-    private Map<String, Boolean> allowAnyStartTimeForHazardTypes;
+    private Set<String> typesAllowingAnyStartTime;
 
-    private Map<String, Boolean> allowTimeExpandForHazardTypes;
+    private Set<String> typesAllowingTimeExpand;
 
-    private Map<String, Boolean> allowTimeShrinkForHazardTypes;
+    private Set<String> typesAllowingTimeShrink;
 
     private Map<String, Map<HazardEventFirstClassAttribute, String>> recommendersForTriggersForHazardTypes;
 
@@ -495,6 +505,8 @@ public class SessionConfigurationManager implements
                         .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY),
                 HazardTypes.class);
         loaderPool.schedule(hazardTypes);
+
+        ensureHazardTypeEntriesExistForAllTypes();
 
         /*
          * Load any event-driven tool specifications from configuration, and
@@ -815,18 +827,13 @@ public class SessionConfigurationManager implements
                 Choice child = new Choice();
                 String headline = getHeadline(HazardEventUtilities
                         .getHazardType(info[0], significance, subType));
-                StringBuilder id = new StringBuilder();
-                for (String str : info) {
-                    if (str != info[0]) {
-                        id.append(".");
-                    }
-                    id.append(str);
-                }
-                child.setIdentifier(id.toString());
+
+                String hazardType = HazardEventUtilities.getHazardType(info);
+                child.setIdentifier(hazardType);
                 if (headline == null) {
                     child.setDisplayString(child.getIdentifier());
                 } else {
-                    child.setDisplayString(id + " (" + headline + ")");
+                    child.setDisplayString(hazardType + " (" + headline + ")");
                 }
                 children.add(child);
             }
@@ -1424,6 +1431,12 @@ public class SessionConfigurationManager implements
 
     @Override
     public TimeResolution getTimeResolution(IHazardEvent event) {
+
+        /*
+         * If the time resolutions for hazard types map has not yet been
+         * initialized, do so now. Include an entry of minutes for the null
+         * hazard type, so that hazard events without a type have an entry.
+         */
         if (timeResolutionsForHazardTypes == null) {
             timeResolutionsForHazardTypes = new HashMap<>();
             for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
@@ -1487,43 +1500,41 @@ public class SessionConfigurationManager implements
     public boolean isStartTimeIsCurrentTime(IHazardEvent event) {
 
         /*
-         * If the flags for hazard types map has not yet been initialized, do so
-         * now. Include an entry of an empty list for the null hazard type, so
-         * that hazard events without a type have an entry.
+         * If the types-for-which-start-time-is-current-time set has not yet
+         * been initialized, do so now.
          */
-        if (startTimeIsCurrentTimeForHazardTypes == null) {
-            startTimeIsCurrentTimeForHazardTypes = new HashMap<>();
+        if (typesRequiringStartTimeIsCurrentTime == null) {
+            typesRequiringStartTimeIsCurrentTime = new HashSet<>();
             for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
                     .getConfig().entrySet()) {
-                startTimeIsCurrentTimeForHazardTypes.put(entry.getKey(), entry
-                        .getValue().isStartTimeIsCurrentTime());
+                if (entry.getValue().isStartTimeIsCurrentTime()) {
+                    typesRequiringStartTimeIsCurrentTime.add(entry.getKey());
+                }
             }
-            startTimeIsCurrentTimeForHazardTypes.put(null, false);
         }
 
-        return startTimeIsCurrentTimeForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event));
+        return typesRequiringStartTimeIsCurrentTime
+                .contains(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
     public boolean isAllowAnyStartTime(IHazardEvent event) {
 
         /*
-         * If the flags for hazard types map has not yet been initialized, do so
-         * now. Include an entry of an empty list for the null hazard type, so
-         * that hazard events without a type have an entry.
+         * If the types-for-which-any-start-time-is-allowed set has not yet been
+         * initialized, do so now.
          */
-        if (allowAnyStartTimeForHazardTypes == null) {
-            allowAnyStartTimeForHazardTypes = new HashMap<>();
+        if (typesAllowingAnyStartTime == null) {
+            typesAllowingAnyStartTime = new HashSet<>();
             for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
                     .getConfig().entrySet()) {
-                allowAnyStartTimeForHazardTypes.put(entry.getKey(), entry
-                        .getValue().isAllowAnyStartTime());
+                if (entry.getValue().isAllowAnyStartTime()) {
+                    typesAllowingAnyStartTime.add(entry.getKey());
+                }
             }
-            allowAnyStartTimeForHazardTypes.put(null, false);
         }
 
-        return allowAnyStartTimeForHazardTypes.get(HazardEventUtilities
+        return typesAllowingAnyStartTime.contains(HazardEventUtilities
                 .getHazardType(event));
     }
 
@@ -1531,21 +1542,23 @@ public class SessionConfigurationManager implements
     public boolean isAllowTimeExpand(IHazardEvent event) {
 
         /*
-         * If the flags for hazard types map has not yet been initialized, do so
-         * now. Include an entry of an empty list for the null hazard type, so
-         * that hazard events without a type have an entry.
+         * If the types-for-which-end-time-expansion-is-allowed set has not yet
+         * been initialized, do so now. Add an entry for the null hazard type
+         * too, so that as-yet-untyped hazard events may have their end time
+         * changed.
          */
-        if (allowTimeExpandForHazardTypes == null) {
-            allowTimeExpandForHazardTypes = new HashMap<>();
+        if (typesAllowingTimeExpand == null) {
+            typesAllowingTimeExpand = new HashSet<>();
             for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
                     .getConfig().entrySet()) {
-                allowTimeExpandForHazardTypes.put(entry.getKey(), entry
-                        .getValue().isAllowTimeExpand());
+                if (entry.getValue().isAllowTimeExpand()) {
+                    typesAllowingTimeExpand.add(entry.getKey());
+                }
             }
-            allowTimeExpandForHazardTypes.put(null, true);
+            typesAllowingTimeExpand.add(null);
         }
 
-        return allowTimeExpandForHazardTypes.get(HazardEventUtilities
+        return typesAllowingTimeExpand.contains(HazardEventUtilities
                 .getHazardType(event));
     }
 
@@ -1553,21 +1566,23 @@ public class SessionConfigurationManager implements
     public boolean isAllowTimeShrink(IHazardEvent event) {
 
         /*
-         * If the flags for hazard types map has not yet been initialized, do so
-         * now. Include an entry of an empty list for the null hazard type, so
-         * that hazard events without a type have an entry.
+         * If the types-for-which-end-time-shrinkage-is-allowed set has not yet
+         * been initialized, do so now. Add an entry for the null hazard type
+         * too, so that as-yet-untyped hazard events may have their end time
+         * changed.
          */
-        if (allowTimeShrinkForHazardTypes == null) {
-            allowTimeShrinkForHazardTypes = new HashMap<>();
+        if (typesAllowingTimeShrink == null) {
+            typesAllowingTimeShrink = new HashSet<>();
             for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
                     .getConfig().entrySet()) {
-                allowTimeShrinkForHazardTypes.put(entry.getKey(), entry
-                        .getValue().isAllowTimeShrink());
+                if (entry.getValue().isAllowTimeShrink()) {
+                    typesAllowingTimeShrink.add(entry.getKey());
+                }
             }
-            allowTimeShrinkForHazardTypes.put(null, true);
+            typesAllowingTimeShrink.add(null);
         }
 
-        return allowTimeShrinkForHazardTypes.get(HazardEventUtilities
+        return typesAllowingTimeShrink.contains(HazardEventUtilities
                 .getHazardType(event));
     }
 
@@ -1747,6 +1762,7 @@ public class SessionConfigurationManager implements
             hazardCategories = new ConfigLoader<HazardCategories>(file,
                     HazardCategories.class);
             loaderPool.schedule(hazardCategories);
+            ensureHazardTypeEntriesExistForAllTypes();
         }
     }
 
@@ -1782,6 +1798,7 @@ public class SessionConfigurationManager implements
                     .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
             hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class);
             loaderPool.schedule(hazardTypes);
+            ensureHazardTypeEntriesExistForAllTypes();
         }
     }
 
@@ -1831,6 +1848,32 @@ public class SessionConfigurationManager implements
             settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
                     SettingsConfig[].class, "viewConfig");
             loaderPool.schedule(settingsConfig);
+        }
+    }
+
+    private void ensureHazardTypeEntriesExistForAllTypes() {
+        HazardCategories categories = hazardCategories.getConfig();
+        HazardTypes types = hazardTypes.getConfig();
+        Set<String> missingHazardTypes = null;
+        for (String[][] theseTypes : categories.values()) {
+            for (String[] thisType : theseTypes) {
+                String hazardType = HazardEventUtilities
+                        .getHazardType(thisType);
+                if (types.containsKey(hazardType) == false) {
+                    if (missingHazardTypes == null) {
+                        missingHazardTypes = new HashSet<>();
+                    }
+                    missingHazardTypes.add(hazardType);
+                }
+            }
+        }
+        if (missingHazardTypes != null) {
+            statusHandler
+                    .error("Bad configuration: missing hazard type definitions "
+                            + "for the following type(s): "
+                            + Joiner.on(", ").join(missingHazardTypes)
+                            + ". Please ensure that HazardTypes.py has entries "
+                            + "for all of these hazard types.");
         }
     }
 

@@ -172,6 +172,10 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 04, 2017 32732      Chris.Golden Added constant for indicating whether or not the origin
  *                                      (user name and workstation identifier) should be updated
  *                                      when a recommender returns modified event(s).
+ * Apr 13, 2017 33142      Chris.Golden Added tracking of events that have been removed since last
+ *                                      recommender execution commencement, so that when events
+ *                                      are returned by recommenders, any that have been removed
+ *                                      while the recommender was executing can be ignored.
  * </pre>
  * 
  * @author bsteffen
@@ -251,6 +255,18 @@ public class SessionManager implements
 
     private final IFrameContextProvider frameContextProvider;
 
+    /**
+     * Set of event identifiers for those events that have been completely
+     * removed since the commencement of the last recommender execution. As
+     * events are removed, they are added to this set, and then when a
+     * recommender is run, this set is emptied before it starts. When a
+     * recommender completes execution and returns an event set, any events
+     * included in the latter are checked against this set to ensure that they
+     * were not removed for some other reason while the recommender was running,
+     * and any that were removed are ignored.
+     */
+    private final Set<String> identifiersOfEventsRemovedSinceLastRecommenderRun = new HashSet<>();
+
     /*
      * Flag indicating whether or not automatic hazard checking is running.
      */
@@ -264,16 +280,6 @@ public class SessionManager implements
     private volatile boolean previewOngoing = false;
 
     private volatile boolean issueOngoing = false;
-
-    /*
-     * Messenger for displaying questions and warnings to the user and
-     * retrieving answers. This allows the viz side (App Builder) to be
-     * responsible for these dialogs, but gives the session manager and other
-     * managers access to them without creating a dependency on the
-     * gov.noaa.gsd.viz.hazards plugin. Since all parts of Hazard Services can
-     * use the same code for creating these dialogs, it makes it easier for them
-     * to be stubbed for testing.
-     */
 
     public SessionManager(IPathManager pathManager,
             IHazardEventManager hazardEventManager,
@@ -627,7 +633,26 @@ public class SessionManager implements
                     recommenderIdentifier);
             for (IEvent event : events) {
                 if (event instanceof IHazardEvent) {
+
+                    /*
+                     * Get the hazard event, and if it is not new, ensure that
+                     * it does not have the identifier of an event that was
+                     * removed by some other action while this recommender was
+                     * running. If it was removed during recommender execution,
+                     * ignore it, as it should not be around anymore.
+                     */
                     IHazardEvent hazardEvent = (IHazardEvent) event;
+                    boolean isNew = (hazardEvent.getEventID() == null);
+                    if ((isNew == false)
+                            && identifiersOfEventsRemovedSinceLastRecommenderRun
+                                    .contains(hazardEvent.getEventID())) {
+                        continue;
+                    }
+
+                    /*
+                     * Add the hazard area for the event, and if the recommender
+                     * wants the origin set, do so now.
+                     */
                     Map<String, String> ugcHatchingAlgorithms = eventManager
                             .buildInitialHazardAreas(hazardEvent);
                     hazardEvent.addHazardAttribute(HAZARD_AREA,
@@ -637,9 +662,13 @@ public class SessionManager implements
                                 .getInstance().getCurrentUser());
                         hazardEvent.setWorkStation(VizApp.getHostName());
                     }
+
+                    /*
+                     * Add the event (or modify an existing event by merging the
+                     * new version into it).
+                     */
                     hazardEvent
                             .removeHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED);
-                    boolean isNew = (hazardEvent.getEventID() == null);
                     ObservedHazardEvent addedEvent = eventManager.addEvent(
                             hazardEvent, originator);
 
@@ -965,5 +994,15 @@ public class SessionManager implements
             eventsToSave.add(eventsForIdentifiers.get(identifier));
         }
         return eventsToSave;
+    }
+
+    @Override
+    public void rememberRemovedEventIdentifier(String eventIdentifier) {
+        identifiersOfEventsRemovedSinceLastRecommenderRun.add(eventIdentifier);
+    }
+
+    @Override
+    public void clearRemovedEventIdentifiers() {
+        identifiersOfEventsRemovedSinceLastRecommenderRun.clear();
     }
 }

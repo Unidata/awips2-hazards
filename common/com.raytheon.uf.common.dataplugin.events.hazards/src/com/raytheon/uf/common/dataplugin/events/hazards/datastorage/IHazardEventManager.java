@@ -49,6 +49,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  *                                      have to be shipped back to the client.
  * Feb 27, 2017  29138    Chris.Golden  Added method to get latest hazard
  *                                      events by site ID.
+ * Apr 13, 2017  33142     Chris.Golden Added ability to delete all events
+ *                                      with a particular event identifier.
  * </pre>
  * 
  * @author mnash
@@ -206,6 +208,16 @@ public interface IHazardEventManager extends
      *            Set of events.
      */
     void storeEventSet(EventSet<HazardEvent> set);
+
+    /**
+     * Remove all copies of events with the specified identifier.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the event for which to remove all copies.
+     * @return <code>true</code> if the events were removed, <code>false</code>
+     *         otherwise.
+     */
+    boolean removeAllCopiesOfEvent(String eventIdentifier);
 
     /**
      * Remove all events. This may not be implemented in all cases.

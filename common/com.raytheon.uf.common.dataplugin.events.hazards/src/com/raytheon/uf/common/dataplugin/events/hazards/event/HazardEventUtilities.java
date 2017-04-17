@@ -70,6 +70,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      appropriate.
  * Feb 16, 2017 29138      Chris.Golden Changed to work with new version of the
  *                                      hazard event manager.
+ * Apr 13, 2017 33142      Chris.Golden Added method to construct a string holding a
+ *                                      hazard type given an array of strings giving
+ *                                      the phen, sig, etc.
  * </pre>
  * 
  * @author bsteffen
@@ -364,6 +367,24 @@ public class HazardEventUtilities {
             str.append(subType);
         }
         return str.toString();
+    }
+
+    /**
+     * Get a full type from the specified type components.
+     * 
+     * @param components
+     *            Type components; if <code>null</code> or zero-length, the
+     *            resulting type will be <code>null</code>. If between one and
+     *            three entries, said entries will be treated as the phenomenon,
+     *            significance, and subtype, respectively.
+     * @return Full type as a string, with each component separated from the
+     *         next by a period (.), or <code>null</code> if there is no type.
+     */
+    public static String getHazardType(String[] component) {
+        return ((component == null) || (component.length == 0) ? null
+                : getHazardType(component[0],
+                        (component.length > 1 ? component[1] : null),
+                        (component.length > 2 ? component[2] : null)));
     }
 
     /**

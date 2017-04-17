@@ -26,9 +26,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.springframework.util.StringUtils;
@@ -116,6 +118,8 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  * Sep 14, 2016 15934      Chris.Golden Changed to work with advanced geometries now used in
  *                                      hazard events.
  * Feb 16, 2017 29138      Chris.Golden Changed to work with new hazard event manager.
+ * Apr 13, 2017 33142      Chris.Golden Changed to use newly available method to delete all
+ *                                      copies of a hazard event with a particular identifier.
  * </pre>
  * 
  * @author jsanchez
@@ -624,7 +628,13 @@ public class HazardEventHandler {
                         endDate, hazardEventManager);
 
         if (events != null) {
-            hazardEventManager.removeEvents(events);
+            Set<String> eventIdentifiers = new HashSet<>(events.size());
+            for (HazardEvent event : events) {
+                eventIdentifiers.add(event.getEventID());
+            }
+            for (String eventIdentifier : eventIdentifiers) {
+                hazardEventManager.removeAllCopiesOfEvent(eventIdentifier);
+            }
         }
     }
 

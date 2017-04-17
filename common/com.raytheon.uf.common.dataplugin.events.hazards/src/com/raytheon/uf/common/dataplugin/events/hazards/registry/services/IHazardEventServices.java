@@ -41,10 +41,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * 
+ * Apr 13, 2017 33142     Chris.Golden  Added ability to delete all events
+ *                                      with a particular event identifier.
  * </pre>
  * 
  * @author bphillip
@@ -74,8 +75,9 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "store")
-    public HazardEventResponse store(@WebParam(name = "events")
-    HazardEvent... events) throws HazardEventServiceException;
+    public HazardEventResponse store(
+            @WebParam(name = "events") HazardEvent... events)
+            throws HazardEventServiceException;
 
     /**
      * Stores Hazard Events to the registry
@@ -87,8 +89,9 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "storeEventList")
-    public HazardEventResponse storeEventList(@WebParam(name = "events")
-    List<HazardEvent> events) throws HazardEventServiceException;
+    public HazardEventResponse storeEventList(
+            @WebParam(name = "events") List<HazardEvent> events)
+            throws HazardEventServiceException;
 
     /**
      * Deletes Hazard Events from the registry
@@ -100,8 +103,9 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "delete")
-    public HazardEventResponse delete(@WebParam(name = "events")
-    HazardEvent... events) throws HazardEventServiceException;
+    public HazardEventResponse delete(
+            @WebParam(name = "events") HazardEvent... events)
+            throws HazardEventServiceException;
 
     /**
      * Deletes Hazard Events from the registry
@@ -113,8 +117,24 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "deleteEventList")
-    public HazardEventResponse deleteEventList(@WebParam(name = "events")
-    List<HazardEvent> events) throws HazardEventServiceException;
+    public HazardEventResponse deleteEventList(
+            @WebParam(name = "events") List<HazardEvent> events)
+            throws HazardEventServiceException;
+
+    /**
+     * Deletes all hazard events with the specified event identifier from the
+     * registry
+     * 
+     * @param identifier
+     *            Identifier of the events to be deleted.
+     * @return A response object containing any errors encountered
+     * @throws HazardEventServiceException
+     *             If an unrecoverable error occurs
+     */
+    @WebMethod(operationName = "deleteAllWithIdentifier")
+    public HazardEventResponse deleteAllWithIdentifier(
+            @WebParam(name = "identifier") String identifier)
+            throws HazardEventServiceException;
 
     /**
      * Deletes all hazard events from the registry
@@ -136,8 +156,9 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "update")
-    public HazardEventResponse update(@WebParam(name = "events")
-    HazardEvent... events) throws HazardEventServiceException;
+    public HazardEventResponse update(
+            @WebParam(name = "events") HazardEvent... events)
+            throws HazardEventServiceException;
 
     /**
      * Updates Hazard Events in the registry
@@ -149,8 +170,9 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "updateEventList")
-    public HazardEventResponse updateEventList(@WebParam(name = "events")
-    List<HazardEvent> events) throws HazardEventServiceException;
+    public HazardEventResponse updateEventList(
+            @WebParam(name = "events") List<HazardEvent> events)
+            throws HazardEventServiceException;
 
     /**
      * Retrieves hazard events from the registry based on the given parameters.
@@ -163,8 +185,9 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "retrieveByParams")
-    public HazardEventResponse retrieveByParams(@WebParam(name = "params")
-    Object... params) throws HazardEventServiceException;
+    public HazardEventResponse retrieveByParams(
+            @WebParam(name = "params") Object... params)
+            throws HazardEventServiceException;
 
     /**
      * Retrieves hazard events from the registry
@@ -176,8 +199,9 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "retrieve")
-    public HazardEventResponse retrieve(@WebParam(name = "request")
-    HazardEventQueryRequest request) throws HazardEventServiceException;
+    public HazardEventResponse retrieve(
+            @WebParam(name = "request") HazardEventQueryRequest request)
+            throws HazardEventServiceException;
 
     /**
      * Request a new event ID for the given site
@@ -189,8 +213,8 @@ public interface IHazardEventServices {
      *             If an unrecoverable error occurs
      */
     @WebMethod(operationName = "requestEventId")
-    public String requestEventId(@WebParam(name = "siteID")
-    String siteID) throws HazardEventServiceException;
+    public String requestEventId(@WebParam(name = "siteID") String siteID)
+            throws HazardEventServiceException;
 
     /**
      * Looks up the region for the given site
@@ -200,8 +224,7 @@ public interface IHazardEventServices {
      * @return The region
      */
     @WebMethod(operationName = "lookupRegion")
-    public String lookupRegion(@WebParam(name = "siteID")
-    String siteID);
+    public String lookupRegion(@WebParam(name = "siteID") String siteID);
 
     /**
      * Method used to test connectivity to this set of services

@@ -73,6 +73,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      scheduler in construction and use it
  *                                      to ensure that notifications are
  *                                      handled on the correct thread.
+ * Apr 13, 2017 33142      Chris.Golden Added handling of notifications from
+ *                                      the database that all copies of a
+ *                                      hazard event were removed.
  * </pre>
  * 
  * @author bsteffen
@@ -168,12 +171,14 @@ public class SessionHazardNotificationListener implements INotificationObserver 
             return;
         }
 
-        /*
-         * TODO: Handle the DELETE_ALL notification type.
-         */
         switch (notification.getType()) {
+
         case DELETE:
             manager.handleEventRemovalFromDatabase(newEvent);
+            break;
+        case DELETE_ALL:
+            manager.handleEventRemovalAllCopiesFromDatabase(newEvent
+                    .getEventID());
             break;
         case UPDATE:
         case STORE:

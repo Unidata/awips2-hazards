@@ -71,6 +71,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Feb 01, 2017 15556      Chris.Golden Added selection manager.
  * Feb 21, 2017 29138      Chris.Golden Added method to get runnable asynchronous
  *                                      scheduler.
+ * Apr 13, 2017 33142      Chris.Golden Added tracking of events that have been removed
+ *                                      since last recommender execution commencement, so
+ *                                      that when events are returned by recommenders, any
+ *                                      that have been removed while the recommender was
+ *                                      executing can be ignored.
  * </pre>
  * 
  * @author bsteffen
@@ -299,4 +304,17 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      */
     public void importApplicationBackupSiteData(List<String> backupSiteIdList);
 
+    /**
+     * Add the specified event identifier to the set of events that have been
+     * removed.
+     * 
+     * @param eventIdentifier
+     *            Identifier to be added.
+     */
+    public void rememberRemovedEventIdentifier(String eventIdentifier);
+
+    /**
+     * Clear the removed-event-identifiers set.
+     */
+    public void clearRemovedEventIdentifiers();
 }

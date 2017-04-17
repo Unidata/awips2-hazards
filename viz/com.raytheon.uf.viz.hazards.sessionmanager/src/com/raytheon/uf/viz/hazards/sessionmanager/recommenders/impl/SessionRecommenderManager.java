@@ -94,6 +94,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Feb 01, 2017   15556    Chris.Golden Minor cleanup.
  * Feb 21, 2017   29138    Chris.Golden Added use of session manager's runnable
  *                                      asynchronous scheduler.
+ * Apr 13, 2017   33142    Chris.Golden Added use of new method in session manager to
+ *                                      clear the set of identifiers of events that
+ *                                      have been removed when initiating recommender
+ *                                      execution.
  * </pre>
  * 
  * @author Chris.Golden
@@ -300,6 +304,14 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 }
             }
         }
+
+        /*
+         * Clear the set of removed event identifiers that the session manager
+         * holds, since it should only hold identifiers of events that have been
+         * removed since the last commencement of a recommender's execution, and
+         * said commencement is about to occur.
+         */
+        sessionManager.clearRemovedEventIdentifiers();
 
         /*
          * Add the execution context parameters to the event set.

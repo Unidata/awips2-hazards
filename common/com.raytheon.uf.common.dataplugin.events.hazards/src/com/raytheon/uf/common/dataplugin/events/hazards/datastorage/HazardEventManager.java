@@ -81,6 +81,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      event history lists of latest-version
  *                                      snapshots so that it does not return
  *                                      any empty history lists.
+ * Apr 13, 2017  33142     Chris.Golden Added ability to delete all events
+ *                                      with a particular event identifier.
  * </pre>
  * 
  * @author mnash
@@ -419,6 +421,17 @@ public class HazardEventManager implements IHazardEventManager {
         return queryHistory(new HazardEventQueryRequest(
                 includeLatestVersion ? Include.HISTORICAL_AND_LATEST_EVENTS
                         : Include.HISTORICAL_EVENTS));
+    }
+
+    @Override
+    public boolean removeAllCopiesOfEvent(String eventIdentifier) {
+        try {
+            return checkResponse(hazardDataAccess
+                    .deleteAllWithIdentifier(eventIdentifier));
+        } catch (Exception e) {
+            statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
+        }
+        return false;
     }
 
     @Override

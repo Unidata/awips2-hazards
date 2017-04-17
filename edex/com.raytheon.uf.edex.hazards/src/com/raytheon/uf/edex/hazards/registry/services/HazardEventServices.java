@@ -43,6 +43,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
@@ -78,6 +79,8 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  *                                      query so that it does not carry extra
  *                                      serialized objects with it that are not
  *                                      needed.
+ * Apr 13, 2017 33142     Chris.Golden  Added ability to delete all events with
+ *                                      a particular event identifier.
  * </pre>
  * 
  * @author bphillip
@@ -193,6 +196,71 @@ public class HazardEventServices implements IHazardEventServices {
     }
 
     @Override
+    @WebMethod(operationName = "deleteAllWithIdentifier")
+    public HazardEventResponse deleteAllWithIdentifier(
+            @WebParam(name = "identifier") String identifier)
+            throws HazardEventServiceException {
+        statusHandler.info("Deleting all copies of hazard event with ID of \""
+                + identifier + "\"");
+        HazardEventResponse deleteAllResponse = HazardEventResponse.create();
+        HazardEventResponse retrieveResponse = retrieve(new HazardEventQueryRequest()
+                .and(HazardConstants.HAZARD_EVENT_IDENTIFIER, identifier));
+        int deleted = 0;
+        if (retrieveResponse.success()) {
+            if (retrieveResponse.getEvents().isEmpty()) {
+                deleteAllResponse.merge(retrieveResponse);
+            } else {
+                HazardHistoryList events = retrieveResponse.getHistoryMap()
+                        .get(identifier);
+                deleted = events.size();
+                if (deleted > 0) {
+                    HazardEventResponse deleteResponse = deleteAllCopiesOfEvent(events);
+                    if (!deleteResponse.success()) {
+                        deleteAllResponse.merge(deleteResponse);
+                    }
+                }
+            }
+        } else {
+            deleteAllResponse.merge(retrieveResponse);
+        }
+        return checkResponse("DELETE",
+                "Deleted all copies of hazard event with ID of \"" + identifier
+                        + "\" (" + deleted + " copies)", deleteAllResponse);
+    }
+
+    /**
+     * Delete all copies of an event.
+     * 
+     * @param events
+     *            List of event copies to be deleted. It is assumed that all of
+     *            them are snapshots of the same event at different points in
+     *            its lifecycle. Must not be empty.
+     * @return Result.
+     * @throws HazardEventServiceException
+     *             If a problem occurs.
+     */
+    private HazardEventResponse deleteAllCopiesOfEvent(List<HazardEvent> events)
+            throws HazardEventServiceException {
+        if (events.isEmpty()) {
+            throw new HazardEventServiceException(
+                    "Cannot delete empty list of events");
+        }
+        String userName = wsContext.getUserPrincipal().getName();
+        HazardEventResponse response = HazardEventResponse.create();
+        try {
+            validateEvents(events);
+            response.addExceptions(registryHandler.removeObjects(userName,
+                    new ArrayList<HazardEvent>(events)).getErrors());
+            hazardNotifier.notify(events.get(0), NotificationType.DELETE_ALL,
+                    mode);
+        } catch (Throwable e) {
+            throw new HazardEventServiceException(
+                    "Error Deleting All Copies Of Event", e);
+        }
+        return response;
+    }
+
+    @Override
     @WebMethod(operationName = "deleteAll")
     public HazardEventResponse deleteAll() throws HazardEventServiceException {
         statusHandler.info("Deleting all HazardEvents from the Registry");
@@ -204,10 +272,12 @@ public class HazardEventServices implements IHazardEventServices {
                 if (retrieveResponse.getEvents().isEmpty()) {
                     deleteAllResponse.merge(retrieveResponse);
                 } else {
-                    HazardEventResponse deleteResponse = deleteEventList(retrieveResponse
-                            .getEvents());
-                    if (!deleteResponse.success()) {
-                        deleteAllResponse.merge(deleteResponse);
+                    for (HazardHistoryList events : retrieveResponse
+                            .getHistoryMap().values()) {
+                        HazardEventResponse deleteResponse = deleteAllCopiesOfEvent(events);
+                        if (!deleteResponse.success()) {
+                            deleteAllResponse.merge(deleteResponse);
+                        }
                     }
                 }
             } else {
