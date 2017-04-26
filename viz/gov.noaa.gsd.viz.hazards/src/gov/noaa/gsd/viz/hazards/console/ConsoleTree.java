@@ -141,6 +141,9 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  * Oct 20, 2016   15556    Chris.Golden Initial creation.
  * Mar 16, 2017   15528    Chris.Golden Added ability to show issued events with unsaved
  *                                      changes in bold.
+ * Apr 20, 2017   33376    Chris.Golden Fixed bug causing the Until Further Notice
+ *                                      checkbox menu item to be ignored when the user
+ *                                      toggled it.
  * </pre>
  * 
  * @author Chris.Golden
@@ -4224,6 +4227,7 @@ class ConsoleTree implements IConsoleTree {
                         entity.getTimeRange(), newUntilFurtherNotice,
                         entity.isSelected(), entity.isChecked(),
                         entity.getChildren(), item);
+                changedEntities.add(entity);
 
                 /*
                  * Set the end time thumb in the time scale widget to be

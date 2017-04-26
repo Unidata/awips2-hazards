@@ -174,6 +174,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           snapshots of events, so that the view may
  *                                           display such snapshots differently from the
  *                                           way it displays current events.
+ * Apr 20, 2017   33376    Chris.Golden      Fixed bug causing the Until Further Notice
+ *                                           checkbox to always be disabled, even when an
+ *                                           event that allows UFN is being displayed in
+ *                                           the HID. Also fixed similar cause of a bug
+ *                                           that made the Propose button never enabled
+ *                                           event when it should have been.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1435,11 +1441,14 @@ public class HazardDetailPresenter extends
          * until further notice.
          */
         if (event instanceof ObservedHazardEvent) {
-            getView().getMetadataChanger().setEnabled(
-                    eventVersionIdentifier,
-                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                    eventIdentifiersAllowingUntilFurtherNotice
-                            .contains(visibleEventVersionIdentifier));
+            getView()
+                    .getMetadataChanger()
+                    .setEnabled(
+                            eventVersionIdentifier,
+                            HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                            eventIdentifiersAllowingUntilFurtherNotice
+                                    .contains(visibleEventVersionIdentifier
+                                            .getFirst()));
         } else {
             HazardTypeEntry hazardType = getModel().getConfigurationManager()
                     .getHazardTypes()
@@ -1834,7 +1843,7 @@ public class HazardDetailPresenter extends
                 Command.PROPOSE,
                 (enable && getModel().getEventManager()
                         .getEventIdsAllowingProposal()
-                        .contains(visibleEventVersionIdentifier)));
+                        .contains(visibleEventVersionIdentifier.getFirst())));
         getView().getButtonInvoker().setEnabled(Command.ISSUE, enable);
     }
 

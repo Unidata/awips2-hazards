@@ -7,7 +7,7 @@ class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        self._basedOnLookupPE = '{:15s}'.format('YES')
+        self.basedOnLookupPE = '{:15s}'.format('YES')
 
         if self.hazardStatus in ["ending", "ended"]:
             metaData = [

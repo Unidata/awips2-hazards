@@ -76,6 +76,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                      status tracked by the event manager.
  * Mar 30, 2017   15528    Chris.Golden Changed to always show "ending" status
  *                                      events as modified (bold text).
+ * Apr 20, 2017   33376    Chris.Golden Fixed bug in binary sort used to order
+ *                                      console rows that under certain
+ *                                      circumstances could cause the loop to
+ *                                      run forever, freezing CAVE.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1453,7 +1457,11 @@ class TabularEntityManager {
             } else if (result < 0) {
                 upper = index;
             } else {
-                lower = index;
+                if (lower == index) {
+                    lower++;
+                } else {
+                    lower = index;
+                }
             }
         }
 

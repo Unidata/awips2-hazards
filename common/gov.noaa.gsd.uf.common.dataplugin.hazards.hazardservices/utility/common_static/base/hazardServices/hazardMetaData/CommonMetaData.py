@@ -1155,7 +1155,7 @@ class MetaData(object):
         
         self.riverForecastPoint = self.getRiverForecastPoint(pointID, True)
         PE = self.riverForecastPoint.getPrimaryPE()
-        riverPointID =  elf.riverForecastPoint.getLid()
+        riverPointID =  self.riverForecastPoint.getLid()
         riverName =  self.riverForecastPoint.getName()
         
         curObs = self.riverForecastUtils.getObservedLevel(self.riverForecastPoint)

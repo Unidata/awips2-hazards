@@ -304,8 +304,8 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      events to lag behind event type (e.g. when event
  *                                      type of unissued FF.W.NonConvective was changed to
  *                                      FF.W.BurnScar).
- * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging.
- * Apr 27, 2015 7635       Robert.Blum  Added current config site to list of visible sites
+ * Apr 10, 2015   6898     Chris.Cody   Refactored async messaging.
+ * Apr 27, 2015   7635     Robert.Blum  Added current config site to list of visible sites
  *                                      for when settings have not been overridden.
  * May 14, 2015    7560    mpduff       Trying to get the Time Range to update from
  *                                      Graphical Editor.
@@ -316,7 +316,7 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      check hazards that were ended.
  * May 28, 2015    7709    Chris.Cody   Add Reference name of forecast zone in the
  *                                      conflicting hazards.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access.
+ * May 29, 2015    6895   Ben.Phillippe Refactored Hazard Service data access.
  * Jun 02, 2015    7138    Robert.Blum  RVS can now be issued without changing the
  *                                      status/state of the hazard events.
  * Jun 11, 2015    8191    Robert.Blum  Fixed apply on Rise/Crest/Fall editor to correctly
@@ -513,6 +513,12 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      database that all copies of a hazard event were removed. Also
  *                                      added use of new method in session manager to remember the
  *                                      identifiers of removed hazard events.
+ * Apr 25, 2017   33376    Chris.Golden Fixed bug introduced when time resolution was added that
+ *                                      mistakenly rounded end times that were set to the "until
+ *                                      further notice" magic number, causing all sorts of UFN
+ *                                      problems. Also fixed changing of hazard type so that if
+ *                                      "until further notice" was on for the old type, it is
+ *                                      turned off in the new type.
  * </pre>
  * 
  * @author bsteffen
@@ -916,8 +922,10 @@ public class SessionEventManager implements
 
         /*
          * If the time resolution has been reduced, the start and end times may
-         * need truncation. Additionally, if this is not a new event, change the
-         * end time to be offset from the start time by the default duration.
+         * need truncation (though in the case of the end time, not if it is
+         * "until further notice"). Additionally, if this is not a new event,
+         * change the end time to be offset from the start time by the default
+         * duration.
          */
         boolean timeResolutionReduced = ((oldTimeResolution == TimeResolution.SECONDS) && (newTimeResolution == TimeResolution.MINUTES));
         Date oldStartTime = event.getStartTime();
@@ -926,7 +934,8 @@ public class SessionEventManager implements
         Date oldEndTime = event.getEndTime();
         Date newEndTime = (oldEvent == null ? new Date(newStartTime.getTime()
                 + configManager.getDefaultDuration(event))
-                : roundDateDownToNearestMinute(oldEndTime));
+                : (oldEndTime.getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS ? roundDateDownToNearestMinute(oldEndTime)
+                        : oldEndTime));
 
         /*
          * If this event is changing type (as opposed to a new event created
@@ -938,6 +947,7 @@ public class SessionEventManager implements
          */
         if (oldEvent == null) {
             event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
         }
 
         /*
@@ -970,11 +980,13 @@ public class SessionEventManager implements
                                 .lowerEndpoint()),
                         roundTimeDownToNearestMinute(oldStartTimeBoundaries
                                 .upperEndpoint()));
-                newEndTimeBoundaries = Range.closed(
-                        roundTimeDownToNearestMinute(oldEndTimeBoundaries
-                                .lowerEndpoint()),
-                        roundTimeDownToNearestMinute(oldEndTimeBoundaries
-                                .upperEndpoint()));
+                newEndTimeBoundaries = (newEndTime.getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS ? Range
+                        .singleton(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
+                        : Range.closed(
+                                roundTimeDownToNearestMinute(oldEndTimeBoundaries
+                                        .lowerEndpoint()),
+                                roundTimeDownToNearestMinute(oldEndTimeBoundaries
+                                        .upperEndpoint())));
             }
             startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
                     newStartTimeBoundaries);
@@ -1007,7 +1019,9 @@ public class SessionEventManager implements
          */
         if (timeResolutionsForEventIdentifiers.get(event.getEventID()) == TimeResolution.MINUTES) {
             startTime = roundDateDownToNearestMinute(startTime);
-            endTime = roundDateDownToNearestMinute(endTime);
+            if (endTime.getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+                endTime = roundDateDownToNearestMinute(endTime);
+            }
         }
 
         /*
@@ -2511,7 +2525,8 @@ public class SessionEventManager implements
         /*
          * Set the event start and end times if they are not already set. If
          * they are set, ensure they are at minute boundaries if this event uses
-         * minute-level time resolution.
+         * minute-level time resolution, excepting the end time if it is "until
+         * further notice".
          */
         TimeResolution eventTimeResolution = configManager
                 .getTimeResolution(oevent);
@@ -2536,8 +2551,9 @@ public class SessionEventManager implements
             long d = configManager.getDefaultDuration(oevent);
             oevent.setEndTime(new Date(s + d), false, originator);
         } else {
-            oevent.setEndTime(roundDateDownToNearestMinuteIfAppropriate(
-                    oevent.getEndTime(), eventTimeResolution));
+            oevent.setEndTime(oevent.getEndTime().getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS ? roundDateDownToNearestMinuteIfAppropriate(
+                    oevent.getEndTime(), eventTimeResolution) : oevent
+                    .getEndTime());
         }
 
         /*
@@ -3382,7 +3398,7 @@ public class SessionEventManager implements
          * just that value.
          */
         if (endTime == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
-            return Range.closed(endTime, endTime);
+            return Range.singleton(endTime);
         }
 
         /*
