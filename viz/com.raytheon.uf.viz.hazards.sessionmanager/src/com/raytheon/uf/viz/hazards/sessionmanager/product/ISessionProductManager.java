@@ -51,6 +51,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  * Jan 29, 2015 4375       Dan Schaffer Console initiation of RVS product generation
  * Jun 02, 2015 7138       Robert.Blum  Changes for issuing RVS products.
  * Jul 30, 2015 9681       Robert.Blum  Changes for viewOnly products.
+ * Feb 24, 2016 13929      Robert.Blum  Remove first part of staging dialog.
  * </pre>
  * 
  * @author bsteffen
@@ -63,7 +64,7 @@ public interface ISessionProductManager {
      * Types of possible staging required when attempting to generate products.
      */
     public enum StagingRequired {
-        NO_APPLICABLE_EVENTS, NONE, POSSIBLE_EVENTS, PRODUCT_SPECIFIC_INFO
+        NO_APPLICABLE_EVENTS, NONE, PRODUCT_SPECIFIC_INFO
     };
 
     /**
@@ -111,11 +112,11 @@ public interface ISessionProductManager {
      *            Hibernate representation for the storage of product data to
      *            retrieve for review.
      * @param correctable
-     *            Flag indicating whether or not the products are being generated
-     *            for a product correction.
+     *            Flag indicating whether or not the products are being
+     *            generated for a product correction.
      * @param viewOnly
-     *            Flag indicating whether or not the products are being generated
-     *            to be displayed as viewOnly in the product viewer.
+     *            Flag indicating whether or not the products are being
+     *            generated to be displayed as viewOnly in the product viewer.
      */
     public void generateProductFromProductData(List<ProductData> productData,
             boolean correctable, boolean viewOnly);

@@ -59,6 +59,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  *                                      asynchronous scheduler to avoid having
  *                                      notifications processed outside the
  *                                      session manager's worker thread.
+ * Apr 27, 2017   15561    Chris.Golden Made message posting asynchronous as it
+ *                                      was causing deadlocks when synchronous.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -338,7 +340,7 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
     }
 
     private void postAlertsModifiedNotification() {
-        notificationSender.postNotification(new HazardAlertsModified(
+        notificationSender.postNotificationAsync(new HazardAlertsModified(
                 getActiveAlerts()));
     }
 

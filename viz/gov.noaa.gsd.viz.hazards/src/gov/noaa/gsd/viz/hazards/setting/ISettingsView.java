@@ -31,6 +31,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
  * Feb 23, 2015    3618    Chris.Golden      Added ability to close settings dialog
  *                                           from public method.
+ * Nov 17, 2015   11776    Roger.Ferrel      Add {@link ISaveAs} argument to showSettingsDetail.
  * </pre>
  * 
  * @author Chris.Golden
@@ -58,9 +59,10 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param settingsConfig
      * @param settings
+     * @param saveAs
      */
     public void showSettingDetail(SettingsConfig settingsConfig,
-            ObservedSettings settings);
+            ObservedSettings settings, ISaveAs saveAs);
 
     /**
      * Delete the settings detail subview.

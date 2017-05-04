@@ -8,12 +8,10 @@
 package gov.noaa.gsd.viz.hazards.productstaging;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -21,19 +19,13 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
@@ -85,6 +77,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  * Nov 18, 2014   4124     Chris.Golden      Adapted to new time manager.
  * Dec 05, 2014   4124     Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Feb 24, 2016  13929     Robert.Blum       Remove first part of staging dialog.
  * Feb 01, 2017  15556     Chris.Golden      Changed to work with new selection manager.
  * </pre>
  * 
@@ -105,7 +98,7 @@ public class ProductStagingPresenter extends
      * package-private.
      */
     public enum Command {
-        CANCEL, BACK, CONTINUE
+        CANCEL, CONTINUE
     };
 
     // Private Variables
@@ -118,41 +111,11 @@ public class ProductStagingPresenter extends
     private boolean issue;
 
     /**
-     * Current step being shown by the product staging dialog.
-     */
-    private StagingRequired stagingRequired = StagingRequired.NONE;
-
-    /**
-     * Map pairing product generator names with lists of event identifiers that
-     * are to be incorporated into their generated products (used for the first
-     * step).
-     */
-    private final Map<String, List<String>> selectedEventIdentifiersForProductGeneratorNames = new HashMap<>();
-
-    /**
      * Map pairing product generator names with maps of
      * product-generator-specific options and their values as chosen by the user
      * (used for the second step).
      */
     private final Map<String, Map<String, Serializable>> metadataMapsForProductGeneratorNames = new HashMap<>();
-
-    /**
-     * Associated events state change handler.
-     */
-    private final IStateChangeHandler<String, List<String>> associatedEventsChangeHandler = new IStateChangeHandler<String, List<String>>() {
-
-        @Override
-        public void stateChanged(String identifier, List<String> value) {
-            selectedEventIdentifiersForProductGeneratorNames.put(identifier,
-                    value);
-        }
-
-        @Override
-        public void statesChanged(Map<String, List<String>> valuesForIdentifiers) {
-            throw new UnsupportedOperationException(
-                    "cannot change multiple products' associated events simultaneously");
-        }
-    };
 
     /**
      * Associated events state change handler.
@@ -187,54 +150,11 @@ public class ProductStagingPresenter extends
             case CANCEL:
                 hideAndUnsetPreviewOrIssueOngoing();
                 break;
-            case BACK:
-                getModel().generate(issue);
-                break;
             default:
-                if (stagingRequired == StagingRequired.POSSIBLE_EVENTS) {
-
-                    /*
-                     * Ensure all events that have been associated with the
-                     * products are selected. If all the events have been
-                     * unchecked, hide the dialog and do nothing more.
-                     */
-                    ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                            .getEventManager();
-                    Set<ObservedHazardEvent> selectedEvents = new HashSet<>();
-                    for (List<String> selectedEventIdentifiers : selectedEventIdentifiersForProductGeneratorNames
-                            .values()) {
-                        for (String eventIdentifier : selectedEventIdentifiers) {
-                            selectedEvents.add(eventManager
-                                    .getEventById(eventIdentifier));
-                        }
-                    }
-                    if (selectedEvents.isEmpty()) {
-                        hideAndUnsetPreviewOrIssueOngoing();
-                        break;
-                    }
-                    getModel().getSelectionManager().setSelectedEvents(
-                            selectedEvents, UIOriginator.STAGING_DIALOG);
-
-                    /*
-                     * Attempt to create products using the selected events; if
-                     * this requires more staging, tell the view to show the
-                     * user the second step.
-                     */
-                    if (getModel()
-                            .getProductManager()
-                            .createProductsFromPreliminaryProductStaging(issue,
-                                    selectedEventIdentifiersForProductGeneratorNames)) {
-                        showProductStagingDetail(issue,
-                                StagingRequired.PRODUCT_SPECIFIC_INFO);
-                    } else {
-                        getView().hide();
-                    }
-                } else {
-                    getView().hide();
-                    getModel().getProductManager()
-                            .createProductsFromFinalProductStaging(issue,
-                                    metadataMapsForProductGeneratorNames);
-                }
+                getView().hide();
+                getModel().getProductManager()
+                        .createProductsFromFinalProductStaging(issue,
+                                metadataMapsForProductGeneratorNames);
             }
         }
     };
@@ -272,160 +192,75 @@ public class ProductStagingPresenter extends
      * This method should only be invoked if the session product manager's
      * {@link ISessionProductManager#getAllProductGeneratorInformationForSelectedHazards(boolean)}
      * method returns at least one product generator information object that (if
-     * <code>stagingRequired</code> is {@link StagingRequired#POSSIBLE_EVENTS})
-     * has at least one event that may be associated with it but is currently
-     * unselected; or (if <code>stagingRequired</code> is
+     * <code>stagingRequired</code> is
      * {@link StagingRequired#PRODUCT_SPECIFIC_INFO}) has a megawidget specifier
      * manager associated with it.
      * 
      * @param issue
      *            Flag indicating whether or not this is a result of an issue
      *            action; if false, it is a preview.
-     * @param stagingRequired
-     *            Type of product staging required; must be either
-     *            {@link StagingRequired#POSSIBLE_EVENTS} or
-     *            {@link StagingRequired#PRODUCT_SPECIFIC_INFO}.
      */
-    public final void showProductStagingDetail(boolean issue,
-            StagingRequired stagingRequired) {
+    public final void showProductStagingDetail(boolean issue) {
 
         /*
          * Remember the passed-in parameters for later.
          */
         this.issue = issue;
-        this.stagingRequired = stagingRequired;
 
         /*
-         * Show whichever step of the staging dialog that is required.
+         * Compile a list of the products for which to show product-specific
+         * information-gathering megawidgets.
          */
-        if (stagingRequired == StagingRequired.POSSIBLE_EVENTS) {
+        metadataMapsForProductGeneratorNames.clear();
+        Collection<ProductGeneratorInformation> allProductGeneratorInfo = getModel()
+                .getProductManager()
+                .getAllProductGeneratorInformationForSelectedHazards(issue);
+        List<String> productNames = new ArrayList<>(
+                allProductGeneratorInfo.size());
+        Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames = new HashMap<>(
+                allProductGeneratorInfo.size(), 1.0f);
+        for (ProductGeneratorInformation info : allProductGeneratorInfo) {
 
             /*
-             * Compile a list of the products for which to show lists of events
-             * that may be selected.
+             * Only including staging for this product if it includes a
+             * megawidget specifier manager to be used to create megawidgets to
+             * get product-specific information from the user. Otherwise, just
+             * associate an empty metadata map with it.
              */
-            selectedEventIdentifiersForProductGeneratorNames.clear();
-            Collection<ProductGeneratorInformation> allProductGeneratorInfo = getModel()
-                    .getProductManager()
-                    .getAllProductGeneratorInformationForSelectedHazards(issue);
-            List<String> productNames = new ArrayList<>(
-                    allProductGeneratorInfo.size());
-            Map<String, List<String>> possibleEventIdsForProductNames = new HashMap<>(
-                    allProductGeneratorInfo.size(), 1.0f);
-            Map<String, List<String>> possibleEventDescriptionsForProductNames = new HashMap<>(
-                    allProductGeneratorInfo.size(), 1.0f);
-            Map<String, List<String>> selectedEventIdsForProductNames = new HashMap<>(
-                    allProductGeneratorInfo.size(), 1.0f);
-            for (ProductGeneratorInformation info : allProductGeneratorInfo) {
-
-                /*
-                 * Only include staging for this product if it has at least one
-                 * event that is unselected, but could be used. Otherwise, just
-                 * associate the selected events with it.
-                 */
-                String name = info.getProductGeneratorName();
-                Set<IHazardEvent> selectedEvents = info.getProductEvents();
-                List<String> selectedEventIds = createListOfEventIdsFromEvents(selectedEvents);
-                selectedEventIdentifiersForProductGeneratorNames.put(name,
-                        selectedEventIds);
-                Set<IHazardEvent> unselectedEvents = info
-                        .getPossibleProductEvents();
-                if (unselectedEvents.isEmpty()) {
-                    continue;
-                }
+            String name = info.getProductGeneratorName();
+            MegawidgetSpecifierManager specifierManager = info
+                    .getStagingDialogMegawidgetSpecifierManager();
+            if (specifierManager == null) {
+                metadataMapsForProductGeneratorNames.put(name,
+                        Collections.<String, Serializable> emptyMap());
+            } else {
                 productNames.add(name);
-                Set<IHazardEvent> events = Sets.union(selectedEvents,
-                        unselectedEvents);
-                List<String> possibleEventIds = createListOfEventIdsFromEvents(events);
-                List<String> possibleEventDescriptions = new ArrayList<>(
-                        possibleEventIds.size());
-                for (String eventId : possibleEventIds) {
-                    possibleEventDescriptions.add(eventId
-                            + " "
-                            + HazardEventUtilities.getHazardType(getModel()
-                                    .getEventManager().getEventById(eventId)));
+                Map<String, Object> rawStartingStates = new HashMap<>();
+                specifierManager.populateWithStartingStates(rawStartingStates);
+                Map<String, Serializable> startingStates = new HashMap<>(
+                        rawStartingStates.size(), 1.0f);
+                for (Map.Entry<String, Object> entry : rawStartingStates
+                        .entrySet()) {
+                    startingStates.put(entry.getKey(),
+                            (Serializable) entry.getValue());
                 }
-                possibleEventIdsForProductNames.put(name, possibleEventIds);
-                possibleEventDescriptionsForProductNames.put(name,
-                        possibleEventDescriptions);
-                selectedEventIdsForProductNames.put(name, selectedEventIds);
+                metadataMapsForProductGeneratorNames.put(name, startingStates);
+                megawidgetSpecifierManagersForProductNames.put(name,
+                        specifierManager);
             }
-
-            /*
-             * Ensure that the list of products for which to show the dialog is
-             * not empty, then show it.
-             */
-            assert (productNames.isEmpty() == false);
-            getView().showFirstStep(productNames,
-                    possibleEventIdsForProductNames,
-                    possibleEventDescriptionsForProductNames,
-                    selectedEventIdsForProductNames);
-        } else {
-
-            /*
-             * Compile a list of the products for which to show product-specific
-             * information-gathering megawidgets. Also, determine whether the
-             * first step of the dialog was skipped by seeing whether any of the
-             * products have possible events that could have been associated
-             * with them by the user.
-             */
-            metadataMapsForProductGeneratorNames.clear();
-            Collection<ProductGeneratorInformation> allProductGeneratorInfo = getModel()
-                    .getProductManager()
-                    .getAllProductGeneratorInformationForSelectedHazards(issue);
-            List<String> productNames = new ArrayList<>(
-                    allProductGeneratorInfo.size());
-            Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames = new HashMap<>(
-                    allProductGeneratorInfo.size(), 1.0f);
-            boolean firstStepSkipped = true;
-            for (ProductGeneratorInformation info : allProductGeneratorInfo) {
-
-                /*
-                 * Only including staging for this product if it includes a
-                 * megawidget specifier manager to be used to create megawidgets
-                 * to get product-specific information from the user. Otherwise,
-                 * just associate an empty metadata map with it.
-                 */
-                String name = info.getProductGeneratorName();
-                MegawidgetSpecifierManager specifierManager = info
-                        .getStagingDialogMegawidgetSpecifierManager();
-                if (info.getPossibleProductEvents().isEmpty() == false) {
-                    firstStepSkipped = false;
-                }
-                if (specifierManager == null) {
-                    metadataMapsForProductGeneratorNames.put(name,
-                            Collections.<String, Serializable> emptyMap());
-                } else {
-                    productNames.add(name);
-                    Map<String, Object> rawStartingStates = new HashMap<>();
-                    specifierManager
-                            .populateWithStartingStates(rawStartingStates);
-                    Map<String, Serializable> startingStates = new HashMap<>(
-                            rawStartingStates.size(), 1.0f);
-                    for (Map.Entry<String, Object> entry : rawStartingStates
-                            .entrySet()) {
-                        startingStates.put(entry.getKey(),
-                                (Serializable) entry.getValue());
-                    }
-                    metadataMapsForProductGeneratorNames.put(name,
-                            startingStates);
-                    megawidgetSpecifierManagersForProductNames.put(name,
-                            specifierManager);
-                }
-            }
-
-            /*
-             * Ensure that the list of products for which to show the dialog is
-             * not empty, then show it.
-             */
-            assert (productNames.isEmpty() == false);
-            TimeRange visibleTimeRange = getModel().getTimeManager()
-                    .getVisibleTimeRange();
-            getView().showSecondStep(productNames,
-                    megawidgetSpecifierManagersForProductNames,
-                    visibleTimeRange.getStart().getTime(),
-                    visibleTimeRange.getEnd().getTime(), firstStepSkipped);
         }
+
+        /*
+         * Ensure that the list of products for which to show the dialog is not
+         * empty, then show it.
+         */
+        assert (productNames.isEmpty() == false);
+        TimeRange visibleTimeRange = getModel().getTimeManager()
+                .getVisibleTimeRange();
+        getView().showStagingDialog(productNames,
+                megawidgetSpecifierManagersForProductNames,
+                visibleTimeRange.getStart().getTime(),
+                visibleTimeRange.getEnd().getTime());
 
         /*
          * Bind to the dialog's handlers so as to be notified of its invocations
@@ -473,28 +308,10 @@ public class ProductStagingPresenter extends
     }
 
     /**
-     * Create a sorted list of the specified events' identifiers.
-     * 
-     * @param events
-     *            Set of events from which to compile the list of identifiers.
-     * @return Sorted list of the specified events' identifiers.
-     */
-    private List<String> createListOfEventIdsFromEvents(Set<IHazardEvent> events) {
-        List<String> list = new ArrayList<>(events.size());
-        for (IHazardEvent event : events) {
-            list.add(event.getEventID());
-        }
-        Collections.sort(list);
-        return list;
-    }
-
-    /**
      * Binds the presenter to the view, so that the presenter is notified of
      * changes to the view initiated by the user.
      */
     private void bind() {
-        getView().setAssociatedEventsChangeHandler(
-                associatedEventsChangeHandler);
         getView().setProductMetadataChangeHandler(productMetadataChangeHandler);
         getView().setButtonInvocationHandler(buttonInvocationHandler);
     }

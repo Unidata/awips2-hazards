@@ -81,11 +81,16 @@ import com.google.common.collect.ImmutableMap;
  * Jul 29, 2015 9306      Chris.Cody    Add HazardSatus.ELAPSED status
  * Jul 31, 2015 7458      Robert.Blum   Added new USER_NAME and WORKSTATION constants.
  * Aug 06, 2015 9968      Chris.Cody    Added Ended/Elapsed time status checking
+ * Aug 18, 2015 9650      Chris.Golden  Added "deleteEventIdentifiers" constant for recommenders.
  * Sep 28, 2015 10302,8167 hansen       Added backupSites, eventIdDisplayType, mapCenter
  * Nov 10, 2015 12762     Chris.Golden  Added constants and enums related to running tools.
+ * Nov 17, 2015 3473      Robert.Blum   Moved localization constants to HazardsConfigurationConstants.
+ * Jan 14, 2016 12935     Robert.Blum   Removed unused FALL_BELOW_UNTIL_FURTHER_NOTICE constant.
  * Jan 28, 2016 12762     Chris.Golden  Changed constant for attribute identifiers when running
  *                                      tools to reflect that it now means identifiers plural,
  *                                      not a single identifier.
+ * Feb 19, 2016 15014     Robert.Blum   Fixed determination of ugcs for point hazards.
+ * Feb 24, 2016 14667     Robert.Blum   Limiting Flash Flood Recommender to basins inside the CWA.
  * Mar 01, 2016 15676     Chris.Golden  Changed to support visual features.
  * Apr 05, 2016 16885     Chris.Golden  Added definitions for boolean column type in temporal
  *                                      display.
@@ -170,6 +175,8 @@ public final class HazardConstants {
 
     public static final String CURRENT_FRAME = "currentFrame";
 
+    public static final Integer NO_FRAMES_INDEX = -1;
+
     // Recommender execution context parameter names.
 
     public static final String RECOMMENDER_EXECUTION_TRIGGER = "trigger";
@@ -194,6 +201,8 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES = "includeDataLayerTimes";
 
+    public static final String RECOMMENDER_METADATA_INCLUDE_CWA_GEOMETRY = "includeCwaGeometry";
+
     // Recommender method names
 
     public static final String RECOMMENDER_GET_DIALOG_INFO_METHOD = "getDialogInfo";
@@ -211,6 +220,8 @@ public final class HazardConstants {
     public static final String RECOMMENDER_RESULT_TREAT_AS_ISSUANCE = "treatAsIssuance";
 
     public static final String RECOMMENDER_RESULT_SET_ORIGIN = "setOrigin";
+
+    public static final String RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS = "deleteEventIdentifiers";
 
     /**
      * Types of changes or events that may trigger a recommender execution.
@@ -630,9 +641,6 @@ public final class HazardConstants {
 
     public static final String BEFORE_UNTIL_FURTHER_NOTICE_PREFIX = "__beforeUntilFurtherNotice__";
 
-    public static final String FALL_BELOW_UNTIL_FURTHER_NOTICE = "fallBelow"
-            + UNTIL_FURTHER_NOTICE_SUFFIX;
-
     /**
      * Event identifier key
      */
@@ -828,6 +836,8 @@ public final class HazardConstants {
     public static final String TEST_MODE = "testMode";
 
     public static final String DATA_TIMES = "dataLayerTimes";
+
+    public static final String CWA_GEOMETRY = "cwaGeometry";
 
     /*
      * The following are related to product generation.
@@ -1172,6 +1182,10 @@ public final class HazardConstants {
 
     public static final String UGC_ID = "id";
 
+    public static final String UGC_ZONE_ABBREVIATION = "Z";
+
+    public static final String UGC_COUNTY_ABBREVIATION = "C";
+
     /*
      * TODO The following need to be organized better.
      */
@@ -1272,62 +1286,9 @@ public final class HazardConstants {
      */
     public static final long MIN_TIME = 0L;
 
-    /**
-     * Constants related to localization
-     */
-    public static final String PYTHON_LOCALIZATION_DIR = "python";
-
-    public static final String PYTHON_LOCALIZATION_CONFIG_DIR = "config";
-
-    public static final String PYTHON_LOCALIZATION_DATA_ACCESS_DIR = "dataaccess";
-
-    public static final String PYTHON_LOCALIZATION_DATA_STORAGE_DIR = "dataStorage";
-
-    public static final String PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR = "generalUtilities";
-
-    public static final String PYTHON_LOCALIZATION_GFE_DIR = "gfe";
-
-    public static final String PYTHON_LOCALIZATION_GEO_UTILITIES_DIR = "geoUtilities";
-
-    public static final String PYTHON_LOCALIZATION_UTILITIES_DIR = "localizationUtilities";
-
-    public static final String PYTHON_LOCALIZATION_LOG_UTILITIES_DIR = "logUtilities";
-
-    public static final String PYTHON_LOCALIZATION_RECOMMENDERS_DIR = "recommenders";
-
-    public static final String PYTHON_LOCALIZATION_PRODUCTGEN_DIR = "productgen";
-
-    public static final String PYTHON_LOCALIZATION_PRODUCTS_DIR = "products";
-
-    public static final String PYTHON_LOCALIZATION_FORMATS_DIR = "formats";
-
-    public static final String PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR = "shapeUtilities";
-
-    public static final String PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR = "textUtilities";
-
-    public static final String PYTHON_LOCALIZATION_TIME_DIR = "time";
-
-    public static final String PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR = "trackUtilities";
-
-    public static final String PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR = "VTECutilities";
-
-    public static final String HAZARD_SERVICES_LOCALIZATION_DIR = "hazardServices";
-
-    public static final String HAZARD_TYPES_LOCALIZATION_DIR = "hazardTypes";
-
-    public static final String HAZARD_CATEGORIES_LOCALIZATION_DIR = "hazardCategories";
-
-    public static final String HAZARD_METADATA_DIR = "hazardMetaData";
-
     public static final String UGC_PARTS_OF_COUNTY = "ugcPortions";
 
     public static final String UGC_PARTS_OF_STATE = "ugcPartsOfState";
-
-    public static final String PYTHON_LOCALIZATION_BRIDGE_DIR = "bridge";
-
-    public static final String PYTHON_LOCALIZATION_EVENTS_DIR = "events";
-
-    public static final String PYTHON_UTILITIES_DIR = "utilities";
 
     public static final int MISSING_VALUE = -9999;
 

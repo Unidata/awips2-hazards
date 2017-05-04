@@ -33,37 +33,40 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Date         Ticket#    Engineer       Description
  * ------------ ---------- -------------- --------------------------
  * Feb 19, 2013            bryon.lawrence    Initial creation
- * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle,
+ * Jul 15, 2013      585   Chris.Golden      Changed to support loading from bundle,
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
- * Sep 19, 2013 2046    mnash           Update for product generation.
- * Nov 16, 2013  2166       daniel.s.schaffer@noaa.gov    Some tidying
- * 
- * Dec 03, 2013 2182 daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
- * Feb 07, 2014 2890       bkowal         Product Generation JSON refactor.
+ * Sep 19, 2013     2046   mnash             Update for product generation.
+ * Nov 16, 2013     2166   Dan Schaffer      Some tidying.
+ * Dec 03, 2013     2182   Dan Schaffer      Refactoring - eliminated IHazardsIF
+ * Feb 07, 2014     2890   bkowal            Product Generation JSON refactor.
  * Apr 11, 2014     2819   Chris.Golden      Fixed bugs with the Preview and Issue
  *                                           buttons in the HID remaining grayed out
  *                                           when they should be enabled.
- * May 17, 2014 2925       Chris.Golden      Changed to work with MVP framework
+ * May 17, 2014     2925   Chris.Golden      Changed to work with MVP framework
  *                                           widget changes. Also added newly
  *                                           required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
- * Apr 23, 2014 1480       jsanchez          Added product editor action CORRECT.
- * Jun 30, 2014 3512       Chris.Golden      Changed to work with changes to
+ * Apr 23, 2014     1480   jsanchez          Added product editor action CORRECT.
+ * Jun 30, 2014     3512   Chris.Golden      Changed to work with changes to
  *                                           ICommandInvoker.
- * Jul 14, 2014 4187        jsanchez         Check if the generatedProductsList is valid.
- * Jul 28, 2014 3412        jsanchez         Close the product editor on regeneration request.
- * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
+ * Jul 14, 2014     4187   jsanchez          Check if the generatedProductsList is valid.
+ * Jul 28, 2014     3412   jsanchez          Close the product editor on regeneration request.
+ * Dec 05, 2014     4124   Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
- * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
- * Feb 15, 2015 2271       Dan Schaffer      Incur recommender/product generator init costs immediately
- * Feb 26, 2015 6306       mduff             Pass site id to product editor.
- * Apr 10, 2015 6898       Chris.Cody        Removed modelChanged legacy messaging method
- * May 13, 2015 6899       Robert.Blum       Removed sessionEventsModified handler.
- * Jul 01, 2015 6726       Robert.Blum       IssueAll button no longer closes the Editor.
- * Feb 02, 2017 15556      Chris.Golden      Minor changes to support console refactor.
+ * Dec 13, 2014     4959   Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Feb 15, 2015     2271   Dan Schaffer      Incur recommender/product generator init costs
+ *                                           immediately
+ * Feb 26, 2015     6306   mduff             Pass site id to product editor.
+ * Apr 10, 2015     6898   Chris.Cody        Removed modelChanged legacy messaging method
+ * May 13, 2015     6899   Robert.Blum       Removed sessionEventsModified handler.
+ * Jul 01, 2015     6726   Robert.Blum       IssueAll button no longer closes the Editor.
+ * Dec 04, 2015    12981   Roger.Ferrel      Checks to prevent issuing unwanted
+ *                                           expiration product.
+ * Feb 02, 2017    15556   Chris.Golden      Minor changes to support console refactor.
+ * Apr 27, 2017    11853   Chris.Golden      Added public method to close product editor.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -117,12 +120,19 @@ public class ProductEditorPresenter extends
             }
         }
         if (showProductEditor) {
-            this.getView().showProductEditorDetail(generatedProductsList,
-                    siteId);
+            this.getView().showProductEditor(generatedProductsList, siteId,
+                    getModel().getConfigurationManager().getHazardTypes());
             this.bind();
             this.getView().openDialog();
         } else {
             getModel().setPreviewOngoing(false);
+        }
+    }
+
+    public final void closeProductEditor() {
+        if (getView().isProductEditorOpen()) {
+            getModel().setPreviewOngoing(false);
+            getView().closeProductEditor();
         }
     }
 
@@ -182,7 +192,7 @@ public class ProductEditorPresenter extends
 
                     @Override
                     public void commandInvoked(String identifier) {
-                        dismissProductEditor();
+                        closeProductEditor();
                         if (identifier != null
                                 && identifier
                                         .equalsIgnoreCase(HazardConstants.REGENERATE_FLAG)) {
@@ -193,10 +203,5 @@ public class ProductEditorPresenter extends
                     }
                 });
 
-    }
-
-    private void dismissProductEditor() {
-        getModel().setPreviewOngoing(false);
-        getView().closeProductEditorDialog();
     }
 }

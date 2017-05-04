@@ -39,9 +39,11 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 import java.io.File;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -50,6 +52,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import javax.xml.bind.JAXB;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
@@ -70,6 +74,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
+import com.raytheon.uf.common.hazards.configuration.backup.BackupSites;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
@@ -79,6 +84,7 @@ import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
+import com.raytheon.uf.common.localization.PathManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
@@ -209,9 +215,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes, as well as the
  *                                      use of the new recommender manager.
+ * Nov 17, 2015 11776      Roger.Ferrel Added {@link #containsUserLevelSettings()}.
  * Aug 31, 2015 9757       Robert.Blum  Added Observers to config files so overrides are
  *                                      picked up.
  * Sep 28, 2015 10302,8167 hansen       Added "getSettingsValue"
+ * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices
+ *                                      localization dir.
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
@@ -301,6 +310,11 @@ public class SessionConfigurationManager implements
      * Metadata group megawidget label.
      */
     private static final String METADATA_GROUP_TEXT = "Details";
+
+    /*
+     * Locaalized directory for setting filters.
+     */
+    private static final String SETTINGS_DIR = "HazardServices/settings/";
 
     /**
      * Specifier parameters for the metadata group megawidget, used to wrap
@@ -408,6 +422,8 @@ public class SessionConfigurationManager implements
 
     private Set<String> typesRequiringPointIds;
 
+    private BackupSites backupSites;
+
     private final Map<Runnable, Integer> minuteIntervalsForEventDrivenToolExecutors = new IdentityHashMap<>();
 
     private Runnable dataLayerChangeTriggeredToolExecutor;
@@ -433,8 +449,8 @@ public class SessionConfigurationManager implements
 
         LocalizationContext commonStaticBase = pathManager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
-                commonStaticBase, "hazardServices/settings/"),
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase, SETTINGS_DIR),
                 new SettingsDirectoryUpdateObserver());
 
         loadAllSettings();
@@ -485,7 +501,7 @@ public class SessionConfigurationManager implements
                 .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_METADATA_PY);
         metadataIncludes.append(":").append(file.getFile().getParent());
         for (LocalizationFile f : pathManager.listStaticFiles(
-                "hazardServices/hazardMetaData/", new String[] { ".py" },
+                "HazardServices/hazardMetaData/", new String[] { ".py" },
                 false, true)) {
             // Force download the file so python has it
             f.getFile();
@@ -603,6 +619,8 @@ public class SessionConfigurationManager implements
                         .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY),
                 SettingsConfig[].class, "viewConfig");
         loaderPool.schedule(settingsConfig);
+
+        loadBackupSites();
     }
 
     /**
@@ -633,9 +651,8 @@ public class SessionConfigurationManager implements
                 }
             }
         }
-        LocalizationFile[] files = pathManager
-                .listStaticFiles("hazardServices/settings/",
-                        new String[] { ".py" }, false, true);
+        LocalizationFile[] files = pathManager.listStaticFiles(SETTINGS_DIR,
+                new String[] { ".py" }, false, true);
         List<ConfigLoader<Settings>> allSettings = new ArrayList<ConfigLoader<Settings>>();
         for (LocalizationFile file : files) {
             ConfigLoader<Settings> loader = new ConfigLoader<Settings>(file,
@@ -664,6 +681,37 @@ public class SessionConfigurationManager implements
             }
         }
         this.allSettings = allSettings;
+    }
+
+    private void loadBackupSites() {
+        IPathManager pathMgr = PathManagerFactory.getPathManager();
+
+        Map<LocalizationLevel, LocalizationFile> files = pathMgr
+                .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
+                        "HazardServices" + PathManager.SEPARATOR + "settings"
+                                + PathManager.SEPARATOR + "backupSites.xml");
+        LocalizationFile file = null;
+        if (files.containsKey(LocalizationLevel.SITE)) {
+            file = files.get(LocalizationLevel.SITE);
+        } else {
+            file = files.get(LocalizationLevel.BASE);
+        }
+
+        try (InputStream is = file.openInputStream()) {
+            backupSites = JAXB.unmarshal(is, BackupSites.class);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error loading backup sites from backupSites.xml", e);
+        }
+
+        /*
+         * Use the startup config fallback sites if no backup sites are found.
+         */
+        if ((backupSites == null) || (backupSites.getSites() == null)
+                || (backupSites.getSites().length == 0)) {
+            backupSites = new BackupSites();
+            backupSites.setSites(startUpConfig.getConfig().getBackupSites());
+        }
     }
 
     @Override
@@ -724,34 +772,53 @@ public class SessionConfigurationManager implements
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.uf.viz.hazards.sessionmanager.config.
-     * ISessionConfigurationManager#deleteSettings()
-     */
     @Override
-    public void deleteSettings() {
+    public boolean containsUserLevelSettings() {
         ISettings settings = getSettings();
         Map<LocalizationLevel, LocalizationFile> map = pathManager
                 .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
-                        "hazardServices/settings/" + settings.getSettingsID()
-                                + ".py");
-        // since we can't delete base settings, we will write them as empty so
-        // they don't show up anywhere
+                        SETTINGS_DIR + settings.getSettingsID() + ".py");
+        return map.containsKey(LocalizationLevel.USER);
+    }
+
+    @Override
+    public void deleteSettings() {
+        ISettings settings = getSettings();
+        String deleteId = settings.getSettingsID();
+        Map<LocalizationLevel, LocalizationFile> map = pathManager
+                .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
+                        SETTINGS_DIR + deleteId + ".py");
+
+        /*
+         * Only allow deletion of user localized files.
+         */
         try {
-            if (map.containsKey(LocalizationLevel.USER) && map.size() == 1) {
+            if (map.containsKey(LocalizationLevel.USER)) {
                 map.get(LocalizationLevel.USER).delete();
-            } else {
-                getUserSettings().write("".getBytes());
             }
-            Iterator<ConfigLoader<Settings>> iter = allSettings.iterator();
-            while (iter.hasNext()) {
-                Settings available = iter.next().getConfig();
-                String id = available.getSettingsID();
-                if (id.equals(settings.getSettingsID())) {
-                    iter.remove();
+
+            if (map.size() == 1) {
+
+                /*
+                 * Remove when setting is just a user file.
+                 */
+                Iterator<ConfigLoader<Settings>> iter = allSettings.iterator();
+                while (iter.hasNext()) {
+                    Settings available = iter.next().getConfig();
+                    String id = available.getSettingsID();
+                    if (id.equals(settings.getSettingsID())) {
+                        iter.remove();
+                        break;
+                    }
                 }
+            } else {
+
+                /*
+                 * Update displays to non-USER localized file.
+                 */
+                settingsChanged(new SettingsModified(this,
+                        EnumSet.allOf(ObservedSettings.Type.class),
+                        Originator.OTHER));
             }
         } catch (LocalizationException e) {
             statusHandler.handle(Priority.PROBLEM, "Unable to delete "
@@ -764,7 +831,7 @@ public class SessionConfigurationManager implements
                 LocalizationType.COMMON_STATIC, LocalizationLevel.USER);
         ISettings settings = getSettings();
         return pathManager.getLocalizationFile(context,
-                "hazardServices/settings/" + settings.getSettingsID() + ".py");
+                SETTINGS_DIR + settings.getSettingsID() + ".py");
     }
 
     @Override
@@ -1731,6 +1798,11 @@ public class SessionConfigurationManager implements
         return new Color(r / 255f, g / 255f, b / 255f);
     }
 
+    @Override
+    public String[] getBackupSites() {
+        return this.backupSites.getSites();
+    }
+
     private class SettingsDirectoryUpdateObserver implements
             ILocalizationFileObserver {
 
@@ -1899,5 +1971,4 @@ public class SessionConfigurationManager implements
          * around and functional in case H.S. starts up again.
          */
     }
-
 }

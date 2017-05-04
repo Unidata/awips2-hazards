@@ -10,7 +10,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
 
 /**
  * Description: Notification indicating that product staging is required.
@@ -22,6 +21,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 08, 2014    4042    Chris.Golden Initial creation.
+ * Feb 24, 2016   13929    Robert.Blum  Remove first part of staging dialog.
  * </pre>
  * 
  * @author Chris.Golden
@@ -38,11 +38,6 @@ public class ProductStagingRequired implements ISessionNotification {
      */
     private final boolean issue;
 
-    /**
-     * Product staging required.
-     */
-    private final StagingRequired stagingRequired;
-
     // Public Constructors
 
     /**
@@ -52,14 +47,9 @@ public class ProductStagingRequired implements ISessionNotification {
      *            Flag indicating whether or not the product staging requirement
      *            is a result of an issue command. If false, it was prompted by
      *            a preview command.
-     * @param stagingRequired
-     *            Product staging required; must be either
-     *            {@link StagingRequired#POSSIBLE_EVENTS} or
-     *            {@link StagingRequired#PRODUCT_SPECIFIC_INFO}.
      */
-    public ProductStagingRequired(boolean issue, StagingRequired stagingRequired) {
+    public ProductStagingRequired(boolean issue) {
         this.issue = issue;
-        this.stagingRequired = stagingRequired;
     }
 
     // Public Methods
@@ -73,16 +63,5 @@ public class ProductStagingRequired implements ISessionNotification {
      */
     public boolean isIssue() {
         return issue;
-    }
-
-    /**
-     * Get the staging required.
-     * 
-     * @return Staging required; will be either
-     *         {@link StagingRequired#POSSIBLE_EVENTS} or
-     *         {@link StagingRequired#PRODUCT_SPECIFIC_INFO}.
-     */
-    public StagingRequired getStagingRequired() {
-        return stagingRequired;
     }
 }

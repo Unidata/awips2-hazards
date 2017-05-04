@@ -14,11 +14,9 @@ import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvocationHandlerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.QualifiedStateChangeHandlerDelegate;
-import gov.noaa.gsd.viz.hazards.ui.StateChangeHandlerDelegate;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IWidget;
 
 import java.util.Collections;
@@ -54,6 +52,7 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           any product-generator-specific parameters
  *                                           specified for the products (again, if
  *                                           applicable).
+ * Feb 24, 2016   13929    Robert.Blum       Remove first part of staging dialog.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -121,46 +120,22 @@ public class ProductStagingView implements
     }
 
     @Override
-    public void showFirstStep(List<String> productNames,
-            Map<String, List<String>> possibleEventIdsForProductNames,
-            Map<String, List<String>> possibleEventDescriptionsForProductNames,
-            Map<String, List<String>> selectedEventIdsForProductNames) {
-        if (productStagingDialog == null) {
-            createDialog();
-        }
-        productStagingDialog.initializeFirstStep(productNames,
-                possibleEventIdsForProductNames,
-                possibleEventDescriptionsForProductNames,
-                selectedEventIdsForProductNames);
-        productStagingDialog.open();
-    }
-
-    @Override
-    public void showSecondStep(
+    public void showStagingDialog(
             List<String> productNames,
             Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames,
-            long minimumVisibleTime, long maximumVisibleTime,
-            boolean firstStepSkipped) {
+            long minimumVisibleTime, long maximumVisibleTime) {
         if (productStagingDialog == null) {
             createDialog();
         }
-        productStagingDialog.initializeSecondStep(productNames,
+        productStagingDialog.initialize(productNames,
                 megawidgetSpecifierManagersForProductNames, minimumVisibleTime,
-                maximumVisibleTime, firstStepSkipped);
+                maximumVisibleTime);
         productStagingDialog.open();
     }
 
     @Override
     public void hide() {
         closeDialog();
-    }
-
-    @Override
-    public void setAssociatedEventsChangeHandler(
-            IStateChangeHandler<String, List<String>> handler) {
-        productStagingDialog
-                .setAssociatedEventsChangeHandler(new StateChangeHandlerDelegate<String, List<String>>(
-                        handler, RUNNABLE_ASYNC_SCHEDULER));
     }
 
     @Override

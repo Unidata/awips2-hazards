@@ -49,6 +49,8 @@ import com.raytheon.uf.common.python.PyUtil;
  *                                         utility classes.
  * Nov 29, 2013    2380    Dan Schaffer    More consolidation to HazardConstants.
  * Jan 26, 2015    5952    Dan Schaffer    Fix incorrect hazard area designation.
+ * Nov 17, 2015    3473    Robert.Blum     Moved all python files under
+ *                                         HazardServices localization dir.
  * Jun 23, 2016   19537    Chris.Golden    Removed storm-track-specific code.
  * Sep 29, 2016   15928    Chris.Golden    Moved geometry manipulation methods
  *                                         to AdvancedGeometryUtilities.
@@ -102,21 +104,32 @@ public class Utilities {
     }
 
     static String[] pythonLocalizationDirectories = {
-            "python",
-            "python" + File.separator + "UFStatusHandler.py",
-            "python" + File.separator + "bridge",
-            "python" + File.separator + "dataStorage",
-            "python" + File.separator + "events",
-            "python" + File.separator + "geoUtilities",
-            "python" + File.separator + "logUtilities",
-            "python" + File.separator + "shapeUtilities",
-            "python" + File.separator + "textUtilities",
-            "python" + File.separator + "VTECutilities",
-            "python" + File.separator + "localizationUtilities",
-            "python" + File.separator + "events" + File.separator + "utilities",
-            "python" + File.separator + "events" + File.separator
-                    + "recommenders" + File.separator
-                    + "DamBreakFloodRecommender.py" };
+            "HazardServices" + File.separator + "python",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "UFStatusHandler.py",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "bridge",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "dataStorage",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "events",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "geoUtilities",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "logUtilities",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "shapeUtilities",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "textUtilities",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "VTECutilities",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "localizationUtilities",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "events" + File.separator + "utilities",
+            "HazardServices" + File.separator + "python" + File.separator
+                    + "events" + File.separator + "recommenders"
+                    + File.separator + "DamBreakFloodRecommender.py" };
 
     /**
      * Builds the JEP include path. This includes the paths to all of the python

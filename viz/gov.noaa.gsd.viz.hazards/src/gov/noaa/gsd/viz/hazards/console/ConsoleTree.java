@@ -139,11 +139,18 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 20, 2016   15556    Chris.Golden Initial creation.
- * Mar 16, 2017   15528    Chris.Golden Added ability to show issued events with unsaved
- *                                      changes in bold.
- * Apr 20, 2017   33376    Chris.Golden Fixed bug causing the Until Further Notice
- *                                      checkbox menu item to be ignored when the user
- *                                      toggled it.
+ * Mar 16, 2017   15528    Chris.Golden Added ability to show issued events with
+ *                                      unsaved changes in bold.
+ * Apr 20, 2017   33376    Chris.Golden Fixed bug causing the Until Further
+ *                                      Notice checkbox menu item to be ignored
+ *                                      when the user toggled it.
+ * May 04, 2017   14668    Chris.Golden Added check/uncheck all events.
+ * May 05, 2017   10001    Chris.Golden Added detection of attaching/detaching of
+ *                                      view part and responding by recreating
+ *                                      the column menus in the tree, since these
+ *                                      were throwing exceptions when displayed
+ *                                      after attachment or detachment.
+ * May 09, 2017   15170    Chris.Golden Added select/deselect all events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -276,6 +283,30 @@ class ConsoleTree implements IConsoleTree {
      * "until further notice" toggle option.
      */
     private static final String UNTIL_FURTHER_NOTICE_MENU_TEXT = "Until Further Notice";
+
+    /**
+     * Text to show in the event-specific context-sensitive menu to provide the
+     * "select all items" command option.
+     */
+    private static final String SELECT_ALL_ROWS_MENU_TEXT = "Select All Events";
+
+    /**
+     * Text to show in the event-specific context-sensitive menu to provide the
+     * "deselect all items" command option.
+     */
+    private static final String DESELECT_ALL_ROWS_MENU_TEXT = "Deselect All Events";
+
+    /**
+     * Text to show in the event-specific context-sensitive menu to provide the
+     * "check all items" command option.
+     */
+    private static final String CHECK_ALL_ROWS_MENU_TEXT = "Check All Events";
+
+    /**
+     * Text to show in the event-specific context-sensitive menu to provide the
+     * "uncheck all items" command option.
+     */
+    private static final String UNCHECK_ALL_ROWS_MENU_TEXT = "Uncheck All Events";
 
     /**
      * Show time under mouse toggle menu text.
@@ -527,6 +558,26 @@ class ConsoleTree implements IConsoleTree {
      * "Until further notice" menu item.
      */
     private MenuItem untilFurtherNoticeMenuItem;
+
+    /**
+     * "Select all rows" menu item.
+     */
+    private MenuItem selectAllRowsMenuItem;
+
+    /**
+     * "Deselect all rows" menu item.
+     */
+    private MenuItem deselectAllRowsMenuItem;
+
+    /**
+     * "Check all rows" menu item.
+     */
+    private MenuItem checkAllRowsMenuItem;
+
+    /**
+     * "Uncheck all rows" menu item.
+     */
+    private MenuItem uncheckAllRowsMenuItem;
 
     /**
      * List of root entities, each of which is represented by a tree item.
@@ -1532,8 +1583,16 @@ class ConsoleTree implements IConsoleTree {
     private final SelectionListener rowMenuListener = new SelectionAdapter() {
         @Override
         public void widgetSelected(SelectionEvent e) {
-            if (untilFurtherNoticeMenuItem == e.widget) {
+            if (e.widget == untilFurtherNoticeMenuItem) {
                 handleUserUntilFurtherNoticeToggle();
+            } else if (e.widget == selectAllRowsMenuItem) {
+                handleUserToggleAllSelection(true);
+            } else if (e.widget == deselectAllRowsMenuItem) {
+                handleUserToggleAllSelection(false);
+            } else if (e.widget == checkAllRowsMenuItem) {
+                handleUserToggleAllChecks(true);
+            } else if (e.widget == uncheckAllRowsMenuItem) {
+                handleUserToggleAllChecks(false);
             }
         }
     };
@@ -1732,6 +1791,29 @@ class ConsoleTree implements IConsoleTree {
         createTreeColumns();
         createTimeRuler(parent);
         return tree;
+    }
+
+    /**
+     * Respond to the view part in which the tree is embedded being attached to
+     * the main window or detached from it.
+     */
+    void viewPartAttachedOrDetached() {
+
+        /*
+         * Ensure initialization and tree creation has happened.
+         */
+        if ((tree == null) || tree.isDisposed() || (filterMegawidgets == null)) {
+            return;
+        }
+
+        /*
+         * Recreate the column header menus, as they will have the wrong shell
+         * as parent if this is not done, resulting in an exception being thrown
+         * when they are next displayed.
+         */
+        tree.setMenu(null);
+        deleteColumnHeaderMenus();
+        createColumnHeaderMenus();
     }
 
     /**
@@ -4237,15 +4319,112 @@ class ConsoleTree implements IConsoleTree {
                         .get(entity).getEditor();
                 configureScaleIntervalLockingForEntity(scale, entity);
             }
+        }
+
+        /*
+         * If any entities have changed, let the change handler know.
+         */
+        if ((treeContentsChangeHandler != null)
+                && (changedEntities.isEmpty() == false)) {
+            treeContentsChangeHandler
+                    .listElementsChanged(null, changedEntities);
+        }
+    }
+
+    /**
+     * Handle a row menu's select or deselect all items command having been
+     * invoked.
+     * 
+     * @param checked
+     *            Flag indicating whether all events should be selected, or the
+     *            opposite.
+     */
+    private void handleUserToggleAllSelection(boolean selected) {
+
+        /*
+         * If selecting all parent items, make a set combining all the
+         * already-selected items (which may include child items), and all the
+         * parent items, and set it as the current selection if the new set is
+         * larger than the existing selection set size. If deselecting all
+         * items, simply deselect everything.
+         */
+        boolean changed = true;
+        if (selected) {
+            Set<TreeItem> newSelectedItems = Sets.newIdentityHashSet();
+            if (selectedItems != null) {
+                newSelectedItems.addAll(Lists.newArrayList(selectedItems));
+            }
+            newSelectedItems.addAll(Lists.newArrayList(tree.getItems()));
+            if (newSelectedItems.size() > (selectedItems == null ? 0
+                    : selectedItems.length)) {
+                tree.setSelection(newSelectedItems
+                        .toArray(new TreeItem[newSelectedItems.size()]));
+            } else {
+                changed = false;
+            }
+        } else {
+            if ((selectedItems != null) && (selectedItems.length > 0)) {
+                tree.deselectAll();
+            } else {
+                changed = false;
+            }
+        }
+
+        /*
+         * If the above resulted in a change to the selection set, handle the
+         * change.
+         */
+        if (changed) {
+            handleUserChangeOfSelectedState();
+        }
+    }
+
+    /**
+     * Handle a row menu's check or uncheck all items command having been
+     * invoked.
+     * 
+     * @param checked
+     *            Flag indicating whether all events should be checked, or the
+     *            opposite.
+     */
+    private void handleUserToggleAllChecks(boolean checked) {
+
+        /*
+         * Iterate through the root tree items, checking or unchecking each one
+         * that does not already have the new checked/unchecked state and
+         * remembering which ones have changed.
+         */
+        Set<TabularEntity> changedEntities = new HashSet<>(tree.getItemCount(),
+                1.0f);
+        for (TreeItem item : tree.getItems()) {
 
             /*
-             * If any entities have changed, let the change handler know.
+             * Do nothing if the item already has the right checked state;
+             * otherwise, set its checked state appropriately.
              */
-            if ((treeContentsChangeHandler != null)
-                    && (changedEntities.isEmpty() == false)) {
-                treeContentsChangeHandler.listElementsChanged(null,
-                        changedEntities);
+            if (item.getChecked() == checked) {
+                continue;
             }
+            item.setChecked(checked);
+
+            /*
+             * Create a new entity that replaces the old one, with the new one
+             * being checked or unchecked as per the event that just occurred.
+             */
+            TabularEntity entity = entitiesForTreeItems.get(item);
+            entity = handleUserChangeOfEntity(entity, entity.getTimeRange(),
+                    entity.isEndTimeUntilFurtherNotice(), entity.isSelected(),
+                    checked, entity.getChildren(), item);
+            changedEntities.add(entity);
+        }
+
+        /*
+         * If any entities have changed, let the change handler know.
+         */
+        if ((treeContentsChangeHandler != null)
+                && (changedEntities.isEmpty() == false)) {
+            treeContentsChangeHandler
+                    .listElementsChanged(null, changedEntities);
         }
     }
 
@@ -5323,6 +5502,26 @@ class ConsoleTree implements IConsoleTree {
         untilFurtherNoticeMenuItem.setEnabled(untilFurtherNoticeAllowed);
 
         /*
+         * Add the menu items for checking and unchecking all rows if there are
+         * any rows.
+         */
+        if (tree.getItemCount() > 0) {
+            new MenuItem(rowMenu, SWT.SEPARATOR);
+            selectAllRowsMenuItem = new MenuItem(rowMenu, SWT.PUSH);
+            selectAllRowsMenuItem.setText(SELECT_ALL_ROWS_MENU_TEXT);
+            selectAllRowsMenuItem.addSelectionListener(rowMenuListener);
+            deselectAllRowsMenuItem = new MenuItem(rowMenu, SWT.PUSH);
+            deselectAllRowsMenuItem.setText(DESELECT_ALL_ROWS_MENU_TEXT);
+            deselectAllRowsMenuItem.addSelectionListener(rowMenuListener);
+            checkAllRowsMenuItem = new MenuItem(rowMenu, SWT.PUSH);
+            checkAllRowsMenuItem.setText(CHECK_ALL_ROWS_MENU_TEXT);
+            checkAllRowsMenuItem.addSelectionListener(rowMenuListener);
+            uncheckAllRowsMenuItem = new MenuItem(rowMenu, SWT.PUSH);
+            uncheckAllRowsMenuItem.setText(UNCHECK_ALL_ROWS_MENU_TEXT);
+            uncheckAllRowsMenuItem.addSelectionListener(rowMenuListener);
+        }
+
+        /*
          * Iterate through the contribution items needed, creating a menu item
          * for each in turn.
          */
@@ -5504,6 +5703,157 @@ class ConsoleTree implements IConsoleTree {
     }
 
     /**
+     * Create the header menus for the various columns.
+     */
+    @SuppressWarnings("unchecked")
+    private void createColumnHeaderMenus() {
+
+        /*
+         * Get a list of all the column names for which there are definitions,
+         * sorted alphabetically.
+         */
+        List<String> columnNames = new ArrayList<>(
+                columnDefinitionsForNames.keySet());
+        Collections.sort(columnNames);
+
+        /*
+         * Copy the list of column names to another list that will be used to
+         * track which columns have associated header menus in the loop below.
+         */
+        List<String> columnNamesToBeGivenMenus = new ArrayList<>(columnNames);
+
+        /*
+         * Create the mapping of column names to their header menus. Make a menu
+         * for each column that has an associated filter, making each such menu
+         * have both the checklist of column names and the filter, and then make
+         * one more menu with just the column names checklist for all the
+         * columns that do not have associated filters.
+         */
+        headerMenusForColumnNames = new HashMap<>();
+        headerMegawidgetManagersForColumnNames = new HashMap<>();
+        for (int j = 0; j < filterMegawidgets.size() + 1; j++) {
+
+            /*
+             * If there are no more columns needing menus, do nothing more.
+             */
+            if (columnNamesToBeGivenMenus.size() == 0) {
+                break;
+            }
+
+            /*
+             * If there is a filter to be processed, get it and configure it,
+             * and find its associated column name.
+             */
+            Map<String, Object> filter = null;
+            String filterColumnName = null;
+            if (j < filterMegawidgets.size()) {
+                filter = filterMegawidgets.get(j);
+                filter.put(IMenuSpecifier.MEGAWIDGET_SHOW_SEPARATOR, true);
+                filter.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
+                        FILTER_MENU_NAME);
+                filterColumnName = (String) filter.get(COLUMN_NAME);
+            }
+
+            /*
+             * If the no-filter menu needs to be built, or a filter was found
+             * and its associated column is found in the list of defined
+             * columns, create a menu and associate it with the column name.
+             */
+            if ((filterColumnName == null)
+                    || (columnNamesToBeGivenMenus.remove(filterColumnName))) {
+
+                /*
+                 * Create the column name checklist, allowing the user to toggle
+                 * column visibility.
+                 */
+                Menu menu = new Menu(tree);
+                for (String name : columnNames) {
+                    MenuItem menuItem = new MenuItem(menu, SWT.CHECK);
+                    menuItem.setText(name);
+                    menuItem.addSelectionListener(headerMenuListener);
+                }
+
+                /*
+                 * Create the primary and secondary sort menu items and their
+                 * submenus.
+                 */
+                for (int sortPriority = 0; sortPriority < 2; sortPriority++) {
+                    MenuItem menuItem = new MenuItem(menu, SWT.CASCADE);
+                    Menu sortMenu = new Menu(menuItem);
+                    menuItem.setMenu(sortMenu);
+                    for (String columnName : columnNames) {
+                        MenuItem columnNameMenuItem = new MenuItem(sortMenu,
+                                SWT.CASCADE);
+                        columnNameMenuItem.setText(columnName);
+                        Menu subMenu = new Menu(columnNameMenuItem);
+                        columnNameMenuItem.setMenu(subMenu);
+                        for (SortDirection direction : SortDirection.values()) {
+                            MenuItem directionMenuItem = new MenuItem(subMenu,
+                                    SWT.RADIO);
+                            directionMenuItem.setText(direction.toString());
+                            directionMenuItem.setData(direction);
+                            directionMenuItem
+                                    .addSelectionListener(sortMenuListener);
+                        }
+                    }
+                    if (sortPriority == 0) {
+                        menuItem.setText(PRIMARY_SORT_MENU_NAME);
+                        primarySortMenusForColumnMenus.put(menu, sortMenu);
+                    } else {
+                        menuItem.setText(SECONDARY_SORT_MENU_NAME);
+                        secondarySortMenusForColumnMenus.put(menu, sortMenu);
+                    }
+                }
+
+                /*
+                 * If a filter exists for this menu, add it and associate it
+                 * with the column. Otherwise, the menu being created is a
+                 * catch-all for any column that does not have an associated
+                 * filter.
+                 */
+                if (filterColumnName != null) {
+                    try {
+                        headerMegawidgetManagersForColumnNames.put(
+                                filterColumnName, new MegawidgetManager(menu,
+                                        Lists.newArrayList(filter),
+                                        headerFilterStatesForColumnIdentifiers,
+                                        new MegawidgetManagerAdapter() {
+
+                                            @Override
+                                            public void stateElementChanged(
+                                                    MegawidgetManager manager,
+                                                    String identifier,
+                                                    Object state) {
+                                                if (columnFiltersChangeHandler != null) {
+                                                    columnFiltersChangeHandler
+                                                            .stateChanged(
+                                                                    identifier,
+                                                                    state);
+                                                }
+                                            }
+                                        }));
+
+                    } catch (MegawidgetException e) {
+                        statusHandler
+                                .error("Unable to create megawidget "
+                                        + "manager due to megawidget construction problem: "
+                                        + e, e);
+                    }
+
+                    /*
+                     * Associate this header menu with the column name.
+                     */
+                    headerMenusForColumnNames.put(filterColumnName, menu);
+                } else {
+                    for (String columnName : columnNamesToBeGivenMenus) {
+                        headerMenusForColumnNames.put(columnName, menu);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Delete the column header menus, if they were created.
      */
     private void deleteColumnHeaderMenus() {
@@ -5640,19 +5990,6 @@ class ConsoleTree implements IConsoleTree {
                 });
             }
         }
-
-        /*
-         * If a refit will be needed, schedule one to run.
-         */
-        // if (willRefitRulerToColumn) {
-        // Display.getCurrent().asyncExec(new Runnable() {
-        //
-        // @Override
-        // public void run() {
-        // fitRulerToColumn(column);
-        // }
-        // });
-        // }
     }
 
     /**
@@ -5938,7 +6275,6 @@ class ConsoleTree implements IConsoleTree {
      * @param columns
      *            New columns.
      */
-    @SuppressWarnings("unchecked")
     private void setColumns(ConsoleColumns columns) {
         this.columns = columns;
 
@@ -5988,162 +6324,9 @@ class ConsoleTree implements IConsoleTree {
         tree.setSortColumn(null);
 
         /*
-         * If the header menus for the various columns have not yet been
-         * created, create them now.
+         * Create the header menus for the various columns.
          */
-        if (headerMenusForColumnNames == null) {
-
-            /*
-             * Get a list of all the column names for which there are
-             * definitions, sorted alphabetically.
-             */
-            List<String> columnNames = new ArrayList<>(
-                    columnDefinitionsForNames.keySet());
-            Collections.sort(columnNames);
-
-            /*
-             * Copy the list of column names to another list that will be used
-             * to track which columns have associated header menus in the loop
-             * below.
-             */
-            List<String> columnNamesToBeGivenMenus = new ArrayList<>(
-                    columnNames);
-
-            /*
-             * Create the mapping of column names to their header menus. Make a
-             * menu for each column that has an associated filter, making each
-             * such menu have both the checklist of column names and the filter,
-             * and then make one more menu with just the column names checklist
-             * for all the columns that do not have associated filters.
-             */
-            headerMenusForColumnNames = new HashMap<>();
-            headerMegawidgetManagersForColumnNames = new HashMap<>();
-            for (int j = 0; j < filterMegawidgets.size() + 1; j++) {
-
-                /*
-                 * If there are no more columns needing menus, do nothing more.
-                 */
-                if (columnNamesToBeGivenMenus.size() == 0) {
-                    break;
-                }
-
-                /*
-                 * If there is a filter to be processed, get it and configure
-                 * it, and find its associated column name.
-                 */
-                Map<String, Object> filter = null;
-                String filterColumnName = null;
-                if (j < filterMegawidgets.size()) {
-                    filter = filterMegawidgets.get(j);
-                    filter.put(IMenuSpecifier.MEGAWIDGET_SHOW_SEPARATOR, true);
-                    filter.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
-                            FILTER_MENU_NAME);
-                    filterColumnName = (String) filter.get(COLUMN_NAME);
-                }
-
-                /*
-                 * If the no-filter menu needs to be built, or a filter was
-                 * found and its associated column is found in the list of
-                 * defined columns, create a menu and associate it with the
-                 * column name.
-                 */
-                if ((filterColumnName == null)
-                        || (columnNamesToBeGivenMenus.remove(filterColumnName))) {
-
-                    /*
-                     * Create the column name checklist, allowing the user to
-                     * toggle column visibility.
-                     */
-                    Menu menu = new Menu(tree);
-                    for (String name : columnNames) {
-                        MenuItem menuItem = new MenuItem(menu, SWT.CHECK);
-                        menuItem.setText(name);
-                        menuItem.addSelectionListener(headerMenuListener);
-                    }
-
-                    /*
-                     * Create the primary and secondary sort menu items and
-                     * their submenus.
-                     */
-                    for (int sortPriority = 0; sortPriority < 2; sortPriority++) {
-                        MenuItem menuItem = new MenuItem(menu, SWT.CASCADE);
-                        Menu sortMenu = new Menu(menuItem);
-                        menuItem.setMenu(sortMenu);
-                        for (String columnName : columnNames) {
-                            MenuItem columnNameMenuItem = new MenuItem(
-                                    sortMenu, SWT.CASCADE);
-                            columnNameMenuItem.setText(columnName);
-                            Menu subMenu = new Menu(columnNameMenuItem);
-                            columnNameMenuItem.setMenu(subMenu);
-                            for (SortDirection direction : SortDirection
-                                    .values()) {
-                                MenuItem directionMenuItem = new MenuItem(
-                                        subMenu, SWT.RADIO);
-                                directionMenuItem.setText(direction.toString());
-                                directionMenuItem.setData(direction);
-                                directionMenuItem
-                                        .addSelectionListener(sortMenuListener);
-                            }
-                        }
-                        if (sortPriority == 0) {
-                            menuItem.setText(PRIMARY_SORT_MENU_NAME);
-                            primarySortMenusForColumnMenus.put(menu, sortMenu);
-                        } else {
-                            menuItem.setText(SECONDARY_SORT_MENU_NAME);
-                            secondarySortMenusForColumnMenus
-                                    .put(menu, sortMenu);
-                        }
-                    }
-
-                    /*
-                     * If a filter exists for this menu, add it and associate it
-                     * with the column. Otherwise, the menu being created is a
-                     * catch-all for any column that does not have an associated
-                     * filter.
-                     */
-                    if (filterColumnName != null) {
-                        try {
-                            headerMegawidgetManagersForColumnNames
-                                    .put(filterColumnName,
-                                            new MegawidgetManager(
-                                                    menu,
-                                                    Lists.newArrayList(filter),
-                                                    headerFilterStatesForColumnIdentifiers,
-                                                    new MegawidgetManagerAdapter() {
-
-                                                        @Override
-                                                        public void stateElementChanged(
-                                                                MegawidgetManager manager,
-                                                                String identifier,
-                                                                Object state) {
-                                                            if (columnFiltersChangeHandler != null) {
-                                                                columnFiltersChangeHandler
-                                                                        .stateChanged(
-                                                                                identifier,
-                                                                                state);
-                                                            }
-                                                        }
-                                                    }));
-
-                        } catch (MegawidgetException e) {
-                            statusHandler
-                                    .error("Unable to create megawidget "
-                                            + "manager due to megawidget construction problem: "
-                                            + e, e);
-                        }
-
-                        /*
-                         * Associate this header menu with the column name.
-                         */
-                        headerMenusForColumnNames.put(filterColumnName, menu);
-                    } else {
-                        for (String columnName : columnNamesToBeGivenMenus) {
-                            headerMenusForColumnNames.put(columnName, menu);
-                        }
-                    }
-                }
-            }
-        }
+        createColumnHeaderMenus();
 
         /*
          * Remove any columns that should no longer be visible. The time scale

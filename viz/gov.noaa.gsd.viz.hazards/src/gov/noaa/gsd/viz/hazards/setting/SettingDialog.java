@@ -74,6 +74,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                         fixes.
  * Aug 12, 2015   4123     Chris.Golden    Changed to work with latest version of
  *                                         megawidget manager listener.
+ * Nov 17, 2015   11776    Roger.Ferrel    Update viewer when new setting created.
  * </pre>
  * 
  * @author Chris.Golden
@@ -158,6 +159,9 @@ class SettingDialog extends BasicDialog {
                         fireAction(new StaticSettingsAction(
                                 StaticSettingsAction.ActionType.SAVE_AS,
                                 currentSettings));
+                        if (saveAs != null) {
+                            saveAs.saveAsPerformed();
+                        }
                     }
                 }
             }, "Close");
@@ -178,9 +182,9 @@ class SettingDialog extends BasicDialog {
     private ObservedSettings currentSettings;
 
     /**
-     * Recommender Composite.
+     * Use to update the settings menu items when new setting created.
      */
-    private Composite recommenderComp;
+    private ISaveAs saveAs;
 
     /**
      * Current time provider.
@@ -477,8 +481,12 @@ class SettingDialog extends BasicDialog {
         wrapperComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true,
                 true));
 
-        recommenderComp = new RecommenderInventoryComposite(sashForm, presenter);
+        new RecommenderInventoryComposite(sashForm, presenter);
         sashForm.setWeights(new int[] { 80, 20 });
         megawidgetManager.getSwtWrapper("Recommenders").sizeChanged();
+    }
+
+    public void setSaveAs(ISaveAs saveAs) {
+        this.saveAs = saveAs;
     }
 }

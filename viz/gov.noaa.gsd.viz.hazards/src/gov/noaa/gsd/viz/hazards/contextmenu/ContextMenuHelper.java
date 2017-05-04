@@ -93,6 +93,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      not persist events upon status changes when they
  *                                      should not be saved to the database.
  * Mar 30, 2017 15528      Chris.Golden Changed to use new version of saveEvents().
+ * May 04, 2017 15561      Chris.Golden Fixed ConcurrentModificationException that occurred
+ *                                      when deleting more than one event at once.
  * </pre>
  * 
  * @author mnash
@@ -629,8 +631,9 @@ public class ContextMenuHelper {
         } else if (menuLabel.contains(EventCommand.DELETE.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.PENDING.getValue())) {
-            for (ObservedHazardEvent event : selectionManager
-                    .getSelectedEvents()) {
+            List<ObservedHazardEvent> selectedEvents = new ArrayList<>(
+                    selectionManager.getSelectedEvents());
+            for (ObservedHazardEvent event : selectedEvents) {
                 if (event.getStatus().equals(HazardStatus.PENDING)) {
                     eventManager.removeEvent(event, originator);
                 }

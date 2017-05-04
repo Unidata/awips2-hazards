@@ -24,6 +24,8 @@ import java.util.Map;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IContributionItem;
+import org.eclipse.swt.events.ControlAdapter;
+import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IActionBars;
 
@@ -71,6 +73,12 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
  *                                           design concerns, untangle spaghetti, and
  *                                           add history list viewing.
+ * May 05, 2017   10001    Chris.Golden      Added detection of attaching/detaching
+ *                                           of view part and responding by
+ *                                           recreating the column menus in the tree,
+ *                                           since these were throwing exceptions
+ *                                           when displayed after attachment or
+ *                                           detachment.
  * </pre>
  * 
  * @author Chris.Golden
@@ -112,6 +120,12 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
      * Mode listener, used to respond to CAVE mode changes.
      */
     private ModeListener modeListener;
+
+    /**
+     * Flag indicating whether or not this view part is currently attached to
+     * the main CAVE window.
+     */
+    private boolean attached;
 
     /**
      * View that is using this as its user interface manifestation.
@@ -161,7 +175,7 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
     }
 
     @Override
-    public void createPartControl(Composite parent) {
+    public void createPartControl(final Composite parent) {
         super.createPartControl(parent);
 
         /*
@@ -179,11 +193,25 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
          * appropriately as well.
          */
         modeListener = new ModeListener(parent.getParent().getParent());
+
+        /*
+         * Put a control listener in place to listen for attaching or detaching
+         * of this view part.
+         */
+        parent.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+                handlePotentialAttachOrDetach(parent);
+            }
+        });
+        handlePotentialAttachOrDetach(parent);
     }
 
     @Override
     public void setFocus() {
-        body.setFocus();
+        if (body != null) {
+            body.setFocus();
+        }
     }
 
     @Override
@@ -215,7 +243,9 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
      */
     public void setToolBarActions(final Map<String, Action> map,
             ComboAction selectedTimeModeAction) {
-        body.setToolBarActions(map, selectedTimeModeAction);
+        if (body != null) {
+            body.setToolBarActions(map, selectedTimeModeAction);
+        }
     }
 
     /**
@@ -262,24 +292,32 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
 
     @Override
     public void setCurrentTime(Date currentTime) {
-        body.setCurrentTime(currentTime);
+        if (body != null) {
+            body.setCurrentTime(currentTime);
+        }
     }
 
     @Override
     public void setTimeResolution(TimeResolution timeResolution,
             Date currentTime) {
-        body.setTimeResolution(timeResolution, currentTime);
+        if (body != null) {
+            body.setTimeResolution(timeResolution, currentTime);
+        }
     }
 
     @Override
     public void setSorts(ImmutableList<Sort> sorts) {
-        body.setSorts(sorts);
+        if (body != null) {
+            body.setSorts(sorts);
+        }
     }
 
     @Override
     public void setActiveCountdownTimers(
             ImmutableMap<String, CountdownTimer> countdownTimersForEventIdentifiers) {
-        body.setActiveCountdownTimers(countdownTimersForEventIdentifiers);
+        if (body != null) {
+            body.setActiveCountdownTimers(countdownTimersForEventIdentifiers);
+        }
     }
 
     // Package-Private Methods
@@ -330,5 +368,21 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
             titlePrefix = titlePrefix.substring(0, colonIndex + 2);
         }
         setPartName(titlePrefix + selectedSettingName + " - " + currentSite);
+    }
+
+    /**
+     * Handle the possibility that this view part was just attached or detached.
+     * 
+     * @param parent
+     *            Parent of the view part.
+     */
+    private void handlePotentialAttachOrDetach(Composite parent) {
+        boolean attached = (parent.getShell().getText().isEmpty() == false);
+        if (attached != this.attached) {
+            this.attached = attached;
+            if (body != null) {
+                body.viewPartAttachedOrDetached();
+            }
+        }
     }
 }

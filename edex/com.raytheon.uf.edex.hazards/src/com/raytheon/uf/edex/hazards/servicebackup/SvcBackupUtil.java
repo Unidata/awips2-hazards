@@ -23,25 +23,22 @@ package com.raytheon.uf.edex.hazards.servicebackup;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
+import java.util.Map;
 
-import com.google.common.collect.Sets;
+import javax.xml.bind.JAXB;
+
+import com.raytheon.uf.common.hazards.configuration.backup.BackupSites;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
+import com.raytheon.uf.common.localization.PathManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.common.util.RunProcess;
 import com.raytheon.uf.edex.core.EDEXUtil;
-import com.raytheon.uf.edex.site.SiteAwareRegistry;
 
 /**
  * 
@@ -53,7 +50,8 @@ import com.raytheon.uf.edex.site.SiteAwareRegistry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 01, 2015 3473       Chris.Cody  Import SvcBackupUtil. Originally from com.raytheon.edex.plugin.gfe
- * 
+ * Nov 23, 2015 3473       Robert.Blum Removed un-needed code and reading backups sites from xml file.
+ * Feb 10, 2016 8837       Benjamin.Phillippe  Fixed location of service backup scripts
  * </pre>
  * 
  * @author bphillip
@@ -101,6 +99,11 @@ public class SvcBackupUtil {
      *             If errors occur while executing the process
      */
     private static String executeProcess(String... args) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        String[] backupSites = getBackupSites();
+        for (String site : backupSites) {
+            sb.append(site).append(",");
+        }
 
         RunProcess proc = RunProcess.getRunProcess();
         ProcessBuilder pBuilder = new ProcessBuilder();
@@ -111,6 +114,8 @@ public class SvcBackupUtil {
         pBuilder.environment().put("AWIPS_HOME", awipsHome);
         String awSiteId = System.getProperty("AW_SITE_IDENTIFIER");
         pBuilder.environment().put("AW_SITE_IDENTIFIER", awSiteId);
+        pBuilder.environment().put("EXPORT_SITES",
+                sb.substring(0, sb.length() - 1));
         pBuilder.redirectErrorStream(true);
         pBuilder.command(args);
         try {
@@ -192,92 +197,6 @@ public class SvcBackupUtil {
         return retVal;
     }
 
-    public static Properties getSvcBackupProperties() {
-        Properties svcbuProperties = new Properties();
-
-        IPathManager pathMgr = PathManagerFactory.getPathManager();
-
-        LocalizationFile basePropsFile = pathMgr.getLocalizationFile(pathMgr
-                .getContext(LocalizationType.EDEX_STATIC,
-                        LocalizationLevel.BASE), getHazardServicesPropsFile());
-        try (InputStream input = basePropsFile.openInputStream()) {
-            svcbuProperties.load(input);
-        } catch (IOException | LocalizationException e) {
-            statusHandler.error(
-                    "Unable to load BASE level svcbu.properties file.", e);
-        }
-
-        LocalizationFile sitePropsFile = pathMgr.getLocalizationFile(pathMgr
-                .getContextForSite(LocalizationType.EDEX_STATIC,
-                        EDEXUtil.getEdexSite()), getHazardServicesPropsFile());
-        if (sitePropsFile.exists()) {
-            try (InputStream input = sitePropsFile.openInputStream()) {
-                svcbuProperties.load(input);
-            } catch (IOException | LocalizationException e) {
-                statusHandler.error(
-                        "Unable to load SITE level svcbu.properties file.", e);
-            }
-        }
-
-        return svcbuProperties;
-    }
-
-    /**
-     * Returns the base lock directory for service backup. All site specific
-     * lock directories will be children to this directory.
-     * 
-     * @return The {@code Path} that represents the base directory for service
-     *         backup locks.
-     */
-    public static Path getLockDir() {
-        String lockDir = SvcBackupUtil.getSvcBackupProperties().getProperty(
-                "LOCK_DIR");
-        return Paths.get(lockDir);
-    }
-
-    /**
-     * Returns the site-specific lock directory for service backup.
-     * 
-     * @param siteID
-     *            The 3-character site identifier.
-     * @return he {@code Path} that represents the site-specific directory for
-     *         service backup locks.
-     */
-    public static Path getLockDir(final String siteID) {
-        return getLockDir().resolve(siteID.toUpperCase());
-    }
-
-    public static Set<String> getPrimarySites() {
-        Properties svcbuProps = SvcBackupUtil.getSvcBackupProperties();
-        String siteList = EDEXUtil.getEdexSite();
-        if (svcbuProps != null) {
-            String propVal = svcbuProps.getProperty("PRIMARY_SITES", "").trim();
-            if (!propVal.isEmpty()) {
-                siteList = propVal;
-            }
-        }
-
-        String[] sites = siteList.split(",");
-        Set<String> retVal = new HashSet<String>(sites.length, 1.0f);
-        Set<String> validSites = Sets.newHashSet(SiteAwareRegistry
-                .getInstance().getActiveSites());
-        for (String site : sites) {
-            String siteId = site.trim().toUpperCase();
-            if (!siteId.isEmpty()) {
-                if (validSites.contains(siteId)) {
-                    retVal.add(siteId);
-                } else {
-                    final String msg = "Service backup primary site "
-                            + site
-                            + " is not a currently activated site. Service backup and export grids tasks cannot be run for this site. Check the PRIMARY_SITES setting in svcbu.properties.";
-                    statusHandler.warn(msg);
-                }
-            }
-        }
-
-        return retVal;
-    }
-
     private static String getAwipsHomeDir() {
         String awipsHome = "/awips2";
         String edexHome = System.getProperty("edex.home");
@@ -297,17 +216,41 @@ public class SvcBackupUtil {
     }
 
     private static String getHazardServicesScriptsDir() {
-        String edexScriptsDir = getEdexScriptsDir();
-        String hazardServicesScriptsDir = FileUtil.join(edexScriptsDir,
-                "HazardServices", "ServiceBackup", "scripts");
-        return (hazardServicesScriptsDir);
+        return EDEXUtil.getEdexUtility() + PathManager.SEPARATOR
+                + "edex_static" + PathManager.SEPARATOR + "base"
+                + PathManager.SEPARATOR + "HazardServices"
+                + PathManager.SEPARATOR + "ServiceBackup"
+                + PathManager.SEPARATOR + "scripts";
     }
 
-    private static String getHazardServicesPropsFile() {
-        String hazardServicesScriptsDir = getHazardServicesScriptsDir();
-        String hazardServicesPropsFile = FileUtil.join(
-                hazardServicesScriptsDir, "svcbu.properties");
-        return (hazardServicesPropsFile);
-    }
+    /**
+     * Load the backup sites.
+     * 
+     * @return Array of backup sites, or null if no sites configured
+     */
+    private static String[] getBackupSites() {
+        IPathManager pathMgr = PathManagerFactory.getPathManager();
 
+        Map<LocalizationLevel, LocalizationFile> files = pathMgr
+                .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
+                        "HazardServices" + PathManager.SEPARATOR + "settings"
+                                + PathManager.SEPARATOR + "backupSites.xml");
+        LocalizationFile file = null;
+        if (files.containsKey(LocalizationLevel.SITE)) {
+            file = files.get(LocalizationLevel.SITE);
+        } else {
+            file = files.get(LocalizationLevel.BASE);
+        }
+
+        BackupSites backupSites = null;
+        try (InputStream is = file.openInputStream()) {
+            backupSites = JAXB.unmarshal(is, BackupSites.class);
+            return backupSites.getSites();
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error loading backup sites from backupSites.xml", e);
+        }
+
+        return null;
+    }
 }

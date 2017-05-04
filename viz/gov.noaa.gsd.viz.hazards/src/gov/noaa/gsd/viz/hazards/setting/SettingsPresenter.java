@@ -55,6 +55,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           possible site IDs, etc., any of which
  *                                           would necessitate the recreation of the
  *                                           dialog.
+ * Nov 17, 2015 11776      Roger.Ferrel      Use the {@link ISaveAs} interface.
  * </pre>
  * 
  * @author Chris.Golden
@@ -111,14 +112,25 @@ public class SettingsPresenter extends
     public void settingsLoaded(SettingsLoaded change) {
         if (getView().isSettingDetailExisting()) {
             getView().deleteSettingDetail();
-            showSettingDetail();
+            showSettingDetail(new ISaveAs() {
+
+                @Override
+                public void saveAsPerformed() {
+                    getView().setSettings(
+                            getModel().getConfigurationManager()
+                                    .getAvailableSettings());
+                }
+            });
         }
     }
 
     /**
      * Show a subview providing setting detail for the current setting.
+     * 
+     * @param saveAs
+     *            Callback to be used if a save-as is performed.
      */
-    public final void showSettingDetail() {
+    public final void showSettingDetail(ISaveAs saveAs) {
 
         ObservedSettings settings = getModel().getConfigurationManager()
                 .getSettings();
@@ -136,7 +148,7 @@ public class SettingsPresenter extends
          */
         getView().showSettingDetail(
                 getModel().getConfigurationManager().getSettingsConfig(),
-                settings);
+                settings, saveAs);
     }
 
     // Protected Methods

@@ -79,6 +79,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Nov 10, 2015 12762      Chris.Golden Added recommender running in response to
  *                                      hazard event metadata changes, as well as the
  *                                      use of the new recommender manager.
+ * Nov 17, 2015 11776      Roger.Ferrel Added {@link #containsUserLevelSettings()}
+ * Nov 17, 2015  3473      mduff        Added getBackupSites().
  * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that are
  *                                      scheduled to run at regular intervals.
  * Apr 27, 2016 18266      Chris.Golden Added support for event-driven tools triggered
@@ -154,6 +156,13 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * only at base
      */
     public void deleteSettings();
+
+    /**
+     * Does the current setting contain a user level localization file?
+     * 
+     * @return
+     */
+    public boolean containsUserLevelSettings();
 
     /**
      * Get a list of the available settings a user could change to.
@@ -439,6 +448,13 @@ public interface ISessionConfigurationManager<S extends ISettings> {
     public HazardTypes getHazardTypes();
 
     /**
+     * Get the configured backup site list.
+     * 
+     * @return Array of backup sites
+     */
+    public String[] getBackupSites();
+
+    /**
      * Get the event-driven tools.
      */
     public EventDrivenTools getEventDrivenTools();
@@ -470,5 +486,4 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * Execute any shutdown needed.
      */
     public void shutdown();
-
 }

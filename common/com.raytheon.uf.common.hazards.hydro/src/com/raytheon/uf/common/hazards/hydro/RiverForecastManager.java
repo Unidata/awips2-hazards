@@ -57,6 +57,8 @@ import com.raytheon.uf.common.util.Pair;
  * May 26, 2015 7634       Chris.Cody  Correct omission of setting Current Observation Index
  * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
  * Jun 23, 2015 8866       Chris.Cody  Initialize RFP index and value fields for SHEF Forecast data
+ * Aug 18, 2015 9650       Robert.Blum Replacing Long.MIN_VALUE to the missing value constant.
+ * Feb 19, 2016 15014      Robert.Blum Updates due to FloodDAO changes.
  * </pre>
  * 
  * @author Chris.Cody
@@ -542,7 +544,8 @@ public class RiverForecastManager {
         SHEFObserved dummyCurrentSHEFObservation = new SHEFObserved();
         dummyCurrentSHEFObservation
                 .setValue(RiverHydroConstants.MISSING_VALUE_DOUBLE);
-        dummyCurrentSHEFObservation.setObsTime(Long.MIN_VALUE);
+        dummyCurrentSHEFObservation
+                .setObsTime(RiverHydroConstants.MISSING_VALUE);
         dummyCurrentSHEFObservation.setTypeSource("");
         riverForecastPoint.setCurrentObservation(dummyCurrentSHEFObservation);
         riverForecastPoint
@@ -873,14 +876,10 @@ public class RiverForecastManager {
      * 
      * @param lid
      *            RiverForecastPoint Identifier
-     * @return CountyStateData object
+     * @return List of CountyStateData objects
      */
-    public CountyStateData getRiverForecastPointCountyState(String lid) {
-
-        CountyStateData countyStateData = this.floodDAO
-                .queryCountyStateData(lid);
-
-        return (countyStateData);
+    public List<CountyStateData> getRiverForecastPointCountyStateList(String lid) {
+        return floodDAO.queryCountyStateData(lid);
     }
 
     /**
@@ -942,10 +941,11 @@ public class RiverForecastManager {
      * 
      * @param lid
      *            River Forecast Point Id (LID)
-     * @return River Forecast Zone Info
+     * @return List of River Forecast Point River Zone Info objects.
      */
-    public RiverPointZoneInfo getRiverForecastPointRiverZoneInfo(String lid) {
-        return (this.floodDAO.queryRiverPointZoneInfo(lid));
+    public List<RiverPointZoneInfo> getRiverForecastPointRiverZoneInfo(
+            String lid) {
+        return floodDAO.queryRiverPointZoneInfo(lid);
     }
 
     /**
@@ -2987,9 +2987,9 @@ public class RiverForecastManager {
      * @return A Map of all input Lid values to their corresponding County Data
      *         objects
      */
-    public Map<String, CountyStateData> getLidToCountyDataMap(
+    public Map<String, List<CountyStateData>> getLidToCountyDataMap(
             List<String> lidList) {
-        return (floodDAO.queryLidToCountyDataMap(lidList));
+        return floodDAO.queryLidToCountyDataMap(lidList);
     }
 
     /**

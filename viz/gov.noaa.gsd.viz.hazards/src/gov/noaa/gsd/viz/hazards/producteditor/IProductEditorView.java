@@ -12,6 +12,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.util.List;
 
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 
 /**
@@ -26,15 +27,20 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Feb 18, 2013            Bryon.Lawrence      Initial creation
  * Sep 19, 2013 2046       mnash        Update for product generation.
  * Jan  7, 2013 2367       jsanchez     Used GeneratedProductList.
- * Feb 7, 2014  2890       bkowal      Product Generation JSON refactor.
- * Feb 18, 2014 2702       jsanchez    Removed unused method.
- * Apr 11, 2014 2819       Chris.Golden      Fixed bugs with the Preview and Issue
- *                                           buttons in the HID remaining grayed out
- *                                           when they should be enabled.
- * May 08, 2014 2925       Chris.Golden      Changed to work with MVP framework changes.
+ * Feb 7, 2014  2890       bkowal       Product Generation JSON refactor.
+ * Feb 18, 2014 2702       jsanchez     Removed unused method.
+ * Apr 11, 2014 2819       Chris.Golden Fixed bugs with the Preview and Issue
+ *                                      buttons in the HID remaining grayed out
+ *                                      when they should be enabled.
+ * May 08, 2014 2925       Chris.Golden Changed to work with MVP framework changes.
  * Jul 28, 2014 3214       jsanchez     Added notifySessionEventsModified method.  
  * Feb 26, 2015 6306       mduff        Pass site id to product editor.
  * May 13, 2015 6899       Robert.Blum  Removed notifySessionEventsModified method.
+ * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted
+ *                                      expiration product.
+ * Apr 27, 2017 11853      Chris.Golden Made names of methods more consistent, and
+ *                                      added a method to check to see if the
+ *                                      product editor is open.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -49,13 +55,22 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public void initialize();
 
-    public boolean showProductEditorDetail(
-            List<GeneratedProductList> generatedProductsList, String siteId);
+    public boolean showProductEditor(
+            List<GeneratedProductList> generatedProductsList, String siteId,
+            HazardTypes hazardTypes);
 
     /**
      * Close the product editor dialog.
      */
-    public void closeProductEditorDialog();
+    public void closeProductEditor();
+
+    /**
+     * Determine whether or not the product editor is open.
+     * 
+     * @return <code>true</code> if the product editor is open,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isProductEditorOpen();
 
     /**
      * Get the generated products list.
@@ -78,5 +93,11 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      */
     public ICommandInvoker<String> getDismissInvoker();
 
+    /**
+     * Show the actual dialog.
+     * 
+     * TODO: This should be refactored away at some point, as it should probably
+     * be done by {@link #showProductEditor(List, String)}.
+     */
     public void openDialog();
 }

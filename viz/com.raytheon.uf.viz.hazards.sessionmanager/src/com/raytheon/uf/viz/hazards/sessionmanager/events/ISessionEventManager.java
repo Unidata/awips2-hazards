@@ -91,6 +91,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Feb 12, 2015 4959       Dan Schaffer Modify MB3 add/remove UGCs to match Warngen
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Sep 15, 2015 7629       Robert.Blum  Added method that persists a list of events.
+ * Feb 24, 2016 14667      Robert.Blum  Limiting Flash Flood Recommender to basins inside the CWA.
  * Mar 24, 2016 15676      Chris.Golden Changed setModifiedEventGeometry() to return true if it
  *                                      succeeds in changing the geometry, false otherwise.
  * Mar 26, 2016 15676      Chris.Golden Removed geometry validity checks (that is, checks to see
@@ -781,6 +782,13 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *            New value.
      */
     public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected);
+
+    /**
+     * Returns the geometry representing the current CWA.
+     * 
+     * @return County Warning Area geometry.
+     */
+    public Geometry getCwaGeometry();
 
     /**
      * Determine whether or not this manager is shut down.

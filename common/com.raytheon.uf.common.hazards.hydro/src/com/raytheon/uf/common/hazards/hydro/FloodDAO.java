@@ -15,16 +15,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.time.DateUtils;
-
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
 import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
-import com.raytheon.uf.common.dataplugin.shef.tables.Rpfparams;
 import com.raytheon.uf.common.ohd.AppsDefaults;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * Description: Product data accessor implementation of the IFloodDAO.
@@ -41,7 +39,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * April 17, 2013          bryon.lawrence      Made a Singleton based on 
  *                                             code review feedback.
  * May 1, 2014  3581       bkowal              Relocate to common hazards hydro
- * Sep 19, 2014   2394     mpduff for nash     Updated for interface changes
+ * Sep 19, 2014 2394       mpduff for nash     Updated for interface changes
  * Dec 17, 2014 2394       Ramer               Updated Interface
  * Feb 21, 2015 4959       Dan Schaffer        Improvements to add/remove UGCs
  * Feb 24, 2015 5960       Manross             Grab flood inundation areas
@@ -49,6 +47,13 @@ import com.raytheon.uf.common.status.UFStatus;
  * May 08, 2015 6562       Chris.Cody          Restructure River Forecast Points/Recommender
  * May 28, 2015 7139       Chris.Cody          Add curpp and curpc HydrographPrecip query and processing
  * Jun 16, 2015 8782       Chris.Cody          Flood DAO does not properly handle Hydro DB Location longitude
+ * Oct 15, 2015 12564      mduff               Change rpfparams query to be sql.
+ * Oct 21, 2015 12571      mduff               Add check for null PE.
+ * Jan 14, 2016  9643      Roger.Ferrel        Limit {@link #queryTopRankedTypeSource(String, String, int, String)
+ *                                             to type sources starting with F or R.
+ * Jan 18, 2016 12942      Roger.Ferrel        Corrected errors in computing dates in
+ *                                             {@link #queryPhysicalElementValue(String, String, int, String, String, String, boolean, long)}.
+ * Feb 19, 2016 15014      Robert.Blum         Fix Zone and County data queries.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -62,6 +67,9 @@ public class FloodDAO implements IFloodDAO {
     private static String COLUMN_Q = "Q";
 
     private static String COLUMN_STAGE = "STAGE";
+
+    /** First letter in type source that indicates it is a forecast. */
+    private static String TYPE_SOURCE_FORECAST = "Ff";
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(FloodDAO.class);
@@ -382,7 +390,7 @@ public class FloodDAO implements IFloodDAO {
         querySB.append(FpInfo.COLUMN_NAME_STRING);
         querySB.append(" FROM FpInfo WHERE lid = '");
         querySB.append(lid);
-        querySB.append("'");
+        querySB.append("' and pe IS NOT NULL");
 
         List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
                 QUERY_MODE.MODE_SQLQUERY, querySB.toString(), IHFS,
@@ -450,6 +458,7 @@ public class FloodDAO implements IFloodDAO {
             }
             appendToWhereClause(querySB, "pe", physicalElementList, true);
         }
+        querySB.append(" AND pe IS NOT NULL");
         querySB.append(" ORDER BY ordinal, lid ASC");
 
         List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
@@ -596,18 +605,8 @@ public class FloodDAO implements IFloodDAO {
      * #queryRiverPointZoneInfo()
      */
     @Override
-    public RiverPointZoneInfo queryRiverPointZoneInfo(String lid) {
-        RiverPointZoneInfo returnRiverPointZoneInfo = null;
-        List<String> lidList = Lists.newArrayList(lid);
-
-        List<RiverPointZoneInfo> riverPointZoneInfoList = queryRiverPointZoneInfoList(
-                lidList, null, null);
-        if ((riverPointZoneInfoList != null)
-                && (riverPointZoneInfoList.isEmpty() == false)) {
-            returnRiverPointZoneInfo = riverPointZoneInfoList.get(0);
-        }
-
-        return (returnRiverPointZoneInfo);
+    public List<RiverPointZoneInfo> queryRiverPointZoneInfo(String lid) {
+        return queryRiverPointZoneInfoList(Lists.newArrayList(lid), null, null);
     }
 
     /*
@@ -711,27 +710,22 @@ public class FloodDAO implements IFloodDAO {
         /*
          * Create the SQL Query for the IHFS RpfParams table.
          */
-        String query = " FROM "
-                + com.raytheon.uf.common.dataplugin.shef.tables.Rpfparams.class
-                        .getName();
-
+        String query = "select obshrs, fcsthrs, rvsexphrs, flsexphrs, flwexphrs from rpfparams";
         /*
          * Retrieve configuration information from the RpfParams table.
          */
         List<Object[]> rpfParmsList = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_HQLQUERY, query, IHFS, "IHFS hazard settings");
+                QUERY_MODE.MODE_SQLQUERY, query, IHFS, "IHFS hazard settings");
         HazardSettings hazardSettings = new HazardSettings();
 
         if ((rpfParmsList != null) && (rpfParmsList.isEmpty() == false)) {
             Object[] paramObject = rpfParmsList.get(0);
-            Rpfparams params = (Rpfparams) paramObject[0];
-
-            hazardSettings.setRvsExpirationHours(params.getId().getRvsexphrs());
-            hazardSettings.setFlsExpirationHours(params.getId().getFlsexphrs());
-            hazardSettings.setFlwExpirationHours(params.getId().getFlwexphrs());
-            hazardSettings.setObsLookbackHours(params.getId().getObshrs());
-            hazardSettings.setForecastLookForwardHours(params.getId()
-                    .getFcsthrs());
+            int i = 0;
+            hazardSettings.setObsLookbackHours((int) paramObject[i++]);
+            hazardSettings.setForecastLookForwardHours((int) paramObject[i++]);
+            hazardSettings.setRvsExpirationHours((int) paramObject[i++]);
+            hazardSettings.setFlsExpirationHours((int) paramObject[i++]);
+            hazardSettings.setFlwExpirationHours((int) paramObject[i++]);
         } else {
             statusHandler.info("Could not load RpfParams information.");
         }
@@ -773,7 +767,6 @@ public class FloodDAO implements IFloodDAO {
         hazardSettings.setVtecRecordFlowOffset(vtecRecordFlowOffset);
 
         return hazardSettings;
-
     }
 
     /*
@@ -1844,6 +1837,11 @@ public class FloodDAO implements IFloodDAO {
         querySB.append(extremum);
         querySB.append("' AND dur = ");
         querySB.append(duration);
+        /*
+         * Per Mark Armstrong email to work like RiverPro limit type sources to
+         * those starting with F or R.
+         */
+        querySB.append("AND ( ts LIKE 'F%%' OR ts LIKE 'R%%')");
         querySB.append(" ORDER BY ts_rank, ts");
 
         List<Object[]> queryResults = DatabaseQueryUtil.executeDatabaseQuery(
@@ -1868,10 +1866,13 @@ public class FloodDAO implements IFloodDAO {
             boolean timeFlag, long currentTime_ms) {
         SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();
 
+        Calendar currentTimeCal = TimeUtil.newGmtCalendar();
+        currentTimeCal.setTimeInMillis(currentTime_ms);
+
         String queryTimeConstraint = "";
         if (!RiverHydroConstants.NEXT.equals(timeArg)) {
-            boolean isForecast = typeSource.startsWith("f")
-                    || typeSource.startsWith("F");
+            boolean isForecast = TYPE_SOURCE_FORECAST.contains(typeSource
+                    .substring(0, 1));
 
             /*
              * Set the table name to use.
@@ -1887,14 +1888,20 @@ public class FloodDAO implements IFloodDAO {
             int baseHours = Integer.parseInt(stringArray[1]);
             int windowHours = Integer.parseInt(stringArray[2]);
 
-            Date referenceTime = DateUtils
-                    .addHours(DateUtils.truncate(new Date(currentTime_ms),
-                            Calendar.DATE), dayOffset * 24 + baseHours / 100);
-            Date lowerBound = DateUtils.addHours(referenceTime, -windowHours);
-            Date upperBound = DateUtils.addHours(referenceTime, windowHours);
+            Calendar referenceCal = TimeUtil.newCalendar(currentTimeCal);
+            referenceCal.set(Calendar.MILLISECOND, 0);
+            referenceCal.set(Calendar.SECOND, 0);
+            referenceCal.set(Calendar.MINUTE, baseHours % 100);
+            referenceCal.set(Calendar.HOUR_OF_DAY, baseHours / 100);
+            referenceCal.add(Calendar.DAY_OF_MONTH, dayOffset);
 
-            String lowerBoundStr = dateFormat.format(lowerBound);
-            String upperBoundStr = dateFormat.format(upperBound);
+            Calendar lowerBoundCal = TimeUtil.newCalendar(referenceCal);
+            lowerBoundCal.add(Calendar.HOUR_OF_DAY, -windowHours);
+            Calendar upperBoundCal = TimeUtil.newCalendar(referenceCal);
+            upperBoundCal.add(Calendar.HOUR_OF_DAY, windowHours);
+            String lowerBoundStr = dateFormat.format(lowerBoundCal.getTime());
+            String upperBoundStr = dateFormat.format(upperBoundCal.getTime());
+
             if (isForecast) {
                 queryTimeConstraint = "(validtime >= '" + lowerBoundStr
                         + "' and validtime <= '" + upperBoundStr + "')";
@@ -1944,8 +1951,8 @@ public class FloodDAO implements IFloodDAO {
                 String validTimeCondition;
                 querySB.setLength(0);
 
-                String currentTime_ms_str = dateFormat.format(DateUtils
-                        .truncate(new Date(currentTime_ms), Calendar.DATE));
+                String currentTime_ms_str = dateFormat.format(currentTimeCal
+                        .getTime());
                 validTimeCondition = ">= '" + currentTime_ms_str + "'";
                 querySB.append("SELECT value, validTime FROM ");
                 querySB.append(tableName);
@@ -2000,7 +2007,7 @@ public class FloodDAO implements IFloodDAO {
                         return RiverHydroConstants.MISSING_VALUE_STRING;
                     }
                     long diff = Math.abs(resultDate.getTime()
-                            - referenceTime.getTime());
+                            - referenceCal.getTimeInMillis());
                     if (i == 0 || diff < minDiff) {
                         minDiff = diff;
                         closestIndex = i;
@@ -2381,17 +2388,8 @@ public class FloodDAO implements IFloodDAO {
      * #queryLidToCountyDataMap()
      */
     @Override
-    public CountyStateData queryCountyData(String lid) {
-
-        List<String> lidList = Lists.newArrayList(lid);
-
-        CountyStateData countyStateData = null;
-        Map<String, CountyStateData> lidToCountyStateDataMap = queryLidToCountyDataMap(lidList);
-        if (lidToCountyStateDataMap != null) {
-            countyStateData = lidToCountyStateDataMap.get(lid);
-        }
-
-        return (countyStateData);
+    public List<CountyStateData> queryCountyData(String lid) {
+        return queryLidToCountyDataMap(Lists.newArrayList(lid)).get(lid);
     }
 
     /*
@@ -2401,9 +2399,9 @@ public class FloodDAO implements IFloodDAO {
      * #queryLidToCountyDataMap()
      */
     @Override
-    public Map<String, CountyStateData> queryLidToCountyDataMap(
+    public Map<String, List<CountyStateData>> queryLidToCountyDataMap(
             List<String> lidList) {
-        Map<String, CountyStateData> lidToCountyStateDataMap = null;
+        Map<String, List<CountyStateData>> lidToCountyStateDataMap = null;
         StringBuilder querySB = new StringBuilder();
         querySB.append("SELECT countynum.lid, ");
         querySB.append(CountyStateData.QUALIFIED_COLUMN_NAME_STRING);
@@ -2423,12 +2421,19 @@ public class FloodDAO implements IFloodDAO {
             for (Object[] result : queryResults) {
                 countyStateData = new CountyStateData(result);
                 String lid = countyStateData.getLid();
-                lidToCountyStateDataMap.put(lid, countyStateData);
+                List<CountyStateData> tmpList;
+                if (lidToCountyStateDataMap.containsKey(lid)) {
+                    tmpList = lidToCountyStateDataMap.get(lid);
+                } else {
+                    tmpList = new ArrayList<CountyStateData>(result.length);
+                }
+                tmpList.add(countyStateData);
+                lidToCountyStateDataMap.put(lid, tmpList);
             }
         } else {
             lidToCountyStateDataMap = Maps.newHashMapWithExpectedSize(0);
         }
-        return (lidToCountyStateDataMap);
+        return lidToCountyStateDataMap;
     }
 
     /*
@@ -2480,17 +2485,8 @@ public class FloodDAO implements IFloodDAO {
      * #queryCountyStateData()
      */
     @Override
-    public CountyStateData queryCountyStateData(String lid) {
-        CountyStateData countyStateData = null;
-        List<String> lidList = Lists.newArrayList(lid);
-
-        List<CountyStateData> countyStateDataList = queryCountyStateDataList(lidList);
-        if ((countyStateDataList != null)
-                && (countyStateDataList.isEmpty() == false)) {
-            countyStateData = countyStateDataList.get(0);
-        }
-
-        return (countyStateData);
+    public List<CountyStateData> queryCountyStateData(String lid) {
+        return queryCountyStateDataList(Lists.newArrayList(lid));
     }
 
     /*
@@ -2505,8 +2501,8 @@ public class FloodDAO implements IFloodDAO {
         List<CountyStateData> countyStateDataList = null;
         StringBuilder querySB = new StringBuilder();
         querySB.append("SELECT ");
-        querySB.append("CountyNum."); // This is a bit hokey but it does work
-        querySB.append(CountyStateData.COLUMN_NAME_STRING);
+        querySB.append("CountyNum.lid, ");
+        querySB.append(CountyStateData.QUALIFIED_COLUMN_NAME_STRING);
         querySB.append(" FROM ");
         querySB.append("CountyNum, ");
         querySB.append(CountyStateData.TABLE_NAME);

@@ -222,7 +222,7 @@ public class SpatialView implements
      * Input modes.
      */
     private enum InputMode {
-        SELECT_OR_MODIFY("Select event", "moveAndSelect.png"), DRAW_POINT(
+        SELECT_OR_MODIFY("Select event", "arrow.png"), DRAW_POINT(
                 "Draw points", "drawPoint.png"), DRAW_LINE("Draw path",
                 "drawPath.png"), DRAW_POLYGON("Draw polygon", "drawPolygon.png"), DRAW_FREEHAND_POLYGON(
                 "Draw freehand polygon", "drawFreehandPolygon.png"), DRAW_ELLIPSE(

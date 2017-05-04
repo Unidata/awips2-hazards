@@ -180,6 +180,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                           the HID. Also fixed similar cause of a bug
  *                                           that made the Propose button never enabled
  *                                           event when it should have been.
+ * Apr 27, 2017   11866    Chris.Golden      Added code to prevent command buttons from
+ *                                           being enabled when the event is ended or
+ *                                           elapsed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1836,8 +1839,10 @@ public class HazardDetailPresenter extends
         boolean enable = ((event != null)
                 && (event instanceof ObservedHazardEvent)
                 && (HazardEventUtilities.getHazardType(event) != null)
-                && (getModel().isPreviewOngoing() == false) && (getModel()
-                .isIssueOngoing() == false));
+                && (getModel().isPreviewOngoing() == false)
+                && (getModel().isIssueOngoing() == false)
+                && (event.getStatus() != HazardStatus.ENDED) && (event
+                .getStatus() != HazardStatus.ELAPSED));
         getView().getButtonInvoker().setEnabled(Command.PREVIEW, enable);
         getView().getButtonInvoker().setEnabled(
                 Command.PROPOSE,

@@ -59,6 +59,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Oct 27, 2015   12762    Chris.Golden Initial creation.
  * Jan 28, 2016   12762    Chris.Golden Changed to use new attribute identifiers
  *                                      constant.
+ * Feb 24, 2016   14667    Robert.Blum  Limiting Flash Flood Recommender to basins
+ *                                      inside the CWA.
+ * Feb 25, 2016   14740    kbisanz      Add default FRAME_INDEX and FRAME_COUNT to
+ *                                      frameMap
  * Mar 03, 2016   14004    Chris.Golden Changed to pass recommender identifier to
  *                                      the method handling recommender results.
  * Mar 04, 2016   15933    Chris.Golden Added ability to run multiple recommenders
@@ -282,6 +286,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 includeEventTypesList) : null);
         Boolean includeDataLayerTimes = (Boolean) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES);
+        Boolean includeCwaGeometry = (Boolean) metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_CWA_GEOMETRY);
 
         /*
          * Create the event set, determine which events are to be added to it
@@ -352,6 +358,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     : (dataLayerTimes instanceof Serializable ? (Serializable) dataLayerTimes
                             : new ArrayList<>(dataLayerTimes)));
             eventSet.addAttribute(HazardConstants.DATA_TIMES, times);
+        }
+        if (Boolean.TRUE.equals(includeCwaGeometry)) {
+            eventSet.addAttribute(HazardConstants.CWA_GEOMETRY, sessionManager
+                    .getEventManager().getCwaGeometry());
         }
 
         /*
@@ -522,6 +532,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         if (framesInfo != null) {
             dictionary.put(HazardConstants.CURRENT_FRAME,
                     framesInfo.getCurrentFrame());
+            dictionary.put(HazardConstants.FRAME_COUNT, 0);
+            dictionary.put(HazardConstants.FRAME_INDEX,
+                    HazardConstants.NO_FRAMES_INDEX);
             int frameIndex = framesInfo.getFrameIndex();
             DataTime[] dataFrames = framesInfo.getFrameTimes();
             if (frameIndex >= 0) {

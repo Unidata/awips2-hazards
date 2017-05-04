@@ -31,6 +31,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Feb 19, 2016 15014      Robert.Blum Fixed copy/paste bug.
  * </pre>
  * 
  * @author Chris.Cody
@@ -41,8 +42,6 @@ public class CountyStateData {
             .getHandler(CountyStateData.class);
 
     public static final String TABLE_NAME = "Counties";
-
-    public static final String COLUMN_NAME_STRING = "lid, state, county, countynum, wfo, primary_back, secondary_back";
 
     public static final String QUALIFIED_COLUMN_NAME_STRING = "Counties.state, Counties.county, Counties.countynum, Counties.wfo, Counties.primary_back, Counties.secondary_back";
 
@@ -149,7 +148,7 @@ public class CountyStateData {
                     this.primaryBack = (String) queryValue;
                     break;
                 case SECONDARY_BACK_FIELD_IDX:
-                    this.countyNum = (String) queryValue;
+                    this.secondaryBack = (String) queryValue;
                     break;
                 default:
                     statusHandler

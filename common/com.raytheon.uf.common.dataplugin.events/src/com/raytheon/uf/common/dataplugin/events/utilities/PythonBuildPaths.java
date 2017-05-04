@@ -23,6 +23,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -52,7 +53,7 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                     a empty string.
  * Oct 24, 2014 4934      mpduff       Added metaDataPath to includePath.
  * Feb 26, 2015 6306      mduff        Get available localization levels only.
- * 
+ * Nov 17, 2015 3473      Robert.Blum  Moved all python files under HazardServices localization dir.
  * </pre>
  * 
  * @author jsanchez
@@ -60,9 +61,6 @@ import com.raytheon.uf.common.util.FileUtil;
  */
 
 public class PythonBuildPaths {
-
-    public static final String PYTHON_EVENTS_DIRECTORY = "python"
-            + File.separator + "events" + File.separator;
 
     /**
      * Builds the path for the directory in python/events
@@ -74,7 +72,8 @@ public class PythonBuildPaths {
     public static String buildDirectoryPath(String directory, String site) {
         IPathManager pathMgr = PathManagerFactory.getPathManager();
         List<String> pathList = new ArrayList<>();
-        String fileLoc = PYTHON_EVENTS_DIRECTORY + directory;
+        String fileLoc = HazardsConfigurationConstants.PYTHON_EVENTS_DIRECTORY
+                + File.separator + directory;
 
         LocalizationLevel[] levels = pathMgr.getAvailableLevels();
         for (int i = levels.length - 1; i >= 0; i--) {
@@ -107,8 +106,9 @@ public class PythonBuildPaths {
         LocalizationContext baseContext = pathMgr.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
 
-        String fileLoc = "python" + File.separator + "events" + File.separator
-                + directory + File.separator + pythonInterface + ".py";
+        String fileLoc = HazardsConfigurationConstants.PYTHON_EVENTS_DIRECTORY
+                + File.separator + directory + File.separator + pythonInterface
+                + ".py";
 
         String pythonInterfacePath = pathMgr
                 .getLocalizationFile(baseContext, fileLoc).getFile().getPath();
@@ -120,8 +120,8 @@ public class PythonBuildPaths {
         IPathManager manager = PathManagerFactory.getPathManager();
         LocalizationContext baseContext = manager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        String fileLoc = "python" + File.separator + "events" + File.separator
-                + directory;
+        String fileLoc = HazardsConfigurationConstants.PYTHON_EVENTS_DIRECTORY
+                + File.separator + directory;
         return manager.getLocalizationFile(baseContext, fileLoc);
     }
 
@@ -140,14 +140,16 @@ public class PythonBuildPaths {
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
 
         String pythonPath = manager.getFile(baseContext, "python").getPath();
+        String hazardServicesPythonPath = manager.getFile(baseContext,
+                "HazardServices" + File.separator + "python").getPath();
         String dataAccessPath = FileUtil.join(pythonPath, "dataaccess");
         String dataTimePath = FileUtil.join(pythonPath, "time");
-        String eventsPath = FileUtil.join(pythonPath, "events");
+        String eventsPath = FileUtil.join(hazardServicesPythonPath, "events");
         String utilitiesPath = FileUtil.join(eventsPath, "utilities");
         String gfePath = FileUtil.join(pythonPath, "gfe");
         String productGenPath = FileUtil.join(eventsPath, "productgen");
         String metadataPath = manager.getFile(baseContext,
-                "hazardServices/hazardMetaData").getPath();
+                "HazardServices" + File.separator + "hazardMetaData").getPath();
 
         for (int i = 0; i < directories.length; i++) {
             directories[i] = buildLocalizationDirectory(directories[i])
@@ -155,8 +157,9 @@ public class PythonBuildPaths {
         }
         String directoryPaths = PyUtil.buildJepIncludePath(directories);
         String includePath = PyUtil.buildJepIncludePath(pythonPath,
-                dataAccessPath, dataTimePath, eventsPath, utilitiesPath,
-                gfePath, metadataPath, productGenPath);
+                hazardServicesPythonPath, dataAccessPath, dataTimePath,
+                eventsPath, utilitiesPath, gfePath, metadataPath,
+                productGenPath);
         if (directoryPaths.equals("")) {
             return PyUtil.buildJepIncludePath(includePath);
         }

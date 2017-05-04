@@ -40,7 +40,7 @@ def setUpCore():
     metaRoot = rootDir+\
        "/common/gov.noaa.gsd.uf.common.dataplugin.hazards/utility/"+ \
        "common_static/base"
-    setTestCaseLocation(metaRoot, "hazardServices/hazardMetaData", "*.py")
+    setTestCaseLocation(metaRoot, "HazardServices/hazardMetaData", "*.py")
     from LocalizationInterface import LocalizationInterface
     myLI = LocalizationInterface("")
     setUpDone = True

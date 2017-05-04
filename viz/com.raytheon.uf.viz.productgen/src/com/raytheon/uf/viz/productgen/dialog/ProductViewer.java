@@ -49,8 +49,8 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  * 
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
- * JUl 29, 2015 9681       Robert.Blum  Initial creation
- * 
+ * Jul 29, 2015 9681       Robert.Blum  Initial creation
+ * Jan 26, 2016 11860      Robert.Blum  Product Editor is now modal.
  * </pre>
  * 
  * @author Robert.Blum
@@ -79,8 +79,7 @@ public class ProductViewer extends AbstractProductDialog {
      */
     public ProductViewer(Shell parentShell,
             List<GeneratedProductList> generatedProductListStorage) {
-        super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT,
-                generatedProductListStorage);
+        super(parentShell, SWT.RESIZE, generatedProductListStorage);
         setText(DIALOG_TITLE);
     }
 

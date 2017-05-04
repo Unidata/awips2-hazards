@@ -86,6 +86,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Jan 09, 2015    5457    Daniel.S.Schaffer Fixed bug in settings deletion.
  * Feb 23, 2015    3618    Chris.Golden      Added ability to close settings dialog
  *                                           from public method.
+ * Nov 17, 2015   11776    Roger.Ferrel      Use @{link {@link ISaveAs} to update
+ *                                           settings menu.
  * Feb 01, 2017   15556    Chris.Golden      Changed to work with settings changes
  *                                           as part of console refactor.
  * </pre>
@@ -133,6 +135,18 @@ public class SettingsView implements
      * Settings pulldown menu action.
      */
     private class SettingsPulldownAction extends PulldownAction {
+        
+        /**
+         * Callback to be executed if a save-as is performed.
+         */
+        private final ISaveAs saveAs = new ISaveAs() {
+
+            @Override
+            public void saveAsPerformed() {
+                setSettings(presenter.getSessionManager()
+                        .getConfigurationManager().getAvailableSettings());
+            }
+        };
 
         // Private Variables
 
@@ -152,7 +166,7 @@ public class SettingsView implements
             public void widgetSelected(SelectionEvent event) {
                 String text = ((MenuItem) event.widget).getText();
                 if (text.equals(EDIT_COMMAND_MENU_TEXT)) {
-                    presenter.showSettingDetail();
+                    presenter.showSettingDetail(saveAs);
                 } else if (event.widget.getData() != null) {
                     /*
                      * Remember the newly selected setting name and fire off the
@@ -165,26 +179,50 @@ public class SettingsView implements
                 } else if (text.equals(DELETE_COMMAND_MENU_TEXT)) {
                     ISessionConfigurationManager<ObservedSettings> configManager = presenter
                             .getSessionManager().getConfigurationManager();
-                    boolean answer = MessageDialog.openQuestion(Display
-                            .getCurrent().getActiveShell(), "Delete Setting",
-                            "Are you sure you want to delete ["
-                                    + configManager.getSettings()
-                                            .getDisplayName() + "]?");
-                    if (answer) {
-                        configManager.deleteSettings();
-                        List<Settings> availableSettings = configManager
-                                .getAvailableSettings();
-                        String newSettingsId = availableSettings.iterator()
-                                .next().getSettingsID();
-                        /*
-                         * Need to select a new setting since the current one
-                         * was deleted, fire off the action.
-                         */
-                        presenter
-                                .publish(new StaticSettingsAction(
-                                        StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
-                                        newSettingsId));
-
+                    if (configManager.containsUserLevelSettings()) {
+                        String displayName = configManager.getSettings()
+                                .getDisplayName();
+                        boolean answer = MessageDialog.openQuestion(Display
+                                .getCurrent().getActiveShell(),
+                                "User Settings",
+                                "Are you sure you want to delete user settings for \""
+                                        + displayName + "\"?");
+                        if (answer) {
+                            configManager.deleteSettings();
+                            List<Settings> availableSettings = configManager
+                                    .getAvailableSettings();
+                            String newSettingsId = null;
+                            
+                            /*
+                             * Display any non-USER localized settings.
+                             */
+                            for (Settings settings : availableSettings) {
+                                if (displayName.equals(settings
+                                        .getDisplayName())) {
+                                    newSettingsId = settings.getSettingsID();
+                                    break;
+                                }
+                            }
+                            if (newSettingsId == null) {
+                                newSettingsId = availableSettings.iterator()
+                                        .next().getSettingsID();
+                            }
+                            /*
+                             * Need to select a new setting since the current
+                             * one was deleted, fire off the action.
+                             */
+                            presenter
+                                    .publish(new StaticSettingsAction(
+                                            StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
+                                            newSettingsId));
+                            setSettings(availableSettings);
+                        }
+                    } else {
+                        MessageDialog.openInformation(Display.getCurrent()
+                                .getActiveShell(), "User settings",
+                                "No user settings to delete for \""
+                                        + configManager.getSettings()
+                                                .getDisplayName() + "\".");
                     }
                 }
             }
@@ -533,8 +571,9 @@ public class SettingsView implements
 
     @Override
     public final void showSettingDetail(SettingsConfig settingsConfig,
-            ObservedSettings settings) {
+            ObservedSettings settings, ISaveAs saveAs) {
         if (settingDialog != null) {
+            settingDialog.setSaveAs(saveAs);
             settingDialog.open();
             return;
         }
@@ -542,6 +581,7 @@ public class SettingsView implements
         settingDialog = new SettingDialog(presenter, PlatformUI.getWorkbench()
                 .getActiveWorkbenchWindow().getShell(), settingsConfig,
                 settings);
+        settingDialog.setSaveAs(saveAs);
         settingDialog.open();
         settingDialog.getShell().addDisposeListener(dialogDisposeListener);
     }

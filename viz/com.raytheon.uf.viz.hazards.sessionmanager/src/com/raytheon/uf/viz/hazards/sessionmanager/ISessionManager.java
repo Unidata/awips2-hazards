@@ -61,6 +61,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      Central Registry server.
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
  *                                      manager.
+ * Nov 23, 2015  3473      Robert.Blum  Removed importApplicationBackupSiteData.
  * Mar 03, 2016 14004      Chris.Golden Changed to pass recommender identifier to the
  *                                      method handling recommender results.
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
@@ -292,17 +293,6 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @siteId Site Identifier to Export
      */
     public void exportApplicationSiteData(String siteId);
-
-    /**
-     * Import Hazard Services Site Configuration Files
-     * 
-     * Pull the Hazard Services Configuration Files for a Backup Site
-     * 
-     * @param backupSiteIdList
-     *            List of Site Id values that will be imported as backup
-     *            localization site data
-     */
-    public void importApplicationBackupSiteData(List<String> backupSiteIdList);
 
     /**
      * Add the specified event identifier to the set of events that have been

@@ -45,7 +45,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 29, 2015 9681       Robert.Blum  Initial creation
- * 
+ * Jan 26, 2016 11860      Robert.Blum  Product Editor is now modal.
  * </pre>
  * 
  * @author Robert.Blum
@@ -72,13 +72,15 @@ public abstract class AbstractProductDialog extends CaveSWTDialog {
      * 
      * @param parentShell
      *            The shell used to create the AbstractProductDialog
+     * @param style
+     *            The SWT style of the dialog to construct.
      * @param generatedProductListStorage
      *            The generated products to be displayed on this
      *            AbstractProductDialog
      */
-    public AbstractProductDialog(Shell parentShell, int style, int caveStyle,
+    public AbstractProductDialog(Shell parentShell, int style,
             List<GeneratedProductList> generatedProductListStorage) {
-        super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT);
+        super(parentShell, style, CAVE.PERSPECTIVE_INDEPENDENT);
         this.generatedProductListStorage = generatedProductListStorage;
     }
 

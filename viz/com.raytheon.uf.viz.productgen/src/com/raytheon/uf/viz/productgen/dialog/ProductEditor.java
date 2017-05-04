@@ -24,8 +24,11 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
@@ -47,16 +50,22 @@ import org.eclipse.ui.PlatformUI;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ITextProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
+import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.ProductValidationUtil;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * 
@@ -86,12 +95,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.ProductValidation
  * May 06, 2015 6979       Robert.Blum  Additional changes for product Corrections.
  * May 13, 2015 6899       Robert.Blum  Removed showSelectedEventsModifiedDialog().
  * May 14, 2015 7376       Robert.Blum  Added method to update the state of the issueAll button.
- * 07/08/2015   9063       Benjamin.Phillippe Fixed product name collision in dataEditorMap
+ * Jul 08, 2015 9063       Benjamin.Phillippe Fixed product name collision in dataEditorMap
  * Jul 07, 2015 7747       Robert.Blum  Moving product validation code to the product editor. It was
  *                                      found that the previous location could case the active table
  *                                      to incorrectly update when products failed validation, since
  *                                      the validation was done after the product generation.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Dec 01, 2015 12473      Roger.Ferrel Do not allow issue in operational mode with DRT time.
+ * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted expiration product.
+ * Jan 26, 2016 11860      Robert.Blum  Product Editor is now modal.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
  *                                      sessions in the same CAVE session, since stopping and
  *                                      starting the Jep instances when the latter use numpy is
@@ -157,6 +169,11 @@ public class ProductEditor extends AbstractProductDialog {
     /** ProductGeneration instance used to regenerate products */
     private final ProductGeneration productGeneration;
 
+    /**
+     * Hazard types configuration information.
+     */
+    private final HazardTypes hazardTypes;
+
     /** The total number of products that are able to be issued */
     protected int issuableProducts;
 
@@ -168,13 +185,16 @@ public class ProductEditor extends AbstractProductDialog {
      *            The shell used to create the ProductEditor
      * @param generatedProductListStorage
      *            The generated products to be displayed on this product editor
+     * @param hazardTypes
+     *            Hazard types configuration information.
      */
     public ProductEditor(Shell parentShell,
             List<GeneratedProductList> generatedProductListStorage,
-            String siteId) {
-        super(parentShell, SWT.RESIZE, CAVE.PERSPECTIVE_INDEPENDENT,
+            String siteId, HazardTypes hazardTypes) {
+        super(parentShell, SWT.RESIZE | SWT.APPLICATION_MODAL,
                 generatedProductListStorage);
         this.productGeneration = ProductGeneration.getInstance(siteId);
+        this.hazardTypes = hazardTypes;
 
         /*
          * If these products are editable, save a copy for future use
@@ -331,7 +351,14 @@ public class ProductEditor extends AbstractProductDialog {
         issueAllButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                issueAll();
+                if ((CAVEMode.getMode() != CAVEMode.OPERATIONAL)
+                        || SimulatedTime.getSystemTime().isRealTime()) {
+                    issueAll();
+                } else {
+                    MessageDialog.openInformation(getShell(),
+                            "Operational Issue Hazard",
+                            "Must be in real time to issue hazard.");
+                }
             }
         });
 
@@ -344,7 +371,17 @@ public class ProductEditor extends AbstractProductDialog {
      * Issues all products
      */
     private void issueAll() {
-        // Save all values first
+
+        /*
+         * Make sure all expiration times are outside the expiration window.
+         */
+        if (validateExpTimes() == false) {
+            return;
+        }
+
+        /*
+         * Save all values first.
+         */
         for (AbstractDataEditor de : editorManager.getAllEditors()) {
             if (de != null) {
                 if (de.hasUnsavedChanges()) {
@@ -354,10 +391,96 @@ public class ProductEditor extends AbstractProductDialog {
             }
         }
 
-        // Validate that there is no framed text
+        /*
+         * Validate that there is no framed text.
+         */
         if (validateEditableFields()) {
             invokeIssue(isCorrectable);
         }
+    }
+
+    /**
+     * Determine if expiration time for all the products allow them to be
+     * issued.
+     * 
+     * @return true if expiration times allows the product(s) to be issued.
+     */
+    private boolean validateExpTimes() {
+        Set<IGeneratedProduct> products = new HashSet<>();
+        int expWindowCnt = 0;
+        int expIssueCnt = 0;
+
+        for (AbstractDataEditor de : editorManager.getAllEditors()) {
+            if (de != null) {
+                if (!products.contains(de.product)) {
+                    products.add(de.product);
+                    if (!"RVS".equals(de.product.getProductID())) {
+                        Object act = ProductUtils.getDataElement(de.product,
+                                new String[] { "segments", "sections",
+                                        "vtecRecord", "act" });
+
+                        // When VTEC act is EXP ok to issue.
+                        if (act == null) {
+                            handler.warn("No ACT data element for generated product "
+                                    + de.product.getProductID()
+                                    + " can be found; skipping validation of expiration times.");
+                        } else if (!"EXP".equals(act)) {
+                            Object hzKey = ProductUtils.getDataElement(
+                                    de.product, new String[] { "segments",
+                                            "sections", "vtecRecord", "key" });
+                            HazardTypeEntry hte = hazardTypes.get(hzKey);
+                            int[] expTimes = hte.getExpirationTime();
+                            long curTimeWin = SimulatedTime.getSystemTime()
+                                    .getMillis()
+                                    - (expTimes[0] * TimeUtil.MILLIS_PER_MINUTE);
+                            long expTime = getProductExpirationTime(de.product,
+                                    expTimes[0]);
+                            if (expTime <= curTimeWin) {
+                                expWindowCnt++;
+                            }
+                        } else {
+                            ++expIssueCnt;
+                        }
+                    }
+                }
+            }
+        }
+        if (expWindowCnt > 0) {
+            MessageDialog.openInformation(getShell(), "Issue Product",
+                    expWindowCnt
+                            + " product(s) will be expired (EXP) if issued."
+                            + "\nPlease close and reopen the Product Editor"
+                            + "\nto preview/issue the correct product.");
+        } else if (expIssueCnt > 0) {
+            return MessageDialog.openConfirm(getShell(), "Issue Product",
+                    "About to issue expiration for " + expIssueCnt
+                            + " product(s).\nClick \"OK\" to continue.");
+        }
+
+        return expWindowCnt == 0;
+    }
+
+    /**
+     * 
+     * @param product
+     * @return expTime
+     */
+    private long getProductExpirationTime(IGeneratedProduct product,
+            int expWinMin) {
+        Object o = ProductUtils.getDataElement(product, new String[] {
+                "segments", "expirationTime" });
+        if (o instanceof Date) {
+            Date expDate = (Date) o;
+            return expDate.getTime();
+        }
+
+        /*
+         * No expirationTime found create a future one a minute out side the
+         * expiration window.
+         */
+        long time = SimulatedTime.getSystemTime().getMillis();
+        time -= (expWinMin - 1) * TimeUtil.MILLIS_PER_MINUTE;
+        return time;
     }
 
     /**

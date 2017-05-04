@@ -70,6 +70,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * Dec 13, 2014 4959       Dan Schaffer Spatial Display cleanup and other bug fixes
  * Nov 10, 2015 12762      Chris.Golden Added support for use of new recommender
  *                                      manager.
+ * Nov 17, 2015  3473      Robert.Blum  Moved all python files under HazardServices
+ *                                      localization dir.
  * Feb 01, 2017 15556      Chris.Golden Changed to work with new settings change
  *                                      messages.
  * </pre>
@@ -314,7 +316,8 @@ public class RecommenderInventoryComposite extends Composite {
      */
     private List<String> getRecommenderFilenames() {
         IPathManager manager = PathManagerFactory.getPathManager();
-        String recDir = FileUtil.join("python", "events", "recommenders");
+        String recDir = FileUtil.join("HazardServices", "python", "events",
+                "recommenders");
         LocalizationFile[] files = manager.listStaticFiles(recDir,
                 new String[] { ".py" }, true, true);
         final List<String> filenames = new ArrayList<String>();

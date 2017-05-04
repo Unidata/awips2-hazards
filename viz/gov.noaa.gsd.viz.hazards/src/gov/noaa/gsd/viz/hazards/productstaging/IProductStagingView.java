@@ -12,9 +12,6 @@ package gov.noaa.gsd.viz.hazards.productstaging;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
-
-import java.util.List;
 
 /**
  * Description: Defines the interface that a concrete ProductStagingView must
@@ -38,6 +35,7 @@ import java.util.List;
  *                                           step version of product staging dialog. Also
  *                                           fixed to adhere more closely to the MVP
  *                                           design that has evolved substantially.
+ * Feb 24, 2016  13929     Robert.Blum       Remove first part of staging dialog.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -46,18 +44,6 @@ import java.util.List;
 public interface IProductStagingView {
 
     // Public Methods
-
-    /**
-     * Set the associated events state change handler, which is notified when
-     * the list of hazard events to be associated with a specific product
-     * changes due to user manipulation. The identifier of the handler is the
-     * product name.
-     * 
-     * @param handler
-     *            Associated events state change handler to be used.
-     */
-    public void setAssociatedEventsChangeHandler(
-            IStateChangeHandler<String, List<String>> handler);
 
     /**
      * Set the product metadata state change handler, which is notified when

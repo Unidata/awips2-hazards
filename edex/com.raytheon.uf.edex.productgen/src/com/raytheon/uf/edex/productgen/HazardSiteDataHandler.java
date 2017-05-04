@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.edex.productgen;
 
-import java.util.List;
-
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest;
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataResponse;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
@@ -39,6 +37,7 @@ import com.raytheon.uf.edex.hazards.servicebackup.HazardSiteDataProcessor;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 14, 2015 3743       Chris.Cody  Initial creation
+ * Nov 23, 2015 3743       Robert.Blum Only handles exports.
  * 
  * </pre>
  * 
@@ -72,30 +71,14 @@ public class HazardSiteDataHandler implements
         HazardSiteDataProcessor hazardSiteDataProcessor = new HazardSiteDataProcessor();
 
         String resultString = null;
-        switch (request.getType()) {
-        case EXPORT:
-            String siteId = request.getSiteId();
-            statusHandler
-                    .info("HazardSiteDataHandler: EXPORT Hazard Services configuration for: "
-                            + siteId);
-            resultString = hazardSiteDataProcessor
-                    .exportApplicationSiteData(siteId);
-            break;
-        case IMPORT:
-            String siteBackupBaseDir = request.getSiteBackupBaseDir();
-            List<String> backupSiteIdList = request.getBackupSiteIdList();
-            StringBuilder sb = new StringBuilder();
-            for (String backupSiteId : backupSiteIdList) {
-                sb.append(backupSiteId);
-                sb.append(", ");
-            }
-            statusHandler
-                    .info("HazardSiteDataHandler: IMPORT Hazard Services Backup configurations for: "
-                            + sb.toString());
-            resultString = hazardSiteDataProcessor.retrieveApplicationSiteData(
-                    siteBackupBaseDir, backupSiteIdList);
-            break;
-        }
+
+        String siteId = request.getSiteId();
+        statusHandler
+                .info("HazardSiteDataHandler: EXPORT Hazard Services configuration for: "
+                        + siteId);
+        resultString = hazardSiteDataProcessor
+                .exportApplicationSiteData(siteId);
+
         HazardSiteDataResponse hazardSiteDataResponse = new HazardSiteDataResponse();
         if ((resultString != null) && (resultString.isEmpty() == false)) {
             hazardSiteDataResponse.setErrorMessage(resultString);

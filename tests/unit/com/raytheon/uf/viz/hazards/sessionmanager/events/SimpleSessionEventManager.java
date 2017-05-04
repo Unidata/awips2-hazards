@@ -400,4 +400,9 @@ public class SimpleSessionEventManager implements
             boolean useModifiedValue, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public Geometry getCwaGeometry() {
+        throw new UnsupportedOperationException();
+    }
 }

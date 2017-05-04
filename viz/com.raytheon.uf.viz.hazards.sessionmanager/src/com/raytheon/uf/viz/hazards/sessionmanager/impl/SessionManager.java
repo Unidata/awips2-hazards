@@ -26,6 +26,7 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +38,7 @@ import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -72,7 +74,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardSessionAlert
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
@@ -127,7 +128,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      created by a recommender.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Aug 13, 2015 8836       Chris.Cody   Additional Changes for Hazard Event Id and Registry changes
+ * Aug 18, 2015 9650       Chris.Golden Added checking for "deleteEventIdentifiers" attribute in
+ *                                      recommender result event sets and deletion of events
+ *                                      identified therein if possible.
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender manager.
+ * Nov 17, 2015  3473      Chris.Golden Moved all python files under HazardServices localization dir.
+ * Nov 23, 2015  3473      Robert.Blum  Removed importApplicationBackupSiteData.
  * Mar 03, 2016 14004      Chris.Golden Changed to pass recommender identifier to the method
  *                                      handling recommender results, and removed bogus creation of
  *                                      notification within that method, as well as passing the
@@ -218,10 +224,10 @@ public class SessionManager implements
      * TODO This need to be eliminated when we go to a database solution.
      */
     private static final String[] filesToDeleteOnReset = {
-            "hazardServices/testVtecRecords.json",
-            "hazardServices/testVtecRecords.lock",
-            "hazardServices/vtecRecords.json",
-            "hazardServices/vtecRecords.lock" };
+            "HazardServices/testVtecRecords.json",
+            "HazardServices/testVtecRecords.lock",
+            "HazardServices/vtecRecords.json",
+            "HazardServices/vtecRecords.lock" };
 
     /**
      * Logging mechanism.
@@ -624,13 +630,82 @@ public class SessionManager implements
                     events.size(), 1.0f) : null);
 
             /*
+             * If a list of event identifiers for which the events are to be
+             * deleted was provided, remember any (and their associated events)
+             * that are for events that are found to exist and to never have
+             * been issued.
+             */
+            Object toBeDeleted = events
+                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS);
+            Set<String> identifiersOfEventsToBeDeleted = null;
+            IOriginator originator = new RecommenderOriginator(
+                    recommenderIdentifier);
+            if (toBeDeleted != null) {
+                if (toBeDeleted instanceof Collection == false) {
+                    statusHandler
+                            .warn("Ignoring "
+                                    + recommenderIdentifier
+                                    + " result event set attribute \""
+                                    + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
+                                    + "\" because it is not a list of event identifiers.");
+                } else {
+
+                    /*
+                     * Iterate through the elements of the provided collection,
+                     * remembering any events for which the identifiers are
+                     * valid and that have never been issued.
+                     */
+                    identifiersOfEventsToBeDeleted = new HashSet<>(
+                            ((Collection<?>) toBeDeleted).size(), 1.0f);
+                    List<ObservedHazardEvent> eventsToBeDeleted = new ArrayList<>(
+                            ((Collection<?>) toBeDeleted).size());
+                    for (Object element : (Collection<?>) toBeDeleted) {
+                        boolean success = false;
+                        if (element instanceof String) {
+                            ObservedHazardEvent event = eventManager
+                                    .getEventById((String) element);
+                            if ((event != null)
+                                    && (HazardStatus.hasEverBeenIssued(event
+                                            .getStatus()) == false)) {
+                                identifiersOfEventsToBeDeleted.add(event
+                                        .getEventID());
+                                eventsToBeDeleted.add(event);
+                                success = true;
+                            }
+                        }
+                        if (success == false) {
+                            statusHandler
+                                    .warn("Ignoring "
+                                            + recommenderIdentifier
+                                            + " result event set attribute \""
+                                            + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
+                                            + "\" list element \""
+                                            + element
+                                            + "\" because it is not an existing, never-issued event identifier.");
+                        }
+                    }
+
+                    /*
+                     * If there are any events that are to be deleted, delete
+                     * them now.
+                     */
+                    if (eventsToBeDeleted.isEmpty() == false) {
+                        eventManager
+                                .removeEvents(eventsToBeDeleted, originator);
+                    }
+                }
+            } else {
+                identifiersOfEventsToBeDeleted = Collections.emptySet();
+            }
+
+            /*
              * Iterate through the hazard events provided as the result, adding
              * hazard warning areas for each, setting their user name and
              * workstation if appropriate, and then telling the event manager to
              * add them.
              */
-            IOriginator originator = new RecommenderOriginator(
-                    recommenderIdentifier);
+            List<ObservedHazardEvent> addedOrModifiedEvents = new ArrayList<>(
+                    events.size());
             for (IEvent event : events) {
                 if (event instanceof IHazardEvent) {
 
@@ -639,13 +714,16 @@ public class SessionManager implements
                      * it does not have the identifier of an event that was
                      * removed by some other action while this recommender was
                      * running. If it was removed during recommender execution,
-                     * ignore it, as it should not be around anymore.
+                     * ignore it, as it should not be around anymore. Also
+                     * ignore it if it is to be deleted per this recommender's
+                     * request.
                      */
                     IHazardEvent hazardEvent = (IHazardEvent) event;
                     boolean isNew = (hazardEvent.getEventID() == null);
                     if ((isNew == false)
-                            && identifiersOfEventsRemovedSinceLastRecommenderRun
-                                    .contains(hazardEvent.getEventID())) {
+                            && (identifiersOfEventsRemovedSinceLastRecommenderRun
+                                    .contains(hazardEvent.getEventID()) || identifiersOfEventsToBeDeleted
+                                    .contains(hazardEvent.getEventID()))) {
                         continue;
                     }
 
@@ -671,6 +749,7 @@ public class SessionManager implements
                             .removeHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED);
                     ObservedHazardEvent addedEvent = eventManager.addEvent(
                             hazardEvent, originator);
+                    addedOrModifiedEvents.add(addedEvent);
 
                     /*
                      * If the event is new and new events are to be all saved to
@@ -751,8 +830,7 @@ public class SessionManager implements
             Set<String> visibleTypes = configManager.getSettings()
                     .getVisibleTypes();
             int startSize = visibleTypes.size();
-            for (IEvent ievent : events) {
-                IHazardEvent event = (IHazardEvent) ievent;
+            for (ObservedHazardEvent event : addedOrModifiedEvents) {
                 visibleTypes.add(HazardEventUtilities.getHazardType(event));
             }
             if (startSize != visibleTypes.size()) {
@@ -925,40 +1003,6 @@ public class SessionManager implements
         } catch (Exception e) {
             statusHandler.error(
                     "Error Exporting Hazard Services Site Data files.", e);
-        }
-    }
-
-    /**
-     * Import Hazard Services Site Configuration Files
-     * 
-     * <pre>
-     * Make Hazard Services Site (Local Cave) import call to Request Server. 
-     * Request Server will execute import script to pull Site File 
-     * FROM Central Registry X.400 directory.
-     * Request Server extracts requested Site Id data files into
-     * Localization directories for Hazard Services.
-     * </pre>
-     * 
-     * @param backupSiteIdList
-     *            List of sites that the Local Hazard Services Site can run as
-     *            backup for
-     */
-    @Override
-    public void importApplicationBackupSiteData(List<String> backupSiteIdList) {
-
-        boolean isPractice = (CAVEMode.getMode() == CAVEMode.PRACTICE);
-
-        try {
-            StartUpConfig startupConfig = configManager.getStartUpConfig();
-            String siteBackupBaseDir = startupConfig.getSiteBackupBaseDir();
-
-            HazardSiteDataRequest hazardSiteDataReq = new HazardSiteDataRequest(
-                    siteBackupBaseDir, backupSiteIdList, isPractice);
-
-            RequestRouter.route(hazardSiteDataReq);
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Error Importing Hazard Services Site Data files.", e);
         }
     }
 

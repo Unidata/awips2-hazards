@@ -98,64 +98,49 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Hazard Types"
             recursive="true"
-            value="hazardServices/hazardTypes">
+            value="HazardServices/hazardTypes">
       </path>
       <path
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
-            name="Hazard Type Color Table"
-            recursive="true"
-            value="hazardServices/hazardTypeColorTable">
-      </path>
-      <path
-            application="Hazard Services"
-            extensionFilter=".py,.json,.xml"
-            localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Hazard Categories"
             recursive="true"
-            value="hazardServices/hazardCategories">
+            value="HazardServices/hazardCategories">
       </path>
       <path
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Settings"
             recursive="true"
-            value="hazardServices/settings">
+            value="HazardServices/settings">
       </path>
       <path
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Product Generator Table"
             recursive="true"
-            value="hazardServices/productGeneratorTable">
+            value="HazardServices/productGeneratorTable">
       </path>
       <path
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Alerts"
             recursive="true"
-            value="hazardServices/alerts">
+            value="HazardServices/alerts">
       </path>
       <path
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
-            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Startup Config"
             recursive="true"
-            value="hazardServices/startUpConfig">
+            value="HazardServices/startUpConfig">
       </path>
       <path
             application="Hazard Services"
@@ -164,7 +149,7 @@
             localizationAdapter="com.raytheon.uf.viz.productgen.localization.MetadataAdapter"
             name="Hazard Meta Data"
             recursive="true"
-            value="hazardServices/hazardMetaData">
+            value="HazardServices/hazardMetaData">
       </path>
       <path
             application="Hazard Services"
@@ -173,7 +158,7 @@
             localizationAdapter="com.raytheon.uf.viz.productgen.localization.ProductAdapter"
             name="Product Generators"
             recursive="false"
-            value="python/events/productgen/products">
+            value="HazardServices/python/events/productgen/products">
       </path>
       <path
             application="Hazard Services"
@@ -182,15 +167,7 @@
             localizationAdapter="com.raytheon.uf.viz.productgen.localization.FormatterAdapter"
             name="Product Formats"
             recursive="true"
-            value="python/events/productgen/formats">
-      </path>
-      <path
-            application="Hazard Services"
-            extensionFilter=".py"
-            localizationType="COMMON_STATIC"
-            name="Megawidget Side Effects"
-            recursive="true"
-            value="hazardServices/megawidgetSideEffects">
+            value="HazardServices/python/events/productgen/formats">
       </path>
       <path
             application="Hazard Services"
@@ -199,7 +176,7 @@
             localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Text Utilities"
             recursive="true"
-            value="python/textUtilities">
+            value="HazardServices/python/textUtilities">
       </path>
    </extension>
    <extension point="org.eclipse.ui.views">

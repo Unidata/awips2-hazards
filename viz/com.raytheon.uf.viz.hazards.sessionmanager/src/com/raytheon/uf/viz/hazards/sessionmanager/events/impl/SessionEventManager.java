@@ -91,11 +91,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.VisvalingamWhyattSimplifier;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
+import com.raytheon.uf.common.hazards.hydro.CountyStateData;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.hazards.hydro.RiverPointZoneInfo;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -155,7 +155,6 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * Implementation of ISessionEventManager
@@ -342,13 +341,20 @@ import com.vividsolutions.jts.geom.Polygon;
  *                                      exceptions to be thrown when upgrading certain watches to warnings.
  * Sep 09  2015   10207    Chris.Cody   Switched Polygon Point reduction to use Visvalingam-Whyatt algorithm.
  * Sep 15, 2015    7629    Robert.Blum  Changes for saving pending hazards.
+ * Oct 07, 2015    7308    Robert.Blum  WarnGen movement of issued hazards.
  * Oct 14, 2015   12494    Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
  *                                      significance) where appropriate.
  * Sep 28, 2015 10302,8167 hansen       Added calls to "getSettingsValue"
  * Oct 01, 2015    7629    Robert.Blum  Fixing bug from first commit that allowed event to not be assigned an
  *                                      event ID.
+ * Oct 21, 2015    7308    Robert.Blum  Added buffer when checking if current geometry is covered by the
+ *                                      issuedGeometry, when checking if the current geometry is valid.
  * Nov 10, 2015   12762    Chris.Golden Added recommender running in response to hazard event metadata or
  *                                      other attribute changes.
+ * Dec 01, 2015   13172    Robert.Blum  Changed to use WarnGenPolygonSimplifier.
+ * Dec 08, 2015    8765    Robert.Blum  Only hazardTypes with a point limit defined in hazardTypes.py are
+ *                                      reduced.
+ * Jan 15, 2016    9387    Robert.Blum  Changes for Graphical Editor to correctly update the HID.
  * Jan 28, 2016   12762    Chris.Golden Changed to only run recommender a single time in response to multiple
  *                                      trigger-type hazard event attributes changing simultaneously, and also
  *                                      added the fetching of metadata specifiers for an event when the latter
@@ -357,6 +363,8 @@ import com.vividsolutions.jts.geom.Polygon;
  * Feb 10, 2016   15561    Chris.Golden Removed hard-coded UGC that had been put in for testing.
  * Feb 10, 2016   13279    Chris.Golden Fixed bugs in calculation of new end time when a replacement event
  *                                      uses duration-based end times and the original event does not.
+ * Feb 19, 2016   15014    Robert.Blum  Fixed determination of ugcs for point hazards.
+ * Feb 24, 2016   14667    Robert.Blum  Limiting Flash Flood Recommender to basins inside the CWA.
  * Mar 03, 2016   14004    Chris.Golden Changed to pass originator when merging hazard events, and to
  *                                      only run event-triggered recommenders when they are not triggered
  *                                      by modifications to events caused by those same recommenders.
@@ -535,6 +543,8 @@ public class SessionEventManager implements
     private static final String POINT_ID = "id";
 
     private static final String GEOMETRY_MODIFICATION_ERROR = "Geometry Modification Error";
+
+    private static final double GEOMETRY_BUFFER_DISTANCE = .000001;
 
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionEventManager.class);
@@ -1778,8 +1788,8 @@ public class SessionEventManager implements
             @Override
             public void apply(IHazardEvent event) {
                 updateEventMetadata((ObservedHazardEvent) event);
+                updateTimeBoundariesForEvents(event, false);
             }
-
         };
         IRiseCrestFallEditor editor = messenger.getRiseCrestFallEditor(event);
         IHazardEvent evt = editor.getRiseCrestFallEditor(event, applier);
@@ -4576,7 +4586,6 @@ public class SessionEventManager implements
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public boolean isValidGeometryChange(IAdvancedGeometry geometry,
             ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
         if (checkGeometryValidity && (geometry.isValid() == false)) {
@@ -4585,22 +4594,27 @@ public class SessionEventManager implements
                     + "; geometry modification undone.");
             return false;
         }
+
+        /*
+         * If the hazard has been issued and does not allow area change, ensure
+         * that the new geometry is no larger than the previous one.
+         */
         if (hasEverBeenIssued(hazardEvent)) {
             HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
                     .get(HazardEventUtilities.getHazardType(hazardEvent));
             if ((hazardTypeEntry != null)
                     && (hazardTypeEntry.isAllowAreaChange() == false)) {
-                List<String> oldUGCs = (List<String>) hazardEvent
-                        .getHazardAttribute(HazardConstants.UGCS);
-                BaseHazardEvent eventWithNewGeometry = new BaseHazardEvent(
-                        hazardEvent);
-                eventWithNewGeometry.setGeometry(geometry);
-                List<String> newUGCs = updateUGCs(eventWithNewGeometry);
-                newUGCs.removeAll(oldUGCs);
-
-                if (!newUGCs.isEmpty()) {
+                Geometry issuedGeometry = AdvancedGeometryUtilities
+                        .getUnionOfPolygonalElements(
+                                hazardEvent.getFlattenedGeometry()).buffer(
+                                GEOMETRY_BUFFER_DISTANCE);
+                Geometry currentGeometry = AdvancedGeometryUtilities
+                        .getUnionOfPolygonalElements(AdvancedGeometryUtilities
+                                .getJtsGeometry(geometry));
+                if (issuedGeometry.covers(currentGeometry) == false) {
                     statusHandler
-                            .warn("This hazard event cannot be expanded in area.  Please create a new hazard event for the new areas.");
+                            .warn("This hazard event cannot be expanded in area.  "
+                                    + "Please create a new hazard event for the new areas.");
                     return false;
                 }
             }
@@ -4719,44 +4733,69 @@ public class SessionEventManager implements
 
     private Geometry buildLowResolutionEventGeometry(
             ObservedHazardEvent selectedEvent) {
-        HazardTypes hazardTypes = configManager.getHazardTypes();
 
+        /*
+         * Get the hazard type.
+         */
+        HazardTypes hazardTypes = configManager.getHazardTypes();
         HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
                 .getHazardType());
 
         /*
-         * By default, just set the low res to the high res
+         * By default, just set the low-resolution geometry to the be the
+         * original flattened.
          */
         Geometry result = selectedEvent.getFlattenedGeometry();
 
-        if (isLowResComputationNeeded(selectedEvent, hazardType)) {
+        /*
+         * No clipping if no low-resolution computation is needed, or for
+         * National and for non-hatching.
+         */
+        if ((hazardType != null)
+                && (configManager.getSiteID().equals(HazardConstants.NATIONAL) == false)
+                && (geoMapUtilities.isNonHatching(selectedEvent) == false)) {
 
             /*
-             * No clipping for National and for non-hatching.
+             * Clip WarnGen style or GFE style if appropriate.
              */
-            if ((configManager.getSiteID().equals(HazardConstants.NATIONAL) == false)
-                    && (geoMapUtilities.isNonHatching(selectedEvent) == false)) {
-                if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                    result = geoMapUtilities.applyWarngenClipping(
-                            selectedEvent, hazardType);
-                    result = reduceGeometry(result, hazardType);
-                    if (!result.isEmpty()) {
+            if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
+                result = geoMapUtilities.applyWarngenClipping(selectedEvent,
+                        hazardType);
+            } else if (geoMapUtilities.isPointBasedHatching(selectedEvent) == false) {
+                result = geoMapUtilities.applyGfeClipping(selectedEvent);
+            }
+            result = (Geometry) result.clone();
+
+            /*
+             * If a reasonable point limit was found, reduce the geometry.
+             */
+            if (hazardType != null) {
+                Integer max = hazardType.getHazardPointLimit();
+                if (max != null) {
+                    result = WarnGenPolygonSimplifier.reduceGeometry(result,
+                            max);
+                    if (result.isEmpty() == false) {
                         result = addGoosenecksAsNecessary(result);
                     }
-                } else {
-                    result = geoMapUtilities.applyGfeClipping(selectedEvent);
                 }
             }
 
+            /*
+             * If the result is an empty geometry, an error has occurred.
+             */
             if (result.isEmpty()) {
                 throw new HazardGeometryOutsideCWAException();
             }
+
+            /*
+             * Convert the result to a collection if it is not already.
+             */
             if (result instanceof GeometryCollection == false) {
                 result = geometryFactory
                         .createGeometryCollection(new Geometry[] { result });
             }
-            return result;
         }
+
         return result;
     }
 
@@ -4783,46 +4822,6 @@ public class SessionEventManager implements
         hazardEvent.addHazardAttribute(VISIBLE_GEOMETRY,
                 HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE, originator);
 
-    }
-
-    private boolean isLowResComputationNeeded(
-            ObservedHazardEvent selectedEvent, HazardTypeEntry hazardType) {
-        return hazardType != null
-                && !geoMapUtilities.isPointBasedHatching(selectedEvent);
-    }
-
-    /**
-     * Reduce Geometry to the Point Limit (20) if possible.
-     * 
-     * This method uses a VisvalingamWhyattSimplifier algorithm to reduce the
-     * number of points used to render a polygon. This method is called from
-     * {@link #buildLowResolutionEventGeometry(ObservedHazardEvent)}. Not all
-     * event geometries are reduced to 20 points.
-     * 
-     * @param geometry
-     * @param hazardTypeEntry
-     * @return Geometry with reduced number of points.
-     */
-    private Geometry reduceGeometry(Geometry geometry,
-            HazardTypeEntry hazardTypeEntry) {
-
-        /*
-         * Test if point reduction is necessary...
-         */
-        int pointLimit = hazardTypeEntry.getHazardPointLimit();
-
-        if ((pointLimit > 0) && (geometry.getNumPoints() > pointLimit)) {
-
-            if (geometry instanceof GeometryCollection) {
-                geometry = VisvalingamWhyattSimplifier
-                        .reduceGeometryCollection(
-                                (GeometryCollection) geometry, pointLimit);
-            } else {
-                geometry = VisvalingamWhyattSimplifier.reducePolygon(
-                        (Polygon) geometry, pointLimit);
-            }
-        }
-        return geometry;
     }
 
     private List<String> buildUGCs(IHazardEvent hazardEvent) {
@@ -4861,14 +4860,47 @@ public class SessionEventManager implements
         Map<String, Serializable> forecastPoint = (Map<String, Serializable>) hazardEvent
                 .getHazardAttribute(FORECAST_POINT);
         String hazardEventPointID = (String) forecastPoint.get(POINT_ID);
-        RiverPointZoneInfo riverPointZoneInfo = this.riverForecastManager
-                .getRiverForecastPointRiverZoneInfo(hazardEventPointID);
-        if (riverPointZoneInfo != null) {
-            StringBuilder sb = new StringBuilder();
-            sb.append(riverPointZoneInfo.getState()).append("Z")
-                    .append(riverPointZoneInfo.getZoneNum());
-            String ugc = sb.toString();
-            result.add(ugc);
+
+        // Determine if county or zone
+        HazardTypes hazardTypes = sessionManager.getConfigurationManager()
+                .getHazardTypes();
+        if (hazardTypes != null) {
+
+            /*
+             * If the UGC types include zone, handle the building one way;
+             * otherwise, handle it another.
+             * 
+             * TODO: Is this right, assuming that the first way should be used
+             * if UGC types contains "zone"? What if UGC types includes both
+             * "zone" and non-"zone" types?
+             */
+            Set<String> ugcTypes = hazardTypes.get(
+                    HazardEventUtilities.getHazardType(hazardEvent))
+                    .getUgcTypes();
+            if (ugcTypes.contains(HazardConstants.UGC_ZONE)) {
+                List<RiverPointZoneInfo> riverPointZoneInfoList = riverForecastManager
+                        .getRiverForecastPointRiverZoneInfo(hazardEventPointID);
+                // There could be multiple zones/ugcs
+                for (RiverPointZoneInfo data : riverPointZoneInfoList) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(data.getState());
+                    sb.append(HazardConstants.UGC_ZONE_ABBREVIATION);
+                    sb.append(data.getZoneNum());
+                    result.add(sb.toString());
+                }
+            } else {
+                List<CountyStateData> countyDataList = riverForecastManager
+                        .getRiverForecastPointCountyStateList(hazardEventPointID);
+
+                // There could be multiple counties/ugcs
+                for (CountyStateData data : countyDataList) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(data.getState())
+                            .append(HazardConstants.UGC_COUNTY_ABBREVIATION)
+                            .append(data.getCountyNum());
+                    result.add(sb.toString());
+                }
+            }
         }
         return result;
     }
@@ -5106,6 +5138,11 @@ public class SessionEventManager implements
     @Override
     public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected) {
         this.addCreatedEventsToSelected = addCreatedEventsToSelected;
+    }
+
+    @Override
+    public Geometry getCwaGeometry() {
+        return geoMapUtilities.getCwaGeometry();
     }
 
     /*

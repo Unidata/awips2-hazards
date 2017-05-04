@@ -23,6 +23,8 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_ALL;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_INTERSECTION;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_NONE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import java.util.ArrayList;
@@ -100,10 +102,17 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  * Mar 24, 2015 6090       Dan Schaffer Goosenecks now working as they do in Warngen
  * May 05, 2015 7624       mduff        Removed multiple geometry point reductions.
  * Aug 14, 2015 9920       Robert.Blum  Parameters are no longer required on mapdata requests.
+ * Sep 03, 2015 11213      mduff        Fixed performance issue for initial preview.
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
- * Sep 03, 2015 11213      mduff        Fixed performance issue for initial preview.
+ * Oct 19, 2015  8765      Robert.Blum  Based hatching on the currently displayed polygon
+ *                                      (high/low res).
+ * Dec 01, 2015 13172      Robert.Blum  Fixed IllegalArgumentException caused by a
+ *                                      GeometryCollection being passed to the union()
+ *                                      method.
+ * Feb 24, 2016 14667      Robert.Blum  Limiting Flash Flood Recommender to basins inside
+ *                                      the CWA.
  * Jun 23, 2016 19537      Chris.Golden Added support for no-hatching event types.
  * Jul 25, 2016 19537      Chris.Golden Changed buildHazardAreaForEvent() to return a map
  *                                      of UGC+geometry identifiers to the geometries, so
@@ -467,14 +476,14 @@ public class GeoMapUtilities {
         polygonUnion = geometryFactory.createMultiPolygon(null);
         for (IGeometryData geoData : geoDataSet) {
             Geometry geometry = geoData.getGeometry();
-            if (geometry instanceof LineString) {
+            if (geometry instanceof LineString || geometry instanceof Point) {
                 continue;
             } else if (geometry instanceof GeometryCollection) {
                 GeometryCollection geometryCollection = (GeometryCollection) geometry;
                 int numGeo = geometryCollection.getNumGeometries();
                 for (int n = 0; n < numGeo; n++) {
                     Geometry g = geometryCollection.getGeometryN(n);
-                    if (g instanceof LineString) {
+                    if (g instanceof LineString || g instanceof Point) {
                         continue;
                     } else {
                         polygonUnion = polygonUnion.union(g);
@@ -483,7 +492,6 @@ public class GeoMapUtilities {
             } else {
                 polygonUnion = polygonUnion.union(geometry);
             }
-
         }
 
         /*
@@ -890,8 +898,11 @@ public class GeoMapUtilities {
                     result.put(ugc, mappingData);
                 } else if (hazardArea.get(ugc).equals(HAZARD_AREA_INTERSECTION)) {
                     Geometry mappingGeometry = mappingData.getGeometry();
-                    GeometryCollection asCollection = (GeometryCollection) hazardEvent
-                            .getFlattenedGeometry();
+                    GeometryCollection asCollection = (GeometryCollection) (HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE
+                            .equals(hazardEvent
+                                    .getHazardAttribute(VISIBLE_GEOMETRY)) ? hazardEvent
+                            .getFlattenedGeometry() : hazardEvent
+                            .getProductGeometry());
                     for (int geometryIndex = 0; geometryIndex < asCollection
                             .getNumGeometries(); geometryIndex++) {
                         Geometry geometry = asCollection
@@ -904,8 +915,6 @@ public class GeoMapUtilities {
                                 DefaultGeometryData intersectionGeometryData = new DefaultGeometryData();
                                 intersectionGeometryData
                                         .setGeometry(intersectionGeometry);
-                                // .setGeometry(mappingGeometry.intersection(asCollection
-                                // .getGeometryN(geometryIndex)));
                                 result.put(ugc + " " + geometryIndex,
                                         intersectionGeometryData);
                             }
@@ -1020,8 +1029,7 @@ public class GeoMapUtilities {
         Geometry result = null;
         for (IGeometryData mapGeometryData : mapGeometries) {
             Geometry mappingGeometry = mapGeometryData.getGeometry();
-            for (int k = 0; k < mapGeometryData.getGeometry()
-                    .getNumGeometries(); ++k) {
+            for (int k = 0; k < mappingGeometry.getNumGeometries(); ++k) {
                 Geometry geometry = mappingGeometry.getGeometryN(k);
                 if (result == null) {
                     result = geometry;
@@ -1286,5 +1294,17 @@ public class GeoMapUtilities {
                             + "to test for inclusion: ", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Get the CWA geometry.
+     * 
+     * @return County Warning Area geometry.
+     */
+    public Geometry getCwaGeometry() {
+        if (cwaGeometry == null) {
+            cwaGeometry = buildCwaGeometry();
+        }
+        return cwaGeometry;
     }
 }

@@ -31,6 +31,7 @@ import jep.JepException;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
@@ -70,6 +71,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 04/16/2015   7579       Robert.Blum  Changed executeFrom method to take a KeyInfo object.
  * 05/07/2015   6979       Robert.Blum  Added a method to call the new updateDataList method in the product
  *                                      generators.
+ * Nov 17, 2015 3473      Robert.Blum   Moved all python files under HazardServices localization dir.
+ * Feb 12, 2016 14923     Robert.Blum   Picking up overrides of EventUtilities directory
  * </pre>
  * 
  * @author jsanchez
@@ -90,8 +93,6 @@ public class ProductScript extends PythonScriptController {
     private static final String DATA_LIST = "dataList";
 
     private static final String KEY_INFO = "keyInfo";
-
-    private static final String EDITABLE_ENTRIES = "editableEntries";
 
     /** Class name in the python modules */
     private static final String PYTHON_CLASS = "Product";
@@ -119,8 +120,6 @@ public class ProductScript extends PythonScriptController {
 
     private static final String FORMATS_DIRECTORY = "productgen/formats";
 
-    private static final String TEXT_UTILITIES_DIRECTORY = "python/textUtilities";
-
     private static final String PYTHON_INTERFACE = "ProductInterface";
 
     private static final String PYTHON_FILE_EXTENSION = ".py";
@@ -134,13 +133,20 @@ public class ProductScript extends PythonScriptController {
     /* python/textUtilities directory */
     protected static LocalizationFile textUtilDir;
 
+    /* python/events/utilities directory */
+    protected static LocalizationFile eventUtilDir;
+
     private final ILocalizationFileObserver formatsDirObserver;
 
     private final ILocalizationFileObserver textUtilDirObserver;
 
+    private final ILocalizationFileObserver eventUtilDirObserver;
+
     private boolean pendingFormatterUpdates = false;
 
     private boolean pendingTextUtilitiesUpdates = false;
+
+    private boolean pendingEventUtilitiesUpdates = false;
 
     /**
      * Instantiates a ProductScript object.
@@ -172,15 +178,21 @@ public class ProductScript extends PythonScriptController {
         LocalizationContext baseContext = manager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
         textUtilDir = manager.getLocalizationFile(baseContext,
-                TEXT_UTILITIES_DIRECTORY);
+                HazardsConfigurationConstants.TEXT_UTILITIES_LOCALIZATION_DIR);
         textUtilDirObserver = new TextUtilitiesDirectoryUpdateObserver();
         textUtilDir.addFileUpdatedObserver(textUtilDirObserver);
+
+        eventUtilDir = manager.getLocalizationFile(baseContext,
+                HazardsConfigurationConstants.EVENT_UTILITIES_LOCALIZATION_DIR);
+        eventUtilDirObserver = new EventUtilitiesDirectoryUpdateObserver();
+        eventUtilDir.addFileUpdatedObserver(eventUtilDirObserver);
 
         String scriptPath = PythonBuildPaths.buildDirectoryPath(
                 PRODUCTS_DIRECTORY, site);
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
-                + "', '" + PythonBuildPaths.PYTHON_EVENTS_DIRECTORY
-                + PRODUCTS_DIRECTORY + "')");
+                + "', '"
+                + HazardsConfigurationConstants.PYTHON_EVENTS_DIRECTORY
+                + File.separator + PRODUCTS_DIRECTORY + "')");
         List<String> errors = getStartupErrors();
         if (errors.size() > 0) {
             StringBuffer sb = new StringBuffer();
@@ -231,8 +243,7 @@ public class ProductScript extends PythonScriptController {
                     product,
                     formats,
                     (GeneratedProductList) execute(GENERATOR_EXECUTE_METHOD,
-                            INTERFACE,
- args));
+                            INTERFACE, args));
 
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
@@ -259,8 +270,7 @@ public class ProductScript extends PythonScriptController {
      */
     public GeneratedProductList updateProduct(String product,
             EventSet<IEvent> eventSet,
-            List<Map<String, Serializable>> dataList,
-            String... formats) {
+            List<Map<String, Serializable>> dataList, String... formats) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
         args.put(EVENT_SET, eventSet);
@@ -477,6 +487,17 @@ public class ProductScript extends PythonScriptController {
             }
         }
 
+        // If there are pending EventUtilities updates reload the modules
+        if (pendingEventUtilitiesUpdates) {
+            try {
+                reloadEventUtilities();
+                pendingEventUtilitiesUpdates = false;
+            } catch (JepException e) {
+                statusHandler.handle(Priority.WARN,
+                        "Event Utilities were unable to be imported", e);
+            }
+        }
+
         return this.initializeProductGenerator(productGeneratorName);
     }
 
@@ -549,6 +570,16 @@ public class ProductScript extends PythonScriptController {
      */
     protected void reloadTextUtilities() throws JepException {
         execute("importTextUtility", INTERFACE, null);
+    }
+
+    /**
+     * Reloads the updated eventUtilities modules in the interpreter's "cache".
+     * 
+     * @throws JepException
+     *             If an Error is thrown during python execution.
+     */
+    protected void reloadEventUtilities() throws JepException {
+        execute("importEventUtility", INTERFACE, null);
     }
 
     /**
@@ -634,6 +665,30 @@ public class ProductScript extends PythonScriptController {
                 }
             }
             pendingTextUtilitiesUpdates = true;
+        }
+    }
+
+    private class EventUtilitiesDirectoryUpdateObserver implements
+            ILocalizationFileObserver {
+
+        @Override
+        public void fileUpdated(FileUpdatedMessage message) {
+            IPathManager pm = PathManagerFactory.getPathManager();
+            LocalizationFile lf = pm.getLocalizationFile(message.getContext(),
+                    message.getFileName());
+
+            if (message.getChangeType() == FileChangeType.ADDED
+                    || message.getChangeType() == FileChangeType.UPDATED) {
+                if (lf != null) {
+                    lf.getFile();
+                }
+            } else if (message.getChangeType() == FileChangeType.DELETED) {
+                if (lf != null) {
+                    File toDelete = lf.getFile();
+                    toDelete.delete();
+                }
+            }
+            pendingEventUtilitiesUpdates = true;
         }
     }
 }

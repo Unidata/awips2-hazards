@@ -19,6 +19,7 @@ import com.raytheon.uf.viz.core.IDisplayPane;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.rsc.AbstractVizResource.ResourceStatus;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.uf.viz.core.rsc.tools.action.AbstractGenericToolAction;
@@ -35,6 +36,8 @@ import com.raytheon.viz.ui.input.EditableManager;
  * Jul 08, 2013     585    Chris.Golden   Changed to support loading from bundle.
  * May 29, 2015    6895    Ben.Phillippe  Refactored Hazard Service data access
  * Jul 21, 2015    2921    Robert.Blum    Changes for multi panel displays.
+ * Oct 22, 2015    9615    Robert.Blum    Unloading SpatialDisplay resource if
+ *                                        it is disposed.
  * Jul 25, 2016   19537    Chris.Golden   Moved loading of registry preferences
  *                                        elsewhere, since loading via a bundle
  *                                        load did not get the registry prefs
@@ -77,13 +80,22 @@ public class HazardServicesAction extends
             IDescriptor descriptor) throws VizException {
 
         for (IDisplayPane pane : getSelectedPanes()) {
+            boolean unloaded = false;
             for (ResourcePair rp : pane.getDescriptor().getResourceList()) {
                 if (rp.getResource() instanceof SpatialDisplay) {
                     EditableManager.makeEditable(rp.getResource(), true);
                     SpatialDisplay spatialDisplay = (SpatialDisplay) rp
                             .getResource();
+                    if (spatialDisplay.getStatus() == ResourceStatus.DISPOSED) {
+                        spatialDisplay.unload();
+                        unloaded = true;
+                        break;
+                    }
                     return spatialDisplay;
                 }
+            }
+            if (unloaded) {
+                break;
             }
         }
 

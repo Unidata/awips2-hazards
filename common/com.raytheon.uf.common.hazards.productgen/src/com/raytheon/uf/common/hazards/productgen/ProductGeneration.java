@@ -30,6 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IDefineDialog;
 import com.raytheon.uf.common.dataplugin.events.interfaces.IProvideMetadata;
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.productgen.executors.GenerateProductExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.GenerateProductFromExecutor;
 import com.raytheon.uf.common.hazards.productgen.executors.ProductDialogInfoExecutor;
@@ -67,6 +68,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Apr 16, 2015 7579       Robert.Blum  Replace prevDataList with keyinfo object.
  * May 07, 2015 6979       Robert.Blum  Added method to update product dictionaries without
  *                                      running the entire generator again.
+ * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices localization
+ *                                      dir.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
  *                                      sessions in the same CAVE session, since stopping and
  *                                      starting the Jep instances when the latter use numpy is
@@ -79,10 +82,6 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 public class ProductGeneration implements IDefineDialog, IProvideMetadata {
 
     // Private Static Constants
-
-    private static final String PRODUCT_GENERATOR_RELATIVE_PATH = "python"
-            + File.separator + "events" + File.separator + "productgen"
-            + File.separator + "products" + File.separator;
 
     private static final String PYTHON_FILENAME_SUFFIX = ".py";
 
@@ -299,8 +298,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      */
     public File getScriptFile(String product) {
         return pathManager.getStaticLocalizationFile(
-                PRODUCT_GENERATOR_RELATIVE_PATH + product
-                        + PYTHON_FILENAME_SUFFIX).getFile();
+                HazardsConfigurationConstants.PRODUCT_GENERATOR_RELATIVE_PATH
+                        + product + PYTHON_FILENAME_SUFFIX).getFile();
     }
 
     @Override

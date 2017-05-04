@@ -73,6 +73,7 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Jan 20, 2016 14969      kbisanz      Improved exception message in retrieve()
  * Feb 01, 2017 15556     Chris.Golden  Changed to always update insert time of
  *                                      events.
  * Feb 16, 2017 29138     Chris.Golden  Revamped to slim down the response to a
@@ -360,7 +361,8 @@ public class HazardEventServices implements IHazardEventServices {
             List<RegistryObjectType> result = dao.executeHQLQuery(query);
             response.setEvents(HazardEventServicesUtil.getHazardEvents(result));
         } catch (Throwable e) {
-            throw new HazardEventServiceException("Error Deleting Events", e);
+            throw new HazardEventServiceException(
+                    "Error Retrieving Events with request: " + request, e);
         }
         return checkResponse(
                 "QUERY",

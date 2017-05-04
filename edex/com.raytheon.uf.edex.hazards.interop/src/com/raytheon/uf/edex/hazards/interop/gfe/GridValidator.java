@@ -22,7 +22,6 @@ package com.raytheon.uf.edex.hazards.interop.gfe;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
@@ -46,7 +45,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Apr 28, 2014 3556       bkowal       Now retrieves the hazard conflict dictionary
  *                                      from static localization.
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access                                      
- * 
+ * Nov 17, 2015 3473      Robert.Blum   Moved all python files under HazardServices localization dir.
  * </pre>
  * 
  * @author jsanchez
@@ -60,7 +59,7 @@ public class GridValidator {
     private static final SingleTypeJAXBManager<HazardEventGrids> jaxb = SingleTypeJAXBManager
             .createWithoutException(HazardEventGrids.class);
 
-    private static final String HAZARD_EVENT_GRIDS_FILE = "hazardServices"
+    private static final String HAZARD_EVENT_GRIDS_FILE = "HazardServices"
             + File.separator + "hazardEventGrids.xml";
 
     /**

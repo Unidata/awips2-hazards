@@ -117,6 +117,10 @@ import com.raytheon.viz.ui.views.PartAdapter2;
  * Jul 30, 2015    9681    Robert.Blum       Added new ViewProductsAction to the console.
  * Sep 14, 2015    3473    Chris.Cody        Implement Hazard Services Import/Export
  *                                           through Central Registry server.
+ * Nov 17, 2015    3473    Robert.Blum       Changed code handling backup sites to sort
+ *                                           the list, and to handle null sites.
+ * Nov 23, 2015    3473    Robert.Blum       Removed code for importing service backup.
+ * Dec 03, 2015   13609    mduff             Set VTEC mode options based on CAVE mode.
  * Jul 25, 2016   19537    Chris.Golden      Fixed bug that sometimes manifested when
  *                                           Hazard Services was closing so that another
  *                                           session of Hazard Services could open via
@@ -269,11 +273,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      * Export site configuration data command menu item text.
      */
     private static final String EXPORT_HAZARD_SITE_MENU_TEXT = "Export Hazard Site";
-
-    /**
-     * Import site configuration data command menu item text.
-     */
-    private static final String IMPORT_BACKUP_HAZARD_SITE_MENU_TEXT = "Import Backup Hazard Site";
 
     /**
      * View product command menu item text.
@@ -719,18 +718,24 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
              * product data.
              */
             private void createMenuItems() {
-                for (VtecFormatMode vtecFormat : VtecFormatMode.values()) {
 
-                    /*
-                     * TODO: Remove this if statement when NO_VTEC modes are
-                     * removed from the VtecFormatMode enum.
-                     */
-                    if ((VtecFormatMode.NORMAL_NO_VTEC.equals(vtecFormat) == false)
-                            && (VtecFormatMode.TEST_NO_VTEC.equals(vtecFormat) == false)) {
-                        IContributionItem item = new ActionContributionItem(
-                                new ChangeVtecFormatAction(vtecFormat));
-                        item.fill(menu, -1);
-                    }
+                CAVEMode mode = CAVEMode.getMode();
+                List<VtecFormatMode> list = new ArrayList<>();
+                if (mode == CAVEMode.PRACTICE) {
+                    list.add(VtecFormatMode.TEST_T_VTEC);
+                    list.add(VtecFormatMode.NORMAL_X_VTEC);
+                    list.add(VtecFormatMode.NORMAL_E_VTEC);
+                } else if (mode == CAVEMode.TEST) {
+                    list.add(VtecFormatMode.TEST_T_VTEC);
+                } else {
+                    list.add(VtecFormatMode.NORMAL_O_VTEC);
+                    list.add(VtecFormatMode.TEST_T_VTEC);
+                }
+
+                for (VtecFormatMode vtecFormat : list) {
+                    IContributionItem item = new ActionContributionItem(
+                            new ChangeVtecFormatAction(vtecFormat));
+                    item.fill(menu, -1);
                 }
             }
         }
@@ -1387,7 +1392,10 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
         this.presenter = presenter;
         this.temporalControlsInToolBar = temporalControlsInToolBar;
         this.currentSite = currentSite;
-        this.backupSites = backupSites;
+        List<String> sortedBackupSites = (backupSites == null ? new ArrayList<String>()
+                : new ArrayList<>(backupSites));
+        Collections.sort(sortedBackupSites);
+        this.backupSites = ImmutableList.copyOf(sortedBackupSites);
         executeOnCreatedViewPart(new Runnable() {
             @Override
             public void run() {
@@ -1520,10 +1528,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     EXPORT_HAZARD_SITE_MENU_TEXT, null, null,
                     Command.EXPORT_SITE_CONFIG);
 
-            CommandConsoleAction importBackupSiteConfigAction = new CommandConsoleAction(
-                    IMPORT_BACKUP_HAZARD_SITE_MENU_TEXT, null, null,
-                    Command.IMPORT_SITE_CONFIG);
-
             CommandConsoleAction checkHazardConflictsAction = new CommandConsoleAction(
                     CHECK_HAZARD_CONFLICTS_MENU_TEXT, null, null,
                     Command.CHECK_FOR_CONFLICTS);
@@ -1546,8 +1550,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     VIEW_PRODUCT_MENU_TEXT, null, null, Command.VIEW_PRODUCT);
 
             List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
-                    sep, exportHazardConfigAction,
-                    importBackupSiteConfigAction, sep,
+                    sep, exportHazardConfigAction, sep,
                     checkHazardConflictsAction, autoCheckHazardConflictsAction,
                     showHatchedAreaAction, showHistoryListsAction, sep,
                     reviewAndCorrectProductsAction, viewProductAction);

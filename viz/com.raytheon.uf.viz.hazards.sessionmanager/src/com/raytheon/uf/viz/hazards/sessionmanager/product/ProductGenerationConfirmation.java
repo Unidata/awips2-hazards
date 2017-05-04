@@ -32,15 +32,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 01, 2015 6726       Robert.Blum Initial creation
- * 
  * </pre>
  * 
  * @author Robert.Blum
  * @version 1.0
  */
 
-public class ProductGenerationConfirmation implements
-        ISessionNotification {
+public class ProductGenerationConfirmation implements ISessionNotification {
 
     public ProductGenerationConfirmation() {
     }

@@ -45,7 +45,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.PlatformUI;
 
 import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -89,6 +88,7 @@ import com.raytheon.uf.common.util.Pair;
  * 07/29/2015   9686       Robert.Blum  Adjustments to remove dead space at the bottom of the vertical
  *                                      scrollbar when labels are removed from the product editor.
  * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
+ * 08/19/2015   9639       mduff        Make undo message modal to this dialog.
  * 08/26/2015   8836       Chris.Cody   Changes for Unique (alpha-numeric) Event ID values
  * 08/31/2015   9617       Chris.Golden Modified to use local copy of parameters editor factory.
  * 09/11/2015   9508       Robert.Blum  Save MessageBox now notifies of missing required fields.
@@ -514,8 +514,7 @@ public class ProductDataEditor extends AbstractDataEditor {
     public void undoModification() {
         if (modificationHistory.isEmpty()) {
             String undoText = "No modifications to undo.";
-            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                    .getShell();
+            Shell shell = this.getDisplay().getActiveShell();
             MessageBox messageBox = new MessageBox(shell, SWT.OK
                     | SWT.ICON_INFORMATION);
             messageBox.setText("Unable to undo");

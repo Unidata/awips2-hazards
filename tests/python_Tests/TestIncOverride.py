@@ -41,7 +41,7 @@ class TestIncOverride(unittest.TestCase):
         setUpCore()
 
     def test_case_python_data(self) :
-        testLocFile = "hazardServices/hazardTypes/HazardTypes.py"
+        testLocFile = "HazardServices/hazardTypes/HazardTypes.py"
         sys.stdout.write("Testing python data incremental override.\n")
 
         baseData = myLI.getLocData(testLocFile, 'COMMON_STATIC', 'Base')
@@ -194,7 +194,7 @@ class PointTrack:
 
 
     def test_case_xml(self) :
-        testLocFile = "hazardServices/alerts/HazardAlertsConfig.xml"
+        testLocFile = "HazardServices/alerts/HazardAlertsConfig.xml"
         sys.stdout.write("Testing XML incremental override.\n")
 
         baseData = myLI.getLocData(testLocFile, 'COMMON_STATIC', 'Base')

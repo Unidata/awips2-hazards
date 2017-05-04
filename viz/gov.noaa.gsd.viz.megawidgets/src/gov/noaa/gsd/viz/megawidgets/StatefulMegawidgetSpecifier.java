@@ -63,6 +63,8 @@ import com.google.common.collect.ImmutableList;
  *                                           identifier count.
  * Apr 07, 2015   7271     Chris.Golden      Added interdependency-only stateful
  *                                           megawidgets.
+ * Nov 12, 2015  11850     Robert.Blum       Fixed bug that caused starting states 
+ *                                           to be incorrectly used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -290,10 +292,18 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
              * For multi-state specifiers, if the map contains values for all
              * the state identifiers, convert those and use them; if that fails,
              * or if it does not contain values for all states, just use the
-             * starting state values as specified.
+             * starting state values as specified. Create a map of only the
+             * values for the identifiers for this megawidget, since the map
+             * that was passed in may hold values for other megawidgets and if
+             * supplied to the mult-state validator so it can convert them to
+             * state values, the latter may cause them to be reset to starting
+             * state values.
              */
+            Map<String, Object> valuesForIdentifiers = new HashMap<String, Object>(
+                    stateIdentifiers.size());
             boolean allPresent = true;
             for (String identifier : stateIdentifiers) {
+                valuesForIdentifiers.put(identifier, map.get(identifier));
                 if (map.get(identifier) == null) {
                     allPresent = false;
                     break;
@@ -303,7 +313,7 @@ public abstract class StatefulMegawidgetSpecifier extends MegawidgetSpecifier
             if (allPresent) {
                 try {
                     correctedMap = ((MultiStateValidator<?>) stateValidator)
-                            .convertToStateValues(map);
+                            .convertToStateValues(valuesForIdentifiers);
                 } catch (Exception e) {
                 }
             }

@@ -27,6 +27,7 @@ import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants.HydroFloodCatego
 import com.raytheon.uf.common.hazards.hydro.RiverStationInfo;
 import com.raytheon.uf.common.hazards.hydro.SHEFForecast;
 import com.raytheon.uf.common.hazards.hydro.SHEFObserved;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.vividsolutions.jts.geom.Coordinate;
 
@@ -55,8 +56,15 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Apr 09, 2015 7271       Kevin.Manross     Ensured generated FL.Y hazard events
  *                                           have riseAbove/crest/fallBelow values.
  * May 08, 2015 6562       Chris.Cody        Restructure River Forecast Points/Recommender
+ * Aug 18, 2015 9650       Robert.Blum       Removed null check since we want the latest
+ *                                           recommenderData.
  * Aug 20, 2015 9387       Robert.Blum       Fixed UFN where the endTime would get
  *                                           incorrectly set after it was correctly set.
+ * Jan 14, 2016 12935      Robert.Blum       Setting Rise/Crest/Fall values to Missing
+ *                                           instead of 0 or UFN.
+ * Jan 15, 2016 9387       Robert.Blum       Fixed bug where negative intervals where
+ *                                           being saved as the events duration befure
+ *                                           ufn was selected.
  * Jun 23, 2016 19537      Chris.Golden      Removed spatial info parameter from method.
  * Jul 25, 2016 19537      Chris.Golden      Moved constant definition to HazardConstants.
  * </pre>
@@ -106,13 +114,11 @@ public class RiverProFloodRecommender {
     }
 
     private RecommenderData getRecommenderData() {
-        if (this.recommenderData == null) {
-            RecommenderManager recommenderManager = RecommenderManager
-                    .getInstance();
-            long currentSystemTime = TimeUtil.currentTimeMillis();
-            this.recommenderData = recommenderManager
-                    .getRiverFloodRecommenderData(currentSystemTime);
-        }
+        RecommenderManager recommenderManager = RecommenderManager
+                .getInstance();
+        long currentSystemTime = SimulatedTime.getSystemTime().getMillis();
+        this.recommenderData = recommenderManager
+                .getRiverFloodRecommenderData(currentSystemTime);
         return (this.recommenderData);
     }
 
@@ -330,7 +336,8 @@ public class RiverProFloodRecommender {
             hazardAttributes.put(HazardConstants.RISE_ABOVE, riseAbove);
             riverHazardEvent.setStartTime(new Date(riseAbove));
         } else {
-            hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
+            hazardAttributes.put(HazardConstants.RISE_ABOVE,
+                    RiverHydroConstants.MISSING_VALUE);
             riverHazardEvent.setStartTime(RiverForecastManager.getSystemTime());
         }
 
@@ -359,11 +366,8 @@ public class RiverProFloodRecommender {
                     .getVirtualFallBelowTime(riverForecastPoint, true);
             riverHazardEvent.setEndTime(new Date(virtualEndTime));
         } else {
-
             hazardAttributes.put(HazardConstants.FALL_BELOW,
-                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-            hazardAttributes.put(
-                    HazardConstants.FALL_BELOW_UNTIL_FURTHER_NOTICE, true);
+                    RiverHydroConstants.MISSING_VALUE);
             Calendar ufnCal = Calendar.getInstance();
             ufnCal.setTimeInMillis(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
             riverHazardEvent.setEndTime(ufnCal.getTime());
@@ -386,19 +390,12 @@ public class RiverProFloodRecommender {
                     long interval = latestTime
                             - riverHazardEvent.getStartTime().getTime();
 
-                    hazardAttributes
-                            .put(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
-                                    interval);
-
-                    if (riverForecastPoint.getMaximumObservedForecastTime() != null) {
-                        interval = latestTime
-                                - riverForecastPoint
-                                        .getMaximumObservedForecastTime()
-                                        .getTime();
+                    // Only save a valid interval
+                    if (interval > 0) {
+                        hazardAttributes
+                                .put(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
+                                        interval);
                     }
-
-                    hazardAttributes.put("hiddenFallBelowLastInterval",
-                            interval);
                 }
             }
         }
@@ -458,11 +455,14 @@ public class RiverProFloodRecommender {
         hazardAttributes.put(HazardConstants.ACTION_STAGE,
                 riverForecastPoint.getActionStage());
 
-        hazardAttributes.put(HazardConstants.RISE_ABOVE, 0);
+        hazardAttributes.put(HazardConstants.RISE_ABOVE,
+                RiverHydroConstants.MISSING_VALUE);
 
-        hazardAttributes.put(HazardConstants.CREST, 0);
+        hazardAttributes.put(HazardConstants.CREST,
+                RiverHydroConstants.MISSING_VALUE);
 
-        hazardAttributes.put(HazardConstants.FALL_BELOW, 0);
+        hazardAttributes.put(HazardConstants.FALL_BELOW,
+                RiverHydroConstants.MISSING_VALUE);
 
         pointHazardEvent.setStartTime(RiverForecastManager.getSystemTime());
 
@@ -543,9 +543,7 @@ public class RiverProFloodRecommender {
      * @return River Forecast Group (deep query)
      */
     public RiverForecastGroup getRiverForecastGroup(String groupID) {
-        RecommenderData localRecommenderData = getRecommenderData();
-
-        return getRiverForecastGroup(groupID, localRecommenderData);
+        return getRiverForecastGroup(groupID, recommenderData);
     }
 
     /**
@@ -588,9 +586,7 @@ public class RiverProFloodRecommender {
      * @return River Forecast Point (deep query)
      */
     public RiverForecastPoint getRiverForecastPoint(String pointID) {
-        RecommenderData localRecommenderData = getRecommenderData();
-
-        return getRiverForecastPoint(pointID, localRecommenderData);
+        return getRiverForecastPoint(pointID, recommenderData);
     }
 
     /**
@@ -662,8 +658,7 @@ public class RiverProFloodRecommender {
      * @return Selected SHEF Observed object
      */
     public SHEFObserved getSHEFObserved(String pointID, int index) {
-        RecommenderData localRecommenderData = getRecommenderData();
-        Map<String, RiverForecastPoint> riverForecastPointMap = localRecommenderData
+        Map<String, RiverForecastPoint> riverForecastPointMap = recommenderData
                 .getRiverForecastPointMap();
         RiverForecastPoint riverForecastPoint = riverForecastPointMap
                 .get(pointID);
@@ -699,8 +694,7 @@ public class RiverProFloodRecommender {
      */
     public SHEFForecast getSHEFForecast(String pointID, int index) {
 
-        RecommenderData localRecommenderData = getRecommenderData();
-        Map<String, RiverForecastPoint> riverForecastPointMap = localRecommenderData
+        Map<String, RiverForecastPoint> riverForecastPointMap = recommenderData
                 .getRiverForecastPointMap();
         RiverForecastPoint riverForecastPoint = riverForecastPointMap
                 .get(pointID);

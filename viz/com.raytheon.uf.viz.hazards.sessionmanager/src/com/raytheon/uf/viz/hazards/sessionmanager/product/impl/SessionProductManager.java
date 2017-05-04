@@ -79,6 +79,7 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -216,6 +217,10 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      raw use of SWT message box with abstract user warning issuance.
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
  *                                      significance) where appropriate.
+ * Nov 23, 2015 13017      Chris.Golden Changed to work with IMessenger changes.
+ * Dec 01, 2015 12473      Roger.Ferrel Do not allow issue in operational mode with DRT time.
+ * Dec 03, 2015 13609      mduff        Default VTEC mode based on CAVE mode.
+ * Feb 24, 2016 13929      Robert.Blum  Remove first part of staging dialog.
  * Apr 28, 2016 18267      Chris.Golden Changed to work with new version of mergeHazardEvents().
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S. sessions in
  *                                      the same CAVE session, since stopping and starting the Jep
@@ -336,6 +341,23 @@ public class SessionProductManager implements ISessionProductManager {
         this.productGenerationAuditManager = new HashMap<>();
         this.productGeneratorInformationForSelectedHazardsCache = new HashMap<>();
         this.eventBus = this.sessionManager.getEventBus();
+        setDefaultVtecMode();
+    }
+
+    /**
+     * Set the default VTEC mode
+     */
+    private void setDefaultVtecMode() {
+        if (CAVEMode.getMode() == CAVEMode.PRACTICE) {
+            this.vtecMode = "T";
+            this.vtecTestMode = true;
+        } else if (CAVEMode.getMode() == CAVEMode.TEST) {
+            this.vtecMode = "T";
+            this.vtecTestMode = true;
+        } else {
+            this.vtecMode = "O";
+            this.vtecTestMode = false;
+        }
     }
 
     /**
@@ -1106,8 +1128,7 @@ public class SessionProductManager implements ISessionProductManager {
             setPreviewOrIssueOngoing(issue, false);
             return;
         } else if (stagingRequired != StagingRequired.NONE) {
-            eventBus.publishAsync(new ProductStagingRequired(issue,
-                    stagingRequired));
+            eventBus.publishAsync(new ProductStagingRequired(issue));
             return;
         }
 
@@ -1278,13 +1299,8 @@ public class SessionProductManager implements ISessionProductManager {
 
         /*
          * If any of the product generation information objects has unselected
-         * events associated with it for possible inclusion, return the value
-         * indicating that this is the case.
-         */
-        /*
-         * See ticket 7110. Instead of returning flag for calling Product
-         * Staging dialog, add the possible product events to the product events
-         * and set them all to selected.
+         * events associated with it for possible inclusion, add the possible
+         * products to the product events and make them all selected.
          */
         for (ProductGeneratorInformation info : allProductGeneratorInfo) {
             if ((info.getPossibleProductEvents() != null)
@@ -1297,7 +1313,6 @@ public class SessionProductManager implements ISessionProductManager {
                 }
                 selectionManager.setSelectedEvents(selectedEvents,
                         Originator.OTHER);
-                // return StagingRequired.POSSIBLE_EVENTS;
             }
         }
 
@@ -1654,10 +1669,16 @@ public class SessionProductManager implements ISessionProductManager {
         boolean answer = messenger
                 .getQuestionAnswerer()
                 .getUserAnswerToQuestion(
-                        "Are you sure "
-                                + "you want to issue the following hazard event(s)?\n\n"
-                                + eventLabel,
-                        new String[] { "Issue", "Cancel" });
+                        "Are you sure you want to issue the following hazard event(s)?",
+                        eventLabel, new String[] { "Issue", "Cancel" });
+        if (answer) {
+            if ((CAVEMode.getMode() == CAVEMode.OPERATIONAL)
+                    && (SimulatedTime.getSystemTime().isRealTime() == false)) {
+                answer = false;
+                messenger.getWarner().warnUser("Operational Issue Hazard",
+                        "Must be in real time to issue hazard.");
+            }
+        }
         if (!answer) {
             sessionManager.setIssueOngoing(false);
         }

@@ -66,6 +66,11 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 01, 2016   15556    Chris.Golden Initial creation.
+ * May 05, 2017   10001    Chris.Golden Added detection of attaching/detaching of
+ *                                      view part and responding by recreating
+ *                                      the column menus in the tree, since these
+ *                                      were throwing exceptions when displayed
+ *                                      after attachment or detachment.
  * </pre>
  * 
  * @author Chris.Golden
@@ -414,6 +419,14 @@ class ConsoleBody implements IConsoleTree {
          * Return the overall composite holding the components.
          */
         return bodyPanel;
+    }
+
+    /**
+     * Respond to the view part in which the tree is embedded being attached to
+     * the main window or detached from it.
+     */
+    void viewPartAttachedOrDetached() {
+        consoleTree.viewPartAttachedOrDetached();
     }
 
     /**

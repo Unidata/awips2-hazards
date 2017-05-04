@@ -7,30 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_METADATA_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_SERVICES_LOCALIZATION_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_TYPES_LOCALIZATION_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_BRIDGE_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_CONFIG_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_EVENTS_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_FORMATS_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_GFE_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TIME_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PYTHON_UTILITIES_DIR;
 import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.ENCRYPTION_KEY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.PASSWORD;
 import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.REGISTRY_LOCATION;
@@ -69,6 +45,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.tools.ToolsView;
+import gov.noaa.gsd.viz.hazards.ui.QuestionDialog;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
 import gov.noaa.gsd.viz.mvp.IView;
@@ -93,6 +70,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IPerspectiveDescriptor;
@@ -109,6 +87,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -147,6 +126,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISpatialContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.SessionManagerFactory;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
@@ -156,7 +136,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
@@ -254,6 +233,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  * May 14, 2015  7560      mpduff              Added Apply callback
  * Jul 30, 2015 9681       Robert.Blum         Added new method to display the product viewer.
  * Nov 10, 2015 12762      Chris.Golden        Added support for use of new recommender manager.
+ * Nov 23, 2015 13017      Chris.Golden        Added ability to specify a many-line message below the
+ *                                             main message for a question being asked of the user.
+ * Feb 24, 2016 13929      Robert.Blum         Remove first part of staging dialog.
+ * Feb 25, 2016 14740      kbisanz             Check frameMap's values against defaults
  * Mar 15, 2016 15676      Chris.Golden        Updated to use new method names.
  * Apr 01, 2016 16225      Chris.Golden        Added ability to cancel tasks that are scheduled to run
  *                                             at regular intervals.
@@ -309,6 +292,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             from HazardServicesMessageHandler here as appropriate,
  *                                             and removed anything not being used.
  * Feb 13, 2017 28892      Chris.Golden        Removed unneeded code.
+ * Apr 27, 2017 11853      Chris.Golden        Changed name of product editor closing method.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -697,66 +681,90 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         LocalizationContext localizationContext = pathManager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
         String pythonPath = pathManager.getFile(localizationContext,
-                PYTHON_LOCALIZATION_DIR).getPath();
-        String localizationUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_UTILITIES_DIR);
-        String vtecUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
-        String logUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
-        String eventsPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_EVENTS_DIR);
-        String eventsUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_EVENTS_DIR, PYTHON_UTILITIES_DIR);
-        String recommendersPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_EVENTS_DIR,
-                PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
-        String generatorsPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_EVENTS_DIR,
-                PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
+                .getPath();
+        String hazardServicesPythonPath = pathManager
+                .getFile(
+                        localizationContext,
+                        HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR)
+                .getPath();
+        String localizationUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR);
+        String vtecUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
+        String logUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+        String eventsPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR);
+        String eventsUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                HazardsConfigurationConstants.PYTHON_UTILITIES_DIR);
+        String recommendersPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
+        String generatorsPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
         String generatorsProductsPath = FileUtil.join(generatorsPath,
-                PYTHON_LOCALIZATION_PRODUCTS_DIR);
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR);
         String generatorsFormatsPath = FileUtil.join(generatorsPath,
-                PYTHON_LOCALIZATION_FORMATS_DIR);
-        String recommendersConfigPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_EVENTS_DIR,
-                PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
-                PYTHON_LOCALIZATION_CONFIG_DIR);
-        String geoUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
-        String shapeUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
-        String textUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
-        String dataStoragePath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
-        String bridgePath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_BRIDGE_DIR);
-        String gfePath = FileUtil.join(pythonPath, PYTHON_LOCALIZATION_GFE_DIR);
-        String timePath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_TIME_DIR);
-        String generalUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
-        String trackUtilitiesPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR);
-        String dataAccessPath = FileUtil.join(pythonPath,
-                PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_FORMATS_DIR);
+        String recommendersConfigPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_CONFIG_DIR);
+        String geoUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
+        String shapeUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
+        String textUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
+        String dataStoragePath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
+        String bridgePath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_BRIDGE_DIR);
+        String generalUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
+        String trackUtilitiesPath = FileUtil
+                .join(hazardServicesPythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR);
+
         String hazardServicesPath = pathManager.getFile(localizationContext,
-                HAZARD_SERVICES_LOCALIZATION_DIR).getPath();
+                HazardsConfigurationConstants.HAZARD_SERVICES_DIR).getPath();
         String hazardTypesPath = FileUtil.join(hazardServicesPath,
-                HAZARD_TYPES_LOCALIZATION_DIR);
+                HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR);
         String hazardMetaDataPath = FileUtil.join(hazardServicesPath,
-                HAZARD_METADATA_DIR);
+                HazardsConfigurationConstants.HAZARD_METADATA_DIR);
+
+        String gfePath = FileUtil.join(pythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GFE_DIR);
+        String timePath = FileUtil.join(pythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_TIME_DIR);
+        String dataAccessPath = FileUtil
+                .join(pythonPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+
         PythonSideEffectsApplier.initialize(PyUtil.buildJepIncludePath(
-                pythonPath, localizationUtilitiesPath, logUtilitiesPath,
-                vtecUtilitiesPath, geoUtilitiesPath, shapeUtilitiesPath,
-                textUtilitiesPath, dataStoragePath, eventsPath,
-                eventsUtilitiesPath, bridgePath, hazardServicesPath,
-                hazardTypesPath, hazardMetaDataPath, gfePath, timePath,
-                generalUtilitiesPath, trackUtilitiesPath, dataAccessPath,
-                recommendersPath, recommendersConfigPath, generatorsPath,
-                generatorsProductsPath, generatorsFormatsPath), getClass()
-                .getClassLoader());
+                pythonPath, hazardServicesPythonPath,
+                localizationUtilitiesPath, logUtilitiesPath, vtecUtilitiesPath,
+                geoUtilitiesPath, shapeUtilitiesPath, textUtilitiesPath,
+                dataStoragePath, eventsPath, eventsUtilitiesPath, bridgePath,
+                hazardServicesPath, hazardTypesPath, hazardMetaDataPath,
+                gfePath, timePath, generalUtilitiesPath, trackUtilitiesPath,
+                dataAccessPath, recommendersPath, recommendersConfigPath,
+                generatorsPath, generatorsProductsPath, generatorsFormatsPath),
+                getClass().getClassLoader());
 
         loadRegistryPreferences();
 
@@ -791,6 +799,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             @Override
             public boolean getUserAnswerToQuestion(String question,
                     String[] buttonLabels) {
+                return getUserAnswerToQuestion(question, null, buttonLabels);
+            }
+
+            @Override
+            public boolean getUserAnswerToQuestion(String baseQuestion,
+                    String potentiallyLongMessage, String[] buttonLabels) {
                 String okTitle = IDialogConstants.OK_LABEL;
                 String cancelTitle = IDialogConstants.CANCEL_LABEL;
                 if (buttonLabels != null) {
@@ -801,12 +815,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                         cancelTitle = buttonLabels[1];
                     }
                 }
-                Shell shell = PlatformUI.getWorkbench()
-                        .getActiveWorkbenchWindow().getShell();
-                ProductGenConfirmationDlg dialog = new ProductGenConfirmationDlg(
-                        shell, "Hazard Services", question, okTitle,
+                QuestionDialog dialog = new QuestionDialog(
+                        getBestParentForModalDialog(), "Hazard Services",
+                        baseQuestion, potentiallyLongMessage, okTitle,
                         cancelTitle);
-                // Assume blocking dialog.
+
+                /*
+                 * Assume blocking dialog.
+                 */
                 Object result = dialog.open();
                 return Boolean.TRUE.equals(result);
             }
@@ -829,12 +845,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 String[] buttons = new String[] {
                         HazardConstants.CANCEL_BUTTON,
                         HazardConstants.CONTINUE_BUTTON };
-
-                Shell shell = PlatformUI.getWorkbench()
-                        .getActiveWorkbenchWindow().getShell();
-
-                MessageDialog dialog = new MessageDialog(shell, title, null,
-                        question, MessageDialog.ERROR, buttons, 0);
+                MessageDialog dialog = new MessageDialog(
+                        getBestParentForModalDialog(), title, null, question,
+                        MessageDialog.ERROR, buttons, 0);
 
                 int response = dialog.open();
                 return response == 1 ? true : false;
@@ -846,10 +859,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             @Override
             public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
                     IEventApplier applier) {
-                Shell shell = PlatformUI.getWorkbench()
-                        .getActiveWorkbenchWindow().getShell();
                 if (editor == null || editor.isDisposed()) {
-                    editor = new GraphicalEditor(shell, event, applier);
+                    editor = new GraphicalEditor(getBestParentForModalDialog(),
+                            event, applier);
                 } else {
                     editor.bringToTop();
                 }
@@ -906,7 +918,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 .getBoolean(START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE)));
 
         // Open the console.
-        createConsole(loadedFromBundle);
+        createConsole(loadedFromBundle, false);
 
         // Create the settings view.
         createSettingsDisplay();
@@ -1013,7 +1025,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                      */
                     int frameCount = framesInfo.getFrameCount();
                     int frameIndex = framesInfo.getFrameIndex();
-                    if ((frameCount > 0) && (frameIndex != -1)) {
+                    if ((frameCount > 0)
+                            && (frameIndex != HazardConstants.NO_FRAMES_INDEX)) {
                         final long selectedTime = framesInfo.getFrameTimes()[frameIndex]
                                 .getValidTime().getTimeInMillis();
                         RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
@@ -1069,6 +1082,84 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public void spatialDisplayDisposed() {
         dispose();
+    }
+
+    /**
+     * Get the shell to be used as a parent for a message or other modal dialog
+     * that is to be displayed.
+     * 
+     * @return Shell to be used as the parent of the modal dialog.
+     */
+    private Shell getBestParentForModalDialog() {
+
+        /*
+         * Get the main shell, and get its child shells, if any.
+         */
+        Shell parent = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                .getShell();
+        List<Shell> children = getChildShells(parent);
+
+        /*
+         * Iterate recursively down through the descendant shells of the main
+         * shell, at each level choosing as the next shells for which to examine
+         * descendants any application-modal shells, or if none of those are
+         * found, any primary-modal shells, or if none of those are found, any
+         * modeless shells. Once no more descendants are found, return the last
+         * level's last shell as the one to be used as a parent.
+         */
+        while (children.isEmpty() == false) {
+
+            /*
+             * Categorize the child shells according to their modality, and
+             * choose as the next level's parents the one(s) that are most
+             * modal.
+             */
+            List<Shell> modeless = new ArrayList<>(children.size());
+            List<Shell> primaryModal = new ArrayList<>(children.size());
+            List<Shell> applicationModal = new ArrayList<>(children.size());
+            for (Shell child : children) {
+                if ((child.getStyle() & (SWT.SYSTEM_MODAL | SWT.APPLICATION_MODAL)) != 0) {
+                    applicationModal.add(child);
+                } else if ((child.getStyle() & SWT.PRIMARY_MODAL) != 0) {
+                    primaryModal.add(child);
+                } else {
+                    modeless.add(child);
+                }
+            }
+            List<Shell> parents = (applicationModal.isEmpty() == false ? applicationModal
+                    : (primaryModal.isEmpty() == false ? primaryModal
+                            : modeless));
+
+            /*
+             * Remember the last parent of the ones chosen above as the one to
+             * be used if no children are found of any of these parents.
+             */
+            parent = parents.get(parents.size() - 1);
+
+            /*
+             * Get the children of this level's parents as chosen above.
+             */
+            children.clear();
+            for (Shell aParent : parents) {
+                children.addAll(getChildShells(aParent));
+            }
+        }
+        return parent;
+    }
+
+    /**
+     * Get the child shells of the specified shell.
+     * 
+     * @param parent
+     *            Shell for which to get any child shows.
+     * @return List of child shells; may be empty.
+     */
+    private List<Shell> getChildShells(Shell parent) {
+        Shell[] shellsArray = parent.getShells();
+        if ((shellsArray == null) || (shellsArray.length == 0)) {
+            return Collections.emptyList();
+        }
+        return Lists.newArrayList(shellsArray);
     }
 
     /**
@@ -1150,8 +1241,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param loadedFromBundle
      *            Flag indicating whether or not this display is being
      *            instantiated as a result of a bundle load.
+     * @param perspectiveChanged
+     *            Flag indicating whether or not this display is being
+     *            instantiated as a result of a perspective change.
      */
-    private void createConsole(boolean loadedFromBundle) {
+    private void createConsole(boolean loadedFromBundle,
+            boolean perspectiveChanged) {
         ConsoleView consoleView = new ConsoleView(loadedFromBundle);
         if (consolePresenter == null) {
             consolePresenter = new ConsolePresenter(sessionManager, this,
@@ -1159,6 +1254,17 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             presenters.add(consolePresenter);
         }
         consolePresenter.setView(consoleView);
+
+        /*
+         * If the perspective has changed, prompt the presenter to reload the
+         * settings that were already loaded, as otherwise its view will not
+         * have any columns displaying in its table, the title text of the view
+         * will not be set, etc.
+         */
+        if (perspectiveChanged) {
+            consolePresenter.settingsModified(new SettingsLoaded(sessionManager
+                    .getConfigurationManager(), Originator.OTHER));
+        }
     }
 
     /**
@@ -1180,7 +1286,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void createAlertsConfigDisplay() {
         if (alertsConfigPresenter == null) {
-
             AlertsConfigView alertsConfigView = new AlertsConfigView();
             alertsConfigPresenter = new AlertsConfigPresenter(sessionManager,
                     eventBus);
@@ -1196,6 +1301,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
                 @Override
                 public void dispose() {
+
                     /*
                      * Nothing to do here.
                      */
@@ -1203,6 +1309,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
                 @Override
                 public List<?> contributeToMainUI(Enum type) {
+
                     /*
                      * No contributions here.
                      */
@@ -1242,7 +1349,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void createSettingsDisplay() {
         if (settingsPresenter == null) {
-
             SettingsView settingsView = new SettingsView();
             settingsPresenter = new SettingsPresenter(sessionManager, eventBus);
             presenters.add(settingsPresenter);
@@ -1259,7 +1365,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             toolsPresenter = new ToolsPresenter(sessionManager, eventBus);
             presenters.add(toolsPresenter);
             toolsPresenter.setView(toolsView);
-
         }
     }
 
@@ -1740,13 +1845,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      * @param issueFlag
      *            Flag indicating whether or not this is being called as a
      *            result of an issue action; if false, it is a preview.
-     * @param stagingRequired
-     *            Type of product staging required.
      */
-    public void showProductStagingView(boolean issueFlag,
-            StagingRequired stagingRequired) {
-        productStagingPresenter.showProductStagingDetail(issueFlag,
-                stagingRequired);
+    public void showProductStagingView(boolean issueFlag) {
+        productStagingPresenter.showProductStagingDetail(issueFlag);
     }
 
     public void showProductEditorView(
@@ -1793,7 +1894,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     @Override
     public void closeProductEditor() {
-        productEditorPresenter.getView().closeProductEditorDialog();
+        productEditorPresenter.closeProductEditor();
     }
 
     @Override
@@ -1815,7 +1916,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         }
 
         // Recreate the console and the hazard detail views.
-        createConsole(false);
+        createConsole(false, true);
         createHazardDetailDisplay(false);
 
         /*

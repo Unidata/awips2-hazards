@@ -28,6 +28,7 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 06, 2014    4042    Chris.Golden Initial creation.
+ * Feb 24, 2016    13929   Robert.Blum  Remove first part of staging dialog.
  * </pre>
  * 
  * @author Chris.Golden
@@ -39,34 +40,7 @@ public interface IProductStagingViewDelegate<C, E extends Enum<E>> extends
     // Public Methods
 
     /**
-     * Show the product staging dialog in its first step configuration.
-     * 
-     * @param productNames
-     *            Names of the products for which widgets are to be shown to
-     *            allow the selection of hazard events to be associated with
-     *            said products.
-     * @param possibleEventIdsForProductNames
-     *            Map of product names to lists of hazard events that may be
-     *            associated with said products by the user.
-     * @param possibleEventDescriptionsForProductNames
-     *            Map of product names to lists of descriptions of hazard events
-     *            that may be associated with said products by the user. For
-     *            each such list, the descriptions within it are associated with
-     *            the event identifiers at the same indices within the list for
-     *            the corresponding product found in
-     *            <code>possibleEventIdsForProductNames</code>.
-     * @param selectedEventIdsForProductNames
-     *            Map of product names to lists of hazard events that should
-     *            start out as associated with said products when the widgets
-     *            allowing the changing of selection are first displayed.
-     */
-    public void showFirstStep(List<String> productNames,
-            Map<String, List<String>> possibleEventIdsForProductNames,
-            Map<String, List<String>> possibleEventDescriptionsForProductNames,
-            Map<String, List<String>> selectedEventIdsForProductNames);
-
-    /**
-     * Show the product staging dialog in its second step configuration.
+     * Show the product staging dialog.
      * 
      * @param productNames
      *            Names of the products for which widgets are to be shown to
@@ -81,14 +55,11 @@ public interface IProductStagingViewDelegate<C, E extends Enum<E>> extends
      * @param maximumVisibleTime
      *            Maximum visible time for any widgets displaying time
      *            graphically.
-     * @param firstStepSkipped
-     *            Flag indicating whether or not the first step was skipped.
      */
-    public void showSecondStep(
+    public void showStagingDialog(
             List<String> productNames,
             Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames,
-            long minimumVisibleTime, long maximumVisibleTime,
-            boolean firstStepSkipped);
+            long minimumVisibleTime, long maximumVisibleTime);
 
     /**
      * Hide the dialog.

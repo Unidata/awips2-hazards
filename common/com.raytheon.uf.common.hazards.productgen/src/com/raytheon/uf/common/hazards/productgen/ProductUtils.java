@@ -23,6 +23,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,6 +37,8 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
+
+import org.apache.commons.lang.ArrayUtils;
 
 import com.raytheon.uf.common.activetable.SendPracticeProductRequest;
 import com.raytheon.uf.common.dataplugin.text.AfosWmoIdDataContainer;
@@ -68,7 +72,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Jan 06, 2015 4937       Robert.Blum  wrapLegacy was incorrectly indenting bullets.
  * Aug 26, 2015 9641       Robert.Blum  Changed ugc Pattern so basisBullets would not match
  *                                      it.
- * 
+ * Dec 04, 2015 12981      Roger.Ferrel Added {@link #getDataElement(IGeneratedProduct, String[])}.
  * </pre>
  * 
  * @author jsanchez
@@ -330,5 +334,52 @@ public class ProductUtils {
             statusHandler.handle(Priority.PROBLEM,
                     "Error transmitting text product", e);
         }
+    }
+
+    /**
+     * Search the prouct's data for the desired element.
+     * 
+     * @param product
+     * @param mapKeys
+     *            Keys for maps in the order maps should be found.
+     * @return null if element not found
+     */
+    public static Object getDataElement(IGeneratedProduct product,
+            String[] mapKeys) {
+        Map<?, ?> data = product.getData();
+        if (data == null) {
+            return null;
+        }
+
+        String lastKey = mapKeys[mapKeys.length - 1];
+        String[] keys = (String[]) ArrayUtils.remove(mapKeys,
+                mapKeys.length - 1);
+
+        for (String key : keys) {
+            Object o = data.get(key);
+            Map<?, ?> m = null;
+            if (o instanceof List<?>) {
+                List<?> l = (List<?>) o;
+                if (l.isEmpty()) {
+                    return null;
+                }
+
+                // Check only the first map in the list.
+                for (Object o1 : l) {
+                    if (o1 instanceof Map<?, ?>) {
+                        m = (Map<?, ?>) o1;
+                        break;
+                    }
+                }
+            } else if (o instanceof Map<?, ?>) {
+                m = (Map<?, ?>) o;
+            }
+
+            if (m == null) {
+                return null;
+            }
+            data = m;
+        }
+        return data.get(lastKey);
     }
 }

@@ -31,17 +31,18 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.python.localization.AbstractNewActionBasedVelocity;
 
 /**
- * Action for the localization perspective to create a new MetaData with
- * the metadata.vm template.
+ * Action for the localization perspective to create a new MetaData with the
+ * metadata.vm template.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Feb 20, 2014            bkowal     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Feb 20, 2014            bkowal       Initial creation
+ * Nov 17, 2015 3473       Robert.Blum  Moved all python files under
+ *                                      HazardServices localization dir.
  * </pre>
  * 
  * @author bkowal
@@ -53,7 +54,7 @@ public class NewMetadataAction extends AbstractNewActionBasedVelocity {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(NewMetadataAction.class);
 
-    private static final String[] directoryPath = { "hazardServices",
+    private static final String[] directoryPath = { "HazardServices",
             "hazardMetaData" };
 
     private static final String LOCALIZATION_DIR = mergeDirectoryPaths(directoryPath);

@@ -28,8 +28,19 @@
           localizationAdapter="com.raytheon.uf.viz.recommenders.localization.RecommenderAdapter"
           localizationType="COMMON_STATIC"
           name="Recommenders"
-          value="python/events/recommenders" 
+          value="HazardServices/python/events/recommenders" 
           recursive="true">
        </path>
-  </extension>
+   </extension>
+   <extension
+       point="com.raytheon.uf.viz.localization.localizationpath">
+       <path
+          application="Hazard Services"
+          extensionFilter=".py"
+          localizationType="COMMON_STATIC"
+          name="Event Utilities"
+          recursive="true"
+          value="HazardServices/python/events/utilities">
+       </path>
+   </extension>
 </plugin>

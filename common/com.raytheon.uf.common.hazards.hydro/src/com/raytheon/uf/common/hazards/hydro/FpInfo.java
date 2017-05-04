@@ -35,6 +35,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
+ * Feb 11, 2016 14796      mduff       Add toString().
  * </pre>
  * 
  * @author Chris.Cody
@@ -341,7 +342,7 @@ public class FpInfo {
                     this.physicalElement = (String) queryValue;
                     break;
                 case USE_LATEST_FCST_FIELD_IDX:
-                    if ("T".equals((String) queryValue) == true) {
+                    if ("T".equals(queryValue) == true) {
                         this.useLatestForecast = true;
                     } else {
                         this.useLatestForecast = false;
@@ -837,4 +838,8 @@ public class FpInfo {
         this.longitude = longitude;
     }
 
+    @Override
+    public String toString() {
+        return this.lid + " - Flood Stage: " + this.floodStage;
+    }
 }

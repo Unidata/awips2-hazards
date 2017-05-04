@@ -36,6 +36,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Nov 10, 2015  12762     Chris.Golden Added tool parameter gatherer inner
  *                                      class to support the new recommender
  *                                      manager.
+ * Nov 23, 2015  13017     Chris.Golden Added ability to specify a many-line
+ *                                      message below the main message for a
+ *                                      question being asked.
  * Jun 23, 2016  19537     Chris.Golden Changed to work with new generic
  *                                      tool spatial info gathering.
  * </pre>
@@ -60,6 +63,9 @@ public interface IMessenger {
 
         public boolean getUserAnswerToQuestion(String question,
                 String[] buttonLabels);
+
+        public boolean getUserAnswerToQuestion(String baseQuestion,
+                String potentiallyLongMessage, String[] buttonLabels);
     }
 
     /**

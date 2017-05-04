@@ -36,6 +36,7 @@ import java.util.Map;
  * Feb 24, 2015 5960       Manross             Grab flood inundation areas
  * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
+ * Feb 19, 2016 15014      Robert.Blum Fix Zone and County Num queries.
  * 
  * </pre>
  * 
@@ -142,13 +143,13 @@ public interface IFloodDAO {
             List<String> zoneNumberList);
 
     /**
-     * Query for a RiverPointZone (ZONENUM) object for the given Lid
+     * Query for the RiverPointZone (ZONENUM) object(s) for the given Lid
      * 
      * @param lid
      *            River forecast point identifier
-     * @return A RiverPointZone object
+     * @return A List of RiverPointZone objects
      */
-    public RiverPointZoneInfo queryRiverPointZoneInfo(String lid);
+    public List<RiverPointZoneInfo> queryRiverPointZoneInfo(String lid);
 
     /**
      * Query for All river forecast groups.
@@ -227,13 +228,13 @@ public interface IFloodDAO {
     public List<CountyStateData> queryCountyStateDataList(List<String> lidList);
 
     /**
-     * Query for the CountyStateData for a River Forecast Point.
+     * Query for the CountyStateData(s) for a River Forecast Point.
      * 
      * @param lid
      *            River Forecast Point LID (Point ID)
-     * @return CountyStateData object
+     * @return List of CountyStateData objects
      */
-    public CountyStateData queryCountyStateData(String lid);
+    public List<CountyStateData> queryCountyStateData(String lid);
 
     /**
      * 
@@ -580,22 +581,22 @@ public interface IFloodDAO {
     public List<CrestHistory> queryStageCrestHistory(String lid);
 
     /**
-     * Query for a County State Data for a LID (Point Id)
+     * Query for the CountyStateData object(s) for a LID (Point Id)
      * 
      * @param lid
      *            LID value
-     * @return CountyStateData
+     * @return List of CountyStateData objects
      */
-    public CountyStateData queryCountyData(String lid);
+    public List<CountyStateData> queryCountyData(String lid);
 
     /**
-     * Query for a Map of LID (Point ID) to County State Data Map
+     * Query for a Map of LID (Point ID) to List of CountyStateData objects.
      * 
      * @param lidList
      *            List of LID values
-     * @return Map of LID to CountyStateData pairs
+     * @return Map of LID to List of CountyStateData objects
      */
-    public Map<String, CountyStateData> queryLidToCountyDataMap(
+    public Map<String, List<CountyStateData>> queryLidToCountyDataMap(
             List<String> lidList);
 
 }

@@ -309,10 +309,15 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                         Display.getCurrent().asyncExec(new Runnable() {
                             @Override
                             public void run() {
-                                Point selection = textViewer.getTextWidget()
-                                        .getSelection();
-                                displaySettings.setSelectionRange(Range.closed(
-                                        selection.x, selection.y));
+                                StyledText textWidget = textViewer
+                                        .getTextWidget();
+                                if ((textWidget != null)
+                                        && (textWidget.isDisposed() == false)) {
+                                    Point selection = textViewer
+                                            .getTextWidget().getSelection();
+                                    displaySettings.setSelectionRange(Range
+                                            .closed(selection.x, selection.y));
+                                }
                             }
                         });
                     }
@@ -402,12 +407,15 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
                     @Override
                     public void run() {
                         StyledText textWidget = textViewer.getTextWidget();
-                        displaySettings.setCaretPosition(textWidget
-                                .getCaretOffset());
-                        if (((TextSpecifier) getSpecifier())
-                                .getNumVisibleLines() == 1) {
-                            displaySettings.getScrollOrigin().x = textWidget
-                                    .getHorizontalPixel();
+                        if ((textWidget != null)
+                                && (textWidget.isDisposed() == false)) {
+                            displaySettings.setCaretPosition(textWidget
+                                    .getCaretOffset());
+                            if (((TextSpecifier) getSpecifier())
+                                    .getNumVisibleLines() == 1) {
+                                displaySettings.getScrollOrigin().x = textWidget
+                                        .getHorizontalPixel();
+                            }
                         }
                     }
                 });

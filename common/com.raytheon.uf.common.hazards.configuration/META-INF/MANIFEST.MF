@@ -13,4 +13,5 @@ Require-Bundle: org.codehaus.jackson;bundle-version="1.7.3",
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
  com.google.guava;bundle-version="18.0.0"
 Export-Package: com.raytheon.uf.common.hazards.configuration,
+ com.raytheon.uf.common.hazards.configuration.backup,
  com.raytheon.uf.common.hazards.configuration.types

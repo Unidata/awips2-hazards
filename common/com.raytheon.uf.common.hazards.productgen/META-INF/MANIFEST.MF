@@ -29,7 +29,8 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version=
  com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  com.raytheon.uf.common.activetable;bundle-version="1.12.1174",
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
- com.raytheon.uf.common.message;bundle-version="1.14.1"
+ com.raytheon.uf.common.message;bundle-version="1.14.1",
+ com.raytheon.uf.common.hazards.configuration;bundle-version="1.0.0"
 Export-Package: com.raytheon.uf.common.hazards.productgen,
  com.raytheon.uf.common.hazards.productgen.data,
  com.raytheon.uf.common.hazards.productgen.editable

@@ -37,6 +37,9 @@ import com.google.common.collect.Sets;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 06, 2015   4123     Chris.Golden Initial creation.
+ * Oct 01, 2015  11739     Robert.Blum  Fixed notification issue so that the
+ *                                      correct attribute in the IHazardEvent
+ *                                      could be updated.
  * Jun 08, 2016  14002     Chris.Golden Fixed bug that caused premature
  *                                      validation of range spinner values
  *                                      when the user was typing into them

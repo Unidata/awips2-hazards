@@ -51,7 +51,6 @@ import org.eclipse.jface.action.IContributionItem;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
@@ -145,11 +144,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           notifications now come from the session
  *                                           time manager. Also changed to use time
  *                                           range boundaries for the events.
+ * Mar 15, 2015   15676    Chris.Golden      Removed visible time range reaction, as
+ *                                           the notification is obsolete.
  * Nov 18, 2015   13279    Chris.Golden      Fixed bug that caused temporal display's
  *                                           event time range sliders to not always
  *                                           have the correct possible-value boundaries.
- * Mar 15, 2015   15676    Chris.Golden      Removed visible time range reaction, as
- *                                           the notification is obsolete.
+ * Nov 23, 2015    3473    Robert.Blum       Removed code for importing service backup.
  * Aug 15, 2016   18376    Chris.Golden      Removed unregistering for notification
  *                                           at shutdown, since this is already done
  *                                           by the session manager (and it was
@@ -193,7 +193,7 @@ public class ConsolePresenter extends
      * Commands.
      */
     public enum Command {
-        RESET, CLOSE, EXPORT_SITE_CONFIG, IMPORT_SITE_CONFIG, CHECK_FOR_CONFLICTS, VIEW_PRODUCT
+        RESET, CLOSE, EXPORT_SITE_CONFIG, CHECK_FOR_CONFLICTS, VIEW_PRODUCT
     }
 
     /**
@@ -511,8 +511,6 @@ public class ConsolePresenter extends
                 handleConsoleClosed();
             } else if (identifier == Command.EXPORT_SITE_CONFIG) {
                 exportApplicationBackupSiteData();
-            } else if (identifier == Command.IMPORT_SITE_CONFIG) {
-                importApplicationBackupSiteData();
             } else if (identifier == Command.CHECK_FOR_CONFLICTS) {
                 checkForConflicts();
             } else if (identifier == Command.VIEW_PRODUCT) {
@@ -1124,8 +1122,7 @@ public class ConsolePresenter extends
                         .copyOf(filterSpecifiers), LocalizationManager
                         .getContextName(LocalizationLevel.SITE), ImmutableList
                         .copyOf(getModel().getConfigurationManager()
-                                .getStartUpConfig().getBackupSites()),
-                temporalControlsInToolBar);
+                                .getBackupSites()), temporalControlsInToolBar);
 
         /*
          * Register the various handlers with the view.
@@ -1449,20 +1446,6 @@ public class ConsolePresenter extends
     private void exportApplicationBackupSiteData() {
         getModel().exportApplicationSiteData(
                 getModel().getConfigurationManager().getSiteID());
-    }
-
-    /**
-     * Import Hazard Services localization for a list of backed up site
-     * identifier values.
-     */
-    private void importApplicationBackupSiteData() {
-        List<String> backupSiteIdentifiers = Lists.newArrayList(getModel()
-                .getConfigurationManager().getStartUpConfig().getBackupSites());
-        if ((backupSiteIdentifiers == null) || backupSiteIdentifiers.isEmpty()) {
-            statusHandler
-                    .warn("No configured Hazard Services Back up Site Id values found in StartUpConfig.");
-        }
-        getModel().importApplicationBackupSiteData(backupSiteIdentifiers);
     }
 
     /**

@@ -188,6 +188,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            removing a bunch of recommender-managing code that
  *                                            didn't belong here and thus continuing the trend of
  *                                            shrinking this class.
+ * Feb 24, 2016 13929      Robert.Blum        Remove first part of staging dialog.
  * Mar 16, 2016 15676      Chris.Golden       Removed obsolete notifications.
  * Apr 01, 2016 16225      Chris.Golden       Added ability to cancel tasks that are scheduled to
  *                                            run at regular intervals.
@@ -206,6 +207,9 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            HazardServicesAppBuilder and presenters, as
  *                                            appropriate.
  * Feb 13, 2017 28892      Chris.Golden       Removed unneeded code.
+ * Apr 27, 2017 11853      Chris.Golden       Removed reset of preview-ongoing flag when closing
+ *                                            the product editor, as this is now done by the
+ *                                            latter's presenter.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -561,15 +565,13 @@ public final class HazardServicesMessageHandler {
      */
     @Handler
     public void productStagingRequired(final ProductStagingRequired notification) {
-        appBuilder.showProductStagingView(notification.isIssue(),
-                notification.getStagingRequired());
+        appBuilder.showProductStagingView(notification.isIssue());
     }
 
     @Handler
     public void productGenerationConfirmation(
             final ProductGenerationConfirmation productGenerationConfirmation) {
         // Product Editor needs closed if issuing from it.
-        this.sessionManager.setPreviewOngoing(false);
         this.appBuilder.closeProductEditor();
     }
 

@@ -24,6 +24,7 @@ import java.util.List;
 
 import jep.JepException;
 
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -50,6 +51,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * Nov 05, 2014 4042       Chris.Golden Added new directories to Python include path.
  * Feb 19, 2015 5071       Robert.Blum  Added new directories to include path
  * Feb 26, 2015 6306       mduff        Pass site to product script.
+ * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices
+ *                                      localization dir.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
  *                                      sessions in the same CAVE session, since stopping and
  *                                      starting the Jep instances when the latter use numpy is
@@ -64,12 +67,6 @@ public class ProductScriptFactory extends
         AbstractPythonScriptFactory<ProductScript> {
 
     /**
-     * Name of the python utility directory in which to find the subdirectories
-     * given by {@link #PYTHON_UTILITY_SUBDIRECTORIES}.
-     */
-    private static final String PYTHON_UTILITY_DIRECTORY = "python";
-
-    /**
      * All of the utility directories off of the
      * {@link PYTHON_UTILITY_DIRECTORY} directory which must be added to the Jep
      * path for the product generation framework and product generators.
@@ -77,12 +74,6 @@ public class ProductScriptFactory extends
     private final static String[] PYTHON_UTILITY_SUBDIRECTORIES = { "bridge",
             "dataStorage", "logUtilities", "shapeUtilities", "textUtilities",
             "VTECutilities", "geoUtilities", "localizationUtilities" };
-
-    /**
-     * Name of the Hazard Services utility directory in which to find the
-     * subdirectories given by {@link #HAZARD_SERVICES_UTILITY_SUBDIRECTORIES}.
-     */
-    private static final String HAZARD_SERVICES_UTILITY_DIRECTORY = "hazardServices";
 
     /**
      * All of the utility directories off of the
@@ -138,15 +129,19 @@ public class ProductScriptFactory extends
                     LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
             List<String> utilityPathList = new ArrayList<String>();
 
-            String pythonPath = manager.getFile(baseContext,
-                    PYTHON_UTILITY_DIRECTORY).getPath();
+            String pythonPath = manager
+                    .getFile(
+                            baseContext,
+                            HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR)
+                    .getPath();
             utilityPathList.add(pythonPath);
             for (String utilityDir : PYTHON_UTILITY_SUBDIRECTORIES) {
                 utilityPathList.add(FileUtil.join(pythonPath, utilityDir));
             }
 
             String hazardServicesPath = manager.getFile(baseContext,
-                    HAZARD_SERVICES_UTILITY_DIRECTORY).getPath();
+                    HazardsConfigurationConstants.HAZARD_SERVICES_DIR)
+                    .getPath();
             utilityPathList.add(hazardServicesPath);
             for (String utilityDir : HAZARD_SERVICES_UTILITY_SUBDIRECTORIES) {
                 utilityPathList.add(FileUtil.join(hazardServicesPath,
