@@ -2203,7 +2203,26 @@ HazardTypes = {
                                      'InternationalSigmetTool': [ 'geometry', 'visualFeature' ]
                                      },              
               },
-
+    'VAA' : {
+              'headline': 'Aviation Volcanic Ash Advisory',
+              '_override_lock_': OVERRIDE_LOCK,
+              'combinableSegments': True,
+              'includeAll': False,
+              'allowAreaChange': True,
+              'allowTimeChange': True,
+              'expirationTime': (-30, 30),
+              'hazardConflictList': [],
+              'ugcTypes': ['zone', 'marinezones'],
+              'ugcLabel': 'name',
+              'inclusionFractionTest': False,
+              'inclusionFraction': 0,
+              'durationChoiceList': [ "6 hrs" ],              
+              'defaultDuration': 6 * HOURS,
+              'durationIncrement': 60,
+              'sessionAttributes': SESSION_ATTRS,
+              'modifyRecommenders': {
+                                     },              
+              },
     'LLWS' : {
               'headline': 'Aviation Low Level Wind Shear',
               '_override_lock_': OVERRIDE_LOCK,

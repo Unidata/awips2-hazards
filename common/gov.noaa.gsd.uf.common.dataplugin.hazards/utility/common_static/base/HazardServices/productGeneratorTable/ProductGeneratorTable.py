@@ -77,6 +77,13 @@ ProductGeneratorTable = {
             "previewFormatters": ["Legacy_International_SIGMET_Formatter", "International_SIGMET_XML_Formatter"],
             "issueFormatters": [], #["Legacy_Convective_SIGMET_Formatter", "Convective_SIGMET_XML_Formatter"],                                   
             },
+        "VAA_ProductGenerator": {
+            "allowedHazards": [
+            ('VAA', 'Aviation'),                   
+            ],
+            "previewFormatters": ["Legacy_VAA_Formatter"], #, "VAA_XML_Formatter"],
+            "issueFormatters": [],                     
+            },
         "AIRMET_ProductGenerator": {
             "allowedHazards": [
             ('LLWS', 'Aviation'),

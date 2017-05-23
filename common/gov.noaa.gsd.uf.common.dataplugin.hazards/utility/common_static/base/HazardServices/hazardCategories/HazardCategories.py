@@ -43,6 +43,7 @@ HazardCategories = collections.OrderedDict(
         "Aviation": [("SIGMET","NonConvective"),
                      ("SIGMET","Convective"),
                      ("SIGMET","International"),
+                     ("VAA",),
                      ("LLWS",),
                      ("Strong_Surface_Wind",),
                      ("Turbulence",),

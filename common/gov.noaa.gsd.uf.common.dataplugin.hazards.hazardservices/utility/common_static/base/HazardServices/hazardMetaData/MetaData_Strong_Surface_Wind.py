@@ -46,8 +46,6 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     
     AMChanges = MetaData_AIRMET_SIGMET.applyInterdependencies(triggerIdentifiers, mutableProperties)
-    
-    import sys
     sys.stderr.writelines( ['Hello World [Strong Surface Wind] !\n'])
                     
     sys.stderr.writelines(['AMChanges: ', str(AMChanges), '\n'])

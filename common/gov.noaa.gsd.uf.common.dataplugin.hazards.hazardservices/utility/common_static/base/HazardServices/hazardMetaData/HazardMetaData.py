@@ -37,6 +37,7 @@ HazardMetaData =[
                 {"hazardTypes": [("SIGMET", "NonConvective")], "classMetaData": "MetaData_SIGMET_W"},
                 {"hazardTypes": [("SIGMET","Convective")], "classMetaData": "MetaData_Convective_SIGMET"},
                 {"hazardTypes": [("SIGMET","International")], "classMetaData": "MetaData_International_SIGMET"},
+                {"hazardTypes": [("VAA",)], "classMetaData": "MetaData_VAA"},
                 {"hazardTypes": [("LLWS",)], "classMetaData": "MetaData_LLWS"},
                 {"hazardTypes": [("Strong_Surface_Wind",)], "classMetaData": "MetaData_Strong_Surface_Wind"},
                 {"hazardTypes": [("Turbulence",)], "classMetaData": "MetaData_Turbulence"},
