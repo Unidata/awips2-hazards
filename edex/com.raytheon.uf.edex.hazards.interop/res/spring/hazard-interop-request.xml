@@ -1,0 +1,87 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="DeleteAllInteroperabilityRecordsHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.DeleteAllInteroperabilityRecordsHandler" />
+
+	<bean id="DeleteInteroperabilityRecordHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.DeleteInteroperabilityRecordHandler" />
+
+	<bean id="GetHazardActiveTableHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.GetHazardActiveTableHandler" />
+
+	<bean id="InteroperabilityConflictsHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.InteroperabilityConflictsHandler" />
+
+	<bean id="InteroperabilityRecordQueryHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.InteroperabilityRecordQueryHandler" />
+
+	<bean id="PurgeInteroperabilityRecordsHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.PurgeInteroperabilityRecordsHandler" />
+
+	<bean id="PurgePracticeWarningsHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.PurgePracticeWarningsHandler" />
+
+	<bean id="StoreInteroperabilityRecordHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.StoreInteroperabilityRecordHandler" />
+
+	<bean id="UpdateInteroperabilityRecordHandler"
+		class="com.raytheon.uf.edex.hazards.interop.handlers.UpdateInteroperabilityRecordHandler" />
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.DeleteAllInteroperabilityRecordsRequest" />
+		<constructor-arg ref="DeleteAllInteroperabilityRecordsHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.DeleteInteroperabilityRecordRequest" />
+		<constructor-arg ref="DeleteInteroperabilityRecordHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.GetHazardActiveTableRequest" />
+		<constructor-arg ref="GetHazardActiveTableHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.InteroperabilityConflictsRequest" />
+		<constructor-arg ref="InteroperabilityConflictsHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.InteroperabilityRecordQueryRequest" />
+		<constructor-arg ref="InteroperabilityRecordQueryHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.PurgeInteroperabilityRecordsRequest" />
+		<constructor-arg ref="PurgeInteroperabilityRecordsHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.PurgePracticeWarningsRequest" />
+		<constructor-arg ref="PurgePracticeWarningsHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.StoreInteroperabilityRecordRequest" />
+		<constructor-arg ref="StoreInteroperabilityRecordHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.edex.hazards.interop.handlers.UpdateInteroperabilityRecordHandler" />
+		<constructor-arg ref="UpdateInteroperabilityRecordHandler" />
+	</bean>
+
+</beans>

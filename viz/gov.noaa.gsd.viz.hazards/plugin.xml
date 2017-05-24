@@ -258,17 +258,9 @@
    </extension>
    <extension
          point="org.eclipse.ui.preferencePages">
-      <page
-            class="gov.noaa.gsd.viz.hazards.preferences.HazardServicesPreferencePage"
-            id="gov.noaa.gsd.viz.hazards.preferences.HazardServicesPreferencePage"
-            name="Hazard Services">
-      </page>
    </extension>
    <extension
          point="org.eclipse.core.runtime.preferences">
-      <initializer
-            class="gov.noaa.gsd.viz.hazards.preferences.HazardServicesPreferenceInitializer">
-      </initializer>
    </extension>
    
 </plugin>

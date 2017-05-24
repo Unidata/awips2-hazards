@@ -25,23 +25,6 @@
         <constructor-arg ref="requestRegistryRouter" />
     </bean>
 
-	<bean id="remoteGridRequestHandler"
-		class="com.raytheon.uf.edex.hazards.interop.gfe.GridRequestHandler">
-		<constructor-arg value="remote.request.server" />
-	</bean>
-
-	<bean id="HazardEventInteropServicesImpl"
-		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
-		<property name="practice" value="false" />
-		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
-	</bean>
-
-	<bean id="PracticeHazardEventInteropServicesImpl"
-		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
-		<property name="practice" value="true" />
-		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
-	</bean>
-
 	<!-- SOAP Service definitions -->
 	<jaxws:server id="HazardEventInteropServices" address="/hazardEventInteropServices"
 		bus="cxf">

@@ -36,7 +36,6 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
 import org.apache.cxf.annotations.FastInfoset;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
@@ -46,8 +45,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServicesUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.IHazardEventServices;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 import com.raytheon.uf.common.localization.region.RegionLookup;
 import com.raytheon.uf.common.registry.ebxml.FactoryRegistryHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -69,7 +69,8 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
- * Aug 13, 2015 8836      Chris.Cody    Changes for a configurable Event Id
+ * Aug 04, 2015  6895     Ben.Phillippe Finished HS data access refactor
+ * Aug 13, 2015  8836     Chris.Cody    Changes for a configurable Event Id
  * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
@@ -146,7 +147,7 @@ public class HazardEventServices implements IHazardEventServices {
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = HazardEventResponse.create();
         try {
-            validateEvents(events);
+            HazardEventServicesUtil.validateEvents(events);
             for (HazardEvent event : events) {
                 String phensig = HazardEventUtilities.getHazardPhenSig(event);
                 if (event.getSubType() != null && !event.getSubType().isEmpty()) {
@@ -162,8 +163,8 @@ public class HazardEventServices implements IHazardEventServices {
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Storing Events", e);
         }
-        return checkResponse("STORE", "Created " + events.size()
-                + " HazardEvents.", response);
+        return HazardEventServicesUtil.checkResponse("STORE", "Created "
+                + events.size() + " HazardEvents.", response);
     }
 
     @Override
@@ -183,7 +184,7 @@ public class HazardEventServices implements IHazardEventServices {
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = HazardEventResponse.create();
         try {
-            validateEvents(events);
+            HazardEventServicesUtil.validateEvents(events);
             response.addExceptions(registryHandler.removeObjects(userName,
                     new ArrayList<HazardEvent>(events)).getErrors());
             for (HazardEvent event : events) {
@@ -192,8 +193,8 @@ public class HazardEventServices implements IHazardEventServices {
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Deleting Events", e);
         }
-        return checkResponse("DELETE", "Deleted " + events.size()
-                + " HazardEvents", response);
+        return HazardEventServicesUtil.checkResponse("DELETE", "Deleted "
+                + events.size() + " HazardEvents", response);
     }
 
     @Override
@@ -224,7 +225,7 @@ public class HazardEventServices implements IHazardEventServices {
         } else {
             deleteAllResponse.merge(retrieveResponse);
         }
-        return checkResponse("DELETE",
+        return HazardEventServicesUtil.checkResponse("DELETE",
                 "Deleted all copies of hazard event with ID of \"" + identifier
                         + "\" (" + deleted + " copies)", deleteAllResponse);
     }
@@ -249,7 +250,7 @@ public class HazardEventServices implements IHazardEventServices {
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = HazardEventResponse.create();
         try {
-            validateEvents(events);
+            HazardEventServicesUtil.validateEvents(events);
             response.addExceptions(registryHandler.removeObjects(userName,
                     new ArrayList<HazardEvent>(events)).getErrors());
             hazardNotifier.notify(events.get(0), NotificationType.DELETE_ALL,
@@ -288,7 +289,8 @@ public class HazardEventServices implements IHazardEventServices {
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Deleting Events", e);
         }
-        return checkResponse("DELETE_ALL", "", deleteAllResponse);
+        return HazardEventServicesUtil.checkResponse("DELETE_ALL", "",
+                deleteAllResponse);
     }
 
     @Override
@@ -308,7 +310,7 @@ public class HazardEventServices implements IHazardEventServices {
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventResponse response = HazardEventResponse.create();
         try {
-            validateEvents(events);
+            HazardEventServicesUtil.validateEvents(events);
             for (HazardEvent event : events) {
 
                 String phensig = HazardEventUtilities.getHazardPhenSig(event);
@@ -325,8 +327,8 @@ public class HazardEventServices implements IHazardEventServices {
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Updating Events", e);
         }
-        return checkResponse("UPDATE", "Updated " + events.size()
-                + " HazardEvents.", response);
+        return HazardEventServicesUtil.checkResponse("UPDATE", "Updated "
+                + events.size() + " HazardEvents.", response);
     }
 
     @Override
@@ -339,7 +341,7 @@ public class HazardEventServices implements IHazardEventServices {
             throw new IllegalArgumentException(
                     "Incorrect number of arguments submitted to retrieve");
         } else {
-            request = convertArrayToQuery(params);
+            request = HazardEventServicesUtil.convertArrayToQuery(params);
         }
         return retrieve(request);
 
@@ -364,11 +366,12 @@ public class HazardEventServices implements IHazardEventServices {
             throw new HazardEventServiceException(
                     "Error Retrieving Events with request: " + request, e);
         }
-        return checkResponse(
-                "QUERY",
-                (request.isSizeOnlyRequired() ? "Retrieved sizes of history lists."
-                        : "Retrieved " + response.getEvents().size()
-                                + " HazardEvents."), response);
+        return HazardEventServicesUtil
+                .checkResponse(
+                        "QUERY",
+                        (request.isSizeOnlyRequired() ? "Retrieved sizes of history lists."
+                                : "Retrieved " + response.getEvents().size()
+                                        + " HazardEvents."), response);
     }
 
     @Override
@@ -386,7 +389,7 @@ public class HazardEventServices implements IHazardEventServices {
         if (task.getExtraInfo() == null || task.getExtraInfo().isEmpty()) {
 
             HazardEventQueryRequest request = new HazardEventQueryRequest(
-                    HazardConstants.SITE_ID, siteID);
+                    practice, HazardConstants.SITE_ID, siteID);
             request.setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
             List<HazardEvent> events = retrieve(request).getEvents();
 
@@ -451,67 +454,6 @@ public class HazardEventServices implements IHazardEventServices {
         statusHandler.info("Received Ping from "
                 + EbxmlObjectUtil.getClientHost(wsContext));
         return "OK";
-    }
-
-    /**
-     * Validates events
-     * 
-     * @param events
-     *            The events to validate
-     * @throws ValidationException
-     *             If validation errors occur
-     */
-    private void validateEvents(List<HazardEvent> events)
-            throws ValidationException {
-        for (HazardEvent event : events) {
-            event.isValid();
-        }
-    }
-
-    /**
-     * Checks the response and outputs the standard message
-     * 
-     * @param operation
-     *            The operation executed
-     * @param details
-     *            Any additional details to add to the message
-     * @param response
-     *            The response object
-     * @return The REsponse object
-     */
-    private HazardEventResponse checkResponse(String operation, String details,
-            final HazardEventResponse response) {
-        StringBuilder builder = new StringBuilder();
-        if (response.success()) {
-            builder.append("Successfully executed [");
-            builder.append(operation);
-            builder.append("] operation.\n\tDetails: ");
-            builder.append(details);
-            statusHandler.info(builder.toString());
-        }
-        return response;
-    }
-
-    /**
-     * Converts a query submitted as an array into a query request object
-     * 
-     * @param params
-     *            The parameters to convert
-     * @return
-     */
-    private HazardEventQueryRequest convertArrayToQuery(Object[] params) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest();
-        for (int i = 0; i < params.length; i += 3) {
-            if ((params[i] instanceof String)
-                    && (params[i + 1] instanceof String)) {
-                request.and((String) params[i], (String) params[i + 1],
-                        params[i + 2]);
-            } else {
-                throw new IllegalArgumentException(
-                        "Incorrect parameter types received by retrieve query");
-            }
-        }
-        return request;
     }
 
     /**

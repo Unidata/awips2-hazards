@@ -162,6 +162,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 30, 2017 15528      Chris.Golden Changed to have the modified setter and
  *                                      getter part of IHazardEvent, not
  *                                      IModifiable (which has been removed).
+ * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * </pre>
  * 
  * @author bsteffen
@@ -286,6 +287,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     @Override
     public String getHazardType() {
         return HazardEventUtilities.getHazardType(this);
+    }
+
+    @Override
+    public String getPhensig() {
+        return HazardEventUtilities.getHazardPhenSig(this);
     }
 
     @Override

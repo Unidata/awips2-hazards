@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.gfe;
 
-import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -27,15 +26,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_KEYS;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperabilityGFE;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.client.HazardEventServicesSoapClient;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityRecord;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.HazardEventInteropServicesSoapClient;
 
 /**
  * Common utility methods utilized by the GFE interoperability classes.
@@ -49,6 +46,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * Apr 08, 2014            bkowal        Initial creation
  * Dec 12, 2014   2826     dgilling      Change fields used for interoperability.
  * May 29, 2015   6895     Ben.Phillippe Refactored Hazard Service data access
+ * Aug 20, 2015   6895     Ben.Phillippe Routing registry requests through
+ *                                       request server
  * Feb 16, 2017  29138     Chris.Golden  Changed to work with new hazard
  *                                       event manager.
  * </pre>
@@ -66,38 +65,34 @@ public final class GfeInteroperabilityUtil {
     }
 
     public static List<HazardEvent> queryForInteroperabilityHazards(
-            String siteID, String phenomenon, String significance,
-            Date startDate, Date endDate, HazardEventManager hazardEventManager) {
-        Map<String, Serializable> parameters = new HashMap<String, Serializable>();
-        parameters
-                .put(HazardInteroperabilityConstants.INTEROPERABILITY_GFE_KEYS.SITE_ID,
-                        siteID);
+            boolean practice, String siteID, String phenomenon,
+            String significance, Date startDate, Date endDate)
+            throws HazardEventServiceException {
+        HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
+                practice, HazardConstants.HAZARD_EVENT_START_TIME, ">",
+                startDate).and(HazardConstants.HAZARD_EVENT_END_TIME, "<",
+                endDate).and(HazardConstants.SITE_ID, siteID);
         if (phenomenon != null) {
-            parameters.put(INTEROPERABILITY_KEYS.PHENOMENON, phenomenon);
+            queryRequest.and(HazardConstants.PHENOMENON, phenomenon);
         }
         if (significance != null) {
-            parameters.put(INTEROPERABILITY_KEYS.SIGNIFICANCE, significance);
+            queryRequest.and(HazardConstants.SIGNIFICANCE, significance);
         }
-        parameters
-                .put(HazardInteroperabilityConstants.INTEROPERABILITY_GFE_KEYS.START_DATE,
-                        startDate);
-        parameters
-                .put(HazardInteroperabilityConstants.INTEROPERABILITY_GFE_KEYS.END_DATE,
-                        endDate);
 
-        List<IHazardsInteroperabilityRecord> records = HazardInteroperabilityRecordManager
-                .queryForRecord(HazardsInteroperabilityGFE.class, parameters);
+        List<HazardInteroperabilityRecord> records = HazardEventInteropServicesSoapClient
+                .getServices(practice).retrieve(queryRequest)
+                .getInteropRecords();
         if (records == null) {
             return null;
         }
 
         // Retrieve the associated hazard events.
         Map<String, HazardHistoryList> associatedEvents = new HashMap<>();
-        for (IHazardsInteroperabilityRecord record : records) {
-            Map<String, HazardHistoryList> events = hazardEventManager
-                    .queryHistory(new HazardEventQueryRequest(
-                            HazardConstants.HAZARD_EVENT_IDENTIFIER, record
-                                    .getHazardEventID()));
+        for (HazardInteroperabilityRecord record : records) {
+            Map<String, HazardHistoryList> events = HazardEventServicesSoapClient
+                    .getServices(practice)
+                    .retrieveByParams(HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                            "=", record.getHazardEventID()).getHistoryMap();
             if (events.isEmpty() == false) {
                 associatedEvents.putAll(events);
             }

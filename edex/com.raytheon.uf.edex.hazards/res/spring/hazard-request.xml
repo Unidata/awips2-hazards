@@ -1,8 +1,86 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
-  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
 
-<bean id="registryHandler"
-        class="com.raytheon.uf.common.registry.ebxml.ThriftRegistryHandler" />
+	<bean id="DeleteAllHazardEventsHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.DeleteAllHazardEventsHandler" />
+
+	<bean id="DeleteAllHazardEventsWithIdHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.DeleteAllHazardEventsWithIdHandler" />
+
+	<bean id="DeleteHazardEventHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.DeleteHazardEventHandler" />
+
+	<bean id="GetWfoRegionHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.GetWfoRegionHandler" />
+
+	<bean id="HazardEventIdRequestHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.HazardEventIdRequestHandler" />
+
+	<bean id="HazardEventQueryHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.HazardEventQueryHandler" />
+
+	<bean id="StoreHazardEventHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.StoreHazardEventHandler" />
+
+	<bean id="UpdateHazardEventHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.UpdateHazardEventHandler" />
+
+	<bean id="GetRegistryInfoHandler"
+		class="com.raytheon.uf.edex.hazards.handlers.GetRegistryInfoHandler" />
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.GetRegistryInfoRequest" />
+		<constructor-arg ref="GetRegistryInfoHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.DeleteAllHazardEventsRequest" />
+		<constructor-arg ref="DeleteAllHazardEventsHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.DeleteAllHazardEventsWithIdRequest" />
+		<constructor-arg ref="DeleteAllHazardEventsWithIdHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.DeleteHazardEventRequest" />
+		<constructor-arg ref="DeleteHazardEventHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.GetWfoRegionRequest" />
+		<constructor-arg ref="GetWfoRegionHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventIdRequest" />
+		<constructor-arg ref="HazardEventIdRequestHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest" />
+		<constructor-arg ref="HazardEventQueryHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.StoreHazardEventRequest" />
+		<constructor-arg ref="StoreHazardEventHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.dataplugin.events.hazards.request.UpdateHazardEventRequest" />
+		<constructor-arg ref="UpdateHazardEventHandler" />
+	</bean>
+
 </beans>

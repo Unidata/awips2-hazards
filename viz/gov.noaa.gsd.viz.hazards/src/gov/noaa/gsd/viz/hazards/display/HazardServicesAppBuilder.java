@@ -7,12 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.ENCRYPTION_KEY;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.PASSWORD;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.REGISTRY_LOCATION;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.TRUST_STORE_LOCATION;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.TRUST_STORE_PASSWORD;
-import static com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient.USER_NAME;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.Utils;
@@ -86,7 +80,6 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
@@ -766,8 +759,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 generatorsPath, generatorsProductsPath, generatorsFormatsPath),
                 getClass().getClassLoader());
 
-        loadRegistryPreferences();
-
         /*
          * For testing and demos, force DRT for operational mode start HS
          * according to CAVE clock for practice mode. Needed to do this, because
@@ -1185,19 +1176,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private void warnUser(String title, String warning) {
         warner.warnUser(title, warning);
-    }
-
-    /**
-     * Initialize the Hazard Services web services interfaces.
-     */
-    private void loadRegistryPreferences() {
-        IPreferenceStore store = HazardServicesActivator.getDefault()
-                .getPreferenceStore();
-        HazardServicesClient.init(store.getString(REGISTRY_LOCATION),
-                store.getString(USER_NAME), store.getString(PASSWORD),
-                store.getString(TRUST_STORE_LOCATION),
-                store.getString(TRUST_STORE_PASSWORD),
-                store.getString(ENCRYPTION_KEY));
     }
 
     /**

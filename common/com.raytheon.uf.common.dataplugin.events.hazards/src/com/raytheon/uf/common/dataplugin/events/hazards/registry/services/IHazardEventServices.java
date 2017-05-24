@@ -31,7 +31,7 @@ import org.apache.cxf.annotations.FastInfoset;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 
 /**
  * 
@@ -44,6 +44,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 20, 2015 6895      Ben.Phillippe Routing registry requests through
+ *                                      request server
  * Apr 13, 2017 33142     Chris.Golden  Added ability to delete all events
  *                                      with a particular event identifier.
  * </pre>
@@ -224,7 +226,8 @@ public interface IHazardEventServices {
      * @return The region
      */
     @WebMethod(operationName = "lookupRegion")
-    public String lookupRegion(@WebParam(name = "siteID") String siteID);
+    public String lookupRegion(@WebParam(name = "siteID") String siteID)
+            throws HazardEventServiceException;;
 
     /**
      * Method used to test connectivity to this set of services

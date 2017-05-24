@@ -19,14 +19,15 @@
  **/
 package com.raytheon.uf.edex.hazards.interop;
 
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
+import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Restrictions;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
@@ -35,13 +36,13 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_KEYS;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperability;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.client.HazardEventServicesSoapClient;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityConstants;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityRecord;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.HazardEventInteropServicesSoapClient;
 
 /**
  * A utility for common interoperability functions.
@@ -57,6 +58,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * Dec 18, 2014   2826    dgilling      Change fields used in interoperability.
  * Feb 22, 2015   6561    mpduff        Use insertTime to find latest events.
  * May 29, 2015   6895    Ben.Phillippe Refactored Hazard Service data access
+ * Aug 04, 2015   6895    Ben.Phillippe Finished HS data access refactor
+ * Aug 20, 2015   6895    Ben.Phillippe Routing registry requests through request server
  * Oct 14, 2015  12494    Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
@@ -79,11 +82,12 @@ public final class InteroperabilityUtil {
     }
 
     public static IHazardEvent queryInteroperabilityByETNForHazard(
-            IHazardEventManager manager, final String siteID,
-            final String phenomnenon, final String significance,
-            final String etn, final INTEROPERABILITY_TYPE type) {
+            boolean practice, final String siteID, final String phenomnenon,
+            final String significance, final String etn,
+            final INTEROPERABILITY_TYPE type)
+            throws HazardEventServiceException {
         List<HazardEvent> hazardEvents = queryInteroperabilityByETNForHazards(
-                manager, siteID, phenomnenon, significance, etn, type);
+                practice, siteID, phenomnenon, significance, etn, type);
         if (hazardEvents == null || hazardEvents.isEmpty()) {
             return null;
         }
@@ -92,38 +96,41 @@ public final class InteroperabilityUtil {
     }
 
     public static List<HazardEvent> queryInteroperabilityByETNForHazards(
-            IHazardEventManager manager, final String siteID,
-            final String phenomenon, final String significance,
-            final String etn, final INTEROPERABILITY_TYPE type) {
-        Map<String, Serializable> parameters = new HashMap<>();
-        parameters.put(INTEROPERABILITY_KEYS.SITE_ID, siteID);
+            boolean practice, final String siteID, final String phenomenon,
+            final String significance, final String etn,
+            final INTEROPERABILITY_TYPE type)
+            throws HazardEventServiceException {
+        HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
+                practice, HazardConstants.SITE_ID, siteID);
         if (phenomenon != null) {
-            parameters.put(INTEROPERABILITY_KEYS.PHENOMENON, phenomenon);
+            queryRequest.and(HazardConstants.PHENOMENON, phenomenon);
         }
         if (significance != null) {
-            parameters.put(INTEROPERABILITY_KEYS.SIGNIFICANCE, significance);
+            queryRequest.and(HazardConstants.SIGNIFICANCE, significance);
         }
-        parameters.put(INTEROPERABILITY_KEYS.ETN, etn);
+        queryRequest.and(HazardConstants.ETN, etn);
         if (type != null) {
-            parameters
-                    .put(HazardInteroperabilityConstants.INTEROPERABILITY_TYPE,
+            queryRequest
+                    .and(HazardInteroperabilityConstants.INTEROPERABILITY_TYPE,
                             type);
         }
-        List<IHazardsInteroperabilityRecord> records = HazardInteroperabilityRecordManager
-                .queryForRecord(HazardsInteroperability.class, parameters);
+        List<HazardInteroperabilityRecord> records = HazardEventInteropServicesSoapClient
+                .getServices(practice).retrieve(queryRequest)
+                .getInteropRecords();
         if (records == null || records.isEmpty()) {
             return null;
         }
 
         List<HazardEvent> retrievedHazardEvents = new ArrayList<>();
-        for (IHazardsInteroperabilityRecord record : records) {
+        for (HazardInteroperabilityRecord record : records) {
             final String hazardEventID = record.getHazardEventID();
 
             HazardEventQueryRequest request = new HazardEventQueryRequest(
-                    HazardConstants.HAZARD_EVENT_IDENTIFIER, hazardEventID);
-            request.setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
-            Map<String, HazardEvent> hazardEventsMap = manager
-                    .queryLatest(request);
+                    practice, HazardConstants.HAZARD_EVENT_IDENTIFIER,
+                    hazardEventID);
+            request.setInclude(Include.HISTORICAL_EVENTS);
+            Map<String, HazardEvent> hazardEventsMap = HazardEventServicesSoapClient
+                    .getServices(practice).retrieve(request).getLatestMap();
             if (hazardEventsMap != null && hazardEventsMap.isEmpty() == false
                     && hazardEventsMap.containsKey(hazardEventID)) {
                 retrievedHazardEvents.add(hazardEventsMap.get(hazardEventID));
@@ -140,16 +147,18 @@ public final class InteroperabilityUtil {
     public static void newOrUpdateInteroperabilityRecord(
             final IHazardEvent hazardEvent, final String etn,
             final INTEROPERABILITY_TYPE type) {
-        IHazardsInteroperabilityRecord record = HazardInteroperabilityRecordManager
-                .constructInteroperabilityRecord(hazardEvent, etn, type);
-        HazardInteroperabilityRecordManager.storeRecord(record);
+        // FIXME:
+        // IHazardsInteroperabilityRecord record =
+        // HazardInteroperabilityRecordManager
+        // .constructInteroperabilityRecord(hazardEvent, etn, type);
+        // HazardInteroperabilityRecordManager.storeRecord(record);
     }
 
-    public static IHazardEvent associatedExistingHazard(
+    public static IHazardEvent associatedExistingHazard(boolean practice,
             IHazardEventManager manager, final String siteID,
             final String phen, final String sig, final String newETNs) {
         Map<String, HazardHistoryList> events = manager
-                .queryHistory(new HazardEventQueryRequest(
+                .queryHistory(new HazardEventQueryRequest(practice,
                         HazardConstants.SITE_ID, siteID).and(
                         HazardConstants.PHENOMENON, phen).and(
                         HazardConstants.SIGNIFICANCE, sig));
@@ -204,4 +213,24 @@ public final class InteroperabilityUtil {
     public static String padEtnString(String etn) {
         return StringUtils.leftPad(etn, DESIRED_ETN_LENGTH, ETN_PAD_CHARACTER);
     }
+
+    public static DetachedCriteria getCriteriaQuery(Class<?> clazz,
+            Object... params) {
+        DetachedCriteria criteria = DetachedCriteria.forClass(clazz);
+        if (params.length % 2 != 0) {
+            throw new IllegalArgumentException(
+                    "Wrong number of arguments submitted to getCriteriaQuery.");
+        }
+
+        for (int i = 0; i < params.length; i += 2) {
+            if (params[i + 1] instanceof Collection<?>) {
+                criteria.add(Restrictions.in((String) params[i],
+                        (Collection<?>) params[i + 1]));
+            } else {
+                criteria.add(Restrictions.eq((String) params[i], params[i + 1]));
+            }
+        }
+        return criteria;
+    }
+
 }

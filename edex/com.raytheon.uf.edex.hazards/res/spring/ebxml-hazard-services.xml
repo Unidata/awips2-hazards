@@ -1,0 +1,90 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd   
+  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<bean id="HazardNotifier"
+		class="com.raytheon.uf.edex.hazards.notification.HazardNotifier" />
+
+	<bean id="HazardInteropDao"
+		class="com.raytheon.uf.edex.hazards.interop.dao.HazardInteroperabilityDao">
+		<property name="sessionFactory" ref="metadataSessionFactory" />
+	</bean>
+
+	<bean id="PracticeActiveTableDao"
+		class="com.raytheon.uf.edex.hazards.interop.dao.PracticeActiveTableRecordDao">
+		<property name="sessionFactory" ref="metadataSessionFactory" />
+	</bean>
+
+	<bean id="ActiveTableDao"
+		class="com.raytheon.uf.edex.hazards.interop.dao.OperationalActiveTableRecordDao">
+		<property name="sessionFactory" ref="metadataSessionFactory" />
+	</bean>
+
+
+	<bean id="InteropObjectManager"
+		class="com.raytheon.uf.edex.hazards.interop.dao.InteropObjectManager">
+		<property name="practiceActiveTableRecordDao" ref="PracticeActiveTableDao" />
+		<property name="operationalActiveTableRecordDao" ref="ActiveTableDao" />
+		<property name="interopDao" ref="HazardInteropDao" />
+	</bean>
+
+	<bean id="remoteGridRequestHandler"
+		class="com.raytheon.uf.edex.hazards.interop.gfe.GridRequestHandler">
+		<constructor-arg value="remote.request.server" />
+	</bean>
+
+	<bean id="HazardEventInteropServicesImpl"
+		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
+		<property name="practice" value="false" />
+		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
+		<property name="interopObjectManager" ref="InteropObjectManager" />
+	</bean>
+
+	<bean id="PracticeHazardEventInteropServicesImpl"
+		class="com.raytheon.uf.edex.hazards.interop.registry.services.HazardEventInteropServices">
+		<property name="practice" value="true" />
+		<property name="gridRequestHandler" ref="remoteGridRequestHandler" />
+		<property name="interopObjectManager" ref="InteropObjectManager" />
+	</bean>
+
+	<bean id="HazardEventServicesImpl"
+		class="com.raytheon.uf.edex.hazards.registry.services.HazardEventServices">
+		<property name="dao" ref="registryObjectDao" />
+		<property name="registryHandler" ref="registryHandler" />
+		<property name="practice" value="false" />
+		<property name="hazardNotifier" ref="HazardNotifier" />
+	</bean>
+
+	<bean id="PracticeHazardEventServicesImpl"
+		class="com.raytheon.uf.edex.hazards.registry.services.HazardEventServices">
+		<property name="dao" ref="registryObjectDao" />
+		<property name="registryHandler" ref="registryHandler" />
+		<property name="practice" value="true" />
+		<property name="hazardNotifier" ref="HazardNotifier" />
+	</bean>
+
+	<bean id="BaseInteropService" abstract="true"
+		class="com.raytheon.uf.edex.hazards.interop.AbstractLegacyAppInteropSrv">
+		<property name="hazardNotifier" ref="HazardNotifier" />
+		<property name="interopObjectManager" ref="InteropObjectManager"/>
+	</bean>
+
+	<bean id="HazardQueryService"
+		class="com.raytheon.uf.edex.hazards.registry.services.HazardEventRestServices">
+		<property name="dao" ref="registryObjectDao" />
+	</bean>
+
+	<bean
+		class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+		<property name="staticMethod"
+			value="com.raytheon.uf.edex.registry.ebxml.services.rest.RegistryFederationManager.addObjectTypesToSubscribeTo" />
+		<property name="arguments">
+			<list>
+				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent
+				</value>
+			</list>
+		</property>
+	</bean>
+
+</beans>

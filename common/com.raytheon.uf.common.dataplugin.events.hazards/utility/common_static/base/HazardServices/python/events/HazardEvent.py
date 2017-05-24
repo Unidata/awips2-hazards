@@ -54,6 +54,7 @@
 #                                                 and shapely geometries.
 #    02/01/17       15556          Chris.Golden   Added visible-in-history-list flag. Also
 #                                                 added insert time record and getter.
+#    05/24/17       15561          Chris.Golden   Added getPhensig() method.
 #
 
 import JUtil, datetime
@@ -153,10 +154,13 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
     
     def setSubType(self, subtype):
         self.jobj.setSubType(subtype)
-        
+    
     def getHazardType(self):
         return self.jobj.getHazardType()
-        
+    
+    def getPhensig(self):
+        return self.jobj.getPhensig()
+    
     def getInsertTime(self):
         '''
         @summary Get the time at which the hazard event was last persisted to the database.
@@ -361,6 +365,8 @@ class HazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getSignificance()
         elif lowerKey == 'subtype':
             return self.getSubType()
+        elif lowerKey == 'phensig':
+            return self.getPhensig()
         elif lowerKey == 'creationtime':
             return self.getCreationTime()
         elif lowerKey == 'inserttime':

@@ -2735,6 +2735,54 @@ class TextProductCommon(object):
                 phrase = 'a ' + phrase
         return phrase
 
+    def isWarnGenHazard(self, object):
+        '''
+        Utility method for determining if an object is WarnGen based.
+        The object could be a hazard event object, a dictionary representing
+        a hazard event, or a vtecRecord.
+        '''
+        phensig = self.getPhenSig(object)
+        if phensig in ['FF.W', 'FA.W', 'FA.Y']:
+            return True
+        return False
+
+    def isGFEHazard(self, object):
+        '''
+        Utility method for determining if an object is GFE based.
+        The object could be a hazard event object, a dictionary representing
+        a hazard event, or a vtecRecord.
+        '''
+        phensig = self.getPhenSig(object)
+        if phensig in ['FF.A', 'FA.A']:
+            return True
+        return False
+
+    def isRiverProHazard(self, object):
+        '''
+        Utility method for determining if an object is RiverPro based.
+        The object could be a hazard event object, a dictionary representing
+        a hazard event, or a vtecRecord.
+        '''
+        phensig = self.getPhenSig(object)
+        if phensig in ['FL.Y', 'FL.A', 'FL.W', 'HY.S']:
+            return True
+        return False
+
+    def getPhenSig(self, object):
+        '''
+        Utility method for getting the phensig either from a hazard event 
+        object, a dictionary representing a hazard event, or a vtecRecord.
+        '''
+        phensig = ''
+        if isinstance(object, dict):
+            phen = object.get("phen")
+            sig = object.get("sig")
+            phensig = phen + "." + sig
+        else:
+            # Assumes this is a HazardEvent object
+            phensig = object.getPhensig()
+        return phensig
+
 ######################  FROM GFE Header.py
 
     def getExpireTime(self, issueTime, purgeHours, vtecRecords, roundMinutes=15,

@@ -77,9 +77,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      reduced with advent of ability to save
  *                                      a "latest version" to the database that
  *                                      is not part of the history list.
- * Mar 30, 2017 15528     Chris.Golden  Added modified flag as part of basic
+ * Mar 30, 2017 15528      Chris.Golden Added modified flag as part of basic
  *                                      hazard event, since this flag must be
  *                                      persisted as part of the hazard event.
+ * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * </pre>
  * 
  * @author mnash
@@ -274,6 +275,11 @@ public class BaseHazardEvent implements IHazardEvent {
         setPhenomenon(phenomenon);
         setSignificance(significance);
         setSubType(subtype);
+    }
+
+    @Override
+    public String getPhensig() {
+        return HazardEventUtilities.getHazardPhenSig(this);
     }
 
     @Override

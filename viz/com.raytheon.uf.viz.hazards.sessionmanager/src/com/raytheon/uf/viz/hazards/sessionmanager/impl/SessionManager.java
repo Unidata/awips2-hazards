@@ -44,9 +44,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeInteropRecordsRequest;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests.PurgePracticeWarningRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.InteroperabilityRequestServices;
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -127,10 +126,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jul 31, 2015 7458       Robert.Blum  Setting userName and workstation fields on events that are
  *                                      created by a recommender.
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Aug 04, 2015 6895       Ben.Phillippe Finished HS data access refactor
  * Aug 13, 2015 8836       Chris.Cody   Additional Changes for Hazard Event Id and Registry changes
  * Aug 18, 2015 9650       Chris.Golden Added checking for "deleteEventIdentifiers" attribute in
  *                                      recommender result event sets and deletion of events
  *                                      identified therein if possible.
+ * Aug 20, 2015  6895      Ben.Phillippe Routing registry requests through request server
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender manager.
  * Nov 17, 2015  3473      Chris.Golden Moved all python files under HazardServices localization dir.
  * Nov 23, 2015  3473      Robert.Blum  Removed importApplicationBackupSiteData.
@@ -470,17 +471,33 @@ public class SessionManager implements
         }
 
         try {
-            IServerRequest purgeWarningReq = new PurgePracticeWarningRequest();
-            ThriftClient.sendRequest(purgeWarningReq);
-        } catch (VizException e) {
-            statusHandler.error("Error clearing practice warning table.", e);
+            InteroperabilityRequestServices.getServices(true)
+                    .purgePracticeWarnings();
+        } catch (Exception ex) {
+            /*
+             * 8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability).
+             * There is a purge issue (which may become moot), but at present
+             * the purge operations need to continue as far as possible.
+             */
+            String msg = "Error caught from InteroperabilityRequestServices.purgePracticeWarnings() "
+                    + "\nContinuing processing to finish purge tasks."
+                    + "\nAn Exception will not be thrown at this time";
+            statusHandler.error(msg, ex);
         }
 
         try {
-            IServerRequest purgeInteropRequest = new PurgePracticeInteropRecordsRequest();
-            ThriftClient.sendRequest(purgeInteropRequest);
-        } catch (VizException e) {
-            statusHandler.error("Error clearing interoperability records.", e);
+            InteroperabilityRequestServices.getServices(true)
+                    .purgeInteropRecords();
+        } catch (Exception ex) {
+            /*
+             * 8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability).
+             * There is a purge issue (which may become moot), but at present
+             * the purge operations need to continue as far as possible.
+             */
+            String msg = "Error caught from InteroperabilityRequestServices.purgeInteropRecords() "
+                    + "\nContinuing processing to finish purge tasks."
+                    + "\nAn Exception will not be thrown at this time";
+            statusHandler.error(msg, ex);
         }
 
         /*

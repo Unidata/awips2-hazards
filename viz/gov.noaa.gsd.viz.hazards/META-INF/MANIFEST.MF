@@ -42,6 +42,7 @@ Require-Bundle: com.raytheon.viz.core,
  com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0",
  com.raytheon.uf.common.security;bundle-version="1.14.0",
  com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
+ com.raytheon.uf.common.dataplugin.hazards.interoperability;bundle-version="1.0.0",
  gov.noaa.nws.ncep.ui.pgen,
  gov.noaa.gsd.common.visuals;bundle-version="1.0.0"
 Export-Package: gov.noaa.gsd.viz.hazards.console,

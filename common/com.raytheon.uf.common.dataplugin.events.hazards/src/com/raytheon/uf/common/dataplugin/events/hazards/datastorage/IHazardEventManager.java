@@ -26,7 +26,7 @@ import com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 
 /**
  * Any new hazard event manager must implement this interface, which provides
@@ -39,7 +39,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEve
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 8, 2012            mnash         Initial creation.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * May 29, 2015   6895    Ben.Phillippe Refactored Hazard Service data access
+ * Aug 20, 2015   6895    Ben.Phillippe Routing registry requests through
+ *                                      request server
  * Feb 16, 2017  29138    Chris.Golden  Revamped to allow for the querying of
  *                                      historical versions of events, or
  *                                      latest (non-historical) versions, or

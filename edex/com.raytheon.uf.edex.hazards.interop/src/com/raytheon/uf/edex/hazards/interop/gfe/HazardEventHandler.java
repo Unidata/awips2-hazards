@@ -46,9 +46,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityRecordManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardsInteroperabilityGFE;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.IHazardsInteroperabilityRecord;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 import com.raytheon.uf.common.dataplugin.gfe.dataaccess.GFEDataAccessUtil;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridLocation;
@@ -64,12 +63,15 @@ import com.raytheon.uf.common.dataplugin.gfe.server.message.ServerResponse;
 import com.raytheon.uf.common.dataplugin.gfe.server.notify.GridUpdateNotification;
 import com.raytheon.uf.common.dataplugin.gfe.server.request.GetGridRequest;
 import com.raytheon.uf.common.dataplugin.gfe.slice.DiscreteGridSlice;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityRecord;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.HazardEventInteropServicesSoapClient;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.StringUtil;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.MultiPolygon;
@@ -110,8 +112,10 @@ import com.vividsolutions.jts.geom.MultiPolygon;
  *                                      every grid update notification.
  * Dec 12, 2014 2826       dgilling     Change fields used by interoperability.
  * Jan 19, 2014 4849       rferrel      Log exceptions getting GFERecords to delete.
- * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * May 29, 2015 6895       Ben.Phillippe Refactored Hazard Service data access
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Aug 04, 2015  6895      Ben.Phillippe Finished HS data access refactor
+ * Aug 20, 2015  6895      Ben.Phillippe Routing registry requests through request server
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
@@ -136,8 +140,6 @@ public class HazardEventHandler {
     private final Map<String, GridParmInfo> operationalGridParmInfoMap;
 
     private final Map<String, GridParmInfo> practiceGridParmInfoMap;
-
-    private static HazardEventHandler instance = new HazardEventHandler();
 
     private static final String HAZARD_PARM_NAME = "Hazards";
 
@@ -165,20 +167,7 @@ public class HazardEventHandler {
         this.operationalGridParmInfoMap = new HashMap<>();
         this.practiceGridParmInfoMap = new HashMap<>();
         this.gridRequestHandler = new GridRequestHandler();
-    }
-
-    /**
-     * Returns an instance of a HazardEventHandler.
-     * 
-     * @param siteID
-     * @return
-     */
-    public static synchronized HazardEventHandler getInstance() {
-        if (instance == null) {
-            instance = new HazardEventHandler();
-        }
-        instance.initGridParmInfo(SiteUtil.getSite());
-        return instance;
+        initGridParmInfo(SiteUtil.getSite());
     }
 
     private void initGridParmInfo(String siteID) {
@@ -264,10 +253,15 @@ public class HazardEventHandler {
         case DELETE:
             deleteGrid(hazardEvent, gridParmInfo, notification.isPracticeMode());
             break;
+        case DELETE_ALL:
+            break;
+        default:
+            break;
         }
     }
 
-    public void handleGridNotification(Object msg) {
+    public void handleGridNotification(Object msg)
+            throws HazardEventServiceException {
         if (msg instanceof Collection) {
             for (Object object : (Collection<?>) msg) {
                 if (object instanceof GridUpdateNotification) {
@@ -291,17 +285,17 @@ public class HazardEventHandler {
         return hazardEventManager;
     }
 
-    private HazardsInteroperabilityGFE constructInteroperabilityRecord(
+    private HazardInteroperabilityRecord constructInteroperabilityRecord(
             String siteID, String phenomenon, String significance,
             Date startDate, Date endDate, String eventID, String parmID,
             Geometry geometry) {
-        HazardsInteroperabilityGFE record = new HazardsInteroperabilityGFE();
-        record.getKey().setSiteID(siteID);
-        record.getKey().setPhen(phenomenon);
-        record.getKey().setSig(significance);
-        record.getKey().setStartDate(startDate);
-        record.getKey().setEndDate(endDate);
-        record.getKey().setHazardEventID(eventID);
+        HazardInteroperabilityRecord record = new HazardInteroperabilityRecord();
+        record.setSiteID(siteID);
+        record.setPhen(phenomenon);
+        record.setSig(significance);
+        record.setStartDate(startDate);
+        record.setEndDate(endDate);
+        record.setHazardEventID(eventID);
         record.setParmID(parmID);
         record.setGeometry(geometry);
 
@@ -309,7 +303,8 @@ public class HazardEventHandler {
     }
 
     private void handleHazardsGridUpdateNotification(
-            GridUpdateNotification gridUpdateNotification) {
+            GridUpdateNotification gridUpdateNotification)
+            throws HazardEventServiceException {
         if (HAZARD_PARM_NAME.equals(gridUpdateNotification.getParmId()
                 .getParmName()) == false) {
             return;
@@ -410,9 +405,10 @@ public class HazardEventHandler {
                 List<HazardEvent> events = null;
                 synchronized (this) {
                     events = GfeInteroperabilityUtil
-                            .queryForInteroperabilityHazards(siteID,
-                                    hazardParts[0], hazardParts[1], startDate,
-                                    endDate, hazardEventManager);
+                            .queryForInteroperabilityHazards(
+                                    this.determineHazardsMode(parmID) == Mode.PRACTICE,
+                                    siteID, hazardParts[0], hazardParts[1],
+                                    startDate, endDate);
                 }
 
                 GridLocation gridLocation = discreteGridSlice.getGridParmInfo()
@@ -442,7 +438,7 @@ public class HazardEventHandler {
                  * Track associated gfe interoperability records that may also
                  * be created.
                  */
-                List<IHazardsInteroperabilityRecord> gfeInteroperabilityRecords = new ArrayList<>();
+                List<HazardInteroperabilityRecord> gfeInteroperabilityRecords = new ArrayList<>();
 
                 /* Initialize the hazard state. */
                 HazardStatus hazardState = HazardStatus.PENDING;
@@ -461,7 +457,7 @@ public class HazardEventHandler {
                     }
 
                     // initialize the associated gfe interoperability record.
-                    HazardsInteroperabilityGFE record = this
+                    HazardInteroperabilityRecord record = this
                             .constructInteroperabilityRecord(
                                     hazardEvent.getSiteID(),
                                     hazardEvent.getPhenomenon(),
@@ -583,7 +579,7 @@ public class HazardEventHandler {
 
                         // initialize the associated gfe interoperability
                         // record.
-                        HazardsInteroperabilityGFE record = this
+                        HazardInteroperabilityRecord record = this
                                 .constructInteroperabilityRecord(
                                         hazardEvent.getSiteID(),
                                         hazardEvent.getPhenomenon(),
@@ -604,8 +600,9 @@ public class HazardEventHandler {
                     hazardEventManager.storeEvents(hazardsToCreate);
 
                     synchronized (this) {
-                        HazardInteroperabilityRecordManager
-                                .storeRecords(gfeInteroperabilityRecords);
+                        HazardEventInteropServicesSoapClient.getServices(
+                                this.determineHazardsMode(parmID))
+                                .storeEventList(gfeInteroperabilityRecords);
                     }
                 }
             }
@@ -613,7 +610,8 @@ public class HazardEventHandler {
     }
 
     private void handleHazardsGridPurgeNotification(String siteID,
-            Date startDate, Date endDate, String parmID) {
+            Date startDate, Date endDate, String parmID)
+            throws HazardEventServiceException {
         HazardEventManager hazardEventManager = this
                 .getHazardEventManager(parmID);
         if (hazardEventManager == null) {
@@ -624,8 +622,9 @@ public class HazardEventHandler {
         }
 
         List<HazardEvent> events = GfeInteroperabilityUtil
-                .queryForInteroperabilityHazards(siteID, null, null, startDate,
-                        endDate, hazardEventManager);
+                .queryForInteroperabilityHazards(
+                        this.determineHazardsMode(parmID) == Mode.PRACTICE,
+                        siteID, null, null, startDate, endDate);
 
         if (events != null) {
             Set<String> eventIdentifiers = new HashSet<>(events.size());
@@ -790,16 +789,13 @@ public class HazardEventHandler {
          * better. If the originator was this class, the addition of the new
          * hazard event would be ignored.
          */
-        IHazardsInteroperabilityRecord record = null;
+        HazardInteroperabilityRecord record = null;
         synchronized (this) {
-            record = HazardInteroperabilityRecordManager.queryForRecordByPK(
-                    hazardEvent.getSiteID(), hazardEvent.getPhenomenon(),
-                    hazardEvent.getSignificance(), hazardEvent.getEventID(),
-                    timeRange.getStart(), timeRange.getEnd());
+            record = queryForRecordByPK(practice, hazardEvent, timeRange, null);
         }
-        HazardsInteroperabilityGFE existingRecord = null;
+        HazardInteroperabilityRecord existingRecord = null;
         if (record != null) {
-            existingRecord = (HazardsInteroperabilityGFE) record;
+            existingRecord = record;
             Geometry gfeGeometry = GFERecordUtil
                     .translateHazardPolygonToGfe(gridParmInfo.getGridLoc(),
                             hazardEvent.getProductGeometry());
@@ -810,21 +806,22 @@ public class HazardEventHandler {
                             + hazardEvent.getEventID());
             existingRecord.setGeometry(gfeGeometry);
             synchronized (this) {
-                HazardInteroperabilityRecordManager
-                        .updateRecord(existingRecord);
+                HazardEventInteropServicesSoapClient.getServices(practice)
+                        .update(existingRecord);
             }
         } else {
             Geometry gfeGeometry = GFERecordUtil
                     .translateHazardPolygonToGfe(gridParmInfo.getGridLoc(),
                             hazardEvent.getProductGeometry());
-            HazardsInteroperabilityGFE newRecord = this
+            HazardInteroperabilityRecord newRecord = this
                     .constructInteroperabilityRecord(hazardEvent.getSiteID(),
                             hazardEvent.getPhenomenon(), hazardEvent
                                     .getSignificance(), timeRange.getStart(),
                             timeRange.getEnd(), hazardEvent.getEventID(),
                             gridParmInfo.getParmID().toString(), gfeGeometry);
             synchronized (this) {
-                HazardInteroperabilityRecordManager.storeRecord(newRecord);
+                HazardEventInteropServicesSoapClient.getServices(practice)
+                        .store(newRecord);
             }
 
             statusHandler
@@ -939,11 +936,11 @@ public class HazardEventHandler {
         final String siteID = hazardEvent.getSiteID();
         final String eventID = hazardEvent.getEventID();
 
-        List<IHazardsInteroperabilityRecord> records = new ArrayList<>();
-        IHazardsInteroperabilityRecord record = HazardInteroperabilityRecordManager
-                .queryForRecordByPK(siteID, hazardEvent.getPhenomenon(),
-                        hazardEvent.getSignificance(), eventID,
-                        timeRange.getStart(), timeRange.getEnd());
+        List<HazardInteroperabilityRecord> records = new ArrayList<>();
+        HazardInteroperabilityRecord record = queryForRecordByPK(practice,
+                siteID, hazardEvent.getPhenomenon(),
+                hazardEvent.getSignificance(), eventID, timeRange.getStart(),
+                timeRange.getEnd(), null);
         if (record != null) {
             records.add(record);
         }
@@ -955,16 +952,55 @@ public class HazardEventHandler {
         List<String> etns = HazardEventUtilities.parseEtns(hazardEvent
                 .getHazardAttribute(HazardConstants.ETNS).toString());
         for (String etn : etns) {
-            record = HazardInteroperabilityRecordManager.queryForRecordByPK(
-                    siteID, hazardEvent.getPhenomenon(),
-                    hazardEvent.getSignificance(), eventID, etn);
+            record = queryForRecordByPK(practice, siteID,
+                    hazardEvent.getPhenomenon(), hazardEvent.getSignificance(),
+                    eventID, null, null, etn);
             if (record != null) {
                 records.add(record);
             }
         }
 
-        if (records.isEmpty() == false) {
-            HazardInteroperabilityRecordManager.removeRecords(records);
+        if (!records.isEmpty()) {
+            HazardEventInteropServicesSoapClient.getServices(practice)
+                    .deleteEventList(records);
+        }
+    }
+
+    private HazardInteroperabilityRecord queryForRecordByPK(boolean practice,
+            IHazardEvent hazardEvent, TimeRange timeRange, String etn)
+            throws HazardEventServiceException {
+        return queryForRecordByPK(practice, hazardEvent.getSiteID(),
+                hazardEvent.getPhenomenon(), hazardEvent.getSignificance(),
+                hazardEvent.getEventID(), timeRange.getStart(),
+                timeRange.getEnd(), etn);
+
+    }
+
+    private HazardInteroperabilityRecord queryForRecordByPK(boolean practice,
+            String siteID, String phenomenon, String significance,
+            String eventID, Date start, Date end, String etn)
+            throws HazardEventServiceException {
+
+        HazardEventQueryRequest queryRequest = new HazardEventQueryRequest();
+        addParam(queryRequest, HazardConstants.SITE_ID, "=", siteID);
+        addParam(queryRequest, HazardConstants.PHENOMENON, "=", phenomenon);
+        addParam(queryRequest, HazardConstants.SIGNIFICANCE, "=", significance);
+        addParam(queryRequest, HazardConstants.EVENT_ID, "=", eventID);
+        addParam(queryRequest, HazardConstants.HAZARD_EVENT_START_TIME, ">=",
+                start);
+        addParam(queryRequest, HazardConstants.HAZARD_EVENT_END_TIME, "<=", end);
+        addParam(queryRequest, HazardConstants.ETN, "=", etn);
+        List<HazardInteroperabilityRecord> result = HazardEventInteropServicesSoapClient
+                .getServices(practice).retrieve(queryRequest)
+                .getInteropRecords();
+
+        return CollectionUtil.isNullOrEmpty(result) ? null : result.get(0);
+    }
+
+    private void addParam(HazardEventQueryRequest request, String name,
+            String operand, Object value) {
+        if (value != null) {
+            request.and(name, operand, value);
         }
     }
 }

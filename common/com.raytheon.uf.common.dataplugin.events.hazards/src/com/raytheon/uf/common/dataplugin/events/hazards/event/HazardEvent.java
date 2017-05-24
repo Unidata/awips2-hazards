@@ -116,9 +116,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      added ability to configure instances to
  *                                      indicate they are "latest version" ones,
  *                                      that is, not to be in the history list.
- * Mar 30, 2017 15528     Chris.Golden  Added modified flag as part of basic
+ * Mar 30, 2017 15528      Chris.Golden Added modified flag as part of basic
  *                                      hazard event, since this flag must be
  *                                      persisted as part of the hazard event.
+ * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * </pre>
  * 
  * @author mnash
@@ -443,6 +444,11 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setPhenomenon(phenomenon);
         setSignificance(significance);
         setSubType(subtype);
+    }
+
+    @Override
+    public String getPhensig() {
+        return HazardEventUtilities.getHazardPhenSig(this);
     }
 
     @Override

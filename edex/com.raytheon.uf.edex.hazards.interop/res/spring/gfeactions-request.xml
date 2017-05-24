@@ -3,8 +3,11 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
   http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-	<bean id="hazardEventHandler"
-		class="com.raytheon.uf.edex.hazards.interop.gfe.HazardEventHandler" factory-method="getInstance" depends-on="getGridParmInfoRequestRegister, gfeSitesActiveRequest, getGridInventoryRequestRegister, getGridHistoryRequestRegister"/>
+<!-- 	<bean id="hazardEventHandler" -->
+<!-- 		class="com.raytheon.uf.edex.hazards.interop.gfe.HazardEventHandler" depends-on="getGridParmInfoRequestRegister, gfeSitesActiveRequest, getGridInventoryRequestRegister, getGridHistoryRequestRegister"> -->
+<!-- 		  <property name="gridRequestHandler" ref="remoteGridRequestHandler"/> -->
+<!-- 		  <property name="interopObjectManager" ref="InteropObjectManager"/> -->
+<!-- 		</bean> -->
 	
 	<!-- 
 		TODO: Reinstate this context/route once GFE interoperability has been fixed.

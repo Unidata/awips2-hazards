@@ -64,7 +64,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.InteroperabilityRequestServices;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
@@ -212,7 +213,9 @@ import com.vividsolutions.jts.geom.Puntal;
  * Jul 30, 2015 9681       Robert.Blum  Changes for generating products for the product viewer.
  * Jul 31, 2015 7458       Robert.Blum  Updating userName and workstation fields on events that are
  *                                      being issued.
+ * Aug 04, 2015 6895       Ben.Phillippe Finished HS data access refactor
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Aug 20, 2015 6895       Ben.Phillippe Routing registry requests through request server
  * Oct 08, 2015 12346      Chris.Golden Removed SWT code that was put in as part of issue #7747, replacing
  *                                      raw use of SWT message box with abstract user warning issuance.
  * Oct 14, 2015 12494      Chris Golden Reworked to allow hazard types to include only phenomenon (i.e. no
@@ -845,12 +848,20 @@ public class SessionProductManager implements ISessionProductManager {
                 for (IEvent ev : productGeneratorInformation
                         .getGeneratedProducts().getEventSet()) {
                     IHazardEvent updatedEvent = (IHazardEvent) ev;
-                    if (checkForConflicts(updatedEvent)) {
-                        statusHandler
-                                .info("There is a grid conflict with the hazard event.");
-                        // TODO It needs to be decided if we should prevent the
-                        // user
-                        // from issuing a hazard if there is a grid conflict.
+                    try {
+                        if (checkForConflicts(updatedEvent)) {
+                            statusHandler
+                                    .info("There is a grid conflict with the hazard event.");
+                            // TODO It needs to be decided if we should prevent
+                            // the
+                            // user
+                            // from issuing a hazard if there is a grid
+                            // conflict.
+                        }
+                    } catch (HazardEventServiceException e) {
+                        // TODO Auto-generated catch block. Please revise as
+                        // appropriate.
+                        statusHandler.error("Error checking for conflicts", e);
                     }
                     if (sessionEvent.getEventID().equals(
                             updatedEvent.getEventID())) {
@@ -1777,15 +1788,17 @@ public class SessionProductManager implements ISessionProductManager {
         }
     }
 
-    private boolean checkForConflicts(IHazardEvent hazardEvent) {
+    private boolean checkForConflicts(IHazardEvent hazardEvent)
+            throws HazardEventServiceException {
         HazardEventManager.Mode mode = (caveMode == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
                 : HazardEventManager.Mode.OPERATIONAL;
-
-        boolean hasConflicts = HazardServicesClient
-                .getHazardEventInteropServices(mode).hasConflicts(
-                        HazardEventUtilities.getHazardPhenSig(hazardEvent),
-                        hazardEvent.getSiteID(), hazardEvent.getStartTime(),
-                        hazardEvent.getEndTime());
+        InteroperabilityRequestServices services = InteroperabilityRequestServices
+                .getServices(mode);
+        boolean hasConflicts = services.hasConflicts(
+                hazardEvent.getPhenomenon() + "."
+                        + hazardEvent.getSignificance(),
+                hazardEvent.getSiteID(), hazardEvent.getStartTime(),
+                hazardEvent.getEndTime());
 
         return hasConflicts;
     }

@@ -36,6 +36,9 @@ import com.raytheon.viz.ui.input.EditableManager;
  * Jul 08, 2013     585    Chris.Golden   Changed to support loading from bundle.
  * May 29, 2015    6895    Ben.Phillippe  Refactored Hazard Service data access
  * Jul 21, 2015    2921    Robert.Blum    Changes for multi panel displays.
+ * Aug 04, 2015    6895    Ben.Phillippe  Finished HS data access refactor
+ * Aug 20, 2015    6895    Ben.Phillippe  Routing registry requests through
+ *                                        request server
  * Oct 22, 2015    9615    Robert.Blum    Unloading SpatialDisplay resource if
  *                                        it is disposed.
  * Jul 25, 2016   19537    Chris.Golden   Moved loading of registry preferences

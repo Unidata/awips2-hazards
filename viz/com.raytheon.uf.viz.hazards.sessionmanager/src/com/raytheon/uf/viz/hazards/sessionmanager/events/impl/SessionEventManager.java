@@ -82,7 +82,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEv
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Significance;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -92,7 +91,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.hydro.CountyStateData;
@@ -337,6 +336,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Jul 29, 2015    9306    Chris.Cody   Add processing for HazardSatus.ELAPSED
  * Aug 03, 2015    8836    Chris.Cody   Changes for a configurable Event Id
  * Aug 17, 2015    9968    Chris.Cody   Changes for processing ENDED/ELAPSED/EXPIRED events
+ * Aug 20, 2015    6895    Ben.Phillippe Routing registry requests through request server
  * Sep 04, 2015    7514    Chris.Golden Fixed bug introduced by July 6th check-in for this issue that caused
  *                                      exceptions to be thrown when upgrading certain watches to warnings.
  * Sep 09  2015   10207    Chris.Cody   Switched Polygon Point reduction to use Visvalingam-Whyatt algorithm.
@@ -527,6 +527,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      problems. Also fixed changing of hazard type so that if
  *                                      "until further notice" was on for the old type, it is
  *                                      turned off in the new type.
+ * May 24, 2017   15561    Chris.Golden Removed unneeded validation of significance for new events
+ *                                      (as such things should not be hardcoded).
  * </pre>
  * 
  * @author bsteffen
@@ -2581,24 +2583,6 @@ public class SessionEventManager implements
         }
 
         /*
-         * Validate significance, since some recommenders use the full name.
-         */
-        String sig = oevent.getSignificance();
-        if (sig != null) {
-
-            /*
-             * This will throw an exception if its not a valid name or
-             * abbreviation.
-             */
-            try {
-                HazardConstants.significanceFromAbbreviation(sig);
-            } catch (IllegalArgumentException e) {
-                Significance s = Significance.valueOf(sig);
-                oevent.setSignificance(s.getAbbreviation(), false, originator);
-            }
-        }
-
-        /*
          * Set the site identifier to the current one.
          */
         oevent.setSiteID(configManager.getSiteID(), false, originator);
@@ -4121,6 +4105,7 @@ public class SessionEventManager implements
                      * Also, include those from the session state.
                      */
                     HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
+                            CAVEMode.getMode().equals(CAVEMode.PRACTICE),
                             HazardConstants.HAZARD_EVENT_START_TIME, ">",
                             eventToCompare.getStartTime()).and(
                             HazardConstants.HAZARD_EVENT_END_TIME, "<",

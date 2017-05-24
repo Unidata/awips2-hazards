@@ -39,6 +39,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.xmladapters.ThrowableXmlAdapter;
 import com.raytheon.uf.common.serialization.XmlGenericMapAdapter;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
@@ -51,6 +53,8 @@ import com.raytheon.uf.common.serialization.XmlGenericMapAdapter;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 20, 2015 6895      Ben.Phillippe Routing registry requests through request
+ *                                      server
  * Feb 16, 2017 29138     Chris.Golden  Revamped to slim down the response so
  *                                      that it does not carry extra
  *                                      serialized objects with it that are not
@@ -62,6 +66,7 @@ import com.raytheon.uf.common.serialization.XmlGenericMapAdapter;
  */
 @XmlRootElement(name = "HazardEventQueryResult")
 @XmlAccessorType(XmlAccessType.NONE)
+@DynamicSerialize
 public class HazardEventResponse {
 
     // Private Variables
@@ -71,24 +76,36 @@ public class HazardEventResponse {
      */
     @XmlElement
     @XmlJavaTypeAdapter(XmlGenericMapAdapter.class)
+    @DynamicSerializeElement
     private Map<String, Integer> historySizeMap = new HashMap<>();
 
     /**
      * List of hazard events.
      */
     @XmlElement
+    @DynamicSerializeElement
     private List<HazardEvent> events = new ArrayList<>();
 
     /**
      * List of actual registry objects that encapsulate the hazard events.
      */
     @XmlElement
+    @DynamicSerializeElement
     private List<RegistryObjectType> registryObjects = new ArrayList<>();
+
+    /**
+     * Holder of objects other than {@link HazardEvent} instances for responses
+     * that include such objects.
+     */
+    @XmlElement
+    @DynamicSerializeElement
+    private Object payload;
 
     /**
      * List of any errors that occurred during the web service call.
      */
     @XmlElement
+    @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = ThrowableXmlAdapter.class)
     private List<Throwable> exceptions = new ArrayList<>();
 
@@ -171,17 +188,22 @@ public class HazardEventResponse {
         return new HazardEventResponse(include, true);
     }
 
-    // Private Constructors
+    // Public Constructors
 
     /**
      * Construct a standard instance that will include all historical and latest
      * versions of events that are subsequently provided to it via
-     * {@link #setEvents(List)}. Note that this constructor is required for
-     * JAXB.
+     * {@link #setEvents(List)}.
+     * <p>
+     * <strong>NOTE</strong>: This must be <code>public</code> to allow
+     * deserialization.
+     * </p>
      */
-    private HazardEventResponse() {
+    public HazardEventResponse() {
         this(Include.HISTORICAL_AND_LATEST_EVENTS, false);
     }
+
+    // Protected Constructors
 
     /**
      * Construct a standard instance.
@@ -192,7 +214,7 @@ public class HazardEventResponse {
      *            Flag indicating whether only the size of the set of events in
      *            the response is to be recorded, or the events themselves.
      */
-    private HazardEventResponse(Include include, boolean sizeOnly) {
+    protected HazardEventResponse(Include include, boolean sizeOnly) {
         this.include = include;
         this.sizeOnly = sizeOnly;
     }
@@ -242,6 +264,18 @@ public class HazardEventResponse {
      */
     public Map<String, Integer> getHistorySizeMap() {
         return historySizeMap;
+    }
+
+    /**
+     * Set the map of event identifiers to the number of events in their history
+     * lists.
+     * 
+     * @param historySizeMap
+     *            Map of event identifiers to the number of events in their
+     *            history lists.
+     */
+    public void setHistorySizeMap(Map<String, Integer> historySizeMap) {
+        this.historySizeMap = historySizeMap;
     }
 
     /**
@@ -359,6 +393,26 @@ public class HazardEventResponse {
      */
     public void setRegistryObjects(List<RegistryObjectType> registryObjects) {
         this.registryObjects = registryObjects;
+    }
+
+    /**
+     * Get the payload.
+     * 
+     * @return Payload.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Object> T getPayload() {
+        return (T) payload;
+    }
+
+    /**
+     * Set the payload.
+     * 
+     * @param payload
+     *            Payload.
+     */
+    public void setPayload(Object payload) {
+        this.payload = payload;
     }
 
     /**

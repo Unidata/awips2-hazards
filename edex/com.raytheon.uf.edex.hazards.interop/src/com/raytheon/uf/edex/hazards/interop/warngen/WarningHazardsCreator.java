@@ -19,13 +19,33 @@
  **/
 package com.raytheon.uf.edex.hazards.interop.warngen;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_ALL;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_INTERSECTION;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
+import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
+import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
+import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
+import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
+import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.LocalizationFile;
+import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.edex.hazards.interop.AbstractLegacyAppInteropSrv;
+import com.raytheon.uf.edex.hazards.interop.HazardsInteroperabilityException;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 
@@ -56,8 +76,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * @author mnash
  * @version 1.0
  */
-
-public final class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
+@Transactional
+public class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
 
     private static final String PHEN_FF = "FF";
 
@@ -68,6 +88,10 @@ public final class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
     private static final String SUBTYPE_CONVECTIVE = "Convective";
 
     private static final String SUBTYPE_NONCONVECTIVE = "NonConvective";
+
+    public WarningHazardsCreator() {
+        super();
+    }
 
     /*
      * (non-Javadoc)
@@ -109,8 +133,9 @@ public final class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
      * .uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager)
      */
     @Override
-    protected HazardEvent addAppSpecificHazardAttributes(HazardEvent event,
-            AbstractWarningRecord warningRecord, IHazardEventManager manager) {
+    protected void addAppSpecificHazardAttributes(HazardEvent event,
+            AbstractWarningRecord warningRecord, Map<String, Serializable> attrs)
+            throws Exception {
         event.setGeometry(AdvancedGeometryUtilities.createGeometryWrapper(
                 new GeometryFactory()
                         .createGeometryCollection(new Geometry[] { warningRecord
@@ -124,7 +149,39 @@ public final class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
             }
         }
 
-        return event;
+        // FIXME: Remove cast to PracticeWarningRecord
+        attrs.put(
+                HazardConstants.HAZARD_AREA,
+                buildInitialHazardAreas(event,
+                        (PracticeWarningRecord) warningRecord));
+    }
+
+    private HashMap<String, String> buildInitialHazardAreas(
+            HazardEvent hazardEvent, PracticeWarningRecord warningRecord) {
+
+        // FIXME: Move this to some common location!!
+        IPathManager pm = PathManagerFactory.getPathManager();
+        LocalizationFile file = pm
+                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
+        HazardTypes hazardTypes = new ConfigLoader<HazardTypes>(file,
+                HazardTypes.class).getConfig();
+        String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
+
+        HazardTypeEntry hazardTypeEntry = hazardTypes.get(hazardType);
+
+        Set<String> ugcs = warningRecord.getUgcZones();
+        String hazardArea;
+        if (hazardTypeEntry.getHatchingStyle() == HatchingStyle.WARNGEN) {
+            hazardArea = HAZARD_AREA_INTERSECTION;
+        } else {
+            hazardArea = HAZARD_AREA_ALL;
+        }
+        HashMap<String, String> result = new HashMap<>(ugcs.size());
+        for (String ugc : ugcs) {
+            result.put(ugc, hazardArea);
+        }
+        return result;
+
     }
 
     private static String determineSubType(final AbstractWarningRecord record) {
@@ -136,5 +193,23 @@ public final class WarningHazardsCreator extends AbstractLegacyAppInteropSrv {
 
         return CONVECTIVE_FL_SEVERITY.equals(record.getFloodSeverity()) ? SUBTYPE_CONVECTIVE
                 : SUBTYPE_NONCONVECTIVE;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.raytheon.uf.edex.hazards.interop.AbstractLegacyAppInteropSrv#
+     * setupForInteroperability()
+     */
+    @Override
+    protected void setupForInteroperability()
+            throws HazardsInteroperabilityException {
+        return;
+    }
+
+    @Override
+    protected void validateWarningRecord(AbstractWarningRecord record) {
+        // TODO Auto-generated method stub
+
     }
 }

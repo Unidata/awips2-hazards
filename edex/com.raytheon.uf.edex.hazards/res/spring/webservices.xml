@@ -10,11 +10,8 @@
 
 	<import resource="classpath:META-INF/cxf/cxf.xml" />
 	<import resource="classpath:META-INF/cxf/cxf-servlet.xml" />
-
-	<bean id="HazardQueryService"
-		class="com.raytheon.uf.edex.hazards.registry.services.HazardEventRestServices">
-		<property name="dao" ref="registryObjectDao" />
-	</bean>
+	
+	<import resource="classpath:res/spring/ebxml-hazard-services.xml" />
 
 	<!-- REST Service Definitions -->
 	<jaxrs:server id="hazardQuery" address="/hazardRestServices">
@@ -26,24 +23,7 @@
 			<ref bean="xacmlInterceptor" />
 		</jaxrs:inInterceptors>
 	</jaxrs:server>
-	
-	<bean id="HazardNotifier" class="com.raytheon.uf.edex.hazards.notification.HazardNotifier"/>
 
-	<bean id="HazardEventServicesImpl"
-		class="com.raytheon.uf.edex.hazards.registry.services.HazardEventServices">
-		<property name="dao" ref="registryObjectDao" />
-		<property name="registryHandler" ref="registryHandler"/>
-		<property name="practice" value="false"/>
-		<property name="hazardNotifier" ref="HazardNotifier"/>
-	</bean>
-	
-    <bean id="PracticeHazardEventServicesImpl"
-        class="com.raytheon.uf.edex.hazards.registry.services.HazardEventServices">
-        <property name="dao" ref="registryObjectDao" />
-        <property name="registryHandler" ref="registryHandler"/>
-        <property name="practice" value="true"/>
-        <property name="hazardNotifier" ref="HazardNotifier"/>
-    </bean>
 
 	<!-- SOAP Service definitions -->
 	<jaxws:server id="HazardEventServices" address="/hazardEventServices"
@@ -58,18 +38,18 @@
 			<ref bean="securityOutInterceptor" />
 		</jaxws:outInterceptors>
 	</jaxws:server>
-	
-    <jaxws:server id="PracticeHazardEventServices" address="/hazardEventServices/practice"
-        bus="cxf">
-        <jaxws:serviceBean>
-            <ref bean="PracticeHazardEventServicesImpl" />
-        </jaxws:serviceBean>
-        <jaxws:inInterceptors>
-            <ref bean="authenticationInterceptor" />
-        </jaxws:inInterceptors>
-        <jaxws:outInterceptors>
-            <ref bean="securityOutInterceptor" />
-        </jaxws:outInterceptors>
-    </jaxws:server>
+
+	<jaxws:server id="PracticeHazardEventServices" address="/hazardEventServices/practice"
+		bus="cxf">
+		<jaxws:serviceBean>
+			<ref bean="PracticeHazardEventServicesImpl" />
+		</jaxws:serviceBean>
+		<jaxws:inInterceptors>
+			<ref bean="authenticationInterceptor" />
+		</jaxws:inInterceptors>
+		<jaxws:outInterceptors>
+			<ref bean="securityOutInterceptor" />
+		</jaxws:outInterceptors>
+	</jaxws:server>
 
 </beans>

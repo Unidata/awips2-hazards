@@ -43,4 +43,6 @@ Import-Package: com.raytheon.uf.common.dataplugin.events,
  com.raytheon.uf.common.registry.handler,
  com.raytheon.uf.common.status,
  com.vividsolutions.jts.geom
-Export-Package: com.raytheon.uf.edex.hazards.servicebackup
+Export-Package: com.raytheon.uf.edex.hazards.notification,
+  com.raytheon.uf.edex.hazards.servicebackup,
+  com.raytheon.uf.edex.hazards.registry.services

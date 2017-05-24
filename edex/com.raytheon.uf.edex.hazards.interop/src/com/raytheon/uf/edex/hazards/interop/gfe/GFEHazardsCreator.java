@@ -44,9 +44,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.client.HazardEventServicesSoapClient;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GridParmInfo;
+import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -73,7 +74,10 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Apr 08, 2014  3357      bkowal        Updated to use the new interoperability tables.
  * Dec 04, 2014  2826      dgilling      Remove unneeded methods.
  * May 29, 2015  6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 04, 2015  6895      Ben.Phillippe Finished HS data access refactor
  * Aug 13, 2015  8836      Chris.Cody    Changes for a configurable Event Id
+ * Aug 20, 2015  6895      Ben.Phillippe Routing registry requests through request
+ *                                       server
  * Sep 14, 2016 15934      Chris.Golden  Changed to work with advanced geometries
  *                                       now used in hazard events.
  * Feb 16, 2017 29138      Chris.Golden  Changed to work with new hazard
@@ -227,9 +231,16 @@ public class GFEHazardsCreator {
                                     event.getEndTime(),
                                     gridParmInfo.getTimeConstraints());
 
-                    List<HazardEvent> eventsToUpdate = this.getEventsToUpdate(
-                            manager, event, hazardGfeTimeRange.getStart(),
-                            hazardGfeTimeRange.getEnd(), rec.getEtn());
+                    List<HazardEvent> eventsToUpdate;
+                    try {
+                        eventsToUpdate = this.getEventsToUpdate(practice,
+                                event, hazardGfeTimeRange.getStart(),
+                                hazardGfeTimeRange.getEnd(), rec.getEtn());
+                    } catch (HazardEventServiceException e) {
+                        statusHandler.error(
+                                "Error retrieving events to update!", e);
+                        return;
+                    }
 
                     /*
                      * If an existing event was not found, create a new event.
@@ -267,18 +278,20 @@ public class GFEHazardsCreator {
         }
     }
 
-    private List<HazardEvent> getEventsToUpdate(HazardEventManager manager,
+    private List<HazardEvent> getEventsToUpdate(boolean practice,
             IHazardEvent potentialEvent, final Date startDate,
-            final Date endDate, final String etn) {
+            final Date endDate, final String etn)
+            throws HazardEventServiceException {
+
         /*
          * Attempt to retrieve the associated hazard from the gfe
          * interoperability table, if there is one.
          */
         List<HazardEvent> events = GfeInteroperabilityUtil
-                .queryForInteroperabilityHazards(potentialEvent.getSiteID(),
+                .queryForInteroperabilityHazards(practice,
+                        potentialEvent.getSiteID(),
                         potentialEvent.getPhenomenon(),
-                        potentialEvent.getSignificance(), startDate, endDate,
-                        manager);
+                        potentialEvent.getSignificance(), startDate, endDate);
         if (events != null && events.isEmpty() == false) {
             return events;
         }
@@ -289,7 +302,7 @@ public class GFEHazardsCreator {
          * different site.
          */
         return InteroperabilityUtil.queryInteroperabilityByETNForHazards(
-                manager, potentialEvent.getSiteID(),
+                practice, potentialEvent.getSiteID(),
                 potentialEvent.getPhenomenon(),
                 potentialEvent.getSignificance(), etn, null);
     }
@@ -407,10 +420,8 @@ public class GFEHazardsCreator {
                 0));
 
         try {
-            // This is here for interoperability, but it does not conform to a
-            // HS Event ID
-            event.setEventID(HazardServicesClient.getHazardEventServices(
-                    practice).requestEventId(rec.getXxxid()));
+            event.setEventID(HazardEventServicesSoapClient
+                    .getServices(practice).requestEventId(rec.getXxxid()));
         } catch (Exception e) {
             throw new RuntimeException("Unable to generate hazard event id", e);
         }

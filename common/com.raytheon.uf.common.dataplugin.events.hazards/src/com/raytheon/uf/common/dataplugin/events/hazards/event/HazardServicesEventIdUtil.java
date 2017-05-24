@@ -23,7 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.client.HazardEventRequestServices;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -46,7 +46,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * ------------ ---------- ----------- --------------------------
  * Aug 03, 2015 8836       Chris.Cody  Initial creation
  *  
- * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through
+ *                                     request server
  * Oct 27, 2015 12077    Ben.Phillippe Removed unnecessary status message
  * Jan 20, 2016 14980      kbisanz     Fixed string compare issue in
  *                                     getDisplayId() causing the full ID to
@@ -248,7 +249,7 @@ public class HazardServicesEventIdUtil {
      */
     private static synchronized String getNextEventIdNumber()
             throws HazardEventServiceException {
-        String queriedEventId = HazardServicesClient.getHazardEventServices(
+        String queriedEventId = HazardEventRequestServices.getServices(
                 isPracticeMode).requestEventId(siteId);
         if ((queriedEventId != null) && (queriedEventId.isEmpty() == false)) {
             int idLen = queriedEventId.length();

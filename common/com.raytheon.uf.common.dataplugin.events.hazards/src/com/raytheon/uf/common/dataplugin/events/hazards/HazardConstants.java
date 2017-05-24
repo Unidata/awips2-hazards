@@ -80,6 +80,7 @@ import com.google.common.collect.ImmutableMap;
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Jul 29, 2015 9306      Chris.Cody    Add HazardSatus.ELAPSED status
  * Jul 31, 2015 7458      Robert.Blum   Added new USER_NAME and WORKSTATION constants.
+ * Aug 04, 2015 6895      Ben.Phillippe Finished HS data access refactor
  * Aug 06, 2015 9968      Chris.Cody    Added Ended/Elapsed time status checking
  * Aug 18, 2015 9650      Chris.Golden  Added "deleteEventIdentifiers" constant for recommenders.
  * Sep 28, 2015 10302,8167 hansen       Added backupSites, eventIdDisplayType, mapCenter
@@ -126,6 +127,8 @@ import com.google.common.collect.ImmutableMap;
  * Apr 04, 2017 32732     Chris.Golden  Added constant for indicating whether or not the origin
  *                                      (user name and workstation identifier) should be updated
  *                                      when a recommender returns modified event(s).
+ * May 24, 2017 15561     Chris.Golden  Removed unneeded Significance enumerated type and
+ *                                      associated methods.
  * </pre>
  * 
  * @author mnash
@@ -436,24 +439,6 @@ public final class HazardConstants {
         return vals;
     }
 
-    public static enum Significance {
-        WARNING("W"), WATCH("A"), ADVISORY("Y"), OUTLOOK("O"), STATEMENT("S"), FORECAST(
-                "F"), SYNOPSIS("N"), CONVECTIVE("Convective"), NONCONVECTIVE(
-                "NonConvective"), INTERNATIONAL("Internaitonal");
-        private final String abbreviation;
-
-        private Significance(String value) {
-            this.abbreviation = value;
-        }
-
-        /**
-         * @return the abbreviation
-         */
-        public String getAbbreviation() {
-            return abbreviation;
-        }
-    }
-
     public static enum HazardAction {
         ISSUE("Issue"), CORRECT("Correct");
 
@@ -494,28 +479,6 @@ public final class HazardConstants {
         public String getValue() {
             return value;
         }
-    }
-
-    public static Significance significanceFromAbbreviation(String value) {
-        for (Significance clazz : Significance.values()) {
-            if (clazz.getAbbreviation().equals(value)) {
-                return clazz;
-            }
-        }
-        throw new IllegalArgumentException("No enum const "
-                + Significance.class.getName() + "." + value);
-    }
-
-    public static Significance significanceFromName(String value) {
-        return Significance.valueOf(String.valueOf(value).toUpperCase());
-    }
-
-    public static List<String> significancesAsStringList() {
-        List<String> vals = new ArrayList<String>();
-        for (Significance sig : Significance.values()) {
-            vals.add(sig.getAbbreviation());
-        }
-        return vals;
     }
 
     /**
@@ -600,6 +563,8 @@ public final class HazardConstants {
      */
     public static final String MODIFIED = "modified";
 
+    public static final String EVENT_ID = "eventID";
+
     public static final String SITE_ID = "siteID";
 
     public static final String GEOMETRY = "geometry";
@@ -641,6 +606,8 @@ public final class HazardConstants {
     public static final String UNTIL_FURTHER_NOTICE_SUFFIX = "UntilFurtherNotice";
 
     public static final String BEFORE_UNTIL_FURTHER_NOTICE_PREFIX = "__beforeUntilFurtherNotice__";
+
+    public static final String HAZARD_SOURCE_APP = "hazardSourceApp";
 
     /**
      * Event identifier key

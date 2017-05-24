@@ -30,6 +30,7 @@ import javax.ws.rs.core.UriInfo;
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServicesUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.IHazardEventRestServices;
 import com.raytheon.uf.edex.registry.ebxml.dao.RegistryObjectDao;
 
@@ -44,6 +45,7 @@ import com.raytheon.uf.edex.registry.ebxml.dao.RegistryObjectDao;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Aug 4, 2015  6895     Ben.Phillippe Finished HS data access refactor
  * 
  * </pre>
  * 

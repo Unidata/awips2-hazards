@@ -38,9 +38,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.query.HazardEventQueryRequest;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.HazardServicesClient;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.IHazardEventServices;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.client.HazardEventRequestServices;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -61,6 +61,9 @@ import com.vividsolutions.jts.geom.Geometry;
  * Oct 5, 2012            mnash         Initial creation
  * Nov 04, 2013   2182    Dan Schaffer  Started refactoring
  * May 29, 2015   6895    Ben.Phillippe Refactored Hazard Service data access
+ * Aug 04, 2015   6895    Ben.Phillippe Finished HS data access refactor
+ * Aug 20, 2015   6895    Ben.Phillippe Routing registry requests through
+ *                                      request server
  * Sep 14, 2016  15934    Chris.Golden  Changed to handle advanced geometries
  *                                      now used by hazard events in place of
  *                                      JTS geometries.
@@ -129,6 +132,11 @@ public class HazardEventManager implements IHazardEventManager {
     // Private Variables
 
     /**
+     * Current mode.
+     */
+    private final Mode mode;
+
+    /**
      * Data access services.
      */
     private final IHazardEventServices hazardDataAccess;
@@ -142,8 +150,8 @@ public class HazardEventManager implements IHazardEventManager {
      *            Mode.
      */
     public HazardEventManager(Mode mode) {
-        this.hazardDataAccess = HazardServicesClient
-                .getHazardEventServices(mode);
+        this.mode = mode;
+        this.hazardDataAccess = HazardEventRequestServices.getServices(mode);
     }
 
     // Public Methods
@@ -277,7 +285,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public Map<String, HazardHistoryList> getHistoryByFilter(
             Map<String, List<?>> filters, boolean includeLatestVersion) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest();
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                Mode.PRACTICE.equals(mode));
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
         }
@@ -291,7 +300,7 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardHistoryList> getHistoryBySiteID(String site,
             boolean includeLatestVersion) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(
-                HazardConstants.SITE_ID, site);
+                Mode.PRACTICE.equals(mode), HazardConstants.SITE_ID, site);
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
         }
@@ -302,7 +311,8 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardHistoryList> getHistoryByPhenomenon(
             String phenomenon, boolean includeLatestVersion) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(
-                HazardConstants.PHENOMENON, phenomenon);
+                Mode.PRACTICE.equals(mode), HazardConstants.PHENOMENON,
+                phenomenon);
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
         }
@@ -313,7 +323,8 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardHistoryList> getHistoryBySignificance(
             String significance, boolean includeLatestVersion) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(
-                HazardConstants.SIGNIFICANCE, significance);
+                Mode.PRACTICE.equals(mode), HazardConstants.SIGNIFICANCE,
+                significance);
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
         }
@@ -324,8 +335,8 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardHistoryList> getHistoryByPhenSig(
             String phenomenon, String significance, boolean includeLatestVersion) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(
-                HazardConstants.PHENOMENON, phenomenon).and(
-                HazardConstants.SIGNIFICANCE, significance);
+                Mode.PRACTICE.equals(mode), HazardConstants.PHENOMENON,
+                phenomenon).and(HazardConstants.SIGNIFICANCE, significance);
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
         }
@@ -335,8 +346,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public Map<String, HazardHistoryList> getHistoryByGeometry(
             Geometry geometry, boolean includeLatestVersion) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
-                HazardConstants.GEOMETRY,
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                Mode.PRACTICE.equals(mode)).and(HazardConstants.GEOMETRY,
                 AdvancedGeometryUtilities.createGeometryWrapper(geometry, 0));
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
@@ -347,7 +358,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public Map<String, HazardHistoryList> getHistoryByTime(Date startTime,
             Date endTime, boolean includeLatestVersion) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                Mode.PRACTICE.equals(mode)).and(
                 HazardConstants.HAZARD_EVENT_START_TIME, ">", startTime).and(
                 HazardConstants.HAZARD_EVENT_END_TIME, "<", endTime);
         if (includeLatestVersion == false) {
@@ -366,7 +378,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public HazardHistoryList getHistoryByEventID(String eventIdentifier,
             boolean includeLatestVersion) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                Mode.PRACTICE.equals(mode)).and(
                 HazardConstants.HAZARD_EVENT_IDENTIFIER, eventIdentifier);
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
@@ -377,7 +390,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public int getHistorySizeByEventID(String eventIdentifier,
             boolean includeLatestVersion) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                Mode.PRACTICE.equals(mode)).and(
                 HazardConstants.HAZARD_EVENT_IDENTIFIER, eventIdentifier);
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
@@ -389,7 +403,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public HazardEvent getLatestByEventID(String eventIdentifier,
             boolean includeHistoricalVersion) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest().and(
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                Mode.PRACTICE.equals(mode)).and(
                 HazardConstants.HAZARD_EVENT_IDENTIFIER, eventIdentifier);
         request.setInclude(includeHistoricalVersion ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
                 : Include.LATEST_EVENTS);
@@ -400,7 +415,7 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardEvent> getLatestBySiteID(String site,
             boolean includeHistoricalVersions) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(
-                HazardConstants.SITE_ID, site);
+                Mode.PRACTICE.equals(mode), HazardConstants.SITE_ID, site);
         request.setInclude(includeHistoricalVersions ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
                 : Include.LATEST_EVENTS);
         return queryLatest(request);
@@ -419,6 +434,7 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardHistoryList> getAllHistory(
             boolean includeLatestVersion) {
         return queryHistory(new HazardEventQueryRequest(
+                Mode.PRACTICE.equals(mode),
                 includeLatestVersion ? Include.HISTORICAL_AND_LATEST_EVENTS
                         : Include.HISTORICAL_EVENTS));
     }
