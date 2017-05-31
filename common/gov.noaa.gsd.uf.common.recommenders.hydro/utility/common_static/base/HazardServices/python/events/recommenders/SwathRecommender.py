@@ -148,7 +148,7 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
         metadata['eventState'] = 'Pending'
         metadata['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
-        metadata['onlyIncludeTriggerEvent'] = True
+        metadata['onlyIncludeTriggerEvents'] = True
         metadata['includeDataLayerTimes'] = True
         
         # This tells Hazard Services to not notify the user when the recommender
@@ -219,6 +219,18 @@ class Recommender(RecommenderTemplate.Recommender):
                                     
             # Determine if we want to process this event or skip it
             if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
+                continue
+
+            # React to the change in selection state, if that is what
+            # triggered this execution of the recommender.
+            #
+            # TODO: This should not continue; instead, selection
+            # state changes should set the activate, activateModify,
+            # etc. flags as appropriate.
+            #
+            if trigger == 'hazardEventSelection':
+                print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
+                print 'SR: ***Selection state triggered execution of Swath Recommender not yet implemented.***'
                 continue
                         
             # Begin Graph Draw
@@ -346,12 +358,12 @@ class Recommender(RecommenderTemplate.Recommender):
         if event.getStatus() == "ELAPSED":
             return False  
 
-        # For event modification or visual feature change, 
-        #   we only want to process the one event identified in the eventSetAttrs,
+        # For event modification, visual feature change, or selection change, 
+        #   we only want to process the events identified in the eventSetAttrs,
         #   so skip all others       
-        if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange']:
-            eventIdentifier = eventSetAttrs.get('eventIdentifier')            
-            if eventIdentifier and eventIdentifier != event.getEventID():
+        if trigger in ['hazardEventModification', 'hazardEventVisualFeatureChange', 'hazardEventSelection']:
+            eventIdentifiers = eventSetAttrs.get('eventIdentifiers')
+            if event.getEventID() not in eventIdentifiers:
                 return False
 
         # Check for Elapsed 
@@ -374,7 +386,7 @@ class Recommender(RecommenderTemplate.Recommender):
             event.set('statusForHiddenField', 'ENDED')
             resultEventSet.add(event)
             # BUG ALERT?? Should we still process it?
-        return True                  
+        return True
     
     def beginGraphDraw(self, event, trigger):
         ''' 
@@ -1485,7 +1497,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 
             eventSetAttrs = eventSet.getAttributes()
             print "trigger: ", eventSetAttrs.get("trigger")
-            print "eventIdentifier: ", eventSetAttrs.get("eventIdentifier")
+            print "eventIdentifiers: ", eventSetAttrs.get("eventIdentifiers")
             print "origin: ", eventSetAttrs.get("origin")
             print "attributeIdentifiers: ", eventSetAttrs.get("attributeIdentifiers")
             if self.selectedTime is not None:

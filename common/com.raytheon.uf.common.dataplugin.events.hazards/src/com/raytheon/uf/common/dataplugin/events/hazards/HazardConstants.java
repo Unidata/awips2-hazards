@@ -129,6 +129,8 @@ import com.google.common.collect.ImmutableMap;
  *                                      when a recommender returns modified event(s).
  * May 24, 2017 15561     Chris.Golden  Removed unneeded Significance enumerated type and
  *                                      associated methods.
+ * May 31, 2017 34684     Chris.Golden  Added selection as a recommender execution trigger type,
+ *                                      and as a first-class field (of sorts).
  * </pre>
  * 
  * @author mnash
@@ -186,7 +188,7 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_EVENT_TYPE = "eventType";
 
-    public static final String RECOMMENDER_TRIGGER_EVENT_IDENTIFIER = "eventIdentifier";
+    public static final String RECOMMENDER_TRIGGER_EVENT_IDENTIFIERS = "eventIdentifiers";
 
     public static final String RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS = "attributeIdentifiers";
 
@@ -198,7 +200,7 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_METADATA_BACKGROUND = "background";
 
-    public static final String RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENT = "onlyIncludeTriggerEvent";
+    public static final String RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS = "onlyIncludeTriggerEvents";
 
     public static final String RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES = "includeEventTypes";
 
@@ -233,7 +235,8 @@ public final class HazardConstants {
         NONE("none"), HAZARD_TYPE_FIRST("hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
                 "hazardEventModification"), HAZARD_EVENT_VISUAL_FEATURE_CHANGE(
                 "hazardEventVisualFeatureChange"), TIME_INTERVAL("timeInterval"), FRAME_CHANGE(
-                "frameChange"), DATA_LAYER_UPDATE("dataLayerUpdate");
+                "frameChange"), DATA_LAYER_UPDATE("dataLayerUpdate"), HAZARD_EVENT_SELECTION(
+                "hazardEventSelection");
 
         // Private Variables
 
@@ -301,7 +304,7 @@ public final class HazardConstants {
     public enum HazardEventFirstClassAttribute {
         TIME_RANGE(HAZARD_EVENT_TIME_RANGE), GEOMETRY(HazardConstants.GEOMETRY), STATUS(
                 HAZARD_EVENT_STATUS), VISUAL_FEATURE(
-                HAZARD_EVENT_VISUAL_FEATURE);
+                HAZARD_EVENT_VISUAL_FEATURE), SELECTION(HAZARD_EVENT_SELECTION);
 
         // Private Static Constants
 
@@ -783,6 +786,8 @@ public final class HazardConstants {
      * State key in hazard
      */
     public static final String HAZARD_EVENT_STATUS = "status";
+
+    public static final String HAZARD_EVENT_SELECTION = "selection";
 
     /*
      * The following are used to identify elements in the session state.

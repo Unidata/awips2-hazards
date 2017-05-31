@@ -26,8 +26,6 @@ import java.util.List;
 
 import org.eclipse.core.runtime.jobs.Job;
 
-import com.raytheon.uf.common.dataplugin.events.EventSet;
-import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -77,6 +75,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      that when events are returned by recommenders, any
  *                                      that have been removed while the recommender was
  *                                      executing can be ignored.
+ * May 31, 2017 34684      Chris.Golden Moved recommender-specific methods to the session
+ *                                      recommender manager where they belong.
  * </pre>
  * 
  * @author bsteffen
@@ -224,18 +224,6 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
     public boolean areHatchedAreasDisplayed();
 
     /**
-     * Handle the result of a recommender run.
-     * 
-     * @param recommenderIdentifier
-     *            Identifier of the recommender that ran.
-     * @param events
-     *            Set of events that were created or modified by the
-     *            recommender.
-     */
-    public void handleRecommenderResult(String recommenderIdentifier,
-            EventSet<IEvent> events);
-
-    /**
      * 
      * @return True from the time the forecaster hits PREVIEW until they confirm
      *         an issue, Cancel the Product Staging Dialog or Dismiss the
@@ -293,18 +281,4 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @siteId Site Identifier to Export
      */
     public void exportApplicationSiteData(String siteId);
-
-    /**
-     * Add the specified event identifier to the set of events that have been
-     * removed.
-     * 
-     * @param eventIdentifier
-     *            Identifier to be added.
-     */
-    public void rememberRemovedEventIdentifier(String eventIdentifier);
-
-    /**
-     * Clear the removed-event-identifiers set.
-     */
-    public void clearRemovedEventIdentifiers();
 }

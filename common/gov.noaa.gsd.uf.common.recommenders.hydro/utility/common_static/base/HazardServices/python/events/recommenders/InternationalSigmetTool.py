@@ -34,7 +34,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['description'] = '''
         '''
         metadata['eventState'] = 'Pending'
-        metadata['onlyIncludeTriggerEvent'] = True
+        metadata['onlyIncludeTriggerEvents'] = True
         
         # This tells Hazard Services to not notify the user when the recommender
         # creates no hazard events. Since this recommender is to be run in response
@@ -70,14 +70,15 @@ class Recommender(RecommenderTemplate.Recommender):
                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
                          str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
                          str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
-                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
+                         str(eventSet.getAttribute("eventIdentifiers")) + "\n    attribute:  " +
                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
 
         sys.stderr.flush()
         eventSetAttrs = eventSet.getAttributes()
         self._trigger = eventSetAttrs.get('trigger')
         self._attribute = eventSetAttrs.get('attributeIdentifiers')
-        self._eventIdentifier = eventSetAttrs.get('eventIdentifier')                  
+        eventIdentifiers = eventSetAttrs.get('eventIdentifiers')
+        self._eventIdentifier = next(iter(eventIdentifiers)) if eventIdentifiers else None
 
         for event in eventSet:          
          # Event Modification

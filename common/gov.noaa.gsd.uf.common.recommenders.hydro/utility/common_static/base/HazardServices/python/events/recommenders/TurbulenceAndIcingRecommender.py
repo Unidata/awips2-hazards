@@ -38,7 +38,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['description'] = '''
         '''
         metadata['eventState'] = 'Pending'
-        metadata['onlyIncludeTriggerEvent'] = True
+        metadata['onlyIncludeTriggerEvents'] = True
         
         # This tells Hazard Services to not notify the user when the recommender
         # creates no hazard events. Since this recommender is to be run in response

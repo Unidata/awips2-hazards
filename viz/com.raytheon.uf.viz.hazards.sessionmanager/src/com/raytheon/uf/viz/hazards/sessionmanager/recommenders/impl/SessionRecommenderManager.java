@@ -9,6 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl;
 
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -16,6 +17,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -24,26 +26,37 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.recommenders.EventRecommender;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
+import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -102,6 +115,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      clear the set of identifiers of events that
  *                                      have been removed when initiating recommender
  *                                      execution.
+ * May 31, 2017   34684    Chris.Golden Moved recommender-specific methods to the
+ *                                      session recommender manager where they belong.
+ *                                      Also added support for executing recommenders
+ *                                      due to hazard event selection changes.
  * </pre>
  * 
  * @author Chris.Golden
@@ -141,6 +158,18 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * Engine to be used to actually run recommenders.
      */
     private final AbstractRecommenderEngine<?> recommenderEngine;
+
+    /**
+     * Set of event identifiers for those events that have been completely
+     * removed since the commencement of the last recommender execution. As
+     * events are removed, they are added to this set, and then when a
+     * recommender is run, this set is emptied before it starts. When a
+     * recommender completes execution and returns an event set, any events
+     * included in the latter are checked against this set to ensure that they
+     * were not removed for some other reason while the recommender was running,
+     * and any that were removed are ignored.
+     */
+    private final Set<String> identifiersOfEventsRemovedSinceLastRecommenderRun = new HashSet<>();
 
     /**
      * <p>
@@ -206,9 +235,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         eventBus.subscribe(recommenderEngine);
     }
 
+    // Public Methods
+
     @Override
     public EventRecommender getRecommender(String recommenderIdentifier) {
         return recommenderEngine.getInventory(recommenderIdentifier);
+    }
+
+    @Override
+    public void rememberRemovedEventIdentifier(String eventIdentifier) {
+        identifiersOfEventsRemovedSinceLastRecommenderRun.add(eventIdentifier);
     }
 
     @Override
@@ -279,7 +315,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         Map<String, Serializable> metadata = recommenderEngine
                 .getScriptMetadata(recommenderIdentifier);
         Boolean onlyIncludeTriggerEvent = (Boolean) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENT);
+                .get(HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS);
         List<String> includeEventTypesList = (List<String>) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES);
         Set<String> includeEventTypes = (includeEventTypesList != null ? new HashSet<>(
@@ -296,10 +332,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          */
         EventSet<IEvent> eventSet = new EventSet<>();
         if (Boolean.TRUE.equals(onlyIncludeTriggerEvent)
-                && ((context.getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE) || (context
-                        .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION))) {
-            eventSet.add(createBaseHazardEvent(sessionManager.getEventManager()
-                    .getEventById(context.getEventIdentifier())));
+                && ((context.getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE)
+                        || (context.getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION) || (context
+                        .getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
+            for (String eventIdentifier : context.getEventIdentifiers()) {
+                eventSet.add(createBaseHazardEvent(sessionManager
+                        .getEventManager().getEventById(eventIdentifier)));
+            }
         } else {
             Collection<ObservedHazardEvent> hazardEvents = sessionManager
                     .getEventManager().getEvents();
@@ -312,12 +351,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
 
         /*
-         * Clear the set of removed event identifiers that the session manager
-         * holds, since it should only hold identifiers of events that have been
-         * removed since the last commencement of a recommender's execution, and
-         * said commencement is about to occur.
+         * Clear the set of removed event identifiers, since it should only hold
+         * identifiers of events that have been removed since the last
+         * commencement of a recommender's execution, and said commencement is
+         * about to occur.
          */
-        sessionManager.clearRemovedEventIdentifiers();
+        identifiersOfEventsRemovedSinceLastRecommenderRun.clear();
 
         /*
          * Add the execution context parameters to the event set.
@@ -405,10 +444,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                         }
 
                                         /*
-                                         * Let the session manager handle the
-                                         * rest.
+                                         * Handle the resulting changes to the
+                                         * session.
                                          */
-                                        sessionManager.handleRecommenderResult(
+                                        handleRecommenderResult(
                                                 recommenderIdentifier, result);
 
                                         /*
@@ -490,8 +529,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         eventSet.addAttribute(HazardConstants.RECOMMENDER_EVENT_TYPE,
                 context.getEventType());
         eventSet.addAttribute(
-                HazardConstants.RECOMMENDER_TRIGGER_EVENT_IDENTIFIER,
-                context.getEventIdentifier());
+                HazardConstants.RECOMMENDER_TRIGGER_EVENT_IDENTIFIERS,
+                context.getEventIdentifiers());
         eventSet.addAttribute(
                 HazardConstants.RECOMMENDER_TRIGGER_ATTRIBUTE_IDENTIFIERS,
                 context.getAttributeIdentifiers());
@@ -552,5 +591,374 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             }
         }
         return dictionary;
+    }
+
+    /**
+     * Handle the result of a recommender run.
+     * 
+     * @param recommenderIdentifier
+     *            Identifier of the recommender that ran.
+     * @param events
+     *            Set of events that were created or modified by the
+     *            recommender.
+     */
+    private void handleRecommenderResult(String recommenderIdentifier,
+            EventSet<IEvent> events) {
+
+        /*
+         * If an event set was returned by the recommender as a result, ingest
+         * the events and respond to any attributes included within the set.
+         */
+        if (events != null) {
+            ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
+                    .getEventManager();
+
+            /*
+             * Get the attributes of the event set indicating whether any or all
+             * events are to be saved to history lists or to the latest version
+             * set, and determine if said attributes indicate that all events
+             * provided in the event set should be saved in one of the two ways,
+             * if specific ones should be saved one or both ways, or none of
+             * them should be saved. Do the same for the treating of events that
+             * are to be saved either way as issuances.
+             */
+            Serializable addToHistoryAttribute = events
+                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_HISTORY);
+            Serializable addToDatabaseAttribute = events
+                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_DATABASE);
+            boolean addToHistory = Boolean.TRUE.equals(addToHistoryAttribute);
+            boolean addToDatabase = ((addToHistory == false) && Boolean.TRUE
+                    .equals(addToDatabaseAttribute));
+
+            /*
+             * Determine whether or not the events that are to be saved to the
+             * history list and/or to the latest version set are to be treated
+             * as issuances.
+             */
+            boolean treatAsIssuance = Boolean.TRUE
+                    .equals(events
+                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
+
+            /*
+             * Determine whether or not the events should have their user name
+             * and workstation set. This defaults to true.
+             */
+            boolean setOrigin = (Boolean.FALSE
+                    .equals(events
+                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_SET_ORIGIN)) == false);
+
+            /*
+             * Determine whether or not all hazard events that are brand new
+             * (i.e., just created by the recommender) should be saved to either
+             * the history list or the database.
+             */
+            boolean saveAllNewToHistory = isListContainingNullElement(addToHistoryAttribute);
+            boolean saveAllNewToDatabase = ((saveAllNewToHistory == false) && isListContainingNullElement(addToDatabaseAttribute));
+            List<IHazardEvent> addedNewEvents = (saveAllNewToHistory
+                    || saveAllNewToDatabase ? new ArrayList<IHazardEvent>()
+                    : null);
+
+            /*
+             * Create a list to hold the events to be saved if all events are
+             * specified as requiring saving. If instead specific events are
+             * specified that are to be saved one or both ways, create a map
+             * that will be used to pair the identifiers of events that are
+             * created with the events themselves.
+             */
+            List<IHazardEvent> addedEvents = (addToHistory || addToDatabase ? new ArrayList<IHazardEvent>(
+                    events.size()) : null);
+            Map<String, IHazardEvent> addedEventsForIdentifiers = ((addedEvents == null)
+                    && ((addToHistoryAttribute instanceof List) || (addToDatabaseAttribute instanceof List)) ? new HashMap<String, IHazardEvent>(
+                    events.size(), 1.0f) : null);
+
+            /*
+             * If a list of event identifiers for which the events are to be
+             * deleted was provided, remember any (and their associated events)
+             * that are for events that are found to exist and to never have
+             * been issued.
+             */
+            Object toBeDeleted = events
+                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS);
+            Set<String> identifiersOfEventsToBeDeleted = null;
+            IOriginator originator = new RecommenderOriginator(
+                    recommenderIdentifier);
+            if (toBeDeleted != null) {
+                if (toBeDeleted instanceof Collection == false) {
+                    statusHandler
+                            .warn("Ignoring "
+                                    + recommenderIdentifier
+                                    + " result event set attribute \""
+                                    + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
+                                    + "\" because it is not a list of event identifiers.");
+                } else {
+
+                    /*
+                     * Iterate through the elements of the provided collection,
+                     * remembering any events for which the identifiers are
+                     * valid and that have never been issued.
+                     */
+                    identifiersOfEventsToBeDeleted = new HashSet<>(
+                            ((Collection<?>) toBeDeleted).size(), 1.0f);
+                    List<ObservedHazardEvent> eventsToBeDeleted = new ArrayList<>(
+                            ((Collection<?>) toBeDeleted).size());
+                    for (Object element : (Collection<?>) toBeDeleted) {
+                        boolean success = false;
+                        if (element instanceof String) {
+                            ObservedHazardEvent event = eventManager
+                                    .getEventById((String) element);
+                            if ((event != null)
+                                    && (HazardStatus.hasEverBeenIssued(event
+                                            .getStatus()) == false)) {
+                                identifiersOfEventsToBeDeleted.add(event
+                                        .getEventID());
+                                eventsToBeDeleted.add(event);
+                                success = true;
+                            }
+                        }
+                        if (success == false) {
+                            statusHandler
+                                    .warn("Ignoring "
+                                            + recommenderIdentifier
+                                            + " result event set attribute \""
+                                            + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
+                                            + "\" list element \""
+                                            + element
+                                            + "\" because it is not an existing, never-issued event identifier.");
+                        }
+                    }
+
+                    /*
+                     * If there are any events that are to be deleted, delete
+                     * them now.
+                     */
+                    if (eventsToBeDeleted.isEmpty() == false) {
+                        eventManager
+                                .removeEvents(eventsToBeDeleted, originator);
+                    }
+                }
+            } else {
+                identifiersOfEventsToBeDeleted = Collections.emptySet();
+            }
+
+            /*
+             * Iterate through the hazard events provided as the result, adding
+             * hazard warning areas for each, setting their user name and
+             * workstation if appropriate, and then telling the event manager to
+             * add them.
+             */
+            List<ObservedHazardEvent> addedOrModifiedEvents = new ArrayList<>(
+                    events.size());
+            for (IEvent event : events) {
+                if (event instanceof IHazardEvent) {
+
+                    /*
+                     * Get the hazard event, and if it is not new, ensure that
+                     * it does not have the identifier of an event that was
+                     * removed by some other action while this recommender was
+                     * running. If it was removed during recommender execution,
+                     * ignore it, as it should not be around anymore. Also
+                     * ignore it if it is to be deleted per this recommender's
+                     * request.
+                     */
+                    IHazardEvent hazardEvent = (IHazardEvent) event;
+                    boolean isNew = (hazardEvent.getEventID() == null);
+                    if ((isNew == false)
+                            && (identifiersOfEventsRemovedSinceLastRecommenderRun
+                                    .contains(hazardEvent.getEventID()) || identifiersOfEventsToBeDeleted
+                                    .contains(hazardEvent.getEventID()))) {
+                        continue;
+                    }
+
+                    /*
+                     * Add the hazard area for the event, and if the recommender
+                     * wants the origin set, do so now.
+                     */
+                    Map<String, String> ugcHatchingAlgorithms = eventManager
+                            .buildInitialHazardAreas(hazardEvent);
+                    hazardEvent.addHazardAttribute(HAZARD_AREA,
+                            (Serializable) ugcHatchingAlgorithms);
+                    if (setOrigin) {
+                        hazardEvent.setUserName(LocalizationManager
+                                .getInstance().getCurrentUser());
+                        hazardEvent.setWorkStation(VizApp.getHostName());
+                    }
+
+                    /*
+                     * Add the event (or modify an existing event by merging the
+                     * new version into it).
+                     */
+                    hazardEvent
+                            .removeHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED);
+                    ObservedHazardEvent addedEvent = eventManager.addEvent(
+                            hazardEvent, originator);
+                    addedOrModifiedEvents.add(addedEvent);
+
+                    /*
+                     * If the event is new and new events are to be all saved to
+                     * history or database, add it to the new events list;
+                     * otherwise, if all events (new or existing) are to be
+                     * saved to history or database, add it to the list for all
+                     * events; otherwise, if only some events are to be saved to
+                     * one or both, place it in the map of identifiers to
+                     * events.
+                     */
+                    if (isNew && (addedNewEvents != null)) {
+                        addedNewEvents.add(addedEvent);
+                    } else if (addedEvents != null) {
+                        addedEvents.add(addedEvent);
+                    } else if (addedEventsForIdentifiers != null) {
+                        addedEventsForIdentifiers.put(addedEvent.getEventID(),
+                                addedEvent);
+                    }
+                }
+            }
+
+            /*
+             * If all brand new hazard events are to be saved to the history or
+             * database, perform the save.
+             */
+            if (addedNewEvents != null) {
+                eventManager.saveEvents(addedNewEvents, saveAllNewToHistory,
+                        treatAsIssuance);
+            }
+
+            /*
+             * If the recommender indicated that all events it returned should
+             * be saved (to history lists or to the latest version set), do so.
+             * Otherwise, if the recommender specified the events to be saved to
+             * history lists and/or to the latest version set, get the events
+             * that go with the identifiers specified, and save them as
+             * appropriate.
+             */
+            if ((addedEvents != null) && (addedEvents.isEmpty() == false)) {
+                eventManager.saveEvents(addedEvents, addToHistory,
+                        treatAsIssuance);
+            } else if ((addedEventsForIdentifiers != null)
+                    && (addedEventsForIdentifiers.isEmpty() == false)) {
+                if (addToHistoryAttribute instanceof List) {
+                    eventManager.saveEvents(
+                            getEventsFromIdentifiers(
+                                    (List<?>) addToHistoryAttribute,
+                                    addedEventsForIdentifiers), true,
+                            treatAsIssuance);
+                } else if (addToDatabaseAttribute instanceof List) {
+
+                    /*
+                     * Ensure that if a hazard identifier is present in both
+                     * this list and the list for history list saving, it is
+                     * removed from this list, since it has already been saved
+                     * above.
+                     */
+                    List<?> addToDatabaseList = null;
+                    if (addToHistoryAttribute instanceof List) {
+                        Set<?> pruned = Sets.difference(new HashSet<>(
+                                (List<?>) addToDatabaseAttribute),
+                                new HashSet<>((List<?>) addToHistoryAttribute));
+                        addToDatabaseList = new ArrayList<>(pruned);
+                    } else {
+                        addToDatabaseList = (List<?>) addToDatabaseAttribute;
+                    }
+                    eventManager.saveEvents(
+                            getEventsFromIdentifiers(addToDatabaseList,
+                                    addedEventsForIdentifiers), false,
+                            treatAsIssuance);
+                }
+            }
+
+            /*
+             * Make sure the updated hazard type is a part of the visible types
+             * in the current setting. If not, add it.
+             */
+            ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
+                    .getConfigurationManager();
+            Set<String> visibleTypes = configManager.getSettings()
+                    .getVisibleTypes();
+            int startSize = visibleTypes.size();
+            for (ObservedHazardEvent event : addedOrModifiedEvents) {
+                visibleTypes.add(HazardEventUtilities.getHazardType(event));
+            }
+            if (startSize != visibleTypes.size()) {
+                configManager.getSettings().setVisibleTypes(visibleTypes);
+            }
+
+            /*
+             * If a selected time has been included in the event set that was
+             * returned, use it.
+             */
+            Object newSelectedTime = events
+                    .getAttribute(HazardConstants.SELECTED_TIME);
+            if (newSelectedTime != null) {
+                SelectedTime selectedTime = null;
+                if (newSelectedTime instanceof List) {
+                    List<?> list = (List<?>) newSelectedTime;
+                    selectedTime = (list.size() > 1 ? new SelectedTime(
+                            ((Number) list.get(0)).longValue(),
+                            ((Number) list.get(1)).longValue())
+                            : new SelectedTime(
+                                    ((Number) list.get(0)).longValue()));
+                } else {
+                    selectedTime = new SelectedTime(
+                            ((Number) newSelectedTime).longValue());
+                }
+                sessionManager.getTimeManager().setSelectedTime(selectedTime,
+                        originator);
+            }
+        }
+    }
+
+    /**
+     * Determine whether or not the specified list contains at least one null
+     * element.
+     * 
+     * @param list
+     *            Potential list to be examined; typed as an <code>Object</code>
+     *            for convenience, since callers will be using such.
+     * @return <code>true</code> if the list contains at least one null element,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isListContainingNullElement(Object list) {
+        if (list instanceof List == false) {
+            return false;
+        }
+        for (Object identifier : (List<?>) list) {
+            if (identifier == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Given the specified event identifiers and map of event identifiers to
+     * their events, get a list of any events specified by the former that have
+     * an entry in the latter.
+     * 
+     * @param eventIdentifiers
+     *            Event identifiers for which to find events. The element type
+     *            is unknown as this makes invocation easier, since this
+     *            parameter is cast from {@link Object} by callers.
+     * @param eventsForIdentifiers
+     *            Map of event identifiers to their corresponding events.
+     * @return List of events that go with the event identifiers and that are
+     *         found in the map.
+     */
+    private List<IHazardEvent> getEventsFromIdentifiers(
+            List<?> eventIdentifiers,
+            Map<String, IHazardEvent> eventsForIdentifiers) {
+
+        Set<String> identifiersToSave = new HashSet<>(
+                eventsForIdentifiers.size(), 1.0f);
+        for (Object element : eventIdentifiers) {
+            if (element != null) {
+                identifiersToSave.add(element.toString());
+            }
+        }
+        List<IHazardEvent> eventsToSave = new ArrayList<>(
+                identifiersToSave.size());
+        for (String identifier : Sets.intersection(
+                eventsForIdentifiers.keySet(), identifiersToSave)) {
+            eventsToSave.add(eventsForIdentifiers.get(identifier));
+        }
+        return eventsToSave;
     }
 }

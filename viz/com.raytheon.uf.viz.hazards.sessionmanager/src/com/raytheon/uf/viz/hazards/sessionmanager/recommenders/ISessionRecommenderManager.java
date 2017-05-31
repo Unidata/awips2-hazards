@@ -33,6 +33,8 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
  *                                      instead of just one recommender.
  * Jun 23, 2016   19537    Chris.Golden Changed to use visual features for spatial
  *                                      info collection.
+ * May 31, 2017   34684    Chris.Golden Moved recommender-specific methods to the
+ *                                      session recommender manager where they belong.
  * </pre>
  * 
  * @author Chris.Golden
@@ -50,6 +52,18 @@ public interface ISessionRecommenderManager {
      * @return Recommender.
      */
     public EventRecommender getRecommender(String recommenderIdentifier);
+
+    /**
+     * Add the specified event identifier to the set of events that have been
+     * removed. These are tracked so that if a recommmender is running while
+     * such an event is removed, and the recommender returns a result including
+     * a modified version of the event, the modification is ignored instead of
+     * re-adding the event to the session.
+     * 
+     * @param eventIdentifier
+     *            Identifier to be added.
+     */
+    public void rememberRemovedEventIdentifier(String eventIdentifier);
 
     /**
      * Run the specified recommender. If parameters must be gathered from the

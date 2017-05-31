@@ -77,9 +77,9 @@
 #                            dictionary, with each key being the name of a recommender, and
 #                            the associated value being a list holding the names of attributes
 #                            that when changed trigger the running of that recommender. Valid
-#                            attributes are "timeRange", "geometry", "visualFeature", and
-#                            "status".  (Note that any hazard event attributes that may be
-#                            specific to a hazard type, e.g. "cta", may be made triggers as
+#                            attributes are "timeRange", "geometry", "visualFeature", "status",
+#                            and "selection".  (Note that any hazard event attributes that may
+#                            be specific to a hazard type, e.g. "cta", may be made triggers as
 #                            well within a hazard type's metadata generation script.) 
 #     startTimeIsCurrentTime Affects unissued and issued; if true, start time is never
 #                            editable by the user, and must be the current CAVE clock
@@ -122,7 +122,7 @@ OVERRIDE_LOCK =  ['headline', 'combinableSegments', 'includeAll', 'allowAreaChan
 SESSION_ATTRS = ["issued", "selected", "checked", "hazardCategory"]
 CENTRAL_PROCESSOR = False
 
-modRecsDict = {} if CENTRAL_PROCESSOR else {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status' ]}
+modRecsDict = {} if CENTRAL_PROCESSOR else {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status', 'selection' ]}
 
 HazardTypes = {
     'AF.Y' : {'headline': 'ASHFALL ADVISORY',

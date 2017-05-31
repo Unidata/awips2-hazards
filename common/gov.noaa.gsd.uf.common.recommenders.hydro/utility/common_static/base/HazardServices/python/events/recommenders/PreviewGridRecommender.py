@@ -62,7 +62,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['description'] = '''
         '''
         metadata['eventState'] = 'Pending'
-        metadata['onlyIncludeTriggerEvent'] = True
+        metadata['onlyIncludeTriggerEvents'] = True
         #metadata['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         
         # This tells Hazard Services to not notify the user when the recommender
@@ -102,7 +102,7 @@ class Recommender(RecommenderTemplate.Recommender):
                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
                          str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
                          str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
-                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
+                         str(eventSet.getAttribute("eventIdentifiers")) + "\n    attribute:  " +
                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
         
         #testing

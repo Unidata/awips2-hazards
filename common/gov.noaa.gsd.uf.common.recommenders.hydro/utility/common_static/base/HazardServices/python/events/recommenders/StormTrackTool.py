@@ -1083,13 +1083,16 @@ class Recommender(TrackToolCommon.TrackToolCommon):
     def getHazardEvent(self, eventSet):
         '''
         @summary Get the hazard event from the specified event set with the
-        identifier provided within the same event set as an attribute named
-        "eventIdentifier".
+        identifier provided within the same event set as the first element
+        in the list found within an attribute named "eventIdentifiers".
         @param eventSet: Event set to be checked.
         @return Hazard event that was retrieved, or None if none was found.
         '''
 
-        eventId = eventSet.getAttributes().get("eventIdentifier")
+        eventIdentifiers = eventSet.getAttributes().get("eventIdentifiers")
+        if eventIdentifiers is None:
+            return None
+        eventId = next(iter(eventIdentifiers))
         if eventId is not None:
             eventId = str(eventId)
         events = eventSet.getEvents()

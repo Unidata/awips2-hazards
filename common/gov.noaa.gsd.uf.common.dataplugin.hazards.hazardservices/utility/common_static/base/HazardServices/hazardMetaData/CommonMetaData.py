@@ -1156,7 +1156,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
         point = "\t" + riverPointID + "\t- " + riverName
 
-        lid = self._riverForecastPoint.getLid()
+        lid = self.riverForecastPoint.getLid()
 
         values = OrderedDict()
         values['CurObs'] = '{:<15.2f}'.format(curObs)
@@ -1169,7 +1169,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         riverLabel = {
                       "fieldType": "Label",
                       "fieldName": parm + "ForecastPointsRiverLabel",
-                      "values": lid + " - " + riverGrp,
+                      "label": lid + " - " + riverGrp,
                       "bold": True
                   }
         

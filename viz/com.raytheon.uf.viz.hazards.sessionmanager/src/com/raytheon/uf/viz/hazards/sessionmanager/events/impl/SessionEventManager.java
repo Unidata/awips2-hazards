@@ -135,6 +135,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeatu
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -529,6 +530,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      turned off in the new type.
  * May 24, 2017   15561    Chris.Golden Removed unneeded validation of significance for new events
  *                                      (as such things should not be hardcoded).
+ * May 31, 2017   34684    Chris.Golden Added invocation of recommenders in response to selection
+ *                                      changes for events.
  * </pre>
  * 
  * @author bsteffen
@@ -2044,7 +2047,6 @@ public class SessionEventManager implements
      * @param change
      *            Change that occurred.
      */
-
     @Handler(priority = 1)
     public void hazardTimeRangeChanged(SessionEventTimeRangeModified change) {
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
@@ -2099,6 +2101,67 @@ public class SessionEventManager implements
                                                     : (originator
                                                             .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
                                                             : RecommenderTriggerOrigin.USER))));
+        }
+    }
+
+    @Handler(priority = 1)
+    public void hazardSelectionChanged(SessionSelectedEventsModified change) {
+
+        /*
+         * Iterate through the events that changed their selection state,
+         * compiling a mapping of recommenders to be triggered for those events
+         * to those events for which to trigger those particular recommenders.
+         * Thus, for example, if three hazard events changed selection state,
+         * two of which are to trigger recommender A when they change selection
+         * and one of which is to trigger recommender B in such cases, the
+         * result of this loop will be a map of two entries, one holding
+         * recommender A associated with the two events that are to trigger it,
+         * the other holding recommender B associated with the remaining event.
+         */
+        Map<String, Set<String>> eventIdentifiersForRecommenderIdentifiers = new HashMap<>(
+                change.getEventIdentifiers().size(), 1.0f);
+        for (String eventIdentifier : change.getEventIdentifiers()) {
+            ObservedHazardEvent event = getEventById(eventIdentifier);
+            String recommenderIdentifier = configManager
+                    .getRecommenderTriggeredByChange(event,
+                            HazardEventFirstClassAttribute.SELECTION);
+            if (recommenderIdentifier != null) {
+                Set<String> eventIdentifiers = eventIdentifiersForRecommenderIdentifiers
+                        .get(recommenderIdentifier);
+                if (eventIdentifiers == null) {
+                    eventIdentifiers = Sets.newHashSet(eventIdentifier);
+                    eventIdentifiersForRecommenderIdentifiers.put(
+                            recommenderIdentifier, eventIdentifiers);
+                } else {
+                    eventIdentifiers.add(eventIdentifier);
+                }
+            }
+        }
+
+        /*
+         * Iterate through the entries in the map compile above, running the
+         * appropriate recommender for each one if said recommender is not the
+         * same as the recommender (if any) that caused the selection change.
+         */
+        IOriginator originator = change.getOriginator();
+        for (Map.Entry<String, Set<String>> entry : eventIdentifiersForRecommenderIdentifiers
+                .entrySet()) {
+            if ((originator instanceof RecommenderOriginator == false)
+                    || (entry.getKey().equals(
+                            ((RecommenderOriginator) originator).getName()) == false)) {
+                sessionManager
+                        .getRecommenderManager()
+                        .runRecommender(
+                                entry.getKey(),
+                                RecommenderExecutionContext.getHazardEventSelectionChangeContext(
+                                        entry.getValue(),
+                                        ((originator instanceof RecommenderOriginator)
+                                                || originator
+                                                        .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
+                                                : (originator
+                                                        .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
+                                                        : RecommenderTriggerOrigin.USER))));
+            }
         }
     }
 
@@ -2937,7 +3000,8 @@ public class SessionEventManager implements
      */
     private void removeEvent(IHazardEvent event, boolean delete,
             IOriginator originator) {
-        sessionManager.rememberRemovedEventIdentifier(event.getEventID());
+        sessionManager.getRecommenderManager().rememberRemovedEventIdentifier(
+                event.getEventID());
         if (events.contains(event)) {
 
             /*

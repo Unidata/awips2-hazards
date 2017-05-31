@@ -142,7 +142,7 @@ class Recommender(RecommenderTemplate.Recommender):
                          str(eventSet.getAttribute("trigger")) + "\n    event type: " + 
                          str(eventSet.getAttribute("eventType")) + "\n    origin:     " + 
                          str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
-                         str(eventSet.getAttribute("eventIdentifier")) + "\n    attribute:  " +
+                         str(eventSet.getAttribute("eventIdentifiers")) + "\n    attribute:  " +
                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
         self.initialize()
         sessionAttributes = eventSet.getAttributes()
