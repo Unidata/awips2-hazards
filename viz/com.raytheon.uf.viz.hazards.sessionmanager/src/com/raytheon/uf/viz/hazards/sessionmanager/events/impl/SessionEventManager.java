@@ -532,6 +532,11 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      (as such things should not be hardcoded).
  * May 31, 2017   34684    Chris.Golden Added invocation of recommenders in response to selection
  *                                      changes for events.
+ * Jun 01, 2017   23056    Chris.Golden Added code to the metadata refreshing method to allow any
+ *                                      hazard attributes whose metadata definitions specify that
+ *                                      they should always use the default values from their
+ *                                      metadata definitions, rather than old values that may be
+ *                                      found in the event, to use said default values.
  * </pre>
  * 
  * @author bsteffen
@@ -1745,9 +1750,13 @@ public class SessionEventManager implements
         /*
          * Get a copy of the current attributes of the hazard event, so that
          * they may be modified as required to work with the new metadata
-         * specifiers. Then add any missing specifiers' starting states (and
-         * correct those that are not valid for these specifiers), and assign
-         * the modified attributes back to the event.
+         * specifiers. Remove any entries for attributes that are marked as
+         * always taking the default values specified in the metadata
+         * definitions instead of old values; this will ensure that the next
+         * step uses the default values for those attributes. Then add any
+         * missing specifiers' starting states (and correct those that are not
+         * valid for these specifiers), and assign the modified attributes back
+         * to the event.
          * 
          * TODO: ObservedHazardEvent should probably return a defensive copy of
          * the attributes, or better yet, an unmodifiable view (i.e. using
@@ -1764,11 +1773,12 @@ public class SessionEventManager implements
          * For now, copying back and forth between maps holding Object values
          * and those holding Serializable values must be done.
          */
-
         boolean eventModified = event.isModified();
         Map<String, Serializable> attributes = event.getHazardAttributes();
         Map<String, Object> newAttributes = new HashMap<String, Object>(
                 attributes);
+        newAttributes.keySet().removeAll(
+                metadata.getOverrideOldValuesMetadataKeys());
         populateTimeAttributesStartingStates(manager.getSpecifiers(),
                 newAttributes, event.getStartTime().getTime(), event
                         .getEndTime().getTime());

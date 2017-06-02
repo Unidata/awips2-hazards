@@ -285,6 +285,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      all found within the hazard types definition
  *                                      file, and to complain with an error message
  *                                      if they are not.
+ * Jun 01, 2017 23056      Chris.Golden Added code to find metadata megawidgets that
+ *                                      always use their default values instead of
+ *                                      any existing old values.
  * </pre>
  * 
  * @author bsteffen
@@ -357,6 +360,7 @@ public class SessionConfigurationManager implements
     private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
             Collections.<String> emptySet(), Collections.<String> emptySet(),
+            Collections.<String> emptySet(),
             Collections.<String, String> emptyMap(),
             Collections.<String> emptySet(), null, null);
 
@@ -970,6 +974,7 @@ public class SessionConfigurationManager implements
                             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
                             Collections.<String> emptySet(),
                             Collections.<String> emptySet(),
+                            Collections.<String> emptySet(),
                             Collections.<String, String> emptyMap(),
                             Collections.<String> emptySet(), scriptFile,
                             eventModifyingFunctionNamesForIdentifiers));
@@ -980,6 +985,8 @@ public class SessionConfigurationManager implements
 
         Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
+        Set<String> overrideOldValuesMetadataKeys = getMegawidgetIdentifiersWithParameter(
+                specifiersList, HazardConstants.METADATA_OVERRIDE_OLD_VALUES);
         Set<String> allMetadataKeys = getMegawidgetIdentifiers(specifiersList);
         Set<String> notAffectingModifyFlagMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList,
@@ -997,6 +1004,7 @@ public class SessionConfigurationManager implements
                     specifiersList, IControlSpecifier.class,
                     timeManager.getCurrentTimeProvider(), sideEffectsApplier),
                     refreshTriggeringMetadataKeys,
+                    overrideOldValuesMetadataKeys,
                     affectingModifyFlagMetadataKeys,
                     recommendersTriggeredForMetadataKeys,
                     editRiseCrestFallMetadataKeys, scriptFile,

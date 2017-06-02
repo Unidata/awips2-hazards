@@ -1537,7 +1537,8 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                     "choices": choices,
                     "values": value,
                     "expandHorizontally": False,
-                    "expandVertically": True
+                    "expandVertically": True,
+                    "overrideOldValues": True
             }
         
         groupHeaderLabel = {

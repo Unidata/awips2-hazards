@@ -36,6 +36,10 @@ import java.util.Set;
  *                                      identifiers for which modification of their
  *                                      underlying values does not affect their
  *                                      enclosing hazard event's modify flag.
+ * Jun 01, 2017   23056    Chris.Golden Added the set of metadata keys that are not
+ *                                      to use previously existing values for those
+ *                                      attributes, but rather are to use the default
+ *                                      values given in their metadata definitions.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,6 +59,13 @@ public class HazardEventMetadata {
      * of them is changed or invoked.
      */
     private final Set<String> refreshTriggeringMetadataKeys;
+
+    /**
+     * Set of metadata keys indicating those attributes that should always use
+     * the values defined within the metadata definitions instead of any
+     * existing values for those identifiers.
+     */
+    private final Set<String> overrideOldValuesMetadataKeys;
 
     /**
      * Set of metadata keys that, when their associated values are modified,
@@ -95,6 +106,11 @@ public class HazardEventMetadata {
      * @param refreshTriggeringMetadataKeys
      *            Set of metadata keys that are to trigger a metadata reload
      *            when any one of them is changed or invoked.
+     * @param overrideOldValuesMetadataKeys
+     *            Set of metadata keys indicating which metadata variables
+     *            should use the default values given by the metadata
+     *            definitions instead of any existing values for their
+     *            identifiers.
      * @param affectingModifyFlagMetadataKeys
      *            Set of metadata keys that, when their associated values are
      *            modified, affect the enclosing hazard event modified flag.
@@ -113,6 +129,7 @@ public class HazardEventMetadata {
     public HazardEventMetadata(
             MegawidgetSpecifierManager megawidgetSpecifierManager,
             Set<String> refreshTriggeringMetadataKeys,
+            Set<String> overrideOldValuesMetadataKeys,
             Set<String> affectingModifyFlagMetadataKeys,
             Map<String, String> recommendersTriggeredForMetadataKeys,
             Set<String> editRiseCrestFallTriggeringMetadataKeys,
@@ -121,6 +138,7 @@ public class HazardEventMetadata {
         this.megawidgetSpecifierManager = megawidgetSpecifierManager;
         this.recommendersTriggeredForMetadataKeys = recommendersTriggeredForMetadataKeys;
         this.refreshTriggeringMetadataKeys = refreshTriggeringMetadataKeys;
+        this.overrideOldValuesMetadataKeys = overrideOldValuesMetadataKeys;
         this.affectingModifyFlagMetadataKeys = affectingModifyFlagMetadataKeys;
         this.editRiseCrestFallTriggeringMetadataKeys = editRiseCrestFallTriggeringMetadataKeys;
         this.scriptFile = scriptFile;
@@ -146,6 +164,17 @@ public class HazardEventMetadata {
      */
     public final Set<String> getRefreshTriggeringMetadataKeys() {
         return refreshTriggeringMetadataKeys;
+    }
+
+    /**
+     * Get the set of metadata keys indicating the attributes that should always
+     * use the values defined in their metadata definitions rather than any
+     * existing old values for their identifiers.
+     * 
+     * @return Set of metadata keys.
+     */
+    public final Set<String> getOverrideOldValuesMetadataKeys() {
+        return overrideOldValuesMetadataKeys;
     }
 
     /**

@@ -131,6 +131,8 @@ import com.google.common.collect.ImmutableMap;
  *                                      associated methods.
  * May 31, 2017 34684     Chris.Golden  Added selection as a recommender execution trigger type,
  *                                      and as a first-class field (of sorts).
+ * Jun 01, 2017 23056     Chris.Golden  Added constant for metadata megawidgets that always use
+ *                                      their default value instead of any existing old value.
  * </pre>
  * 
  * @author mnash
@@ -883,6 +885,8 @@ public final class HazardConstants {
     public static final String METADATA_KEY = "metadata";
 
     public static final String METADATA_RELOAD_TRIGGER = "refreshMetadata";
+
+    public static final String METADATA_OVERRIDE_OLD_VALUES = "overrideOldValues";
 
     public static final String METADATA_NOT_CONSIDERED_MODIFICATION = "doesNotAffectModifyFlag";
 
