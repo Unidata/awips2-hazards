@@ -62,7 +62,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.burnScarPolyDict = {}
         mapsAccessor = MapsDatabaseAccessor()
         try:
-            self.burnScarPolyDict = mapsAccessor.getPolygonDict(BURNSCARAREA_TABLE)
+            self.burnScarPolyDict = mapsAccessor.getPolygonDict(BURNSCARAREA_TABLE, eventSet.getAttribute("localizedSiteID"))
         except:
             pass
 
@@ -145,7 +145,6 @@ Please click CANCEL and manually draw an inundation area.
         hazardEvent.setEventID("")
         hazardEvent.setSiteID(str(sessionDict["siteID"]))
         hazardEvent.setHazardStatus("PENDING")
-        hazardEvent.setHazardMode("O")
         hazardEvent.setPhenomenon("FF")
         hazardEvent.setSignificance(significance)
         hazardEvent.setSubType(subType)

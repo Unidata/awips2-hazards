@@ -64,6 +64,7 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -137,8 +138,8 @@ import com.vividsolutions.jts.geom.Point;
  *                                           protected as it is called by setView().
  * Aug 28, 2014 2532       Robert.Blum       Commented out zooming when settings are
  *                                           changed.
- * Nov 18, 2014  4124      Chris.Golden      Adapted to new time manager.
- * Dec 05, 2014  4124      Chris.Golden      Changed to work with newly parameterized
+ * Nov 18, 2014 4124       Chris.Golden      Adapted to new time manager.
+ * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
  * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Jan  7, 2015 4959       Dan Schaffer      Ability to right click to add/remove UGCs from hazards
@@ -153,6 +154,7 @@ import com.vividsolutions.jts.geom.Point;
  *                                           Display when settings are changed.
  * Jul 21, 2015 2921       Robert.Blum       Added null check to spatialDisplay to prevent null pointer.
  * Mar 06, 2016 15676      Chris.Golden      Initial support for visual features, and basic cleanup.
+ * Mar 14, 2016 12145      mduff             Handle error thrown by event manager.
  * Mar 22, 2016 15676      Chris.Golden      Added ability to use all border styles for visual features,
  *                                           and for now, have visual features and base geometries both
  *                                           fully recreated each time any sort of refresh is needed.
@@ -172,6 +174,11 @@ import com.vividsolutions.jts.geom.Point;
  * May 03, 2016 15676      Chris.Golden      Fixed another bug with selected time not being rounded
  *                                           down to the closest minute when time-matching caused it
  *                                           to not lie on a minute boundary.
+ * May 10, 2016 18240      Chris.Golden      Changed gage context action to include the gage identifier
+ *                                           as part of the recommender execution context, instead of
+ *                                           being passed as a pseudo-dialog result to the recommender.
+ *                                           Also made the recommender running actually allow the
+ *                                           recommender to specify a dialog if it wishes.
  * Jun 06, 2016 19432      Chris.Golden      Added ability to draw lines and points.
  * Jun 10, 2016 19537      Chris.Golden      Combined base and selected visual feature lists for each
  *                                           hazard event into one, replaced by visibility constraints
@@ -211,6 +218,13 @@ import com.vividsolutions.jts.geom.Point;
  *                                           to hazard events, now that checked status is being
  *                                           tracked by the event manager instead of as part of
  *                                           hazard events.
+ * Jun 22, 2017 15561      Chris.Golden      Added flag to force recreation of spatial displayables
+ *                                           when necessary.
+ * Jun 30, 2017 19223      Chris.Golden      Changed to work with new signatures of ContextMenuHelper
+ *                                           constructor and method.
+ * Jun 30, 2017 21638      Chris.Golden      Only allow gage action menu item to be enabled if there
+ *                                           is a recommender configured as the gage-point-first
+ *                                           recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -704,7 +718,7 @@ public class SpatialPresenter extends
      */
     @Handler
     public void sessionHatchingToggled(SessionHatchingToggled change) {
-        updateAllDisplayables();
+        updateAllDisplayables(false);
     }
 
     /**
@@ -716,7 +730,7 @@ public class SpatialPresenter extends
     @Handler
     public void sessionEventsOrderingModified(
             SessionEventsOrderingModified change) {
-        updateAllDisplayables();
+        updateAllDisplayables(false);
     }
 
     /**
@@ -743,7 +757,7 @@ public class SpatialPresenter extends
          * Update the displayables if appropriate.
          */
         if (change.getChanged().contains(ObservedSettings.Type.FILTERS)) {
-            updateAllDisplayables();
+            updateAllDisplayables(false);
         }
     }
 
@@ -845,8 +859,14 @@ public class SpatialPresenter extends
 
     /**
      * Update all the displayable representations in the view.
+     * 
+     * @param force
+     *            Flag indicating whether or not to delete all displayables
+     *            before updating them. If <code>false</code>, any displayables
+     *            that were already created and are identical to the new ones
+     *            are not updated.
      */
-    public void updateAllDisplayables() {
+    public void updateAllDisplayables(boolean force) {
 
         /*
          * Ensure the spatial view and session manager are around, since upon
@@ -871,7 +891,7 @@ public class SpatialPresenter extends
          */
         spatialEntityManager.recreateAllEntities(toolVisualFeatures,
                 spatialInfoCollectingToolType,
-                spatialInfoCollectingToolIdentifier);
+                spatialInfoCollectingToolIdentifier, force);
     }
 
     // Protected Methods
@@ -908,7 +928,7 @@ public class SpatialPresenter extends
         getView().getCommandInvoker().setCommandInvocationHandler(
                 commandInvocationHandler);
 
-        updateAllDisplayables();
+        updateAllDisplayables(false);
     }
 
     @Override
@@ -981,14 +1001,16 @@ public class SpatialPresenter extends
         /*
          * Create the context menu helper to generate the menu items.
          */
-        ContextMenuHelper helper = new ContextMenuHelper(getModel(), scheduler);
+        ContextMenuHelper helper = new ContextMenuHelper(getModel(), scheduler,
+                this);
 
         /*
          * Create the manage hazards menu items, if any, on a submenu.
          */
         List<IAction> actions = new ArrayList<>();
         List<IContributionItem> items = helper
-                .getSelectedHazardManagementItems(UIOriginator.SPATIAL_DISPLAY);
+                .getSelectedHazardManagementItems(UIOriginator.SPATIAL_DISPLAY,
+                        null);
         IAction action = helper.createMenu("Manage hazards",
                 items.toArray(new IContributionItem[items.size()]));
         if (action != null) {
@@ -1151,6 +1173,34 @@ public class SpatialPresenter extends
         }
 
         return actions;
+    }
+
+    /**
+     * Determine whether or not a gage action is available.
+     * <p>
+     * TODO: This method needs to be run from some new subclass of
+     * {@link ICommandInvocationHandler} that returns a result. Currently this
+     * is being called directly from the view, which is incorrect; only time
+     * crunches prevent the implementation of the necessary changes.
+     * Furthermore, this is used by the view to configure a menu item, and it
+     * needs to run in the main (worker) thread. This means that when a separate
+     * thread is used in the future as a worker thread for presenters and the
+     * model, {@link IRunnableAsynchronousScheduler} will need to be augmented
+     * to include the ability to synchronously call a method that returns a
+     * value. Currently, said interface only includes a method for scheduling
+     * asynchronous executions of runnables that do not return anything.
+     * </p>
+     * 
+     * @return <code>true</code> if a gage action is available,
+     *         <code>false</code> otherwise.
+     * @deprecated The method itself is not deprecated, but its visibility is;
+     *             it must be invoked by the subclass of
+     *             <code>ICommandInvocationHandler</code> mentioned in the to-do
+     *             discussion.
+     */
+    @Deprecated
+    boolean isGageActionAvailable() {
+        return (getGagePointFirstRecommender() != null);
     }
 
     // Private Methods
@@ -1404,22 +1454,32 @@ public class SpatialPresenter extends
         /*
          * If the configuration includes a gage-first recommender, run it using
          * the gage identifier as the value for a selected point identifier in a
-         * dictionary that is provided as if it were from a recommender-supplied
-         * dialog.
+         * dictionary that is provided as additional event set attributes.
          */
-        StartUpConfig startupConfig = getModel().getConfigurationManager()
-                .getStartUpConfig();
-        String gagePointFirstRecommender = startupConfig
-                .getGagePointFirstRecommender();
-        if ((gagePointFirstRecommender != null)
-                && (gagePointFirstRecommender.isEmpty() == false)) {
+        String gagePointFirstRecommender = getGagePointFirstRecommender();
+        if (gagePointFirstRecommender != null) {
             Map<String, Serializable> gageInfo = new HashMap<>();
             gageInfo.put(HazardConstants.SELECTED_POINT_ID, gageIdentifier);
             getModel().getRecommenderManager().runRecommender(
                     gagePointFirstRecommender,
-                    RecommenderExecutionContext.getEmptyContext(), null,
-                    gageInfo);
+                    RecommenderExecutionContext.getEmptyContext(gageInfo));
         }
+    }
+
+    /**
+     * Get the gage-point-first recommender to be used for gage actions, if any.
+     * 
+     * @return Identifier of the recommender to be used for gage actions, or
+     *         <code>null</code> if there is no such recommender.
+     */
+    private String getGagePointFirstRecommender() {
+        StartUpConfig startupConfig = getModel().getConfigurationManager()
+                .getStartUpConfig();
+        String gagePointFirstRecommender = startupConfig
+                .getGagePointFirstRecommender();
+        return ((gagePointFirstRecommender == null)
+                || gagePointFirstRecommender.isEmpty() ? null
+                : gagePointFirstRecommender);
     }
 
     /**
@@ -1605,8 +1665,9 @@ public class SpatialPresenter extends
      * 
      * @param event
      *            Event to be added.
-     * @return Resulting new (or if adding geometry to selected, existingt)
-     *         event from the event manager.
+     * @return Resulting new (or if adding geometry to selected, existing) event
+     *         from the event manager, or <code>null</code> if a problem
+     *         occurred.
      */
     private ObservedHazardEvent addEvent(IHazardEvent event) {
 
@@ -1628,27 +1689,38 @@ public class SpatialPresenter extends
             ObservedHazardEvent existingEvent = getModel()
                     .getSelectionManager().getSelectedEvents().get(0);
 
+            /*
+             * Combine the existing and new geometry.
+             */
             IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
             IAdvancedGeometry newGeometries = event.getGeometry();
-
-            getModel().getEventManager().setEventGeometry(
-                    existingEvent,
-                    AdvancedGeometryUtilities.createCollection(
-                            existingGeometries, newGeometries),
-                    UIOriginator.SPATIAL_DISPLAY);
+            IAdvancedGeometry geometry = AdvancedGeometryUtilities
+                    .createCollection(existingGeometries, newGeometries);
 
             /*
-             * Remove the context menu contribution key so that the now-modified
-             * hazard event will not allow the use of select-by-area to modify
-             * its geometry.
+             * If the combined geometry is valid for the hazard event, make it
+             * the event's geometry, and remove the context menu contribution
+             * key so that the now-modified hazard event will not allow the use
+             * of select-by-area to modify its geometry.
              */
-            existingEvent
-                    .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+            if (getModel().getEventManager().isValidGeometryChange(geometry,
+                    existingEvent, true)) {
+                getModel().getEventManager().setEventGeometry(existingEvent,
+                        geometry, UIOriginator.SPATIAL_DISPLAY);
+                existingEvent
+                        .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+            }
+
             return existingEvent;
         }
 
-        return getModel().getEventManager().addEvent(event,
-                UIOriginator.SPATIAL_DISPLAY);
+        try {
+            return getModel().getEventManager().addEvent(event,
+                    UIOriginator.SPATIAL_DISPLAY);
+        } catch (HazardEventServiceException e) {
+            statusHandler.error("Could not add new hazard event.", e);
+            return null;
+        }
     }
 
     /**

@@ -21,6 +21,12 @@
     Sep 15, 2015    8687    Robert.Blum Using riverName from DamMetaData.py for basisBullet.
     Nov 09, 2015    7532    Robert.Blum CTAs are now section level.
     Dec 18, 2015   14036    Robert.Blum Changed ellipses in basis bullet to comma.
+    Mar 15, 2016   11892    Robert.Blum Added optional flooding flag to basisText and reworked the templates.
+    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
+    Jun 20, 2016   19135    Robert.Blum Fixed Test message text.
+    Jul 13, 2016   18257    Kevin.Bisanz If action==COR, use prevAct instead for basisBullet
+    Jul 29, 2016   19473    Roger.Ferrel Include test messages when in Test mode.
+    Aug 25, 2016   21458    Robert.Blum Replacing hashTags with correct framing.
 '''
 
 
@@ -74,7 +80,8 @@ class Format(Legacy_Hydro_Formatter.Format):
             'initials': self._initials,
                                }
 
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries, overrideProductText):
+        self.overrideProductText = overrideProductText
         self.productDict = productDict
         self.initialize(editableEntries)
         legacyText = self._createTextProduct()
@@ -107,6 +114,8 @@ class Format(Legacy_Hydro_Formatter.Format):
     def _basisBullet(self, sectionDict):
         vtecRecord = sectionDict.get('vtecRecord', {})
         action = vtecRecord.get('act', '')
+        if action == 'COR':
+            action = vtecRecord.get('prevAct', '')
         # Get saved value from productText table if available
         bulletText = self._getVal('basisBullet', sectionDict)
         if bulletText is None:
@@ -117,15 +126,15 @@ class Format(Legacy_Hydro_Formatter.Format):
             # FFW_FFS sections will only contain one hazard
             subType = hazards[0].get('subType')
             hazardType = phen + '.' + sig + '.' + subType
-            basis = self.basisText.getBulletText(hazardType, hazards[0])
+            basis = self.basisText.getBulletText(hazardType, hazards[0], vtecRecord)
             damOrLeveeName = hazards[0].get('damOrLeveeName')
-            if '#riverName#' in basis and damOrLeveeName:
+            if '|* riverName *|' in basis and damOrLeveeName:
                 # replace the riverName with the one from DamMetaData.py
                 damInfo = self._damInfo().get(damOrLeveeName)
                 if damInfo:
                     riverName = damInfo.get('riverName')
                     if riverName:
-                        basis = basis.replace('#riverName#', riverName)
+                        basis = basis.replace('|* riverName *|', riverName)
             basis = self._tpc.substituteParameters(hazards[0], basis)
             if basis is None :
                  basis = 'Flash Flooding was reported'
@@ -139,6 +148,6 @@ class Format(Legacy_Hydro_Formatter.Format):
         startText = ''
         if action in ['NEW', 'EXT']:
             startText = '* '
-        if (self._runMode == 'Practice'):
-            startText += "This is a test message.  "
+        if self._testMode:
+            startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(bulletText, startText=startText, endText='\n\n')

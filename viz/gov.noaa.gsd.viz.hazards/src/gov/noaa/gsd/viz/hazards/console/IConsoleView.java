@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
-import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 
 /**
  * Console view, an interface describing the methods that a class must implement
@@ -50,6 +49,8 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
  *                                           design concerns, untangle spaghetti, and
  *                                           add history list viewing.
+ * Jun 26, 2017   19207    Chris.Golden      Removed obsolete product viewer selection
+ *                                           code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -113,15 +114,6 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E>,
      */
     public void setCommandInvocationHandler(
             ICommandInvocationHandler<Command> commandInvocationHandler);
-
-    /**
-     * Set the review and correct products invocation handler.
-     * 
-     * @param reviewAndCorrectProductsInvocationHandler
-     *            Review and correct products invocation handler.
-     */
-    public void setReviewAndCorrectProductsInvocationHandler(
-            ICommandInvocationHandler<List<ProductData>> reviewAndCorrectProductsInvocationHandler);
 
     /**
      * Set the toggle state change handler.

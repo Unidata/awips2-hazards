@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.gfe.GridDataHistory;
 import com.raytheon.uf.common.dataplugin.gfe.dataaccess.GFEDataAccessUtil;
 import com.raytheon.uf.common.dataplugin.gfe.db.objects.GFERecord;
@@ -66,6 +65,7 @@ import com.raytheon.uf.common.time.TimeRange;
  *                                      DB for practice mode.
  * Jan 19, 2014 4840       rferrel      Log error when exception getting GFE Record.
  * May 29, 2015 6895       Ben.Phillippe Refactored Hazard Service data access
+ * May 06, 2016 18202      Robert.Blum  Changes for operational mode.
  * Sep 14, 2016 15934      Chris.Golden Fixed errors caused when no inventories
  *                                      for the current site can be found.
  * </pre>
@@ -125,10 +125,10 @@ public class GridRequestHandler {
         return info;
     }
 
-    public GridParmInfo requestGridParmInfo(Mode mode, String siteID)
+    public GridParmInfo requestGridParmInfo(boolean practice, String siteID)
             throws Exception {
-        return (mode == Mode.PRACTICE) ? requestPracticeGridParmInfo(siteID)
-                : requestOperationalGridParmInfo(siteID);
+        return (practice ? requestPracticeGridParmInfo(siteID)
+                : requestOperationalGridParmInfo(siteID));
     }
 
     public GridParmInfo requestOperationalGridParmInfo(String siteID)

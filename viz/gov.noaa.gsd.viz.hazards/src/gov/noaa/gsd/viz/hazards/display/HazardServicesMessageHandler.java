@@ -210,6 +210,8 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  * Apr 27, 2017 11853      Chris.Golden       Removed reset of preview-ongoing flag when closing
  *                                            the product editor, as this is now done by the
  *                                            latter's presenter.
+ * Jun 08, 2017 16373      Chris.Golden       Corrected RUN_RECOMMENDER constant spelling.
+ * Jun 30, 2017 19223      Chris.Golden       Changed to use new HazardConstants constant.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -502,8 +504,8 @@ public final class HazardServicesMessageHandler {
     }
 
     /**
-     * Handle a received hazard detail action. This method is called implicitly
-     * by the event bus when actions of this type are sent across the latter.
+     * Handle a received product action. This method is called implicitly by the
+     * event bus when actions of this type are sent across the latter.
      * 
      * @param productAction
      *            Action received.
@@ -528,10 +530,20 @@ public final class HazardServicesMessageHandler {
              */
             Map<String, Serializable> params = productAction.getParameters();
             ArrayList<ProductData> viewableProductData = (ArrayList<ProductData>) params
-                    .get(ProductViewerSelectionDlg.PRODUCT_DATA_PARAM);
+                    .get(HazardConstants.PRODUCT_DATA_PARAM);
             sessionProductManager.generateProductFromProductData(
                     viewableProductData, false, true);
             break;
+
+        case REVIEW:
+            Map<String, Serializable> parameters = productAction
+                    .getParameters();
+            ArrayList<ProductData> productData = (ArrayList<ProductData>) parameters
+                    .get(HazardConstants.PRODUCT_DATA_PARAM);
+            sessionProductManager.generateProductFromProductData(productData,
+                    true, false);
+            break;
+
         default:
             throw new IllegalArgumentException("Unsupported actionType "
                     + productAction.getActionType());
@@ -632,7 +644,7 @@ public final class HazardServicesMessageHandler {
         switch (toolAction.getToolType()) {
         case RECOMMENDER:
             switch (toolAction.getRecommenderActionType()) {
-            case RUN_RECOMENDER:
+            case RUN_RECOMMENDER:
                 sessionRecommenderManager.runRecommender(
                         toolAction.getToolName(), toolAction.getContext());
                 break;

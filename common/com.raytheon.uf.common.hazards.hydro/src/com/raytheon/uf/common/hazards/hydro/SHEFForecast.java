@@ -41,6 +41,7 @@ import com.raytheon.uf.common.util.StringUtil;
  * May 28, 2015 7139       Chris.Cody  Add curpp and curpc HydrographPrecip query and processing
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * Aug 13, 2015 9670       mpduff      Fix bug where validtime is incorrectly set.
+ * May 04, 2016 15584      Kevin.Bisanz Updated toString().
  * 
  * </pre>
  * 
@@ -246,7 +247,9 @@ public final class SHEFForecast extends SHEFBase {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("LID: ").append(this.lid).append(StringUtil.NEWLINE);
+        sb.append("LID PE TS: ").append(this.lid).append(" ")
+                .append(this.physicalElement).append(" ")
+                .append(this.typeSource).append(StringUtil.NEWLINE);
         sb.append("ValidTime: ").append(new Date(this.validTime).toString())
                 .append(StringUtil.NEWLINE);
         sb.append("Value: ").append(this.value).append(StringUtil.NEWLINE);

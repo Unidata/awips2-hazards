@@ -22,10 +22,22 @@ class MetaData(CommonMetaData.MetaData):
                         self.getPreviousEditedText(),
                         self.getEndingSynopsis(),
                 ]
-        else:
+        elif self.hazardStatus == 'pending':
+                        metaData = [
+                self.getPreviousEditedText(),
+                self.getForceSegment(),
+                self.getImmediateCause(),
+                self.getHiddenFloodSeverity(),
+                self.getBasisStatement(),
+                self.getImpactsStatement(),
+                self.getCTAs(), 
+                    ]
+        else: # issued
             metaData = [
                 self.getPreviousEditedText(),
+                self.getForceSegment(),
                 self.getImmediateCause(),
+                self.getHiddenFloodSeverity(),
                 self.getBasisStatement(),
                 self.getImpactsStatement(),
                 self.getCTAs(), 

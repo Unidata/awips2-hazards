@@ -11,7 +11,6 @@ class MetaData(CommonMetaData.MetaData):
         if self.hazardStatus in ["elapsed", "ending", "ended"]:
             metaData = [
                         self.getPreviousEditedText(),
-                        self.getImmediateCause(),
                         self.getEndingOption(),
                         ]
         elif self.hazardStatus == 'pending':
@@ -19,11 +18,13 @@ class MetaData(CommonMetaData.MetaData):
                     self.getPreviousEditedText(),
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
+                    self.getHiddenFloodSeverityNone(),
                     self.getOptionalSpecificType(),
                     self.getSource(),
                     self.getEventType(),
+                    self.getMinorFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(False),
+                    self.getLocationsAffected(self.hazardEvent),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
                     # Preserving CAP defaults for future reference.                 
@@ -39,11 +40,13 @@ class MetaData(CommonMetaData.MetaData):
                     self.getPreviousEditedText(),
                     self.getAdvisoryType(),
                     self.getImmediateCause(),
+                    self.getHiddenFloodSeverityNone(),
                     self.getOptionalSpecificType(),
                     self.getSource(),
                     self.getEventType(),
+                    self.getMinorFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(False),
+                    self.getLocationsAffected(self.hazardEvent),
                     self.getAdditionalInfo(),
                     self.getCTAs(),
                 ]
@@ -117,7 +120,7 @@ class MetaData(CommonMetaData.MetaData):
     def urbanAreasSmallStreams(self):
         return  {"identifier":"urbanAreasSmallStreams",
                  "displayString": "Urban areas and small streams",
-                 "productString":"Urban areas and small streams"
+                 "productString":"Urban and small stream"
                  }
     def arroyoSmallStreams(self):
         return {"identifier":"arroyoSmallStreams",
@@ -169,9 +172,16 @@ class MetaData(CommonMetaData.MetaData):
                  "choices": [
                         self.eventTypeThunder(),
                         self.eventTypeRain(),
-                        self.eventTypeMinorFlooding(),
                         ]
                 }
+
+    def getMinorFloodOccurring(self, defaultOn=False):
+        return {
+             "fieldType":"CheckBox",
+             "fieldName": "minorFlood",
+             "label": "Minor flooding occurring",
+             "value": defaultOn,
+            }
 
     def additionalInfoChoices(self):
         return [ 
@@ -200,7 +210,7 @@ class MetaData(CommonMetaData.MetaData):
     def floodLocation(self):
         return {"identifier":"floodLocation",
                 "displayString": "Specify location of flooding:",
-                "productString": "#floodLocation# is the most likely place to experience minor flooding.",
+                "productString": "|* floodLocation *| is the most likely place to experience minor flooding.",
                 "detailFields": [
                         {
                          "fieldType": "Text",
@@ -215,7 +225,24 @@ class MetaData(CommonMetaData.MetaData):
         return [
             self.recedingWater(),
             self.rainEnded(),
+            self.advisoryUpgraded()
             ]
+
+    def validate(self,hazardEvent):
+        messageList = []
+        
+        messageList.append(self.validateRainSoFar(hazardEvent))
+        messageList.append(self.validateAdditionalRain(hazardEvent))
+        messageList.append(self.validateEndingOptions(hazardEvent))
+        
+        retmsg = None
+        for message in messageList:
+            if message is not None:
+                if (retmsg is None):
+                    retmsg = "\n" + message 
+                else:
+                    retmsg += "\n \n" + message
+        return retmsg
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

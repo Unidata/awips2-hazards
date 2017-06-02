@@ -24,7 +24,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                                 }
         
     #def execute(self, productDict):
-    def execute(self, productDict, editableEntries=None):    
+    def execute(self, productDict, editableEntries=None, overrideProductText=None):    
         self.productDict = productDict
         #self.initialize()
         #self._editableParts = {}

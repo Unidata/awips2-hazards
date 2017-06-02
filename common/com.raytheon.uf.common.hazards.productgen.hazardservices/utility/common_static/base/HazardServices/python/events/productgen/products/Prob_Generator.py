@@ -222,7 +222,10 @@ class Product(ProductTemplate.Product):
            {productLabel: megawidgets to display for cancellations}
         '''
         inputEventIDs = [hazardEvent.getEventID() for hazardEvent in inputHazardEvents]
-        mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
+        caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
         # Determine all the actions in a product associated with each eventID
         actionDict = {}
         ugcDict = {}
@@ -248,13 +251,13 @@ class Product(ProductTemplate.Product):
             for eventID in actionDict:
                 if eventID not in inputEventIDs:
                     # Automatic Cancellation -- need to retrieve hazard event.
-                    hazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+                    hazardEvent = HazardDataAccess.getHazardEvent(eventID, practice)
                     if hazardEvent is not None:
                         #8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability)
                         #There is a problem in:
                         #    com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager.reset(SessionManager.java:327)
                         # This appears to leave behind an ID (which is picked up by actionDict[eventID] )
-                        # The HazardDataAccess.getHazardEvent(eventID,mode) call returns a None
+                        # The HazardDataAccess.getHazardEvent(eventID,practice) call returns a None
                         # for a previously valid eventID.
                         # This "fix" keeps the code from having errors but does not address this discrepency.
                         inputHazardEvents.add(hazardEvent)
@@ -1115,14 +1118,17 @@ class Product(ProductTemplate.Product):
                     found = True
             if not found:
                 # Must retrieve this hazard event for automatic cancellation
-                mode = self._sessionDict.get('hazardMode','PRACTICE').upper()
-                hazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+                caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+                practice = True
+                if caveMode == 'OPERATIONAL':
+                    practice = False
+                hazardEvent = HazardDataAccess.getHazardEvent(eventID, practice)
                 if hazardEvent is not None:
                     #8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability)
                     #There is a problem in:
                     #    com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager.reset(SessionManager.java:327)
                     # This appears to leave behind an ID (which is picked up by actionDict[eventID] )
-                    # The HazardDataAccess.getHazardEvent(eventID,mode) call returns a None
+                    # The HazardDataAccess.getHazardEvent(eventID,practice) call returns a None
                     # for a previously valid eventID.
                     # This "fix" keeps the code from having errors but does not address this discrepency.
                     
@@ -1317,11 +1323,14 @@ class Product(ProductTemplate.Product):
                                 return
 
     def _prepareToCreateHazardEventDictionary(self, hazardEvent, vtecRecord, metaData):
-        mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
+        caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
         eventID = hazardEvent.getEventID()
 
         # Get the previous state of this hazard event
-        prevHazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+        prevHazardEvent = HazardDataAccess.getHazardEvent(eventID, practice)
         if prevHazardEvent is not None:
             # Get the attributes of both hazardEvents]
             prevAttributes = prevHazardEvent.getHazardAttributes()

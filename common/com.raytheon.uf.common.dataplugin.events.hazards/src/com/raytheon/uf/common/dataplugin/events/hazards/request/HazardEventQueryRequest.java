@@ -35,6 +35,7 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.SlotType;
 import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServicesUtil;
 import com.raytheon.uf.common.registry.constants.CanonicalQueryTypes;
 import com.raytheon.uf.common.registry.constants.QueryLanguages;
@@ -56,6 +57,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Aug 20, 2015 6895      Ben.Phillippe Routing registry requests through
  *                                      request server
+ * May 03, 2016 18193     Ben.Phillippe Replication of Hazard VTEC Records.
+ * May 06, 2016 18202     Robert.Blum   Changes for operational mode.
  * Feb 16, 2017 29138     Chris.Golden  Revamped to slim down the responses to
  *                                      these requests so that the former do
  *                                      not carry extra serialized objects
@@ -103,12 +106,14 @@ public class HazardEventQueryRequest extends HazardRequest {
      * {@link #setInclude(Include)} may be invoked. If only the size of the set
      * of events being requested is needed,
      * {@link #setSizeOnlyRequired(boolean)} may be invoked.
+     * 
+     * ###### DO NOT USE ######
+     * 
+     * This should never be used as it may incorrectly default the practice
+     * flag. It is only included as it is required by JAXB.
      */
     public HazardEventQueryRequest() {
-
-        /*
-         * No action.
-         */
+        super(true);
     }
 
     /**
@@ -392,7 +397,7 @@ public class HazardEventQueryRequest extends HazardRequest {
      */
     public QueryRequest getRegistryQueryRequest() {
         String queryExpression = HazardEventServicesUtil.createAttributeQuery(
-                isPractice(), this.queryParams);
+                isPractice(), HazardEvent.class, this.queryParams);
         QueryRequest queryRequest = new QueryRequest();
         queryRequest.setId(RegistryUtil.generateRegistryObjectId());
         ResponseOptionType responseOption = new ResponseOptionType();

@@ -75,6 +75,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Aug 12, 2015   4123     Chris.Golden    Changed to work with latest version of
  *                                         megawidget manager listener.
  * Nov 17, 2015   11776    Roger.Ferrel    Update viewer when new setting created.
+ * Jun 06, 2016   15561    Chris.Golden    Fixed bug caused by megawidget manager
+ *                                         being dereferenced before being
+ *                                         initialized.
  * </pre>
  * 
  * @author Chris.Golden
@@ -258,15 +261,19 @@ class SettingDialog extends BasicDialog {
      */
     public void setState(ObservedSettings settings) {
         currentSettings = settings;
-        try {
-            megawidgetManager.setState(MegawidgetSettingsConversionUtils
-                    .settingsPOJOToMap(settings));
-        } catch (MegawidgetStateException e) {
-            statusHandler.error("SettingDialog.setState(): Error: Failed to "
-                    + "accept new setting parameters: " + e, e);
-        } catch (Exception e) {
-            statusHandler.error(
-                    "Failed to convert the Current Settings to a Java Map!", e);
+        if (megawidgetManager != null) {
+            try {
+                megawidgetManager.setState(MegawidgetSettingsConversionUtils
+                        .settingsPOJOToMap(settings));
+            } catch (MegawidgetStateException e) {
+                statusHandler.error(
+                        "SettingDialog.setState(): Error: Failed to "
+                                + "accept new setting parameters: " + e, e);
+            } catch (Exception e) {
+                statusHandler
+                        .error("Failed to convert the Current Settings to a Java Map!",
+                                e);
+            }
         }
     }
 

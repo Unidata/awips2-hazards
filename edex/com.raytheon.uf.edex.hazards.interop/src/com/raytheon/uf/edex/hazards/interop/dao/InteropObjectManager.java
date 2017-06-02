@@ -20,7 +20,6 @@
 package com.raytheon.uf.edex.hazards.interop.dao;
 
 import com.raytheon.uf.common.activetable.ActiveTableRecord;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
@@ -74,7 +73,7 @@ public class InteropObjectManager {
     /**
      * Creates an interoperability record
      * 
-     * @param mode
+     * @param practice
      *            The mode, practice or operational
      * @param interoperabilityType
      *            The origin of the record
@@ -85,8 +84,8 @@ public class InteropObjectManager {
      *            record
      * @return The new HazardInteroperability record
      */
-    public HazardInteroperabilityRecord createInteroperabilityRecord(Mode mode,
-            INTEROPERABILITY_TYPE interoperabilityType,
+    public HazardInteroperabilityRecord createInteroperabilityRecord(
+            boolean practice, INTEROPERABILITY_TYPE interoperabilityType,
             IHazardEvent hazardEvent, ActiveTableRecord activeTableRecord) {
         HazardInteroperabilityRecord interopRecord = null;
 
@@ -94,13 +93,13 @@ public class InteropObjectManager {
         // interopRecord = new HazardInteroperabilityRecord(
         // activeTableRecord.getXxxid(), hazardEvent.getEventID(),
         // activeTableRecord.getId(), interoperabilityType);
-        interopRecord.setPractice(Mode.PRACTICE.equals(mode));
+        interopRecord.setPractice(practice);
 
         return interopRecord;
     }
 
-    public AbstractActiveTableDao getActiveTableDao(Mode mode) {
-        return Mode.PRACTICE.equals(mode) ? practiceActiveTableRecordDao
+    public AbstractActiveTableDao getActiveTableDao(boolean practice) {
+        return practice ? practiceActiveTableRecordDao
                 : operationalActiveTableRecordDao;
     }
 

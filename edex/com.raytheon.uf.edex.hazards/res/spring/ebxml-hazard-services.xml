@@ -63,6 +63,20 @@
 		<property name="practice" value="true" />
 		<property name="hazardNotifier" ref="HazardNotifier" />
 	</bean>
+	
+	<bean id="HazardVtecServicesImpl"
+        class="com.raytheon.uf.edex.hazards.registry.services.HazardVtecServices">
+        <property name="dao" ref="registryObjectDao" />
+        <property name="registryHandler" ref="registryHandler" />
+        <property name="practice" value="false" />
+    </bean>
+
+    <bean id="PracticeHazardVtecServicesImpl"
+        class="com.raytheon.uf.edex.hazards.registry.services.HazardVtecServices">
+        <property name="dao" ref="registryObjectDao" />
+        <property name="registryHandler" ref="registryHandler" />
+        <property name="practice" value="true" />
+    </bean>
 
 	<bean id="BaseInteropService" abstract="true"
 		class="com.raytheon.uf.edex.hazards.interop.AbstractLegacyAppInteropSrv">
@@ -81,8 +95,8 @@
 			value="com.raytheon.uf.edex.registry.ebxml.services.rest.RegistryFederationManager.addObjectTypesToSubscribeTo" />
 		<property name="arguments">
 			<list>
-				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent
-				</value>
+				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent</value>
+				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.vtec.HazardEventVtec</value>
 			</list>
 		</property>
 	</bean>

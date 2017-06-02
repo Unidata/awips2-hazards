@@ -45,6 +45,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -130,6 +131,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      handled in the model.
  * Feb 21, 2017 29138      Chris.Golden Added use of session manager's runnable
  *                                      asynchronous scheduler.
+ * Jun 02, 2017  1961      Chris.Golden Totally different implementation of changeset
+ *                                      merged into 18-Hazard_Services to allow the
+ *                                      selected time to change if the current time
+ *                                      is set by the user to something more than an
+ *                                      hour from the previous current time.
  * </pre>
  * 
  * @author bsteffen
@@ -177,6 +183,12 @@ public class SessionTimeManager implements ISessionTimeManager {
      * Time resolution.
      */
     private TimeResolution timeResolution = TimeResolution.MINUTES;
+
+    /**
+     * CAVE current time as last recorded (within a minute of the actual CAVE
+     * time), as epoch time in millliseconds.
+     */
+    private long approximateCurrentTime;
 
     /**
      * Currently selected time.
@@ -230,17 +242,24 @@ public class SessionTimeManager implements ISessionTimeManager {
             /*
              * Remove the scheduled timer events.
              */
-            if (timer != null) {
-                timer.cancel();
-                timer = null;
-                secondsTickTimerTask = null;
-            }
+            cancelTimerNotifications();
 
             /*
              * Notify any listeners that the CAVE current time has been reset.
              */
             notificationSender.postNotificationAsync(new CurrentTimeReset(
                     Originator.OTHER, SessionTimeManager.this));
+
+            /*
+             * If the delta between the new current time and what it was when
+             * last checked is more than an hour, change the selected time to
+             * match. Regardless, record the new current time.
+             */
+            long currentTime = getCurrentTimeInMillis();
+            if (Math.abs(currentTime - approximateCurrentTime) > TimeUtil.MILLIS_PER_HOUR) {
+                setSelectedTime(new SelectedTime(currentTime), Originator.OTHER);
+            }
+            approximateCurrentTime = currentTime;
 
             /*
              * If the CAVE current time is not frozen, schedule notifications to
@@ -273,6 +292,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         this.notificationSender = notificationSender;
         Date currentTime = truncateDateForTimeResolution(getCurrentTime(),
                 timeResolution);
+        approximateCurrentTime = currentTime.getTime();
         selectedTime = new SelectedTime(currentTime.getTime());
 
         /*
@@ -488,11 +508,7 @@ public class SessionTimeManager implements ISessionTimeManager {
 
     @Override
     public void shutdown() {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
-            secondsTickTimerTask = null;
-        }
+        cancelTimerNotifications();
         SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
                 simulatedTimeChangeListener);
     }
@@ -567,6 +583,7 @@ public class SessionTimeManager implements ISessionTimeManager {
                             new Runnable() {
                                 @Override
                                 public void run() {
+                                    approximateCurrentTime = getCurrentTimeInMillis();
                                     notificationSender
                                             .postNotificationAsync((timeResolution == TimeResolution.MINUTES ? new CurrentTimeMinuteTicked(
                                                     Originator.OTHER,
@@ -609,6 +626,17 @@ public class SessionTimeManager implements ISessionTimeManager {
                     offsetUntilFirstSimulatedMinuteChange,
                     UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION
                             .get(timeResolution));
+        }
+    }
+
+    /**
+     * Cancel any timer notifications.
+     */
+    private void cancelTimerNotifications() {
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+            secondsTickTimerTask = null;
         }
     }
 

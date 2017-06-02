@@ -74,6 +74,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventCon
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 
 /**
@@ -183,6 +184,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  * Apr 27, 2017   11866    Chris.Golden      Added code to prevent command buttons from
  *                                           being enabled when the event is ended or
  *                                           elapsed.
+ * Jun 27, 2017   20347    Chris.Golden      Hazard detail view now pops up if a hazard
+ *                                           event is changed to status ending and it is
+ *                                           selected.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1141,6 +1145,11 @@ public class HazardDetailPresenter extends
             }
             updateSelectedEventDisplayablesIfChanged();
             updateViewButtonsEnabledStates();
+        } else if ((change.getEvent().getStatus() == HazardStatus.ENDING)
+                && (change.getOriginator() != Originator.DATABASE)
+                && getModel().getSelectionManager().isSelected(
+                        change.getEvent())) {
+            showHazardDetail();
         }
     }
 

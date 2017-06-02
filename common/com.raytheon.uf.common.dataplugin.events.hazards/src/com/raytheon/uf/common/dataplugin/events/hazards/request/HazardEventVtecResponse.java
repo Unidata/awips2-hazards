@@ -17,21 +17,26 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.dataplugin.hazards.interoperability.requests;
+package com.raytheon.uf.common.dataplugin.events.hazards.request;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import com.raytheon.uf.common.activetable.ActiveTableMode;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.vtec.HazardEventVtec;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.xmladapters.ActiveTableXmlAdapter;
-import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.HazardInteroperabilityResponse;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.util.CollectionUtil;
 
 /**
  * Returns the vtec records mapped to hazards that were retrieved as well as
@@ -46,7 +51,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Aug 8, 2014  2826       jsanchez     Initial creation
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
- * 
+ * Apr 05, 2016 16577    Ben.Phillippe Moved out of interoperability plugin and renamed
+ * May 03, 2016 18193    Ben.Phillippe Replication of Hazard VTEC Records
  * </pre>
  * 
  * @author jsanchez
@@ -55,39 +61,35 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 @XmlRootElement(name = "VtecInteroperabilityActiveTableResponse")
 @XmlAccessorType(XmlAccessType.NONE)
-public class VtecInteroperabilityActiveTableResponse extends
-        HazardInteroperabilityResponse implements IReturnResults {
+public class HazardEventVtecResponse extends HazardEventResponse implements
+        IReturnResults {
 
     /** The active table */
     @DynamicSerializeElement
-    @XmlJavaTypeAdapter(value = ActiveTableXmlAdapter.class)
-    private List<Map<String, Object>> activeTable;
+    @XmlElement
+    private List<HazardEventVtec> vtecRecords;
 
     /** Practice or Operational Mode */
     @DynamicSerializeElement
+    @XmlElement
     private ActiveTableMode mode;
 
     /** Success flag */
     @DynamicSerializeElement
+    @XmlElement
     private boolean success;
 
     /** Text of the exceptions */
     @DynamicSerializeElement
+    @XmlElement
     private String exceptionText;
 
-    /**
-     * @return the activeTable
-     */
-    public List<Map<String, Object>> getActiveTable() {
-        return activeTable;
+    public List<HazardEventVtec> getVtecRecords() {
+        return vtecRecords;
     }
 
-    /**
-     * @param activeTable
-     *            the activeTable to set
-     */
-    public void setActiveTable(List<Map<String, Object>> activeTable) {
-        this.activeTable = activeTable;
+    public void setVtecRecords(List<HazardEventVtec> vtecRecords) {
+        this.vtecRecords = vtecRecords;
     }
 
     /**
@@ -105,7 +107,7 @@ public class VtecInteroperabilityActiveTableResponse extends
         this.mode = mode;
     }
 
-    public VtecInteroperabilityActiveTableResponse() {
+    public HazardEventVtecResponse() {
         this.success = true;
     }
 
@@ -127,7 +129,18 @@ public class VtecInteroperabilityActiveTableResponse extends
 
     @Override
     public List<Map<String, Object>> getResults() {
-        return getActiveTable();
+        return toMap(getVtecRecords());
     }
 
+    private List<Map<String, Object>> toMap(List<HazardEventVtec> vtecs) {
+        if (CollectionUtil.isNullOrEmpty(vtecs)) {
+            return Collections.emptyList();
+        }
+        List<Map<String, Object>> retVal = new ArrayList<Map<String, Object>>(
+                vtecs.size());
+        for (HazardEventVtec vtec : vtecs) {
+            retVal.add(vtec.toMap());
+        }
+        return retVal;
+    }
 }

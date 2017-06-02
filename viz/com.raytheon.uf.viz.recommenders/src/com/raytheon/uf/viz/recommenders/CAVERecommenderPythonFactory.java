@@ -37,7 +37,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 5, 2013            mnash     Initial creation
+ * Feb 5, 2013             mnash       Initial creation
+ * Mar 31, 2016 8837       Robert.Blum Changes for Service Backup.
  * 
  * </pre>
  * 
@@ -51,15 +52,16 @@ public class CAVERecommenderPythonFactory extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CAVERecommenderPythonFactory.class);
 
-    public CAVERecommenderPythonFactory() {
-        this(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR, 1);
+    private final String site;
+
+    public CAVERecommenderPythonFactory(String site) {
+        this(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR
+                + site, 1, site);
     }
 
-    /**
-     * 
-     */
-    public CAVERecommenderPythonFactory(String name, int maxThreads) {
+    public CAVERecommenderPythonFactory(String name, int maxThreads, String site) {
         super(name, maxThreads);
+        this.site = site;
     }
 
     /*
@@ -72,7 +74,7 @@ public class CAVERecommenderPythonFactory extends
     @Override
     public CAVERecommenderScriptManager createPythonScript() {
         try {
-            return new CAVERecommenderScriptManager();
+            return new CAVERecommenderScriptManager(site);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to create new script manager", e);

@@ -13,6 +13,8 @@
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
     Nov 09, 2015    7532    Robert.Blum Changes for multiple hazards/vtecRecords per segment.
+    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
+    Jul 29, 2016   19473    Roger.Ferrel set test mode true for Practice and Test.
 '''
 
 import FormatTemplate
@@ -30,10 +32,7 @@ class Format(FormatTemplate.Formatter):
         self._tpc.setUp(areaDict)
         self._issueTime = self.productDict.get('issueTime')
         self._runMode = self.productDict.get('runMode')
-        if self._runMode == 'Practice':
-            self._testMode = True
-        else:
-            self._testMode = False
+        self._testMode = self._runMode in ['Practice', 'Test']
 
         # Dictionary that will hold the KeyInfo entries of the
         # product part text strings to be displayed in the Product
@@ -53,7 +52,8 @@ class Format(FormatTemplate.Formatter):
         for segment in segments:
             self.timezones += segment.get('timeZones')
 
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries, overrideProductText):
+        self.overrideProductText = overrideProductText
         self.productDict = productDict
         self.initialize(editableEntries)
         product = self.createTwitterProduct()
@@ -70,7 +70,7 @@ class Format(FormatTemplate.Formatter):
                 text += self.createAttribution(section)
             # CTAs are segment level
             text += self.addCTAs(segment)
-            #Add break between segments
+            # Add break between segments
             if (index + 1 < size):
                 text += '\n\n'
             index += 1
@@ -107,7 +107,7 @@ class Format(FormatTemplate.Formatter):
                 attribution += ' has expired for ' + areaPhrase + '.'
             else:
                timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
-               attribution += ' will expire ' + timeWords + ' for ' + areaPhrase +'.'
+               attribution += ' will expire ' + timeWords + ' for ' + areaPhrase + '.'
         return attribution
     
     def createAreaPhrase(self, sectionDict):
@@ -131,7 +131,7 @@ class Format(FormatTemplate.Formatter):
         return areaPhrase
 
     def addCTAs(self, segmentDict):
-        callsToAction =  self._tpc.getVal(segmentDict, 'callsToAction', None)
+        callsToAction = self._tpc.getVal(segmentDict, 'callsToAction', None)
 
         if callsToAction and callsToAction != '':
             ctaText = '\n\n'

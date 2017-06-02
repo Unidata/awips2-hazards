@@ -35,7 +35,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * May 23, 2013            mnash     Initial creation
+ * May 23, 2013            mnash       Initial creation
+ * Mar 31, 2016 8837       Robert.Blum Added site for Service Backup.
  * 
  * </pre>
  * 
@@ -49,11 +50,15 @@ public class EDEXRecommenderPythonFactory extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EDEXRecommenderPythonFactory.class);
 
+    private final String site;
+
     /**
      * 
      */
-    public EDEXRecommenderPythonFactory() {
-        super(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR, 1);
+    public EDEXRecommenderPythonFactory(String site) {
+        super(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR
+                + site, 1);
+        this.site = site;
     }
 
     /*
@@ -66,7 +71,7 @@ public class EDEXRecommenderPythonFactory extends
     @Override
     public EDEXRecommenderScriptManager createPythonScript() {
         try {
-            return new EDEXRecommenderScriptManager();
+            return new EDEXRecommenderScriptManager(site);
         } catch (JepException e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }

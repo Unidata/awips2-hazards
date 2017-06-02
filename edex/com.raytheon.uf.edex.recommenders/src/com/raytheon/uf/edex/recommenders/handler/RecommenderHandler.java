@@ -34,7 +34,8 @@ import com.raytheon.uf.edex.recommenders.EDEXRecommenderEngine;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jun 7, 2013            mnash     Initial creation
+ * Jun 7, 2013            mnash        Initial creation
+ * Mar 31, 2016 8837      Robert.Blum  Changes for Service Backup.
  * 
  * </pre>
  * 
@@ -56,6 +57,7 @@ public class RecommenderHandler implements
     public Object handleRequest(final ExecuteRecommenderRequest request)
             throws Exception {
         EDEXRecommenderEngine engine = new EDEXRecommenderEngine();
+        engine.setSite(request.getSite());
         EventSet<IEvent> eventSet = new EventSet<IEvent>();
         eventSet.addAttribute("siteID", request.getSite());
         eventSet.addAttribute("timeRange", request.getTimeRange());

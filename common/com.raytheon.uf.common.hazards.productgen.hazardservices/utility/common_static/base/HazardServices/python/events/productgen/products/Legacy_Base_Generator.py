@@ -61,7 +61,29 @@
     Feb 05, 2016   14784    Kevin.Bisanz Update _prepareToCreateHazardEventDictionary()
                                          to not use the prev event if proposed or
                                          pending status.
+    Mar 01, 2016   14032    Ben.Phillippe Reworked spatial query
+    Mar 31, 2016    8837    Robert.Blum  Changes for Service Backup.
+    Apr 27, 2016   17742    Roger.Ferrel Added user name to hazard event dictionary
+    May 06, 2016   18202    Robert.Blum  Changes for operational mode.
+    May 09, 2016   18278    Ben.Phillippe CAN/CON products no longer calculate cancelled geometry
+    May 19, 2016   16545    Robert.Blum  Updated _setProductInformation to correctly set the 
+                                         previous flood categories.
+    Jun 08, 2016    9620    Robert.Blum  Updates for editable expiration time.
+    Jun 21, 2016    9620    Robert.Blum  Fixed python times to be in UTC.
     Jun 23, 2016   19537    Chris.Golden Changed to use UTC when converting epoch time to datetime.
+    Jun 29, 2016   18209    Robert.Blum  Fixed retrieving user edits on followups where the pil changes.
+    Jul 06, 2016   18257    Kevin.Bisanz Set issueTime when correcting product
+    Jul 15, 2016   18244    Robert.Blum  Fixed Flood Moving time to be in local time.
+    Jul 20, 2016   18244    Robert.Blum  Adding missing import.
+    Jul 20, 2016   18257    Kevin.Bisanz correctionsCheck(..) returns false if no eventIDs or UGCs.
+    Jul 22, 2016   19214    Kevin.Bisanz Add _prepareLocationsAffectedFallBack(..).
+    Aug 09, 2016   17067    Robert.Blum  Fixed RVS products.
+    Aug 08, 2016   21056    Robert.Blum  Implemented pathcast.
+    Aug 11, 2016   20654    Kevin.Bisanz Rename _prepareLocationsAffectedFallBackUpdate
+                                         to _prepareLocationDicts and move
+                                         formatting logic into formatter.
+    Aug 26, 2016   21458    Robert.Blum  Fixed framing code.
+    Sep 06, 2016   19202    Sara.Stewart Added attributes to endingOption 
     Sep 16, 2016   15934    Chris.Golden Changed to work with new advanced geometries in hazard events.
 
 '''
@@ -85,6 +107,8 @@ import os, collections
 import GeometryFactory
 import SpatialQuery
 import JUtil
+from dateutil import tz
+import PathCastUtil
 
 from abc import *
 
@@ -277,7 +301,6 @@ class Product(ProductTemplate.Product):
            {productLabel: megawidgets to display for cancellations}
         '''
         inputEventIDs = [hazardEvent.getEventID() for hazardEvent in inputHazardEvents]
-        mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
         # Determine all the actions in a product associated with each eventID
         actionDict = {}
         metaDataDict = {}
@@ -303,7 +326,7 @@ class Product(ProductTemplate.Product):
             for eventID in actionDict:
                 if eventID not in inputEventIDs:
                     # Automatic Cancellation -- need to retrieve hazard event.
-                    hazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+                    hazardEvent = HazardDataAccess.getHazardEvent(eventID, self._practice)
                     if hazardEvent is not None:
                         inputHazardEvents.add(hazardEvent)
                     canceledEventIDs.append(eventID)
@@ -438,7 +461,10 @@ class Product(ProductTemplate.Product):
         inputFields = metaDict.get('inputFields', {})
         self._overviewHeadline_value = inputFields.get('overviewHeadline', '') 
         self._sessionDict = metaDict.get('sessionDict', {})
-        self._testMode = self._sessionDict.get('testMode', False)
+        caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+        self._practice = True
+        if caveMode == 'OPERATIONAL':
+            self._practice = False
 
         # These come from SiteInfo
         # Primary Site
@@ -548,6 +574,9 @@ class Product(ProductTemplate.Product):
             productDict = collections.OrderedDict()
             self._initializeProductDict(productDict, eventSetAttributes)
             productDict['productLabel'] = self._productLabel
+            if self._productID != "RVS":
+                metaDataList, hazardEvents = self.getSegmentMetaData(productSegmentGroup.productSegments[0].segment)
+                productDict['previousProductLabel'] = hazardEvents[0].get('productLabel', None)
 
             # Add productParts to the dictionary
             productParts = productSegmentGroup.productParts
@@ -746,6 +775,7 @@ class Product(ProductTemplate.Product):
                 hazardDict['floodRecord'] = self._tpc.getProductStrings(hazardEvent, metaData, 'floodRecord')
             elif attribute == 'endingOption':
                 hazardDict['endingOption'] = self._tpc.getProductStrings(hazardEvent, metaData, 'endingOption')
+                hazardDict[attribute + "_identifiers"] = attributes.get(attribute)
             else:
                 hazardDict[attribute] = attributes.get(attribute, None)
                 # Add both the identifier and the productString for this attributes.
@@ -762,6 +792,7 @@ class Product(ProductTemplate.Product):
 
         if self._productID != 'RVS':
             hazardDict['locationsAffected'] = self._prepareLocationsAffected(hazardEvent)
+            hazardDict['locationDicts'] = self._prepareLocationDicts(hazardEvent)
             hazardDict['timeZones'] = self._productSegment.timeZones
             hazardDict['cityList'] = self._getCityList([hazardEvent])
             hazardDict['endingSynopsis'] = hazardEvent.get('endingSynopsis')
@@ -773,14 +804,21 @@ class Product(ProductTemplate.Product):
         hazardDict['eventID'] = hazardEvent.getEventID()
         hazardDict['phen'] = hazardEvent.getPhenomenon()
         hazardDict['sig'] = hazardEvent.getSignificance()
-        hazardDict['startTime'] = hazardEvent.getStartTime()
-        hazardDict['endTime'] = hazardEvent.getEndTime()
-        hazardDict['creationTime'] = hazardEvent.getCreationTime()
+        hazardDict[HazardConstants.START_TIME] = hazardEvent.getStartTime()
+        hazardDict[HazardConstants.END_TIME] = hazardEvent.getEndTime()
+        hazardDict[HazardConstants.CREATION_TIME] = hazardEvent.getCreationTime()
         hazardDict['geometry'] = hazardEvent.getProductGeometry()
+        hazardDict['userName'] = hazardEvent.getUserName()
 
         if hazardEvent.get('pointID'):
             # Add RiverForecastPoint data to the dictionary
             self._prepareRiverForecastPointData(hazardEvent.get('pointID'), hazardDict, hazardEvent)
+
+        if hazardEvent.get("locationsAffectedRadioButton") == "pathcast":
+            # Only add the pathcast data if selected in the HID
+            pathcastData = PathCastUtil.preparePathCastData(hazardEvent)
+            hazardDict['pathcastData'] = pathcastData
+            hazardDict['pathcastOtherPoints'] = self._preparePathcastOtherPoints(hazardEvent)
 
         if vtecRecord:
             self._setProductInformation([vtecRecord], [hazardEvent])
@@ -884,11 +922,10 @@ class Product(ProductTemplate.Product):
         must have separate VTEC Engines.
         @param hazardEvents -- list of hazard events
         '''
-        opMode = not self._sessionDict.get('testMode', 0)
         self._vtecEngineWrapper = VTECEngineWrapper(
                self.bridge, self._productCategory, self._fullStationID,
                hazardEvents, vtecMode=self._vtecMode, issueTime=self._issueTime_secs,
-               operationalMode=opMode, testHarnessMode=False, vtecProduct=self._vtecProduct, 
+               operationalMode=(not self._practice), testHarnessMode=False, vtecProduct=self._vtecProduct, 
                issueFlag=self._issueFlag, productGeneratorName= self._productGeneratorName)
         try :
             pass
@@ -1022,10 +1059,50 @@ class Product(ProductTemplate.Product):
                 break  # take the first one
         self._productSegment.canVtecRecord = canVtecRecord
 
+    def _preparePathcastOtherPoints(self, hazardEvent):
+        otherPointDicts = SpatialQuery.executeConfiguredQuery(hazardEvent['flattenedgeometry'],self._siteID,'PathcastOtherPoints')
+        otherPoints = [point.get("name") for point in otherPointDicts]
+        return otherPoints
+
     def _prepareLocationsAffected(self, hazardEvent):
-        locations = SpatialQuery.retrievePoints(hazardEvent['geometry'].asShapely(), 'warngenloc', constraints={'cwa' : self._siteID},
-                                                sortBy=['warngenlev', 'population'], maxResults=20)
+        locationDicts = SpatialQuery.executeConfiguredQuery(hazardEvent['flattenedgeometry'],self._siteID,'LocationsAffected')
+        locations = [loc.get("name") for loc in locationDicts]
         return locations
+
+    def _prepareLocationDicts(self, hazardEvent):
+        '''
+        @param hazardEvent A HazardEvent object
+        @return: List of dictionaries containing information about UGCs covered by the hazard
+        '''
+        hazardEventDict = {}
+        hazardEventDict['ugcs'] = set(hazardEvent.getHazardAttributes().get('ugcs'))
+        hazardEventDict['ugcPortions'] = hazardEvent.get('ugcPortions', {})
+        hazardEventDict['ugcPartsOfState'] = hazardEvent.get('ugcPartsOfState', {})
+        hazardEventDicts = [hazardEventDict]
+
+        # Fill in these data structures
+        portions = {}           # Map UGC to the part(s) of that UGC covered by the hazard.
+        ugcPartsOfState = {}    # Map UGC to the part of the state in which the UGC is located.
+        orderedUgcs = []        # Ordered strings containing UGCs
+        self._tpc.makeUGCInformation(hazardEventDicts, portions, ugcPartsOfState, orderedUgcs)
+
+        locationDicts = []
+
+        for ougc in orderedUgcs :
+            ugc = ougc.split("|")[1]
+
+            entry = {}
+            entry['ugc'] = ugc
+            entry['entityName'] = self._tpc.getInformationForUGC(ugc, "entityName")
+            entry['typeSingular'] = self._tpc.getInformationForUGC(ugc, "typeSingular")
+            entry['typePlural'] = self._tpc.getInformationForUGC(ugc, "typePlural")
+            entry['ugcPortions'] = portions.get(ugc)
+            entry['ugcPartsOfState'] = ugcPartsOfState.get(ugc)
+            entry['fullStateName'] = self._tpc.getInformationForUGC(ugc, "fullStateName")
+
+            locationDicts.append(entry)
+
+        return locationDicts
 
     def _getCityList(self, hazardEvents):
         cityList = []
@@ -1074,8 +1151,8 @@ class Product(ProductTemplate.Product):
                 if identifier:
                     additionalInfoText = ''
                     if identifier == 'listOfDrainages':
-                        drainages = SpatialQuery.retrievePoints(event['geometry'].asShapely(), 'ffmp_basins', constraints={'cwa' : self._siteID},
-                                                                sortBy=['streamname'], locationField='streamname')
+                        drainagesDicts = SpatialQuery.executeConfiguredQuery(event['flattenedgeometry'],self._siteID,'ListOfDrainages')
+                        drainages = [drainage.get("streamname") for drainage in drainagesDicts]
                         drainages = self._tpc.formatDelimitedList(set(drainages))
                         productString = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
                         if len(drainages)== 0 or len(productString) == 0:
@@ -1085,7 +1162,7 @@ class Product(ProductTemplate.Product):
                         citiesListFlag = True
                     elif identifier == 'floodMoving':
                         additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier,
-                                        formatMethod=self.floodTimeStr, formatHashTags=['additionalInfoFloodMovingTime'])
+                                        formatMethod=self.floodTimeStr, formatFramedValues=['additionalInfoFloodMovingTime'])
                     elif identifier == 'addtlRain':
                         additionalInfoText = self._tpc.getProductStrings(event, metaData, 'additionalInfo', choiceIdentifier=identifier)
                         additionalInfoText = self.checkAddtlRainStatement(additionalInfoText, event )
@@ -1121,16 +1198,22 @@ class Product(ProductTemplate.Product):
         return "Additional rainfall amounts" + addtlRainString + inchText + " are possible in the warned area."
 
     def floodTimeStr(self, creationTime, hashTag, flood_time_ms):
-        floodTime = datetime.datetime.utcfromtimestamp(flood_time_ms/1000)
-        tdelta = floodTime - creationTime
-        if (tdelta.days == 6 and floodTime.date().weekday() == creationTime.date().weekday()) or \
+        floodTime = flood_time_ms/1000
+        # Make creationTime timezone aware
+        utcCreationTime = creationTime.replace(tzinfo=tz.tzutc())
+        utcFloodTime = datetime.datetime.fromtimestamp(floodTime, tz=tz.tzutc())
+        localTimeZone = tz.gettz(self._productSegment.timeZones[0])
+        localFloodTime = utcFloodTime.astimezone(localTimeZone)
+        localCreationTime = utcCreationTime.astimezone(localTimeZone)
+        tdelta = localFloodTime - localCreationTime
+        if (tdelta.days == 6 and localFloodTime.date().weekday() == localCreationTime.date().weekday()) or \
             tdelta.days > 6:
             format = '%l%M %p %a %b %d'
-        elif creationTime.day != floodTime.day:
+        elif localCreationTime.day != localFloodTime.day:
             format = '%l%M %p %a'
         else:
             format = '%l%M %p'
-        return floodTime.strftime(format).lstrip()
+        return localFloodTime.strftime(format).lstrip()
 
     def _setProductInformation(self, vtecRecords, hazardEvents, hazardEventDicts=[]):
         if self._issueFlag:
@@ -1146,14 +1229,17 @@ class Product(ProductTemplate.Product):
                         hazardEvent.addToList('etns', vtecRecord['etn'])
                         hazardEvent.addToList('vtecCodes', vtecRecord['act'])
                         hazardEvent.addToList('pils', vtecRecord['pil'])
-                        try:
-                            hazardEvent.set('previousForecastCategory', self._maxFcstCategory)
-                        except:
-                            # Get the value from the hazardEvent dictionary
-                            for eventDict in hazardEventDicts:
-                                if eventDict.get('eventID') == hazardEvent.getEventID():
-                                    hazardEvent.set('previousForecastCategory', eventDict.get('maxFcstCategory', None))
-                                    break
+                        # Only set the productLabel if it is not already set.
+                        if not (hazardEvent.get('productLabel', None)):
+                            hazardEvent.set('productLabel', self._productLabel)
+                        # Get the value from the hazardEvent dictionary
+                        for eventDict in hazardEventDicts:
+                            if eventDict.get('eventID') == hazardEvent.getEventID():
+                                hazardEvent.set('previousForecastCategory', eventDict.get('maxFcstCategory', None))
+                                hazardEvent.set('previousObservedCategory', eventDict.get('observedCategory', None))
+                                hazardEvent.set('previousForecastCategoryName', eventDict.get('maxFcstCategoryName', None))
+                                hazardEvent.set('previousObservedCategoryName', eventDict.get('observedCategoryName', None))
+                                break
 
     def getSegmentHazardEvents(self, segments, hazardEventList=None):
         '''
@@ -1179,8 +1265,7 @@ class Product(ProductTemplate.Product):
                     found = True
             if not found:
                 # Must retrieve this hazard event for automatic cancellation
-                mode = self._sessionDict.get('hazardMode','PRACTICE').upper()
-                hazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+                hazardEvent = HazardDataAccess.getHazardEvent(eventID, self._practice)
                 if hazardEvent is not None:
                     # Initialize the product-specific information
                     hazardEvent.removeHazardAttribute('expirationTime');
@@ -1212,7 +1297,7 @@ class Product(ProductTemplate.Product):
             eventDict['status'] = hazardEvent.getStatus()
             eventDict['immediateCause'] = hazardEvent.get('immediateCause')
             eventDicts.append(eventDict)
-        criteria = {'dataType':'metaData', 'fileName':metaDataFileName}
+        criteria = {'dataType':'metaData', 'fileName':metaDataFileName, 'site':self._siteID}
         metaData = self.bridge.getData(json.dumps(criteria)) 
         if type(metaData) is not types.ListType:
             metaData = metaData.execute(eventDicts, metaDict) 
@@ -1223,7 +1308,7 @@ class Product(ProductTemplate.Product):
         sig = hazardEvent.getSignificance()
         subType = hazardEvent.getSubType()
         criteria = {'dataType':'hazardMetaData_filter',
-                'filter':{'phen':phen, 'sig':sig, 'subType':subType}
+                'filter':{'phen':phen, 'sig':sig, 'subType':subType, "site":self._siteID}
                 }
         metaData, filePath = self.bridge.getData(json.dumps(criteria))
         if type(metaData) is not types.ListType:
@@ -1249,51 +1334,60 @@ class Product(ProductTemplate.Product):
         else:
             return cityList
 
-    def correctProduct(self, dataList, keyInfo, correctAllSegments):
+    def correctProduct(self, dataList, eventSet, keyInfo, correctAllSegments):
         millis = SimulatedTime.getSystemTime().getMillis()
         dt = datetime.datetime.utcfromtimestamp(millis / 1000)
         currentTime = dt.strftime('%d%H%m')
+
+        for hazardEvent in eventSet:
+            # Explicitly remove the attribute because if this python
+            # HazardEvent is backed by a HazardEvent.java (vs
+            # BaseHazardEvent.java), then adding an attribute only adds to the
+            # attribute collection.  It does not replace the existing
+            # attribute.
+            hazardEvent.removeHazardAttribute('issueTime')
+            hazardEvent.set('issueTime', millis)
+
         for i in range(0, len(dataList)):
             data = dataList[i]
             data['startTime'] = currentTime
             data['correction'] = True
+            data['issueTime'] = millis
             segments = data.get('segments')
             for j in range(0, len(segments)):
                 segment = segments[j]
                 if correctAllSegments:
-                    segment = self.correctSegment(segment)
+                    segment = self.correctSegment(segment, millis)
+
                 else:
                     if self.correctionsCheck(segment, keyInfo):
-                        segment = self.correctSegment(segment)
+                        segment = self.correctSegment(segment, millis)
         return dataList
 
-    def correctSegment(self, segment):
-        if 'vtecRecords' in segment:
+    def correctSegment(self, segment, millis):
+         if 'vtecRecords' in segment:
             vtecRecords = segment.get('vtecRecords')
             for vtecRecord in vtecRecords:
-                action = vtecRecord['act']
-                vtecRecord['act'] = 'COR'
-                # Do not set prevAct to COR
-                # incase 2 corrections occur.
-                if action != 'COR':
-                    vtecRecord['prevAct'] = action
-                vtecString = vtecRecord['vtecstr']
-                updatedVtecString = vtecString.replace(action, 'COR')
-                vtecRecord['vtecstr'] = updatedVtecString
-        if 'sections' in segment:
+                self.correctVtecRecord(vtecRecord, millis)
+         if 'sections' in segment:
             sections = segment.get('sections')
             for section in sections:
                 vtecRecord = section.get('vtecRecord')
-                action = vtecRecord['act']
-                vtecRecord['act'] = 'COR'
-                # Do not set prevAct to COR
-                # incase 2 corrections occur.
-                if action != 'COR':
-                    vtecRecord['prevAct'] = action
-                vtecString = vtecRecord['vtecstr']
-                updatedVtecString = vtecString.replace(action, 'COR')
-                vtecRecord['vtecstr'] = updatedVtecString
-        return segment
+                self.correctVtecRecord(vtecRecord, millis)
+         return segment
+    
+    def correctVtecRecord(self, vtecRecord, millis):
+        action = vtecRecord['act']
+        vtecRecord['act'] = 'COR'
+        # Do not set prevAct to COR
+        # incase 2 corrections occur.
+        if action != 'COR':
+            vtecRecord['prevAct'] = action
+        vtecString = vtecRecord['vtecstr']
+        updatedVtecString = vtecString.replace(action, 'COR')
+        vtecRecord['vtecstr'] = updatedVtecString
+        
+        vtecRecord['issueTime'] = millis
 
     def correctionsCheck(self, segmentDict, keyInfo):
         '''
@@ -1306,6 +1400,12 @@ class Product(ProductTemplate.Product):
         # Get the eventIDs and UGC from the KeyInfo object
         eventIDStrings = JUtil.javaObjToPyVal(keyInfo.getEventIDs())
         ugcString = JUtil.javaObjToPyVal(keyInfo.getSegment())
+
+        if (not eventIDStrings) or (not ugcString):
+            # No Events or UGCs, so nothing to correct.  This can happen in the
+            # case of product correction because a final call to executeFrom
+            # (with an empty KeyInfo) is made to refresh the issueTime.
+            return False
 
         # Convert eventIds to strings
         eventIDs = set()
@@ -1373,11 +1473,10 @@ class Product(ProductTemplate.Product):
                                 return
 
     def _prepareToCreateHazardEventDictionary(self, hazardEvent, vtecRecord, metaData):
-        mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
         eventID = hazardEvent.getEventID()
 
         # Get the previous state of this hazard event
-        prevHazardEvent = HazardDataAccess.getHazardEvent(eventID, mode)
+        prevHazardEvent = HazardDataAccess.getHazardEvent(eventID, self._practice)
         if prevHazardEvent is not None:
             prevEventStatus = prevHazardEvent.getStatus()
             if (prevEventStatus != "PROPOSED") and \
@@ -1464,8 +1563,14 @@ class Product(ProductTemplate.Product):
             It correctly adjusts the geometry and ugcs since the current polygon is incorrect
             for this segment.
         '''
-        # Geometry/UGCs for the CAN hazard
-        geometry = prevHazardEvent.getProductGeometry().difference(hazardEvent.getProductGeometry())
+        # Geometries/UGCs for the CAN hazard
+        # As of DR #18278, this is no longer calculating the difference in geometries for CAN/CONs
+        # When WarnGen produces CAN/CON products, it places the same geometry (the CON geometry)
+        # in the product for both the CAN and CON.  This was changed to reflect that behavior.
+        # If the geometry of the cancelled portion is included and the product is displayed in WarnGen
+        # the cancelled portion will erroneously displayed as the continued portion
+        geometry = hazardEvent.getProductGeometry()
+
         prevUGCs = set(prevAttributes.get('ugcs'))
         currentUGCs = set(attributes.get('ugcs'))
         ugcs = list(prevUGCs.difference(currentUGCs))
@@ -1537,12 +1642,14 @@ class Product(ProductTemplate.Product):
         productCounter = 0
         for productSegmentGroup in productSegmentGroups:
             self._productID = productSegmentGroup.productID
+            self._productLabel = productSegmentGroup.productLabel
             # Get the corresponding productDictionary from the dataList
             productDictionary = dataList[productCounter]
 
             # Update the Issue Time/Flag
             productDictionary['issueTime'] = self._issueTime
             productDictionary['issueFlag'] = self._issueFlag
+            purgeHours = productDictionary.get('purgeHours', self._purgeHours)
 
             segmentCounter = 0
             for productSegment in productSegmentGroup.productSegments:
@@ -1551,7 +1658,7 @@ class Product(ProductTemplate.Product):
                 segmentDict = productDictionary.get('segments')[segmentCounter]
 
                 productSegment.metaDataList, productSegment.hazardEvents = self.getSegmentMetaData(productSegment.segment)
-                self._productSegment.expireTime = self._tpc.getExpireTime(self._issueTime, self._purgeHours, 
+                self._productSegment.expireTime = self._tpc.getExpireTime(self._issueTime, purgeHours, 
                                                                           self._productSegment.vtecRecords_ms)
 
                 # Create and order the sections for the segment:     
@@ -1568,21 +1675,35 @@ class Product(ProductTemplate.Product):
                     # Get the corresponding sectionDict from the dataList
                     sectionDict = segmentDict.get('sections')[sectionCounter]
                     sectionDict['vtecRecord'] = sectionVtecRecord
-                    # Update the Product Information
-                    self._setProductInformation([sectionVtecRecord], sectionHazardEvents, sectionDict.get('hazardEvents', None))
 
                     # Update the RFP values for each hazard
                     for hazardDict in sectionDict.get('hazardEvents', []):
                         # Find the corresponding sectionHazardEvent
                         for hazard in sectionHazardEvents:
                             if hazard.getEventID() == hazardDict.get('eventID'):
+                                # Update the times only
+                                hazardDict[HazardConstants.START_TIME] = hazard.getStartTime()
+                                hazardDict[HazardConstants.END_TIME] = hazard.getEndTime()
                                 if hazard.get('pointID', None):
                                     self._prepareRiverForecastPointData(hazard.get('pointID'), hazardDict, hazard)
                                 break
                     sectionCounter = sectionCounter + 1
+
+                    # Update the Product Information
+                    self._setProductInformation([sectionVtecRecord], sectionHazardEvents, sectionDict.get('hazardEvents', None))
                 segmentCounter = segmentCounter + 1
             productCounter = productCounter + 1
 
         # If issuing, save the VTEC records for legacy products
         self._saveVTEC(self._generatedHazardEvents)
         return dataList, self._generatedHazardEvents
+
+    def updateExpireTimes(self, dataList):
+        self._initialize()
+        for productDictionary in dataList:
+            issueTime = productDictionary.get("issueTime")
+            purgeHours = productDictionary.get('purgeHours')
+            for segment in productDictionary.get("segments", []):
+                vtecRecords = segment.get("vtecRecords", [])
+                expireTime = self._tpc.getExpireTime(issueTime, purgeHours, vtecRecords)
+                segment[HazardConstants.EXPIRATION_TIME] = expireTime

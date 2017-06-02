@@ -26,6 +26,7 @@ import com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 
 /**
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQuery
  * May 29, 2015   6895    Ben.Phillippe Refactored Hazard Service data access
  * Aug 20, 2015   6895    Ben.Phillippe Routing registry requests through
  *                                      request server
+ * Mar 14, 2016  12145    mduff         Cleaned up error handling.
  * Feb 16, 2017  29138    Chris.Golden  Revamped to allow for the querying of
  *                                      historical versions of events, or
  *                                      latest (non-historical) versions, or
@@ -51,7 +53,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQuery
  *                                      have to be shipped back to the client.
  * Feb 27, 2017  29138    Chris.Golden  Added method to get latest hazard
  *                                      events by site ID.
- * Apr 13, 2017  33142     Chris.Golden Added ability to delete all events
+ * Apr 13, 2017  33142    Chris.Golden  Added ability to delete all events
  *                                      with a particular event identifier.
  * </pre>
  * 
@@ -69,8 +71,11 @@ public interface IHazardEventManager extends
      * @param request
      *            Query request to be executed.
      * @return Map of event identifiers to their history lists.
+     * @throws HazardEventServiceException
+     *             If a problem occurs when attempting to query the history.
      */
-    Map<String, HazardHistoryList> queryHistory(HazardEventQueryRequest request);
+    Map<String, HazardHistoryList> queryHistory(HazardEventQueryRequest request)
+            throws HazardEventServiceException;
 
     /**
      * Execute the specified query of the registry for the latest versions of
@@ -79,8 +84,11 @@ public interface IHazardEventManager extends
      * @param request
      *            Query request to be executed.
      * @return Map of event identifiers to their history lists.
+     * @throws HazardEventServiceException
+     *             If a problem occurs when attempting to query the latest.
      */
-    Map<String, HazardEvent> queryLatest(HazardEventQueryRequest request);
+    Map<String, HazardEvent> queryLatest(HazardEventQueryRequest request)
+            throws HazardEventServiceException;
 
     /**
      * Retrieve the history lists of all hazards with the specified site
@@ -128,7 +136,7 @@ public interface IHazardEventManager extends
 
     /**
      * Retrieve the history lists of all hazards with specified phenomenon and
-     * signficance (phensig).
+     * significance (phensig).
      * 
      * @param phenomenon
      *            Phenomenon.
@@ -169,7 +177,8 @@ public interface IHazardEventManager extends
      * @param includeLatestVersion
      *            Flag indicating whether or not non-historical latest versions
      *            should be included in the size of the history list.
-     * @return Size of the history list for the specified hazard identifier.
+     * @return Size of the history list for the specified hazard identifier, or
+     *         <code>-1</code> if no such event is found.
      */
     int getHistorySizeByEventID(String eventIdentifier,
             boolean includeLatestVersion);

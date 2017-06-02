@@ -11,6 +11,8 @@
                                         empty string.
     Jun 03, 2015    8530    Robert.Blum Added method for initials productPart.
     Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
+    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
+    Aug 09, 2016   17067    Robert.Blum Fixed RVS products.
 '''
 
 
@@ -38,7 +40,8 @@ class Format(Legacy_Hydro_Formatter.Format):
             'initials': self._initials,
         }
 
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries, overrideProductText):
+        self.overrideProductText = overrideProductText
         self.productDict = productDict
         self.initialize(editableEntries)
         self.timezones = productDict['timezones']
@@ -57,7 +60,7 @@ class Format(Legacy_Hydro_Formatter.Format):
         if statement is None:
             statement = self._tpc.getValueOrFramedText('headlineStatement', productDict, 'Enter Headline Statement')
         self._setVal('headlineStatement', statement, productDict, 'Headline Statement')
-        return statement
+        return statement + '\n'
 
     def _narrativeInformation(self, productDict):
         # Get saved value from productText table if available

@@ -48,6 +48,7 @@ import com.google.common.collect.Maps;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * May 04, 2016 15584      Kevin.Bisanz Rename RiverForcastGroup to RiverForecastGroup
  * </pre>
  * 
  * @author Chris.Cody
@@ -71,29 +72,29 @@ public class RecommenderData {
     public final long currentSystemTime;
 
     /**
-     * A List of RiverForcastGroup objects. This List represents a DEEP query
+     * A List of RiverForecastGroup objects. This List represents a DEEP query
      * and its objects may be traversed to access its sub objects.
      */
     public List<RiverForecastGroup> riverForecastGroupList;
 
     /**
-     * A Map of RiverForcastGroup objects. This contains the SAME INSTANCES as
+     * A Map of RiverForecastGroup objects. This contains the SAME INSTANCES as
      * the above list, but are organized to be directly accessed by GroupId.
      */
     public Map<String, RiverForecastGroup> riverForecastGroupMap;
 
     /**
-     * A List of RiverForcastPoint objects. This List represents a DEEP query
+     * A List of RiverForecastPoint objects. This List represents a DEEP query
      * and its objects may be traversed to access its sub objects.
      */
     public List<RiverForecastPoint> riverForecastPointList;
 
     /**
-     * A Map of RiverForcastPoint objects. This contains the SAME INSTANCES as
+     * A Map of RiverForecastPoint objects. This contains the SAME INSTANCES as
      * the above list, but are organized to be directly accessed by lid
      * (PointID).
      */
-    public Map<String, RiverForecastPoint> riverForcastPointMap;
+    public Map<String, RiverForecastPoint> riverForecastPointMap;
 
     /**
      * A Constructed List of HydroEvent objects. This List represents a Fully
@@ -103,7 +104,7 @@ public class RecommenderData {
     public List<HydroEvent> hydroEventList;
 
     /**
-     * A Map of RiverForcastPoint objects. This contains the SAME INSTANCES as
+     * A Map of RiverForecastPoint objects. This contains the SAME INSTANCES as
      * the above list, but are organized to be directly accessed by lid
      * (PointID).
      */
@@ -169,7 +170,7 @@ public class RecommenderData {
     }
 
     public Map<String, RiverForecastPoint> getRiverForecastPointMap() {
-        return (this.riverForcastPointMap);
+        return (this.riverForecastPointMap);
     }
 
     public List<HydroEvent> getHydroEventList() {
@@ -195,10 +196,10 @@ public class RecommenderData {
                     riverForecastGroup);
         }
 
-        this.riverForcastPointMap = Maps
+        this.riverForecastPointMap = Maps
                 .newHashMapWithExpectedSize(this.riverForecastPointList.size());
         for (RiverForecastPoint riverForecastPoint : this.riverForecastPointList) {
-            this.riverForcastPointMap.put(riverForecastPoint.getLid(),
+            this.riverForecastPointMap.put(riverForecastPoint.getLid(),
                     riverForecastPoint);
         }
 

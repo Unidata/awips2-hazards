@@ -9,9 +9,6 @@
 	<bean id="DeleteInteroperabilityRecordHandler"
 		class="com.raytheon.uf.edex.hazards.interop.handlers.DeleteInteroperabilityRecordHandler" />
 
-	<bean id="GetHazardActiveTableHandler"
-		class="com.raytheon.uf.edex.hazards.interop.handlers.GetHazardActiveTableHandler" />
-
 	<bean id="InteroperabilityConflictsHandler"
 		class="com.raytheon.uf.edex.hazards.interop.handlers.InteroperabilityConflictsHandler" />
 
@@ -40,12 +37,6 @@
 		<constructor-arg
 			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.DeleteInteroperabilityRecordRequest" />
 		<constructor-arg ref="DeleteInteroperabilityRecordHandler" />
-	</bean>
-
-	<bean factory-bean="handlerRegistry" factory-method="register">
-		<constructor-arg
-			value="com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.GetHazardActiveTableRequest" />
-		<constructor-arg ref="GetHazardActiveTableHandler" />
 	</bean>
 
 	<bean factory-bean="handlerRegistry" factory-method="register">

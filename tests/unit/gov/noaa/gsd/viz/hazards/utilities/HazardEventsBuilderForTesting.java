@@ -34,7 +34,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -72,8 +71,7 @@ public class HazardEventsBuilderForTesting {
         Dict dict = Dict.getInstance(eventsAsJson);
         for (String eventId : dict.keySet()) {
 
-            IHazardEvent event = new HazardEventManager(Mode.PRACTICE)
-                    .createEvent();
+            IHazardEvent event = new HazardEventManager(true).createEvent();
             Dict eventDict = dict.getDynamicallyTypedValue(eventId);
             Map<String, Serializable> attributes = Maps.newHashMap();
             for (String key : eventDict.keySet()) {

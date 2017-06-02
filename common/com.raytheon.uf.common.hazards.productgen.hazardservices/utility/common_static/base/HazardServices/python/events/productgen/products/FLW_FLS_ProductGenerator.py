@@ -11,6 +11,9 @@
     Jun 02, 2015    7138    Robert.Blum Defining productID.
     Aug 26, 2015    9631    Robert.Blum Changed self._polygonBased to True.
     Jan 28, 2016   13012    Robert.Blum Removed staging dialog when previewing WarnGen hazards.
+    Jun 08, 2016    9620    Robert.Blum Changed self._purgeHours to a float since purge hours can
+                                        include minutes (15min intervals).
+    Jul 06, 2016   18257    Kevin.Bisanz Added eventSet parameter to executeFrom(..)
     
     @author Robert.Blum@noaa.gov
     @version 1.0
@@ -70,8 +73,7 @@ class Product(HydroGenerator.Product):
         self._areaName = ''
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard
-        # TODO gather this as part of the Hazard Information Dialog
-        self._purgeHours = 12
+        self._purgeHours = 12.0
         self._FLW_ProductName = 'Flood Warning'
         self._FLS_ProductName = 'Flood Statement'
         self._FLS_ProductName_Advisory = 'Flood Advisory'
@@ -296,9 +298,11 @@ class Product(HydroGenerator.Product):
 
     #########################################
 
-    def executeFrom(self, dataList, keyInfo=None):
+    def executeFrom(self, dataList, eventSet, keyInfo=None):
         if keyInfo is not None:
-            dataList = self.correctProduct(dataList, keyInfo, True)
+            dataList = self.correctProduct(dataList, eventSet, keyInfo, True)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList
 
 # Allow interdependencies for the dialog's megawidgets to work.     

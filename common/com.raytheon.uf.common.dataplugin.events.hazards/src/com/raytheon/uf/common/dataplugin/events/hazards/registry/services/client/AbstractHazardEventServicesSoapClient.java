@@ -46,7 +46,6 @@ import javax.net.ssl.X509TrustManager;
 import javax.xml.namespace.QName;
 import javax.xml.ws.Service;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.GetRegistryInfoRequest;
 import com.raytheon.uf.common.security.encryption.AESEncryptor;
@@ -64,7 +63,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Aug 4, 2015  6895     Ben.Phillippe Finished HS data access refactor
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
- * 
+ * May 06, 2016 18202    Robert.Blum   Changes for operational mode.
  * </pre>
  * 
  * @author bphillip
@@ -117,12 +116,12 @@ public class AbstractHazardEventServicesSoapClient extends Service {
      *            The web service namespace
      * @param serviceName
      *            The name of the service
-     * @param mode
-     *            The Hazard Services mode, practice or operational
+     * @param practice
+     *            Practice or operational mode
      */
     protected AbstractHazardEventServicesSoapClient(String path,
-            String namespace, String serviceName, HazardEventManager.Mode mode) {
-        super(getWsdl(path, mode), new QName(namespace, serviceName));
+            String namespace, String serviceName, boolean practice) {
+        super(getWsdl(path, practice), new QName(namespace, serviceName));
     }
 
     /**
@@ -130,13 +129,13 @@ public class AbstractHazardEventServicesSoapClient extends Service {
      * 
      * @param path
      *            The url path
-     * @param mode
+     * @param practice
      *            Practice or operational mode
      * @return The URL to the service wsdl
      */
-    private static URL getWsdl(String path, HazardEventManager.Mode mode) {
+    private static URL getWsdl(String path, boolean practice) {
         try {
-            if (HazardEventManager.Mode.PRACTICE.equals(mode)) {
+            if (practice) {
                 return new URL(REGISTRY_BASE_PATH + path + "/practice?wsdl");
             } else {
                 return new URL(REGISTRY_BASE_PATH + path + "?wsdl");

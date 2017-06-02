@@ -142,9 +142,9 @@ class MetaData(CommonMetaData.MetaData):
         }
     def synopsisCategoryIncrease(self, productLabel):
         if productLabel.find('FFA')>=0:
-            productString = "Heavy rainfall may increase the severity of flooding on the #riverName#."
+            productString = "Heavy rainfall may increase the severity of flooding on the |* riverName *|."
         else:
-            productString = "Heavy rainfall will increase the severity of flooding on the #riverName#."            
+            productString = "Heavy rainfall will increase the severity of flooding on the |* riverName *|."
         return {"identifier":"categoryIncrease",
                 "displayString":"Increase in Category",
                 "productString": productString,
@@ -285,7 +285,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
         #            {'displayString': 'Ice Jam Flooding', 'productString': 'An ice jam may cause water to infiltrate the 
         #                   lowlands along the river.', 'identifier': 'iceJamFlooding'}, 
         #            {'displayString': 'Increase in Category', 'productString': 'Heavy rainfall may increase the severity of 
-        #                   flooding on the #riverName#.', 'identifier': 'categoryIncrease'}]}, 
+        #                   flooding on the |* riverName *|.', 'identifier': 'categoryIncrease'}]}, 
         #        'FFA_tabs': {'enable': True, 'editable': True, 'extraData': {}}, 
         #        'overviewSynopsisContainer_FFA_area': {'enable': True, 'editable': True, 'extraData': {}}}
          

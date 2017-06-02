@@ -405,4 +405,9 @@ public class SimpleSessionEventManager implements
     public Geometry getCwaGeometry() {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void copyEvents(List<IHazardEvent> events) {
+        throw new UnsupportedOperationException();
+    }
 }

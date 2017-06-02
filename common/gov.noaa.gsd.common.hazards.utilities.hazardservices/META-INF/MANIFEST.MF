@@ -4,3 +4,7 @@ Bundle-Name: Hazardservices
 Bundle-SymbolicName: gov.noaa.gsd.common.hazards.utilities.hazardservices
 Bundle-Version: 1.15.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Export-Package: gov.noaa.gsd.common.hazards.utilities.hazardservices
+Require-Bundle: com.raytheon.uf.common.hazards.hydro;bundle-version="1.0.0",
+ com.raytheon.uf.common.status;bundle-version="1.15.0",
+ com.raytheon.uf.common.dataaccess;bundle-version="1.15.1"

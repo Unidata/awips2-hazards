@@ -18,6 +18,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
+import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
@@ -127,6 +128,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Apr 28, 2016 18267      Chris.Golden Added missing method for replacing
  *                                      all hazard attributes, due to a
  *                                      specified originator.
+ * May 02, 2016 18235      Chris.Golden Added source field.
  * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
  *                                      lists for each hazard event into one,
  *                                      replaced by visibility constraints
@@ -163,6 +165,11 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      getter part of IHazardEvent, not
  *                                      IModifiable (which has been removed).
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
+ * Jun 05, 2017 15561      Chris.Golden Added code to notify the session event
+ *                                      manager when an undo or redo caused the
+ *                                      geometry to change.
+ * Jun 21, 2017 18375      Chris.Golden Added new flag that prevents the modified
+ *                                      flag from changing.
  * </pre>
  * 
  * @author bsteffen
@@ -206,6 +213,12 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
      * was last persisted.
      */
     private volatile boolean modified = false;
+
+    /**
+     * Flag for indicating whether or not the {@link #modified} flag is not
+     * allowed to change.
+     */
+    private volatile boolean modifiedNotAllowedToChange = false;
 
     @Override
     public Date getStartTime() {
@@ -302,6 +315,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     @Override
     public ProductClass getHazardMode() {
         return delegate.getHazardMode();
+    }
+
+    @Override
+    public Source getSource() {
+        return delegate.getSource();
     }
 
     @Override
@@ -446,6 +464,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     }
 
     @Override
+    public void setSource(Source source) {
+        setSource(source, true, Originator.OTHER);
+    }
+
+    @Override
     public void setUserName(String userName) {
         setUserName(userName, true, Originator.OTHER);
     }
@@ -547,6 +570,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
     public void setHazardMode(ProductClass productClass, IOriginator originator) {
         setHazardMode(productClass, true, originator);
+    }
+
+    public void setSource(Source source, IOriginator originator) {
+        setSource(source, true, originator);
     }
 
     public void setUserName(String userName, IOriginator originator) {
@@ -987,6 +1014,20 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         return false;
     }
 
+    protected boolean setSource(Source source, boolean notify,
+            IOriginator originator) {
+        if (changed(getSource(), source)) {
+            delegate.setSource(source);
+            if (notify) {
+                eventManager.hazardEventModified(new SessionEventModified(
+                        eventManager, this, originator));
+                handleModification();
+            }
+            return true;
+        }
+        return false;
+    }
+
     protected boolean setUserName(String userName, boolean notify,
             IOriginator originator) {
         if (changed(getUserName(), userName)) {
@@ -1202,7 +1243,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
             try {
                 undoInProgress = true;
+                IAdvancedGeometry oldGeometry = delegate.getGeometry();
                 method.invoke(this, value);
+                if (Utils.equal(oldGeometry, delegate.getGeometry()) == false) {
+                    eventManager.handleEventGeometryChangeFromUndoOrRedo(this);
+                }
             } catch (Exception e) {
                 statusHandler.error("Error invoking undo method for event "
                         + getEventID(), e);
@@ -1221,7 +1266,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
             try {
                 redoInProgress = true;
+                IAdvancedGeometry oldGeometry = delegate.getGeometry();
                 method.invoke(this, value);
+                if (Utils.equal(oldGeometry, delegate.getGeometry()) == false) {
+                    eventManager.handleEventGeometryChangeFromUndoOrRedo(this);
+                }
             } catch (Exception e) {
                 statusHandler.error("Error invoking redo method for event "
                         + getEventID(), e);
@@ -1303,10 +1352,33 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
      */
     @Override
     public void setModified(boolean modified) {
-        if (this.modified != modified) {
+        if ((modifiedNotAllowedToChange == false)
+                && (this.modified != modified)) {
             this.modified = modified;
             eventManager.hazardEventModifiedFlagChanged(this);
         }
+    }
+
+    /**
+     * Determine whether or not the modified flag is not allowed to change.
+     * 
+     * @return <code>true</code> if the modified flag is not allowed to change,
+     *         <code>false</code> otherwise.
+     */
+    boolean isModifiedNotAllowedToChange() {
+        return modifiedNotAllowedToChange;
+    }
+
+    /**
+     * Set the flag indicating whether or not the modified flag is not allowed
+     * to change.
+     * 
+     * @param notAllowedToChange
+     *            Flag indicating whether or not the modified flag is not
+     *            allowed to change.
+     */
+    void setModifiedNotAllowedToChange(boolean notAllowedToChange) {
+        this.modifiedNotAllowedToChange = notAllowedToChange;
     }
 
     @Override

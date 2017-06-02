@@ -59,6 +59,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
+ * May 02, 2016 18235      Chris.Golden Added source field.
  * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
  *                                      lists for each hazard event into one,
  *                                      replaced by visibility constraints
@@ -119,6 +120,8 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private ProductClass hazardMode;
 
+    private Source source;
+
     private String userName;
 
     private String workStation;
@@ -145,6 +148,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setSubType(event.getSubType());
         setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
+        setSource(event.getSource());
         setWorkStation(event.getWorkStation());
         setUserName(event.getUserName());
         if (event.getHazardAttributes() != null) {
@@ -338,6 +342,16 @@ public class BaseHazardEvent implements IHazardEvent {
         this.hazardMode = mode;
     }
 
+    @Override
+    public Source getSource() {
+        return source;
+    }
+
+    @Override
+    public void setSource(Source source) {
+        this.source = source;
+    }
+
     @Deprecated
     public void setHazardMode(String mode) {
         try {
@@ -396,6 +410,7 @@ public class BaseHazardEvent implements IHazardEvent {
                 + ((visualFeatures == null) ? 0 : visualFeatures.hashCode());
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
+        result = prime * result + ((source == null) ? 0 : source.hashCode());
         result = prime * result
                 + ((hazardState == null) ? 0 : hazardState.hashCode());
         result = prime * result
@@ -460,6 +475,9 @@ public class BaseHazardEvent implements IHazardEvent {
             return false;
         }
         if (hazardMode != other.hazardMode) {
+            return false;
+        }
+        if (source != other.source) {
             return false;
         }
         if (hazardState != other.hazardState) {

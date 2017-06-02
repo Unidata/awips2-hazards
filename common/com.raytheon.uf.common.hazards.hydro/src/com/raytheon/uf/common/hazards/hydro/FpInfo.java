@@ -36,6 +36,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
  * Feb 11, 2016 14796      mduff       Add toString().
+ * May 04, 2016 15584      Kevin.Bisanz Rename MAJOR_FLOW, update toString().
  * </pre>
  * 
  * @author Chris.Cody
@@ -114,7 +115,7 @@ public class FpInfo {
 
     private final int MODERATE_FLOW_FIELD_IDX = 28;
 
-    private final int MAJOR_FLOW = 29;
+    private final int MAJOR_FLOW_FIELD_IDX = 29;
 
     /**
      * River station identifier
@@ -407,7 +408,7 @@ public class FpInfo {
                 case MODERATE_FLOW_FIELD_IDX:
                     this.moderateFlow = ((Number) queryValue).doubleValue();
                     break;
-                case MAJOR_FLOW:
+                case MAJOR_FLOW_FIELD_IDX:
                     this.majorFlow = ((Number) queryValue).doubleValue();
                     break;
                 default:
@@ -840,6 +841,10 @@ public class FpInfo {
 
     @Override
     public String toString() {
-        return this.lid + " - Flood Stage: " + this.floodStage;
+        StringBuilder sb = new StringBuilder();
+        sb.append("LID primaryPE FloodStage FloodFlow: ").append(this.lid)
+                .append(" ").append(this.physicalElement).append(" ")
+                .append(this.floodStage).append(" ").append(this.floodFlow);
+        return sb.toString();
     }
 }

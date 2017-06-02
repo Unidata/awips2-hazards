@@ -1,11 +1,6 @@
 '''
     Description: Creates the forecastStageBullet text. 
     
-    This module was run stand-alone by Focal Points to develop the desired logic.
-    We retain this stand-alone capability so that this logic can be extended 
-    by Focal Points to include multiple crests. 
-    
-    
     SOFTWARE HISTORY
     Date         Ticket#    Engineer    Description
     ------------ ---------- ----------- --------------------------
@@ -22,424 +17,2075 @@
     Jun 25, 2015    8313   Benjamin.Phillippe Fixed issued event loading when time is changed
     Jul 23, 2015    9643   Robert.Blum       All rounding is now done in one common place so that it can 
                                              be easily overridden by sites.
-    Sep 09, 2015   10263   Robert Blum       No Forecast bullet if there is no forecast stage.
-    Feb 23, 2016   11901   Robert.Blum       Replacing date/time strings with day of week and time of day wording.
+    Sep 09, 2015    10263  Robert Blum       No Forecast bullet if there is no forecast stage.
+    Feb 23, 2016    11901  Robert.Blum       Replacing date/time strings with day of week and time of day wording.
+    Mar 02, 2016    11898  Robert.Blum       Complete rework to correctly convert RiverPro's templates.
+    May 05, 2016    15584  Kevin.Bisanz      Convert flow based values to stage in replaceVariables(..).
+    May 24, 2016    15584  Kevin.Bisanz      Do not convert flow based values
+                                             to stage in replaceVariables(..);
+                                             instead use values which have been
+                                             based on primary PE.
+    Jun 23, 2016    16045  Kevin.Bisanz      Forecast text of "flood stage" or
+                                             "flood flow" based on primary PE
+                                             instead of hard coded.
+    Jul 28, 2016    20385  Ben.Phillippe     When no forecast present, changed wording to "A forecast is not
+                                             available at this time"
+    Aug 16, 2016    15017  Robert.Blum       Updates to variable names.
+
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types
+from RiverForecastUtils import RiverForecastUtils
 from datetime import datetime
 from HazardConstants import MISSING_VALUE
+from TextProductCommon import  TextProductCommon
 
 MISSING_VALUE_STRING = str(MISSING_VALUE)
 
-class Empty:
-    pass
-
-from TextProductCommon import  TextProductCommon
-
 class ForecastStageText(object):
 
-    def getTestForecastStageText(self, testCase):
-        print '\n*********************************'
-        section = object()
-        for key in testCase:
-             exec 'section.'+key+' = testCase.get("'+key+'")'
-             print key, testCase.get(key)
-        text = self.getForecastStageText(section)
-        print '\nResult:', text
+    def __init__(self):
+        self._riverForecastUtils = RiverForecastUtils()
 
-    def getForecastStageText(self, hazard, timeZones, issueTime):
+    def getForecastStageText(self, hazardDict, timeZones, issueTime, action, pil):
         self.timeZones = timeZones
         self.issueTime = issueTime
-        river_description = self.getRiverDescription(hazard)
-        forecast_description = self.getForecastDescription(hazard)
-        bulletContent = ''
-        if forecast_description:
-            bulletContent = river_description+' '+forecast_description
-        return bulletContent
+        self.action = action
+        self.pil = pil
+        forecast_description = self.getForecastDescription(hazardDict)
+        return forecast_description
 
-    def getRiverDescription(self, hazard):
-        # Alternative --
-        #  return 'The '+ hazard.get('riverName_RiverName')
-        return 'The river'
-        
-    def getForecastDescription(self, hazard):
-        ''' Where are we in the cycle?
-        # Determine if we are rising, falling, cresting
-        # Determine if we will go above flood stage
-        # Currently only one crest reported i.e. the first crest
-        #   but later we can build in logic for multiple crests.  
-        #   Either a more sophisticated phrase or alert user to more complex forecast e.g.
-        #     'River is expected to rise and fall several times in the forecast period'
-        
-        # <when> <trend> <relativeTo> <timeStr - optional>
-        #  is expected to rise above flood stage by Tuesday morning
-        #  will continue to fall below flood stage
-        #  is expected to remain below flood stage
-        
-        @param hazard -- can be a dictionary or object which must contain the RiverForecastPoint 
-                          values shown below
+    def getVariables(self, hazardDict):
         '''
-
-        if type(hazard) is types.DictType or isinstance(hazard, collections.OrderedDict):
-            hazard = self.createHazard(hazard)
-
-#         # Left in for Focal Points working on the module
-#         print 'ForecastStageText Inputs'
-#         print 'observedStage', hazard.observedStage
-#         print 'floodStage', hazard.floodStage
-#         print 'forecastCrestStage', hazard.forecastCrestStage
-#         print 'maximumForecastStage', hazard.maximumForecastStage
-#         print 'forecastRiseAboveFloodStageTime_ms', hazard.forecastRiseAboveFloodStageTime_ms
-#         print 'forecastRiseAboveFloodStageTime_str', hazard.forecastRiseAboveFloodStageTime_str
-#         print 'forecastCrestTime_str', hazard.forecastCrestTime_str
-#         print 'forecastFallBelowFloodStageTime_ms', hazard.forecastFallBelowFloodStageTime_ms
-#         print 'forecastFallBelowFloodStageTime_str', hazard.forecastFallBelowFloodStageTime_str
-#         print 'maximumForecastTime_str', hazard.maximumForecastTime_str
-#         print 'stageFlowUnits', hazard.stageFlowUnits
-#         print 'specValue', hazard.specValue
-#         print 'specTime', hazard.specTime
-#         self.flush()
-        
-        if hazard.observedStage:
-            compareStage = hazard.observedStage
-        else:
-            #'first spec forecast point  e.g. 0 hours in future'
-            compareStage = MISSING_VALUE
-               
-        timeStr = ''     
-        fuzzFactor = 0.5
-
-        # String variables for the rounded stage values
-        if hazard.forecastCrestStage:
-            forecastCrestStage = self.tpc.roundFloat(hazard.forecastCrestStage, returnString=True)
-        else:
-            forecastCrestStage = None
-            
-        if hazard.maximumForecastStage:
-            maximumForecastStage = self.tpc.roundFloat(hazard.maximumForecastStage, returnString=True)
-        else:
-            maximumForecastStage = None
-            
-        if hazard.specValue and hazard.specValue != MISSING_VALUE_STRING:
-            specValue = self.tpc.roundFloat(hazard.specValue, returnString=True)
-        else:
-            specValue = None
-            
-
-        '''
-        # Determine where we are starting in the cycle and describe what follows
-        #   states are : 
-        #     below flood stage  -- compareStage < flood stage 
-        #     rising             --  compareStage < maximum, riseAbove time can be included if rising above, 
-        #     above flood stage  -- compareStage > flood stage
-        #     falling            -- compareStage > maximum,  fallBelow time can be included if falling below
-        #
-        #     at crest stage    -- can be >, = , <  flood stage
-        #                          can be >, = , < maximum stage 
-        #     at maximum stage  -- can be >, = , < flood stage
-        #                          can be >, = , < crest stage
-        
-        '''
-        # Cant have a forecast bullet with no forecast stage
-        if hazard.maximumForecastStage == None or hazard.maximumForecastStage == MISSING_VALUE:
-            return ''
-
-        # risingFalling -- Are we rising or falling?
-        if compareStage != MISSING_VALUE:
-            if hazard.maximumForecastStage and compareStage < hazard.maximumForecastStage - fuzzFactor:
-                self.risingFalling = 'rise'
-                self.trend = 'rise'
-            elif hazard.maximumForecastStage and compareStage > hazard.maximumForecastStage + fuzzFactor:
-                self.risingFalling = 'fall'
-                self.trend = 'fall'
-            else: # steady
-                self.risingFalling = 'remain steady'
-                self.trend = 'steady'
-        else: # steady
-            self.risingFalling = 'remain steady'
-            self.trend = 'steady'
-
-        self.firstRiseFallTime = ''
-        self.secondRiseFallTime = ''
-        # rise above / fall below flood stage
-        if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms and \
-           hazard.forecastRiseAboveFloodStageTime_ms != MISSING_VALUE and hazard.forecastFallBelowFloodStageTime_ms != MISSING_VALUE:
-            if hazard.forecastRiseAboveFloodStageTime_ms < hazard.forecastFallBelowFloodStageTime_ms:
-                self.firstRiseFallTime = ' above flood stage by ' + hazard.forecastRiseAboveFloodStageTime_str
-                self.secondRiseFallTime = ', then fall below flood stage by ' + hazard.forecastFallBelowFloodStageTime_str + ' and continue falling'
-            elif hazard.forecastRiseAboveFloodStageTime_ms > hazard.forecastFallBelowFloodStageTime_ms:
-                self.firstRiseFallTime = ' below flood stage at ' + hazard.forecastFallBelowFloodStageTime_str
-                self.secondRiseFallTime = ', then rise above flood stage by ' + hazard.forecastRiseAboveFloodStageTime_str + ' and continue rising'
-            else: # both missing
-                self.firstRiseFallTime = ''
-                self.secondRiseFallTime = ''
-        elif hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastRiseAboveFloodStageTime_ms != MISSING_VALUE and \
-             (hazard.forecastFallBelowFloodStageTime_ms is None or hazard.forecastFallBelowFloodStageTime_ms == 0 or 
-             hazard.forecastFallBelowFloodStageTime_ms == MISSING_VALUE): 
-            self.firstRiseFallTime = ' above flood stage by ' + hazard.forecastRiseAboveFloodStageTime_str + ' and continue rising'
-            self.secondRiseFallTime = ''
-        elif (hazard.forecastRiseAboveFloodStageTime_ms is None or hazard.forecastRiseAboveFloodStageTime_ms == 0 or
-              hazard.forecastRiseAboveFloodStageTime_ms == MISSING_VALUE) and hazard.forecastFallBelowFloodStageTime_ms and \
-              hazard.forecastFallBelowFloodStageTime_ms != MISSING_VALUE:
-            self.firstRiseFallTime = ' below flood stage by ' + hazard.forecastFallBelowFloodStageTime_str + ' and continue falling'
-            self.secondRiseFallTime = ''
-        else: # both missing
-            self.firstRiseFallTime = ''
-            self.secondRiseFallTime = ''
-
-        # is crest = Maximum forecast stage/flow?  This is a proxy to determine if this a complex event.
-        if hazard.forecastCrestStage !=  hazard.maximumForecastStage:
-            self._crestToMaximum = 'not equal'
-        else:
-            self._crestToMaximum = 'equal'
-
-        # is crest above/below/at Flood stage
-        if hazard.forecastCrestStage:
-            self.crestStatement=' to a crest of ' + forecastCrestStage + ' '+hazard.stageFlowUnits+' by '+hazard.forecastCrestTime_str
-        else:
-            self.crestStatement=''  
-        # determine final stage/flow
-        if self.trend == 'rise' and hazard.forecastCrestStage and self._crestToMaximum != 'equal':
-            self.finalStageFlow='. It will then rise to '+maximumForecastStage+' '+hazard.stageFlowUnits+' by '+hazard.maximumForecastTime_str+'. Additional rises are possible thereafter.'
-        elif self.trend == 'rise' and hazard.forecastCrestStage is None and self._crestToMaximum != 'equal':
-            self.finalStageFlow=' to '+maximumForecastStage+' '+hazard.stageFlowUnits+' by '+hazard.maximumForecastTime_str+'. Additional rises are possible thereafter.'
-        elif self.trend == 'rise' and hazard.forecastCrestStage and self._crestToMaximum == 'equal':
-            self.finalStageFlow='.'
-        elif self.trend == 'fall':
-            self.finalStageFlow = ''
-            if hazard.specValue != MISSING_VALUE_STRING:
-                self.finalStageFlow = ' to '+ specValue + ' '+hazard.stageFlowUnits
-                if hazard.specTime != MISSING_VALUE:
-                    self.finalStageFlow += ' by '+ hazard.specTime
-            self.finalStageFlow += '.'
-        else: # steady
-            if maximumForecastStage is not None:
-                if hazard.maximumForecastStage >= hazard.floodStage:
-                    self.finalStageFlow=' above flood stage by '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
-                elif hazard.maximumForecastStage != MISSING_VALUE:
-                    self.finalStageFlow=' below flood stage by '+maximumForecastStage+' '+hazard.stageFlowUnits+'.'
-                else:
-                    self.finalStageFlow='.'
-            else:
-                self.finalStageFlow='.'
-        phrase = 'is expected to ' + self.risingFalling + self.firstRiseFallTime + self.crestStatement + self.secondRiseFallTime + self.finalStageFlow 
-        return phrase
-
-    def createHazard(self, hazardDict):
-        '''
-        Interface for V3 formatters
+            Pulls all the needed variables out of the hazardDict. It also converts date/time 
+            variables to the needed time of day phrasing and handles rounding of stage values.
         '''
         self.tpc = TextProductCommon()
-        hazard = Empty()
-        hazard.observedStage = hazardDict.get('observedStage')
-        hazard.floodStage = hazardDict.get('floodStage') 
-        hazard.forecastCrestStage = hazardDict.get('forecastCrestStage') 
-        if hazard.forecastCrestStage and hazard.forecastCrestStage == MISSING_VALUE:
-            hazard.forecastCrestStage = None
-            
-        hazard.maximumForecastStage = hazardDict.get('maximumForecastStage') 
+        self.observedStage = hazardDict.get('observedStage', MISSING_VALUE)
+        self.floodStage = hazardDict.get('floodStage', MISSING_VALUE) 
+        self.stageTrend = hazardDict.get('stageTrend', MISSING_VALUE)
+        self.phen = hazardDict.get('phen')
+        self.sig = hazardDict.get('sig')
+        self.primaryPE = hazardDict.get('primaryPE')
+        self.pointID = hazardDict.get('pointID')
+
+
+        # ForecastCrestStage
+        self.forecastCrestStage = hazardDict.get('forecastCrestStage', MISSING_VALUE)
+        if self.forecastCrestStage and self.forecastCrestStage != MISSING_VALUE:
+            self.forecastCrestStage_str = self.tpc.roundFloat(self.forecastCrestStage, returnString=True)
+        else:
+            self.forecastCrestStage_str = None
+
+        self.maxObsStg24 = hazardDict.get('max24HourObservedStage', MISSING_VALUE)
+        if self.maxObsStg24 and self.maxObsStg24 != MISSING_VALUE:
+            self.maxObsStg24_str = self.tpc.roundFloat(self.maxObsStg24, returnString=True)
+        else:
+            self.maxObsStg24_str = None
+
+        # Max
+        self.maxForecastStage = hazardDict.get('maxForecastStage', MISSING_VALUE)
+        if self.maxForecastStage and self.maxForecastStage != MISSING_VALUE:
+            self.maxForecastStage_str = self.tpc.roundFloat(self.maxForecastStage, returnString=True)
+        else:
+            self.maxForecastStage_str = None
+
+        self.fcstRiseFSTime = hazardDict.get('forecastRiseAboveFloodStageTime_ms', MISSING_VALUE) 
+        if self.isValidTime(self.fcstRiseFSTime):
+            self.fcstRiseFSTime_str = self.tpc.getRiverProTimePhrase(self.issueTime,
+                                                                                        self.fcstRiseFSTime, self.timeZones[0])
+        else:
+            self.fcstRiseFSTime_str = None
+
+        self.fcstFallFSTime = hazardDict.get('forecastFallBelowFloodStageTime_ms', MISSING_VALUE)
+        if self.isValidTime(self.fcstFallFSTime):
+            self.fcstFallFSTime_str = self.tpc.getRiverProTimePhrase(self.issueTime,
+                                                                                        self.fcstFallFSTime, self.timeZones[0])
+        else:
+            self.fcstFallFSTime_str = None
+
+        self.forecastCrestTime = hazardDict.get('forecastCrestTime', MISSING_VALUE)
+        if self.isValidTime(self.forecastCrestTime):
+            self.forecastCrestTime_str = self.tpc.getRiverProTimePhrase(self.issueTime, self.forecastCrestTime, self.timeZones[0])
+        else:
+            self.forecastCrestTime_str = None
+
+        self.maxForecastTime_str = hazardDict.get('maxForecastTime_str', None)
+        if self.maxForecastTime_str is None:
+            maxForecastTime = hazardDict.get('maxForecastTime', MISSING_VALUE)
+            if maxForecastTime:
+                self.maxForecastTime_str = self.tpc.getRiverProTimePhrase(self.issueTime, maxForecastTime, self.timeZones[0])
+
+        self.stageFlowUnits = hazardDict.get('stageFlowUnits', MISSING_VALUE_STRING)
+
+        self.specValue =  hazardDict.get('specValue', MISSING_VALUE_STRING) 
+        self.specTime = self.convertTime(hazardDict.get('specTime', MISSING_VALUE)) 
+        if self.specValue and self.specValue != MISSING_VALUE_STRING:
+            self.specValue_str = self.tpc.roundFloat(self.specValue, returnString=True)
+        else:
+            self.specValue_str = None
+
+        self.HT0FFXNext = hazardDict.get('HT0FFXNext', MISSING_VALUE_STRING)
+        self.HT0FFXNextTime = self.convertTime(hazardDict.get('HT0FFXNextTime'))
+        if self.HT0FFXNext and self.HT0FFXNext != MISSING_VALUE_STRING:
+            self.HT0FFXNext = self.tpc.roundFloat(self.HT0FFXNext, returnString=True)
+            self.HT0FFXNext_float = float(self.HT0FFXNext)
+        else:
+            self.HT0FFXNext = None
+            self.HT0FFXNext_float = MISSING_VALUE
+
+        self.HP0FFXNext = hazardDict.get('HP0FFXNext', MISSING_VALUE_STRING)
+        self.HP0FFXNextTime = self.convertTime(hazardDict.get('HP0FFXNextTime'))
+        if self.HP0FFXNext and self.HP0FFXNext != MISSING_VALUE_STRING:
+            self.HP0FFXNext_float = float(self.HP0FFXNext)
+            self.HP0FFXNext = self.tpc.roundFloat(self.HP0FFXNext, returnString=True)
+        else:
+            self.HP0FFXNext = None
+            self.HP0FFXNext_float = MISSING_VALUE
+
+        self.HG0FFXNext =  hazardDict.get('HG0FFXNext', MISSING_VALUE_STRING)
+        self.HG0FFXNextTime = self.convertTime(hazardDict.get('HG0FFXNextTime'))
+        if self.HG0FFXNext and self.HG0FFXNext != MISSING_VALUE_STRING:
+            self.HG0FFXNext = self.tpc.roundFloat(self.HG0FFXNext, returnString=True)
+            self.HGOFFXNEXT_float = float(self.HG0FFXNext)
+        else:
+            self.HG0FFXNext = None
+            self.HGOFFXNEXT_float = MISSING_VALUE
+
+        self.QR0FFXNext = hazardDict.get('QR0FFXNext', MISSING_VALUE_STRING)
+        self.QR0FFXNextTime = self.convertTime(hazardDict.get('QR0FFXNextTime'))
+        if self.QR0FFXNext and self.QR0FFXNext != MISSING_VALUE_STRING:
+            self.QR0FFXNext = self.tpc.roundFloat(self.QR0FFXNext, returnString=True)
+            self.QR0FFXNext_float = float(self.QR0FFXNext)
+        else:
+            self.QR0FFXNext = None
+            self.QR0FFXNext_float = MISSING_VALUE
+
+        self.obsRiseFSTime = hazardDict.get('obsRiseAboveFSTime', MISSING_VALUE)
+        if self.isValidTime(self.obsRiseFSTime):
+            self.obsRiseFSTime_str = self.tpc.getRiverProTimePhrase(self.issueTime, self.obsRiseFSTime, self.timeZones[0])
+        else:
+            self.obsRiseFSTime_str = None
+
+        self.obsFallFSTime = hazardDict.get('obsFallBelowFSTime', MISSING_VALUE)
+        if self.isValidTime(self.obsFallFSTime):
+            self.obsFallFSTime_str = self.tpc.getRiverProTimePhrase(self.issueTime, self.obsFallFSTime, self.timeZones[0])
+        else:
+            self.obsFallFSTime_str = None
+
+        self.floodFlow = hazardDict.get('floodFlow', MISSING_VALUE)
+
+    def getForecastDescription(self, hazardDict):
+        '''
+        Determines which template method to call.
         
-        hazard.forecastRiseAboveFloodStageTime_ms = hazardDict.get('forecastRiseAboveFloodStageTime_ms') 
-        hazard.forecastFallBelowFloodStageTime_ms = hazardDict.get('forecastFallBelowFloodStageTime_ms')
-        hazard.forecastCrestTime_ms = hazardDict.get('forecastCrestTime_ms')
+        @param hazardDict -- a dictionary with the riverforecast point data 
+        '''
+        self.getVariables(hazardDict)
 
-        if hazard.forecastRiseAboveFloodStageTime_ms and hazard.forecastRiseAboveFloodStageTime_ms != MISSING_VALUE:
-            hazard.forecastRiseAboveFloodStageTime_str = self.tpc.getRiverProTimePhrase(self.issueTime,
-                                                                                        hazard.forecastRiseAboveFloodStageTime_ms, self.timeZones[0])
+        crestOnly = False
+        if self.fcstFallFSTime_str == None and self.fcstRiseFSTime_str == None:
+            crestOnly = True
+
+        # Determine which template method to use
+        bulletText = ''
+        if self.maxForecastStage == None or self.maxForecastStage == MISSING_VALUE:
+            if self.pil == "FLW":
+                bulletText = self.VTEC_FLW_NO_FCST()
+            else:
+                bulletText = self.VTEC_FLS_NO_FCST()
+
+        elif self.observedStage == None or self.observedStage == MISSING_VALUE:
+            if self.pil == "FLW":
+                bulletText = self.VTEC_FLW_NO_OBS()
+            else:
+                bulletText = self.VTEC_FLS_NO_OBS()
+
+        elif crestOnly:
+            if self.pil == "FLW":
+                bulletText = self.VTEC_FLW_CRESTONLY()
+            else:
+                bulletText = self.VTEC_FLS_CRESTONLY()
+
+        elif self._riverForecastUtils.isPrimaryPeFlow(self.primaryPE) and \
+        self.floodFlow != None and self.floodFlow != MISSING_VALUE:
+            if self.QR0FFXNext and self.QR0FFXNextTime:
+                if self.pil == "FLW":
+                    bulletText = self.VTEC_FLW_FLOW()
+                else:
+                    bulletText = self.VTEC_FLS_FLOW()
+            else:
+                if self.pil == "FLW":
+                    bulletText = self.VTEC_FLW_NONFFX_FLOW()
+                else:
+                    bulletText = self.VTEC_FLS_NONFFX_FLOW()
+
+        elif self.sig == "Y":
+            #bulletText = self.VTEC_FLOOD_ADVISORY()
+            bulletText = self.VTEC_FLD_ADVISORY()
+
+        elif self.sig == "A":
+            bulletText = self.VTEC_FLOOD_WATCH()
+
+        elif self.HP0FFXNext and self.HP0FFXNextTime:
+            if self.pil == "FLW":
+                bulletText = self.VTEC_FLW_HP()
+            else:
+                bulletText = self.VTEC_FLS_HP()
+
+        elif self.HT0FFXNext and self.HT0FFXNextTime:
+            if self.pil == "FLW":
+                bulletText = self.VTEC_FLW_HT()
+            else:
+                bulletText = self.VTEC_FLS_HT()
+
+        elif self.HG0FFXNext and self.HG0FFXNextTime:
+            if self.pil == "FLW":
+                bulletText = self.VTEC_FLW()
+            else:
+                bulletText = self.VTEC_FLS()
         else:
-            hazard.forecastRiseAboveFloodStageTime_str = None
+            if self.pil == "FLW":
+                bulletText = self.VTEC_FLW_NONFFX()
+            else:
+                bulletText = self.VTEC_FLS_NONFFX()
 
-        if hazard.forecastFallBelowFloodStageTime_ms and hazard.forecastFallBelowFloodStageTime_ms != MISSING_VALUE:
-            hazard.forecastFallBelowFloodStageTime_str = self.tpc.getRiverProTimePhrase(self.issueTime,
-                                                                                        hazard.forecastFallBelowFloodStageTime_ms, self.timeZones[0])
-        else:
-            hazard.forecastFallBelowFloodStageTime_str = None
+        if bulletText:
+            bulletText = self.replaceVariables(bulletText)
+        return bulletText
 
-        if hazard.forecastCrestTime_ms and hazard.forecastCrestTime_ms != MISSING_VALUE:
-            hazard.forecastCrestTime_str = self.tpc.getRiverProTimePhrase(self.issueTime, hazard.forecastCrestTime_ms, self.timeZones[0])
-        else:
-            hazard.forecastCrestTime_str = None
+    def replaceVariables(self, bulletText):
+        '''
+            Replaces framed variables in the bullet text with the actual values if they exist.
+        '''
+        stageFlowName = 'flood ' + self._riverForecastUtils.getStageFlowName(self.primaryPE)
+        bulletText = bulletText.replace('|* StgFlowName *|', stageFlowName)
 
-        hazard.maximumForecastTime_str = hazardDict.get('maximumForecastTime_str')
-        if hazard.maximumForecastTime_str is None:
-            maximumForecastTime_ms = hazardDict.get('maximumForecastTime_ms')
-            if maximumForecastTime_ms:
-                hazard.maximumForecastTime_str = self.tpc.getRiverProTimePhrase(self.issueTime, maximumForecastTime_ms, self.timeZones[0])
+        if self.stageFlowUnits:
+            bulletText = bulletText.replace('|* StgFlowUnits *|', self.stageFlowUnits)
+        if self.maxObsStg24_str:
+            bulletText = bulletText.replace('|* MaxObsStg24 *|', self.maxObsStg24_str)
+        if self.maxForecastStage_str:
+            bulletText = bulletText.replace('|* MaxFcstStg *|', self.maxForecastStage_str)
+        if self.maxForecastTime_str:
+            bulletText = bulletText.replace('|* MaxFcstTime *|', self.maxForecastTime_str)
+        if self.fcstRiseFSTime_str:
+            bulletText = bulletText.replace('|* FcstRiseFSTime *|', self.fcstRiseFSTime_str)
+        if self.fcstFallFSTime_str:
+            bulletText = bulletText.replace('|* FcstFallFSTime *|', self.fcstFallFSTime_str)
+        if self.forecastCrestStage_str:
+            bulletText = bulletText.replace('|* FcstCrestStg *|', self.forecastCrestStage_str)
+        if self.forecastCrestTime_str:
+            bulletText = bulletText.replace('|* FcstCrestTime *|', self.forecastCrestTime_str)
+        if self.specValue_str:
+            bulletText = bulletText.replace('|* SpecFcstStg *|', self.specValue_str)
+        if self.specTime:
+            bulletText = bulletText.replace('|* SpecFcstStgTime *|', self.specTime)
 
-        hazard.stageFlowUnits = hazardDict.get('stageFlowUnits') 
-        hazard.specValue =  hazardDict.get('specValue') 
-        hazard.specTime = hazardDict.get('specTime') 
-        if hazard.specTime != MISSING_VALUE_STRING:
+        if self.HT0FFXNext:
+            bulletText = bulletText.replace('|* HT,0,FF,X,NEXT *|', self.HT0FFXNext)
+        if self.HT0FFXNextTime:
+            bulletText = bulletText.replace('|* HT,0,FF,X,NEXT,TIME *|', self.HT0FFXNextTime)
+        if self.HG0FFXNext:
+            bulletText = bulletText.replace('|* HG,0,FF,X,NEXT *|', self.HG0FFXNext)
+        if self.HG0FFXNextTime:
+            bulletText = bulletText.replace('|* HG,0,FF,X,NEXT,TIME *|', self.HG0FFXNextTime)
+        if self.HP0FFXNext:
+            bulletText = bulletText.replace('|* HP,0,FF,X,NEXT *|', self.HP0FFXNext)
+        if self.HP0FFXNextTime:
+            bulletText = bulletText.replace('|* HP,0,FF,X,NEXT,TIME *|', self.HP0FFXNextTime)
+        if self.QR0FFXNext:
+            bulletText = bulletText.replace('|* QR,0,FF,X,NEXT *|', self.QR0FFXNext)
+        if self.QR0FFXNextTime:
+            bulletText = bulletText.replace('|* QR,0,FF,X,NEXT,TIME *|', self.QR0FFXNextTime)
+
+        bulletText = ' '.join(bulletText.split())
+        return bulletText
+
+    def isValidTime(self, time):
+        if time and time != MISSING_VALUE:
+            return True
+        return False
+
+    def convertTime(self, time):
+        if time != MISSING_VALUE_STRING:
             # Convert to datetime then to millis
-            date = datetime.strptime(hazard.specTime, '%Y-%m-%d %H:%M:%S.%f')
+            date = datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f')
             epoch = datetime.utcfromtimestamp(0)
             delta = date - epoch
-            hazard.specTime = delta.total_seconds() * 1000.0
-            hazard.specTime = self.tpc.getRiverProTimePhrase(self.issueTime, hazard.specTime, self.timeZones[0])
-        return hazard
-    
+            result = delta.total_seconds() * 1000.0
+            result = self.tpc.getRiverProTimePhrase(self.issueTime, result, self.timeZones[0])
+            return result
+        return None
+
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
 
+###########################################################################################################
+#
+#    The below methods are direct conversions from RiverPro's roundup.tpl.BOX file.
+#
+###########################################################################################################
 
-# This code is left in so that Focal Points wanting to override this logic can easily test their modifications to the logic.
-def generateTestCases():
-    t1 = collections.OrderedDict()
-    t1['observedStage'] = 25.0
-    t1['floodStage'] =   35.0
-    t1['forecastCrestStage'] =  40.0
-    t1['maximumForecastStage'] =  45.0
-    t1['forecastRiseAboveFloodStageTime_ms'] =  '2014-08-12'
-    t1['forecastRiseAboveFloodStageTime_str'] =  'Tuesday morning'
-    t1['forecastCrestTime_str'] =  'Wednesday morning'
-    t1['forecastFallBelowFloodStageTime_ms'] =  '2014-08-13'
-    t1['forecastFallBelowFloodStageTime_str'] =  'Wednesday afternoon'
-    t1['maximumForecastTime_str'] =  'Thursday morning'
-    t1['stageFlowUnits'] =  'feet'
-    t1['specValue'] = 45.0
-    t1['specTime'] = 'Thursday morning'
-    
-    
-    t2 = collections.OrderedDict()
-    t2['observedStage'] = 40.0
-    t2['floodStage'] =   35.0
-    t2['forecastCrestStage'] = None 
-    t2['maximumForecastStage'] =  35.0
-    t2['forecastRiseAboveFloodStageTime_ms'] =  None
-    t2['forecastRiseAboveFloodStageTime_str'] =  None
-    t2['forecastCrestTime_str'] =  None
-    t2['forecastFallBelowFloodStageTime_ms'] =  '2014-08-13'
-    t2['forecastFallBelowFloodStageTime_str'] =  'Wednesday afternoon'
-    t2['maximumForecastTime_str'] =  'Wednesday morning'
-    t2['stageFlowUnits'] =  'feet'
-    t2['specValue'] = 30.0
-    t2['specTime'] = 'Thursday morning'
-    
-    t3 = collections.OrderedDict()
-    t3['observedStage'] = 40.0
-    t3['floodStage'] =   35.0
-    t3['forecastCrestStage'] = None 
-    t3['maximumForecastStage'] =  35.0
-    t3['forecastRiseAboveFloodStageTime_ms'] =  None
-    t3['forecastRiseAboveFloodStageTime_str'] =  None
-    t3['forecastCrestTime_str'] =  None
-    t3['forecastFallBelowFloodStageTime_ms'] =  None
-    t3['forecastFallBelowFloodStageTime_str'] =  'Wednesday afternoon'
-    t3['maximumForecastTime_str'] =  'Wednesday morning'
-    t3['stageFlowUnits'] =  'feet'
-    t3['specValue'] = 35.0
-    t3['specTime'] = 'Thursday morning'
-    
-    t4 = collections.OrderedDict()
-    t4['observedStage'] = 40.0
-    t4['floodStage'] =   35.0
-    t4['forecastCrestStage'] = None 
-    t4['maximumForecastStage'] =  38.0
-    t4['forecastRiseAboveFloodStageTime_ms'] =  '2014-08-13 21:00'
-    t4['forecastRiseAboveFloodStageTime_str'] =  'Wednesday evening'
-    t4['forecastCrestTime_str'] =  None
-    t4['forecastFallBelowFloodStageTime_ms'] =  '2014-08-13 12:00'
-    t4['forecastFallBelowFloodStageTime_str'] =  'Wednesday morning'
-    t4['maximumForecastTime_str'] =  'Wednesday morning'
-    t4['stageFlowUnits'] =  'feet'
-    t4['specValue'] = 35.0
-    t4['specTime'] = 'Thursday morning'
-    
-    t5 = collections.OrderedDict()
-    t5['observedStage'] = 25.0
-    t5['floodStage'] =   35.0
-    t5['forecastCrestStage'] = 40.0 
-    t5['maximumForecastStage'] =  40.0
-    t5['forecastRiseAboveFloodStageTime_ms'] =  '2014-08-13 12:00'
-    t5['forecastRiseAboveFloodStageTime_str'] =  'Wednesday morning'
-    t5['forecastCrestTime_str'] =  'Wednesday evening'
-    t5['forecastFallBelowFloodStageTime_ms'] =  '2014-08-14 12:00'
-    t5['forecastFallBelowFloodStageTime_str'] =  'Thursday morning'
-    t5['maximumForecastTime_str'] =  'Wednesday evening'
-    t5['stageFlowUnits'] =  'feet'
-    t5['specValue'] = 35.0
-    t5['specTime'] = 'Thursday morning'
-    
-    t6 = collections.OrderedDict()
-    t6['observedStage'] = 25.0
-    t6['floodStage'] =   35.0
-    t6['forecastCrestStage'] = None 
-    t6['maximumForecastStage'] =  40.0
-    t6['forecastRiseAboveFloodStageTime_ms'] =  '2014-08-13 12:00'
-    t6['forecastRiseAboveFloodStageTime_str'] =  'Wednesday morning'
-    t6['forecastCrestTime_str'] =  None
-    t6['forecastFallBelowFloodStageTime_ms'] =  None
-    t6['forecastFallBelowFloodStageTime_str'] =  None
-    t6['maximumForecastTime_str'] =  'Thursday evening'
-    t6['stageFlowUnits'] =  'feet'
-    t6['specValue'] = 35.0
-    t6['specTime'] = 'Thursday morning'
-    
-    t7 = collections.OrderedDict()
-    t7['observedStage'] = 36.0
-    t7['floodStage'] =   35.0
-    t7['forecastCrestStage'] = None 
-    t7['maximumForecastStage'] =  40.0
-    t7['forecastRiseAboveFloodStageTime_ms'] =  None
-    t7['forecastRiseAboveFloodStageTime_str'] =  None
-    t7['forecastCrestTime_str'] =  None
-    t7['forecastFallBelowFloodStageTime_ms'] =  None
-    t7['forecastFallBelowFloodStageTime_str'] =  None
-    t7['maximumForecastTime_str'] =  'Thursday evening'
-    t7['stageFlowUnits'] =  'feet'
-    t7['specValue'] = 35.0
-    t7['specTime'] = 'Thursday morning'
-    
-    t8 = collections.OrderedDict()
-    t8['observedStage'] = 36.0
-    t8['floodStage'] =   35.0
-    t8['forecastCrestStage'] = 40.0 
-    t8['maximumForecastStage'] =  40.0
-    t8['forecastRiseAboveFloodStageTime_ms'] =  '2014-08-13 12:00'
-    t8['forecastRiseAboveFloodStageTime_str'] =  'Wednesday morning'
-    t8['forecastCrestTime_str'] =  'Wednesday evening'
-    t8['forecastFallBelowFloodStageTime_ms'] =  None
-    t8['forecastFallBelowFloodStageTime_str'] =  None
-    t8['maximumForecastTime_str'] =  'Wednesday evening'
-    t8['stageFlowUnits'] =  'feet'
-    t8['specValue'] = 35.0
-    t8['specTime'] = 'Thursday morning'
-    
-    t9 = collections.OrderedDict()
-    t9['observedStage'] = 36.0
-    t9['floodStage'] =   35.0
-    t9['forecastCrestStage'] = 40.0 
-    t9['maximumForecastStage'] =  40.0
-    t9['forecastRiseAboveFloodStageTime_ms'] =  None
-    t9['forecastRiseAboveFloodStageTime_str'] =  None
-    t9['forecastCrestTime_str'] =  'Wednesday evening'
-    t9['forecastFallBelowFloodStageTime_ms'] =  None
-    t9['forecastFallBelowFloodStageTime_str'] =  None
-    t9['maximumForecastTime_str'] =  'Wednesday evening'
-    t9['stageFlowUnits'] =  'feet'
-    t9['specValue'] = 35.0
-    t9['specTime'] = 'Thursday morning'
-    
-    t10 = collections.OrderedDict()
-    t10['observedStage'] = 36.0
-    t10['floodStage'] =   35.0
-    t10['forecastCrestStage'] = None 
-    t10['maximumForecastStage'] =  36.0
-    t10['forecastRiseAboveFloodStageTime_ms'] =  None
-    t10['forecastRiseAboveFloodStageTime_str'] =  None
-    t10['forecastforecastCrestTime_str_str'] =  'Wednesday evening'
-    t10['forecastFallBelowFloodStageTime_ms'] =  None
-    t10['forecastFallBelowFloodStageTime_str'] =  None
-    t10['maximumForecastTime_str'] =  'Wednesday evening'
-    t10['stageFlowUnits'] =  'feet'
-    t10['specValue'] = 36.0
-    t10['specTime'] = 'Thursday morning'
-    return [
-      t10, 
-    ]
+    def VTEC_FLW(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
 
-# testCases = generateTestCases()
-# for testCase in testCases:
-#    ForecastStageBullet().getTestForecastStageText(testCase)
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        elif self.observedStage < self.floodStage and self.HGOFFXNEXT_float > self.floodStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HG,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        elif self.observedStage < self.floodStage and self.maxForecastStage > \
+        self.floodStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        elif self.observedStage < self.floodStage and self.HGOFFXNEXT_float > \
+        self.floodStage and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HG,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        elif self.observedStage >= self.floodStage and self.maxForecastStage > \
+        self.observedStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HG,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage and \
+        self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
+            bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HG,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        elif self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage and \
+        self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        elif self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage and \
+        self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        elif self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage and \
+        self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        elif self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        elif self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr =  '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        elif self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        elif self.observedStage < self.floodStage and \
+        self.HGOFFXNEXT_float > self.floodStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HG,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        elif self.observedStage < self.floodStage and self.maxForecastStage > \
+        self.floodStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        elif self.observedStage < self.floodStage and self.HGOFFXNEXT_float > \
+        self.floodStage and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HG,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        elif self.observedStage >= self.floodStage and self.maxForecastStage > \
+        self.observedStage and self.HGOFFXNEXT_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HG,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        elif self.observedStage >= self.floodStage and self.HGOFFXNEXT_float > self.observedStage and \
+        self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HG,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HG,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        elif self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage and \
+        self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        elif self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage and \
+        self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        elif  self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage and \
+        self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        elif self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        elif self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast below flood stage/cancellation or expiration issued
+        #
+        elif (self.action == "CAN" or self.action == "EXP") and self.observedStage < self.floodStage and \
+        self.maxForecastStage < self.floodStage and self.obsFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which never rose above flood stage and which has already crested
+        #
+        elif self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage <= self.maxObsStg24:
+            bulletstr = '''The river crested below |* StgFlowName *| at |* MaxObsStg24 *| |* StgFlowUnits *|. The river will
+            fall to |* SpecFcstStg *| |* StgFlowUnits *| by <SpecFcstStageTime>.'''
+
+        #
+        # Cancellation for a location which will not rise above flood stage but which is still rising
+        #
+        elif self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage > self.maxObsStg24:
+            bulletstr = '''The river will crest below |* StgFlowName *| at |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLOOD_ADVISORY(self):
+        bulletstr = ''
+        #
+        # FORECAST INFORMATION
+        #
+        if True:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLD_ADVISORY(self):
+        bulletstr = ''
+        #
+        # Updated 04/21/09 by Mark Armstrong HSD
+        #
+        # This Flood Advisory template contains more information than its rather
+        # simple predecessor. Slightly more complex forecast conditions have
+        # been added. The largest change is to note cancellations based on
+        # the need to issue a Flood Warning.
+        #
+
+        #
+        # FORECAST INFORMATION
+        #
+        if self.observedStage == MISSING_VALUE and self.fcstRiseFSTime == MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Rising limb (but not to flood stage) for NEW, EXT, CON;
+        #
+        if self.action != "CAN" and self.action != "EXP" and self.maxForecastStage != MISSING_VALUE \
+        and self.observedStage != MISSING_VALUE and self.maxForecastStage >= self.observedStage \
+        and self.fcstRiseFSTime == MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.'''
+
+        #
+        # Falling limb (but not to flood stage) for NEW, EXT, CON;
+        #
+        if self.action != "CAN" and self.action != "EXP" and self.maxForecastStage != MISSING_VALUE \
+        and self.observedStage != MISSING_VALUE and self.maxForecastStage < self.observedStage \
+        and self.fcstRiseFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall.'''
+
+        #
+        # Rising above flood stage; a CAN is issued for the FL.Y, but an FL.W is going to be issued
+        #
+        if (self.action == "CAN" or self.action == "EXP") and self.fcstRiseFSTime != MISSING_VALUE:
+            bulletstr = '''The river is forecast to go above |* StgFlowName *| by |* FcstRiseFSTime *|.'''
+
+        #
+        # Cancellation with falling limb forecast
+        #
+        if (self.action == "CAN" or self.action == "EXP" ) and self.maxForecastStage != MISSING_VALUE \
+        and self.maxObsStg24 != MISSING_VALUE and self.maxForecastStage <= self.maxObsStg24:
+            bulletstr = '''The river crested below |* StgFlowName *| at |* MaxObsStg24 *| |* StgFlowUnits *|. The river will
+            continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        # Cancellation for a location which will not rise above flood stage but which is still rising
+        #
+        if (self.action == "CAN" or self.action == "EXP") and self.maxForecastStage > self.maxObsStg24 \
+        and self.fcstRiseFSTime == MISSING_VALUE:
+            bulletstr = '''The river will crest below |* StgFlowName *| at |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_NONFFX(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # New condition added 3/23/2010 to close gap in conditions
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage != self.forecastCrestStage \
+        and self.maxForecastStage > self.observedStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.forecastCrestStage > self.floodStage \
+        and self.maxForecastStage == self.forecastCrestStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage and \
+        self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage and \
+        self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage == self.forecastCrestStage \
+        and self.forecastCrestStage > self.observedStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. The river will fall below |* StgFlowName *| |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_NONFFX(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.forecastCrestStage > self.floodStage \
+        and self.maxForecastStage == self.forecastCrestStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage and \
+        self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage == self.forecastCrestStage \
+        and self.forecastCrestStage > self.observedStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. The river will fall below |* StgFlowName *| |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # New condition added 3/23/2010 to close gap in conditions
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage != self.forecastCrestStage \
+        and self.maxForecastStage > self.observedStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *|.'''
+
+        #
+        # New Condition to allow for the steady trend, but non-MISSING_VALUE Fall Time
+        # 3/26/2010
+        #
+        if self.observedStage >= self.floodStage and self.observedStage > self.maxForecastStage \
+        and self.fcstFallFSTime != MISSING_VALUE and self.stageTrend == "steady":
+            bulletstr = '''The river will gradually fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast below flood stage/cancellation or expiration issued
+        #
+        if (self.action == "CAN" or self.action == "EXP") and self.observedStage < self.floodStage \
+        and self.maxForecastStage < self.floodStage and self.obsFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which never rose above flood stage and which has already crested
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxObsStg24 >= self.maxForecastStage:
+            bulletstr = '''The river crested below |* StgFlowName *| at |* MaxObsStg24 *| |* StgFlowUnits *|. The river will
+            continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which will not rise above flood stage but which is still rising
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage > self.maxObsStg24:
+            bulletstr = '''The river will crest below |* StgFlowName *| with a value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_CRESTONLY(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed at or above flood stage/forecast higher than observed
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage:
+            bulletstr = '''Rise to |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed at or above flood stage/forecast lower than observed
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage < self.observedStage:
+            bulletstr = '''Fall to |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed at or above flood stage/forecast equal to observed
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage == self.observedStage:
+            bulletstr = '''To remain near |* MaxFcstStg *| |* StgFlowUnits *| through |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_CRESTONLY(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed at or above flood stage/forecast higher than observed
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage:
+            bulletstr = '''Rise to |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed at or above flood stage/forecast lower than observed
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage < self.observedStage:
+            bulletstr = '''Fall to |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed at or above flood stage/forecast equal to observed
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage == self.observedStage:
+            bulletstr = '''To remain near |* MaxFcstStg *| |* StgFlowUnits *| through |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage and max forecast below flood stage but greater than obs stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.maxForecastStage > self.observedStage:
+            bulletstr = '''Remain below |* StgFlowName *| and rise to near |* MaxFcstStg *| |* StgFlowUnits *|
+            |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage and max forecast below flood stage and below obs stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage and self.maxForecastStage <= self.observedStage:
+            bulletstr = '''Remain below |* StgFlowName *| near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_NO_FCST(self):
+        bulletstr = ''
+        #
+        # Forecast information
+        #
+        if self.maxForecastStage == MISSING_VALUE:
+            bulletstr = '''A forecast is not available at this time. 
+            This warning will remain in effect until the river falls below |* StgFlowName *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_NO_FCST(self):
+        bulletstr = ''
+        #
+        # Forecast data is MISSING_VALUE
+        #
+        if self.maxForecastStage == MISSING_VALUE:
+            bulletstr = '''A forecast is not available at this time.
+            This warning will remain in effect until the river falls below |* StgFlowName *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_NO_OBS(self):
+        bulletstr = ''
+        #
+        # Forecast information
+        #
+        if self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_NO_OBS(self):
+        bulletstr = ''
+        #
+        # FORECAST INFORMATION
+        #
+        if self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE
+        #
+        if self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLOOD_WATCH(self):
+        bulletstr = ''
+        #
+        # FORECAST INFORMATION
+        #
+        if self.action == "NEW" or self.action == "CON" or self.action == "EXT" and \
+        self.fcstRiseFSTime != MISSING_VALUE:
+            bulletstr = '''|* StgFlowName *| may be reached by |* FcstRiseFSTime *|.'''
+
+        #
+        if self.action == "CAN" or self.action == "EXP":
+            bulletstr = '''The river is forecast to reach a maximum stage of |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_HP(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HP,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
+        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HP,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HP,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
+            bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HP,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_HP(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HP,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
+        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HP0FFXNext_float > self.floodStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HP,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.HP0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HP,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HP0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HP,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HP,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast below flood stage/cancellation or expiration issued
+        #
+        if ( self.action == "CAN" or self.action == "EXP" ) and self.observedStage < self.floodStage  \
+        and self.maxForecastStage < self.floodStage and self.obsFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which never rose above flood stage and which has already crested
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage <= self.maxObsStg24:
+            bulletstr = '''The river crested below |* StgFlowName *| at |* MaxObsStg24 *| |* StgFlowUnits *|. The river will
+            continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which will not rise above flood stage, but which is still rising
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage > self.maxObsStg24:
+            bulletstr = '''The river will crest below |* StgFlowName *| at <MaxObsStg> |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_HT(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HT,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
+        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HT,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HT,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
+            bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HT,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_HT(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage == self.floodStage:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HT,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodStage and self.maxForecastStage > self.floodStage \
+        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodStage and self.HT0FFXNext_float > self.floodStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by |* HT,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage > self.observedStage \
+        and self.HT0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HT,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.HT0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* HT,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* HT,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodStage and self.maxForecastStage <= self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed below flood stage/forecast below flood stage/cancellation or expiration issued
+        #
+        if ( self.action == "CAN" or self.action == "EXP") and self.observedStage < self.floodStage \
+        and self.maxForecastStage < self.floodStage and self.obsFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Cancellation for a location which never rose above flood stage and which has already crested
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage <= self.maxObsStg24:
+            bulletstr = '''The river crested below |* StgFlowName *| at |* MaxObsStg24 *| |* StgFlowUnits *|. The river will
+            continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which will not rise above flood stage, but which is still rising
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage > self.maxObsStg24:
+            bulletstr = '''The river will crest below |* StgFlowName *| at <MaxObsStg> |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_NONFFX_FLOW(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage == self.floodFlow:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.forecastCrestStage > self.floodFlow \
+        and self.maxForecastStage == self.forecastCrestStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
+        and self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
+        and self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage == self.forecastCrestStage \
+        and self.forecastCrestStage > self.observedStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. The river will fall below |* StgFlowName *| |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_NONFFX_FLOW(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage == self.floodFlow:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.forecastCrestStage > self.floodFlow \
+        and self.maxForecastStage == self.forecastCrestStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
+        and self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
+        and self.forecastCrestStage == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage == self.forecastCrestStage \
+        and self.forecastCrestStage > self.observedStage and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* FcstCrestStg *| |* StgFlowUnits *| by
+            |* FcstCrestTime *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. The river will fall below |* StgFlowName *| |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of self.maxForecastStage |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast below flood stage/cancellation or expiration issued
+        #
+        if (self.action == "CAN" or self.action == "EXP" ) and self.observedStage < self.floodFlow \
+        and self.maxForecastStage < self.floodFlow and self.obsFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which never rose above flood stage and has already crested
+        #
+        if self.action == "CAN" and self.observedStage < self.floodFlow and self.maxForecastStage < self.floodFlow \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxObsStg24 >= self.maxForecastStage:
+            bulletstr = '''The river crested below |* StgFlowName *| at |* MaxObsStg24 *| |* StgFlowUnits *|. The river will
+            continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which will not rise above flood stage, but which is still rising
+        #
+        if self.action == "CAN" and self.observedStage < self.floodFlow and self.maxForecastStage < self.floodFlow \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage > self.maxObsStg24:
+            bulletstr = '''The river will crest below |* StgFlowName *| with a value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLW_FLOW(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage == self.floodFlow:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* QR,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
+        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by |* QR,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
+        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* QR,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE and self.forecastCrestStage > self.observedStage:
+            bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* QR,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *| 
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr
+
+    def VTEC_FLS_FLOW(self):
+        bulletstr = ''
+        #
+        # Observed below flood stage/forecast to rise just to flood stage
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage == self.floodFlow:
+            bulletstr = '''The river is expected to rise to near |* StgFlowName *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/not falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* QR,0,FF,X,NEXT,TIME *|.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has no crest
+        #
+        if self.observedStage < self.floodFlow and self.maxForecastStage > self.floodFlow \
+        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* MaxFcstStg *| |* StgFlowUnits *| by |* MaxFcstTime *|.
+            Additional rises are possible thereafter.'''
+
+        #
+        # Observed below flood stage/forecast above flood stage/forecast time
+        # series has a crest/falling below flood stage
+        #
+        if self.observedStage < self.floodFlow and self.QR0FFXNext_float > self.floodFlow \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''Rise above |* StgFlowName *| by |* FcstRiseFSTime *|
+            and continue to rise to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by |* QR,0,FF,X,NEXT,TIME *|.
+            The river will fall below |* StgFlowName *| by |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continues above flood stage/no
+        # crest in forecast time series
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage > self.observedStage \
+        and self.QR0FFXNext_float == MISSING_VALUE and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* MaxFcstStg *| |* StgFlowUnits *| by
+            |* MaxFcstTime *|. Additional rises may be possible thereafter.'''
+
+        #
+        # Observed above flood stage/forecast crests but stays above flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* QR,0,FF,X,NEXT,TIME *| then begin falling.'''
+
+        #
+        # Observed above flood stage/forecast crests and falls below flood
+        # x stage
+        #
+        if self.observedStage >= self.floodFlow and self.QR0FFXNext_float > self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue rising to near |* QR,0,FF,X,NEXT *| |* StgFlowUnits *| by
+            |* QR,0,FF,X,NEXT,TIME *|. The river will fall below |* StgFlowName *|
+            |* FcstFallFSTime *|.'''
+
+        #
+        # Observed above flood stage/forecast continue fall/not below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "falling" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to a stage of |* SpecFcstStg *| |* StgFlowUnits *| by
+            |* SpecFcstStgTime *|.'''
+
+        #
+        # Observed above flood stage/forecast is steady/not fall below flood stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.stageTrend == "steady" and self.fcstFallFSTime == MISSING_VALUE:
+            bulletstr = '''The river will remain near |* MaxFcstStg *| |* StgFlowUnits *|.'''
+
+        #
+        # Observed above flood stage/forecast continues fall to below flood
+        # stage
+        #
+        if self.observedStage >= self.floodFlow and self.maxForecastStage <= self.observedStage \
+        and self.fcstFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to below |* StgFlowName *| by
+            |* FcstFallFSTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage >= self.floodStage:
+            bulletstr = '''The river is forecast to have a maximum value of |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST BELOW FLOOD STAGE FOR NO OBS SITUATION
+        # change made 3/17/2009 Mark Armstrong HSD
+        #
+        if self.observedStage == MISSING_VALUE and self.maxForecastStage < self.floodStage:
+            bulletstr = '''The river is forecast below |* StgFlowName *| with a maximum value of |* MaxFcstStg *|
+            |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # Observed below flood stage/forecast below flood stage/cancellation or expiration issued
+        #
+        if (self.action == "CAN" or self.action == "EXP") and self.observedStage < self.floodFlow \
+        and self.maxForecastStage < self.floodFlow and self.obsFallFSTime != MISSING_VALUE:
+            bulletstr = '''The river will continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which never rose above flood stage and which has already crested
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage <= self.maxObsStg24:
+            bulletstr = '''The river crested below |* StgFlowName *| at |* MaxObsStg24 *| |* StgFlowUnits *|. The river will
+            continue to fall to |* SpecFcstStg *| |* StgFlowUnits *| by |* SpecFcstStgTime *|.'''
+
+        #
+        # Cancellation for a location which will not rise above flood stage, but which is still rising
+        #
+        if self.action == "CAN" and self.observedStage < self.floodStage and self.maxForecastStage < self.floodStage \
+        and self.obsRiseFSTime == MISSING_VALUE and self.obsFallFSTime == MISSING_VALUE and self.maxForecastStage > self.maxObsStg24:
+            bulletstr = '''The river will crest below |* StgFlowName *| at <MaxObsStg> |* StgFlowUnits *| |* MaxFcstTime *|.'''
+
+        #
+        # FORECAST INFORMATION FOR NON-FLOOD LOCATIONS
+        #
+        if self.action == "ROU" and self.maxForecastStage != MISSING_VALUE:
+            bulletstr = '''The river will rise to near |* MaxFcstStg *| |* StgFlowUnits *| |* MaxFcstTime *|.'''
+        return bulletstr

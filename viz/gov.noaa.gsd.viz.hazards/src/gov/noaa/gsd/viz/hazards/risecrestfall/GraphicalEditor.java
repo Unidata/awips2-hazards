@@ -47,6 +47,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.hydro.HydrographForecast;
 import com.raytheon.uf.common.hazards.hydro.HydrographObserved;
@@ -57,6 +58,7 @@ import com.raytheon.uf.common.hazards.hydro.SHEFForecast;
 import com.raytheon.uf.common.hazards.hydro.SHEFObserved;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IEventApplier;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
@@ -83,6 +85,12 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jan 08, 2016   12499    Roger.Ferrel Fix handling of time variables and code clean up.
  * Jan 15, 2016    9387    Robert.Blum Fix UFN so that the HID checkbox stays in sync.
  * Feb 08, 2016   15422    mduff       Removed references (all comments) to SWTDialogBase.
+ * Mar 23, 2016   16050    Robert.Blum Fixed case where startTime could be set in the passed for
+ *                                     hazards that have not been issued yet.
+ * May 02, 2016   18247    Robert.Blum Graphical Editor now looks at observed crests as well.
+ * May 10, 2016   16869    mduff       Remove checks for starttime before current time if the product 
+ *                                     has already been issued.
+ * Aug 16, 2016   15017    Robert.Blum Updates for setting the crest value/time correctly.
  * </pre>
  * 
  * @author mpduff
@@ -370,7 +378,16 @@ public class GraphicalEditor extends CaveSWTDialog implements
             }
         }
 
-        graphData.setCrestValue(riverForecastPoint.getForecastCrestValue());
+        double forecastCrest = (Double) event
+                .getHazardAttribute(HazardConstants.CREST_STAGE_FORECAST);
+
+        double maxForecastStage = (Double) event
+                .getHazardAttribute(HazardConstants.MAX_FORECAST_STAGE);
+        graphData
+                .setCrestValueMaxForecastValue(maxForecastStage == forecastCrest);
+        double observedCrest = (Double) event
+                .getHazardAttribute(HazardConstants.CREST_STAGE_OBSERVED);
+        graphData.setCrestValue(Math.max(observedCrest, forecastCrest));
     }
 
     private void createCanvas(Shell shell) {
@@ -439,14 +456,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
             @Override
             public void mouseDown(MouseEvent e) {
                 long time = setTime(beginTime);
-                if (isValidTime(time)) {
-                    Date date = convertTimeToDate(time);
-                    beginTimeTxt.setText(dateFormat.format(date));
-                    displayCanvas.setDate(EventType.BEGIN, date);
-                    beginTime = time;
-                    beginSetRdo.setSelection(true);
-                    beginCurrentRdo.setSelection(false);
-                }
+                setBeginTime(time);
             }
         });
 
@@ -849,8 +859,22 @@ public class GraphicalEditor extends CaveSWTDialog implements
         if (!isValidTime(this.crestTime)) {
             newAttributes.put(HazardConstants.CREST,
                     HazardConstants.MISSING_VALUE);
+            /*
+             * Should also set the either obs or forecast crest time here, but
+             * which one? Since it is missing, we can,t compare with
+             * currentTime.
+             */
         } else {
             newAttributes.put(HazardConstants.CREST, this.crestTime);
+
+            // Also need to update either the obs or forecast crest time
+            if (crestTime > SimulatedTime.getSystemTime().getMillis()) {
+                newAttributes.put(HazardConstants.CREST_TIME_FORECAST,
+                        this.crestTime);
+            } else {
+                newAttributes.put(HazardConstants.CREST_TIME_OBSERVED,
+                        this.crestTime);
+            }
         }
 
         Date beginDate = convertTimeToDate(beginTime);
@@ -874,12 +898,27 @@ public class GraphicalEditor extends CaveSWTDialog implements
                     false);
         }
 
-        String crestValue = this.crestValTxt.getText();
-        if (crestValue == null) {
-            newAttributes.put(HazardConstants.CREST_STAGE,
-                    HazardConstants.MISSING_VALUE);
+        Double crestValue = Double.valueOf(HazardConstants.MISSING_VALUE);
+        if (this.crestValTxt.getText().isEmpty() == false) {
+            crestValue = Double.valueOf(this.crestValTxt.getText());
+        }
+
+        if (crestTime > SimulatedTime.getSystemTime().getMillis()) {
+            newAttributes.put(HazardConstants.CREST_STAGE_FORECAST, crestValue);
+            newAttributes.put(HazardConstants.CREST_STAGE, Math.max(crestValue,
+                    (Double) attributes
+                            .get(HazardConstants.CREST_STAGE_OBSERVED)));
+            if (graphData.isCrestValueMaxForecastValue()) {
+                newAttributes.put(HazardConstants.MAX_FORECAST_STAGE,
+                        crestValue);
+                newAttributes.put(HazardConstants.MAX_FORECAST_TIME,
+                        this.crestTime);
+            }
         } else {
-            newAttributes.put(HazardConstants.CREST_STAGE, crestValue);
+            newAttributes.put(HazardConstants.CREST_STAGE_OBSERVED, crestValue);
+            newAttributes.put(HazardConstants.CREST_STAGE, Math.max(crestValue,
+                    (Double) attributes
+                            .get(HazardConstants.CREST_STAGE_FORECAST)));
         }
 
         this.event.setHazardAttributes(newAttributes);
@@ -976,15 +1015,20 @@ public class GraphicalEditor extends CaveSWTDialog implements
             isValid = false;
         }
 
-        if ((endDate != null) && (beginDate != null)) {
+        if (beginDate != null) {
             Calendar currentCal = TimeUtil.newCalendar();
             currentCal.set(Calendar.SECOND, 0);
             currentCal.set(Calendar.MILLISECOND, 0);
-            if (beginDate.before(currentCal.getTime())) {
-                isValid = false;
-                invalidTimeHeader(errMsgSB);
-                errMsgSB.append("Start time cannot be earlier then current time\n");
+            if (!HazardStatus.hasEverBeenIssued(event.getStatus())) {
+                // Not issued yet, just set it to current time.
+                beginDate = currentCal.getTime();
+                beginTime = beginDate.getTime();
+                event.setStartTime(beginDate);
+                setBeginTime(beginTime);
             }
+        }
+
+        if ((endDate != null) && (beginDate != null)) {
             if (endDate.before(beginDate)) {
                 invalidTimeHeader(errMsgSB);
                 errMsgSB.append(endTimeLblTxt);
@@ -995,14 +1039,6 @@ public class GraphicalEditor extends CaveSWTDialog implements
             }
         }
 
-        /*
-         * TODO Currently there are no date time constraints other than Start
-         * and must precede End. Rules have not been established to otherwise
-         * constrain Rise, Crest, Fall, Start and End.
-         * 
-         * Start time less then current time causes errors added check prevent
-         * ugly stack trace messages.
-         */
         if (errMsgSB.length() > 0) {
             String msgString = "Invalid date time or date time format:\n"
                     + errMsgSB.toString() + "Correct Format is "
@@ -1031,6 +1067,17 @@ public class GraphicalEditor extends CaveSWTDialog implements
             errMsgSB.append(": ");
             errMsgSB.append(beginTimeTxt.getText());
             errMsgSB.append("\n");
+        }
+    }
+
+    private void setBeginTime(long time) {
+        if (isValidTime(time)) {
+            Date date = convertTimeToDate(time);
+            beginTimeTxt.setText(dateFormat.format(date));
+            displayCanvas.setDate(EventType.BEGIN, date);
+            beginTime = time;
+            beginSetRdo.setSelection(true);
+            beginCurrentRdo.setSelection(false);
         }
     }
 

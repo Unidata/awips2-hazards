@@ -1,4 +1,13 @@
-from ufpy.dataaccess import DataAccessLayer
+from com.raytheon.uf.common.serialization.comm import RequestRouter
+from com.raytheon.uf.common.hazards.productgen.request import SpatialQueryRequest
+from GeometryHandler import jtsToShapely, shapelyToJTS
+import JUtil
+JUtil.registerJavaToPython(jtsToShapely)
+JUtil.registerPythonToJava(shapelyToJTS)
+from spatialQueryConfig import SpatialQueries
+from com.vividsolutions.jts.io import WKBReader
+
+
 '''
     Description: Utility class to retrieve points from the map database.
     
@@ -10,77 +19,57 @@ from ufpy.dataaccess import DataAccessLayer
                                         the query to be more flexible.
     Jun 17, 2015    7636    Robert.Blum Added maxResults.
     Aug 03, 2015    9920    Robert.Blum Fixed duplicate alias sql error.
+    Mar 02, 2016    14032 Ben.Phillippe Reworked class to use a request object to allow more complex
+                                        PostGIS geometric functions to be utilized
+    Aug 08, 2016    21056   Robert.Blum Added retrievePathcastLocations.
     
     @version 1.0
 '''
 
-def retrievePoints(geometryCollection, tablename, constraints=None, sortBy=None, locationField='name',
-                   maxResults=None, ):
+def executeConfiguredQuery(geometryCollection,siteID,queryName):
+    query = SpatialQueries[queryName]
+    if query is None:
+         raise Exception("No spatial query with name ", queryName," is configured")
+
+    constraints=query.get('constraints',{})
+    sortBy=query.get('sortBy',[])
+    returnFields=query.get('returnFields',['name'])
+    maxResults=query.get('maxResults',None)
+
+    if 'cwa' not in constraints:
+        constraints['cwa']=siteID
+        
+    return retrievePoints(geometryCollection, query['tableName'], constraints, sortBy, returnFields, maxResults)
+
+def retrievePoints(geometryCollection, tablename, constraints=None, sortBy=None, returnFields=['name'],
+                   maxResults=None):
     """
     Returns the list of location names.
     @param geometryCollection: the geometry that will be used to intersect the points
     @param tablename: the name of the mapdata table to query against
     @param constraints: a dictionary that has a table field name map to a value or a list of values
-    @param sortBy: a list of table field names to sort the results by
+    @param sortBy: a list of table field names and sort directions to sort the results by
+    @param returnFields: The fields returned by the query
     @param maxResults: the max points allowed to be returned
     @return: Returns the list of location names.
-    """ 
-    params = set() 
-    if constraints and type(constraints) is dict:
-        params.update(constraints.keys())
+    """
+    jGeom = JUtil.pyValToJavaObj(geometryCollection)
     
-    if sortBy and type(sortBy) is list:
-        params.update(sortBy)
-    
-    # Remove the location field from the params if it was added
-    if locationField in params:
-        params.remove(locationField)
-    
-    req = DataAccessLayer.newDataRequest('maps', parameters=list(params))
-    req.addIdentifier('table','mapdata.' + tablename)
-    req.addIdentifier('geomField','the_geom')
-    req.addIdentifier('locationField', locationField)
-    
-    locations = []
-    potentialGeometryData = []
-    for geom in geometryCollection:
-        req.setEnvelope(geom.envelope)
-        geometryData = DataAccessLayer.getGeometryData(req)
-        for data in geometryData:
-            if geom.intersects(data.getGeometry()):
-                potentialGeometryData.append(data)
-         
-    # collect only the geometries that intersect the geoms
-    # and fits the constraints
-    validGeometryData = []    
-    for potential in potentialGeometryData:
-        if constraints and type(constraints) is dict:
-            for constraint in constraints:
-                value = constraints[constraint]
-                if type(value) is list and potential.getString(constraint) in value:
-                    validGeometryData.append(potential)
-                elif potential.getString(constraint) == value:
-                    validGeometryData.append(potential)
-    
-    results = []
-    for valid in validGeometryData:
-        result = [valid.getLocationName()]
-        if sortBy and type(sortBy) is list:
-            for param in sortBy:
-                result.append(valid.getString(param))
-        results.append(result)
-              
-    # order the results
-    if sortBy and type(sortBy) is list:
-        results.sort(key=lambda x: tuple(x[i] for i in range(1, len(sortBy)+1)))
-
-    returnList = [result[0] for result in results]
-
-    # Reduce length if mazResults is supplied.
-    if maxResults and len(returnList) > maxResults:
-        reducedList = []
-        for x in range(maxResults):
-            reducedList.append(returnList[x])
-        return reducedList
-
-    return returnList
+    request = SpatialQueryRequest()
+    request.setReturnFields(JUtil.pyValToJavaObj(returnFields))
+    request.setGeometry(jGeom)
+    if maxResults is not None:
+        request.setMaxResults(maxResults)
+    request.setTableName(tablename)
+    if sortBy is not None:
+        request.setSortBy(JUtil.pylistToJavaStringList(sortBy))
+    if constraints is not None:
+        request.setConstraints(JUtil.pyDictToJavaMap(constraints))
+    results = RequestRouter.route(request)
+    if "the_geom" in returnFields:
+        reader = WKBReader()
+        for result in results:
+            bytes = result.remove("the_geom")
+            if bytes:
+                result["geom"] = reader.read(bytes)
+    return JUtil.javaObjToPyVal(results)

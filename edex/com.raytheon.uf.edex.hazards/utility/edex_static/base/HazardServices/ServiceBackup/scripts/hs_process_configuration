@@ -4,20 +4,12 @@
 # Process Received Configuration
 # This is run at the backup site to import the backed up site's Hazard Services
 # site configuration into the localization store.
-#
-# SOFTWARE HISTORY
-# Date         Ticket#    Engineer    Description
-# ------------ ---------- ----------- --------------------------
-# Sep 08, 2015 3473       Chris.Cody  Initial version
-# Nov 23, 2015 3473       Robert.Blum Additional changes for Service Backup
-# Dec 01, 2015 3473       Robert.Blum Fixed logging and a few other fixes.
 ##############################################################################
 if [ ${#AWIPS_HOME} = 0 ]
 then
     AWIPS_HOME=/awips2
 fi
 
-source ${AWIPS_HOME}/edex/bin/setup.env
 source ${AWIPS_HOME}/edex/data/utility/edex_static/base/HazardServices/ServiceBackup/configuration/svcbu.properties
 source ${HS_SCRIPTS_DIR}/serviceBackupUtil.sh
 HS_SVC_CFG_TAR_PREFIX=HazardServicesConfig
@@ -59,8 +51,8 @@ else
     exit 1
 fi
 
-if [ ${#AW_SITE_IDENTIFIER} = 0 ]; then
-    echo "Mandatory variable: AW_SITE_IDENTIFIER unset. Program exits."
+if [ ${#SITE_IDENTIFIER} = 0 ]; then
+    echo "Mandatory variable: SITE_IDENTIFIER unset. Program exits."
     markTaskFailed ${lock_file}
     exit 1
 fi
@@ -84,8 +76,8 @@ fi
 
 HS_SVC_BKUP_FILENAME=$(basename ${import_file})
 
-if [ ${CAPS_SITE_ID} = ${AW_SITE_IDENTIFIER} ]; then
-    echo "Cannot import Backup Site Data for the Local Site Id ${AW_SITE_IDENTIFIER}"
+if [ ${CAPS_SITE_ID} = ${SITE_IDENTIFIER} ]; then
+    echo "Cannot import Backup Site Data for the Local Site Id ${SITE_IDENTIFIER}"
     markTaskFailed ${lock_file}
     exit 1
 fi

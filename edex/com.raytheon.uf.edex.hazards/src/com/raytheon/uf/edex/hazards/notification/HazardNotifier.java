@@ -23,7 +23,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -46,6 +45,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Mar 24, 2014  3323      bkowal        Mode is now required to construct
  *                                       HazardNotification
  * May 29, 2015  6895      Ben.Phillippe Refactored Hazard Service data access
+ * May 06, 2016 18202      Robert.Blum   Changes for operational mode.
  * Feb 16, 2017 29138      Chris.Golden  Changed to use HazardEvent instead of
  *                                       IHazardEvent, since only the former
  *                                       has a unique identifier.
@@ -93,15 +93,16 @@ public class HazardNotifier {
      *            The hazard event
      * @param type
      *            The type of notification
-     * @param mode
-     *            The mode
+     * @param practice
+     *            The practice or operational mode flag
      */
-    public void notify(HazardEvent event, NotificationType type, Mode mode) {
+    public void notify(HazardEvent event, NotificationType type,
+            boolean practice) {
         if (event == null) {
             throw new IllegalArgumentException("Cannot publish a null event");
         }
         HazardNotification notification = new HazardNotification(event, type,
-                mode);
+                practice);
 
         /*
          * If there is a transaction currently active, cache the notifications

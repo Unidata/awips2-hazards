@@ -21,7 +21,6 @@ package com.raytheon.uf.common.hazards.storage;
 
 import org.junit.BeforeClass;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.geospatial.adapter.GeometryTypeAdapter;
 import com.raytheon.uf.common.serialization.DynamicSerializationManager;
 import com.raytheon.uf.common.serialization.comm.RequestRouterTest;
@@ -49,18 +48,12 @@ public class HazardDatabaseTest extends AbstractHazardStorageTest {
     @BeforeClass
     public static void classSetUp() {
         RequestRouterTest.setDeployInstance();
-        DynamicSerializationManager.registerAdapter(Geometry.class, new GeometryTypeAdapter());
+        DynamicSerializationManager.registerAdapter(Geometry.class,
+                new GeometryTypeAdapter());
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.hazards.storage.AbstractHazardStorageTest#getMode
-     * ()
-     */
     @Override
-    Mode getMode() {
-        return Mode.PRACTICE;
+    boolean isPractice() {
+        return true;
     }
 }

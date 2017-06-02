@@ -16,14 +16,13 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                         self.getPreviousEditedText(),
                         self.getInclude(),
-                        self.getEndingSynopsis(),
             ]
         else:
             pointDetails = [
                             self.getPreviousEditedText(),
                             self.getPointID(),
                             self.getImmediateCause(),
-                            self.getFloodSeverity(),
+                            self.getHiddenFloodSeverity(),
                             self.getFloodRecord(),
                             self.getInclude(),
                             ]

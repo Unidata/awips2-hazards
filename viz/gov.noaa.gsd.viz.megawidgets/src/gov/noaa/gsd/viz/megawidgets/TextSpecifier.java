@@ -50,6 +50,7 @@ import java.util.Map;
  * Oct 08, 2015  12165     Chris.Golden      Added option to show no border, so that
  *                                           a read-only text field can look like a
  *                                           label.
+ * Mar 03, 2016   7452     Robert.Blum       Added new numericOnly property.
  * </pre>
  * 
  * @author Chris.Golden
@@ -112,6 +113,14 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      */
     public static final String SPELLCHECK_ENABLED = "spellcheck";
 
+    /**
+     * Numeric only parameter name; a megawidget may include a boolean
+     * associated with this name to indicate whether or not the widget should
+     * only allow numeric input. If not specified, it defaults to
+     * <code>false</code>.
+     */
+    public static final String NUMERIC_ONLY_ENABLED = "numericOnly";
+
     // Private Variables
 
     /**
@@ -164,6 +173,11 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
      * Flag indicating whether or not spellcheck is to be used.
      */
     private final boolean spellCheck;
+
+    /**
+     * Flag indicating whether or not only numeric characters are to be allowed.
+     */
+    private final boolean numericOnly;
 
     // Public Constructors
 
@@ -274,6 +288,14 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
         spellCheck = ConversionUtilities.getSpecifierBooleanValueFromObject(
                 getIdentifier(), getType(), parameters.get(SPELLCHECK_ENABLED),
                 SPELLCHECK_ENABLED, false);
+
+        /*
+         * Ensure that the numeric-only flag, if provided, is appropriate.
+         */
+        numericOnly = ConversionUtilities.getSpecifierBooleanValueFromObject(
+                getIdentifier(), getType(),
+                parameters.get(NUMERIC_ONLY_ENABLED), NUMERIC_ONLY_ENABLED,
+                false);
     }
 
     // Public Methods
@@ -306,7 +328,8 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     /**
      * Determine whether or not the border is to be shown.
      * 
-     * @return True if the border is to be shown, false otherwise.
+     * @return <code>true</code> if the border is to be shown,
+     *         <code>false</code> otherwise.
      */
     public final boolean isShowBorder() {
         return showBorder;
@@ -354,10 +377,21 @@ public class TextSpecifier extends StatefulMegawidgetSpecifier implements
     /**
      * Determine whether or not spellcheck is enabled.
      * 
-     * @return True if spellcheck is enabled, false otherwise.
+     * @return <code>true</code> if spellcheck is enabled, <code>false</code>
+     *         otherwise.
      */
     public final boolean isSpellCheck() {
         return spellCheck;
+    }
+
+    /**
+     * Determine whether or not numeric characters are the only ones allowed.
+     * 
+     * @return <code>true</code> if numeric characters are the only ones
+     *         allowed, <code>false</code> otherwise.
+     */
+    public final boolean isNumericOnly() {
+        return numericOnly;
     }
 
     @Override

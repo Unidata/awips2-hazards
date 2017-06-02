@@ -13,6 +13,7 @@ import gov.noaa.gsd.common.utilities.Sort;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.IContributionItemUpdater;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
@@ -33,12 +34,15 @@ import com.google.common.collect.Range;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 14, 2016   15556    Chris.Golden Initial creation.
+ * Jun 30, 2017   19223    Chris.Golden Added ability to change the text and
+ *                                      enabled state of a row menu's menu item
+ *                                      after it is displayed.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IConsoleTree {
+public interface IConsoleTree extends IContributionItemUpdater {
 
     /**
      * Get the sort invoker.

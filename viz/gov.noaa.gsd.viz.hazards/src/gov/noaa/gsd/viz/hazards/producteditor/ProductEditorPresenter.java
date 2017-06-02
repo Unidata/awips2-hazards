@@ -16,10 +16,13 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import java.util.EnumSet;
 import java.util.List;
 
+import net.engio.mbassy.listener.Handler;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
@@ -65,6 +68,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Jul 01, 2015     6726   Robert.Blum       IssueAll button no longer closes the Editor.
  * Dec 04, 2015    12981   Roger.Ferrel      Checks to prevent issuing unwanted
  *                                           expiration product.
+ * Mar 30, 2016     8837   Robert.Blum       Added siteChanged() for service backup.
  * Feb 02, 2017    15556   Chris.Golden      Minor changes to support console refactor.
  * Apr 27, 2017    11853   Chris.Golden      Added public method to close product editor.
  * </pre>
@@ -134,6 +138,17 @@ public class ProductEditorPresenter extends
             getModel().setPreviewOngoing(false);
             getView().closeProductEditor();
         }
+    }
+
+    /**
+     * Respond to the current site changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void siteChanged(SiteChanged change) {
+        getView().changeSite(getModel().getConfigurationManager().getSiteID());
     }
 
     // Protected Methods

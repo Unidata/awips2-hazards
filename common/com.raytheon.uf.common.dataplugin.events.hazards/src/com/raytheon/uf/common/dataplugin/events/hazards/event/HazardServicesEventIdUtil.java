@@ -52,6 +52,9 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Jan 20, 2016 14980      kbisanz     Fixed string compare issue in
  *                                     getDisplayId() causing the full ID to
  *                                     be returned
+ * Jun 07, 2016 15561     Chris.Golden Removed constraint upon site identifier
+ *                                     for hazard identifiers (used to require
+ *                                     it to be three characters).
  * </pre>
  * 
  * @author Chris.Cody
@@ -284,7 +287,7 @@ public class HazardServicesEventIdUtil {
      */
     public static final synchronized String getNewEventID(String eventSiteId)
             throws HazardEventServiceException {
-        if ((eventSiteId != null) && (eventSiteId.length() == 3)) {
+        if (eventSiteId != null) {
             return (getAppId() + SEP + getCurrentYear() + SEP + eventSiteId
                     + SEP + getNextEventIdNumber());
         } else {

@@ -536,7 +536,9 @@ W10134 - N440 W9739 - N4727 W10040. TOP FL300. STNR. NC.
          '''  
         productDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
 
-    def executeFrom(self, dataList, prevDataList=None):
+    def executeFrom(self, dataList, eventSet, prevDataList=None):
         if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
+            dataList = self.correctProduct(dataList, eventSet, prevDataList, False)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList

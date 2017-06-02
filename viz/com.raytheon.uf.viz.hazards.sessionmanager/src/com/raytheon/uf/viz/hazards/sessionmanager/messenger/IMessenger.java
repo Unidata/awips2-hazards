@@ -12,9 +12,11 @@ package com.raytheon.uf.viz.hazards.sessionmanager.messenger;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
@@ -41,6 +43,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                      question being asked.
  * Jun 23, 2016  19537     Chris.Golden Changed to work with new generic
  *                                      tool spatial info gathering.
+ * Jun 26, 2017  19207     Chris.Golden Changes to view products for specific
+ *                                      events. Also added warnings/TODOs
+ *                                      concerning use of the provided
+ *                                      interfaces' methods that return
+ *                                      something from outside the UI thread.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -56,7 +63,15 @@ public interface IMessenger {
     }
 
     /**
-     * Interface defining a questioner
+     * Interface defining a questioner.
+     * <p>
+     * TODO: This is dangerous; the model (session manager) should never be
+     * calling provided methods, as they must be run within the UI thread, and
+     * this would mean that when a separate worker thread is used for the
+     * session manager, that thread would block on the UI thread. Reimplement
+     * use of these methods so that they are never required within the session
+     * manager.
+     * </p>
      */
     public interface IQuestionAnswerer {
         public boolean getUserAnswerToQuestion(String question);
@@ -71,6 +86,14 @@ public interface IMessenger {
     /**
      * Interface allowing the user to continue or cancel an operation based on a
      * question.
+     * <p>
+     * TODO: This is dangerous; the model (session manager) should never be
+     * calling provided methods, as they must be run within the UI thread, and
+     * this would mean that when a separate worker thread is used for the
+     * session manager, that thread would block on the UI thread. Reimplement
+     * use of these methods so that they are never required within the session
+     * manager.
+     * </p>
      */
     public interface IContinueCanceller {
         public boolean getUserAnswerToQuestion(String title, String question);
@@ -79,10 +102,33 @@ public interface IMessenger {
     /**
      * Interface allowing the user to edit rise-crest-fall information for the
      * specified hazard event graphically.
+     * <p>
+     * TODO: This is dangerous; the model (session manager) should never be
+     * calling provided methods, as they must be run within the UI thread, and
+     * this would mean that when a separate worker thread is used for the
+     * session manager, that thread would block on the UI thread. Reimplement
+     * use of these methods so that they are never required within the session
+     * manager.
+     * </p>
      */
     public interface IRiseCrestFallEditor {
         public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
                 IEventApplier applier);
+    }
+
+    /**
+     * Interface allowing the user to select products to be viewed or corrected.
+     */
+    public interface IProductViewerChooser {
+
+        /**
+         * Get the products to be viewed or corrected.
+         * 
+         * @param productData
+         *            Data about the products to be shown and potentially
+         *            chosen.
+         */
+        public void getProductViewerChooser(List<ProductData> productData);
     }
 
     /**
@@ -171,6 +217,15 @@ public interface IMessenger {
      *         values for that event.
      */
     public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEvent event);
+
+    /**
+     * Returns a product viewer chooser.
+     * 
+     * @return A product viewer chooser. The implementaiton will allow a list of
+     *         product information to be displayed so that the forecaster may
+     *         choose to view or correct a product.
+     */
+    public IProductViewerChooser getProductViewerChooser();
 
     /**
      * Get a tool parameter gatherer.

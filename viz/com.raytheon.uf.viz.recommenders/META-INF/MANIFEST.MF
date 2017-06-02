@@ -35,5 +35,4 @@ Import-Package: com.raytheon.uf.common.python,
  com.raytheon.uf.common.python.controller,
  javax.measure.unit
 Export-Package: com.raytheon.uf.viz.recommenders,
- com.raytheon.uf.viz.recommenders.interactive,
  com.raytheon.uf.viz.recommenders.localization

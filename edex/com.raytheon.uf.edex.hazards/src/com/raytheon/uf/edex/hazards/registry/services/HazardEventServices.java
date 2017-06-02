@@ -21,7 +21,9 @@ package com.raytheon.uf.edex.hazards.registry.services;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import javax.annotation.Resource;
@@ -39,7 +41,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -56,7 +57,6 @@ import com.raytheon.uf.edex.database.cluster.ClusterLockUtils;
 import com.raytheon.uf.edex.database.cluster.ClusterTask;
 import com.raytheon.uf.edex.hazards.notification.HazardNotifier;
 import com.raytheon.uf.edex.registry.ebxml.dao.RegistryObjectDao;
-import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
 
 /**
  * 
@@ -75,6 +75,8 @@ import com.raytheon.uf.edex.registry.ebxml.util.EbxmlObjectUtil;
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
  * Jan 20, 2016 14969      kbisanz      Improved exception message in retrieve()
+ * May 03, 2016 18193     Ben.Phillippe Replication of Hazard VTEC Records
+ * May 06, 2016 18202     Robert.Blum   Changes for operational mode.
  * Feb 01, 2017 15556     Chris.Golden  Changed to always update insert time of
  *                                      events.
  * Feb 16, 2017 29138     Chris.Golden  Revamped to slim down the response to a
@@ -112,9 +114,6 @@ public class HazardEventServices implements IHazardEventServices {
 
     /** Denotes if this is a practice set of services */
     private boolean practice;
-
-    /** The mode (PRACTICE, OPERATIONAL) derived from the practice boolean */
-    private Mode mode;
 
     /** Hazard notifier for sending event notifications */
     private HazardNotifier hazardNotifier;
@@ -158,7 +157,7 @@ public class HazardEventServices implements IHazardEventServices {
                 event.setInsertTime(new Date());
                 response.addExceptions(registryHandler.storeOrReplaceObject(
                         userName, event).getErrors());
-                hazardNotifier.notify(event, NotificationType.STORE, mode);
+                hazardNotifier.notify(event, NotificationType.STORE, practice);
             }
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Storing Events", e);
@@ -188,7 +187,7 @@ public class HazardEventServices implements IHazardEventServices {
             response.addExceptions(registryHandler.removeObjects(userName,
                     new ArrayList<HazardEvent>(events)).getErrors());
             for (HazardEvent event : events) {
-                hazardNotifier.notify(event, NotificationType.DELETE, mode);
+                hazardNotifier.notify(event, NotificationType.DELETE, practice);
             }
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Deleting Events", e);
@@ -254,7 +253,7 @@ public class HazardEventServices implements IHazardEventServices {
             response.addExceptions(registryHandler.removeObjects(userName,
                     new ArrayList<HazardEvent>(events)).getErrors());
             hazardNotifier.notify(events.get(0), NotificationType.DELETE_ALL,
-                    mode);
+                    practice);
         } catch (Throwable e) {
             throw new HazardEventServiceException(
                     "Error Deleting All Copies Of Event", e);
@@ -268,7 +267,8 @@ public class HazardEventServices implements IHazardEventServices {
         statusHandler.info("Deleting all HazardEvents from the Registry");
         HazardEventResponse deleteAllResponse = HazardEventResponse.create();
         try {
-            HazardEventResponse retrieveResponse = retrieve(new HazardEventQueryRequest());
+            HazardEventResponse retrieveResponse = retrieve(new HazardEventQueryRequest(
+                    practice));
 
             if (retrieveResponse.success()) {
                 if (retrieveResponse.getEvents().isEmpty()) {
@@ -322,7 +322,7 @@ public class HazardEventServices implements IHazardEventServices {
                 event.setInsertTime(new Date());
                 response.addExceptions(registryHandler.storeOrReplaceObject(
                         userName, event).getErrors());
-                hazardNotifier.notify(event, NotificationType.UPDATE, mode);
+                hazardNotifier.notify(event, NotificationType.UPDATE, practice);
             }
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Updating Events", e);
@@ -341,7 +341,8 @@ public class HazardEventServices implements IHazardEventServices {
             throw new IllegalArgumentException(
                     "Incorrect number of arguments submitted to retrieve");
         } else {
-            request = HazardEventServicesUtil.convertArrayToQuery(params);
+            request = HazardEventServicesUtil.convertArrayToQuery(params,
+                    practice);
         }
         return retrieve(request);
 
@@ -359,9 +360,15 @@ public class HazardEventServices implements IHazardEventServices {
                         .getInclude()));
         try {
             String query = HazardEventServicesUtil.createAttributeQuery(
-                    practice, request.getQueryParams());
-            List<RegistryObjectType> result = dao.executeHQLQuery(query);
-            response.setEvents(HazardEventServicesUtil.getHazardEvents(result));
+                    practice, HazardEvent.class, request.getQueryParams());
+            // Workaround to ensure unique results are returned
+            List<Object> objects = dao.executeHQLQuery(query);
+            Collection<RegistryObjectType> registryObjectTypes = new LinkedHashSet<>();
+            for (Object object : objects) {
+                registryObjectTypes.add((RegistryObjectType) object);
+            }
+            response.setEvents(HazardEventServicesUtil.getContentObjects(
+                    registryObjectTypes, HazardEvent.class));
         } catch (Throwable e) {
             throw new HazardEventServiceException(
                     "Error Retrieving Events with request: " + request, e);
@@ -448,14 +455,6 @@ public class HazardEventServices implements IHazardEventServices {
         return RegionLookup.getWfoRegion(siteID);
     }
 
-    @Override
-    @WebMethod(operationName = "ping")
-    public String ping() {
-        statusHandler.info("Received Ping from "
-                + EbxmlObjectUtil.getClientHost(wsContext));
-        return "OK";
-    }
-
     /**
      * @return the dao
      */
@@ -485,7 +484,6 @@ public class HazardEventServices implements IHazardEventServices {
      */
     public void setPractice(boolean practice) {
         this.practice = practice;
-        this.mode = this.practice ? Mode.PRACTICE : Mode.OPERATIONAL;
     }
 
     /**

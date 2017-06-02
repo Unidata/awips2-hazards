@@ -2,6 +2,7 @@
 Time-related utilities.
 '''
 import datetime
+from GeneralConstants import VERIFY_MILLISECONDS, MILLIS_PER_MINUTE, SECONDS_PER_MINUTE
 
 # Round the specified datetime object (or the current time if none is given)
 # to the nearest time increment given by delta (or if the latter is not given,
@@ -33,4 +34,25 @@ def datetimeToEpochTimeMillis(timestamp):
 # Convert the specified epoch time in milliseconds to a datetime object.
 def epochTimeMillisToDatetime(milliseconds):
     return datetime.datetime.utcfromtimestamp(milliseconds / 1000.0)
+
+# Get the epoch time in seconds or milliseconds (whichever is supplied
+# as input) that is equal to the beginning of the minute for the supplied
+# time.
+def minuteOf(timeInMillisOrSeconds):
+    if timeInMillisOrSeconds == None:
+        return 0
+    if timeInMillisOrSeconds < VERIFY_MILLISECONDS:
+        return timeInMillisOrSeconds - (timeInMillisOrSeconds % SECONDS_PER_MINUTE)
+    return timeInMillisOrSeconds - (timeInMillisOrSeconds % MILLIS_PER_MINUTE)
+
+# Return True if the two epoch times supplied (which must both be in
+# either seconds or milliseconds) are within a minute of one another,
+# False otherwise.
+def isSameMinute(timeMillisOrSeconds1, timeMillisOrSeconds2) :
+    if timeMillisOrSeconds1 == None or timeMillisOrSeconds2 == None :
+        return False
+    delta = timeMillisOrSeconds2 - timeMillisOrSeconds1
+    if timeMillisOrSeconds1 < VERIFY_MILLISECONDS :
+        return delta > -SECONDS_PER_MINUTE and delta < SECONDS_PER_MINUTE
+    return delta > -MILLIS_PER_MINUTE and delta < MILLIS_PER_MINUTE
 

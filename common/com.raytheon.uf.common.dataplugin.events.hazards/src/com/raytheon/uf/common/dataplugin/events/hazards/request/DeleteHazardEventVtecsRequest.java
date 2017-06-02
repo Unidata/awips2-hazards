@@ -17,16 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.dataplugin.hazards.interoperability.requests;
+package com.raytheon.uf.common.dataplugin.events.hazards.request;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardRequest;
+import java.util.List;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
- * Request object used for getting the interoperability active table for a given
- * site
+ * Request object for deleting hazard event vtecs from the registry
  * 
  * <pre>
  * 
@@ -34,52 +34,54 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * Jun 24, 2016 20037      Robert.Blum Initial Creation
  * 
  * </pre>
  * 
- * @author bphillip
+ * @author Robert.Blum
  * @version 1.0
  */
 @DynamicSerialize
-public class GetHazardActiveTableRequest extends HazardRequest {
+public class DeleteHazardEventVtecsRequest extends HazardRequest {
 
-    /** Site ID of the active table */
+    /** List of Vtecs to be deleted from the registry */
     @DynamicSerializeElement
-    private String siteID;
+    private List<Object> vtecRecords;
 
     /**
-     * Creates a new GetHazardActiveTableRequest
+     * Creates a new DeleteHazardEventVtecsRequest
      */
-    public GetHazardActiveTableRequest() {
-        super();
+    public DeleteHazardEventVtecsRequest() {
+
     }
 
     /**
-     * Creates a new GetHazardActiveTableRequest
+     * Creates a new DeleteHazardEventVtecsRequest
      * 
+     * @param vtecRecords
+     *            List of vtecRecords to delete
      * @param practice
-     *            practice mode flag
-     * @param siteID
-     *            The site to get the active table for
+     *            Practice mode flag
      */
-    public GetHazardActiveTableRequest(boolean practice, String siteID) {
+    public DeleteHazardEventVtecsRequest(List<Object> vtecRecords,
+            boolean practice) {
         super(practice);
-        this.siteID = siteID;
+        this.vtecRecords = vtecRecords;
     }
 
     /**
-     * @return the siteID
+     * @return the vtecRecords
      */
-    public String getSiteID() {
-        return siteID;
+    public List<Object> getVtecRecords() {
+        return vtecRecords;
     }
 
     /**
-     * @param siteID
-     *            the siteID to set
+     * @param vtecRecords
+     *            the vtecRecords to set
      */
-    public void setSiteID(String siteID) {
-        this.siteID = siteID;
+    public void setVtecRecords(List<Object> vtecRecords) {
+        this.vtecRecords = vtecRecords;
     }
+
 }

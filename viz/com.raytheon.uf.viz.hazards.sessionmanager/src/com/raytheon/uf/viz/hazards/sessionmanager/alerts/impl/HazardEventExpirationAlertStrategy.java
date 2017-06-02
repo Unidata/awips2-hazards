@@ -25,7 +25,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardEventAlert;
@@ -70,6 +73,9 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Aug 06, 2015 9968       Chris.Cody    Changes for processing ENDED/ELAPSED events
  * Aug 20, 2015 6895       Ben.Phillippe Routing registry requests through request server
  * Sep 15, 2015 7629       Robert.Blum   Updates for saving pending hazards.
+ * Mar 14, 2016 12145      mduff         Handle error thrown by event manager.
+ * May 06, 2016 18202      Robert.Blum   Changes for operational/test mode.
+ * May 26, 2016 17529      bkowal        Do not schedule alerts for ended Hazard Events.
  * Feb 16, 2017 29138      Chris.Golden  Changed to use more efficient database
  *                                       query.
  * </pre>
@@ -79,13 +85,14 @@ import com.raytheon.viz.core.mode.CAVEMode;
  */
 public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy {
 
+    private final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(HazardEventExpirationAlertStrategy.class);
+
     private final IHazardSessionAlertsManager alertsManager;
 
     private final IHazardEventManager hazardEventManager;
 
     private final HazardEventExpirationAlertsConfig alertConfiguration;
-
-    private final IHazardFilterStrategy hazardFilterStrategy;
 
     private final HazardEventExpirationAlertFactory alertFactory;
 
@@ -106,7 +113,6 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         this.alertConfiguration = loadAlertConfiguration(sessionConfigurationManager);
         this.hazardEventManager = hazardEventManager;
         this.sessionTimeManager = sessionTimeManager;
-        this.hazardFilterStrategy = hazardFilterStrategy;
         this.alertFactory = new HazardEventExpirationAlertFactory(
                 sessionTimeManager);
         this.alertedEvents = Maps.newHashMap();
@@ -129,15 +135,24 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
         /*
          * Tack on a filter to look for issued hazards.
          */
-        HazardEventQueryRequest request = new HazardEventQueryRequest(CAVEMode
-                .getMode().equals(CAVEMode.PRACTICE),
+        HazardEventQueryRequest request = new HazardEventQueryRequest(
+                (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false),
                 HazardConstants.HAZARD_EVENT_STATUS, "in", new Object[] {
-                        HazardStatus.ISSUED, HazardStatus.ENDING });
+                        HazardStatus.ISSUED, HazardStatus.ENDING,
+                        HazardStatus.ENDED });
         request.setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
-        Collection<HazardEvent> hazardEvents = hazardEventManager.queryLatest(
-                request).values();
-
+        Collection<HazardEvent> hazardEvents = null;
+        try {
+            hazardEvents = hazardEventManager.queryLatest(request).values();
+        } catch (HazardEventServiceException e) {
+            statusHandler.error(
+                    "Error requesting events for Expiration Alerts", e);
+            return;
+        }
         for (HazardEvent hazardEvent : hazardEvents) {
+            if (hazardEvent.getStatus() == HazardStatus.ENDED) {
+                continue;
+            }
             generateAlertsForIssuedHazardEvent(hazardEvent);
         }
     }
@@ -149,7 +164,7 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
          * should we do anything with this alert? (are we in the right mode for
          * it)
          */
-        if (CAVEMode.getMode() == CAVEMode.PRACTICE
+        if ((CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false)
                 && hazardNotification.isPracticeMode() == false) {
             return;
         }
@@ -215,6 +230,11 @@ public class HazardEventExpirationAlertStrategy implements IHazardAlertStrategy 
             /*
              * Do nothing for now. Hazards may occasionally be updated for
              * interoperability purposes.
+             */
+
+        default:
+            /*
+             * Do Nothing. Eliminate Warnings.
              */
         }
     }

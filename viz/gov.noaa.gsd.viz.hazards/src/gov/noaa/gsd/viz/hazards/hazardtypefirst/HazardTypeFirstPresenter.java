@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                      context.
  * Feb 01, 2017   15556    Chris.Golden Changed to work with finer-grained settings
  *                                      change messages.
+ * Jun 08, 2017   16373    Chris.Golden Corrected spelling of RUN_RECOMMENDER.
  * </pre>
  * 
  * @author Chris.Golden
@@ -408,9 +409,10 @@ public class HazardTypeFirstPresenter extends
          * session manager will handle it. At that time, this will be changed to
          * directly run the tool, instead of using this deprecated code.
          */
-        publish(new ToolAction(ToolAction.RecommenderActionEnum.RUN_RECOMENDER,
-                getModel().getConfigurationManager().getTypeFirstRecommender(
-                        selectedType), ToolType.RECOMMENDER,
+        publish(new ToolAction(
+                ToolAction.RecommenderActionEnum.RUN_RECOMMENDER, getModel()
+                        .getConfigurationManager().getTypeFirstRecommender(
+                                selectedType), ToolType.RECOMMENDER,
                 RecommenderExecutionContext.getHazardTypeFirstContext(
                         selectedType, RecommenderTriggerOrigin.USER)));
     }

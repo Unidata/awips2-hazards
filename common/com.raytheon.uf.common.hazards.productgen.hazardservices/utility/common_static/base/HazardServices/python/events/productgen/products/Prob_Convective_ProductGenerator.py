@@ -49,9 +49,15 @@ class Product(Prob_Generator.Product):
         return dialogDict
 
 
-    def executeFrom(self, dataList, keyInfo=None):
+    def executeFrom(self, dataList, eventSet, keyInfo=None):
         if keyInfo is not None:
+            # TODO: Hydro product generators pass eventSet to the correctProduct() method.
+            # Should the Prob_Generator be augmented to take eventSet as well?
             dataList = self.correctProduct(dataList, keyInfo, False)
+        # TODO: Should there be an "else: self.updateExpireTimes(dataList)" here as there
+        # is in Hydro-based generators? The latter is not an existing method in the
+        # superclass, but is in Legacy_Base_Generator.
+
         return dataList
 
     def execute(self, eventSet, dialogInputMap):

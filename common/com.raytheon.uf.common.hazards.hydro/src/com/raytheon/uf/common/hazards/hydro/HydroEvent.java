@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vteccause;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecevent;
@@ -21,8 +22,14 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------ ---------- ----------- --------------------------
  * July 9, 2012            Bryon.Lawrence    Initial creation
  * May 1, 2014  3581       bkowal       Relocate to common hazards hydro
- * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
+ * May 08, 2015 6562       Chris.Cody   Restructure River Forecast Points/Recommender
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * May 04, 2016 15584      Kevin.Bisanz Added toString()
+ * Jun 01, 2017 15561      Chris.Golden Changed to no longer use "type" attribute,
+ *                                      so that the latter's existence is not relied
+ *                                      upon; hazard type is already provided for each
+ *                                      hazard event by its phenomenon, significance
+ *                                      and subtype.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -148,8 +155,10 @@ public class HydroEvent {
      * @param hazardSettings
      *            Settings controlling behavior of river flood recommender.
      * @param eventDict
-     *            eventDict with previous flood information [ < Event Id, Map
-     *            [property , value>> ]
+     *            Map of event identifiers to dictionaries representing previous
+     *            events holding flood information [ < Event Id, Map [property ,
+     *            value>> ] with the child maps including "phen" and "sig"
+     *            entries for phenomenon and significance.
      */
     public HydroEvent(RiverForecastPoint riverForecastPoint, String hsaId,
             Map<String, Object> eventDict, long systemTime) {
@@ -207,7 +216,10 @@ public class HydroEvent {
      * 
      * @param geoId
      * @param eventDict
-     *            [ < Event Id, Map [property , value>> ]
+     *            Map of event identifiers to dictionaries representing previous
+     *            events [ < Event Id, Map [property , value>> ] with the child
+     *            maps including "phen" and "sig" entries for phenomenon and
+     *            significance.
      * @param significance
      * @return The previously issued event for this forecast point if any.
      */
@@ -224,11 +236,11 @@ public class HydroEvent {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> dict = (Map<String, Object>) eventDict
                         .get(eventID);
-                String siteID = (String) dict.get("siteID");
-                String type = (String) dict.get("type");
-                int dotPosition = type.indexOf('.');
-                String phenomena = type.substring(0, dotPosition);
-                String eventSignificance = type.substring(++dotPosition);
+                String siteID = (String) dict.get(HazardConstants.SITE_ID);
+                String phenomena = (String) dict
+                        .get(HazardConstants.HAZARD_EVENT_PHEN);
+                String eventSignificance = (String) dict
+                        .get(HazardConstants.HAZARD_EVENT_SIG);
 
                 /*
                  * Retrieve the most recent previous event that matches the geo
@@ -238,7 +250,7 @@ public class HydroEvent {
                         && significance.equals(eventSignificance)
                         && phenomena.equals(HydroEvent.PHENOMENA)) {
                     Number eventCreationTimeNumber = (Number) dict
-                            .get("creationTime");
+                            .get(HazardConstants.CREATION_TIME);
                     long eventCreationTime = eventCreationTimeNumber
                             .longValue();
 
@@ -259,8 +271,10 @@ public class HydroEvent {
      * @param geoId
      *            The identifier of the forecast point.
      * @param eventDict
-     *            The event to look for a previous event. [ < Event Id, Map
-     *            [property , value>> ]
+     *            Map of event identifiers to dictionaries representing previous
+     *            events. [ < Event Id, Map [property , value>> ] with the child
+     *            maps including "phen" and "sig" entries for phenomenon and
+     *            significance.
      * @param significance
      *            The significance
      * @param systemTime
@@ -284,11 +298,11 @@ public class HydroEvent {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> dict = (Map<String, Object>) eventDict
                         .get(eventID);
-                String siteID = (String) dict.get("siteID");
-                String type = (String) dict.get("type");
-                int dotPosition = type.indexOf('.');
-                String phenomena = type.substring(0, dotPosition);
-                String eventSignificance = type.substring(++dotPosition);
+                String siteID = (String) dict.get(HazardConstants.SITE_ID);
+                String phenomena = (String) dict
+                        .get(HazardConstants.HAZARD_EVENT_PHEN);
+                String eventSignificance = (String) dict
+                        .get(HazardConstants.HAZARD_EVENT_SIG);
 
                 /*
                  * Retrieve the most recent previous event that matches the geo
@@ -298,7 +312,8 @@ public class HydroEvent {
                         && significance.equals(eventSignificance)
                         && phenomena.equals(HydroEvent.PHENOMENA)) {
 
-                    Number number = (Number) dict.get("endTime");
+                    Number number = (Number) dict
+                            .get(HazardConstants.HAZARD_EVENT_END_TIME);
                     long previousEventEndtime = number.longValue();
 
                     /*
@@ -331,11 +346,11 @@ public class HydroEvent {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> dict = (Map<String, Object>) eventDict
                         .get(eventID);
-                String siteID = (String) dict.get("siteID");
-                String type = (String) dict.get("type");
-                int dotPosition = type.indexOf('.');
-                String phenomena = type.substring(0, dotPosition);
-                String eventSignificance = type.substring(++dotPosition);
+                String siteID = (String) dict.get(HazardConstants.SITE_ID);
+                String phenomena = (String) dict
+                        .get(HazardConstants.HAZARD_EVENT_PHEN);
+                String eventSignificance = (String) dict
+                        .get(HazardConstants.HAZARD_EVENT_SIG);
 
                 /*
                  * Retrieve the most recent previous event that matches the geo
@@ -344,9 +359,11 @@ public class HydroEvent {
                 if (siteID.equals(geoId)
                         && significance.equals(eventSignificance)
                         && phenomena.equals(HydroEvent.PHENOMENA)) {
-                    Number number = (Number) dict.get("creationTime");
+                    Number number = (Number) dict
+                            .get(HazardConstants.CREATION_TIME);
                     long eventCreationTime = number.longValue();
-                    number = (Number) dict.get("endTime");
+                    number = (Number) dict
+                            .get(HazardConstants.HAZARD_EVENT_END_TIME);
                     long previousEventEndtime = number.longValue();
 
                     boolean active = checkIfEventActive(systemTime,
@@ -391,7 +408,7 @@ public class HydroEvent {
             this.vtecInfo.setVtecsignif(null);
 
             // This is not a true ETN
-            String eventID = (String) eventDict.get("eventID");
+            String eventID = (String) eventDict.get(HazardConstants.EVENT_ID);
             String eventIdNumericSuffix = HazardServicesEventIdUtil
                     .getSerialIdFromFullId(eventID);
             this.vtecInfo.setEtn(Short.parseShort(eventIdNumericSuffix));
@@ -401,27 +418,32 @@ public class HydroEvent {
              */
             this.vtecInfo.setExpiretime(null);
 
-            Long startTime = (Long) eventDict.get("startTime");
+            Long startTime = (Long) eventDict
+                    .get(HazardConstants.HAZARD_EVENT_START_TIME);
             this.vtecInfo.setBegintime(new Date(startTime));
-            Long endTime = (Long) eventDict.get("endTime");
+            Long endTime = (Long) eventDict
+                    .get(HazardConstants.HAZARD_EVENT_END_TIME);
             this.vtecInfo.setEndtime(new Date(endTime));
 
-            String severity = (String) eventDict.get("floodSeverity");
+            String severity = (String) eventDict
+                    .get(HazardConstants.FLOOD_SEVERITY_CATEGORY);
             this.vtecInfo.setVtecsever(new Vtecsever(severity));
 
-            String cause = (String) eventDict.get("immediateCause");
+            String cause = (String) eventDict
+                    .get(HazardConstants.IMMEDIATE_CAUSE);
             this.vtecInfo.setVteccause(new Vteccause(cause));
 
-            String record = (String) eventDict.get("floodRecord");
+            String record = (String) eventDict
+                    .get(HazardConstants.FLOOD_RECORD);
             this.vtecInfo.setVtecrecord(new Vtecrecord(record));
 
-            Long riseTime = (Long) eventDict.get("riseAbove");
+            Long riseTime = (Long) eventDict.get(HazardConstants.RISE_ABOVE);
             this.vtecInfo.setRisetime(new Date(riseTime));
 
-            Long crestTime = (Long) eventDict.get("crest");
+            Long crestTime = (Long) eventDict.get(HazardConstants.CREST);
             this.vtecInfo.setCresttime(new Date(crestTime));
 
-            Long fallTime = (Long) eventDict.get("fallBelow");
+            Long fallTime = (Long) eventDict.get(HazardConstants.FALL_BELOW);
             this.vtecInfo.setFalltime(new Date(fallTime));
 
             // Typesources not implemented at the moment.
@@ -683,6 +705,11 @@ public class HydroEvent {
      */
     public HydroEvent getInactiveFLY() {
         return inactiveFLY;
+    }
+
+    @Override
+    public String toString() {
+        return "RiverForecastPoint:" + riverForecastPoint;
     }
 
 }

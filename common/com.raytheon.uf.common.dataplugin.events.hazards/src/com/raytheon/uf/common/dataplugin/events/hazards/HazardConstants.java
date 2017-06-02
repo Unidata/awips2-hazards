@@ -95,9 +95,14 @@ import com.google.common.collect.ImmutableMap;
  * Mar 01, 2016 15676     Chris.Golden  Changed to support visual features.
  * Apr 05, 2016 16885     Chris.Golden  Added definitions for boolean column type in temporal
  *                                      display.
+ * Apr 25, 2016 17611     Robert.Blum   Added Constants for incremental overrides.
  * Apr 27, 2016 18266     Chris.Golden  Added support for event-driven tools triggered by data
  *                                      layer changes.
+ * May 02, 2016 18235     Chris.Golden  Added constant for event source.
+ * May 03, 2016 18193    Ben.Phillippe  Added UGC_ZONE_ID
  * May 13, 2016 15676     Chris.Golden  Added database as a recommender trigger origin.
+ * May 18, 2016 17342    Ben.Phillippe  Added localized site identifier.
+ * Jun 08, 2016  9620     Robert.Blum   Added PURGE_HOURS.
  * Jun 10, 2016 19537     Chris.Golden  Combined base and selected visual feature lists for each
  *                                      hazard event into one, replaced by visibility constraints
  *                                      based upon selection state to individual visual features.
@@ -109,6 +114,9 @@ import com.google.common.collect.ImmutableMap;
  * Jul 27, 2016 19924     Chris.Golden  Changed recommmender-related data layer update constants
  *                                      to reflect the fact that now all data times are wanted,
  *                                      not just the latest one.
+ * Aug 09, 2016 20382     Ben.Phillippe Add impacts field constants
+ * Aug 16, 2016 15017     Robert.Blum   Added additional constants for max forecast and crest stage/time.
+ * Aug 26, 2016 21435     Sara.Stewart  Added crests field constants
  * Aug 31, 2016 15934     Chris.Golden  Added constant related to advanced geometries.
  * Oct 05, 2016 22870     Chris.Golden  Added frame change to triggers.
  * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
@@ -133,6 +141,7 @@ import com.google.common.collect.ImmutableMap;
  *                                      and as a first-class field (of sorts).
  * Jun 01, 2017 23056     Chris.Golden  Added constant for metadata megawidgets that always use
  *                                      their default value instead of any existing old value.
+ * Jun 30, 2017 19223     Chris.Golden  Added PRODUCT_DATA_PARAM.
  * </pre>
  * 
  * @author mnash
@@ -486,6 +495,8 @@ public final class HazardConstants {
         }
     }
 
+    public static final String PRODUCT_DATA_PARAM = "productData";
+
     /**
      * Minimum interval in milliseconds allowed between adjacent thumbs in time
      * range widgets, such as those controlling event start/end times and, for
@@ -493,6 +504,66 @@ public final class HazardConstants {
      */
     public static final long TIME_RANGE_MINIMUM_INTERVAL = TimeUnit.MINUTES
             .toMillis(1L);
+
+    /*
+     * Hazard Event VTEC constants
+     */
+
+    public static final String OFFICE_ID = "officeid";
+
+    public static final String EVENT_TRACKING_NUMBER = "etn";
+
+    public static final String HVTEC = "hvtec";
+
+    public static final String HDLN = "hdln";
+
+    public static final String SEG = "seg";
+
+    public static final String PIL = "pil";
+
+    public static final String VTECSTR = "vtecstr";
+
+    public static final String HVTECSTR = "hvtecstr";
+
+    public static final String UFN = "ufn";
+
+    public static final String ACT = "act";
+
+    public static final String KEY = "key";
+
+    public static final String PREVIOUS_START = "previousStart";
+
+    public static final String PREVIOUS_END = "previousEnd";
+
+    public static final String SUBTYPE = "subtype";
+
+    public static final String UGC_ZONE_ID = "ugcZone";
+
+    public static final String UGC_ZONES = "ugcZones";
+
+    public static final String DOWNGRADE_FROM_KEY = "downgrade_from_key";
+
+    public static final String DOWNGRADE_FROM_ETN = "downgrade_from_etn";
+
+    public static final String DOWNGRADE_FROM_ACT = "downgrade_from_act";
+
+    public static final String DOWNGRADE_FROM_PHEN = "downgrade_from_phen";
+
+    public static final String DOWNGRADE_FROM_SIG = "downgrade_from_sig";
+
+    public static final String DOWNGRADE_FROM_SUBTYPE = "downgrade_from_subtype";
+
+    public static final String UPGRADE_FROM_KEY = "upgrade_from_key";
+
+    public static final String UPGRADE_FROM_ETN = "upgrade_from_etn";
+
+    public static final String UPGRADE_FROM_ACT = "upgrade_from_act";
+
+    public static final String UPGRADE_FROM_PHEN = "upgrade_from_phen";
+
+    public static final String UPGRADE_FROM_SIG = "upgrade_from_sig";
+
+    public static final String UPGRADE_FROM_SUBTYPE = "upgrade_from_subtype";
 
     /**
      * Value in milliseconds used to represent that a time is set to
@@ -543,13 +614,39 @@ public final class HazardConstants {
 
     public static final String FLOOD_STAGE = "floodStage";
 
+    public static final String IMPACTS_CUR_OBS = "impactsCurObsField";
+
+    public static final String IMPACTS_MAX_FCST = "impactsMaxFcstField";
+
+    public static final String CRESTS_MAX_FCST = "crestsMaxFcstField";
+
+    public static final String CRESTS_CUR_OBS = "crestsCurObsField";
+
+    /*
+     * Before a product is issued, observed and forecast flood severity are
+     * distinct hazard attributes. However, when a product is issued, a single
+     * flood severity is computed that is the larger of the observed and
+     * forecast values.
+     */
     public static final String FLOOD_SEVERITY_CATEGORY = "floodSeverity";
+
+    public static final String CREST_STAGE_OBSERVED = "obsCrestStage";
+
+    public static final String CREST_STAGE_FORECAST = "forecastCrestStage";
+
+    public static final String CREST_TIME_OBSERVED = "observedCrestTime";
+
+    public static final String CREST_TIME_FORECAST = "forecastCrestTime";
+
+    public static final String CREST_STAGE = "crestStage";
+
+    public static final String MAX_FORECAST_STAGE = "maxForecastStage";
+
+    public static final String MAX_FORECAST_TIME = "maxForecastTime";
 
     public static final String FLOOD_RECORD = "floodRecord";
 
     public static final String ACTION_STAGE = "actionStage";
-
-    public static final String CREST_STAGE = "crestStage";
 
     public static final String CURRENT_STAGE = "currentStage";
 
@@ -571,6 +668,13 @@ public final class HazardConstants {
     public static final String EVENT_ID = "eventID";
 
     public static final String SITE_ID = "siteID";
+
+    /**
+     * Site identifier that the current localization uses. This may be different
+     * from the {@link #SITE_ID}, which may change during a Hazard Services
+     * session.
+     */
+    public static final String LOCALIZED_SITE_ID = "localizedSiteID";
 
     public static final String GEOMETRY = "geometry";
 
@@ -599,6 +703,8 @@ public final class HazardConstants {
     public static final String EXPIRATION_TIME = "expirationTime";
 
     public static final String HAZARD_MODE = "hazardMode";
+
+    public static final String HAZARD_SOURCE = "source";
 
     public static final String RISE_ABOVE = "riseAbove";
 
@@ -813,6 +919,8 @@ public final class HazardConstants {
     public static final String DATA_TIMES = "dataLayerTimes";
 
     public static final String CWA_GEOMETRY = "cwaGeometry";
+
+    public static final String PRACTICE = "practice";
 
     /*
      * The following are related to product generation.
@@ -1200,6 +1308,17 @@ public final class HazardConstants {
 
     public static final String TEXT = "text";
 
+    public static final String DATA_TYPE = "dataType";
+
+    public static final String INCREMENTAL_OVERRIDE = "incrementalOverride";
+
+    // Data Types
+    public static final String ALERT_CONFIG_DATA = "alertConfig";
+
+    public static final String VIEW_CONFIG_DATA = "viewConfig";
+
+    public static final String SETTINGS_DATA = "settings";
+
     /**
      * Drag drop dot identifier.
      */
@@ -1273,4 +1392,5 @@ public final class HazardConstants {
 
     public static final String NATIONAL = "National";
 
+    public static final String PURGE_HOURS = "purgeHours";
 }

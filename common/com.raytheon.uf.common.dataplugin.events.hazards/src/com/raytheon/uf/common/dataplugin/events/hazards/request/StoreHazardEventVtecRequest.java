@@ -17,12 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.recommenders.interactive;
+package com.raytheon.uf.common.dataplugin.events.hazards.request;
 
-import com.raytheon.uf.viz.recommenders.CAVERecommenderPythonFactory;
+import java.util.List;
+
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Constructs a python script factory for interactive recommenders.
+ * 
+ * Request class used for storing Hazard Event VTEC records
  * 
  * <pre>
  * 
@@ -30,21 +34,36 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderPythonFactory;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 8, 2013            mnash     Initial creation
+ * 4/5/2016     16577    Ben.Phillippe Initial creation
+ * 5/3/2016     18193    Ben.Phillippe Replication of Hazard VTEC Records
  * 
  * </pre>
  * 
- * @author mnash
+ * @author bphillip
  * @version 1.0
  */
+@DynamicSerialize
+public class StoreHazardEventVtecRequest extends HazardRequest {
 
-public class InteractiveRecommenderPythonFactory extends
-        CAVERecommenderPythonFactory {
+    @DynamicSerializeElement
+    private List<Object> vtecList;
 
-    /**
-     * 
-     */
-    public InteractiveRecommenderPythonFactory() {
-        super("InteractiveRecommenders", 1);
+    @DynamicSerializeElement
+    private boolean practice;
+
+    public StoreHazardEventVtecRequest() {
+
+    }
+    
+    public StoreHazardEventVtecRequest(boolean practice){
+        super(practice);
+    }
+
+    public List<Object> getVtecList() {
+        return vtecList;
+    }
+
+    public void setVtecList(List<Object> vtecList) {
+        this.vtecList = vtecList;
     }
 }

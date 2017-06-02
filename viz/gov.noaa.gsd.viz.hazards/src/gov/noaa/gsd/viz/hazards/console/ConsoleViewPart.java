@@ -79,6 +79,9 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           since these were throwing exceptions
  *                                           when displayed after attachment or
  *                                           detachment.
+ * Jun 30, 2017   19223    Chris.Golden      Added ability to change the text and
+ *                                           enabled state of a row menu's menu item
+ *                                           after it is displayed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -317,6 +320,14 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
             ImmutableMap<String, CountdownTimer> countdownTimersForEventIdentifiers) {
         if (body != null) {
             body.setActiveCountdownTimers(countdownTimersForEventIdentifiers);
+        }
+    }
+
+    @Override
+    public void handleContributionItemUpdate(IContributionItem item,
+            String text, boolean enabled) {
+        if (body != null) {
+            body.handleContributionItemUpdate(item, text, enabled);
         }
     }
 

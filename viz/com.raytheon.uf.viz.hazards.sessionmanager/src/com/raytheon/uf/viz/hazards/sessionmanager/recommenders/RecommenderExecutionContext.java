@@ -9,6 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders;
 
+import java.io.Serializable;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -41,9 +43,12 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
  *                                      made the change that triggered it.
  * Apr 27, 2016   18266    Chris.Golden Added support for event-driven tools triggered
  *                                      by data layer changes.
+ * May 10, 2016   18240    Chris.Golden Added ability to specify arbitrary extra event
+ *                                      set attributes as part of the context in which
+ *                                      a recommender execution is occurring.
  * Oct 05, 2016   22870    Chris.Golden Added support for event-driven tools triggered
  *                                      by frame changes.
- * May 31, 2016   34684    Chris.Golden Added support for selection-change-triggered
+ * May 31, 2017   34684    Chris.Golden Added support for selection-change-triggered
  *                                      recommender execution.
  * </pre>
  * 
@@ -102,6 +107,11 @@ public class RecommenderExecutionContext {
      */
     private final String eventType;
 
+    /**
+     * Maps of additional entries to be added to the event set.
+     */
+    private final Map<String, Serializable> extraEventSetAttributes;
+
     // Public Static Methods
 
     /**
@@ -111,7 +121,20 @@ public class RecommenderExecutionContext {
      */
     public static RecommenderExecutionContext getEmptyContext() {
         return new RecommenderExecutionContext(Trigger.NONE,
-                RecommenderTriggerOrigin.USER, null);
+                RecommenderTriggerOrigin.USER, null, null);
+    }
+
+    /**
+     * Get an empty execution context that includes extra event set attributes.
+     * 
+     * @param extraEventSetAttributes
+     *            Key-value pairings to be added as attributes to the event set.
+     * @return Context.
+     */
+    public static RecommenderExecutionContext getEmptyContext(
+            Map<String, Serializable> extraEventSetAttributes) {
+        return new RecommenderExecutionContext(Trigger.NONE,
+                RecommenderTriggerOrigin.USER, null, extraEventSetAttributes);
     }
 
     /**
@@ -126,7 +149,7 @@ public class RecommenderExecutionContext {
     public static RecommenderExecutionContext getHazardTypeFirstContext(
             String eventType, RecommenderTriggerOrigin origin) {
         return new RecommenderExecutionContext(Trigger.HAZARD_TYPE_FIRST,
-                origin, eventType);
+                origin, eventType, null);
     }
 
     /**
@@ -147,7 +170,7 @@ public class RecommenderExecutionContext {
             RecommenderTriggerOrigin origin) {
         return new RecommenderExecutionContext(
                 Trigger.HAZARD_EVENT_MODIFICATION, origin, eventIdentifier,
-                attributeIdentifiers, null);
+                attributeIdentifiers, null, null);
     }
 
     /**
@@ -167,7 +190,7 @@ public class RecommenderExecutionContext {
             RecommenderTriggerOrigin origin) {
         return new RecommenderExecutionContext(
                 Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE, origin,
-                eventIdentifier, attributeIdentifiers, null);
+                eventIdentifier, attributeIdentifiers, null, null);
     }
 
     /**
@@ -177,7 +200,7 @@ public class RecommenderExecutionContext {
      */
     public static RecommenderExecutionContext getTimeIntervalContext() {
         return new RecommenderExecutionContext(Trigger.TIME_INTERVAL,
-                RecommenderTriggerOrigin.OTHER, null);
+                RecommenderTriggerOrigin.OTHER, null, null);
     }
 
     /**
@@ -187,7 +210,7 @@ public class RecommenderExecutionContext {
      */
     public static RecommenderExecutionContext getFrameChangeContext() {
         return new RecommenderExecutionContext(Trigger.FRAME_CHANGE,
-                RecommenderTriggerOrigin.OTHER, null);
+                RecommenderTriggerOrigin.OTHER, null, null);
     }
 
     /**
@@ -197,7 +220,7 @@ public class RecommenderExecutionContext {
      */
     public static RecommenderExecutionContext getDataLayerUpdateContext() {
         return new RecommenderExecutionContext(Trigger.DATA_LAYER_UPDATE,
-                RecommenderTriggerOrigin.OTHER, null);
+                RecommenderTriggerOrigin.OTHER, null, null);
     }
 
     /**
@@ -213,7 +236,7 @@ public class RecommenderExecutionContext {
     public static RecommenderExecutionContext getHazardEventSelectionChangeContext(
             Set<String> eventIdentifiers, RecommenderTriggerOrigin origin) {
         return new RecommenderExecutionContext(Trigger.HAZARD_EVENT_SELECTION,
-                origin, eventIdentifiers, null, null);
+                origin, eventIdentifiers, null, null, null);
     }
 
     // Private Constructors
@@ -229,10 +252,14 @@ public class RecommenderExecutionContext {
      *            Suggested event type to be generated by the recommender, or
      *            <code>null</code> if the execution was not triggered by a
      *            {@link Trigger#HAZARD_TYPE_FIRST}.
+     * @param extraEventSetAttributes
+     *            Key-value pairings to be added as attributes to the event set.
      */
     private RecommenderExecutionContext(Trigger trigger,
-            RecommenderTriggerOrigin origin, String eventType) {
-        this(trigger, origin, (Set<String>) null, null, eventType);
+            RecommenderTriggerOrigin origin, String eventType,
+            Map<String, Serializable> extraEventSetAttributes) {
+        this(trigger, origin, (Set<String>) null, null, eventType,
+                extraEventSetAttributes);
     }
 
     /**
@@ -258,10 +285,13 @@ public class RecommenderExecutionContext {
      *            Suggested event type to be generated by the recommender, or
      *            <code>null</code> if the execution was not triggered by a
      *            {@link Trigger#HAZARD_TYPE_FIRST}.
+     * @param extraEventSetAttributes
+     *            Key-value pairings to be added as attributes to the event set.
      */
     private RecommenderExecutionContext(Trigger trigger,
             RecommenderTriggerOrigin origin, String eventIdentifier,
-            Set<String> attributeIdentifiers, String eventType) {
+            Set<String> attributeIdentifiers, String eventType,
+            Map<String, Serializable> extraEventSetAttributes) {
         this.identifier = counter.getAndIncrement();
         this.trigger = trigger;
         this.origin = origin;
@@ -270,6 +300,7 @@ public class RecommenderExecutionContext {
         this.attributeIdentifiers = (attributeIdentifiers == null ? null
                 : ImmutableSet.copyOf(attributeIdentifiers));
         this.eventType = eventType;
+        this.extraEventSetAttributes = extraEventSetAttributes;
     }
 
     /**
@@ -295,10 +326,13 @@ public class RecommenderExecutionContext {
      *            Suggested event type to be generated by the recommender, or
      *            <code>null</code> if the execution was not triggered by a
      *            {@link Trigger#HAZARD_TYPE_FIRST}.
+     * @param extraEventSetAttributes
+     *            Key-value pairings to be added as attributes to the event set.
      */
     private RecommenderExecutionContext(Trigger trigger,
             RecommenderTriggerOrigin origin, Set<String> eventIdentifiers,
-            Set<String> attributeIdentifiers, String eventType) {
+            Set<String> attributeIdentifiers, String eventType,
+            Map<String, Serializable> extraEventSetAttributes) {
         this.identifier = counter.getAndIncrement();
         this.trigger = trigger;
         this.origin = origin;
@@ -307,6 +341,7 @@ public class RecommenderExecutionContext {
         this.attributeIdentifiers = (attributeIdentifiers == null ? null
                 : ImmutableSet.copyOf(attributeIdentifiers));
         this.eventType = eventType;
+        this.extraEventSetAttributes = extraEventSetAttributes;
     }
 
     // Public Methods
@@ -373,5 +408,14 @@ public class RecommenderExecutionContext {
      */
     public String getEventType() {
         return eventType;
+    }
+
+    /**
+     * Get the entries to be used as extra event set attributes.
+     * 
+     * @return Entries to be used as extra event set attributes.
+     */
+    public Map<String, Serializable> getExtraEventSetAttributes() {
+        return extraEventSetAttributes;
     }
 }

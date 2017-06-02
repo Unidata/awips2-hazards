@@ -22,7 +22,7 @@ class HazardServicesConfig :
     configDataDict = {}
     configFileDict = {}
     
-    def __init__(self, configType, host="") :
+    def __init__(self, configType, host="", configDir=None) :
         """
         @param configType: "alerts", "settings", "hazardTypes", 
                            "hazardCategories", "productGeneratorTable",
@@ -33,7 +33,10 @@ class HazardServicesConfig :
             configType = configType.encode()
             
         self.__configType = configType
-        self.__configDir = "HazardServices/" + configType
+        if configDir == None:
+            self.__configDir = "HazardServices/"+configType
+        else:
+            self.__configDir = configDir
         self.__myLI = LocalizationInterface.LocalizationInterface(host)
         self.__extension = ".py"
      

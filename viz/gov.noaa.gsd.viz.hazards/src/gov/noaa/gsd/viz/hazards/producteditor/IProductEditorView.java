@@ -38,6 +38,7 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * May 13, 2015 6899       Robert.Blum  Removed notifySessionEventsModified method.
  * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted
  *                                      expiration product.
+ * Mar 30, 2016  8837      Robert.Blum  Added changeSite() for service backup.
  * Apr 27, 2017 11853      Chris.Golden Made names of methods more consistent, and
  *                                      added a method to check to see if the
  *                                      product editor is open.
@@ -100,4 +101,11 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      * be done by {@link #showProductEditor(List, String)}.
      */
     public void openDialog();
+
+    /**
+     * Handles changing the site for service backup.
+     * 
+     * @param site
+     */
+    public void changeSite(String site);
 }

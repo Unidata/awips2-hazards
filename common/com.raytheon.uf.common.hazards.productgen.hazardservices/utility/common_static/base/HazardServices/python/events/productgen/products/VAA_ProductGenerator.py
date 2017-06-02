@@ -609,7 +609,9 @@ class Product(HydroGenerator.Product):
             geometry = shapely.geometry.base.dump_coords(g)
         return geometry
  
-    def executeFrom(self, dataList, prevDataList=None):
+    def executeFrom(self, dataList, eventSet, prevDataList=None):
         if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
+            dataList = self.correctProduct(dataList, eventSet, prevDataList, False)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList

@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
@@ -58,7 +57,9 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
  * Oct 14, 2015 12494     Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
- * Jan 20, 2016 14969      kbisanz      Improved exception message in retrieve()
+ * Jan 20, 2016 14969     kbisanz       Improved exception message in retrieve()
+ * May 03, 2016 18193     Ben.Phillippe Replication of Hazard VTEC Records.
+ * May 06, 2016 18202     Robert.Blum   Changes for operational mode.
  * Feb 01, 2017 15556     Chris.Golden  Changed to always update insert time of
  *                                      events.
  * Feb 16, 2017 29138     Chris.Golden  Revamped to slim down the response to a
@@ -108,17 +109,6 @@ public class HazardEventRequestServices implements IHazardEventServices {
         } else {
             return operationalClient;
         }
-    }
-
-    /**
-     * Gets the instance for the given mode
-     * 
-     * @param mode
-     *            The mode, practice or operational
-     * @return The HazardEventRequestServices instance for the given mode
-     */
-    public static HazardEventRequestServices getServices(Mode mode) {
-        return getServices(Mode.PRACTICE.equals(mode));
     }
 
     @Override
@@ -183,7 +173,7 @@ public class HazardEventRequestServices implements IHazardEventServices {
             throw new IllegalArgumentException(
                     "Parameters submitted to retrieve must of the form [key], [operand], [value]");
         }
-        HazardEventQueryRequest request = new HazardEventQueryRequest();
+        HazardEventQueryRequest request = new HazardEventQueryRequest(practice);
         for (int i = 0; i < params.length; i += 3) {
             request.and((String) params[i], (String) params[i + 1],
                     params[i + 2]);
@@ -213,11 +203,6 @@ public class HazardEventRequestServices implements IHazardEventServices {
                 this.practice);
         String region = routeRequest(request).getPayload();
         return region;
-    }
-
-    @Override
-    public String ping() {
-        return null;
     }
 
     @SuppressWarnings("unchecked")

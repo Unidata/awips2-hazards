@@ -39,7 +39,8 @@ import com.raytheon.uf.common.util.StringUtil;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
- * Aug 13, 2015 9670       mpduff      Added toSting().
+ * Aug 13, 2015 9670       mpduff      Added toString().
+ * May 04, 2016 15584      Kevin.Bisanz Updated toString().
  * 
  * </pre>
  * 
@@ -211,7 +212,9 @@ public final class SHEFObserved extends SHEFBase {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("LID: ").append(this.lid).append(StringUtil.NEWLINE);
+        sb.append("LID PE TS: ").append(this.lid).append(" ")
+                .append(this.physicalElement).append(" ")
+                .append(this.typeSource).append(StringUtil.NEWLINE);
         sb.append("ObsTime: ").append(new Date(this.obsTime).toString())
                 .append(StringUtil.NEWLINE);
         sb.append("Value: ").append(this.value).append(StringUtil.NEWLINE);

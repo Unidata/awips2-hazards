@@ -71,6 +71,9 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  *                                      the column menus in the tree, since these
  *                                      were throwing exceptions when displayed
  *                                      after attachment or detachment.
+ * Jun 30, 2017   19223    Chris.Golden Added ability to change the text and
+ *                                      enabled state of a row menu's menu item
+ *                                      after it is displayed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -283,6 +286,12 @@ class ConsoleBody implements IConsoleTree {
             ImmutableMap<String, CountdownTimer> countdownTimersForEventIdentifiers) {
         consoleTree
                 .setActiveCountdownTimers(countdownTimersForEventIdentifiers);
+    }
+
+    @Override
+    public void handleContributionItemUpdate(IContributionItem item,
+            String text, boolean enabled) {
+        consoleTree.handleContributionItemUpdate(item, text, enabled);
     }
 
     // Package-Private Methods

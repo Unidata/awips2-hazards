@@ -23,11 +23,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Map;
 
 import javax.xml.bind.JAXB;
 
 import jep.Jep;
 import jep.JepException;
+import jep.NamingConventionClassEnquirer;
 
 import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -61,6 +63,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Feb 24, 2015 6605       mpduff       Changed how loadJson reads files.
  * Aug 31, 2015 9757       Robert.Blum  Removed TODO since we dont want to incrementally override non-class
  *                                      based config files.
+ * Apr 25, 2016 17611      Robert.Blum  Implemented incremental overrides for python files.
  * 
  * </pre>
  * 
@@ -72,6 +75,12 @@ public class ConfigLoader<T> implements Runnable {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(ConfigLoader.class);
 
+    private static final String INCREMENTAL_OVERRIDE = "incrementalOverride";
+
+    private static final String DATA_TYPE = "dataType";
+
+    private static final String SITE = "site";
+
     private final LocalizationFile lfile;
 
     private final Class<T> clazz;
@@ -79,6 +88,8 @@ public class ConfigLoader<T> implements Runnable {
     private final String pyVarName;
 
     private final String pyIncludes;
+
+    private final Map<String, Object> parameters;
 
     private T config;
 
@@ -92,10 +103,16 @@ public class ConfigLoader<T> implements Runnable {
 
     public ConfigLoader(LocalizationFile lfile, Class<T> clazz,
             String pyVarName, String pyIncludes) {
+        this(lfile, clazz, pyVarName, pyIncludes, null);
+    }
+
+    public ConfigLoader(LocalizationFile lfile, Class<T> clazz,
+            String pyVarName, String pyIncludes, Map<String, Object> parameters) {
         this.lfile = lfile;
         this.clazz = clazz;
         this.pyVarName = pyVarName;
         this.pyIncludes = pyIncludes;
+        this.parameters = parameters;
     }
 
     @Override
@@ -164,13 +181,50 @@ public class ConfigLoader<T> implements Runnable {
 
     private T loadPython() throws JepException, IOException {
         File file = lfile.getFile();
+        String fileName = file.getName();
+        String configDir = lfile.getName().replace(fileName, "");
+        fileName = fileName.replaceFirst("[.][^.]+$", "");
         String varName = pyVarName;
         if (varName == null) {
-            varName = file.getName().replaceFirst("[.][^.]+$", "");
+            varName = fileName;
         }
-        Jep jep = new Jep(false, pyIncludes);
-        jep.runScript(file.getAbsolutePath());
+        Jep jep = new Jep(false, pyIncludes,
+                ConfigLoader.class.getClassLoader(),
+                new NamingConventionClassEnquirer());
         jep.eval("import json");
+
+        if (parameters != null) {
+            Boolean incrementalOverride = (Boolean) parameters
+                    .get(INCREMENTAL_OVERRIDE);
+            if (incrementalOverride != null && incrementalOverride) {
+                String dataType = (String) parameters.get(DATA_TYPE);
+                if (dataType == null) {
+                    statusHandler
+                            .error("ConfigLoader: Error no data type specified.");
+                    jep.close();
+                    return null;
+                }
+
+                String site = (String) parameters.get(SITE);
+                if (site == null) {
+                    site = "None";
+                }
+
+                jep.eval("from Bridge import Bridge");
+                jep.eval("criteria = {'dataType':'" + dataType
+                        + "', 'filter': {'name': '" + fileName + "'}, 'site':'"
+                        + site + "', 'configDir':'" + configDir + "'}");
+
+                jep.eval("bridge = Bridge()");
+                jep.eval(varName
+                        + " = bridge.getConfigFile(json.dumps(criteria))");
+            } else {
+                jep.runScript(file.getAbsolutePath());
+            }
+        } else {
+            jep.runScript(file.getAbsolutePath());
+        }
+
         String json = (String) jep.getValue("json.dumps(" + varName + ")");
         jep.close();
         ObjectMapper mapper = new ObjectMapper();

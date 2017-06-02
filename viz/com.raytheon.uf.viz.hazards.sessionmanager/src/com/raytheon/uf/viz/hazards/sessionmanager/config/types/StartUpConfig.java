@@ -43,6 +43,7 @@ import org.codehaus.jackson.annotate.JsonProperty;
  * Apr 15, 2015 3508       Chris.Golden Added hazard detail "assume wide" flag.
  * Sep 14, 2015 3473       Chris.Cody   Implement Hazard Services Import/Export through Central Registry server.
  * Sep 28, 2015 10302,8167 hansen       Added values to be optionally included in Settings - visibleSites, possibleSites, mapCenter, eventIdDisplayType
+ * Mar 03, 2016  7452      Robert.Blum  Added configurable maps that are loaded on startup.
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * Mar 08, 2017 29138      Chris.Golden Added startup config option to allow persistence behavior
  *                                      to be tweaked via configuration.
@@ -94,6 +95,9 @@ public class StartUpConfig {
 
     @JsonProperty("mapCenter")
     private MapCenter mapCenter;
+
+    @JsonProperty("displayMaps")
+    private String[] displayMaps;
 
     @JsonProperty("timeResolution")
     private TimeResolution timeResolution;
@@ -234,5 +238,13 @@ public class StartUpConfig {
 
     public void setPersistenceBehavior(String persistenceBehavior) {
         this.persistenceBehavior = persistenceBehavior;
+    }
+
+    public String[] getDisplayMaps() {
+        return (displayMaps == null ? new String[0] : displayMaps);
+    }
+
+    public void setDisplayMaps(String[] displayMaps) {
+        this.displayMaps = displayMaps;
     }
 }

@@ -21,7 +21,7 @@ HazardMetaData =[
                 {"hazardTypes": [("FL", "W")], "classMetaData": "MetaData_FL_W"},
                 {"hazardTypes": [("FL", "Y")], "classMetaData": "MetaData_FL_Y"},
                 {"hazardTypes": [("HY", "O")], "classMetaData": "MetaData_HY_O"},
-                {"hazardTypes": [("HY", "S")], "classMetaData": None},
+                {"hazardTypes": [("HY", "S")], "classMetaData": "MetaData_HY_S"},
                 {"hazardTypes": HazardCategories.get("Convective"), "classMetaData": None},
                 {
                  "hazardTypes":  HazardCategories.get("Winter Weather") +  HazardCategories.get("Coastal Flood") + HazardCategories.get("Fire Weather") +\

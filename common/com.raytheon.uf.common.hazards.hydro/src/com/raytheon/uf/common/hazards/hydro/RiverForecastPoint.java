@@ -41,6 +41,7 @@ import com.raytheon.uf.common.util.Pair;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * May 09, 2016 17514      Robert.Blum Added forecastFallBelowActionStageTime member variable.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -213,6 +214,12 @@ public class RiverForecastPoint extends FpInfo {
      * only be set if at least one stage value is available; these values are
      * determined via compute_obs_info()
      */
+
+    /**
+     * The time the forecast hydrograph drops below action stage.
+     */
+    private long forecastFallBelowActionStageTime;
+
     /**
      * The time the observed hydrograph falls below flood stage
      */
@@ -1479,6 +1486,22 @@ public class RiverForecastPoint extends FpInfo {
             }
         }
         return (shefForecast);
+    }
+
+    /**
+     * @return the forecastFallBelowActionStageTime
+     */
+    public long getForecastFallBelowActionStageTime() {
+        return forecastFallBelowActionStageTime;
+    }
+
+    /**
+     * @param forecastFallBelowActionStageTime
+     *            the forecastFallBelowActionStageTime to set
+     */
+    public void setForecastFallBelowActionStageTime(
+            long forecastFallBelowActionStageTime) {
+        this.forecastFallBelowActionStageTime = forecastFallBelowActionStageTime;
     }
 
 }

@@ -17,17 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package gov.noaa.gsd.viz.hazards.risecrestfall;
+package gov.noaa.gsd.common.hazards.utilities.hazardservices;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
+import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
 import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.catalog.DirectDbQuery;
-import com.raytheon.uf.viz.core.catalog.DirectDbQuery.QueryLanguage;
-import com.raytheon.uf.viz.core.exception.VizException;
 
 /**
  * Utility class for Stage/Discharge conversions.
@@ -40,6 +39,10 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * ------------------------------------------------------------
  * Mar 26, 2015  7205    Robert.Blum  Initial creation
  * May 14, 2015  6562    Chris.Cody   Restructure River Forecast Points/Recommender
+ * May 06, 2016 15584    Kevin.Bisanz Move this class from
+ *                                    gov.noaa.gsd.viz.hazards to
+ *                                    gov.noaa.gsd.common.hazards.utilities.hazardservices
+ *                                    so StageDischargeUtils.py can use it.
  * 
  * </pre>
  * 
@@ -169,7 +172,7 @@ public class StageDischargeUtils {
         }
 
         /*
-         * if the stage value passed in is greater then the highest stage in the
+         * if the stage value passed in is greater than the highest stage in the
          * rating table then extrapolate the discharge
          */
         if (stage > maxStage) {
@@ -322,7 +325,7 @@ public class StageDischargeUtils {
         }
 
         /*
-         * if the discharge value passed in is greater then the highest
+         * if the discharge value passed in is greater than the highest
          * discharge in the rating table then extrapolate the stage
          */
         if (discharge > maxDischarge) {
@@ -418,15 +421,17 @@ public class StageDischargeUtils {
      * @param lid
      *            The Location ID
      * @return The data from the rating table in IHFS
-     * @throws VizException
+     * @throws NullPointerException
      */
-    private static Rating queryRatingData(String lid) throws VizException,
-            NullPointerException {
+    private static Rating queryRatingData(String lid)
+            throws NullPointerException {
         /* Query the rating table */
         Rating rating = new Rating(lid);
 
-        List<Object[]> results = DirectDbQuery.executeQuery(
-                RATING_QUERY.replace(":lid", lid), IHFS, QueryLanguage.SQL);
+        String dataTypeForMsg = "LID stage/discharge";
+        List<Object[]> results = DatabaseQueryUtil.executeDatabaseQuery(
+                QUERY_MODE.MODE_SQLQUERY, RATING_QUERY.replace(":lid", lid),
+                IHFS, dataTypeForMsg);
         if (results != null) {
             // the Rating constructor already add stage and discharge to it. so
             // clear it...
@@ -453,15 +458,16 @@ public class StageDischargeUtils {
      *            The Location ID
      * @return The data from the ratingShift table in IHFS, null if no data
      *         available
-     * @throws VizException
      */
     private static ArrayList<Object[]> queryRatingShift(String lid) {
         /* Query the ratingShift table */
         ArrayList<Object[]> results = null;
         try {
-            results = (ArrayList<Object[]>) DirectDbQuery.executeQuery(
-                    RATING_SHIFT_QUERY.replace(":lid", lid), IHFS,
-                    QueryLanguage.SQL);
+            String dataTypeForMsg = "LID data/shift_amount";
+            results = (ArrayList<Object[]>) DatabaseQueryUtil
+                    .executeDatabaseQuery(QUERY_MODE.MODE_SQLQUERY,
+                            RATING_SHIFT_QUERY.replace(":lid", lid), IHFS,
+                            dataTypeForMsg);
         } catch (Exception e) {
             statusHandler.error("Error getting Rating Shift for " + lid + ": "
                     + e, e);

@@ -56,6 +56,9 @@ class ProbUtils(object):
         timeStamp = timestamp.replace(second=0)
 
         mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
+        practice = True
+        if mode == 'OPERATIONAL':
+            practice = False
         
         for event in eventSet:
             
@@ -72,7 +75,7 @@ class ProbUtils(object):
             # since that is the one upon which the grid should be based.
             # If it has never been added to the history list, then it
             # should not result in any grid generation.
-            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), mode)
+            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(event.getEventID(), practice)
             if event is None:
                 continue
             

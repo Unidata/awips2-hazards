@@ -36,14 +36,16 @@
 #    02/12/15        5071          Robert.Blum    Changed to inherit from the PythonOverriderInterface once
 #                                                 again. This allows the incremental overrides and also editing
 #                                                 without closing Cave.
-#    02/12/16        14923         Robert.Blum    Picking up overrides of EventUtilities directory
+#    02/12/16       14923          Robert.Blum    Picking up overrides of EventUtilities directory
+#    03/31/16        8837          Robert.Blum    Changes for Service Backup and importing the correct site files.
 #    06/23/16       19537          Chris.Golden   Changed to use visual features for spatial info.
+#    06/28/16       19222          Robert.Blum    Recommenders now care about the textUtilities directory.
 #
 
 import os, string
 
-import PythonOverriderInterface
-import PythonOverrider
+import HazardServicesPythonOverriderInterface
+import HazardServicesPythonOverrider
 import JUtil
 from GeometryHandler import shapelyToJTS, jtsToShapely
 JUtil.registerPythonToJava(shapelyToJTS)
@@ -55,11 +57,13 @@ from PathManager import PathManager
 
 from EventSet import EventSet
 
-class RecommenderInterface(PythonOverriderInterface.PythonOverriderInterface):
+class RecommenderInterface(HazardServicesPythonOverriderInterface.HazardServicesPythonOverriderInterface):
     
-    def __init__(self, scriptPath, localizationPath):
-        super(RecommenderInterface, self).__init__(scriptPath, localizationPath)
+    def __init__(self, scriptPath, localizationPath, site):
+        super(RecommenderInterface, self).__init__(scriptPath, localizationPath, site)
         self.pathMgr = PathManager()
+        # Import the textUtilities dir using PythonOverrider
+        self.importTextUtility(reloadModules=False)
         # Import the eventUtilities dir using PythonOverrider
         self.importEventUtility(reloadModules=False)
         # Import all the generator modules using PythonOverrider.
@@ -104,26 +108,8 @@ class RecommenderInterface(PythonOverriderInterface.PythonOverriderInterface):
 
     def importEventUtility(self, reloadModules=True):
         locPath = 'HazardServices/python/events/utilities/'
-        lf = self.pathMgr.getLocalizationFile(locPath, loctype='COMMON_STATIC', loclevel='BASE');
-        basePath = lf.getPath()
-        # Import all the files in this directory
-        self.importFilesFromDir(basePath, locPath)
-        # Import all the Recommenders so that the
-        # overridden EventUtility modules are picked up.
-        if reloadModules:
-            self.reloadModules()
+        self.importDirectory(locPath, reloadModules)
 
-    def importFilesFromDir(self, basePath, locPath):
-        # Import all the modules in the basePath directory using PythonOverrider.
-        # Need to do this twice since these modules import/subclass each other which could result in
-        # in old references being used. Which would cause the override not being picked up.
-        for x in range(2):
-            for s in basePath.split(os.path.pathsep):
-                if os.path.exists(s):
-                    scriptfiles = os.listdir(s)
-                    for filename in scriptfiles:
-                        split = string.split(filename, ".")
-                        if len(split) == 2 and len(split[0]) > 0 and split[1] == "py" and not filename.endswith("Interface.py"):
-                            if sys.modules.has_key(split[0]):
-                                self.clearModuleAttributes(split[0])
-                            tmpModule = PythonOverrider.importModule(locPath + filename)
+    def importTextUtility(self, reloadModules=True):
+        locPath = 'HazardServices/python/textUtilities/'
+        self.importDirectory(locPath, reloadModules)

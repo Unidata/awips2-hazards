@@ -11,6 +11,10 @@
 #                                       VTECTableIO implementation.
 #  Nov 18, 2014   4933     Robert.Blum  Added parameter for product generator name.
 #  Dec 11, 2014   2826     dgilling     Support EDEX based VTEC table I/O.
+#  Apr 25, 2016   17611    Robert.Blum  Changes to stay in sync with Bridge.py.
+#  May 06, 2016   18202    Robert.Blum  Changes for operational mode.
+#  Jun 24, 2016   20037    Robert.Blum  Purging Vtec Records from the Registry
+#  Jul 01, 2016   20102    Robert.Blum  Only storing VTEC records that changed.
 #
 
 from VTECEngine import VTECEngine
@@ -101,7 +105,7 @@ class VTECEngineWrapper(object):
             
         # Access to VTEC Table and VTEC records
         self.bridge = bridge        
-        self._io = VTECTableIO.getInstance(siteID4, self.vtecRecordType=="vtecRecords", testHarnessMode)
+        self._io = VTECTableIO.getInstance(siteID4, operationalMode, testHarnessMode)
         reqInfo = {'hazardEvents':hazardEvents}
         vtecRecords = self._io.getVtecRecords(reqInfo) if self.vtecProduct else []
         
@@ -110,7 +114,7 @@ class VTECEngineWrapper(object):
             # Hazard Types
             self.hazardTypes = self.bridge.getHazardTypes() 
             # ProductGeneratorTable
-            ProductGeneratorTable = json.loads(self.bridge.getProductGeneratorTable())
+            ProductGeneratorTable = self.bridge.getProductGeneratorTable()
         else: # Testing
             from LocalizationInterface import LocalizationInterface
             localizationInterface = LocalizationInterface("")  
@@ -164,11 +168,21 @@ class VTECEngineWrapper(object):
        
         # Instantiate the ingester, to merge the calculated with vtec database
         ingester = VTECIngester()
-        ingester.ingestVTEC(vtecDicts, vtecRecords, self._issueTime)
-        mergedRecords = ingester.mergedVtecRecords()
+        results = ingester.ingestVTEC(vtecDicts, vtecRecords, self._issueTime)
 
         criteria = {"lock": "False"}
-        self._io.putVtecRecords(mergedRecords, criteria)
+
+        # Purge any unneeded records from the registry
+        recordsToDelete = []
+        recordsToDelete += results.get('purgeRecords', [])
+        recordsToDelete += results.get('replacedRecords', [])
+        if recordsToDelete:
+            self._io.deleteVtecRecords(recordsToDelete, criteria)
+
+        # Store the decoded records to the registry
+        decodedRecords = results.get('decodedRecords', [])
+        self._io.putVtecRecords(decodedRecords, criteria)
+
 
     def flush(self):
         """ Flush the print buffer """

@@ -19,6 +19,9 @@ segments, VTEC codes, HVTEC codes, and vtecRecords.
 #    Aug  6, 2014    2826        jsanchez         Added boolean flags for issuing and operational mode
 #                                                 instead of hardcoded value.
 #    12/09/14        2826          dgilling       Revert previous changes.
+#    Mar 08, 2016    15016        Kevin.Bisanz    Verify VTEC of FL.A has
+#                                                 floodSeverity=0 in
+#                                                 _convertEventsToVTECrecords(...)
 #
     
 
@@ -1219,6 +1222,13 @@ class VTECEngine(VTECTableUtil):
             for item in ['floodSeverity', 'immediateCause', 'floodRecord',
               'riseAbove', 'crest', 'fallBelow', 'pointID']:
                 hvtec[item] = hazardEvent.get(item) 
+
+            # FL.A should have a Flood Severity of 0, per NWSI 10-922.
+            floodSeverity = hvtec['floodSeverity']
+            if phen == 'FL' and sig == 'A' and floodSeverity != '0':
+                msg = "Error: FL.A should have floodSeverity of 0, but was {0}".format(floodSeverity)
+                raise Exception(msg)
+
             # Convert from ms to seconds
             for item in ['riseAbove', 'crest', 'fallBelow']:
                 if hvtec.get(item):

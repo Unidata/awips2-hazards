@@ -34,6 +34,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.ITextProduct;
@@ -76,10 +77,13 @@ public class ProductViewer extends AbstractProductDialog {
      *            The shell used to create the ProductViewer
      * @param generatedProductListStorage
      *            The generated products to be displayed on this product viewer
+     * @param hazardTypes
+     *            Hazard types configuration information.
      */
     public ProductViewer(Shell parentShell,
-            List<GeneratedProductList> generatedProductListStorage) {
-        super(parentShell, SWT.RESIZE, generatedProductListStorage);
+            List<GeneratedProductList> generatedProductListStorage,
+            HazardTypes hazardTypes) {
+        super(parentShell, SWT.RESIZE, generatedProductListStorage, hazardTypes);
         setText(DIALOG_TITLE);
     }
 

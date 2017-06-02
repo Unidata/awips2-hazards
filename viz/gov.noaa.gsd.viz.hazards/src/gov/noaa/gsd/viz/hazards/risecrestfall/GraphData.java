@@ -43,6 +43,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Feb 17, 2015   3847     mpduff      Initial creation
  * Mar 17, 2015   6974     mpduff      Scale to larger of max obs/fcst or flood cat lines.
  * Mar 26, 2015   7205     Robert.Blum Using new HydroConstants class.
+ * Aug 16, 2016   15017    Robert.Blum Added boolean to tell if the crest value is also the
+ *                                     max forecast value.
  * </pre>
  * 
  * @author mpduff
@@ -98,6 +100,8 @@ public class GraphData {
     private double riseAboveValue;
 
     private double crestValue;
+
+    private boolean crestValueMaxForecastValue;
 
     private double fallBelowValue;
 
@@ -604,6 +608,21 @@ public class GraphData {
      */
     public void setFallBelowValue(double fallBelowValue) {
         this.fallBelowValue = fallBelowValue;
+    }
+
+    /**
+     * @return the crestValueMaxForecastValue
+     */
+    public boolean isCrestValueMaxForecastValue() {
+        return crestValueMaxForecastValue;
+    }
+
+    /**
+     * @param crestValueMaxForecastValue
+     *            the crestValueMaxForecastValue to set
+     */
+    public void setCrestValueMaxForecastValue(boolean crestValueMaxForecastValue) {
+        this.crestValueMaxForecastValue = crestValueMaxForecastValue;
     }
 
     public void dispose() {

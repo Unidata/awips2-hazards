@@ -17,8 +17,11 @@
 #  Dec 15, 2014  #2826     dgilling     Fix EDEX-based implementation.
 #  Mar 24, 2015  #6110     Robert.Blum  Fix so the hazardServices sub-directory is auto
 #                                       created if it doesnt already exist.
-#  Nov 17, 2016   3473     Chris.Golden Changed path hazardServices to HazardServices.
-#
+#  Nov 17, 2015   3473     Chris.Golden Changed path hazardServices to HazardServices.
+#  Apr 05, 2016  16577   Ben.Phillippe  Storage of Hazard Event VTEC records
+#  May 06, 2016  18202   Robert.Blum    Changes for operational mode.
+#  Jun 24, 2016  20037   Robert.Blum    Adding deleteVtecRecords so records can be purged.
+
 
 import abc
 import cPickle as pickle
@@ -85,6 +88,16 @@ class VTECTableIO(object):
         reqInfo -- Constraints and parameters for the data storage operation.
         """
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def deleteVtecRecords(self, vtecRecords, reqInfo={}):
+        """Deletes the given VTEC records from permanent storage.
+        
+        Keyword arguments:
+        vtecRecords -- The VTEC records to delete.
+        reqInfo -- Constraints and parameters for the data storage operation.
+        """
+        raise NotImplementedError
     
     @abc.abstractmethod
     def clearVtecTable(self):
@@ -117,6 +130,9 @@ class _MockVTECTableIO(VTECTableIO):
     def putVtecRecords(self, vtecRecords, reqInfo={}):
         with open(self.__vtecRecordsFilename, "w+b") as vtecTable:
             pickle.dump(vtecRecords, vtecTable)
+
+    def deleteVtecRecords(self, vtecRecords, reqInfo={}):
+        self.putVtecRecords([])
     
     def clearVtecTable(self):
         self.putVtecRecords([])
@@ -168,6 +184,9 @@ class _JsonVTECTableIO(VTECTableIO):
                 self._unlockVtecDatabase()
     
     def clearVtecTable(self):
+        self.putVtecRecords([])
+
+    def deleteVtecRecords(self, vtecRecords, reqInfo={}):
         self.putVtecRecords([])
         
     def _readVtecDatabase(self):
@@ -245,12 +264,12 @@ class _EdexVTECTableIO(VTECTableIO):
         
     def getVtecRecords(self, reqInfo={}):
         import JUtil
-        from com.raytheon.uf.common.dataplugin.events.hazards.interoperability.requests import VtecInteroperabilityActiveTableRequest
+        from com.raytheon.uf.common.dataplugin.events.hazards.request import GetHazardActiveTableRequest
         from com.raytheon.uf.common.serialization.comm import RequestRouter     
  
         request = VtecInteroperabilityActiveTableRequest()
         request.setSiteID(self.siteID)
-        request.setPractice(self.operationalMode == False)
+        request.setPractice(not self.operationalMode)
          
         response = RequestRouter.route(request)
         if not response.isSuccess():
@@ -266,15 +285,18 @@ class _EdexVTECTableIO(VTECTableIO):
         return vtecMapList
     
     def putVtecRecords(self, vtecRecords, reqInfo={}):
-        # product transmission/interoperability handles updating active table
-        # in this implementation. No need for client to send updated records
-        # back to EDEX. 
-        pass
-    
-    def clearVtecTable(self):
-        if not self.operationalMode:
-            from com.raytheon.uf.common.activetable.request import ClearPracticeVTECTableRequest
-            from com.raytheon.uf.viz.core.requests import ThriftClient
-            from com.raytheon.uf.viz.core import VizApp
-            request = ClearPracticeVTECTableRequest(self.siteID, VizApp.getWsId())
-            ThriftClient.sendRequest(request)
+        import JUtil
+        from com.raytheon.uf.common.dataplugin.events.hazards.request import StoreHazardEventVtecRequest
+        from com.raytheon.uf.common.serialization.comm import RequestRouter
+        request = StoreHazardEventVtecRequest()
+        request.setPractice(self.operationalMode == False)
+        request.setVtecList(JUtil.pyValToJavaObj(vtecRecords))
+        response = RequestRouter.route(request)
+
+    def deleteVtecRecords(self, vtecRecords, reqInfo={}):
+        import JUtil
+        from com.raytheon.uf.common.dataplugin.events.hazards.request import DeleteHazardEventVtecsRequest
+        from com.raytheon.uf.common.serialization.comm import RequestRouter
+        javaRecords = JUtil.pyValToJavaObj(vtecRecords)
+        request = DeleteHazardEventVtecsRequest(javaRecords, self.operationalMode == False)
+        response = RequestRouter.route(request)

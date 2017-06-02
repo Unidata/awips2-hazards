@@ -46,6 +46,7 @@ import com.raytheon.uf.common.util.FileUtil;
  *                                      localization dir.
  * Mar 01, 2016   15676    Chris.Golden Added visual feature handler functionality to
  *                                      to the include path.
+ * Jun 06, 2017   15561    Chris.Golden Added path to general utilities.
  * </pre>
  * 
  * @author Chris.Golden
@@ -195,6 +196,9 @@ public class ConfigScriptFactory extends
             String textUtilitiesPath = FileUtil
                     .join(hazardServicesPythonPath,
                             HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
+            String generalUtilitiesPath = FileUtil
+                    .join(hazardServicesPythonPath,
+                            HazardsConfigurationConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
             String dataStoragePath = FileUtil
                     .join(hazardServicesPythonPath,
                             HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
@@ -231,9 +235,10 @@ public class ConfigScriptFactory extends
                     localizationDataTimePath, localizationGfePath,
                     tbdWorkaroundToUEngineInLocalizationPath,
                     vtecUtilitiesPath, geoUtilitiesPath, shapeUtilitiesPath,
-                    textUtilitiesPath, dataStoragePath, eventsPath,
-                    eventsUtilitiesPath, bridgePath, hazardServicesPath,
-                    hazardTypesPath, productTextUtilPath, hazardCategoriesPath);
+                    textUtilitiesPath, generalUtilitiesPath, dataStoragePath,
+                    eventsPath, eventsUtilitiesPath, bridgePath,
+                    hazardServicesPath, hazardTypesPath, productTextUtilPath,
+                    hazardCategoriesPath);
             ClassLoader classLoader = this.getClass().getClassLoader();
             ContextSwitchingPythonEval result = new ContextSwitchingPythonEval(
                     includePath, classLoader, PYTHON_PRE_EVALS);

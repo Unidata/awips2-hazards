@@ -6,6 +6,7 @@
     ------------ ---------- ----------- --------------------------
     April 5, 2013            Tracy.L.Hansen      Initial creation
     Nov 10, 2014   4933     Robert.Blum    Added abstract method for returning MetaData.
+    Jul 06, 2016  18257     Kevin.Bisanz   Added eventSet parameter to executeFrom(..)
     
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -52,7 +53,7 @@ class Product(object):
         return
     
     @abc.abstractmethod
-    def executeFrom(self, dataList, prevDataList=None):
+    def executeFrom(self, dataList, eventSet, keyInfo=None):
         
         return
 

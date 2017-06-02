@@ -11,6 +11,9 @@
 	<bean id="DeleteHazardEventHandler"
 		class="com.raytheon.uf.edex.hazards.handlers.DeleteHazardEventHandler" />
 
+    <bean id="DeleteHazardEventVtecsHandler"
+        class="com.raytheon.uf.edex.hazards.handlers.DeleteHazardEventVtecsHandler" />
+
 	<bean id="GetWfoRegionHandler"
 		class="com.raytheon.uf.edex.hazards.handlers.GetWfoRegionHandler" />
 
@@ -28,6 +31,17 @@
 
 	<bean id="GetRegistryInfoHandler"
 		class="com.raytheon.uf.edex.hazards.handlers.GetRegistryInfoHandler" />
+		
+	<bean id="SpatialQueryHandler" class="com.raytheon.uf.edex.hazards.handlers.SpatialQueryHandler"/>
+	
+	<bean id="StoreHazardEventVtecHandler"
+	      class="com.raytheon.uf.edex.hazards.handlers.StoreHazardEventVtecHandler" />
+    
+	<bean id="GetHazardActiveTableHandler"
+              class="com.raytheon.uf.edex.hazards.handlers.GetHazardActiveTableHandler" />
+    
+	<bean id="ClearHazardVtecTableRequestHandler"
+              class="com.raytheon.uf.edex.hazards.handlers.ClearPracticeHazardVtecTableRequestHandler" />
 
 	<bean factory-bean="handlerRegistry" factory-method="register">
 		<constructor-arg
@@ -52,6 +66,12 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.request.DeleteHazardEventRequest" />
 		<constructor-arg ref="DeleteHazardEventHandler" />
 	</bean>
+
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.dataplugin.events.hazards.request.DeleteHazardEventVtecsRequest" />
+        <constructor-arg ref="DeleteHazardEventVtecsHandler" />
+    </bean>
 
 	<bean factory-bean="handlerRegistry" factory-method="register">
 		<constructor-arg
@@ -81,6 +101,30 @@
 		<constructor-arg
 			value="com.raytheon.uf.common.dataplugin.events.hazards.request.UpdateHazardEventRequest" />
 		<constructor-arg ref="UpdateHazardEventHandler" />
+	</bean>
+
+	<bean factory-bean="handlerRegistry" factory-method="register">
+		<constructor-arg
+			value="com.raytheon.uf.common.hazards.productgen.request.SpatialQueryRequest" />
+		<constructor-arg ref="SpatialQueryHandler" />
+	</bean>
+    
+	<bean factory-bean="handlerRegistry" factory-method="register">
+          <constructor-arg
+             value="com.raytheon.uf.common.dataplugin.events.hazards.request.StoreHazardEventVtecRequest" />
+          <constructor-arg ref="StoreHazardEventVtecHandler" />
+	</bean>
+    
+	<bean factory-bean="handlerRegistry" factory-method="register">
+          <constructor-arg
+             value="com.raytheon.uf.common.dataplugin.events.hazards.request.GetHazardActiveTableRequest" />
+          <constructor-arg ref="GetHazardActiveTableHandler" />
+	</bean>
+    
+        <bean factory-bean="handlerRegistry" factory-method="register">
+          <constructor-arg
+             value="com.raytheon.uf.common.dataplugin.events.hazards.request.ClearPracticeHazardVtecTableRequest" />
+          <constructor-arg ref="ClearHazardVtecTableRequestHandler" />
 	</bean>
 
 </beans>

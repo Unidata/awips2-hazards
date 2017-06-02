@@ -69,7 +69,7 @@ Hydrology_All = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        "pending",
+        #"pending",
         "issued",
         "elapsed",
         "ending",
@@ -223,12 +223,6 @@ Hydrology_All = {
             "toolName": "StormTrackTool",
             "displayName": "Storm Track",
             "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
-            "toolName": "RVS_ProductGenerator",
-            "displayName": "Generate RVS",
-            "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
             "visible":True,
         },
     ],

@@ -14,14 +14,15 @@ class MetaData(CommonMetaData.MetaData):
            metaData = [
                      self.getPreviousEditedText(),
                      self.getInclude(),
-                     self.setBurnScarNameLabel(hazardEvent),
+                     self.setBurnScarNameLabel(self.hazardEvent),
                      self.getImmediateCause(),
                      self.getSource(),
                      self.getEventType(),
+                     self.getFlashFloodOccurring(),
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
-                     self.getLocationsAffected(False),
+                     self.getLocationsAffected(self.hazardEvent),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
@@ -39,11 +40,12 @@ class MetaData(CommonMetaData.MetaData):
                      self.getImmediateCause(),
                      self.getSource(),
                      self.getEventType(),
+                     self.getFlashFloodOccurring(),
                      self.getDebrisFlowOptions(),
                      self.getRainAmt(),
                      self.getAdditionalInfo(),
                      # TODO this should only be on the HID for EXT and not CON
-                     self.getLocationsAffected(False),
+                     self.getLocationsAffected(hazardEvent),
                      self.getCTAs(), 
             ]
         return {
@@ -130,22 +132,29 @@ class MetaData(CommonMetaData.MetaData):
                  "choices": [
                         self.eventTypeThunder(),
                         self.eventTypeRain(),
-                        self.eventTypeFlashFlooding(),
                         ]
                 }
 
+    def getFlashFloodOccurring(self, defaultOn=False):
+        return {
+             "fieldType":"CheckBox",
+             "fieldName": "flashFlood",
+             "label": "Flash flooding occurring",
+             "value": defaultOn,
+            }
+
     def getDebrisFlowOptions(self):
         choices = [
-                   self.debrisFlowUnknown(),
                    self.debrisFlowBurnScar(),
                    self.debrisFlowMudSlide(),
+                   self.debrisFlowUnknown(),
                    ]
         return {
                  "fieldType":"RadioButtons",
                  "fieldName": "debrisFlow",
                  "label": "Debris Flow Info:",
                  "choices": choices,
-                 "values":choices[0]
+                 "values":choices[0]["identifier"]
                 }        
 
     def debrisFlowUnknown(self):
@@ -207,6 +216,25 @@ class MetaData(CommonMetaData.MetaData):
             self.recedingWater(),
             self.rainEnded(),
             ]
+
+    def validate(self,hazardEvent):
+        message1 = self.validateRainSoFar(hazardEvent)
+        message2 = self.validateAdditionalRain(hazardEvent,checkStatus=True)
+        message3 = self.validateLocation(hazardEvent)
+        retmsg = None
+        if message1:
+            retmsg = message1
+        if message2:
+            if retmsg:
+                retmsg += "\n\n" + message2
+            else:
+                retmsg = message2
+        if message3:
+            if retmsg:
+                retmsg += "\n\n" + message3
+            else:
+                retmsg = message3
+        return retmsg
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

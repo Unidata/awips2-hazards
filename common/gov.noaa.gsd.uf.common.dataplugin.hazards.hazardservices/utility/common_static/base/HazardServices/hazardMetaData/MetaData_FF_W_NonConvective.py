@@ -50,12 +50,13 @@ class MetaData(CommonMetaData.MetaData):
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getLocationsAffected(False),
+                     self.getLocationsAffected(self.hazardEvent),
                      self.getCTAs(), 
                         ]
         elif status == "issued":
             metaData = [
                      self.getPreviousEditedText(),
+                     self.getInclude(),
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
                      self.getSource(hydrologicCause),
@@ -66,7 +67,7 @@ class MetaData(CommonMetaData.MetaData):
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
                      # TODO this should only be on the HID for EXT and not CON
-                     self.getLocationsAffected(False),
+                     self.getLocationsAffected(self.hazardEvent),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
@@ -236,15 +237,16 @@ class MetaData(CommonMetaData.MetaData):
             self.hydrologicCauseFloodGate(),
             self.hydrologicCauseGlacialOutburst(),
             self.hydrologicCauseIceJam(),
-            self.hydrologicCauseSnowMelt(),            
+            self.hydrologicCauseRain(),
+            self.hydrologicCauseSnowMelt(),
             self.hydrologicCauseVolcano(),
             self.hydrologicCauseVolcanoLahar(),
             ]
+
     def hydrologicCauseDam(self):
         return {"identifier":"dam", "displayString":"Dam failure - generic"}
     def hydrologicCauseSiteImminent(self):
         return {"identifier":"siteImminent", "displayString":"Dam break - site specific - imminent failure"}
-                
     def hydrologicCauseSiteFailed(self):
         return {"identifier":"siteFailed", "displayString":"Dam - site specific - failure has occurred"}
     def hydrologicCauseLevee(self):
@@ -255,8 +257,10 @@ class MetaData(CommonMetaData.MetaData):
         return {"identifier":"glacier", "displayString":"Glacier-dammed lake outburst"}
     def hydrologicCauseIceJam(self):
         return {"identifier":"icejam", "displayString":"Ice jam"}
+    def hydrologicCauseRain(self):
+        return {"identifier":"rain", "displayString":"Rapid snowmelt and rain"}
     def hydrologicCauseSnowMelt(self):
-        return {"identifier":"snowMelt", "displayString":"Rapid snowmelt (with or without rain)"}
+        return {"identifier":"snowMelt", "displayString":"Rapid snowmelt only"}
     def hydrologicCauseVolcano(self):
         return {"identifier":"volcano", "displayString":"Volcano induced snowmelt"}
     def hydrologicCauseVolcanoLahar(self):
@@ -383,7 +387,7 @@ class MetaData(CommonMetaData.MetaData):
                }
     def corpsOfEngineersSource(self):
         return {"identifier":"corpsOfEngineersSource", 
-                "displayString": "Corps of engineers"
+                "displayString": "Corps of Engineers"
                }
     def damOperatorSource(self):
         return {"identifier":"damOperatorSource", 
@@ -391,7 +395,7 @@ class MetaData(CommonMetaData.MetaData):
                }
     def bureauOfReclamationSource(self):
         return {"identifier":"bureauOfReclamationSource", 
-                "displayString": "Bureau of reclamation"
+                "displayString": "Bureau of Reclamation"
                }
     def civilAirPatrolSource(self):
         return {"identifier":"civilAirPatrolSource", 
@@ -445,8 +449,13 @@ class MetaData(CommonMetaData.MetaData):
 
     def endingOptionChoices(self):
         return [
+            self.recedingWater(),
             self.riverFlooding(),
             ]
+
+    def validate(self,hazardEvent):
+        message = self.validateLocation(hazardEvent)
+        return message
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

@@ -48,7 +48,7 @@ TOR = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        "pending",
+        #"pending",
         "issued",
         "ending",
     ],  

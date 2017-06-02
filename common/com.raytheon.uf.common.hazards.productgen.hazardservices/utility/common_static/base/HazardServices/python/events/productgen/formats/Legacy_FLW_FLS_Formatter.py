@@ -18,6 +18,11 @@
     Nov 09, 2015 7532       Robert.Blum CTAs are now section level for FA.A and FF.A.
     Dec 08, 2015 12479      Robert.Blum Added start time to basis bullet for advisories.
     Dec 18, 2015 14036      Robert.Blum Changed ellipses in basis bullet to comma.
+    Mar 15, 2016 11892      Robert.Blum Added optional flooding flag to basisText and reworked the templates.
+    Mar 21, 2016 15640      Robert.Blum Fixed custom edits not getting put in final product.
+    Jun 07, 2016 19135      dgilling    Add missing test message disclaimers.
+    Jun 15, 2016 14069      dgilling    Ensure test message is in all caps for each bullet.
+    Jul 29, 2016 19473      Roger.Ferrel Include test messages when in Test mode.
 '''
 
 import datetime,collections
@@ -79,7 +84,8 @@ class Format(Legacy_Hydro_Formatter.Format):
             'initials': self._initials,
                                 }
 
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries, overrideProductText):
+        self.overrideProductText = overrideProductText
         self.productDict = productDict
         self.initialize(editableEntries)
         legacyText = self._createTextProduct()
@@ -92,6 +98,14 @@ class Format(Legacy_Hydro_Formatter.Format):
     ################# Product Level
 
     ################# Segment Level
+    
+    def _endSegment(self, segmentDict):
+        # Reset to empty dictionary
+        self._segmentDict = {}
+        endSegmentText = '\n$$\n\n'
+        if self._testMode:
+            endSegmentText += 'THIS IS A TEST MESSAGE. DO NOT TAKE ACTION BASED ON THIS.\n\n'
+        return endSegmentText
 
     ################# Section Level
 
@@ -126,7 +140,7 @@ class Format(Legacy_Hydro_Formatter.Format):
                 hazardType = phen + '.' + sig
                 # FFW_FFS sections will only contain one hazard
                 hazards = sectionDict.get('hazardEvents')
-                basis = self.basisText.getBulletText(hazardType, hazards[0])
+                basis = self.basisText.getBulletText(hazardType, hazards[0], vtecRecord)
                 basis = self._tpc.substituteParameters(hazards[0], basis)
             else:
                 # TODO Need to create basisText for Non-WarnGen hazards
@@ -136,6 +150,6 @@ class Format(Legacy_Hydro_Formatter.Format):
         self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
 
         startText = '* '
-        if (self._runMode == 'Practice'):
-            startText += "This is a test message.  "
+        if self._testMode:
+            startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(bulletText, startText=startText, endText='\n\n')

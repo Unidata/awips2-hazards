@@ -108,7 +108,10 @@ class Recommender(RecommenderTemplate.Recommender):
         outDict = {}
         
         issuedTime = datetime.datetime.utcfromtimestamp(probHazardEvents.getAttributes().get("currentTime")/1000).strftime('%m%d%Y_%H%M')
-        mode = probHazardEvents.getAttributes().get('hazardMode', 'PRACTICE').upper()
+        caveMode = probHazardEvents.getAttributes().get('hazardMode', 'PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
         
         for hazardEvent in probHazardEvents:
             
@@ -119,7 +122,7 @@ class Recommender(RecommenderTemplate.Recommender):
             # since that is the one upon which the grid should be based.
             # If it has never been added to the history list, then it
             # should not result in any grid generation.
-            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(hazardEvent.getEventID(), mode)
+            event = HazardDataAccess.getMostRecentHistoricalHazardEvent(hazardEvent.getEventID(), practice)
             if event is None:
                 continue
             

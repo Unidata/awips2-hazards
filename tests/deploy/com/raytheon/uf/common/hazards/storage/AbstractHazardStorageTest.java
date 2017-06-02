@@ -41,7 +41,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -102,7 +101,7 @@ public abstract class AbstractHazardStorageTest {
 
     private static final String EDEX_HOME = "/awips2/edex";
 
-    public IHazardEventManager manager = new HazardEventManager(getMode());
+    public IHazardEventManager manager = new HazardEventManager(isPractice());
 
     private List<HazardEvent> createdHazardEvents;
 
@@ -187,7 +186,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testBySite() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager.getHistoryBySiteID(site, true);
+        Map<String, HazardHistoryList> list = manager.getHistoryBySiteID(site,
+                true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -199,8 +199,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testByPhenomenon() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager.getHistoryByPhenomenon(phen,
-                true);
+        Map<String, HazardHistoryList> list = manager.getHistoryByPhenomenon(
+                phen, true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -212,8 +212,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testBySignificance() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager.getHistoryBySignificance(sig,
-                true);
+        Map<String, HazardHistoryList> list = manager.getHistoryBySignificance(
+                sig, true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -225,8 +225,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testByPhensig() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager.getHistoryByPhenSig(phen, sig,
-                true);
+        Map<String, HazardHistoryList> list = manager.getHistoryByPhenSig(phen,
+                sig, true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -238,8 +238,8 @@ public abstract class AbstractHazardStorageTest {
     @Test
     public void testByTime() {
         IHazardEvent createdEvent = storeEvent();
-        Map<String, HazardHistoryList> list = manager.getHistoryByTime(date, date,
-                true);
+        Map<String, HazardHistoryList> list = manager.getHistoryByTime(date,
+                date, true);
         assertTrue("No events returned", list.isEmpty() == false);
         for (String eId : list.keySet()) {
             if (list.get(eId).equals(createdEvent.getEventID())) {
@@ -381,5 +381,5 @@ public abstract class AbstractHazardStorageTest {
         this.createdHazardEvents.clear();
     }
 
-    abstract Mode getMode();
+    abstract boolean isPractice();
 }

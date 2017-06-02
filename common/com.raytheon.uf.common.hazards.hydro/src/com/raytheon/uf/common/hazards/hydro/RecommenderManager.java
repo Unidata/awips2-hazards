@@ -43,6 +43,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Jun 01, 2017 15561      Chris.Golden Changed to no longer use "type" attribute,
+ *                                      so that the latter's existence is not relied
+ *                                      upon; hazard type is already provided for each
+ *                                      hazard event by its phenomenon, significance
+ *                                      and subtype.
  * </pre>
  * 
  * @author Chris.Cody
@@ -53,7 +58,7 @@ public class RecommenderManager {
     /**
      * The River Forcast Manager data accessor object.
      */
-    private RiverForecastManager riverForecastManager;
+    private final RiverForecastManager riverForecastManager;
 
     /**
      * Singleton instance of this River Flood Recommender Manager
@@ -164,6 +169,12 @@ public class RecommenderManager {
         List<RiverForecastPoint> recAllRiverForecastPointList = buildAllRiverForecastList(recAllRiverForecastGroupList);
 
         Map<String, Object> previousEventMap = Maps.newHashMap();
+
+        /*
+         * Note: If previousEventMap is ever populated, it needs entries for
+         * each previous event dictionary for that event's phenomenon under
+         * "phen" and significance under "sig".
+         */
         List<HydroEvent> recAllHydroEventList = constructHydroEventList(hsaId,
                 recAllRiverForecastPointList, previousEventMap, cacheSystemTime);
 
@@ -260,8 +271,10 @@ public class RecommenderManager {
      * @param forecastPointList
      *            List of RiverForecastPoint objects for the given HSA
      * @param eventMap
-     *            Map of previous event data items [ < Event Id, Map [property ,
-     *            value>> ]
+     *            Map of event identifiers to dictionaries representing previous
+     *            events [ < Event Id, Map [property , value>> ] with the child
+     *            maps including "phen" and "sig" entries for phenomenon and
+     *            significance.
      */
     public List<HydroEvent> constructHydroEventList(String hsaId,
             List<RiverForecastPoint> allRecforecastPointList,

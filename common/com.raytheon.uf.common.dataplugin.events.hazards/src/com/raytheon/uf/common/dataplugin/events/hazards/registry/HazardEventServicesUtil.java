@@ -21,6 +21,7 @@ package com.raytheon.uf.common.dataplugin.events.hazards.registry;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map.Entry;
@@ -33,6 +34,7 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
 
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.vtec.HazardEventVtec;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter.HazardAttributeSlotConverter;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardQueryParameter;
@@ -53,8 +55,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug 04, 2015  6895     Ben.Phillippe Finished HS data access refactor
  * Aug 20, 2015  6895     Ben.Phillippe Routing registry requests through
  *                                      request server
- * Feb 16, 2017 29138     Chris.Golden  Changed to work with new hazard event
+ * May 03, 2016 18193     Ben.Phillippe Replication of Hazard VTEC Records
  *                                      services.
+ * May 06, 2016 18202     Robert.Blum   Changes for operational mode.
+ * Feb 16, 2017 29138     Chris.Golden  Changed to work with new hazard event
  * </pre>
  * 
  * @author bphillip
@@ -75,7 +79,7 @@ public class HazardEventServicesUtil {
         try {
             responseJaxb = new JAXBManager(HazardEvent.class,
                     HazardEventResponse.class, HazardEventQueryRequest.class,
-                    HazardQueryParameter.class);
+                    HazardQueryParameter.class, HazardEventVtec.class);
         } catch (JAXBException e) {
             throw new RuntimeException(
                     "Error constructing JAXB manager for Hazard Services!", e);
@@ -96,7 +100,7 @@ public class HazardEventServicesUtil {
      *            The query parameters
      * @return The constructed HQL query
      */
-    public static String createAttributeQuery(
+    public static String createAttributeQuery(Class<?> clazz,
             MultivaluedMap<String, String> queryParameters) {
         boolean practice = true;
         List<HazardQueryParameter> parameters = new ArrayList<HazardQueryParameter>(
@@ -112,7 +116,7 @@ public class HazardEventServicesUtil {
 
             }
         }
-        return createAttributeQuery(practice, parameters);
+        return createAttributeQuery(practice, clazz, parameters);
     }
 
     /**
@@ -124,10 +128,10 @@ public class HazardEventServicesUtil {
      *            The query parameters
      * @return The HQL query to execute
      */
-    public static String createAttributeQuery(boolean practice,
+    public static String createAttributeQuery(boolean practice, Class<?> clazz,
             List<HazardQueryParameter> queryParameters) {
         queryParameters.add(new HazardQueryParameter("registryObjectClassName",
-                HazardEvent.class.getName()));
+                clazz.getName()));
         queryParameters.add(new HazardQueryParameter("practice", practice));
         StringBuilder selectFrom = new StringBuilder(QUERY_BASE);
         StringBuilder whereClause = new StringBuilder(" where ");
@@ -211,7 +215,8 @@ public class HazardEventServicesUtil {
     }
 
     /**
-     * Transforms a list of RegistryObjectType objects into HazardEvent objects
+     * Transforms a list of RegistryObjectType objects into the specified object
+     * type
      * 
      * @param result
      *            The list of RegistryObjectType objects
@@ -219,15 +224,16 @@ public class HazardEventServicesUtil {
      * @throws HazardEventServiceException
      *             If errors occur extracting the content slot an unmarshalling
      */
-    public static List<HazardEvent> getHazardEvents(
-            List<RegistryObjectType> result) throws HazardEventServiceException {
-        List<HazardEvent> hazardEvents = new ArrayList<HazardEvent>(
-                result.size());
+    @SuppressWarnings("unchecked")
+    public static <T extends Object> List<T> getContentObjects(
+            Collection<RegistryObjectType> result, Class<T> clazz)
+            throws HazardEventServiceException {
+        List<T> objs = new ArrayList<T>(result.size());
         if (!result.isEmpty()) {
             for (RegistryObjectType obj : result) {
-                HazardEvent event;
+                T contentObj;
                 try {
-                    event = (HazardEvent) responseJaxb
+                    contentObj = (T) responseJaxb
                             .unmarshalFromXml(((StringValueType) obj
                                     .getSlotByName("content").getSlotValue())
                                     .getStringValue());
@@ -235,10 +241,10 @@ public class HazardEventServicesUtil {
                     throw new HazardEventServiceException(
                             "Error unmarshalling content slot", e);
                 }
-                hazardEvents.add(event);
+                objs.add(contentObj);
             }
         }
-        return hazardEvents;
+        return objs;
     }
 
     /**
@@ -254,7 +260,7 @@ public class HazardEventServicesUtil {
             throws HazardEventServiceException {
         HazardEventResponse response = HazardEventResponse
                 .createIncludingAllHistoricalAndLatest();
-        response.setEvents(getHazardEvents(result));
+        response.setEvents(getContentObjects(result, HazardEvent.class));
         return marshal(response);
     }
 
@@ -318,8 +324,9 @@ public class HazardEventServicesUtil {
      *            The response object
      * @return The REsponse object
      */
-    public static HazardEventResponse checkResponse(String operation,
-            String details, final HazardEventResponse response) {
+    @SuppressWarnings("unchecked")
+    public static <T extends HazardEventResponse> T checkResponse(
+            String operation, String details, final HazardEventResponse response) {
         StringBuilder builder = new StringBuilder();
         if (response.success()) {
             builder.append("Successfully executed [");
@@ -334,7 +341,7 @@ public class HazardEventServicesUtil {
             builder.append(details);
             statusHandler.error(builder.toString());
         }
-        return response;
+        return (T) response;
     }
 
     /**
@@ -342,10 +349,13 @@ public class HazardEventServicesUtil {
      * 
      * @param params
      *            The parameters to convert
+     * @param practice
+     *            flag indicating practice mode
      * @return
      */
-    public static HazardEventQueryRequest convertArrayToQuery(Object[] params) {
-        HazardEventQueryRequest request = new HazardEventQueryRequest();
+    public static HazardEventQueryRequest convertArrayToQuery(Object[] params,
+            boolean practice) {
+        HazardEventQueryRequest request = new HazardEventQueryRequest(practice);
         for (int i = 0; i < params.length; i += 3) {
             if ((params[i] instanceof String)
                     && (params[i + 1] instanceof String)) {

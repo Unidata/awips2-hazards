@@ -34,6 +34,8 @@
                                      different types of hazard information.
  Oct 29, 2014    5070    mpduff      Fix SiteCFG.py that was moved 
  Feb 19, 2015    5071    Robert.Blum converting unicode strings from json to prevent errors.
+ Mar 31, 2016    8837    Robert.Blum Changes for Service Backup.
+ Apr 25, 2016    17611   Robert.Blum Changes for incremental overrides.
 ''' 
 
 import ast, types, time, traceback, os
@@ -276,28 +278,12 @@ class Bridge:
            
         self.caveEdexRepo['SiteInfo'] = siteInfo.SiteInfo
         return siteInfo.SiteInfo
-    
-    def getHazardMetaData(self, phenomenon, significance, subType):
-        return HazardMetaData.getMetaData( \
-            HAZARD_METADATA, phenomenon, significance, subType)
-        
-    def getVtecRecords(self, vtecRecordType, filter=None):
-        self.DatabaseStorage.lockVtecDatabase()
-        
-        dictTable = self.DatabaseStorage.readVtecDatabase(vtecRecordType)
-        
-        # TODO: potentially add an option to keep the database locked.
-        # Currently, not used anywhere in the current implementation.
-        self.DatabaseStorage.unlockVtecDatabase()
-        
-        # Not sure what this datatype looks like yet.
-        return json.dumps(dictTable)
-    
+
     def getProductGeneratorTable(self, filter=None):
         hazardServicesConfig = HazardServicesConfig('productGeneratorTable')
         rawOut = hazardServicesConfig.getConfigData({}) or {}
-        return json.dumps(rawOut)        
-        
+        return rawOut
+
     def _getLocalizationData(self, fileName, directoryPath, locType):
         fullLocalizationPath = os.path.join(directoryPath, fileName)
         
@@ -335,13 +321,14 @@ class Bridge:
         elif dataType in [HAZARD_METADATA_FILTER]:
         
             filter = info.get(FILTER_KEY) or {}
-            phenomena, sig, subType = \
-               filter.get(PHENOMENON), filter.get(SIGNIFICANCE), filter.get(SUBTYPE)
+            phenomena, sig, subType, site = \
+               filter.get(PHENOMENON), filter.get(SIGNIFICANCE), filter.get(SUBTYPE), filter.get(SITE)
             return HazardMetaDataAccessor.getHazardMetaData( \
-                      HAZARD_METADATA, phenomena, sig, subType)
+                      HAZARD_METADATA, phenomena, sig, subType=subType, site=site)
         elif dataType in [METADATA]:
             fileName = info.get(FILENAME_KEY)
-            return HazardMetaDataAccessor.getMetaData(fileName)
+            site = info.get(SITE, None)
+            return HazardMetaDataAccessor.getMetaData(fileName, site=site)
         
         elif dataType in [CONFIG_DATA, VTEC_TABLE_DATA, VTEC_RECORDS_DATA, ALERTS_DATA, \
                           TEST_VTEC_RECORDS_DATA, VIEW_DEF_CONFIG_DATA, VIEW_CONFIG_DATA, \
@@ -422,22 +409,28 @@ class Bridge:
                            table is returned. 
         @return: The dictionary of hazard types or a specific hazard type entry 
         '''
-        
-        try:
-           result = importModule(self.hazardTypesPath) 
-           hazardTypes = result.HazardTypes
-        except:
-           traceback.print_exc()
-           return
-        
-        if hazardType is not None:           
-            return hazardTypes.get(hazardType)
-        else:
-            return hazardTypes
-        
+        hazardServicesConfig = HazardServicesConfig('hazardTypes')
+        rawOut = hazardServicesConfig.getConfigData({}) or {}
+        if hazardType:
+            return rawOut.get(hazardType)
+        return rawOut
+
+    def getConfigFile(self, criteria):
+        '''
+        Retrieve data from an external source.
+        @param criteria: Defines the filter (and perhaps routing information)
+                         for retrieving the data.
+        @return: The requested data.
+        '''
+
+        info = json.loads(criteria, object_pairs_hook=collections.OrderedDict)
+        info = self.as_str(info)
+        dataType = info.get(DATA_TYPE_KEY)
+        configDir = info.get('configDir')
+        hazardServicesConfig = HazardServicesConfig(dataType, configDir=configDir)
+        rawOut = hazardServicesConfig.getConfigData(info) or {}
+        return rawOut
+
     def flush(self):
         ''' Flush the print buffer '''
         os.sys.__stdout__.flush()
-    
-    
-           

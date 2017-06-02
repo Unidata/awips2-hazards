@@ -33,7 +33,7 @@ class Format:
 #             'initials': self._initials,
         }
 
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries=None, overrideProductText=None):
         self.productDict = productDict
         #self.initialize(editableEntries)
         #self.timezones = productDict['timezones']

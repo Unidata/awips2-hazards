@@ -132,6 +132,11 @@ import com.vividsolutions.jts.geom.Point;
  *                                      awareness of what list entities are
  *                                      from, so that they are not removed
  *                                      inappropriately.
+ * Jun 05, 2017   15561    Chris.Golden Do not recreate hatched shape when
+ *                                      the zoom level changes because a high
+ *                                      resolution shape is in use, and thus
+ *                                      recreating it does nothing but cause
+ *                                      a performance hit.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1890,7 +1895,7 @@ class DrawableManager {
         /*
          * Paint shaded shapes for hatched areas.
          */
-        drawHatchedAreas(target, paintProperties, scaleChanged);
+        drawHatchedAreas(target, paintProperties);
 
         /*
          * If any amalgamated text drawables need to be created, recreated, or
@@ -2671,11 +2676,9 @@ class DrawableManager {
      *            The target upon which to draw.
      * @param paintProperties
      *            Properties describing how drawables appear on the target.
-     * @param scaleChanged
-     *            Flag indicating whether or not the scale has changed.
      */
     private void drawHatchedAreas(IGraphicsTarget target,
-            PaintProperties paintProperties, boolean scaleChanged) {
+            PaintProperties paintProperties) {
 
         /*
          * Draw shaded geometries.
@@ -2687,8 +2690,7 @@ class DrawableManager {
              * zooming. If they are recreated at each stage in an ongoing zoom
              * action, performance may be negatively impacted.
              */
-            if ((renderHatchedAreas || scaleChanged)
-                    && (paintProperties.isZooming() == false)) {
+            if (renderHatchedAreas && (paintProperties.isZooming() == false)) {
                 renderHatchedAreas = false;
                 if (hatchedAreaShadedShape != null) {
                     hatchedAreaShadedShape.dispose();

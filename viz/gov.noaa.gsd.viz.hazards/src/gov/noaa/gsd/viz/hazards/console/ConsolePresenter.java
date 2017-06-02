@@ -28,6 +28,7 @@ import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
 import gov.noaa.gsd.viz.hazards.console.ConsoleColumns.ColumnDefinition;
 import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.IContributionItemUpdater;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
@@ -55,6 +56,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
@@ -136,7 +138,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           hazard attribute is always included in
  *                                           the dictionaries sent to the view when it
  *                                           is present in the original events.
- * Dec 13, 2014    4959    Dan Schaffer      Spatial Display cleanup and other bug
+ * Dec 13, 2015    4959    Dan Schaffer      Spatial Display cleanup and other bug
  *                                           fixes
  * Jan 30, 2015    2331    Chris.Golden      Changed to receive notifications of time
  *                                           change using handlers instead of via the
@@ -150,6 +152,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           event time range sliders to not always
  *                                           have the correct possible-value boundaries.
  * Nov 23, 2015    3473    Robert.Blum       Removed code for importing service backup.
+ * Mar 14, 2016   12145    mduff             Handle error thrown by event manager.
  * Aug 15, 2016   18376    Chris.Golden      Removed unregistering for notification
  *                                           at shutdown, since this is already done
  *                                           by the session manager (and it was
@@ -171,6 +174,14 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           to update the console row when a hazard
  *                                           event's site identifier, workstation, or
  *                                           user name are modified.
+ * Jun 08, 2017   16373    Chris.Golden      Removed product viewer selection dialog 
+ *                                           usage, as the product view and presenter
+ *                                           take care of this now.
+ * Jun 26, 2017   19207    Chris.Golden      Removed obsolete product viewer selection
+ *                                           code.
+ * Jun 30, 2017   19223    Chris.Golden      Added ability to change the text and
+ *                                           enabled state of a row menu's menu item
+ *                                           after it is displayed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -193,7 +204,7 @@ public class ConsolePresenter extends
      * Commands.
      */
     public enum Command {
-        RESET, CLOSE, EXPORT_SITE_CONFIG, CHECK_FOR_CONFLICTS, VIEW_PRODUCT
+        RESET, CLOSE, EXPORT_SITE_CONFIG, CHECK_FOR_CONFLICTS
     }
 
     /**
@@ -513,22 +524,7 @@ public class ConsolePresenter extends
                 exportApplicationBackupSiteData();
             } else if (identifier == Command.CHECK_FOR_CONFLICTS) {
                 checkForConflicts();
-            } else if (identifier == Command.VIEW_PRODUCT) {
-                showProductViewerSelectionDialog();
             }
-        }
-    };
-
-    /**
-     * Review and correct products command invocation handler. The identifier is
-     * the product data to be reviewed and/or corrected.
-     */
-    private final ICommandInvocationHandler<List<ProductData>> reviewAndCorrectProductsInvocationHandler = new ICommandInvocationHandler<List<ProductData>>() {
-
-        @Override
-        public void commandInvoked(List<ProductData> identifier) {
-            getModel().getProductManager().generateProductFromProductData(
-                    identifier, true, false);
         }
     };
 
@@ -1137,7 +1133,6 @@ public class ConsolePresenter extends
         view.getSortInvoker()
                 .setCommandInvocationHandler(sortInvocationHandler);
         view.setCommandInvocationHandler(commandInvocationHandler);
-        view.setReviewAndCorrectProductsInvocationHandler(reviewAndCorrectProductsInvocationHandler);
         view.setToggleChangeHandler(toggleStateChangeHandler);
         view.setVtecModeChangeHandler(vtecModeStateChangeHandler);
         view.getSiteChanger().setStateChangeHandler(siteStateChangeHandler);
@@ -1219,8 +1214,18 @@ public class ConsolePresenter extends
         /*
          * Get the menu items and return them.
          */
-        ContextMenuHelper helper = new ContextMenuHelper(getModel(), scheduler);
-        return helper.getSelectedHazardManagementItems(UIOriginator.CONSOLE);
+        ContextMenuHelper helper = new ContextMenuHelper(getModel(), scheduler,
+                this);
+        return helper.getSelectedHazardManagementItems(UIOriginator.CONSOLE,
+                new IContributionItemUpdater() {
+
+                    @Override
+                    public void handleContributionItemUpdate(
+                            IContributionItem item, String text, boolean enabled) {
+                        getView().handleContributionItemUpdate(item, text,
+                                enabled);
+                    }
+                });
     }
 
     /**
@@ -1432,15 +1437,6 @@ public class ConsolePresenter extends
     }
 
     /**
-     * Show the view products dialog.
-     */
-    private void showProductViewerSelectionDialog() {
-        consoleHandler.showUserProductViewerSelectionDialog(ProductDataUtil
-                .retrieveViewableProductData(CAVEMode.getMode().toString(),
-                        SimulatedTime.getSystemTime().getTime()));
-    }
-
-    /**
      * Export Hazard Services localization for the current site identifier.
      */
     private void exportApplicationBackupSiteData() {
@@ -1452,10 +1448,14 @@ public class ConsolePresenter extends
      * Examine all hazard events looking for potential conflicts.
      */
     private void checkForConflicts() {
-        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = getModel()
-                .getEventManager().getAllConflictingEvents();
-        if (conflictMap.isEmpty() == false) {
-            consoleHandler.showUserConflictingHazardsWarning(conflictMap);
+        try {
+            Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = getModel()
+                    .getEventManager().getAllConflictingEvents();
+            if (conflictMap.isEmpty() == false) {
+                consoleHandler.showUserConflictingHazardsWarning(conflictMap);
+            }
+        } catch (HazardEventServiceException e) {
+            statusHandler.error("Could not check for hazard conflicts.", e);
         }
     }
 

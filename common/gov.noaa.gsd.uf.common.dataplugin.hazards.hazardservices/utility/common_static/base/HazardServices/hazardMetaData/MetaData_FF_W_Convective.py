@@ -5,7 +5,7 @@ import CommonMetaData
 from HazardConstants import *
 
 class MetaData(CommonMetaData.MetaData):
-    
+
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
         if self.hazardStatus in ["elapsed", "ending", "ended"]:
@@ -20,10 +20,11 @@ class MetaData(CommonMetaData.MetaData):
                     self.getImmediateCause(),
                     self.getSource(),
                     self.getEventType(),
+                    self.getFlashFloodOccurring(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getFloodLocation(),
-                    self.getLocationsAffected(False),
+                    self.getLocationsAffected(self.hazardEvent),
                     self.getCTAs(),
                     # Preserving CAP defaults for future reference.                 
 #                     self.getCAP_Fields([
@@ -40,16 +41,36 @@ class MetaData(CommonMetaData.MetaData):
                     self.getImmediateCause(),
                     self.getSource(),
                     self.getEventType(),
+                    self.getFlashFloodOccurring(),
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getFloodLocation(),
                     # TODO this should only be on the HID for EXT and not CON
-                    self.getLocationsAffected(False),
+                    self.getLocationsAffected(self.hazardEvent),
                     self.getCTAs(),
             ]
         return {
                 METADATA_KEY: metaData
                 }    
+        
+    def validate(self,hazardEvent):
+        message1 = self.validateRainSoFar(hazardEvent)
+        message2 = self.validateAdditionalRain(hazardEvent,checkStatus=True)
+        message3 = self.validateLocation(hazardEvent)
+        retmsg = None
+        if message1:
+            retmsg = message1
+        if message2:
+            if retmsg:
+                retmsg += "\n\n" + message2
+            else:
+                retmsg = message2
+        if message3:
+            if retmsg:
+                retmsg += "\n\n" + message3
+            else:
+                retmsg = message3
+        return retmsg
         
     def includeChoices(self):
         return [
@@ -86,9 +107,16 @@ class MetaData(CommonMetaData.MetaData):
                  "choices": [
                         self.eventTypeThunder(),
                         self.eventTypeRain(),
-                        self.eventTypeFlashFlooding(),
                         ]
                 }
+
+    def getFlashFloodOccurring(self, defaultOn=False):
+        return {
+             "fieldType":"CheckBox",
+             "fieldName": "flashFlood",
+             "label": "Flash flooding occurring",
+             "value": defaultOn,
+            }
 
     def additionalInfoChoices(self):
         return [ 

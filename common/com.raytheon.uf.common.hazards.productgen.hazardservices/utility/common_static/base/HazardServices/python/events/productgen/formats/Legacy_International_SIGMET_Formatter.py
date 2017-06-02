@@ -37,7 +37,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             'narrativeForecastInformation': self._narrativeForecastInformation
                                 }
         
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries=None, overrideProductText=None):
         self.productDict = productDict
         self._editableParts = OrderedDict()
         

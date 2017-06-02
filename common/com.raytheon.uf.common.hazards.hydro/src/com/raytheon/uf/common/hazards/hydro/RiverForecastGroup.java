@@ -26,6 +26,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Apr 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
+ * May 04, 2016 15584      Kevin.Bisanz Add toString()
+ * May 10, 2016 18240      Kevin.Bisanz Add isPointIdInGroup(..)
  * 
  * </pre>
  * 
@@ -208,6 +210,25 @@ public class RiverForecastGroup {
         this.forecastPointList = forecastPointList;
     }
 
+    /**
+     * Determine if the provided point ID is part of this RiverForecastGroup
+     * 
+     * @param pointID
+     * @return True if the point ID is part of this group, false otherwise
+     */
+    public boolean isPointIdInGroup(String pointID) {
+        boolean retval = false;
+        if (forecastPointList != null) {
+            for (RiverForecastPoint rfp : forecastPointList) {
+                if (rfp.getLid().equals(pointID)) {
+                    retval = true;
+                    break;
+                }
+            }
+        }
+        return retval;
+    }
+
     // RIVER FORECAST GROUP DYNAMIC (Computed) DATA
     /**
      * @param includedInRecommendation
@@ -342,4 +363,9 @@ public class RiverForecastGroup {
         return this.maxForecastTime;
     }
 
+    @Override
+    public String toString() {
+        return "groupName forecastPointList:" + groupName + " "
+                + forecastPointList;
+    }
 }

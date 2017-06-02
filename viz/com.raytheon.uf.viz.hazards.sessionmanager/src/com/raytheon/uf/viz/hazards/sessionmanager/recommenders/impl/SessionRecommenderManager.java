@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.engio.mbassy.listener.Handler;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
@@ -32,10 +34,10 @@ import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.common.recommenders.EventRecommender;
@@ -47,6 +49,7 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor.FramesInfo;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -85,14 +88,27 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      recommender triggering, and changed the
  *                                      the recommender input EventSet to only
  *                                      include the events the recommender desires.
+ * Mar 14, 2016   12145    mduff        Handle error thrown by event manager.
+ * Mar 31, 2016    8837    Robert.Blum  Changes for Service Backup.
  * Apr 27, 2016   18266    Chris.Golden Added the inclusion of the latest data time
  *                                      in the recommender input event set if asked
  *                                      for by the recommender.
+ * May 02, 2016   18235    Chris.Golden Marked any events added or modified by
+ *                                      recommennders as from recommenders if the
+ *                                      recommender that created them wanted their
+ *                                      origins set.
  * May 03, 2016   18376    Chris.Golden Changed to support reuse of Jep instance
  *                                      between H.S. sessions in the same CAVE
  *                                      session, since stopping and starting the
  *                                      Jep instances when the latter use numpy is
  *                                      dangerous.
+ * May 06, 2016   18202    Robert.Blum  Changes for operational mode.
+ * May 10, 2016   18240    Chris.Golden Added ability to specify arbitrary extra
+ *                                      event set attributes as part of the context
+ *                                      in which a recommender execution is
+ *                                      occurring.
+ * May 18, 2016   17342    Ben.Phillippe Passing both site identifier and localized
+ *                                      site identifier to recommenders.
  * Jun 23, 2016   19537    Chris.Golden Changed to use visual features for spatial
  *                                      info collection. Also changed to not notify
  *                                      the user of a recommender not producing any
@@ -232,10 +248,24 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         this.sessionManager = sessionManager;
         this.messenger = messenger;
         recommenderEngine = CAVERecommenderEngine.getInstance();
+        recommenderEngine.setSite(sessionManager.getConfigurationManager()
+                .getSiteID());
         eventBus.subscribe(recommenderEngine);
     }
 
     // Public Methods
+
+    /**
+     * Respond to the current site changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void siteChanged(SiteChanged change) {
+        recommenderEngine.setSite(sessionManager.getConfigurationManager()
+                .getSiteID());
+    }
 
     @Override
     public EventRecommender getRecommender(String recommenderIdentifier) {
@@ -255,9 +285,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * Create the event set to be used, and add the execution context to it.
          */
         EventSet<IEvent> eventSet = new EventSet<>();
-        addContextAsEventSetAttributes(context, eventSet);
         eventSet.addAttribute(HazardConstants.CENTER_POINT_LAT_LON,
                 getCenterPointAsDictionary());
+        addContextAsEventSetAttributes(context, eventSet);
+
         /*
          * Determine whether or not any spatial or dialog input is required; if
          * either or both are, request the appropriate input. Spatial input is
@@ -373,14 +404,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 .getTimeManager().getSelectedTime().getLowerBound());
         eventSet.addAttribute(HazardConstants.FRAMES_INFO,
                 getFramesInfoAsDictionary());
-        eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
-                .getConfigurationManager().getSiteID());
-        eventSet.addAttribute(
-                HazardConstants.HAZARD_MODE,
-                (CAVEMode.getMode()).toString().equals(
-                        CAVEMode.PRACTICE.toString()) ? HazardEventManager.Mode.PRACTICE
-                        .toString() : HazardEventManager.Mode.OPERATIONAL
-                        .toString());
 
         /*
          * If the data times are to be included, add them to the event set as
@@ -524,6 +547,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      */
     private void addContextAsEventSetAttributes(
             RecommenderExecutionContext context, EventSet<IEvent> eventSet) {
+        eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
+                .getConfigurationManager().getSiteID());
+        eventSet.addAttribute(HazardConstants.LOCALIZED_SITE_ID,
+                LocalizationManager.getInstance().getSite());
+        eventSet.addAttribute(HazardConstants.HAZARD_MODE, CAVEMode.getMode()
+                .toString());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_EXECUTION_TRIGGER,
                 context.getTrigger().toString());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_EVENT_TYPE,
@@ -536,6 +565,14 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 context.getAttributeIdentifiers());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_TRIGGER_ORIGIN,
                 context.getOrigin().toString());
+        if (context.getExtraEventSetAttributes() != null) {
+            for (Map.Entry<String, Serializable> entry : context
+                    .getExtraEventSetAttributes().entrySet()) {
+                if (eventSet.getAttribute(entry.getKey()) == null) {
+                    eventSet.addAttribute(entry.getKey(), entry.getValue());
+                }
+            }
+        }
     }
 
     /**
@@ -640,8 +677,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                             .getAttribute(HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
 
             /*
-             * Determine whether or not the events should have their user name
-             * and workstation set. This defaults to true.
+             * Determine whether or not the events should have their user name,
+             * workstation, and source set. This defaults to true.
              */
             boolean setOrigin = (Boolean.FALSE
                     .equals(events
@@ -781,6 +818,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         hazardEvent.setUserName(LocalizationManager
                                 .getInstance().getCurrentUser());
                         hazardEvent.setWorkStation(VizApp.getHostName());
+                        hazardEvent.setSource(IHazardEvent.Source.RECOMMENDER);
                     }
 
                     /*
@@ -789,8 +827,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                      */
                     hazardEvent
                             .removeHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED);
-                    ObservedHazardEvent addedEvent = eventManager.addEvent(
-                            hazardEvent, originator);
+                    ObservedHazardEvent addedEvent = null;
+                    try {
+                        addedEvent = eventManager.addEvent(hazardEvent,
+                                originator);
+                    } catch (HazardEventServiceException e) {
+                        statusHandler.error(
+                                "Could not add hazard event generated by "
+                                        + recommenderIdentifier + ".", e);
+                        continue;
+                    }
                     addedOrModifiedEvents.add(addedEvent);
 
                     /*

@@ -108,6 +108,8 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      checked attribute as part of hazard
  *                                      events to having checked status
  *                                      tracked by the event manager.
+ * Jun 22, 2017   15561    Chris.Golden Added flag to force recreation of
+ *                                      spatial displayables when necessary.
  * </pre>
  * 
  * @author Chris.Golden
@@ -718,9 +720,13 @@ class SpatialEntityManager {
      *            Identifier of the tool with which the
      *            <code>toolVisualFeatures</code> spatial entities are to be
      *            associated.
+     * @param force
+     *            Flag indicating whether or not to force recreation of
+     *            entities, even if they appear to be the same as the old
+     *            versions.
      */
     void recreateAllEntities(VisualFeaturesList toolVisualFeatures,
-            ToolType toolType, String toolIdentifier) {
+            ToolType toolType, String toolIdentifier, boolean force) {
 
         /*
          * Iterate through the hazard events, compiling lists of spatial
@@ -776,9 +782,10 @@ class SpatialEntityManager {
                 .entrySet()) {
             repopulateEntityAssociationsAndIndicesForEvents(entry.getKey(),
                     entry.getValue());
-            if (doListsHoldSameReferences(
-                    spatialEntitiesForTypes.get(entry.getKey()),
-                    entry.getValue()) == false) {
+            if (force
+                    || (doListsHoldSameReferences(
+                            spatialEntitiesForTypes.get(entry.getKey()),
+                            entry.getValue()) == false)) {
                 changedEntityTypes.add(entry.getKey());
             }
         }
@@ -803,7 +810,7 @@ class SpatialEntityManager {
         }
 
         /*
-         * Tell the view to redraw if something changed..
+         * Tell the view to redraw if something changed.
          */
         if (changedEntityTypes.isEmpty() == false) {
             view.refresh();

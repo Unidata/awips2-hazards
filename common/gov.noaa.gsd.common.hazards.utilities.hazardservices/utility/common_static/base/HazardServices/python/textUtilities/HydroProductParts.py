@@ -23,6 +23,15 @@
     10/19/2015   11846      Robert.Blum    Added Emergency Headline/Statement for FFS (non CAN/EXP).
     11/09/2015   7532       Robert.Blum    Changes for multiple sections per segment.
     12/10/2015   11852      Robert.Blum    Removed cityList for WarnGen products.
+    03/22/2016   16044      Robert.Blum    Removed timeBullet for FL.A Cancellations and Expirations.
+    05/11/2016   16914      Robert.Blum    Removed rainfall statement from FL.A hazards.
+    05/12/2016   18264      Robert.Blum    Added CR to Hydrologic Outlook.
+    05/27/2016   19080      dgilling       Add attribution text to point-based FFA, FLW and FLS.
+    06/02/2016   19150      Roger,Ferrek   Add ending synopsis
+    06/23/2016   19150      Robert.Blum    Revert change.
+    06/27/2016   18277      Robert.Blum    Removed additionalComments for FFS CAN and EXP products.
+    08/09/2016   18277      mduff          moved additionalComment line into if block.
+    08/31/2016   21636      Sara.Stewart   updated _productParts_FFS
 '''
 import types, collections
 
@@ -82,6 +91,7 @@ class HydroProductParts(object):
                     'ugcHeader',
                     'CR',
                     'productHeader',
+                    'CR',
                     ('sections', sectionParts),
                     'endSegment',
                     ]
@@ -182,6 +192,7 @@ class HydroProductParts(object):
                 'partsList' : [
                     'setUp_product',
                     'wmoHeader',
+                    'CR',
                     'productHeader', 
                     'CR',
                     ('segments', segments),
@@ -244,7 +255,6 @@ class HydroProductParts(object):
         if action in ['CAN', 'EXP']:
             return [
                     'setUp_section',
-                    'additionalComments',
                     ]
         else:
             return [
@@ -411,7 +421,7 @@ class HydroProductParts(object):
         if phen == "FA" and sig != "A":  # FA.W and FA.Y
             if action != 'CAN' and action != 'EXP':
                 partsList.append('locationsAffected')
-            partsList.append('additionalComments')
+                partsList.append('additionalComments')
 
         if action != 'CAN' and action != 'EXP':
             partsList.append('callsToAction_sectionLevel')
@@ -452,8 +462,6 @@ class HydroProductParts(object):
                 'overviewHeadline_point',  #(optional)
                 'overviewSynopsis_point',  #(optional)
                 ]
-        if pil == 'FFA' and non_CAN_EXP:
-            partsList.append('rainFallStatement')
 
         if non_CAN_EXP:
             partsList += [
@@ -509,13 +517,13 @@ class HydroProductParts(object):
         sig = vtecRecord['sig']
 
         partsList = ['setUp_section']
-        if action in ['NEW', 'EXP']:
-            partsList.append('attribution_point')
+        
+        partsList.append('attribution_point')
 
         partsList.append('firstBullet_point')
 
-        if not action in 'ROU' and not (pil == 'FLS' and action in ['CAN', 'EXP']):
-            # NOT for ROU, FLS CAN, EXP
+        if action not in ['ROU', 'CAN', 'EXP']:
+            # NOT for ROU, CAN, EXP
             partsList.append('timeBullet')
 
         if action in ['CAN', 'EXP']:
@@ -540,7 +548,7 @@ class HydroProductParts(object):
         # the capability of RiverPro.
         # if not pil == 'FFA' and not (pil == 'FLS' and phen == 'FL' and sig == 'Y'):
              # NOT for FFA, FLS FL.Y
-        partsList.append('floodHistoryBullet')  
+        partsList.append('floodHistoryBullet')
         return partsList
 
     ######################################################

@@ -7,15 +7,16 @@ import sys, types, os, string
 from HazardServicesConfig import HazardServicesConfig
 from HazardConstants import *
 
-from PythonOverrider import importModule
+from HazardServicesPythonOverrider import importModule
 from PathManager import PathManager
 
-def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
+def getHazardMetaData(datatype, phenomenon, significance, subType=None, site=None) :
     """
     @param datatype: data type representing hazard metadata.  
     @param phenomenon: hazard phenomenon
     @param significance:  optional hazard significance
     @param subType: optional hazard subType
+    @param site: optional site to get the metadata for
     @return: A tuple of two values, the first being an object (executable
              or not) holding the metadata (or None if there is none), and
              the second being a relative path to the localized file from
@@ -37,7 +38,7 @@ def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
                         metaDataEntry = metaDataDict[CLASS_METADATA]
                         if type(metaDataEntry) is types.StringType:
                             locPath = "HazardServices/hazardMetaData/" + metaDataEntry + ".py"
-                            result = importMetaData(metaDataEntry)
+                            result = importMetaData(metaDataEntry, site=site)
                             m = result.MetaData()
                             return m, locPath
                         elif metaDataEntry is None:
@@ -46,17 +47,17 @@ def getHazardMetaData(datatype, phenomenon, significance, subType = None) :
                             return metaDataEntry, None
     return None, None
 
-def getMetaData(fileName) :
+def getMetaData(fileName, site=None):
     """
     @param fileName -- name of metaData file in the hazardServices/hazardMetaData directory
            The file must contain a class MetaData with an execute method
     @return: A class object with an execute method for obtaining the metadata
              OR None.
     """
-    result = importMetaData(fileName)
+    result = importMetaData(fileName, site)
     return result.MetaData()
 
-def importMetaData(moduleName):
+def importMetaData(moduleName, site=None):
     locPath = 'HazardServices/hazardMetaData/'
     # Use the base class to get the BASE file path
     scriptName = 'CommonMetaData.py'
@@ -75,11 +76,11 @@ def importMetaData(moduleName):
                 if len(split) == 2 and len(split[0]) > 0 and split[1] == "py":
                     if sys.modules.has_key(split[0]):
                         clearModuleAttributes(split[0])
-                    tmpModule = importModule(locPath + filename)
+                    tmpModule = importModule(locPath + filename, localizedSite=site)
 
     # Reload the desired metadata module again since above import order
     # is random which may cause subclasses to have old references to superclasses.
-    return importModule(locPath + moduleName + '.py')
+    return importModule(locPath + moduleName + '.py', localizedSite=site)
 
 def clearModuleAttributes(moduleName):
     if sys.modules.has_key(moduleName):

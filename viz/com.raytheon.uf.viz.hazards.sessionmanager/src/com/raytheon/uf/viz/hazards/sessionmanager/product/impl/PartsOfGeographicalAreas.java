@@ -57,6 +57,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      should be calculated.
  * Jun 03, 2015 8530       Robert.Blum  Changed feAreaToPartOfStateMap to contain "Northwestern"
  *                                      instead of "Northwest", etc..
+ * Jun 15, 2016 14069      dgilling     Fix case on feAreaToPartOfStateMap.
  * 
  * </pre>
  * 
@@ -122,32 +123,32 @@ public class PartsOfGeographicalAreas {
             return;
         }
         feAreaToPartOfStateMap = new HashMap<>();
-        feAreaToPartOfStateMap.put("ne", "Northeastern");
-        feAreaToPartOfStateMap.put("nc", "North Central");
-        feAreaToPartOfStateMap.put("nw", "Northwestern");
-        feAreaToPartOfStateMap.put("wc", "West Central");
-        feAreaToPartOfStateMap.put("cc", "Central");
-        feAreaToPartOfStateMap.put("ec", "East Central");
-        feAreaToPartOfStateMap.put("se", "Southeastern");
-        feAreaToPartOfStateMap.put("sc", "South Central");
-        feAreaToPartOfStateMap.put("sw", "Southwestern");
-        feAreaToPartOfStateMap.put("pa", "the Panhandle of");
-        feAreaToPartOfStateMap.put("ee", "Eastern");
-        feAreaToPartOfStateMap.put("ww", "Western");
-        feAreaToPartOfStateMap.put("nn", "Northern");
-        feAreaToPartOfStateMap.put("ss", "Southern");
-        feAreaToPartOfStateMap.put("er", "East Central Upper");
-        feAreaToPartOfStateMap.put("eu", "Eastern Upper");
-        feAreaToPartOfStateMap.put("wu", "Western Upper");
-        feAreaToPartOfStateMap.put("nr", "North Central Upper");
-        feAreaToPartOfStateMap.put("sr", "South Central Upper");
+        feAreaToPartOfStateMap.put("ne", "northeastern");
+        feAreaToPartOfStateMap.put("nc", "north central");
+        feAreaToPartOfStateMap.put("nw", "northwestern");
+        feAreaToPartOfStateMap.put("wc", "west central");
+        feAreaToPartOfStateMap.put("cc", "central");
+        feAreaToPartOfStateMap.put("ec", "east central");
+        feAreaToPartOfStateMap.put("se", "southeastern");
+        feAreaToPartOfStateMap.put("sc", "south central");
+        feAreaToPartOfStateMap.put("sw", "southwestern");
+        feAreaToPartOfStateMap.put("pa", "the panhandle of");
+        feAreaToPartOfStateMap.put("ee", "eastern");
+        feAreaToPartOfStateMap.put("ww", "western");
+        feAreaToPartOfStateMap.put("nn", "northern");
+        feAreaToPartOfStateMap.put("ss", "southern");
+        feAreaToPartOfStateMap.put("er", "east central upper");
+        feAreaToPartOfStateMap.put("eu", "eastern upper");
+        feAreaToPartOfStateMap.put("wu", "western upper");
+        feAreaToPartOfStateMap.put("nr", "north central upper");
+        feAreaToPartOfStateMap.put("sr", "south central upper");
         feAreaToPartOfStateMap.put("bb", "Big Bend");
-        feAreaToPartOfStateMap.put("pd", "the Piedmont of");
-        feAreaToPartOfStateMap.put("up", "Upstate");
-        feAreaToPartOfStateMap.put("ea", "East");
-        feAreaToPartOfStateMap.put("mi", "Middle");
-        feAreaToPartOfStateMap.put("so", "South");
-        feAreaToPartOfStateMap.put("ds", "Deep South");
+        feAreaToPartOfStateMap.put("pd", "the piedmont of");
+        feAreaToPartOfStateMap.put("up", "upstate");
+        feAreaToPartOfStateMap.put("ea", "east");
+        feAreaToPartOfStateMap.put("mi", "middle");
+        feAreaToPartOfStateMap.put("so", "south");
+        feAreaToPartOfStateMap.put("ds", "deep south");
     }
 
     /*
@@ -384,7 +385,8 @@ public class PartsOfGeographicalAreas {
             try {
                 /*
                  * Check if the area covered is more than the default tolerance.
-                 * If it is, dont get the directionSet. Logic taken from WarnGen.
+                 * If it is, dont get the directionSet. Logic taken from
+                 * WarnGen.
                  */
                 double areaIntersection = polygonHazardGeometry.intersection(
                         countyGeometry).getArea();

@@ -15,6 +15,7 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -39,6 +40,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Jul 31, 2015 7458       Robert.Blum  Setting userName and workstation fields on events 
  *                                      that are newly created.
+ * Mar 14, 2016 12145      mduff        Handle error thrown by event manager.
  * Jul 25, 2016 19537      Chris.Golden Added extensive comments and cleaned up, removing
  *                                      unneeded methods.
  * Sep 12, 2016 15934      Chris.Golden Folded functionality back into the spatial
@@ -112,12 +114,14 @@ public class HazardEventBuilder {
      * @param originator
      *            Originator of this addition.
      * @return Resulting new event from the event manager.
+     * @throws HazardEventServiceException
+     *             If a problem occurs when attempting to add the event.
      * @deprecated Only used by auto-test utilities, which are not being
      *             maintained at this time.
      */
     @Deprecated
     public ObservedHazardEvent addEvent(IHazardEvent event,
-            IOriginator originator) {
+            IOriginator originator) throws HazardEventServiceException {
 
         /*
          * Update the event user and workstation based on who created the event.

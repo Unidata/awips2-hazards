@@ -73,12 +73,14 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                      generators.
  * Nov 17, 2015 3473      Robert.Blum   Moved all python files under HazardServices localization dir.
  * Feb 12, 2016 14923     Robert.Blum   Picking up overrides of EventUtilities directory
+ * Mar 02, 2016 14032     Ben.Phillippe Added geoSpatial directory to python path
+ * Mar 21, 2016 15640     Robert.Blum   Fixed custom edits not getting put in final product.
+ * Mar 30, 2016  8837     Robert.Blum   Passed the current site to the ProductInterface.
  * </pre>
  * 
  * @author jsanchez
  * @version 1.0
  */
-
 public class ProductScript extends PythonScriptController {
 
     private static final IUFStatusHandler statusHandler = UFStatus
@@ -100,11 +102,15 @@ public class ProductScript extends PythonScriptController {
     /** Parameter name in the execute method */
     private static final String EVENT_SET = "eventSet";
 
+    private static final String SITE = "site";
+
     private static final String DIALOG_INPUT_MAP = "dialogInputMap";
 
     private static final String FORMATS = "formats";
 
     private static final String GENERATED_PRODUCT = "generatedProductList";
+
+    private static final String OVERRIDE_PRODUCT_TEXT = "overrideProductText";
 
     /** Method in ProductInterface.py for executing the generators */
     private static final String GENERATOR_EXECUTE_METHOD = "executeGenerator";
@@ -119,6 +125,8 @@ public class ProductScript extends PythonScriptController {
     private static final String PRODUCTS_DIRECTORY = "productgen/products";
 
     private static final String FORMATS_DIRECTORY = "productgen/formats";
+
+    private static final String GEOSPATIAL_DIRECTORY = "productgen/geoSpatial";
 
     private static final String PYTHON_INTERFACE = "ProductInterface";
 
@@ -159,10 +167,13 @@ public class ProductScript extends PythonScriptController {
     protected ProductScript(final String jepIncludePath, String site)
             throws JepException {
         super(PythonBuildPaths.buildPythonInterfacePath(PRODUCTS_DIRECTORY,
-                PYTHON_INTERFACE), PyUtil.buildJepIncludePath(
-                PythonBuildPaths.buildDirectoryPath(FORMATS_DIRECTORY, site),
-                PythonBuildPaths.buildDirectoryPath(PRODUCTS_DIRECTORY, site),
-                PythonBuildPaths.buildIncludePath(), jepIncludePath),
+                PYTHON_INTERFACE), PyUtil
+                .buildJepIncludePath(PythonBuildPaths.buildDirectoryPath(
+                        FORMATS_DIRECTORY, site), PythonBuildPaths
+                        .buildDirectoryPath(PRODUCTS_DIRECTORY, site),
+                        PythonBuildPaths.buildDirectoryPath(
+                                GEOSPATIAL_DIRECTORY, site), PythonBuildPaths
+                                .buildIncludePath(), jepIncludePath),
                 ProductScript.class.getClassLoader(), PYTHON_CLASS);
 
         productsDir = PythonBuildPaths
@@ -192,7 +203,7 @@ public class ProductScript extends PythonScriptController {
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
                 + "', '"
                 + HazardsConfigurationConstants.PYTHON_EVENTS_DIRECTORY
-                + File.separator + PRODUCTS_DIRECTORY + "')");
+                + File.separator + PRODUCTS_DIRECTORY + "', '" + site + "')");
         List<String> errors = getStartupErrors();
         if (errors.size() > 0) {
             StringBuffer sb = new StringBuffer();
@@ -243,7 +254,7 @@ public class ProductScript extends PythonScriptController {
                     product,
                     formats,
                     (GeneratedProductList) execute(GENERATOR_EXECUTE_METHOD,
-                            INTERFACE, args));
+                            INTERFACE, args), false);
 
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
@@ -287,7 +298,7 @@ public class ProductScript extends PythonScriptController {
                     product,
                     formats,
                     (GeneratedProductList) execute(GENERATOR_UPDATE_METHOD,
-                            INTERFACE, args));
+                            INTERFACE, args), true);
 
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
@@ -328,7 +339,8 @@ public class ProductScript extends PythonScriptController {
                     product,
                     formats,
                     (GeneratedProductList) execute(
-                            GENERATOR_EXECUTE_FROM_METHOD, INTERFACE, args));
+                            GENERATOR_EXECUTE_FROM_METHOD, INTERFACE, args),
+                    false);
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to update the generated products", e);
@@ -338,7 +350,8 @@ public class ProductScript extends PythonScriptController {
     }
 
     private GeneratedProductList formatProduct(String product,
-            String[] formats, GeneratedProductList retVal) {
+            String[] formats, GeneratedProductList retVal,
+            boolean overrideProductText) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
 
@@ -347,6 +360,7 @@ public class ProductScript extends PythonScriptController {
                 args = new HashMap<String, Object>(getStarterMap(product));
                 args.put(GENERATED_PRODUCT, retVal);
                 args.put(FORMATS, Arrays.asList(formats));
+                args.put(OVERRIDE_PRODUCT_TEXT, overrideProductText);
                 retVal = (GeneratedProductList) execute(FORMATTER_METHOD,
                         INTERFACE, args);
             }

@@ -36,7 +36,6 @@ import com.raytheon.uf.common.activetable.ActiveTableKey;
 import com.raytheon.uf.common.activetable.ActiveTableRecord;
 import com.raytheon.uf.common.dataplugin.PluginDataObject;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -73,6 +72,7 @@ import com.raytheon.uf.edex.site.SiteAwareRegistry;
  * Jan 28, 2015   2826     dgilling     Initial creation
  * Aug 20, 2015   6895     Ben.Phillippe Routing registry requests through
  *                                       request server
+ * May 06, 2016  18202     Robert.Blum  Changes for operational mode.
  * Feb 16, 2017  29138     Chris.Golden Changed to work with new hazard
  *                                      event manager.
  * </pre>
@@ -132,8 +132,7 @@ public abstract class AbstractLegacyAppInteropSrv {
             AbstractWarningRecord warningRecord = validate(ob);
 
             // Determine the mode
-            Mode mode = ob instanceof PracticeWarningRecord ? Mode.PRACTICE
-                    : Mode.OPERATIONAL;
+            boolean practice = (ob instanceof PracticeWarningRecord);
 
             /*
              * Retrieve the correct data access objects for the mode
@@ -141,7 +140,7 @@ public abstract class AbstractLegacyAppInteropSrv {
             HazardInteroperabilityDao interopDao = interopObjectManager
                     .getInteropDao();
             AbstractActiveTableDao activeTableDao = interopObjectManager
-                    .getActiveTableDao(mode);
+                    .getActiveTableDao(practice);
 
             /*
              * Retrieve the active table records and any interoperability
@@ -198,15 +197,15 @@ public abstract class AbstractLegacyAppInteropSrv {
 
             if (interopRecordsFound == 0) {
                 HazardEvent hazardEvent = buildHazardEventFromWarningRecord(
-                        mode, warningRecord);
+                        practice, warningRecord);
                 for (ActiveTableRecord activeTableRecord : activeTableRecords) {
                     HazardInteroperabilityRecord interopRecord = interopObjectManager
-                            .createInteroperabilityRecord(mode,
+                            .createInteroperabilityRecord(practice,
                                     getInteroperabilityType(), hazardEvent,
                                     activeTableRecord);
                     interopDao.create(interopRecord);
                 }
-                HazardEventServicesSoapClient.getServices(mode).store(
+                HazardEventServicesSoapClient.getServices(practice).store(
                         hazardEvent);
             } else if (activeTableRecordsFound == interopRecordsFound) {
                 for (ActiveTableRecord activeTableRecord : activeTableRecords) {
@@ -393,14 +392,14 @@ public abstract class AbstractLegacyAppInteropSrv {
      *             If the {@code IHazardEvent} could not be created for any
      *             reason.
      */
-    private HazardEvent buildHazardEventFromWarningRecord(Mode mode,
+    private HazardEvent buildHazardEventFromWarningRecord(boolean practice,
             final AbstractWarningRecord warningRecord)
             throws HazardsInteroperabilityException {
 
         HazardEvent event = new HazardEvent();
         String value;
         try {
-            value = determineEtn(mode, warningRecord.getXxxid(),
+            value = determineEtn(practice, warningRecord.getXxxid(),
                     warningRecord.getAct(), warningRecord.getEtn());
         } catch (Exception e) {
             throw new HazardsInteroperabilityException("Error determining ETN",
@@ -476,11 +475,11 @@ public abstract class AbstractLegacyAppInteropSrv {
         return event;
     }
 
-    public String determineEtn(Mode mode, String site, String action, String etn)
-            throws Exception {
+    public String determineEtn(boolean practice, String site, String action,
+            String etn) throws Exception {
 
         IHazardEventServices eventServices = HazardEventServicesSoapClient
-                .getServices(mode);
+                .getServices(practice);
 
         String value = "";
         if (HazardConstants.NEW_ACTION.equals(action)) {

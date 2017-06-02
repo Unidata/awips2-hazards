@@ -24,6 +24,8 @@ import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailHandler;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstView;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.product.ProductPresenter;
+import gov.noaa.gsd.viz.hazards.product.ProductView;
 import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
 import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorView;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
@@ -50,6 +52,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -76,11 +79,14 @@ import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -95,6 +101,7 @@ import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPane;
+import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.VizConstants;
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
@@ -104,7 +111,9 @@ import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.globals.IGlobalChangedListener;
 import com.raytheon.uf.viz.core.globals.VizGlobalsManager;
+import com.raytheon.uf.viz.core.map.IMapDescriptor;
 import com.raytheon.uf.viz.core.map.MapDescriptor;
+import com.raytheon.uf.viz.core.maps.MapManager;
 import com.raytheon.uf.viz.core.rsc.AbstractVizResource;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged.ChangeType;
@@ -123,6 +132,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -230,9 +240,13 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             main message for a question being asked of the user.
  * Feb 24, 2016 13929      Robert.Blum         Remove first part of staging dialog.
  * Feb 25, 2016 14740      kbisanz             Check frameMap's values against defaults
+ * Mar 03, 2016  7452      Robert.Blum         Added configurable maps that are loaded on startup.
+ * Mar 03, 2016  7452      Robert.Blum         Fixing error due to incomplete python path.
+ * Mar 14, 2016 12145      mduff               Handle error thrown by event manager.
  * Mar 15, 2016 15676      Chris.Golden        Updated to use new method names.
  * Apr 01, 2016 16225      Chris.Golden        Added ability to cancel tasks that are scheduled to run
  *                                             at regular intervals.
+ * May 02, 2016 16373      mduff               Added the product view/presenter.
  * Jun 23, 2016 19537      Chris.Golden        Added use of a spatial context provider.
  * Jul 25, 2016 19537      Chris.Golden        Changed to implement spatial display handler (to
  *                                             deal with display-closed events) and frame-change
@@ -253,6 +267,7 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug 19, 2016 16259      Chris.Golden        Changed event bus to use only one each of dispatcher and
  *                                             handler threads, so as to avoid messages arriving out
  *                                             of order.
+ * Aug 24, 2016 21424      Kevin.Bisanz        Updated wording/formatting of hazard conflict dialog.
  * Oct 05, 2016 22870      Chris.Golden        Added support for event-driven tools triggered
  *                                             by frame changes. This involves tracking which frame
  *                                             changes are caused by H.S. asking for them, and which
@@ -286,6 +301,17 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             and removed anything not being used.
  * Feb 13, 2017 28892      Chris.Golden        Removed unneeded code.
  * Apr 27, 2017 11853      Chris.Golden        Changed name of product editor closing method.
+ * Jun 22, 2017 15561      Chris.Golden        Keep track of which descriptor was last used for a
+ *                                             perspective due to the current design. Also added flag
+ *                                             to force recreation of spatial displayables when a new
+ *                                             perspective is activated.
+ * Jun 26, 2017 19207      Chris.Golden        Changes to view products for specific events. Also
+ *                                             added warnings/TODOs concerning use of the provided
+ *                                             IMessenger interfaces' methods that return something
+ *                                             from outside the UI thread. Also added code to ensure
+ *                                             that IMessenger interface implementations of methods
+ *                                             that do not return anything are executed using the UI
+ *                                             thread.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -530,6 +556,11 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     private ToolsPresenter toolsPresenter = null;
 
     /**
+     * Product presenter.
+     */
+    private ProductPresenter productPresenter = null;
+
+    /**
      * Hazard detail presenter.
      */
     private HazardDetailPresenter hazardDetailPresenter = null;
@@ -579,6 +610,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     private AlertVizPresenter alertVizPresenter;
 
+    /**
+     * Question answerer for the user.
+     * <p>
+     * TODO: This should not be used by the session manager at all, as when a
+     * worker thread is used for session manager activity, that thread would
+     * have to block while the UI thread got the answer from the user.
+     * </p>
+     */
     private IQuestionAnswerer questionAnswerer;
 
     /**
@@ -586,13 +625,35 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     private IWarner warner;
 
+    /**
+     * Continue-cancel questioner for the user.
+     * <p>
+     * TODO: This should not be used by the session manager at all, as when a
+     * worker thread is used for session manager activity, that thread would
+     * have to block while the UI thread got the answer from the user.
+     * </p>
+     */
     private IContinueCanceller continueCanceller;
 
     private final IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
 
+    /**
+     * Rise-crest-fall editor for the user.
+     * <p>
+     * TODO: This should not be used by the session manager at all, as when a
+     * worker thread is used for session manager activity, that thread would
+     * have to block while the UI thread got the answer from the user.
+     * </p>
+     */
     private IRiseCrestFallEditor graphicalEditor;
 
+    private IProductViewerChooser productViewerChooser;
+
+    private final Map<IPerspectiveDescriptor, IDescriptor> perspectiveDescriptorMap = new HashMap<>();
+
     private GraphicalEditor editor;
+
+    private ProductViewerSelectionDlg productSelectionDialog;
 
     private IToolParameterGatherer toolParameterGatherer;
 
@@ -707,6 +768,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR);
         String generatorsFormatsPath = FileUtil.join(generatorsPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_FORMATS_DIR);
+        String generatorsGeoSpatialPath = FileUtil
+                .join(generatorsPath,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEOSPATIAL_DIR);
         String recommendersConfigPath = FileUtil
                 .join(hazardServicesPythonPath,
                         HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
@@ -756,8 +820,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 hazardServicesPath, hazardTypesPath, hazardMetaDataPath,
                 gfePath, timePath, generalUtilitiesPath, trackUtilitiesPath,
                 dataAccessPath, recommendersPath, recommendersConfigPath,
-                generatorsPath, generatorsProductsPath, generatorsFormatsPath),
-                getClass().getClassLoader());
+                generatorsPath, generatorsProductsPath, generatorsFormatsPath,
+                generatorsGeoSpatialPath), getClass().getClassLoader());
 
         /*
          * For testing and demos, force DRT for operational mode start HS
@@ -772,12 +836,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 ((SpatialDisplayResourceData) spatialDisplay.getResourceData())
                         .getSettings());
 
-        /**
-         * Get a true/false, or OK/cancel, or yes/no answer from the user.
-         * 
-         * @param question
-         *            Question to be asked.
-         * @return True if the answer was true/OK/yes, false otherwise.
+        /*
+         * TODO: Ensure that any call to these methods, if from a non-UI thread,
+         * logs an error and returns false.
          */
         this.questionAnswerer = new IQuestionAnswerer() {
 
@@ -822,13 +883,27 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         this.warner = new IWarner() {
 
             @Override
-            public void warnUser(String title, String warning) {
+            public void warnUser(final String title, final String warning) {
 
-                MessageDialog.openWarning(null, title, warning);
+                if (Display.getDefault().getThread() == Thread.currentThread()) {
+                    MessageDialog.openWarning(null, title, warning);
+                } else {
+                    Display.getDefault().asyncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            warnUser(title, warning);
+                        }
+                    });
+                }
             }
 
         };
 
+        /*
+         * TODO: Ensure that any call to these methods, if from a non-UI thread,
+         * logs an error and returns false.
+         */
         this.continueCanceller = new IContinueCanceller() {
 
             @Override
@@ -845,6 +920,12 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             }
         };
 
+        /*
+         * TODO: Ensure that any call to these methods, if from a non-UI thread,
+         * logs an error and returns null. Or refactor to avoid having to return
+         * a hazard event (why does it need to do that?) and change it to ensure
+         * it is run on the UI thread, just like the productViewerChooser below.
+         */
         this.graphicalEditor = new IRiseCrestFallEditor() {
 
             @Override
@@ -861,18 +942,57 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             }
         };
 
+        this.productViewerChooser = new IProductViewerChooser() {
+
+            @Override
+            public void getProductViewerChooser(
+                    final List<ProductData> productData) {
+                if (Display.getDefault().getThread() == Thread.currentThread()) {
+                    Shell shell = VizWorkbenchManager.getInstance()
+                            .getCurrentWindow().getShell();
+                    if (productSelectionDialog == null
+                            || productSelectionDialog.isDisposed()) {
+                        productSelectionDialog = new ProductViewerSelectionDlg(
+                                shell, productPresenter, productData);
+                        productSelectionDialog.open();
+                    } else {
+                        productSelectionDialog.bringToTop();
+                    }
+                } else {
+                    Display.getDefault().asyncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            getProductViewerChooser(productData);
+                        }
+                    });
+                }
+            }
+        };
+
         this.toolParameterGatherer = new IToolParameterGatherer() {
 
             @Override
-            public void getToolParameters(String tool, ToolType type,
-                    RecommenderExecutionContext context,
-                    Map<String, Serializable> dialogInput) {
-                Dict dict = new Dict();
-                for (String parameter : dialogInput.keySet()) {
-                    dict.put(parameter, dialogInput.get(parameter));
+            public void getToolParameters(final String tool,
+                    final ToolType type,
+                    final RecommenderExecutionContext context,
+                    final Map<String, Serializable> dialogInput) {
+                if (Display.getDefault().getThread() == Thread.currentThread()) {
+                    Dict dict = new Dict();
+                    for (String parameter : dialogInput.keySet()) {
+                        dict.put(parameter, dialogInput.get(parameter));
+                    }
+                    toolsPresenter.showToolParameterGatherer(tool, type,
+                            context, dict.toJSONString());
+                } else {
+                    Display.getDefault().asyncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            getToolParameters(tool, type, context, dialogInput);
+                        }
+                    });
                 }
-                toolsPresenter.showToolParameterGatherer(tool, type, context,
-                        dict.toJSONString());
             }
 
             @Override
@@ -883,6 +1003,27 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                         visualFeatures);
             }
         };
+
+        loadDefaultMaps();
+    }
+
+    /**
+     * Load the map bundles that are to be loaded by default upon startup.
+     */
+    private void loadDefaultMaps() {
+        IDisplayPaneContainer currentEditor = EditorUtil
+                .getActiveVizContainer();
+        MapManager mapMgr = MapManager
+                .getInstance((IMapDescriptor) currentEditor
+                        .getActiveDisplayPane().getDescriptor());
+
+        StartUpConfig config = sessionManager.getConfigurationManager()
+                .getStartUpConfig();
+        if (config != null) {
+            for (String map : config.getDisplayMaps()) {
+                mapMgr.loadMapByBundleName(map.trim());
+            }
+        }
     }
 
     /**
@@ -916,6 +1057,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         // Create the tools view.
         createToolsDisplay();
+
+        // Create the product view
+        createProductDisplay();
 
         // Create the hazard detail view.
         createHazardDetailDisplay(loadedFromBundle);
@@ -952,6 +1096,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         addFrameChangedListener();
 
         addResourceListeners();
+
+        perspectiveDescriptorMap.put(PlatformUI.getWorkbench()
+                .getActiveWorkbenchWindow().getActivePage().getPerspective(),
+                spatialDisplay.getDescriptor());
     }
 
     @Override
@@ -1048,21 +1196,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> areasForConflictingEventsForEvents) {
         launchConflictingHazardsDialog(areasForConflictingEventsForEvents,
                 false);
-    }
-
-    @Override
-    public void showUserProductViewerSelectionDialog(
-            List<ProductData> productData) {
-        Shell shell = VizWorkbenchManager.getInstance().getCurrentWindow()
-                .getShell();
-        final ProductViewerSelectionDlg selectionDialog = new ProductViewerSelectionDlg(
-                shell, consolePresenter, productData);
-        VizApp.runSync(new Runnable() {
-            @Override
-            public void run() {
-                selectionDialog.open();
-            }
-        });
     }
 
     @Override
@@ -1203,6 +1336,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 .newArrayList();
         contributors.add((SettingsView) settingsPresenter.getView());
         contributors.add((ToolsView) toolsPresenter.getView());
+        contributors.add((ProductView) productPresenter.getView());
         contributors.add((HazardDetailView) hazardDetailPresenter.getView());
         contributors.add((HazardTypeFirstView) hazardTypeFirstPresenter
                 .getView());
@@ -1343,6 +1477,18 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             toolsPresenter = new ToolsPresenter(sessionManager, eventBus);
             presenters.add(toolsPresenter);
             toolsPresenter.setView(toolsView);
+        }
+    }
+
+    /**
+     * Create the product view and presenter.
+     */
+    private void createProductDisplay() {
+        if (productPresenter == null) {
+            ProductView prodView = new ProductView();
+            productPresenter = new ProductPresenter(sessionManager, eventBus);
+            presenters.add(productPresenter);
+            productPresenter.setView(prodView);
         }
     }
 
@@ -1632,7 +1778,6 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
      */
     public ObservedSettings getCurrentSettings() {
         return (sessionManager.getConfigurationManager().getSettings());
-
     }
 
     /**
@@ -1843,7 +1988,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             List<GeneratedProductList> generatedProductsList) {
         final ProductViewer productViewer = new ProductViewer(
                 VizWorkbenchManager.getInstance().getCurrentWindow().getShell(),
-                generatedProductsList);
+                generatedProductsList, this.sessionManager
+                        .getConfigurationManager().getHazardTypes());
         VizApp.runSync(new Runnable() {
             @Override
             public void run() {
@@ -1860,8 +2006,14 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
                 .getEventManager();
 
-        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = sessionEventManager
-                .getAllConflictingEvents();
+        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = null;
+        try {
+            conflictMap = sessionEventManager.getAllConflictingEvents();
+        } catch (HazardEventServiceException e) {
+            statusHandler.error("Could not get map of all conflicting events; "
+                    + "assuming should not continue.", e);
+            return false;
+        }
 
         if (!conflictMap.isEmpty()) {
             userResponse = launchConflictingHazardsDialog(conflictMap, true);
@@ -1882,8 +2034,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 + "perspective activated: page = " + page + ", perspective = "
                 + perspective.getDescription());
 
-        // Close Hazard Services if there is no active editor in the new pers-
-        // pective.
+        /*
+         * Close Hazard Services if there is no active editor in the new
+         * perspective.
+         */
         AbstractEditor activeEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
         if (activeEditor == null) {
@@ -1893,7 +2047,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             return;
         }
 
-        // Recreate the console and the hazard detail views.
+        /*
+         * Recreate the console and the hazard detail views.
+         */
         createConsole(false, true);
         createHazardDetailDisplay(false);
 
@@ -1914,24 +2070,40 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         spatialDisplay.getDescriptor().removeFrameChangedListener(this);
 
-        // Get the tool layer data from the old tool layer, and delete the
-        // latter.
+        /*
+         * Get the tool layer data from the old tool layer, and delete the
+         * latter.
+         * 
+         * Note: The current implementation creates and destroys the resource
+         * every time the user switches from one perspective to another. This
+         * occurs even if the original perspective remains open. As a result,
+         * resources are constantly created and destroyed as the user switches
+         * from perspective to perspective. This would not normally be a
+         * requirement for a simple abstract viz resource. However, in this
+         * implementation everything has been so tightly coupled together. And
+         * this is despite all of the component-to-component messaging (rather
+         * than direction interaction) that occurs.
+         */
         spatialDisplay.perspectiveChanging();
         SpatialDisplayResourceData spatialDisplayResourceData = (SpatialDisplayResourceData) spatialDisplay
                 .getResourceData();
         spatialDisplay.dispose();
         unacknowledgedFrameTimeChanges.clear();
 
-        // Create a new tool layer for the new perspective.
+        /*
+         * Create a new tool layer for the new perspective.
+         */
         try {
-            IDescriptor descriptor = null;
-            AbstractEditor abstractEditor = EditorUtil
-                    .getActiveEditorAs(AbstractEditor.class);
-            if (abstractEditor != null) {
-                IDisplayPane displayPane = abstractEditor
-                        .getActiveDisplayPane();
-                if (displayPane != null) {
-                    descriptor = displayPane.getDescriptor();
+            IDescriptor descriptor = perspectiveDescriptorMap.get(perspective);
+            if (descriptor == null) {
+                AbstractEditor abstractEditor = EditorUtil
+                        .getActiveEditorAs(AbstractEditor.class);
+                if (abstractEditor != null) {
+                    IDisplayPane displayPane = abstractEditor
+                            .getActiveDisplayPane();
+                    if (displayPane != null) {
+                        descriptor = displayPane.getDescriptor();
+                    }
                 }
             }
             spatialDisplay = spatialDisplayResourceData.construct(
@@ -1940,7 +2112,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             statusHandler.error("Error creating spatial display", e1);
         }
 
-        // Create a new spatial view for the new tool layer.
+        /*
+         * Create a new spatial view for the new tool layer.
+         */
         addSpatialDisplayResourceToPerspective();
 
         /*
@@ -1949,14 +2123,25 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         addFrameChangedListener();
 
-        // Rebuild the console menubar.
+        /*
+         * Rebuild the console menubar.
+         */
         buildMenuBar();
 
-        // Rebuild the console toolbar.
+        /*
+         * Rebuild the console toolbar.
+         */
         buildToolBar();
 
-        // Update the spatial display.
-        spatialPresenter.updateAllDisplayables();
+        /*
+         * Update the spatial display.
+         */
+        spatialPresenter.updateAllDisplayables(true);
+
+        if (perspectiveDescriptorMap.containsKey(perspective) == false) {
+            perspectiveDescriptorMap.put(perspective,
+                    spatialDisplay.getDescriptor());
+        }
     }
 
     @Override
@@ -1985,8 +2170,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public void perspectiveClosed(IWorkbenchPage page,
             IPerspectiveDescriptor perspective) {
-
-        // No action.
+        perspectiveDescriptorMap.remove(perspective);
     }
 
     @Override
@@ -2051,7 +2235,7 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         if (!conflictingHazardMap.isEmpty()) {
             StringBuffer message = new StringBuffer(
-                    "Conflicting Hazards: The following hazard conflicts exist: ");
+                    "The following hazard conflicts exist: ");
 
             if (requiresConfirmation) {
                 message.append("Continue?\n");
@@ -2063,33 +2247,41 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
                 String phenSig = HazardEventUtilities
                         .getHazardType(hazardEvent);
-                message.append("Event ID:" + hazardEvent.getEventID() + "("
-                        + phenSig + ") Conflicts With: ");
+                message.append(hazardEvent.getEventID());
+                message.append("(");
+                message.append(phenSig);
+                message.append(") conflicts with: ");
 
                 Map<IHazardEvent, Collection<String>> conflictingHazards = conflictingHazardMap
                         .get(hazardEvent);
+
+                HazardTypeEntry hazardTypeEntry = sessionManager
+                        .getConfigurationManager().getHazardTypes()
+                        .get(phenSig);
+                Set<String> ugcTypes = hazardTypeEntry.getUgcTypes(); // E.g.
+                                                                      // county
 
                 for (IHazardEvent conflictingHazard : conflictingHazards
                         .keySet()) {
                     String conflictingPhenSig = HazardEventUtilities
                             .getHazardType(conflictingHazard);
-                    message.append("Event ID:" + conflictingHazard.getEventID()
-                            + "(" + conflictingPhenSig + ") ");
+                    message.append("\n\t");
+                    message.append(conflictingHazard.getEventID());
+                    message.append("(");
+                    message.append(conflictingPhenSig);
+                    message.append(") ");
 
                     Collection<String> conflictingAreas = conflictingHazards
                             .get(conflictingHazard);
 
-                    /*
-                     * TODO - Future work to be done under RM 7306. The below
-                     * label needs to be updated based on the ugcType of the
-                     * hazard. It could be a county, forecast zone, or fire wx
-                     * zone.
-                     */
                     if (!conflictingAreas.isEmpty()) {
-                        message.append("\n\tForecast Zones:");
+                        message.append("\n\t\tUGCs(");
+                        message.append(Joiner.on(", ").join(ugcTypes));
+                        message.append("):");
 
                         for (String area : conflictingAreas) {
-                            message.append(" " + area);
+                            message.append(" ");
+                            message.append(area);
                         }
                     }
 
@@ -2218,5 +2410,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Override
     public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEvent event) {
         return this.graphicalEditor;
+    }
+
+    @Override
+    public IProductViewerChooser getProductViewerChooser() {
+        return this.productViewerChooser;
     }
 }

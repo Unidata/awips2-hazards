@@ -32,6 +32,7 @@ GUID_SOURCE = 'guidSource'
 TYPE_SOURCE = 'typeSource'
 RADAR = 'radar'
 ACCUMULATION_INTERVAL = 'accumulationInterval'
+COMBINE_HAZARD_DISTANCE = 'combineHazardDistance'
 
 #  Time and key constants
 FLASH_FLOOD_PHENOMENON = 'FF'
@@ -147,8 +148,16 @@ class Recommender(RecommenderTemplate.Recommender):
         radarChoices.insert(0, "---")
        
         valueDict = {}           
-        qpeDict = {}
+
         fieldDictList = []
+
+        qpeDictLabel = {}
+        qpeDictLabel['fieldType'] = 'Label'
+        qpeDictLabel['fieldName'] = 'qpeDictLabel'
+        qpeDictLabel['values'] = 'QPE Source:'
+        fieldDictList.append(qpeDictLabel)
+
+        qpeDict = {}
         qpeDict['fieldType'] = 'ComboBox'
         qpeDict['fieldName'] = QPE_SOURCE
         qpeDict['label'] = 'QPE Source:'
@@ -157,29 +166,45 @@ class Recommender(RecommenderTemplate.Recommender):
         valueDict[QPE_SOURCE] = qpeDict['defaultValues']
         fieldDictList.append(qpeDict)
 
+        radarDictLabel = {}
+        radarDictLabel['fieldType'] = 'Label'
+        radarDictLabel['fieldName'] = 'radarDictLabel'
+        radarDictLabel['values'] = 'Radar:'
+        fieldDictList.append(radarDictLabel)
+
         radarDict = {}
         radarDict['fieldType'] = 'ComboBox'
         radarDict['fieldName'] = RADAR
-        radarDict['label'] = 'Radar:'
         radarDict['choices'] = radarChoices
-        radarDict['values'] = radarChoices[1]
+        radarDict['defaultValues'] = radarChoices[1]
         radarDict['extraData'] = { "choices": radarChoices }
+        valueDict[RADAR] = radarDict['defaultValues']
         fieldDictList.append(radarDict)
+
+        guidDictLabel = {}
+        guidDictLabel['fieldType'] = 'Label'
+        guidDictLabel['fieldName'] = 'guidDictLabel'
+        guidDictLabel['values'] = 'Guidance Source:'
+        fieldDictList.append(guidDictLabel)
        
         guidDict = {}
         guidDict['fieldType'] = 'ComboBox'
         guidDict['fieldName'] = GUID_SOURCE
-        guidDict['label'] = 'Guidance Source:'
         guidDict['choices'] = guidChoices
         guidDict['defaultValues'] = guidChoices[0]
         valueDict[GUID_SOURCE] = guidDict['defaultValues']
         fieldDictList.append(guidDict)
+
+        accumulationIntervalDictLabel = {}
+        accumulationIntervalDictLabel['fieldType'] = 'Label'
+        accumulationIntervalDictLabel['fieldName'] = 'accumulationIntervalDictLabel'
+        accumulationIntervalDictLabel['values'] = 'Time Duration (hrs):'
+        fieldDictList.append(accumulationIntervalDictLabel)
        
         accumulationIntervalDict = {}
         accumulationIntervalDict['fieldType'] = 'FractionSpinner'
         accumulationIntervalDict['showScale'] = 0
         accumulationIntervalDict['fieldName'] = ACCUMULATION_INTERVAL
-        accumulationIntervalDict['label'] = 'Time Duration (hrs):'
         accumulationIntervalDict['minValue'] = 1
         accumulationIntervalDict['maxValue'] = 24
         accumulationIntervalDict['incrementDelta'] = .25
@@ -187,20 +212,30 @@ class Recommender(RecommenderTemplate.Recommender):
         valueDict[ACCUMULATION_INTERVAL] = 1
         fieldDictList.append(accumulationIntervalDict)
 
+        typeDictLabel = {}
+        typeDictLabel['fieldType'] = 'Label'
+        typeDictLabel['fieldName'] = 'typeDictLabel'
+        typeDictLabel['values'] = 'FFMP Fields:'
+        fieldDictList.append(typeDictLabel)
+
         typeDict = {}
         typeDict['fieldType'] = 'ComboBox'
         typeDict['fieldName'] = TYPE_SOURCE
-        typeDict['label'] = 'FFMP Fields:'
         typeDict['choices'] = VALUE_TYPES
         typeDict['defaultValues'] = VALUE_TYPES[0]
         valueDict[TYPE_SOURCE] = typeDict['defaultValues']
         fieldDictList.append(typeDict)
+
+        compareValueDictLabel = {}
+        compareValueDictLabel['fieldType'] = 'Label'
+        compareValueDictLabel['fieldName'] = 'compareValueDictLabel'
+        compareValueDictLabel['values'] = 'Value (inches/%):'
+        fieldDictList.append(compareValueDictLabel)
        
         compareValueDict = {}
         compareValueDict['fieldType'] = 'FractionSpinner'
         compareValueDict['showScale'] = 0
         compareValueDict['fieldName'] = COMPARE_VALUE
-        compareValueDict['label'] = 'Value (inches/%):'
         compareValueDict['minValue'] = -6
         compareValueDict['maxValue'] = 6
         compareValueDict['incrementDelta'] = 1.0
@@ -208,7 +243,37 @@ class Recommender(RecommenderTemplate.Recommender):
         valueDict['compareValue'] = 1
         fieldDictList.append(compareValueDict)
 
-        dialogDict['fields'] = fieldDictList
+
+        combineHazardDictLabel = {}
+        combineHazardDictLabel['fieldType'] = 'Label'
+        combineHazardDictLabel['fieldName'] = 'combineHazardDictLabel'
+        combineHazardDictLabel['values'] = 'Combine Hazards Within (miles):'
+        fieldDictList.append(combineHazardDictLabel)
+
+        combineHazardDict = {}
+        combineHazardDict['fieldType'] = 'FractionSpinner'
+        combineHazardDict['showScale'] = 0
+        combineHazardDict['fieldName'] = COMBINE_HAZARD_DISTANCE
+        combineHazardDict['minValue'] = 0
+        combineHazardDict['maxValue'] = 1000
+        combineHazardDict['incrementDelta'] = .25
+        combineHazardDict['precision'] = 2
+        valueDict[COMBINE_HAZARD_DISTANCE] = 10.0
+        fieldDictList.append(combineHazardDict)
+
+        # A composite with multiple columns is used to better align the widgets
+        # in the dialog.
+        fieldDictComposite = {}
+        fieldDictComposite['fieldType'] = 'Composite'
+        fieldDictComposite['fieldName'] = 'combineComposite'
+        fieldDictComposite['numColumns'] = 2
+        fieldDictComposite['topMargin'] = 5
+        fieldDictComposite['bottomMargin'] = 5
+        fieldDictComposite['leftMargin'] = 5
+        fieldDictComposite['rightMargin'] = 5
+        fieldDictComposite['fields'] = fieldDictList
+
+        dialogDict['fields'] = [fieldDictComposite]
         dialogDict['valueDict'] = valueDict
        
         return dialogDict
@@ -241,34 +306,28 @@ class Recommender(RecommenderTemplate.Recommender):
         self.type = dialogInputMap.get(TYPE_SOURCE)
         self.compareValue = dialogInputMap.get(COMPARE_VALUE)       
         self.accumulationHours = float(dialogInputMap.get(ACCUMULATION_INTERVAL))
+        self.combineHazardDistance = float(dialogInputMap.get(COMBINE_HAZARD_DISTANCE))
         
         # delete potential hazards
         sessionAttributes = eventSet.getAttributes()
         currentEvents = self.getCurrentEvents(eventSet, sessionAttributes)
-        changedEvents = []
-        deleteEventIdentifiers = []
-        for currentEvent in currentEvents:
-            if (currentEvent.getPhenomenon() == FLASH_FLOOD_PHENOMENON
-                  and currentEvent.getSignificance() == FLASH_FLOOD_SIGNIFICANCE
-                  and currentEvent.getSubType() == FLASH_FLOOD_SUBTYPE
-                  and currentEvent.getStatus() == "POTENTIAL"):
-                deleteEventIdentifiers.append(currentEvent.getEventID())
-            else:
-                changedEvents.append(currentEvent)
+        deleteEventIdentifiers = [event.getEventID() for event in currentEvents]
         
         self._localize()
+        haveGuidance = False
         cont = self.getQPEValues()
         if cont :
-            self.getGuidanceValues()
-      
-        recommendedEvents = self.buildEvents(cont);
-        
-        # Merge the events and mark the ones found to be potential for deletion.
+            haveGuidance = self.getGuidanceValues()
+
         mergedEvents = EventSet(None)
-        mergedEvents.addAll(recommendedEvents)
-        mergedEvents.addAll(changedEvents)
+        if haveGuidance:
+            # Add recommended events if there is guidance.
+            recommendedEvents = self.buildEvents(cont);
+            mergedEvents.addAll(recommendedEvents)
+        else:
+            self.logger.warn("No Flash Flood Guidance data available")
+
         mergedEvents.addAttribute('deleteEventIdentifiers', deleteEventIdentifiers)
-        
         return mergedEvents
    
     def getQPEValues(self):
@@ -397,8 +456,9 @@ class Recommender(RecommenderTemplate.Recommender):
                         value = self._calcQPE(precipValue)
                        
                     # if QPE or ratio and compare value is 0, then the comparison should be >, otherwise >=
-                    if (self.compareValue == 0 and (self.type == TYPE_RATIO or self.type == TYPE_QPE)):
-                        if value > self.compareValue:
+                    # Round to the 2 decimal display value otherwise 0 qpe/ratio basing may become part of the hazard.
+                    if (round(self.compareValue,2) == 0.0 and (self.type == TYPE_RATIO or self.type == TYPE_QPE)):
+                        if round(value, 2) > 0.0:
                             geom = basin[GEOMETRY_KEY]
                             g = geom.getGeometry()
                             basins.append(g)
@@ -438,8 +498,8 @@ class Recommender(RecommenderTemplate.Recommender):
             self.logger.info("No basins available for Flash Flood Recommender.")
            
         aggregator = HazardEventGeometryAggregator()
-        aggregatedEventSet = aggregator.aggregateEvents(JUtil.pyValToJavaObj(pythonEventSet))
-       
+        aggregatedEventSet = aggregator.aggregateEvents(JUtil.pyValToJavaObj(pythonEventSet), self.combineHazardDistance)
+        
         return aggregatedEventSet;
    
     def _calcDiff(self, qpe, guid):
@@ -507,27 +567,36 @@ class Recommender(RecommenderTemplate.Recommender):
         self._dataKey = self._siteKey
        
         self.ffmpTemplates= FFMPTemplates.getInstance(self._domain, self._siteKey, FFMPTemplates.MODE.CAVE)
-       
+
     def getCurrentEvents(self, eventSet, sessionAttributes):
-        siteID = eventSet.getAttributes().get('siteID')        
-        mode = sessionAttributes.get('hazardMode', 'PRACTICE').upper()
-        # Get current events from Session Manager (could include pending / potential)
+        siteID = eventSet.getAttributes().get('siteID')
+        caveMode = sessionAttributes.get('hazardMode','PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
+         # Get current events from Session Manager (could include pending / potential)
         currentEvents = []
         for event in eventSet:
-            currentEvents.append(event)
+            # Recommender only cares about potential FF.W.Convective hazards
+            if (event.getPhenomenon() == FLASH_FLOOD_PHENOMENON
+                  and event.getSignificance() == FLASH_FLOOD_SIGNIFICANCE
+                  and event.getSubType() == FLASH_FLOOD_SUBTYPE
+                  and event.getStatus() == "POTENTIAL"):
+                currentEvents.append(event)
         # Add in those from the Database
-        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode) 
+        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, practice) 
         eventIDs = [event.getEventID() for event in currentEvents]
         for event in databaseEvents:
             if event.getEventID() not in eventIDs:
-                currentEvents.append(event)
-                eventIDs.append(event.getEventID())
-        # Filter out ELAPSED hazards
-        validEvents = []
-        for event in currentEvents:
-            if event.getStatus() != 'ELAPSED':
-                validEvents.append(event)
-        return validEvents
+                # Recommender only cares about potential FF.W.Convective hazards
+                if (event.getPhenomenon() == FLASH_FLOOD_PHENOMENON
+                    and event.getSignificance() == FLASH_FLOOD_SIGNIFICANCE
+                    and event.getSubType() == FLASH_FLOOD_SUBTYPE
+                    and event.getStatus() == "POTENTIAL"):
+                    currentEvents.append(event)
+                    eventIDs.append(event.getEventID())
+
+        return currentEvents
    
     def __str__(self):
         return 'Flash Flood Recommender'

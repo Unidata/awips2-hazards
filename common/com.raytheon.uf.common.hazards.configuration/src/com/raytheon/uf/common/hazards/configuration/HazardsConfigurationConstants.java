@@ -34,6 +34,7 @@ import java.io.File;
  * Aug 31, 2015    9757    Robert.Blum Added addtional path constants.
  * Nov 17, 2015 3473       Robert.Blum Moved all python files under HazardServices localization dir.
  * Feb 12, 2016 14923      Robert.Blum Added text and event utilities path constants.
+ * Mar 03, 2016 7452       Robert.Blum Added PYTHON_LOCALIZATION_GEOSPATIAL_DIR.
  * </pre>
  * 
  * @author bkowal
@@ -77,6 +78,8 @@ public class HazardsConfigurationConstants {
     public static final String PYTHON_LOCALIZATION_PRODUCTS_DIR = "products";
 
     public static final String PYTHON_LOCALIZATION_FORMATS_DIR = "formats";
+
+    public static final String PYTHON_LOCALIZATION_GEOSPATIAL_DIR = "geoSpatial";
 
     public static final String PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR = "shapeUtilities";
 

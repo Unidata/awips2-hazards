@@ -30,6 +30,7 @@ import org.hibernate.criterion.DetachedCriteria;
 import org.hibernate.criterion.Restrictions;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
@@ -43,6 +44,8 @@ import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInterope
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityConstants.INTEROPERABILITY_TYPE;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityRecord;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.HazardEventInteropServicesSoapClient;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 
 /**
  * A utility for common interoperability functions.
@@ -63,6 +66,7 @@ import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.servi
  * Oct 14, 2015  12494    Chris Golden  Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Mar 14, 2016  12145    mduff         Handle error thrown by event manager.
  * Feb 16, 2017  29138    Chris.Golden  Changed to work with new hazard event manager.
  * </pre>
  * 
@@ -74,6 +78,9 @@ public final class InteroperabilityUtil {
     private static final int DESIRED_ETN_LENGTH = 4;
 
     private static final String ETN_PAD_CHARACTER = "0";
+
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(HazardEventManager.class);
 
     /**
      * 
@@ -157,11 +164,16 @@ public final class InteroperabilityUtil {
     public static IHazardEvent associatedExistingHazard(boolean practice,
             IHazardEventManager manager, final String siteID,
             final String phen, final String sig, final String newETNs) {
-        Map<String, HazardHistoryList> events = manager
-                .queryHistory(new HazardEventQueryRequest(practice,
-                        HazardConstants.SITE_ID, siteID).and(
-                        HazardConstants.PHENOMENON, phen).and(
-                        HazardConstants.SIGNIFICANCE, sig));
+        Map<String, HazardHistoryList> events = null;
+        try {
+            events = manager.queryHistory(new HazardEventQueryRequest(practice,
+                    HazardConstants.SITE_ID, siteID).and(
+                    HazardConstants.PHENOMENON, phen).and(
+                    HazardConstants.SIGNIFICANCE, sig));
+        } catch (HazardEventServiceException e) {
+            statusHandler.error("Unable to retrieve events for site " + siteID
+                    + ", phenomenon " + phen + ", and significance " + sig, e);
+        }
         if (events == null || events.isEmpty()) {
             return null;
         }

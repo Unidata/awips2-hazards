@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.registry;
 
+import javax.xml.ws.WebServiceException;
+
+import org.apache.commons.lang.exception.ExceptionUtils;
+
 /**
  * 
  * Exception class thrown from web service calls
@@ -30,13 +34,15 @@ package com.raytheon.uf.common.dataplugin.events.hazards.registry;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
+ * Jun 23, 2016 20030     Ben.Phillippe Changed parent class to WebServiceException so exceptions will
+ *                                      be properly reported
  * 
  * </pre>
  * 
  * @author bphillip
  * @version 1.0
  */
-public class HazardEventServiceException extends Exception {
+public class HazardEventServiceException extends WebServiceException {
 
     private static final long serialVersionUID = 1227041184993254411L;
 
@@ -48,13 +54,15 @@ public class HazardEventServiceException extends Exception {
     }
 
     /**
-     * Constructor.
+     * Constructor. The cause stacktrace is converted to a string because CXF
+     * does not propogate stack traces
      * 
      * @param message
      * @param cause
      */
     public HazardEventServiceException(String message, Throwable cause) {
-        super(message, cause);
+        super(message + "\n" + ExceptionUtils.getStackTrace(cause), cause);
+
     }
 
     /**
@@ -67,11 +75,12 @@ public class HazardEventServiceException extends Exception {
     }
 
     /**
-     * Constructor.
+     * Constructor.The cause stacktrace is converted to a string because CXF
+     * does not propogate stack traces
      * 
      * @param cause
      */
     public HazardEventServiceException(Throwable cause) {
-        super(cause);
+        super(ExceptionUtils.getStackTrace(cause), cause);
     }
 }

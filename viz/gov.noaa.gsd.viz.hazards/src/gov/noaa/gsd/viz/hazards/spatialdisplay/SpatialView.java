@@ -149,6 +149,11 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           feature spatial entity representing a hazard
  *                                           event to do nothing to deselect the hazard
  *                                           event in some cases.
+ * Jun 22, 2017 15561      Chris.Golden      Spatial display is an abstract viz resource,
+ *                                           so it is already aware of its descriptor.
+ * Jun 30, 2017 21638      Chris.Golden      Only allow gage action menu item to be enabled
+ *                                           if there is a recommender configured as the
+ *                                           gage-point-first recommender.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1176,28 +1181,17 @@ public class SpatialView implements
     @Override
     public final void dispose() {
 
-        AbstractEditor abstractEditor = EditorUtil
-                .getActiveEditorAs(AbstractEditor.class);
-
-        /*
-         * Unload from all panes.
-         */
-        if (abstractEditor != null) {
-            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                    .getDisplayPanes())) {
-                for (ResourcePair rp : displayPane.getDescriptor()
-                        .getResourceList()) {
-                    if (rp.getResource() instanceof SpatialDisplay) {
-                        SpatialDisplay display = (SpatialDisplay) rp
-                                .getResource();
-                        display.unload();
-                        displayPane.getDescriptor().getResourceList()
-                                .remove(rp);
-                    }
-                }
-            }
+        if (spatialDisplay == null) {
+            return;
         }
+
+        if (spatialDisplay.getDescriptor() != null) {
+            spatialDisplay.getDescriptor().getResourceList()
+                    .removeRsc(spatialDisplay);
+        }
+        spatialDisplay.unload();
         spatialDisplay = null;
+
         unloadSelectByAreaVizResourceFromPerspective();
     }
 
@@ -1690,6 +1684,16 @@ public class SpatialView implements
     List<IAction> getContextMenuActions(IEntityIdentifier entityIdentifier) {
         return presenter.getContextMenuActions(entityIdentifier,
                 RUNNABLE_ASYNC_SCHEDULER);
+    }
+
+    /**
+     * Determine whether or not a gage action is available.
+     * 
+     * @return <code>true</code> if a gage action is available,
+     *         <code>false</code> otherwise.
+     */
+    boolean isGageActionAvailable() {
+        return presenter.isGageActionAvailable();
     }
 
     /**

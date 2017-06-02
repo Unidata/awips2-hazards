@@ -45,10 +45,15 @@
 #    04/16/15        7579          Robert.Blum    Changes for amended Product Editor.
 #    05/07/15        6979          Robert.Blum    Changes Product Corrections
 #    05/13/15        8161          mduff          Changes for Jep upgrade.
-#    02/12/16        14923         Robert.Blum    Picking up overrides of EventUtilities directory
+#    02/12/16       14923          Robert.Blum    Picking up overrides of EventUtilities directory
+#    03/21/16       15640          Robert.Blum    Fixed custom edits not getting put in final product.
+#    03/31/16        8837          Robert.Blum    Added the site to the init method so that it can be used
+#                                                 to import the correct site files for service backup.
+#    07/06/16       18257          Kevin.Bisanz   Added eventSet to kwargs
+#    07/28/16       19222          Robert.Blum    Code cleanup.
 #
-import PythonOverriderInterface
-import PythonOverrider
+import HazardServicesPythonOverriderInterface
+import HazardServicesPythonOverrider
 import JUtil, importlib
 
 from GeometryHandler import shapelyToJTS, jtsToShapely
@@ -72,10 +77,10 @@ from EventSet import EventSet as PythonEventSet
 from KeyInfo import KeyInfo
 from PathManager import PathManager
 
-class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
+class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPythonOverriderInterface):
 
-    def __init__(self, scriptPath, localizationPath):
-        super(ProductInterface, self).__init__(scriptPath, localizationPath)
+    def __init__(self, scriptPath, localizationPath, site):
+        super(ProductInterface, self).__init__(scriptPath, localizationPath, site)
         self.pathMgr = PathManager()
         # Import the textUtilities dir using PythonOverrider
         self.importTextUtility(reloadModules=False)
@@ -127,10 +132,11 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                 # make sure dataList is a python object
                 dataList.append(JUtil.javaObjToPyVal(genProdList.get(i).getData()))
             kwargs['dataList'] = dataList
+            kwargs['eventSet'] = eventSet
         else:
             updateList = False
             genProdList = GeneratedProductList()
-            eventSet = PythonEventSet(kwargs.pop('eventSet'))
+            eventSet = PythonEventSet(kwargs.get('eventSet'))
 
         # executeFrom does not need formats
         formats = kwargs.pop('formats')
@@ -173,15 +179,16 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
     def executeFormatter(self, moduleName, className, **kwargs):
         generatedProductList = kwargs['generatedProductList']
         formats = JUtil.javaObjToPyVal( kwargs['formats'])
+        overrideProductText = kwargs['overrideProductText']
 
         # Loop over each product that has been generated and format them
         for i in range(generatedProductList.size()):
             generatedProduct = generatedProductList.get(i)
-            self.formatProduct(generatedProduct,formats)
+            self.formatProduct(generatedProduct, formats, overrideProductText)
 
         return generatedProductList
 
-    def formatProduct(self, generatedProduct, formats):
+    def formatProduct(self, generatedProduct, formats, overrideProductText=False):
         # Retrieve the product's data to pass to the formatter
         productData = JUtil.javaObjToPyVal(generatedProduct.getData())
         # Retrieve the product's editableEntries if available
@@ -198,14 +205,14 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
                     scriptName = locPath + format + '.py'
                     if sys.modules.has_key(format):
                         self.clearModuleAttributes(format)
-                    formatModule = PythonOverrider.importModule(scriptName)
+                    formatModule = HazardServicesPythonOverrider.importModule(scriptName, localizedSite=self.site)
                     instance = formatModule.Format()
                     editableEntries = None
                     if editableEntriesList:
                         for i in range(editableEntriesList.size()):
                             if format == editableEntriesList.get(i).getFormat():
                                 editableEntries = JUtil.javaObjToPyVal(editableEntriesList.get(i).getEditableEntries())
-                    product, editableEntries = instance.execute(data, editableEntries)
+                    product, editableEntries = instance.execute(data, editableEntries, overrideProductText)
                     productDict[format] = product
                     editableEntryMap = EditableEntryMap(format, JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(editableEntries)))
                     generatedProduct.addEditableEntry(editableEntryMap)
@@ -357,39 +364,12 @@ class ProductInterface(PythonOverriderInterface.PythonOverriderInterface):
 
     def importTextUtility(self, reloadModules=True):
         locPath = 'HazardServices/python/textUtilities/'
-        lf = self.pathMgr.getLocalizationFile(locPath, loctype='COMMON_STATIC', loclevel='BASE');
-        basePath = lf.getPath()
-        # Import all the files in this directory
-        self.importFilesFromDir(basePath, locPath)
-        # Import all the generators/formatters so that the
-        # overridden TextUtility modules are picked up.
+        self.importDirectory(locPath, reloadModules)
         if reloadModules:
-            self.reloadModules()
             self.importFormatters()
 
     def importEventUtility(self, reloadModules=True):
         locPath = 'HazardServices/python/events/utilities/'
-        lf = self.pathMgr.getLocalizationFile(locPath, loctype='COMMON_STATIC', loclevel='BASE');
-        basePath = lf.getPath()
-        # Import all the files in this directory
-        self.importFilesFromDir(basePath, locPath)
-        # Import all the generators/formatters so that the
-        # overridden EventUtility modules are picked up.
+        self.importDirectory(locPath, reloadModules)
         if reloadModules:
-            self.reloadModules()
             self.importFormatters()
-
-    def importFilesFromDir(self, basePath, locPath):
-        # Import all the modules in the basePath directory using PythonOverrider.
-        # Need to do this twice since these modules import/subclass each other which could result in
-        # in old references being used. Which would cause the override not being picked up.
-        for x in range(2):
-            for s in basePath.split(os.path.pathsep):
-                if os.path.exists(s):
-                    scriptfiles = os.listdir(s)
-                    for filename in scriptfiles:
-                        split = string.split(filename, ".")
-                        if len(split) == 2 and len(split[0]) > 0 and split[1] == "py" and not filename.endswith("Interface.py"):
-                            if sys.modules.has_key(split[0]):
-                                self.clearModuleAttributes(split[0])
-                            tmpModule = PythonOverrider.importModule(locPath + filename)

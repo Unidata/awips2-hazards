@@ -55,7 +55,7 @@ Prob_StormPrediction = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        "pending",
+        #"pending",
         "issued",
         "elapsed",
         "ending",

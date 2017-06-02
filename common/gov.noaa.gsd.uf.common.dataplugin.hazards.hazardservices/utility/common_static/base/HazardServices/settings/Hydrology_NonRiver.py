@@ -75,7 +75,7 @@ Hydrology_NonRiver = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        "pending",
+        #"pending",
         "issued",
         "elapsed",
         "ending",
@@ -196,12 +196,6 @@ Hydrology_NonRiver = {
             "toolType": "RECOMMENDER",
             "visible":True,
         }, 
-#         {
-#             "toolName": "RiverFloodRecommender", 
-#             "displayName": "River Flood Recommender",
-#             "toolType": "RECOMMENDER",
-#             "visible":True,
-#         },
         {
             "toolName": "FlashFloodRecommender", 
             "displayName": "Flash Flood Recommender",
@@ -214,12 +208,6 @@ Hydrology_NonRiver = {
             "toolType": "RECOMMENDER",
             "visible":True,
         },
-#         {
-#             "toolName": "RVS_ProductGenerator", 
-#             "displayName": "Generate RVS",
-#             "toolType": "NON_HAZARD_PRODUCT_GENERATOR",
-#             "visible":True,
-#         }
     ],
 }
 

@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * May 06, 2016 18202      Robert.Blum Changes for operational mode.
  * 
  * </pre>
  * 
@@ -45,8 +46,8 @@ public class InteroperabilityRecordQueryRequest extends HazardEventQueryRequest 
     /**
      * Creates a new InteroperabilityRecordQueryRequest
      */
-    public InteroperabilityRecordQueryRequest() {
-        super();
+    public InteroperabilityRecordQueryRequest(boolean practice) {
+        super(practice);
     }
 
     /**

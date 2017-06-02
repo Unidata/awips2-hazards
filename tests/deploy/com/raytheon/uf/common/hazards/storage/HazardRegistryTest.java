@@ -22,7 +22,6 @@ package com.raytheon.uf.common.hazards.storage;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.serialization.comm.RequestRouterTest;
 
 /**
@@ -50,16 +49,9 @@ public class HazardRegistryTest extends AbstractHazardStorageTest {
         RequestRouterTest.setDeployInstance();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.common.hazards.storage.AbstractHazardStorageTest#getMode
-     * ()
-     */
     @Override
-    Mode getMode() {
-        return Mode.OPERATIONAL;
+    boolean isPractice() {
+        return false;
     }
 
 }

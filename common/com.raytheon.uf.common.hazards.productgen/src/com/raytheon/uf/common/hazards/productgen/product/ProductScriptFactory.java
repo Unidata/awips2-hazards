@@ -53,10 +53,16 @@ import com.raytheon.uf.common.util.FileUtil;
  * Feb 26, 2015 6306       mduff        Pass site to product script.
  * Nov 17, 2015 3473       Robert.Blum  Moved all python files under HazardServices
  *                                      localization dir.
+ * Mar 31, 2016  8837      Robert.Blum  Added the site name to the ProductScriptFactory so that
+ *                                      PythonJobCoordinator.newInstance() actually creates a
+ *                                      new instance when the site is changed for service
+ *                                      backup.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
  *                                      sessions in the same CAVE session, since stopping and
  *                                      starting the Jep instances when the latter use numpy is
  *                                      dangerous.
+ * Jun 06, 2017 15561      Chris.Golden Changed to use HazardsConfigurationConstants constants
+ *                                      instead of string literals.
  * </pre>
  * 
  * @author jsanchez
@@ -71,9 +77,16 @@ public class ProductScriptFactory extends
      * {@link PYTHON_UTILITY_DIRECTORY} directory which must be added to the Jep
      * path for the product generation framework and product generators.
      */
-    private final static String[] PYTHON_UTILITY_SUBDIRECTORIES = { "bridge",
-            "dataStorage", "logUtilities", "shapeUtilities", "textUtilities",
-            "VTECutilities", "geoUtilities", "localizationUtilities" };
+    private final static String[] PYTHON_UTILITY_SUBDIRECTORIES = {
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_BRIDGE_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR,
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR };
 
     /**
      * All of the utility directories off of the
@@ -82,12 +95,13 @@ public class ProductScriptFactory extends
      * generators.
      */
     private final static String[] HAZARD_SERVICES_UTILITY_SUBDIRECTORIES = {
-            "hazardMetaData", "hazardCategories", "hazardTypes" };
+            HazardsConfigurationConstants.HAZARD_METADATA_DIR,
+            HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR,
+            HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR };
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductScriptFactory.class);
 
-    /** The site id */
     private String site;
 
     /**

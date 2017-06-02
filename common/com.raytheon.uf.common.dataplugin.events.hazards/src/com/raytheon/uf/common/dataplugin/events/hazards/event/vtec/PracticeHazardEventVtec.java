@@ -17,13 +17,17 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.dataplugin.hazards.interoperability.requests;
+package com.raytheon.uf.common.dataplugin.events.hazards.event.vtec;
 
-import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.registry.annotations.RegistryObject;
+import com.raytheon.uf.common.registry.annotations.RegistryObjectVersion;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+
 /**
- * Interface for returning a result for requesting vtec information.
+ * 
+ * Record class holding practice Hazard Event VTEC information
  * 
  * <pre>
  * 
@@ -31,16 +35,28 @@ import java.util.Map;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 19, 2014  2826          jsanchez     Initial creation
- * Aug 4, 2015  6895     Ben.Phillippe Finished HS data access refactor
+ * 4/5/2016     16577    Ben.Phillippe Initial creation
+ * 5/3/2016     18193    Ben.Phillippe Replication of Hazard VTEC Records
+ * 5/5/2016     6895     Ben.Phillippe RiverPro Interoperability changes
  * 
  * </pre>
  * 
- * @author jsanchez
+ * @author bphillip
  * @version 1.0
  */
+@DynamicSerialize
+@RegistryObject
+@RegistryObjectVersion(value = 1.0f)
+public class PracticeHazardEventVtec extends HazardEventVtec {
 
-public interface IReturnResults {
+    public PracticeHazardEventVtec() {
+        super();
+        this.practice = true;
+    }
 
-    public List<Map<String, Object>> getResults();
+    public PracticeHazardEventVtec(String ugcZone,
+            Map<String, Object> attributes) {
+        super(ugcZone, attributes);
+        this.practice = true;
+    }
 }

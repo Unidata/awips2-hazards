@@ -45,6 +45,24 @@ StartUpConfig = {
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     "eventIdDisplayType" : "FULL_ON_DIFF",
        
+    #################################################################################
+    #  Default Display Maps - List of map names that are loaded when Hazard Services is 
+    #  started.
+    #      Map names can be found in the localization perspective under 
+    #      CAVE->Bundles->Maps.  Use the filename without the extension.
+    #      Counties_site.xml -> Counties_site
+    #  Note that only Maps that use the following tables will enable the Select By Area
+    #  toolbar option:
+    #      mapdata.cwa
+    #      mapdata.ffmp_basins
+    #      mapdata.firewxzones
+    #      mapdata.zone
+    #      mapdata.basins
+    #      mapdata.county
+    #      mapdata.isc
+    #
+    "displayMaps" : [ "Counties_site" ],
+
     #########################
     # Hazard Information Dialog
     #    

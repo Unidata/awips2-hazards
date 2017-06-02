@@ -34,6 +34,7 @@ import com.raytheon.uf.common.util.Pair;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * Jul 22, 2015 9670       Chris.Cody  Changes for Base database query result numeric casting
+ * May 04, 2016 15584      Kevin.Bisanz Encode ImpactPE into impact string.
  * </pre>
  * 
  * @author Chris.Cody
@@ -289,8 +290,8 @@ public class FloodStmtData {
      * Hazard generation Python scripts.
      * 
      * @return Impact data string of the form:
-     *         "-MM/DD-MM/DD-Rising||[Statement]" or
-     *         "-MM/DD-MM-DD-Falling||[Statement]"
+     *         "-MM/DD-MM/DD-Rising||[Statement]||[ImpactPE]" or
+     *         "-MM/DD-MM-DD-Falling||[Statement]||[ImpactPE]"
      */
     public String getImpactString() {
 
@@ -299,8 +300,9 @@ public class FloodStmtData {
 
         if (riseFallString != null) {
             String rfText = "-" + riseFallString + "||";
+            String peText = this.impactPE + "||";
             impactString = "-" + this.dateStart + "-" + this.dateEnd + rfText
-                    + this.statement;
+                    + peText + this.statement;
         }
 
         return (impactString);

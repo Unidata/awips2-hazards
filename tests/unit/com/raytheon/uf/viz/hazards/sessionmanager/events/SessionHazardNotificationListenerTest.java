@@ -28,7 +28,6 @@ import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.NotificationType;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -97,7 +96,7 @@ public class SessionHazardNotificationListenerTest {
         eventManager.reset();
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
-                NotificationType.STORE, Mode.PRACTICE));
+                NotificationType.STORE, true));
 
         Assert.assertNotNull(eventManager.getEventById(TEST_EVENT_ID));
     }
@@ -114,7 +113,7 @@ public class SessionHazardNotificationListenerTest {
         event.setPhenomenon(TEST_PHEN2);
 
         listener.handleNotification(new HazardNotification(event,
-                NotificationType.UPDATE, Mode.PRACTICE));
+                NotificationType.UPDATE, true));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
                 .getPhenomenon(), TEST_PHEN2);
@@ -131,7 +130,7 @@ public class SessionHazardNotificationListenerTest {
         event.addHazardAttribute(HAZARD_EVENT_SELECTED, true);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
-                NotificationType.STORE, Mode.PRACTICE));
+                NotificationType.STORE, true));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
                 .getHazardAttribute(HAZARD_EVENT_SELECTED), Boolean.TRUE);
@@ -146,7 +145,7 @@ public class SessionHazardNotificationListenerTest {
         eventManager.addEvent(getDummyEvent(), null);
 
         HazardNotification notification = new HazardNotification(
-                getDummyEvent(), NotificationType.DELETE, Mode.PRACTICE);
+                getDummyEvent(), NotificationType.DELETE, true);
 
         listener.handleNotification(notification);
 
@@ -164,7 +163,7 @@ public class SessionHazardNotificationListenerTest {
         event.addHazardAttribute(HAZARD_EVENT_SELECTED, true);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
-                NotificationType.UPDATE, Mode.PRACTICE));
+                NotificationType.UPDATE, true));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
                 .getHazardAttribute(HAZARD_EVENT_SELECTED), Boolean.TRUE);
@@ -181,7 +180,7 @@ public class SessionHazardNotificationListenerTest {
         HazardEvent event = getDummyEvent();
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL2);
         listener.handleNotification(new HazardNotification(event,
-                NotificationType.UPDATE, Mode.PRACTICE));
+                NotificationType.UPDATE, true));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
                 .getHazardAttribute(TEST_ATTR_KEY), TEST_ATTR_VAL2);
@@ -198,7 +197,7 @@ public class SessionHazardNotificationListenerTest {
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL1);
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
-                NotificationType.UPDATE, Mode.PRACTICE));
+                NotificationType.UPDATE, true));
 
         Assert.assertNull(eventManager.getEventById(TEST_EVENT_ID)
                 .getHazardAttribute(TEST_ATTR_KEY));
@@ -218,7 +217,7 @@ public class SessionHazardNotificationListenerTest {
         event = getDummyEvent();
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL2);
         listener.handleNotification(new HazardNotification(event,
-                NotificationType.UPDATE, Mode.PRACTICE));
+                NotificationType.UPDATE, true));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
                 .getHazardAttribute(TEST_ATTR_KEY), TEST_ATTR_VAL2);

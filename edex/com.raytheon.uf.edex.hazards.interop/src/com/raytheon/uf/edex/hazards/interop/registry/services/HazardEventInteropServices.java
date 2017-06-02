@@ -39,7 +39,6 @@ import org.apache.cxf.annotations.FastInfoset;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
@@ -54,7 +53,6 @@ import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInterope
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.HazardConflictDict;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.HazardInteroperabilityResponse;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.IHazardEventInteropServices;
-import com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.VtecInteroperabilityActiveTableResponse;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
@@ -117,9 +115,6 @@ public class HazardEventInteropServices implements IHazardEventInteropServices {
 
     /** Denotes if this is a practice set of services */
     private boolean practice;
-
-    /** The mode (PRACTICE, OPERATIONAL) derived from the practice boolean */
-    private Mode mode;
 
     @Resource
     private WebServiceContext wsContext;
@@ -300,7 +295,7 @@ public class HazardEventInteropServices implements IHazardEventInteropServices {
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
     @WebMethod(operationName = "getActiveTable")
-    public VtecInteroperabilityActiveTableResponse getActiveTable(
+    public HazardInteroperabilityResponse getActiveTable(
             @WebParam(name = "siteID") String siteID)
             throws HazardEventServiceException {
         /*
@@ -309,7 +304,7 @@ public class HazardEventInteropServices implements IHazardEventInteropServices {
          * localization directory is currently used for retrieving VTEC for
          * Hazard Services
          */
-        VtecInteroperabilityActiveTableResponse response = new VtecInteroperabilityActiveTableResponse();
+        HazardInteroperabilityResponse response = new HazardInteroperabilityResponse();
         return response;
         // // Get the active table mode
         // ActiveTableMode activeTableMode = practice ? ActiveTableMode.PRACTICE
@@ -398,11 +393,9 @@ public class HazardEventInteropServices implements IHazardEventInteropServices {
         // return constructSuccessResponse(response, consolidatedRecords);
     }
 
-    private static VtecInteroperabilityActiveTableResponse constructSuccessResponse(
-            VtecInteroperabilityActiveTableResponse response,
+    private static HazardInteroperabilityResponse constructSuccessResponse(
+            HazardInteroperabilityResponse response,
             List<Map<String, Object>> activeTable) {
-        response.setSuccess(true);
-        response.setActiveTable(activeTable);
         return response;
     }
 
@@ -442,8 +435,8 @@ public class HazardEventInteropServices implements IHazardEventInteropServices {
             String siteID) {
         try {
             retrieveHazardsConflictDict();
-            final String parmIDFormat = (mode == Mode.OPERATIONAL) ? GridRequestHandler.OPERATIONAL_PARM_ID_FORMAT
-                    : GridRequestHandler.PRACTICE_PARM_ID_FORMAT;
+            final String parmIDFormat = (practice ? GridRequestHandler.PRACTICE_PARM_ID_FORMAT
+                    : GridRequestHandler.OPERATIONAL_PARM_ID_FORMAT);
             ParmID parmID = new ParmID(String.format(parmIDFormat, siteID));
             List<GFERecord> potentialRecords = gridRequestHandler
                     .findIntersectedGrid(parmID, timeRange);
@@ -520,7 +513,6 @@ public class HazardEventInteropServices implements IHazardEventInteropServices {
      */
     public void setPractice(boolean practice) {
         this.practice = practice;
-        this.mode = this.practice ? Mode.PRACTICE : Mode.OPERATIONAL;
     }
 
     /**

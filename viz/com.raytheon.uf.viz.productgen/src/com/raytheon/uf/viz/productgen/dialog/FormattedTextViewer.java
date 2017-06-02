@@ -23,6 +23,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.widgets.Composite;
 
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
@@ -43,6 +44,7 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  *                                      it is no longer needed due to changes in
  *                                      the parent class.
  * 07/30/2015   9681       Robert.Blum  Changed to use new abstract product dialog class.
+ * Aug 22, 2016 21475      Robert.Blum  Changed Font to be fixed width.
  * 
  * </pre>
  * 
@@ -50,6 +52,9 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * @version 1.0
  */
 public class FormattedTextViewer extends AbstractDataEditor {
+
+    /** The font size of the product on this Text Viewer */
+    private static int FONT_SIZE = 10;
 
     /** The name of the formatter used to format the data */
     private final String format;
@@ -65,6 +70,8 @@ public class FormattedTextViewer extends AbstractDataEditor {
 
     /** The text content of the formatted product tab */
     private StyledText styledText;
+
+    private Font monospaceFont;
 
     /**
      * Creates a new FormattedTextDataEditor object
@@ -101,6 +108,13 @@ public class FormattedTextViewer extends AbstractDataEditor {
         // Create a new StyledText object containing the formatted text
         this.styledText = new StyledText(editorPane, SWT.H_SCROLL
                 | SWT.V_SCROLL);
+
+        /*
+         * Set the font of the formatted tabs to be fixed width.
+         */
+        this.monospaceFont = new Font(editorPane.getDisplay(), "Monospace",
+                FONT_SIZE, SWT.NORMAL);
+        this.styledText.setFont(monospaceFont);
 
         String formattedText = (String) product.getEntries().get(format)
                 .get(formatIndex);
@@ -198,5 +212,13 @@ public class FormattedTextViewer extends AbstractDataEditor {
     @Override
     protected void createEditorButtons(Composite editorPane) {
         // Do nothing - no buttons to create
+    }
+
+    @Override
+    public void dispose() {
+        if (monospaceFont != null && monospaceFont.isDisposed() == false) {
+            monospaceFont.dispose();
+        }
+        super.dispose();
     }
 }

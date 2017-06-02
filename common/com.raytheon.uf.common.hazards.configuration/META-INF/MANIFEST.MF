@@ -8,10 +8,11 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Require-Bundle: org.codehaus.jackson;bundle-version="1.7.3",
  org.jep;bundle-version="2.3.0",
  com.raytheon.uf.common.localization;bundle-version="1.14.0",
+ com.raytheon.uf.common.python;bundle-version="1.12.1174",
  com.raytheon.uf.common.status;bundle-version="1.12.1174",
- org.apache.commons.lang;bundle-version="2.3.0",
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
- com.google.guava;bundle-version="18.0.0"
+ com.google.guava;bundle-version="18.0.0",
+ org.apache.commons.lang;bundle-version="2.3.0"
 Export-Package: com.raytheon.uf.common.hazards.configuration,
  com.raytheon.uf.common.hazards.configuration.backup,
  com.raytheon.uf.common.hazards.configuration.types

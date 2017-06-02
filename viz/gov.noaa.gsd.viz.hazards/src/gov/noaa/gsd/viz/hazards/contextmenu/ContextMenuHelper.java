@@ -21,11 +21,17 @@ package gov.noaa.gsd.viz.hazards.contextmenu;
 
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.action.Action;
@@ -38,8 +44,15 @@ import org.eclipse.swt.widgets.Menu;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.productgen.data.ProductData;
+import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
@@ -47,6 +60,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * Give the context menus for different places in Hazard Services.
@@ -77,12 +92,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Apr 10, 2015 6898       Chris.Cody   Refactored async messaging
  * May 21, 2015 7730       Chris.Cody   Move Add/Delete Vertex to top of Context Menu
  * Sep 15, 2015 7629       Robert.Blum  Added new context menus for saving pending hazards.
+ * Apr 04, 2016 15192      Robert.Blum  Added new "Copy This" context menu option.
  * Jun 23, 2016 19537      Chris.Golden Removed option of adding/removing areas if a
  *                                      hazard event is of a non-hatching type.
+ * Jul 01, 2016 19212      Thomas.Gurney Fix "Delete N Selected Proposed" entry
  * Jul 25, 2016 19537      Chris.Golden Completely revamped, including the removal of any
  *                                      spatial-display-specific menu item creation or
  *                                      handling; these menu items are now created and
  *                                      handled within the spatial display components.
+ * Aug 12, 2016 20386      dgilling     Add ability to delete Proposed, Potential and 
+ *                                      Pending events together when selected.
  * Feb 01, 2017 15556      Chris.Golden Cleaned up, added revert to latest saved copy
  *                                      menu item, changed to use new selection manager,
  *                                      and added handling of selected historical versions
@@ -95,6 +114,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Mar 30, 2017 15528      Chris.Golden Changed to use new version of saveEvents().
  * May 04, 2017 15561      Chris.Golden Fixed ConcurrentModificationException that occurred
  *                                      when deleting more than one event at once.
+ * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
+ * Jun 30, 2017 19223      Chris.Golden Added ability to change the text and enabled state
+ *                                      of a menu item based upon a contribution item made
+ *                                      by an instance of this class after said menu item
+ *                                      is displayed. Also added "correct selected" menu
+ *                                      item.
  * </pre>
  * 
  * @author mnash
@@ -102,6 +127,40 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  */
 
 public class ContextMenuHelper {
+
+    // Private Static Constants
+
+    /**
+     * String to be used to indicate an action A is to be performed on selected
+     * events (with the A being filled in using
+     * {@link String#format(String, Object...)}).
+     */
+    private static final String FORMAT_CAPABLE_ACTION_UPON_SELECTED_TEXT = "%s Selected";
+
+    /**
+     * String to be used to indicate that a menu item is not enabled because it
+     * is in the process of being finalized using long-running queries.
+     */
+    private static final String QUERYING_TEXT = " (querying...)";
+
+    /**
+     * String to be used to indicate that a menu item relies upon the fact that
+     * something was issued N minutes ago (with the N being filled in using
+     * {@link String#format(String, Object...)}).
+     */
+    private static final String FORMAT_CAPABLE_ISSUED_N_MINUTES_AGO_TEXT = " (issued %d minute(s) ago)";
+
+    /**
+     * String used to indicate that a menu item cannot be used because the event
+     * lies outside the correction window.
+     */
+    private static final String OUTSIDE_CORRECTION_WINDOW_TEXT = " (outside correction window)";
+
+    /**
+     * Logging mechanism.
+     */
+    private static final transient IUFStatusHandler statusHandler = UFStatus
+            .getHandler(ContextMenuHelper.class);
 
     // Public Enumerated Types
 
@@ -127,7 +186,11 @@ public class ContextMenuHelper {
 
         PROPOSE_THIS_HAZARD(appendThis(EventCommand.PROPOSE)),
 
+        COPY_THIS_HAZARD(appendThis(EventCommand.COPY)),
+
         REMOVE_POTENTIAL_HAZARDS("Remove Potential"),
+
+        VIEW_PRODUCTS_FOR_SELECTED_EVENTS("View Products For Selected Events"),
 
         SAVE_THIS_HAZARD(appendThis(EventCommand.SAVE)),
 
@@ -159,13 +222,36 @@ public class ContextMenuHelper {
      */
     private enum EventCommand {
         DELETE("Delete"), PROPOSE("Propose"), END("End"), REVERT("Revert"), SAVE(
-                "Save");
+                "Save"), COPY("Copy"), CORRECT("Correct");
 
         private String value;
 
         private EventCommand(String value) {
             this.value = value;
         }
+    }
+
+    // Public Interfaces
+
+    /**
+     * Interface describing the methods that must be implemented in order to
+     * receive updates about {@link IContributionItem} objects that were
+     * previously returned by invocations of
+     * {@link #getSelectedHazardManagementItems(IOriginator)}.
+     */
+    public interface IContributionItemUpdater {
+
+        /**
+         * Handle an update to the specified contribution item.
+         * 
+         * @param contributionItem
+         *            Item that has been updated.
+         * @param text
+         *            New text for the contribution item. #param enabled Flag
+         *            indicating whether or not the item should be enabled.
+         */
+        public void handleContributionItemUpdate(IContributionItem item,
+                String text, boolean enabled);
     }
 
     // Public Classes
@@ -228,10 +314,24 @@ public class ContextMenuHelper {
     private final ISessionSelectionManager<ObservedHazardEvent> selectionManager;
 
     /**
+     * Session product manager.
+     */
+    private final ISessionProductManager productManager;
+
+    /**
      * Runnable asynchronous scheduler, used to schedule the execution of any
      * actions that are invoked via the context menu.
      */
     private final IRunnableAsynchronousScheduler scheduler;
+
+    /**
+     * Presenter to be used for {@link HazardServicesPresenter#publish(Object)}.
+     * 
+     * @deprecated This should be removed when there is no longer any need for
+     *             use of the <code>publish()</code> method.
+     */
+    @Deprecated
+    private final HazardServicesPresenter<?> presenter;
 
     // Public Constructors
 
@@ -244,13 +344,19 @@ public class ContextMenuHelper {
      *            Runnable asynchronous scheduler, used to schedule the
      *            execution of any actions that are invoked via the context
      *            menu.
+     * @param presenter
+     *            Presenter to be used for
+     *            {@link HazardServicesPresenter#publish(Object)}.
      */
     public ContextMenuHelper(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
-            IRunnableAsynchronousScheduler scheduler) {
+            IRunnableAsynchronousScheduler scheduler,
+            HazardServicesPresenter<?> presenter) {
         this.eventManager = sessionManager.getEventManager();
         this.selectionManager = sessionManager.getSelectionManager();
+        this.productManager = sessionManager.getProductManager();
         this.scheduler = scheduler;
+        this.presenter = presenter;
     }
 
     // Public Methods
@@ -261,10 +367,15 @@ public class ContextMenuHelper {
      * @param originator
      *            Originator of any actions for the contribution items to be
      *            created.
+     * @param contributionItemUpdater
+     *            If provided, this updater will be notified after this method
+     *            returns whenever a contribution item that was created by this
+     *            method is updated asynchronously.
      * @return Created contribution items.
      */
     public List<IContributionItem> getSelectedHazardManagementItems(
-            IOriginator originator) {
+            IOriginator originator,
+            final IContributionItemUpdater contributionItemUpdater) {
         List<IContributionItem> items = new ArrayList<>();
 
         if (originator == UIOriginator.CONSOLE) {
@@ -332,9 +443,21 @@ public class ContextMenuHelper {
                             originator);
                     break;
 
+                case POTENTIAL:
+                    addContributionItem(
+                            items,
+                            ContextMenuSelections.DELETE_THIS_HAZARD.getValue(),
+                            originator);
+                    break;
+
                 default:
                     break;
 
+                }
+                if (selectionManager.getSelectedEvents().size() == 1) {
+                    addContributionItem(items,
+                            ContextMenuSelections.COPY_THIS_HAZARD.getValue(),
+                            originator);
                 }
             }
         }
@@ -363,12 +486,21 @@ public class ContextMenuHelper {
                 saveableStates.add(event.getStatus());
             }
         }
+
+        if ((states.contains(HazardStatus.PROPOSED))
+                || (states.contains(HazardStatus.PENDING))
+                || (states.contains(HazardStatus.POTENTIAL))) {
+            int numEvents = getNumberOfSelectedEventsForStatus(HazardStatus.PROPOSED);
+            numEvents += getNumberOfSelectedEventsForStatus(HazardStatus.PENDING);
+            numEvents += getNumberOfSelectedEventsForStatus(HazardStatus.POTENTIAL);
+            String text = String.format("%s %d Selected",
+                    EventCommand.DELETE.value, numEvents);
+            addContributionItem(items, text, originator);
+        }
         if (states.contains(HazardStatus.PENDING)) {
             int numEvents = getNumberOfSelectedEventsForStatus(HazardStatus.PENDING);
             String textWithoutCommand = String.format(" %d Selected Pending",
                     numEvents);
-            String text = EventCommand.DELETE.value + textWithoutCommand;
-            addContributionItem(items, text, originator);
             boolean areProposableEvents = false;
             for (ObservedHazardEvent event : selectionManager
                     .getSelectedEvents()) {
@@ -379,11 +511,11 @@ public class ContextMenuHelper {
                 }
             }
             if (areProposableEvents) {
-                text = EventCommand.PROPOSE.value + textWithoutCommand;
+                String text = EventCommand.PROPOSE.value + textWithoutCommand;
                 addContributionItem(items, text, originator);
             }
             if (saveableStates.contains(HazardStatus.PENDING)) {
-                text = EventCommand.SAVE.value + textWithoutCommand;
+                String text = EventCommand.SAVE.value + textWithoutCommand;
                 addContributionItem(items, text, originator);
             }
             if (saveAllPendingAdded == false) {
@@ -410,11 +542,87 @@ public class ContextMenuHelper {
             addContributionItem(items, text, originator);
         }
 
-        if (states.contains(HazardStatus.PROPOSED)) {
-            int numEvents = getNumberOfSelectedEventsForStatus(HazardStatus.PROPOSED);
-            String text = String.format("%s %d Selected Proposed",
-                    EventCommand.DELETE.value, numEvents);
-            addContributionItem(items, text, originator);
+        List<ObservedHazardEvent> selectedEvents = selectionManager
+                .getSelectedEvents();
+        if ((originator == UIOriginator.CONSOLE)
+                && (selectedEvents.size() == 1)
+                && HazardStatus.hasEverBeenIssued(selectedEvents.get(0)
+                        .getStatus())) {
+            if (contributionItemUpdater == null) {
+                statusHandler
+                        .error("No contribution item updater supplied for originator "
+                                + originator
+                                + "; no correction menu item will be created.");
+            } else {
+
+                /*
+                 * Create the correction contribution item, and schedule the
+                 * execution of a query to determine whether the item should be
+                 * enabled or not, and then to update it with new text and
+                 * enabled flag status appropriately.
+                 */
+                final String baseText = String.format(
+                        FORMAT_CAPABLE_ACTION_UPON_SELECTED_TEXT,
+                        EventCommand.CORRECT.value);
+                String text = baseText + QUERYING_TEXT;
+                final IContributionItem item = addContributionItem(items, text,
+                        false, originator);
+                final IHazardEvent event = selectedEvents.get(0);
+
+                scheduler.schedule(new Runnable() {
+
+                    @Override
+                    public void run() {
+
+                        List<IHazardEvent> eventsToFilter = new ArrayList<>(1);
+                        eventsToFilter.add(event);
+
+                        Date currentTime = SimulatedTime.getSystemTime()
+                                .getTime();
+                        String mode = CAVEMode.getMode().toString();
+
+                        List<ProductData> correctableEvents = ProductDataUtil
+                                .retrieveCorrectableProductDataForEvents(mode,
+                                        currentTime, eventsToFilter);
+
+                        long issuedAgoMin = -1;
+                        boolean enableMenu = false;
+
+                        /*
+                         * If there is a correctable event, enable the
+                         * contribution item.
+                         */
+                        if (correctableEvents != null
+                                && correctableEvents.size() > 0) {
+                            ProductData pd = correctableEvents.get(0);
+
+                            long issueMs = pd.getIssueTime().getTime();
+                            long issuedAgoMs = currentTime.getTime() - issueMs;
+
+                            /*
+                             * Convert from milliseconds to minutes, truncating
+                             * any remainder.
+                             */
+                            issuedAgoMin = issuedAgoMs
+                                    / TimeUtil.MILLIS_PER_MINUTE;
+
+                            enableMenu = true;
+                        }
+
+                        /*
+                         * Set the text appropriately and update the
+                         * contribution item.
+                         */
+                        String updatedText = baseText
+                                + (enableMenu ? String
+                                        .format(FORMAT_CAPABLE_ISSUED_N_MINUTES_AGO_TEXT,
+                                                issuedAgoMin)
+                                        : OUTSIDE_CORRECTION_WINDOW_TEXT);
+                        contributionItemUpdater.handleContributionItemUpdate(
+                                item, updatedText, enableMenu);
+                    }
+                });
+            }
         }
 
         if (eventManager.getEventsByStatus(HazardStatus.POTENTIAL, true)
@@ -422,6 +630,27 @@ public class ContextMenuHelper {
             items.add(newAction(
                     ContextMenuHelper.ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS
                             .getValue(), originator));
+        }
+
+        for (ObservedHazardEvent event : selectionManager.getSelectedEvents()) {
+
+            /*
+             * Do not consider hazard events for which the current version is
+             * not selected, or events that have never been issued.
+             */
+            if ((originator == UIOriginator.CONSOLE)
+                    && (selectionManager.isSelected(new Pair<String, Integer>(
+                            event.getEventID(), null)) == false)) {
+                continue;
+            }
+            if (HazardStatus.hasEverBeenIssued(event.getStatus()) == false) {
+                continue;
+            }
+
+            items.add(newAction(
+                    ContextMenuHelper.ContextMenuSelections.VIEW_PRODUCTS_FOR_SELECTED_EVENTS
+                            .getValue(), originator));
+            break;
         }
 
         return items;
@@ -536,10 +765,13 @@ public class ContextMenuHelper {
      *            Text label of the new contribution item.
      * @param originator
      *            Originator of the action for the created contribution item.
+     * @return Contribution item that was added.
      */
-    private void addContributionItem(List<IContributionItem> items,
-            String label, IOriginator originator) {
-        items.add(newAction(label, originator));
+    private IContributionItem addContributionItem(
+            List<IContributionItem> items, String label, IOriginator originator) {
+        IContributionItem contributionItem = newAction(label, originator);
+        items.add(contributionItem);
+        return contributionItem;
     }
 
     /**
@@ -555,10 +787,15 @@ public class ContextMenuHelper {
      *            should be enabled.
      * @param originator
      *            Originator of the action for the created contribution item.
+     * @return Contribution item that was added.
      */
-    private void addContributionItem(List<IContributionItem> items,
-            String label, boolean enabled, IOriginator originator) {
-        items.add(newAction(label, enabled, originator));
+    private IContributionItem addContributionItem(
+            List<IContributionItem> items, String label, boolean enabled,
+            IOriginator originator) {
+        IContributionItem contributionItem = newAction(label, enabled,
+                originator);
+        items.add(contributionItem);
+        return contributionItem;
     }
 
     /**
@@ -591,6 +828,13 @@ public class ContextMenuHelper {
                     HazardStatus.POTENTIAL, true)) {
                 eventManager.removeEvent(event, originator);
             }
+        } else if (menuLabel.startsWith(EventCommand.CORRECT.value)) {
+            correctSelectedEvent();
+        } else if (menuLabel
+                .contains(ContextMenuSelections.VIEW_PRODUCTS_FOR_SELECTED_EVENTS
+                        .getValue())) {
+            productManager.showUserProductViewerSelection(false,
+                    selectionManager.getSelectedEventIdentifiers());
         } else if (menuLabel.contains(EventCommand.END.value)
                 && menuLabel.toLowerCase().contains(
                         HazardStatus.ISSUED.getValue())) {
@@ -628,16 +872,17 @@ public class ContextMenuHelper {
             ObservedHazardEvent event = eventManager.getCurrentEvent();
             eventManager.removeEvent(event, originator);
 
-        } else if (menuLabel.contains(EventCommand.DELETE.value)
-                && menuLabel.toLowerCase().contains(
-                        HazardStatus.PENDING.getValue())) {
-            List<ObservedHazardEvent> selectedEvents = new ArrayList<>(
-                    selectionManager.getSelectedEvents());
-            for (ObservedHazardEvent event : selectedEvents) {
-                if (event.getStatus().equals(HazardStatus.PENDING)) {
-                    eventManager.removeEvent(event, originator);
+        } else if (menuLabel.contains(EventCommand.DELETE.value)) {
+            Collection<ObservedHazardEvent> toBeDeletedHazards = new ArrayList<>();
+            for (ObservedHazardEvent event : selectionManager
+                    .getSelectedEvents()) {
+                if ((event.getStatus().equals(HazardStatus.PROPOSED))
+                        || (event.getStatus().equals(HazardStatus.POTENTIAL))
+                        || (event.getStatus().equals(HazardStatus.PENDING))) {
+                    toBeDeletedHazards.add(event);
                 }
             }
+            eventManager.removeEvents(toBeDeletedHazards, originator);
 
         } else if (menuLabel.equals(ContextMenuSelections.PROPOSE_THIS_HAZARD
                 .getValue())) {
@@ -661,6 +906,11 @@ public class ContextMenuHelper {
             List<IHazardEvent> events = new ArrayList<IHazardEvent>(
                     eventManager.getEventsByStatus(HazardStatus.PENDING, false));
             eventManager.saveEvents(events, true, false);
+        } else if (menuLabel.equals(ContextMenuSelections.COPY_THIS_HAZARD
+                .getValue())) {
+            eventManager
+                    .copyEvents(Lists.<IHazardEvent> newArrayList(eventManager
+                            .getCurrentEvent()));
         }
     }
 
@@ -688,5 +938,50 @@ public class ContextMenuHelper {
     private void revertEndingProcess(ObservedHazardEvent event,
             IOriginator originator) {
         event.setStatus(HazardStatus.ISSUED, false, originator);
+    }
+
+    /**
+     * Correct the single selected event.
+     */
+    private void correctSelectedEvent() {
+        boolean displayError = true;
+
+        List<ObservedHazardEvent> events = selectionManager.getSelectedEvents();
+        if ((events != null) && (events.size() == 1)) {
+            IHazardEvent event = events.get(0);
+
+            List<IHazardEvent> eventsToFilter = new ArrayList<>(1);
+            eventsToFilter.add(event);
+            List<ProductData> correctableEvents = ProductDataUtil
+                    .retrieveCorrectableProductDataForEvents(CAVEMode.getMode()
+                            .toString(), SimulatedTime.getSystemTime()
+                            .getTime(), eventsToFilter);
+
+            /*
+             * If there is a correctable event, open the product editor.
+             */
+            if (correctableEvents != null && correctableEvents.size() > 0) {
+
+                ProductAction action = new ProductAction(
+                        ProductAction.ActionType.REVIEW);
+                Map<String, Serializable> parameters = new HashMap<>();
+                parameters.put(HazardConstants.PRODUCT_DATA_PARAM,
+                        (Serializable) correctableEvents);
+                action.setParameters(parameters);
+                presenter.publish(action);
+
+                displayError = false;
+            }
+        }
+
+        if (displayError) {
+
+            /*
+             * Code execution might hit this case if the user sits with the
+             * context menu open and the product is now outside the correction
+             * time window.
+             */
+            statusHandler.warn("Unable to correct event");
+        }
     }
 }

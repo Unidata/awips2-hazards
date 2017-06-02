@@ -12,6 +12,8 @@
                                         future use.
     Apr 30, 2015    7579    Robert.Blum Changes for multiple hazards per section.
     May 07, 2015    6979    Robert.Blum EditableEntries are passed in for reuse.
+    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
+    May 13, 2016   16913  Ben.Phillippe Fixed minor error with checking geometries
 '''
 
 import FormatTemplate
@@ -42,13 +44,14 @@ class Format(FormatTemplate.Formatter):
             self._editableParts = OrderedDict()
 
 
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries, overrideProductText):
         '''
         Returns an html formatted string and a map of editable parts that
         is currently blank for this format.
         @param productDict: dictionary values
         @return: Returns the html string and map of editable parts
         '''
+        self.overrideProductText = overrideProductText
         self.productDict = productDict
         self.initialize(editableEntries)
         htmlProduct = self.createHTMLProduct()
@@ -153,7 +156,7 @@ class Format(FormatTemplate.Formatter):
                 legacyFormatter = Legacy_ESF_Formatter.Format()
             else:
                 return 'There is no product formatter for this hazard type: ' + productCategory
-            legacyText = legacyFormatter.execute(self.productDict)[0][0]
+            legacyText = legacyFormatter.execute(self.productDict, None, self.overrideProductText)[0][0]
         except:
             legacyText = 'Error running legacy formatter.'
         return legacyText
@@ -172,7 +175,10 @@ class Format(FormatTemplate.Formatter):
                             polygonPointLists.append(list(geometry.coords))
                         else:
                             for geo in geometry:
-                                polygonPointLists.append(list(geo.exterior.coords))
+                                if geo.geom_type == HazardConstants.SHAPELY_POINT:
+                                    continue
+                                else:
+                                    polygonPointLists.append(list(geo.exterior.coords))
         return polygonPointLists
 
     def addImpactedLocationsToTable(self):

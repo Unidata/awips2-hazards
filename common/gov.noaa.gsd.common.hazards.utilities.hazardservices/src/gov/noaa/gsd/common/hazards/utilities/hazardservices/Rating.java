@@ -17,17 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package gov.noaa.gsd.viz.hazards.risecrestfall;
+package gov.noaa.gsd.common.hazards.utilities.hazardservices;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil;
+import com.raytheon.uf.common.dataaccess.util.DatabaseQueryUtil.QUERY_MODE;
 import com.raytheon.uf.common.hazards.hydro.RiverHydroConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.catalog.DirectDbQuery;
-import com.raytheon.uf.viz.core.catalog.DirectDbQuery.QueryLanguage;
-import com.raytheon.viz.hydrocommon.HydroConstants;
 
 /**
  * Object holds the rating values for the Rise/Crest/Fall editor.
@@ -39,6 +38,11 @@ import com.raytheon.viz.hydrocommon.HydroConstants;
  * Date          Ticket#  Engineer     Description
  * -----------------------------------------------------------
  * Mar 26, 2015  7205     Robert.Blum  Initial creation
+ * May 06, 2016 15584     Kevin.Bisanz Move this class from
+ *                                     gov.noaa.gsd.viz.hazards to
+ *                                     gov.noaa.gsd.common.hazards.utilities.hazardservices
+ *                                     so StageDischargeUtils.py can use
+ *                                     StageDischargeUtils.java.
  * 
  * </pre>
  * 
@@ -50,6 +54,9 @@ public class Rating {
 
     static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(Rating.class);
+
+    /** String constant ihfs */
+    private static final String IHFS = "ihfs";
 
     private String QUERY_SQL = "select lid,stage,discharge from rating where lid =':lid'";
 
@@ -66,9 +73,10 @@ public class Rating {
 
     private void populate(String lid) {
         try {
-            List<Object[]> results = DirectDbQuery.executeQuery(
-                    QUERY_SQL.replace(":lid", lid), HydroConstants.IHFS,
-                    QueryLanguage.SQL);
+            String dataTypeForMsg = "LID stage/discharge";
+            List<Object[]> results = DatabaseQueryUtil.executeDatabaseQuery(
+                    QUERY_MODE.MODE_SQLQUERY, QUERY_SQL.replace(":lid", lid),
+                    IHFS, dataTypeForMsg);
             if (results != null) {
                 for (int i = 0; i < results.size(); i++) {
                     Object[] sa = results.get(i);

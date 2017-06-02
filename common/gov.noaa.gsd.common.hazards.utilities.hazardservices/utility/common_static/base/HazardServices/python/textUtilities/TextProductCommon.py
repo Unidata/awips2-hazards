@@ -62,7 +62,7 @@ class TextProductCommon(object):
     def getInformationForUGC(self, ugc, infoType="entityName") :
         '''
         @summary: Returns information about the given ugc.
-        @param ugc: ugc, in SSX001 format, where SS is the state abreviation,
+        @param ugc: ugc, in SSX001 format, where SS is the state abbreviation,
                     X is either C for county or Z for zone, and 001 is the FIP
                     code for that county or zone.
         @param infoType: Type of information to return.
@@ -74,7 +74,7 @@ class TextProductCommon(object):
             "primaryLocations"   Important associated cities/landmarks
             "fullStateName"      Plain language name of state entity is in
             "timeZone"           Unix time zone entity is in
-            "stateAbrev"         Two letter abreviation of state entity is in
+            "stateAbrev"         Two letter abbreviation of state entity is in
             "partOfState"        Plain language description of part of the state
                                  entity is in
         '''
@@ -91,9 +91,11 @@ class TextProductCommon(object):
                 if infoType == 'typeSingular' or infoType == 'typePlural' :
                     return ''
                 return '?'
-            if int(ugc[3:]) >= 500 or ugc[:2] == "DC" :
-                if infoType == 'typeSingular' or infoType == 'typePlural' :
-                    return ''
+            if int(ugc[3:]) >= 500 or ugc[:2] == "DC" : # Washington DC special case
+                if infoType == 'typeSingular' :
+                    return 'independent city'
+                if infoType == 'typePlural' :
+                    return 'independent cities'
                 return 'INDEPENDENT CITY'
             if ugc[:2] == 'LA':
                 if infoType == 'typeSingular' :
@@ -119,10 +121,14 @@ class TextProductCommon(object):
         if infoType == "primaryLocations" :
             return self.currentUGCentry.get("ugcCityString", "")
         if infoType == "fullStateName" :
+            if ugc[:2] == "DC" :
+                return ""
             return self.currentUGCentry.get("fullStateName", "")
         if infoType == "timeZone" :
             return self.currentUGCentry.get("ugcTimeZone", "")
         if infoType == "stateAbrev" :
+            if ugc[:2] == "DC" :
+                return ""
             return self.currentUGCentry.get("stateAbbr", ugc[:2])
         if infoType == "partOfState" :
             return self.currentUGCentry.get("partOfState", "")
@@ -222,7 +228,6 @@ class TextProductCommon(object):
                 pass
 
         return returnList
-    
 
 
     #### Product Dictionary methods 
@@ -344,10 +349,10 @@ class TextProductCommon(object):
         @return datetime formatted with time zone e.g. '1400 PM CST Mon 12 Feb 2011'
         '''
         if type(dt) in [float, int, long]:
-            dt = datetime.fromtimestamp(dt / 1000)
+            dt = datetime.fromtimestamp(dt / 1000, tz=tz.tzutc())
         if timeZone in ['GMT', 'UTC']:
             timeZone = None
-        
+
         from_zone = tz.tzutc()
         new_time = dt.replace(tzinfo=from_zone)
         if timeZone is not None:
@@ -446,7 +451,7 @@ class TextProductCommon(object):
         for ugc in ugcs:
             nameList.append(self.getInformationForUGC(ugc, "entityName"))
         if alphabetize:
-            nameList.sort()                            
+            nameList.sort()
         return self.formatNameString(nameList, separator) 
     
     def formatNameString(self, nameList, separator, state=None) :
@@ -457,26 +462,18 @@ class TextProductCommon(object):
             nameString = nameString.rstrip(separator) + ' (' + state + ') '
         return nameString
     
-    def formatUGC_namesWithState(self, ugcs, alphabetize=False, separator='; '):
+    def formatUGC_namesWithStateAbrev(self, ugcs, alphabetize=False, separator='-'):
         '''
-        For example: Citrus; Hernando; Pasco (Florida)
+        For example:  Saunders NE-Douglas NE-Sarpy NE-Lancaster NE-Cass NE-Otoe NE-
         '''
         nameList = []
-        nameStrings = []
-        curState = None
         for ugc in ugcs:
-            nameList.append(self.getInformationForUGC(ugc, "entityName"))
-            if alphabetize:
-                nameList.sort()
-            stateName = nameList.append(self.getInformationForUGC(ugc, "fullStateName"))
-            if curState is None:
-                curState = stateName
-            elif stateName != curState:
-                nameStrings.append(self.formatNameString(nameList, separator, curState))
-                curState = stateName
-                nameList = []
-        nameStrings.append(self.formatNameString(nameList, separator, curState))
-        return self.formatNameString(nameStrings, separator='')
+            area = self.getInformationForUGC(ugc, "entityName")
+            area += " " + self.getInformationForUGC(ugc, "stateAbrev")
+            nameList.append(area)
+        if alphabetize:
+            nameList.sort()
+        return self.formatNameString(nameList, separator) 
         
     # TODO -- Not Used?
     def formatUGC_cities(self, ugcs, alphabetize=0):
@@ -528,6 +525,36 @@ class TextProductCommon(object):
                 ugcList.append(ugcCode)
         return newAreaList, ugcList
     
+    def makeUGCInformation(self, hazardEventDicts, ugcToUgcParts, ugcToStatePart, orderedUgcs):
+        '''
+        Updates provided arguments with information useful for the area phrase
+        or locationsAffectedFallBack.
+
+        @param hazardEventDicts HazardEvent dictionary containing UGC related
+                information.
+        @param ugcToUgcParts Dictionary to be updated with information mapping
+                UGCs to the part(s) of the UGC covered by the hazard.  For
+                example, southwestern part of NEC095.
+        @param ugcToStatePart Dictionary to be updated with information mapping
+                UGCs to the part of the state in which they are located.  For
+                example, NEC095 is in the southeastern part of Nebraska.
+        @param orderedUgcs List of strings containing state, part of start,
+                a pipe, and a UGC.  For example ['NEsoutheastern|NEC095'].
+        '''
+        for hazardEventDict in hazardEventDicts:
+            ugcs = hazardEventDict.get('ugcs', [])
+            ugcPortions = hazardEventDict.get('ugcPortions', {})
+            ugcToStatePart.update(hazardEventDict.get('ugcPartsOfState', {}))
+            for ugc in ugcs:
+                currentPortion = ugcToUgcParts.get(ugc)
+                if not currentPortion:
+                    currentPortion = set()
+                if ugcPortions.get(ugc):
+                    currentPortion.update([ugcPortions.get(ugc)])
+                ugcToUgcParts[ugc] = currentPortion
+                orderedUgcs.append(ugc[:2] + ugcToStatePart.get(ugc, "") + "|" + ugc)
+        orderedUgcs.sort()
+    
     # ## Formatting methods
     
     def bulletFormat_CR(self, text, label=''):
@@ -578,7 +605,7 @@ class TextProductCommon(object):
     def frame(self, text):
         return '|* ' + text + ' *|'
 
-    def formatDelimitedList(self, items, delimiter='...') :
+    def formatDelimitedList(self, items, delimiter='...', useAnd=True) :
         if not isinstance(items, list) and not isinstance(items, set) :
             try :
                 return str(items)
@@ -595,7 +622,10 @@ class TextProductCommon(object):
         for item in newItems :
             fmtList += item
             if nLeft == 2 :
-                fmtList += " and "
+                if useAnd:
+                    fmtList += " and "
+                else:
+                    fmtList += delimiter
             elif nLeft > 2 :
                 fmtList += delimiter
             nLeft -= 1
@@ -604,7 +634,7 @@ class TextProductCommon(object):
     ###########
     #  Accessing MetaData
     def getProductStrings(self, hazardEvent, metaData, fieldName, productStringIdentifier=None, choiceIdentifier=None,
-                          formatMethod=None, formatHashTags=[]):
+                          formatMethod=None, formatFramedValues=[]):
         '''
         Translates the entries from the Hazard Information Dialog into product strings.
         @param hazardEvent: hazard event with user choices
@@ -632,15 +662,15 @@ class TextProductCommon(object):
         if type(value) is types.ListType or isinstance(value, set):
             if choiceIdentifier:
                 return self.getMetaDataValue(hazardEvent, metaData, fieldName,
-                                             choiceIdentifier, formatMethod, formatHashTags)
+                                             choiceIdentifier, formatMethod, formatFramedValues)
             else:
                 returnList = []
                 for val in value:
                     returnList.append(self.getMetaDataValue(hazardEvent, metaData, fieldName,
-                                                            val, formatMethod, formatHashTags))
+                                                            val, formatMethod, formatFramedValues))
                 return returnList
         else:
-            return self.getMetaDataValue(hazardEvent, metaData, fieldName, value, formatMethod, formatHashTags)
+            return self.getMetaDataValue(hazardEvent, metaData, fieldName, value, formatMethod, formatFramedValues)
 
     def getEmbeddedDict(self, node, keyValue, search):
         """
@@ -664,7 +694,7 @@ class TextProductCommon(object):
                 if result is not None:
                    return result
 
-    def getMetaDataValue(self, hazardEvent, metaData, fieldName, value, formatMethod, formatHashTags):
+    def getMetaDataValue(self, hazardEvent, metaData, fieldName, value, formatMethod, formatFramedValues):
         '''
         Given a value, return the corresponding productString (or displayString) from the metaData. 
         @param hazardEvent: hazard event with user choices
@@ -689,7 +719,7 @@ class TextProductCommon(object):
         def basisSpotter(self):
             return {"identifier":"wxSpot", 
                     "displayString": "Weather spotters report flooding in", 
-                    "productString": "Trained weather spotters reported flooding in #basisWxSpotLocation#.",
+                    "productString": "Trained weather spotters reported flooding in |* basisWxSpotLocation *|.",
                     "detailFields": [
                                 {
                                  "fieldType": "Text",
@@ -717,53 +747,53 @@ class TextProductCommon(object):
                         returnVal = returnVal.replace('.  ', '. ')
                         returnVal = returnVal.replace('  ', '')
                         returnVal = returnVal.replace('\n', ' ')
+                        # The newline may add an extra unnecessary space, so check that case
+                        returnVal = returnVal.replace('  ', ' ')
                         returnVal = returnVal.replace('<br/>', '\n')
                         returnVal = returnVal.replace('<br />', '\n')
                         returnVal = returnVal.replace('<br>', '\n')
-                        returnVal = self.substituteParameters(hazardEvent, returnVal, formatMethod, formatHashTags)
+                        returnVal = self.substituteParameters(hazardEvent, returnVal, formatMethod, formatFramedValues)
                         break
             elif widget.get('fieldName'):
                 returnVal = widget.get('fieldName')
         return returnVal
     
-    def substituteParameters(self, hazardEvent, returnVal, formatMethod=None, formatHashTags=[]):
-        # Search for #...# values  e.g. floodLocation
-        hashTags = self.getFramedValues(returnVal, '#', '#')
-        for hashTag in hashTags:
-            eventValue = hazardEvent.get(hashTag)
+    def substituteParameters(self, hazardEvent, returnVal, formatMethod=None, formatFramedValues=[]):
+        # Search for |* ... *| values  e.g. floodLocation
+        framedValues = self.getFramedValues(returnVal)
+        for framedValue in framedValues:
+            eventValue = hazardEvent.get(framedValue)
             if eventValue is not None:
                 if eventValue == '':
-                    eventValue = self.getValueOrFramedText(hashTag, hazardEvent, hashTag)
+                    eventValue = self.getValueOrFramedText(framedValue, hazardEvent, framedValue)
                 replaceVal = eventValue
             else:
-                replaceVal = self.frame(hashTag)
-            if hashTag in formatHashTags:
+                replaceVal = self.frame(framedValue)
+            if framedValue in formatFramedValues:
                 try:
                     creationTime = hazardEvent.getCreationTime()
                 except:
                     creationTime = hazardEvent.get('creationTime')
-                formattedVal = formatMethod(creationTime, hashTag, replaceVal)
+                formattedVal = formatMethod(creationTime, framedValue, replaceVal)
             else:
                 # Verify it is a string 
                 formattedVal = str(replaceVal)
-            returnVal = returnVal.replace('#' + hashTag + '#', formattedVal)
+            returnVal = returnVal.replace('|* ' + framedValue + ' *|', formattedVal)
         return returnVal
 
-    def getFramedValues(self, text, beginStr='|* ', endStr=' *|'):
+    def getFramedValues(self, text):
         '''
         @param text -- text string 
-        @param beginStr -- string to begin a framed value
-        @param endStr -- string to end framed value
-        
-        @return list of values framed by beginStr, endStr within the given text string
+        @return list of values framed by |* and  *| within the given text string.
         '''
-        values = text.split(beginStr)
         framedValues = []
-        for value in values:
-            value = value.strip()
-            if text.find(beginStr + value + endStr) >= 0:
-                framedValues.append(value)
-        return framedValues        
+        for match in re.findall( "\\|\\* \\w* \\*\\|", text):
+            # Remove the framing
+            match = match.replace("|* ", "")
+            match = match.replace (" *|", "")
+            match = match.strip()
+            framedValues.append(match)
+        return framedValues
 
 
     ###########
@@ -908,10 +938,11 @@ class TextProductCommon(object):
 #             nameTypes.append('area')
 #         elif zoneCnt > 1:
 #             nameTypes.append('areas')
+        # The directive allows the use of: counties or areas interchangeably. 
         if countyCnt == 1 or zoneCnt == 1:
-            nameTypes.append('county')
+            nameTypes.append('area')
         elif countyCnt > 1 or zoneCnt > 1:
-            nameTypes.append('counties')
+            nameTypes.append('areas')
         if icCnt == 1:
             nameTypes.append('independent city')
         elif icCnt > 1:
@@ -1021,14 +1052,14 @@ class TextProductCommon(object):
            
 
     ################ From GHG GenericHazards
-    def hazardTimePhrases(self, vtecRecord, hazardEvent, issueTime, prefixSpace=True):
+    def hazardTimePhrases(self, vtecRecord, hazardEvents, issueTime, prefixSpace=True):
         '''
         The _hazardTimePhrases method is passed a hazard key, and returns
         time phrase wording consistent with that generated by the headline
         algorithms.
         '''
-        timeWords = self.getTimingPhrase(vtecRecord, [hazardEvent], issueTime)
-        if prefixSpace and len(timeWords):
+        timeWords = self.getTimingPhrase(vtecRecord, hazardEvents, issueTime)
+        if prefixSpace and timeWords:
             timeWords = ' ' + timeWords  # add a leading space
         return timeWords
 
@@ -1369,6 +1400,51 @@ class TextProductCommon(object):
         else:
             self.logger.info(actionCode + 'not recognized in actionControlWord.')
             return '<actionControlWord>'
+
+    def actionControlPhrase(self, vtecRecord, issuanceTime, replacement=False):
+        ''''
+         Returns the words to be used in the overview headline for 'act' field in the
+         specified vtecRecord.
+        '''
+        if not vtecRecord.has_key('act'):
+            self.logger.error('Error!  No field act in vtec record.')
+            return ' |* actionControlPhrase *| '
+
+        actionCode = vtecRecord['act']
+
+        # Need to account for COR since this is now called
+        # in the formatters to create the summaryHeadline. 
+        # Grab the previous action from the vtecRecord.
+        if actionCode == 'COR':
+            prevActionCode = vtecRecord.get('prevAct', None)
+            if prevActionCode:
+                actionCode = prevActionCode
+            else:
+                self.logger.error('Error!  No field prevAct in vtec record.')
+                return '|* actionControlPhrase *|'
+
+        if actionCode in ['NEW']:
+            return ' has issued a '
+        elif actionCode == 'CON':
+            return ' is continuing the '
+        elif actionCode == 'CAN':
+            if replacement:
+                return ' is replacing the '
+            else:
+                return ' is cancelling the '
+        elif actionCode == 'EXT':
+            return ' is extending the '
+        elif actionCode == 'EXP':
+            deltaTime = issuanceTime - vtecRecord['endTime']
+            if deltaTime >= 0:
+                return ' has expired '
+            else:
+                return ' will expire '
+        elif actionCode == 'ROU':
+            return ' is releasing '
+        else:
+            self.logger.info(actionCode + 'not recognized in actionControlWord.')
+            return ' |* actionControlPhrase *| '
 
     def getHeadlinesAndSections(self, vtecRecords, metaDataList, productID, issueTime, includeTiming=True):
         '''
@@ -1867,16 +1943,16 @@ class TextProductCommon(object):
         changedEntries = set(o for o in intersect if dict2[o] != dict1[o])
         return addedEntries, removedEntries, changedEntries
 
-    def round(self, dt, roundMinute=15):
+    def round(self, dt, roundMinute=15, incrementOnly=False):
         discard = timedelta(minutes=dt.minute % roundMinute,
                              seconds=dt.second,
                              microseconds=dt.microsecond)
         dt -= discard
-        if discard >= timedelta(minutes=roundMinute/2):
+        if incrementOnly or discard >= timedelta(minutes=roundMinute/2):
             dt += timedelta(minutes=roundMinute)
         return dt
 
-    def roundFloat(self, value, precision='2', returnString=True):
+    def roundFloat(self, value, precision='1', returnString=True):
         '''
             Rounding method to be used for all float values in the product.
             This will ensure that the precision is consistent throughout.
@@ -1891,7 +1967,7 @@ class TextProductCommon(object):
         if returnString:
             value = format(value, '.' + precision + 'f')
         else:
-            value = round(value, precision)
+            value = round(value, int(precision))
         return value
 
     def timingWordTableEXPLICIT(self, issueTime, eventTime, timezone,
@@ -1993,21 +2069,21 @@ class TextProductCommon(object):
         HR = 3600
         sameDay = [
           (0 * HR, 6 * HR, 'early this morning'),  # midnght-559am
-          (6 * HR, 12 * HR, 'this morning'),  # 600am-noon
+          (6 * HR, 12 * HR, 'this morning'),  # 600am-1159
           (12 * HR, 18 * HR, 'this afternoon'),  # 1200pm-559pm
           (18 * HR, 24 * HR, 'this evening')]  # 6pm-1159pm
 
         nextDay = [
           (0 * HR, 0 * HR, 'this evening'),  # midnght tonight
           (0 * HR, 6 * HR, 'late tonight'),  # midnght-559am
-          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-1159
           (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
           (18 * HR, 24 * HR, '<dayOfWeek> evening')]  # 6pm-1159pm
 
         subsequentDay = [
           (0 * HR, 0 * HR, '<dayOfWeek-1> evening'),  # midnght ystdy 
           (0 * HR, 6 * HR, 'late <dayOfWeek-1> night'),  # midnght-559am
-          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-noon
+          (6 * HR, 12 * HR, '<dayOfWeek> morning'),  # 600am-1159
           (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
           (18 * HR, 24 * HR, '<dayOfWeek> evening')]  # 6pm-1159pm
 
@@ -2254,8 +2330,16 @@ class TextProductCommon(object):
         if number >= 0 and number < 7:
             return days[number]
         else:
-            return '?' + `number` + '?'
-    
+            return '|* DAYOFWEEK *|'
+
+    def asciiMonth(self, number):
+        # converts number (1-12) to month
+        months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+        if number > 0 and number < 13:
+            return months[number - 1]
+        else:
+            return '|* MONTH *| '
+
     def getTimingConnectorType(self, timingType, action):
         '''
          Returns the start and end prefix for the given start and end phrase
@@ -2430,6 +2514,11 @@ class TextProductCommon(object):
           self.asciiDayOfWeek(dow))  # day of week
         os.environ['TZ'] = myTimeZone  # reset the defined time zone
         return description
+
+    def getMillis(self, date):
+        epoch = datetime.utcfromtimestamp(0)
+        delta = date - epoch
+        return delta.total_seconds() * 1000.0
 
     # calculates the NONE/EXPLICIT timing phrase
     def ctp_NONE_EXPLICIT(self, stext, etext, startPrefix, endPrefix):
@@ -2845,7 +2934,7 @@ class TextProductCommon(object):
         roundValue = roundMinutes * 60 * 1000  # in milliseconds
         delta = expireTime % roundValue  # in milliseconds
         baseTime = int(expireTime / roundValue) * roundValue
-        if delta / 60 * 1000 >= 1:  # add the next increment
+        if delta / 60000 >= 1:  # add the next increment
             expireTime = baseTime + roundValue
         else:  # within 1 minute, don't add the next increment
             expireTime = baseTime
@@ -2865,7 +2954,7 @@ class TextProductCommon(object):
 
             state = self.getInformationForUGC(areaName, "fullStateName")
             if state == "" :
-                state == areaName[:2]
+                state = areaName[:2]
             # Special District of Columbia case
             if state == 'DISTRICT OF COLUMBIA':
                 state = 'THE DISTRICT OF COLUMBIA'

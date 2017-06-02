@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.request;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
@@ -35,6 +34,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * May 06, 2016 18202      Robert.Blum Changes for operational mode.
  * 
  * </pre>
  * 
@@ -62,15 +62,6 @@ public abstract class HazardRequest implements IServerRequest {
      */
     protected HazardRequest(boolean practice) {
         this.practice = practice;
-    }
-
-    /**
-     * Gets the mode of this request
-     * 
-     * @return The mode, practice or operational
-     */
-    public Mode getMode() {
-        return isPractice() ? Mode.PRACTICE : Mode.OPERATIONAL;
     }
 
     /**

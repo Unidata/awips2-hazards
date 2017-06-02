@@ -52,6 +52,8 @@ import com.raytheon.uf.common.python.PyUtil;
  * Nov 17, 2015    3473    Robert.Blum     Moved all python files under
  *                                         HazardServices localization dir.
  * Jun 23, 2016   19537    Chris.Golden    Removed storm-track-specific code.
+ * Jul 18, 2016   19220    Kevin.Bisanz    Mark pythonLocalizationDirectories
+ *                                         as private final.
  * Sep 29, 2016   15928    Chris.Golden    Moved geometry manipulation methods
  *                                         to AdvancedGeometryUtilities.
  * </pre>
@@ -103,7 +105,10 @@ public class Utilities {
         return result;
     }
 
-    static String[] pythonLocalizationDirectories = {
+    /**
+     * Directories to add to the python include path.
+     */
+    private static final String[] pythonLocalizationDirectories = {
             "HazardServices" + File.separator + "python",
             "HazardServices" + File.separator + "python" + File.separator
                     + "UFStatusHandler.py",
@@ -141,7 +146,8 @@ public class Utilities {
      */
     public static List<String> buildPythonPath() {
 
-        List<String> sourcePaths = new ArrayList<>();
+        List<String> sourcePaths = new ArrayList<>(
+                pythonLocalizationDirectories.length);
 
         for (String locPath : pythonLocalizationDirectories) {
             String path = Utilities.buildUtilitiesPath(locPath);

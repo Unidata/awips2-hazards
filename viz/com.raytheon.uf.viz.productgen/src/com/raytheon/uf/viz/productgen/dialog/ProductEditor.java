@@ -104,10 +104,12 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 01, 2015 12473      Roger.Ferrel Do not allow issue in operational mode with DRT time.
  * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted expiration product.
  * Jan 26, 2016 11860      Robert.Blum  Product Editor is now modal.
+ * Mar 30, 2016  8837      Robert.Blum  Added changeSite() method for service backup.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S.
  *                                      sessions in the same CAVE session, since stopping and
  *                                      starting the Jep instances when the latter use numpy is
  *                                      dangerous.
+ * Jun 06, 2016 9620       Robert.Blum  Removed isCorrectable restriction when updating the editor tab.
  * </pre>
  * 
  * @author jsanchez
@@ -169,11 +171,6 @@ public class ProductEditor extends AbstractProductDialog {
     /** ProductGeneration instance used to regenerate products */
     private final ProductGeneration productGeneration;
 
-    /**
-     * Hazard types configuration information.
-     */
-    private final HazardTypes hazardTypes;
-
     /** The total number of products that are able to be issued */
     protected int issuableProducts;
 
@@ -192,9 +189,8 @@ public class ProductEditor extends AbstractProductDialog {
             List<GeneratedProductList> generatedProductListStorage,
             String siteId, HazardTypes hazardTypes) {
         super(parentShell, SWT.RESIZE | SWT.APPLICATION_MODAL,
-                generatedProductListStorage);
+                generatedProductListStorage, hazardTypes);
         this.productGeneration = ProductGeneration.getInstance(siteId);
-        this.hazardTypes = hazardTypes;
 
         /*
          * If these products are editable, save a copy for future use
@@ -273,7 +269,8 @@ public class ProductEditor extends AbstractProductDialog {
                  */
                 editorManager.addProductDataEditor(product,
                         new ProductDataEditor(this, productTab, product,
-                                editorAndFormatsTabFolder, SWT.VERTICAL));
+                                editorAndFormatsTabFolder, SWT.VERTICAL,
+                                hazardTypes));
                 /*
                  * Iterate over the formatted entries in the product and create
                  * a FormattedTextDataEditor for each one.
@@ -665,17 +662,10 @@ public class ProductEditor extends AbstractProductDialog {
                                             .getEditableEntries());
                                     product.setData(updatedProduct.getData());
                                     if (isDisposed() == false) {
-                                        if (isCorrectable) {
-                                            /*
-                                             * Update the editor tab only for
-                                             * corrections. The productHeader
-                                             * and VTEC Strings will change from
-                                             * regenerate call and need updated.
-                                             */
-                                            editorManager.getProductDataEditor(
-                                                    product).updateValues(
-                                                    product);
-                                        }
+
+                                        editorManager.getProductDataEditor(
+                                                product).updateValues(product);
+
                                         editorManager
                                                 .updateFormattedTextViewers(product);
                                     }
@@ -837,4 +827,13 @@ public class ProductEditor extends AbstractProductDialog {
             dismissHandler = handler;
         }
     };
+
+    /**
+     * Changes the site that product generation uses.
+     * 
+     * @param site
+     */
+    public void changeSite(String site) {
+        productGeneration.setSite(site);
+    }
 }

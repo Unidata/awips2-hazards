@@ -10,11 +10,9 @@
 package gov.noaa.gsd.viz.hazards.console;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 
 /**
  * Description: Interface describing the methods that must be implemented by
@@ -27,6 +25,9 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 15, 2016   15556    Chris.Golden Initial creation.
+ * Jun 08, 2017   16373    Chris.Golden Removed product viewer selection dialog 
+ *                                      usage, as the product view and presenter
+ *                                      take care of this now.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,16 +45,6 @@ public interface IConsoleHandler {
      */
     public void showUserConflictingHazardsWarning(
             Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> areasForConflictingEventsForEvents);
-
-    /**
-     * Show the view product selection dialog to the user.
-     * 
-     * @param productData
-     *            List of product data elements to be shown for selection
-     *            purposes.
-     */
-    public void showUserProductViewerSelectionDialog(
-            List<ProductData> productData);
 
     /**
      * Handle notification that the console was disposed of.

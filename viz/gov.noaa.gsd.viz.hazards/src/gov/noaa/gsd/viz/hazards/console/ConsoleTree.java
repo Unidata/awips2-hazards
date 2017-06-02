@@ -55,11 +55,14 @@ import java.awt.image.BufferedImage;
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,6 +154,21 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  *                                      were throwing exceptions when displayed
  *                                      after attachment or detachment.
  * May 09, 2017   15170    Chris.Golden Added select/deselect all events.
+ * Jun 22, 2017   15561    Chris.Golden Fixed bugs that manifested as time scale
+ *                                      widgets not having their positions and
+ *                                      sizes properly within the tree's last
+ *                                      column when a row was deleted, or when
+ *                                      the user changed column order or added
+ *                                      or removed a column using the Settings
+ *                                      dialog. Also added fix to ensure that
+ *                                      the Settings dialog's display of the
+ *                                      available and selected columns updated
+ *                                      properly when the dialog was up and the
+ *                                      user changed ordering, etc. via the
+ *                                      Console tree GUI itself.
+ * Jun 30, 2017   19223    Chris.Golden Added ability to change the text and
+ *                                      enabled state of a row menu's menu item
+ *                                      after it is displayed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -578,6 +596,12 @@ class ConsoleTree implements IConsoleTree {
      * "Uncheck all rows" menu item.
      */
     private MenuItem uncheckAllRowsMenuItem;
+
+    /**
+     * Map of contribution items from the row menu to their corresponding menu
+     * items.
+     */
+    private final Map<IContributionItem, MenuItem> rowMenuItemsForContributionItems = new IdentityHashMap<>();
 
     /**
      * List of root entities, each of which is represented by a tree item.
@@ -1707,6 +1731,16 @@ class ConsoleTree implements IConsoleTree {
         countdownTimersDisplayManager
                 .updateCountdownTimers(countdownTimersForEventIdentifiers);
         updateAllCountdownTimers();
+    }
+
+    @Override
+    public void handleContributionItemUpdate(IContributionItem item,
+            String text, boolean enabled) {
+        MenuItem menuItem = rowMenuItemsForContributionItems.get(item);
+        if ((menuItem != null) && (menuItem.isDisposed() == false)) {
+            menuItem.setText(text);
+            menuItem.setEnabled(enabled);
+        }
     }
 
     // Package-Private Methods
@@ -3421,7 +3455,9 @@ class ConsoleTree implements IConsoleTree {
             Display.getCurrent().asyncExec(new Runnable() {
                 @Override
                 public void run() {
-                    tree.showItem(item);
+                    if (item.isDisposed() == false) {
+                        tree.showItem(item);
+                    }
                 }
             });
         }
@@ -4156,16 +4192,9 @@ class ConsoleTree implements IConsoleTree {
         }
 
         /*
-         * Move the tree editors over to the appropriate column.
+         * Ensure the tree editors are in the appropriate column.
          */
-        for (Map.Entry<TabularEntity, TreeItem> entry : treeItemsForEntities
-                .entrySet()) {
-            TreeEditor editor = treeEditorsForEntities.get(entry.getKey());
-            if (editor != null) {
-                editor.setEditor(editor.getEditor(), entry.getValue(),
-                        tree.getColumnCount() - 1);
-            }
-        }
+        ensureTimeScalesAreInRightmostColumn();
 
         /*
          * Update the column order to match that given by the visible columns
@@ -4189,7 +4218,23 @@ class ConsoleTree implements IConsoleTree {
         /*
          * Notify listeners of the column change.
          */
+        columns = new ConsoleColumns(columns.getColumnDefinitionsForNames(),
+                ImmutableList.copyOf(visibleColumnNames));
         scheduleNotificationOfColumnChange();
+    }
+
+    /**
+     * Ensure that the time scale tree editors are in the last column.
+     */
+    private void ensureTimeScalesAreInRightmostColumn() {
+        for (Map.Entry<TabularEntity, TreeItem> entry : treeItemsForEntities
+                .entrySet()) {
+            TreeEditor editor = treeEditorsForEntities.get(entry.getKey());
+            if (editor != null) {
+                editor.setEditor(editor.getEditor(), entry.getValue(),
+                        tree.getColumnCount() - 1);
+            }
+        }
     }
 
     /**
@@ -4666,6 +4711,8 @@ class ConsoleTree implements IConsoleTree {
         if (newColumnDefinitionsForNames != null) {
             columnDefinitionsForNames = ImmutableMap
                     .copyOf(newColumnDefinitionsForNames);
+            columns = new ConsoleColumns(columnDefinitionsForNames,
+                    ImmutableList.copyOf(visibleColumnNames));
             scheduleNotificationOfColumnChange();
         }
     }
@@ -4698,6 +4745,8 @@ class ConsoleTree implements IConsoleTree {
                     new ColumnDefinition(columnDefinition, column.getWidth()));
             columnDefinitionsForNames = ImmutableMap
                     .copyOf(newColumnDefinitionsForNames);
+            columns = new ConsoleColumns(columnDefinitionsForNames,
+                    ImmutableList.copyOf(visibleColumnNames));
             scheduleNotificationOfColumnChange();
         }
     }
@@ -4725,6 +4774,8 @@ class ConsoleTree implements IConsoleTree {
         /*
          * Notify listeners of the column change.
          */
+        columns = new ConsoleColumns(columns.getColumnDefinitionsForNames(),
+                ImmutableList.copyOf(visibleColumnNames));
         scheduleNotificationOfColumnChange();
     }
 
@@ -4975,6 +5026,19 @@ class ConsoleTree implements IConsoleTree {
         TreeItem treeItem = treeItemsForScales.remove(scale);
         scale.dispose();
         editor.dispose();
+        refreshTimeScalePositionsAndSizes(treeItem);
+    }
+
+    /**
+     * Refresh the positions and sizes of the time scale editors to ensure that
+     * they are in the right places.
+     * 
+     * @param itemToRefreshAfter
+     *            If provided, only time scale editors for tree items that
+     *            follow this item are to be refreshed. If <code>null</code>,
+     *            all the time scales are to be refreshed.
+     */
+    private void refreshTimeScalePositionsAndSizes(TreeItem itemToRefreshAfter) {
 
         /*
          * Annoyingly, it seems that any time scale widgets acting as editors
@@ -4985,9 +5049,12 @@ class ConsoleTree implements IConsoleTree {
          * have each one's enclosing TreeEditor remove the time scale and then
          * re-add it.
          */
-        boolean foundItem = false;
-        for (TreeItem item : tree.getItems()) {
-            if (treeItem == item) {
+        boolean foundItem = (itemToRefreshAfter == null);
+        Deque<TreeItem> treeItems = new LinkedList<>(Arrays.asList(tree
+                .getItems()));
+        while (treeItems.isEmpty() == false) {
+            TreeItem item = treeItems.pop();
+            if (itemToRefreshAfter == item) {
                 foundItem = true;
             } else if (foundItem) {
                 TabularEntity thisEntity = entitiesForTreeItems.get(item);
@@ -5001,6 +5068,9 @@ class ConsoleTree implements IConsoleTree {
                                 tree.getColumnCount() - 1);
                     }
                 }
+            }
+            if (foundItem && (item.getItemCount() > 0)) {
+                treeItems.addAll(Arrays.asList(item.getItems()));
             }
         }
     }
@@ -5446,6 +5516,13 @@ class ConsoleTree implements IConsoleTree {
          * Why should it be here?
          */
         rowMenu = new Menu(tree);
+        rowMenu.addDisposeListener(new DisposeListener() {
+
+            @Override
+            public void widgetDisposed(DisposeEvent e) {
+                rowMenuItemsForContributionItems.clear();
+            }
+        });
         untilFurtherNoticeMenuItem = new MenuItem(rowMenu, SWT.PUSH);
         untilFurtherNoticeMenuItem.setText(UNTIL_FURTHER_NOTICE_MENU_TEXT);
         untilFurtherNoticeMenuItem.addSelectionListener(rowMenuListener);
@@ -5541,6 +5618,7 @@ class ConsoleTree implements IConsoleTree {
                 }
                 ActionContributionItem actionItem = (ActionContributionItem) item;
                 menuItem = new MenuItem(rowMenu, SWT.PUSH);
+                rowMenuItemsForContributionItems.put(actionItem, menuItem);
                 menuItem.setText(actionItem.getAction().getText());
                 menuItem.setEnabled(actionItem.isEnabled());
                 final IAction action = actionItem.getAction();
@@ -6392,9 +6470,10 @@ class ConsoleTree implements IConsoleTree {
 
         /*
          * Ensure that the checkboxes in the tree's rows are in the leftmost
-         * column.
+         * column, and that the time scales are in the rightmost column.
          */
         ensureCheckboxesAreInLeftmostColumn(false);
+        ensureTimeScalesAreInRightmostColumn();
 
         /*
          * Finish up following the addition and/or removal of columns.

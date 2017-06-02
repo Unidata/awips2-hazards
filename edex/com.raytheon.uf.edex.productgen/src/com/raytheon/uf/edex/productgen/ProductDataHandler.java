@@ -56,6 +56,16 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Jul 30, 2015 9681       Robert.Blum  Updates for new ProductRequestType.
  * Jul 31, 2015 9682       Robert.Blum  Filtering out products that should not be corrected.
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Sep 11, 2015 10203      Robert.Blum  Productdata table now holds entries for all issued events
+ *                                      not just the latest for that eventID(s).
+ * Jul 01, 2016 18257      Kevin.Bisanz Add mode restriction to criteria in case
+ *                                      of RETRIEVE_VIEWABLE and
+ *                                      RETRIEVE_CORRECTABLE. Change
+ *                                      RETRIEVE_CORRECTABLE time comparison
+ *                                      from GT to GE.
+ * Jul 19, 2016 19207      Robert.Blum  Changes to view products for specific events.
+ * Aug 26, 2016 19223      Kevin.Bisanz Changes to get correctable products for
+ *                                      specific events.
  * 
  * </pre>
  * 
@@ -68,7 +78,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
     private static final IUFStatusHandler handler = UFStatus
             .getHandler(ProductDataHandler.class);
 
-    private static final String ISSUE_TIME_COLUMN = "issueTime";
+    private static final String ISSUE_TIME_COLUMN = "id.issueTime";
 
     private static final String RVS_GENERATOR_NAME = "RVS_ProductGenerator";
 
@@ -91,6 +101,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         ProductData pData = request.getProductData();
         Criteria criteria = null;
         List<ProductData> data = null;
+        List<ProductData> filteredData = null;
         if (handler.isPriorityEnabled(Priority.INFO)) {
 
             List<String> eventIDs = pData.getEventIDs();
@@ -103,7 +114,6 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         switch (request.getType()) {
         case CREATE:
             try {
-                deleteExisting(pData);
                 dao.create(pData);
             } catch (RuntimeException e) {
                 response.setExceptions(e);
@@ -130,6 +140,10 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
                             pData.getProductGeneratorName(),
                             QueryOperand.EQUALS);
                 }
+                if (pData.getIssueTime() != null) {
+                    query.addQueryParam(ISSUE_TIME_COLUMN,
+                            pData.getIssueTime(), QueryOperand.EQUALS);
+                }
 
                 dao.deleteByCriteria(query);
             } catch (RuntimeException e) {
@@ -138,7 +152,6 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             break;
         case SAVE_OR_UPDATE:
             try {
-                deleteExisting(pData);
                 dao.saveOrUpdate(pData);
             } catch (RuntimeException e) {
                 response.setExceptions(e);
@@ -151,6 +164,8 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             criteria.add(Restrictions.eq("id.productGeneratorName",
                     pData.getProductGeneratorName()));
             criteria.add(Restrictions.eq("id.eventIDs", pData.getEventIDs()));
+            criteria.add(Restrictions.eq(ISSUE_TIME_COLUMN,
+                    pData.getIssueTime()));
 
             data = criteria.list();
             response = new ProductDataResponse();
@@ -159,6 +174,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         case RETRIEVE_CORRECTABLE:
             criteria = dao.getSessionFactory().openSession()
                     .createCriteria(ProductData.class);
+            criteria.add(Restrictions.eq("id.mode", pData.getMode()));
 
             /*
              * This only queries for rows that has the current time within 10
@@ -167,7 +183,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(request.getCurrentTime());
             calendar.add(Calendar.MINUTE, -VALID_CORRECTION_DELTA);
-            criteria.add(Restrictions.gt(ISSUE_TIME_COLUMN, calendar.getTime()));
+            criteria.add(Restrictions.ge(ISSUE_TIME_COLUMN, calendar.getTime()));
 
             /*
              * Filter out products that should not be able to be corrected (RVS,
@@ -183,7 +199,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
              * Filter out remaining products that should not be able to be
              * corrected, but can not be filtered by generator name (HY.S).
              */
-            for (ProductData productData : new ArrayList<ProductData>(data)) {
+            for (ProductData productData : new ArrayList<>(data)) {
                 if (productData.getProductGeneratorName().equals(
                         FLW_FLS_GENERATOR_NAME)) {
                     boolean remove = checkForHYS(productData);
@@ -193,45 +209,104 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
                 }
             }
             response = new ProductDataResponse();
-            response.setData(data);
+            filteredData = filterPDataForCorrections(data);
+            filteredData = filterPDataForEventIDs(filteredData,
+                    pData.getEventIDs());
+            response.setData(filteredData);
             break;
         case RETRIEVE_VIEWABLE:
             criteria = dao.getSessionFactory().openSession()
                     .createCriteria(ProductData.class);
+            criteria.add(Restrictions.eq("id.mode", pData.getMode()));
 
             data = criteria.list();
+
             response = new ProductDataResponse();
-            response.setData(data);
+
+            // Filter by event ID.
+            filteredData = filterPDataForEventIDs(data, pData.getEventIDs());
+            response.setData(filteredData);
             break;
         }
         return response;
     }
 
     /*
-     * Deletes from the productdata table that have eventIDs that contain
-     * eventIDs in the pData.
+     * Filters the list of product data for corrections. Removing any entries
+     * that have common eventIDs, keeping only the one with the latest
+     * issueTime.
      */
-    private void deleteExisting(ProductData pData) {
-        Criteria criteria = dao.getSessionFactory().openSession()
-                .createCriteria(ProductData.class);
-        criteria.add(Restrictions.eq("id.productGeneratorName",
-                pData.getProductGeneratorName()));
-        criteria.add(Restrictions.eq("id.mode", pData.getMode()));
-
-        List<ProductData> data = criteria.list();
-        List<ProductData> toRemove = new ArrayList<ProductData>();
-        for (ProductData pd : data) {
-            for (String eventID : pData.getEventIDs()) {
-                if (pd.getEventIDs().contains(eventID)) {
-                    toRemove.add(pd);
-                    break;
+    private List<ProductData> filterPDataForCorrections(
+            List<ProductData> pDataList) {
+        List<ProductData> filteredPDataList = new ArrayList<>(pDataList);
+        for (int i = 0; i < pDataList.size(); i++) {
+            for (int j = i + 1; j < pDataList.size(); j++) {
+                int value = compareProductData(pDataList.get(i),
+                        pDataList.get(j));
+                if (value == 1) {
+                    filteredPDataList.remove(pDataList.get(j));
+                } else if (value == -1) {
+                    filteredPDataList.remove(pDataList.get(i));
                 }
             }
         }
+        return filteredPDataList;
+    }
 
-        if (toRemove.isEmpty() == false) {
-            dao.deleteAll(toRemove);
+    /**
+     * Filter the input data list to contain only products with the event IDs
+     * provided. The input list is not modified.
+     * 
+     * @param data
+     *            Data which to filter
+     * @param eventIDs
+     *            Event IDs to keep. Null or empty list performs no filtering.
+     * @return Data that has been filter
+     */
+    private List<ProductData> filterPDataForEventIDs(List<ProductData> data,
+            List<String> eventIDs) {
+        List<ProductData> keepList = new ArrayList<>();
+
+        /*
+         * If eventIDs are specified, only keep product data that have at least
+         * one of those eventIDs.
+         */
+        if (eventIDs != null && eventIDs.isEmpty() == false) {
+            for (ProductData productData : data) {
+                for (String eventID : productData.getEventIDs()) {
+                    if (eventIDs.contains(eventID)) {
+                        keepList.add(productData);
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Nothing to filter on, keep everything.
+            keepList.addAll(data);
         }
+        return keepList;
+    }
+
+    /**
+     * Compares the product data objects. If they share any one common eventID
+     * then the issueTime is compared. If pd1 issueTime is after pd2 issueTime 1
+     * is return. If pd2 issueTime is after pd1 issueTime then -1 is return. If
+     * the two product data object don't share any common eventIDs then 0 is
+     * return.
+     */
+    private int compareProductData(ProductData pd1, ProductData pd2) {
+        for (String pd1EventID : pd1.getEventIDs()) {
+            for (String pd2EventID : pd2.getEventIDs()) {
+                if (pd1EventID.equals(pd2EventID)) {
+                    if (pd1.getIssueTime().after(pd2.getIssueTime())) {
+                        return 1;
+                    } else {
+                        return -1;
+                    }
+                }
+            }
+        }
+        return 0;
     }
 
     /*

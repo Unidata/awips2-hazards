@@ -20,7 +20,6 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryAdapter;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometrySlotConverter;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.VisualFeature;
@@ -55,7 +54,6 @@ import com.raytheon.uf.common.registry.annotations.RegistryObjectVersion;
 import com.raytheon.uf.common.registry.annotations.SlotAttribute;
 import com.raytheon.uf.common.registry.annotations.SlotAttributeConverter;
 import com.raytheon.uf.common.registry.ebxml.slots.DateSlotConverter;
-import com.raytheon.uf.common.registry.ebxml.slots.GeometrySlotConverter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.vividsolutions.jts.geom.Geometry;
@@ -85,6 +83,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
+ * May 02, 2016 18235      Chris.Golden Added source field.
  * May 10, 2016 18515      Chris.Golden Fixed bug that caused duplicate-key hazard
  *                                      attributes to be kept around, so that a
  *                                      particular key (e.g. "cta") might have
@@ -93,6 +92,10 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      same bug also caused attributes that were
  *                                      supposedly removed from the event to not
  *                                      actually be removed.
+ * Jun 03, 2016 19403      mduff        Removed some slots.
+ * Jun 08, 2016 18899     Ben.Phillippe Changed geometry fields to be xml elements
+ *                                      instead of  attributes to avoid the jaxb
+ *                                      attribute size limit
  * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
  *                                      lists for each hazard event into one,
  *                                      replaced by visibility constraints
@@ -167,7 +170,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @DynamicSerializeElement
     @XmlAttribute
-    @SlotAttribute(HazardConstants.UNIQUE_ID)
     private String uniqueID = UUID.randomUUID().toString();
 
     /**
@@ -225,8 +227,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.CREATION_TIME)
-    @SlotAttributeConverter(DateSlotConverter.class)
     private Date creationTime;
 
     /**
@@ -238,13 +238,19 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private ProductClass hazardMode;
 
     /**
+     * The source of the hazard
+     */
+    @DynamicSerializeElement
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.HAZARD_SOURCE)
+    private Source source;
+
+    /**
      * The flattened geometry coverage of the hazard
      */
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = GeometryAdapter.class)
-    @XmlAttribute
-    @SlotAttribute(HazardConstants.FLATTENED_GEOMETRY)
-    @SlotAttributeConverter(GeometrySlotConverter.class)
+    @XmlElement
     private Geometry flattenedGeometry;
 
     /**
@@ -252,9 +258,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = AdvancedGeometryAdapter.class)
-    @XmlAttribute
-    @SlotAttribute(HazardConstants.GEOMETRY)
-    @SlotAttributeConverter(AdvancedGeometrySlotConverter.class)
+    @XmlElement
     private IAdvancedGeometry geometry;
 
     /**
@@ -266,7 +270,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = VisualFeaturesListAdapter.class)
-    @XmlAttribute
+    @XmlElement
     private VisualFeaturesList visualFeatures;
 
     /**
@@ -284,7 +288,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.USER_NAME)
     private String userName;
 
     /**
@@ -293,7 +296,6 @@ public class HazardEvent implements IHazardEvent, IValidator {
      */
     @DynamicSerializeElement
     @XmlElement
-    @SlotAttribute(HazardConstants.WORKSTATION)
     private String workStation;
 
     /**
@@ -334,11 +336,11 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setSubType(event.getSubType());
         setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
+        setSource(event.getSource());
         setWorkStation(event.getWorkStation());
         setUserName(event.getUserName());
         if (event.getHazardAttributes() != null) {
-            setHazardAttributes(new HashMap<String, Serializable>(
-                    event.getHazardAttributes()));
+            setHazardAttributes(new HashMap<>(event.getHazardAttributes()));
         }
     }
 
@@ -498,6 +500,16 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     @Override
+    public Source getSource() {
+        return source;
+    }
+
+    @Override
+    public void setSource(Source source) {
+        this.source = source;
+    }
+
+    @Override
     public Geometry getFlattenedGeometry() {
         return flattenedGeometry;
     }
@@ -551,7 +563,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public Map<String, Serializable> getHazardAttributes() {
-        Map<String, Serializable> attrs = new HashMap<String, Serializable>();
+        Map<String, Serializable> attrs = new HashMap<>();
 
         for (HazardAttribute attribute : attributes) {
             attrs.put(attribute.getKey(),
@@ -649,6 +661,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
                 + ((attributes == null) ? 0 : attributes.hashCode());
         result = prime * result
                 + ((hazardMode == null) ? 0 : hazardMode.hashCode());
+        result = prime * result + ((source == null) ? 0 : source.hashCode());
         result = prime * result
                 + ((insertTime == null) ? 0 : insertTime.hashCode());
         result = prime * result
@@ -727,6 +740,9 @@ public class HazardEvent implements IHazardEvent, IValidator {
             return false;
         }
         if (hazardMode != other.hazardMode) {
+            return false;
+        }
+        if (source != other.source) {
             return false;
         }
         if (insertTime == null) {

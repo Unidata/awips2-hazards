@@ -29,6 +29,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 11, 2017   15556    Chris.Golden Initial creation.
+ * Jun 22, 2017   15561    Chris.Golden Removed extraneous Map.put().
  * </pre>
  * 
  * @author Chris.Golden
@@ -303,7 +304,6 @@ class ConsoleColumns {
         for (Map.Entry<String, Column> entry : columnsForNames.entrySet()) {
             ColumnDefinition columnDefinition = columnDefinitionsForNames
                     .get(entry.getKey());
-            newColumnsForNames.put(entry.getKey(), entry.getValue());
             newColumnsForNames.put(
                     entry.getKey(),
                     (columnDefinition == null ? entry.getValue()

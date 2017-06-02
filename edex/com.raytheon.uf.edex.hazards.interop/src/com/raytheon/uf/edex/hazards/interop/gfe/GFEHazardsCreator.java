@@ -39,7 +39,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -163,14 +162,9 @@ public class GFEHazardsCreator {
                     resetZones();
 
                     AbstractWarningRecord rec = (AbstractWarningRecord) ob;
-                    Mode mode = null;
                     boolean practice = (rec instanceof PracticeWarningRecord);
-                    if (practice) {
-                        mode = Mode.PRACTICE;
-                    } else {
-                        mode = Mode.OPERATIONAL;
-                    }
-                    HazardEventManager manager = new HazardEventManager(mode);
+                    HazardEventManager manager = new HazardEventManager(
+                            practice);
 
                     buildAreas(rec.getUgcZones());
 
@@ -203,7 +197,7 @@ public class GFEHazardsCreator {
                     GridParmInfo gridParmInfo = null;
                     try {
                         gridParmInfo = new GridRequestHandler()
-                                .requestGridParmInfo(mode, rec.getXxxid());
+                                .requestGridParmInfo(practice, rec.getXxxid());
                     } catch (Exception e) {
                         statusHandler.error(
                                 "Failed to retrieve Grid Parm Info for site: "

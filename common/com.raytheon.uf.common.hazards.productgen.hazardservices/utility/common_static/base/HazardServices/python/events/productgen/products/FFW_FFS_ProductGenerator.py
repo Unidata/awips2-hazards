@@ -18,6 +18,9 @@ Jan 12, 2015   4937      Robert.Blum         Refactor to use new generator class
 Jan 31, 2015   4937      Robert.Blum         General cleanup and minor bug fixes.
 Mar 23, 2015   7165      Robert.Blum         Code consolidation - removed _prepareSection().
 Apr 16, 2015   7579      Robert.Blum         Updates for amended Product Editor.
+Jun 08, 2016   9620      Robert.Blum         Changed self._purgeHours to a float since purge hours can
+                                             include minutes (15min intervals).
+Jul 06, 2016  18257      Kevin.Bisanz        Added eventSet parameter to executeFrom(..)
 
 @author Tracy.L.Hansen@noaa.gov
 @version 1.0
@@ -41,7 +44,7 @@ class Product(HydroGenerator.Product):
         self._productID = 'FFW'
         self._productCategory = 'FFW_FFS'
         self._productName = 'Flash Flood Warning'
-        self._purgeHours = -1
+        self._purgeHours = -1.0
         self._FFW_ProductName = 'Flash Flood Warning'
         self._FFS_ProductName = 'Flash Flood Statement'
         self._includeAreaNames = True
@@ -59,9 +62,11 @@ class Product(HydroGenerator.Product):
     def defineDialog(self, eventSet):
         return {}
 
-    def executeFrom(self, dataList, keyInfo=None):
+    def executeFrom(self, dataList, eventSet, keyInfo=None):
         if keyInfo is not None:
-            dataList = self.correctProduct(dataList, keyInfo, True)
+            dataList = self.correctProduct(dataList, eventSet, keyInfo, True)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList
 
     def execute(self, eventSet, dialogInputMap):

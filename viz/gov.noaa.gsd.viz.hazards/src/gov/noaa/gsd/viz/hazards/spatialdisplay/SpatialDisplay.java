@@ -77,8 +77,6 @@ import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.rsc.IResourceDataChanged;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
-import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory;
-import com.raytheon.uf.viz.core.rsc.RenderingOrderFactory.ResourceOrder;
 import com.raytheon.uf.viz.core.rsc.tools.AbstractMovableToolLayer;
 import com.raytheon.uf.viz.d2d.core.D2DProperties;
 import com.raytheon.uf.viz.d2d.core.time.D2DTimeMatcher;
@@ -171,6 +169,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  * Oct 26, 2015 12754      Chris.Golden   Fixed drawing bug that caused only one hazard to be drawn at a
  *                                        time, regardless of how many should have been displayed.
  * Nov 10, 2015 12762      Chris.Golden   Added support for use of new recommender manager.
+ * Mar 04, 2016 14732      Robert.Blum    Removed getResourceOrder() override that was incorrectly setting
+ *                                        the rendering order to highest.
  * Mar 16, 2016 15676      Chris.Golden   Changed to make visual features work. Will be refactored to
  *                                        remove numerous existing kludges.
  * Mar 24, 2016 15676      Chris.Golden   Numerous bug fixes for handlebar points with respect to multiple
@@ -225,6 +225,8 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        during the current CAVE session.
  * Feb 01, 2017 15556      Chris.Golden   Changed to pass entity list identifier with entities to
  *                                        drawable manager.
+ * Jun 30, 2017 21638      Chris.Golden   Only allow gage action menu item to be enabled if there is a
+ *                                        recommender configured as the gage-point-first recommender.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -980,6 +982,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             riverGageAction = new RiverGageAction();
         }
         if (riverGageAction.isHidden() == false) {
+            riverGageAction.setEnabled(spatialView.isGageActionAvailable());
             actions.add(riverGageAction);
         }
         actions.add(null);
@@ -1150,11 +1153,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         }
         Collections.sort(dataTimes);
         return dataTimes.toArray(new DataTime[dataTimes.size()]);
-    }
-
-    @Override
-    public ResourceOrder getResourceOrder() {
-        return RenderingOrderFactory.ResourceOrder.HIGHEST;
     }
 
     /**

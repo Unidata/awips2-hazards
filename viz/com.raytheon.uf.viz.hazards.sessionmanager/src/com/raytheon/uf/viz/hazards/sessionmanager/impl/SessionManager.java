@@ -30,7 +30,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
-import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.InteroperabilityRequestServices;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.ClearPracticeHazardVtecTableRequest;
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
@@ -45,7 +45,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
 import com.raytheon.uf.viz.hazards.sessionmanager.IDisplayResourceContextProvider;
 import com.raytheon.uf.viz.hazards.sessionmanager.IFrameContextProvider;
@@ -125,12 +124,16 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in sequence in
  *                                      response to a time interval trigger, instead of just one
  *                                      recommender.
+ * Apr 06, 2016 8837       Robert.Blum  Made setupEventIdDisplay() public and it now uses the site
+ *                                      from SessionConfigurationManager.
  * Apr 27, 2016 18266      Chris.Golden Added the setting of the selected time to that specified
  *                                      by the result of a recommender's execution, if the result
  *                                      includes a new selected time.
+ * May 06, 2016 12808      Robert.Blum  Fixed so hazards created in TEST mode get practice Event IDs.
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 26, 2016 20755      Chris.Golden Added ability to save recommender-created/modified hazard
  *                                      events to the database if the recommender requests it.
+ * Jul 08, 2016 13788      Chris.Golden Added validation of hazard events before product generation.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * Aug 15, 2016 18376      Chris.Golden Added code to unsubscribe session sub-managers from the
  *                                      event bus to aide in garbage collection.
@@ -246,6 +249,8 @@ public class SessionManager implements
 
     private final IFrameContextProvider frameContextProvider;
 
+    private final IMessenger messenger;
+
     /*
      * Flag indicating whether or not automatic hazard checking is running.
      */
@@ -267,6 +272,7 @@ public class SessionManager implements
             IFrameContextProvider frameContextProvider, IMessenger messenger,
             BoundedReceptionEventBus<Object> eventBus) {
         this.eventBus = eventBus;
+        this.messenger = messenger;
         sender = new SessionNotificationSender(eventBus);
         timeManager = new SessionTimeManager(this, sender);
         configManager = new SessionConfigurationManager(this, pathManager,
@@ -291,12 +297,6 @@ public class SessionManager implements
         this.spatialContextProvider = spatialContextProvider;
         this.displayResourceContextProvider = displayResourceContextProvider;
         this.frameContextProvider = frameContextProvider;
-
-        try {
-            setupEventIdDisplay();
-        } catch (HazardEventServiceException e) {
-            statusHandler.error(e.getMessage(), e);
-        }
 
         /**
          * TODO Where should a call be made to remove the NotificationJob
@@ -443,33 +443,12 @@ public class SessionManager implements
         }
 
         try {
-            InteroperabilityRequestServices.getServices(true)
-                    .purgePracticeWarnings();
-        } catch (Exception ex) {
-            /*
-             * 8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability).
-             * There is a purge issue (which may become moot), but at present
-             * the purge operations need to continue as far as possible.
-             */
-            String msg = "Error caught from InteroperabilityRequestServices.purgePracticeWarnings() "
-                    + "\nContinuing processing to finish purge tasks."
-                    + "\nAn Exception will not be thrown at this time";
-            statusHandler.error(msg, ex);
-        }
-
-        try {
-            InteroperabilityRequestServices.getServices(true)
-                    .purgeInteropRecords();
-        } catch (Exception ex) {
-            /*
-             * 8836 Chris.Cody THIS IS A STOP GAP MEASURE (Interoperability).
-             * There is a purge issue (which may become moot), but at present
-             * the purge operations need to continue as far as possible.
-             */
-            String msg = "Error caught from InteroperabilityRequestServices.purgeInteropRecords() "
-                    + "\nContinuing processing to finish purge tasks."
-                    + "\nAn Exception will not be thrown at this time";
-            statusHandler.error(msg, ex);
+            IServerRequest clearVtecTableReq = new ClearPracticeHazardVtecTableRequest(
+                    SiteMap.getInstance().getSite4LetterId(
+                            configManager.getSiteID()), VizApp.getWsId());
+            ThriftClient.sendRequest(clearVtecTableReq);
+        } catch (VizException e) {
+            statusHandler.error("Error clearing Hazard Event VTEC records.", e);
         }
 
         /*
@@ -488,7 +467,7 @@ public class SessionManager implements
             LocalizationFile localizationFile = pathManager
                     .getLocalizationFile(localizationContext, fileToDelete);
 
-            if (localizationFile.exists()) {
+            if ((localizationFile != null) && localizationFile.exists()) {
                 try {
                     localizationFile.delete();
                 } catch (LocalizationOpFailedException e) {
@@ -616,31 +595,28 @@ public class SessionManager implements
 
     @Override
     public void generate(boolean issue) {
-        if (issue) {
-            setIssueOngoing(true);
-        } else {
-            setPreviewOngoing(true);
-        }
-        try {
-            productManager.generateProducts(issue);
-        } catch (Exception e) {
-            setPreviewOngoing(false);
-            setIssueOngoing(false);
-            statusHandler.error("Error during product generation", e);
+        if (isSetOfSelectedHazardEventsValid()) {
+            if (issue) {
+                setIssueOngoing(true);
+            } else {
+                setPreviewOngoing(true);
+            }
+            try {
+                productManager.generateProducts(issue);
+            } catch (Exception e) {
+                setPreviewOngoing(false);
+                setIssueOngoing(false);
+                statusHandler.error("Error during product generation", e);
+            }
         }
     }
 
-    private void setupEventIdDisplay() throws HazardEventServiceException {
-
-        boolean isPracticeMode = (CAVEMode.getMode() == CAVEMode.PRACTICE);
-
-        LocalizationManager lm = LocalizationManager.getInstance();
-        String siteId = null;
-        if (lm != null) {
-            siteId = lm.getCurrentSite();
-        }
-
-        HazardServicesEventIdUtil.setupHazardEventId(isPracticeMode, siteId);
+    @Override
+    public void setupEventIdDisplay() throws HazardEventServiceException {
+        boolean isPracticeMode = (CAVEMode.OPERATIONAL.equals(CAVEMode
+                .getMode()) == false);
+        HazardServicesEventIdUtil.setupHazardEventId(isPracticeMode,
+                configManager.getSiteID());
     }
 
     /**
@@ -672,4 +648,34 @@ public class SessionManager implements
                     "Error Exporting Hazard Services Site Data files.", e);
         }
     }
+
+    /**
+     * Examine all selected hazards to ensure they are valid prior to issuance
+     * or previewing.
+     * 
+     * @return <code>true</code> if the selected hazards are all valid,
+     *         <code>false</code> if at least one is invalid.
+     */
+    private boolean isSetOfSelectedHazardEventsValid() {
+
+        /*
+         * Iterate through the selected hazard events, checking each in turn for
+         * validity. If one is found to be invalid, display a warning to the
+         * user and return false to indicate that validation failed.
+         */
+        for (ObservedHazardEvent event : selectionManager.getSelectedEvents()) {
+            String errorMessage = configManager.validateHazardEvent(event);
+            if (errorMessage != null) {
+                messenger.getWarner().warnUser("Invalid Hazard Event",
+                        errorMessage);
+                return false;
+            }
+        }
+
+        /*
+         * Validation succeeded.
+         */
+        return true;
+    }
+
 }

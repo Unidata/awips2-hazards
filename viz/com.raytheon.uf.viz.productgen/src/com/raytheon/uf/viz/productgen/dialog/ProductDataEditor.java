@@ -25,17 +25,27 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.KeyListener;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseTrackListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -43,16 +53,28 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Spinner;
 
+import com.raytheon.uf.common.dataplugin.events.IEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * If there are any editable keys in the data dictionary returned by the product
@@ -92,6 +114,10 @@ import com.raytheon.uf.common.util.Pair;
  * 08/26/2015   8836       Chris.Cody   Changes for Unique (alpha-numeric) Event ID values
  * 08/31/2015   9617       Chris.Golden Modified to use local copy of parameters editor factory.
  * 09/11/2015   9508       Robert.Blum  Save MessageBox now notifies of missing required fields.
+ * 06/08/2016   9620       Robert.Blum  Added controls to change the product expiration time.
+ * 06/09/2016   9620       Robert.Blum  Fixed issue with rapidly changing the product purge hours.
+ * 06/21/2016   9620       Robert.Blum  Accounting for arrow keys with expiration spinner.
+ * 06/22/2016  19925      Thomas.Gurney Make "Toggle Labels" always checked by default
  * 12/06/2016  26855       Chris.Golden Removed explicit use of scrollable composite, since the
  *                                      megawidgets can be wrapped within a scrollable Composite
  *                                      megawidget instead, which will handle Label-wrapping behavior
@@ -122,6 +148,31 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     /* Number of buttons */
     private final int BUTTON_COUNT = 3;
+
+    /**
+     * Date & time formatter.
+     */
+    private final SimpleDateFormat expireLabelFmt = new SimpleDateFormat(
+            "HH:mm'Z' dd-MMM-yy");
+
+    private boolean displayExpirationControls;
+
+    /*
+     * Expiration Date
+     */
+    private Date expireDate;
+
+    /**
+     * Hours spinner.
+     */
+    private Spinner hoursSpnr;
+
+    private int lastSpnrValue;
+
+    /**
+     * Date & time label.
+     */
+    private Label dateTimeLbl;
 
     /** The toggle button widget */
     private Button toggleLabelsButton;
@@ -157,11 +208,24 @@ public class ProductDataEditor extends AbstractDataEditor {
      *            The CTabFolder parent object
      * @param style
      *            SWT style flags
+     * @param hazardTypes
+     *            Hazard types configuration information.
      */
     protected ProductDataEditor(AbstractProductDialog productDialog,
             CTabItem productTab, IGeneratedProduct product, CTabFolder parent,
-            int style) {
+            int style, HazardTypes hazardTypes) {
         super(productDialog, productTab, product, parent, style);
+        displayExpirationControls = true;
+        for (IEvent event : product.getEventSet()) {
+            IHazardEvent hazard = (IHazardEvent) event;
+            HazardTypeEntry hazardTypeEntry = hazardTypes
+                    .get(HazardEventUtilities.getHazardType(hazard));
+            if ((hazardTypeEntry != null)
+                    && (hazardTypeEntry.getHatchingStyle() == HatchingStyle.WARNGEN)) {
+                displayExpirationControls = false;
+                break;
+            }
+        }
     }
 
     /**
@@ -194,6 +258,15 @@ public class ProductDataEditor extends AbstractDataEditor {
     }
 
     private void createMegawidgets() {
+
+        /*
+         * If there is no parent composite, do nothing. This may be the case if
+         * there are no editable fields, for example.
+         */
+        if (parentComposite == null) {
+            return;
+        }
+
         /* Dispose of any megawidget controls that may exist */
         Control[] controls = parentComposite.getChildren();
         if (controls.length != 0) {
@@ -322,6 +395,84 @@ public class ProductDataEditor extends AbstractDataEditor {
         editorButtonPane.setLayoutData(buttonCompData);
 
         /*
+         * Create the product expiration time composite
+         */
+        Composite expirationComp = new Composite(editorButtonPane, SWT.NONE);
+        GridLayout gl = new GridLayout(4, false);
+        GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
+        gd.horizontalSpan = 3;
+        expirationComp.setLayoutData(gd);
+        expirationComp.setLayout(gl);
+
+        if (displayExpirationControls) {
+            /*
+             * Create the product expiration time controls
+             */
+            Label prodExpiresLbl = new Label(expirationComp, SWT.NONE);
+            prodExpiresLbl.setText("Product expires in:");
+
+            hoursSpnr = new Spinner(expirationComp, SWT.BORDER | SWT.READ_ONLY);
+            Double purgeHours = getDefaultPurgeHours();
+            purgeHours = purgeHours * 100;
+
+            hoursSpnr.setValues(purgeHours.intValue(), 100, 4800, 2, 25, 25);
+            lastSpnrValue = purgeHours.intValue();
+
+            hoursSpnr.addMouseTrackListener(new MouseTrackListener() {
+                @Override
+                public void mouseEnter(MouseEvent e) {
+                    // do nothing
+                }
+
+                @Override
+                public void mouseExit(MouseEvent e) {
+                    if (hoursSpnr.getSelection() != lastSpnrValue) {
+                        lastSpnrValue = hoursSpnr.getSelection();
+                        updateExpireTimeFromTimer(true);
+                    }
+                }
+
+                @Override
+                public void mouseHover(MouseEvent e) {
+                    // do nothing
+                }
+
+            });
+
+            hoursSpnr.addModifyListener(new ModifyListener() {
+                @Override
+                public void modifyText(ModifyEvent e) {
+                    updateExpireTimeFromTimer(false);
+                }
+            });
+
+            hoursSpnr.addKeyListener(new KeyListener() {
+
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    // do nothing
+                }
+
+                @Override
+                public void keyReleased(KeyEvent e) {
+                    if (e.keyCode == SWT.ARROW_UP
+                            || e.keyCode == SWT.ARROW_DOWN) {
+                        if (hoursSpnr.getSelection() != lastSpnrValue) {
+                            lastSpnrValue = hoursSpnr.getSelection();
+                            updateExpireTimeFromTimer(true);
+                        }
+                    }
+                }
+
+            });
+
+            Label atLbl = new Label(expirationComp, SWT.NONE);
+            atLbl.setText(" At:");
+
+            dateTimeLbl = new Label(expirationComp, SWT.NONE);
+            updateExpireTime(false);
+        }
+        /*
          * Create the buttons for the editor tab
          */
         saveButton = new Button(editorButtonPane, SWT.PUSH);
@@ -407,19 +558,74 @@ public class ProductDataEditor extends AbstractDataEditor {
 
         // Editor toggle button always enabled.
         toggleLabelsButton.setEnabled(true);
+        toggleLabelsButton.setSelection(true);
+        toggleLabels();
+    }
 
-        /*
-         * Set the checked state based on the KeyInfo displayLabel states. If
-         * any keyInfo is set to display its label, have the box checked.
-         */
-        boolean selection = false;
-        for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
-            if (keyInfo.isDisplayLabel()) {
-                selection = true;
-                break;
+    private double getDefaultPurgeHours() {
+        Map<String, Serializable> data = product.getData();
+        if (data.containsKey(HazardConstants.PURGE_HOURS)) {
+            Number purgeHoursObj = (Number) data
+                    .get(HazardConstants.PURGE_HOURS);
+            if (purgeHoursObj != null) {
+                return purgeHoursObj.doubleValue();
             }
         }
-        toggleLabelsButton.setSelection(selection);
+        // Match GFE by defaulting to 12 hours
+        return 12.0;
+    }
+
+    private void updateExpireTimeFromTimer(final boolean regenerate) {
+        VizApp.runAsync(new Runnable() {
+            @Override
+            public void run() {
+                updateExpireTime(regenerate);
+            }
+        });
+    }
+
+    private void updateExpireTime(boolean regenerate) {
+        if (hoursSpnr.isDisposed() || dateTimeLbl.isDisposed()) {
+            return;
+        }
+
+        int sel = hoursSpnr.getSelection();
+        int hours = sel / 100;
+        int minuteInc = (sel % 100) / 25;
+        int purgeOffset = (hours * TimeUtil.MINUTES_PER_HOUR)
+                + (minuteInc * 15); // minutes
+
+        Date now = SimulatedTime.getSystemTime().getTime();
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT"));
+        cal.setTime(now);
+        cal.add(Calendar.MINUTE, purgeOffset);
+        int min = cal.get(Calendar.MINUTE);
+        if ((min % 15) >= 1) {
+            cal.set(Calendar.MINUTE, ((min / 15) + 1) * 15);
+            cal.set(Calendar.SECOND, 0);
+        }
+        expireDate = cal.getTime();
+        dateTimeLbl.setText(expireLabelFmt.format(expireDate));
+
+        if (regenerate) {
+            // Add the updated time to the product data so it is available
+            // for Product Generation
+            updateSegmentExpirationTimes(expireDate, sel / 100.0);
+
+            // regenerate with updated Product Expiration Time
+            productDialog.regenerate(null);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void updateSegmentExpirationTimes(Date expireDate, double purgeHours) {
+        Map<String, Serializable> data = product.getData();
+        List<Map<String, Serializable>> segments = (List<Map<String, Serializable>>) data
+                .get(HazardConstants.SEGMENTS);
+        data.put(HazardConstants.PURGE_HOURS, purgeHours);
+        for (Map<String, Serializable> segment : segments) {
+            segment.put(HazardConstants.EXPIRATION_TIME, expireDate.getTime());
+        }
     }
 
     /**

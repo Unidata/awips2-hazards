@@ -8,11 +8,13 @@ import datetime
 import RecommenderTemplate
 import numpy
 import GeometryFactory
+import HazardDataAccess
 
 from MapsDatabaseAccessor import MapsDatabaseAccessor
 
 from HazardConstants import *
 from GeneralConstants import *
+from EventSet import EventSet
  
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -48,9 +50,9 @@ class Recommender(RecommenderTemplate.Recommender):
         damFieldDict["autocomplete"] = True
         
         self.damPolygonDict = {}
-        mapsAccessor = MapsDatabaseAccessor()
+        self.mapsAccessor = MapsDatabaseAccessor()
         try:
-            self.damPolygonDict = mapsAccessor.getPolygonDict(DAMINUNDATION_TABLE)
+            self.damPolygonDict = self.mapsAccessor.getPolygonDict(DAMINUNDATION_TABLE, eventSet.getAttribute("localizedSiteID"))
         except:
             pass
 
@@ -104,15 +106,40 @@ Please click CANCEL and manually draw an inundation area.
         import EventFactory
         import EventSetFactory
 
+        urgencyLevel = dialogInputMap["urgencyLevel"]
+
+        currentEvents = HazardDataAccess.getCurrentEvents(eventSet)
+        damOrLeveeName = dialogInputMap.get("damOrLeveeName")
+        
+        newEventSet = EventSetFactory.createEventSet()
+        hazardEvent = None
+        for currentEvent in currentEvents:
+            if currentEvent.getHazardAttributes().get("damOrLeveeName") == damOrLeveeName:
+                if currentEvent.getStatus() == "ISSUED":
+                    if ("WARNING" in urgencyLevel and currentEvent.getSignificance() != "W") or \
+                       ("WATCH" in urgencyLevel and currentEvent.getSignificance() != "A"):
+                        currentEvent.setStatus('ending')
+                        newEventSet.add(currentEvent)
+                        break
+                    else:
+                        # current Event and urgency level match
+                        # return empty eventSet
+                        return newEventSet
+                else:
+                    # Current Event is not issue, update it.
+                    hazardEvent = currentEvent
+
+        if hazardEvent is None:
+            hazardEvent = EventFactory.createEvent()
+
         # updateEventAttributes does all the stuff we can safely do in a unit
         # test, basically whatever does not require Jep. It is up to the test
         # to inject a pure python version of the hazard event.
-        hazardEvent = EventFactory.createEvent()
-
         hazardEvent = self.updateEventAttributes(hazardEvent, eventSet.getAttributes(), \
                                       dialogInputMap, visualFeatures)
 
-        return EventSetFactory.createEventSet(hazardEvent)
+        newEventSet.add(hazardEvent)
+        return newEventSet
 
     def toString(self):
         return "DamBreakFloodRecommender"
@@ -139,6 +166,8 @@ Please click CANCEL and manually draw an inundation area.
         if hazardGeometry is None:
             return None
 
+        riverName = self.getRiverNameForDam(damOrLeveeName)
+
         significance = "A"
         subType = None
 
@@ -152,10 +181,11 @@ Please click CANCEL and manually draw an inundation area.
         startTime = currentTime
         endTime = startTime + self.DEFAULT_FFW_DURATION_IN_MS
         
-        hazardEvent.setEventID("")
+        if hazardEvent.getEventID() == None:
+            hazardEvent.setEventID("")
+            hazardEvent.setHazardStatus("PENDING")
+            
         hazardEvent.setSiteID(str(sessionDict["siteID"]))
-        hazardEvent.setHazardStatus("PENDING")
-        hazardEvent.setHazardMode("O")
         hazardEvent.setPhenomenon("FF")
         hazardEvent.setSignificance(significance)
         hazardEvent.setSubType(subType)
@@ -171,7 +201,8 @@ Please click CANCEL and manually draw an inundation area.
         hazardEvent.setGeometry(GeometryFactory.createCollection([hazardGeometry]))
 
         hazardEvent.setHazardAttributes({"cause":"Dam Failure",
-                                          "damOrLeveeName":damOrLeveeName
+                                          "damOrLeveeName":damOrLeveeName,
+                                          "riverName": riverName,
                                          })
         return hazardEvent
         
@@ -193,3 +224,11 @@ Please click CANCEL and manually draw an inundation area.
         else:
             return None    
         
+    def getRiverNameForDam(self, damOrLeveeName):
+        """
+        Returns the River that the Dam or Levee is located on.
+        """
+        damMetaData = self.mapsAccessor.getDamInundationMetadata(damOrLeveeName)
+        if damMetaData:
+            return damMetaData.get("riverName", None)
+        return None

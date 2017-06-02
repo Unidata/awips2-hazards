@@ -21,6 +21,7 @@ package com.raytheon.uf.common.hazards.productgen.data;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -42,6 +43,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ------------ --------------------------
  * Apr 11, 2014            jsanchez     Initial creation.
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Sep 11, 2015 10203      Robert.Blum  Added issueTime to the productdata primary key.
  * Feb 01, 2017 15556      Chris.Golden Added copy constructor.
  * </pre>
  * 
@@ -64,15 +66,20 @@ public class CustomDataId implements ISerializableObject, Serializable {
     @DynamicSerializeElement
     private ArrayList<String> eventIDs;
 
+    @Column
+    @DynamicSerializeElement
+    private Date issueTime;
+
     public CustomDataId() {
 
     }
 
     public CustomDataId(String mode, String productGeneratorName,
-            ArrayList<String> eventIDs) {
+            ArrayList<String> eventIDs, Date issueTime) {
         this.mode = mode;
         this.productGeneratorName = productGeneratorName;
         this.eventIDs = eventIDs;
+        this.issueTime = issueTime;
     }
 
     public CustomDataId(CustomDataId other) {
@@ -80,6 +87,8 @@ public class CustomDataId implements ISerializableObject, Serializable {
         this.productGeneratorName = other.productGeneratorName;
         this.eventIDs = (other.eventIDs == null ? null : new ArrayList<>(
                 other.eventIDs));
+        this.issueTime = (other.issueTime == null ? null : new Date(
+                other.issueTime.getTime()));
     }
 
     public String getMode() {
@@ -106,6 +115,14 @@ public class CustomDataId implements ISerializableObject, Serializable {
         this.eventIDs = eventIDs;
     }
 
+    public Date getIssueTime() {
+        return issueTime;
+    }
+
+    public void setIssueTime(Date issueTime) {
+        this.issueTime = issueTime;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -117,6 +134,8 @@ public class CustomDataId implements ISerializableObject, Serializable {
                 * result
                 + ((productGeneratorName == null) ? 0 : productGeneratorName
                         .hashCode());
+        result = prime * result
+                + ((issueTime == null) ? 0 : issueTime.hashCode());
         return result;
     }
 
@@ -151,6 +170,13 @@ public class CustomDataId implements ISerializableObject, Serializable {
                 return false;
             }
         } else if (!productGeneratorName.equals(other.productGeneratorName)) {
+            return false;
+        }
+        if (issueTime == null) {
+            if (other.issueTime != null) {
+                return false;
+            }
+        } else if (!issueTime.equals(other.issueTime)) {
             return false;
         }
         return true;

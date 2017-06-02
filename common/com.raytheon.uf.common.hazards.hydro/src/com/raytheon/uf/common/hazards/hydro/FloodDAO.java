@@ -54,6 +54,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jan 18, 2016 12942      Roger.Ferrel        Corrected errors in computing dates in
  *                                             {@link #queryPhysicalElementValue(String, String, int, String, String, String, boolean, long)}.
  * Feb 19, 2016 15014      Robert.Blum         Fix Zone and County data queries.
+ * May 04, 2016 15584      Kevin.Bisanz        queryRiverPointHydrographObserved(...) now uses times in query.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -1017,7 +1018,8 @@ public class FloodDAO implements IFloodDAO {
 
         List<SHEFObserved> shefObservedList = null;
         if ((typeSource == null) || (typeSource.length() == 0)) {
-            typeSource = queryBestObservedTypeSource(lid, physicalElement);
+            typeSource = queryBestObservedTypeSource(lid, physicalElement,
+                    obsBeginTime, obsEndTime);
         }
 
         SimpleDateFormat dateFormat = RiverHydroConstants.getDateFormat();

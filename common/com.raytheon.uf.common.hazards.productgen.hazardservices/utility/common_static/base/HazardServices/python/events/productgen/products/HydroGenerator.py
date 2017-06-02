@@ -21,7 +21,17 @@
     Jan 18, 2016   12942    Roger.Ferrel Change Forecast in _prepareRiverForecastPointData
                                          to 6 hour window.
     Feb 22, 2016   15017    Robert.Blum  Using Crest stage/time from HID/Graphical Editor.
+    Mar 02, 2016   11898    Robert.Blum  Completely reworked ForecastStageText based on RiverPro's templates.
+    Mar 15, 2016   11892    Robert.Blum  Fixed Hydrologic cause mapping to match WarnGen.
+    May 04, 2016   15584    Kevin.Bisanz Updates to parse physicalElement from impact.
+    May 19, 2016   16545    Robert.Blum  Added previous category for obs and forecast.
+    May 24, 2016   15584    Kevin.Bisanz Renamed RiverForecastUtils.getFlowUnits(..)
+                                         to getStageFlowUnits(..).
+    Jun 03, 2016   17532    Robert.Blum  Correctly populating groupMaxForecastFloodCatName.
+    Jun 21, 2016    9620    Robert.Blum  Removed unused code.
     Jun 23, 2016   19537    Chris.Golden Changed to use UTC when converting epoch time to datetime.
+    Aug 16, 2016   15017    Robert.blum  Removed fields that are now set by the recommender.
+
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
@@ -40,7 +50,6 @@ import HazardConstants
 from abc import *
 
 class Product(Legacy_Base_Generator.Product):
-
     def __init__(self):
         self._riverForecastUtils = None
         self._riverForecastManager = None
@@ -60,9 +69,7 @@ class Product(Legacy_Base_Generator.Product):
         '''
             Adds all data related to RiverForecastPoints to the hazardEventDict dictionary.
         '''
-        
         millis = SimulatedTime.getSystemTime().getMillis()
-        currentTime = datetime.datetime.utcfromtimestamp(millis / 1000)
         if self._riverForecastUtils is None:
             self._riverForecastUtils = RiverForecastUtils()
         if self._riverForecastManager is None:
@@ -74,23 +81,35 @@ class Product(Legacy_Base_Generator.Product):
         hazardEventDict['riverName_GroupName'] = riverForecastGroup.getGroupName()
         hazardEventDict['riverName_RiverName'] = riverForecastPoint.getStream()
         hazardEventDict['groupForecastPointList'] = self._riverForecastUtils.getGroupForecastPointNameList(riverForecastGroup, None)
-        hazardEventDict['groupMaxForecastFloodCatName'] = self._riverForecastUtils.getMaximumForecastCatName(riverForecastPoint)
+        groupMaxFcstCat = riverForecastGroup.getMaxForecastCategory()
+        hazardEventDict['groupMaxForecastFloodCatName'] = self._riverForecastUtils.getFloodCategoryName(groupMaxFcstCat)
 
         hazardEventDict['proximity'] = riverForecastPoint.getProximity()
         hazardEventDict['riverPointName'] = riverForecastPoint.getName()
-        # Observed and Flood Stages
+
+        # Observed Data
+
+        # Rise
+        hazardEventDict['obsRiseAboveFSTime_ms'] = riverForecastPoint.getObservedRiseAboveTime()
+        # Fall
+        hazardEventDict['obsFallBelowFSTime_ms'] = riverForecastPoint.getObservedFallBelowTime()
+        # Observed Stage
         observedCurrentIndex = riverForecastPoint.getObservedCurrentIndex()
         shefObserved = self._riverForecastManager.getSHEFObserved(riverForecastPoint, observedCurrentIndex)
         if shefObserved is not None:
-            observedStage = shefObserved.getValue()
+            observedStage = shefObserved.getValue() # Or flow
             hazardEventDict['observedStage'] = observedStage
         else:
             hazardEventDict['observedStage'] = MISSING_VALUE
-        category = self._riverForecastUtils.getObservedLevel(riverForecastPoint, CATEGORY)
+        # Need to save this off to be set in the ProductInformation later.
+        observedCategory = self._riverForecastUtils.getObservedLevel(riverForecastPoint, CATEGORY)
         categoryName = self._riverForecastUtils.getObservedLevel(riverForecastPoint, CATEGORY_NAME)
         observedTime_ms = self._riverForecastUtils.getObservedLevel(riverForecastPoint, TIME)
-        hazardEventDict['observedCategory'] = category
+        hazardEventDict['observedCategory'] = observedCategory
         hazardEventDict['observedCategoryName'] = categoryName
+        hazardEventDict['previousObservedCategory'] = hazardEvent.get("previousObservedCategory", None)
+        hazardEventDict['previousObservedCategoryName'] = hazardEvent.get("previousObservedCategoryName", None)
+        
         hazardEventDict['observedTime_ms'] = observedTime_ms
         
         max24HourIndex = riverForecastPoint.getObservedMax24Index()
@@ -99,53 +118,37 @@ class Product(Legacy_Base_Generator.Product):
         
         max24HourObservedStage = float( tempStageString )
         max24HourObservedShefQualityCode = stageCodePair.getSecond()
-        hazardEventDict['max24HourObservedStage'] = max24HourObservedStage
+        hazardEventDict['max24HourObservedStage'] = max24HourObservedStage  # Or flow
         primaryPE = riverForecastPoint.getPrimaryPE()
         hazardEventDict['primaryPE'] = primaryPE
         hazardEventDict['stageFlowName'] = self._riverForecastUtils.getStageFlowName(primaryPE)
         hazardEventDict['floodStage'] = riverForecastPoint.getFloodStage()
-        # Maximum Forecast Stage
-        maxForecastIndex = riverForecastPoint.getMaximumForecastIndex()
-        maxShefForecast = None
-        if maxForecastIndex != MISSING_VALUE:
-            maxShefForecast = self._riverForecastManager.getSHEFForecast(riverForecastPoint, maxForecastIndex)
-        if maxShefForecast is not None:
-            maximumForecastStage = maxShefForecast.getValue()
-            maximumForecastTime_ms = maxShefForecast.getValidTime()
-        else:
-            maximumForecastStage = MISSING_VALUE
-            maximumForecastTime_ms = MISSING_VALUE
+        hazardEventDict['floodFlow'] = riverForecastPoint.getFloodFlow()
+
+        # Forecast Data
 
         # Need to save this off to be set in the ProductInformation later.
-        
-        self._maxFcstCategory = riverForecastPoint.getMaximumForecastCategory()
-        hazardEventDict['maxFcstCategory'] = self._maxFcstCategory
+        maxFcstCategory = riverForecastPoint.getMaximumForecastCategory()
+        hazardEventDict['previousForecastCategory'] = hazardEvent.get("previousForecastCategory", None)
+        hazardEventDict['previousForecastCategoryName'] = hazardEvent.get("previousForecastCategoryName", None)
+        hazardEventDict['maxFcstCategory'] = maxFcstCategory
         
         maxFcstCategoryName = self._riverForecastUtils.getMaximumForecastLevel(riverForecastPoint, primaryPE, CATEGORY_NAME)
         hazardEventDict['maxFcstCategoryName'] = maxFcstCategoryName
         # Rise
         hazardEventDict['forecastRiseAboveFloodStageTime_ms'] = riverForecastPoint.getForecastRiseAboveTime()
-        # Crest
-        hazardEventDict['forecastCrestStage'] = hazardEvent.get(HazardConstants.CREST_STAGE)
-        hazardEventDict['forecastCrestTime_ms'] = hazardEvent.get(HazardConstants.CREST)
         # Fall
         hazardEventDict['forecastFallBelowFloodStageTime_ms'] = riverForecastPoint.getForecastFallBelowTime()
 
-        hazardEventDict['stageFlowUnits'] = self._riverForecastUtils.getFlowUnits(primaryPE)
+        hazardEventDict['stageFlowUnits'] = self._riverForecastUtils.getStageFlowUnits(primaryPE)
         # Trend
         trendPhrase = self._riverForecastUtils.getStageTrend(riverForecastPoint)
         hazardEventDict['stageTrend'] = trendPhrase
 
         hazardEventDict['pointImpacts'] = self._preparePointImpacts(hazardEvent)
-        hazardEventDict['impactCompUnits'] = self._riverForecastUtils.getFlowUnits(primaryPE)
+        hazardEventDict['impactCompUnits'] = self._riverForecastUtils.getStageFlowUnits(primaryPE)
         hazardEventDict['crestsSelectedForecastPointsComboBox'] = hazardEvent.get('crestsSelectedForecastPointsComboBox')
 
-        if maximumForecastStage and maximumForecastStage != MISSING_VALUE:
-            hazardEventDict['maximumForecastStage'] = maximumForecastStage            
-
-        if maximumForecastTime_ms and maximumForecastTime_ms != MISSING_VALUE:
-            hazardEventDict['maximumForecastTime_ms'] = maximumForecastTime_ms
-            
         # Spec values
         forecastTypeSource = self._riverForecastManager.getTopRankedTypeSource(pointID, primaryPE, 0, 'Z')
         hazardEventDict['specValue'] = self._riverForecastManager.getPhysicalElementValue(
@@ -168,6 +171,29 @@ class Product(Legacy_Base_Generator.Product):
         hazardEventDict['day3'] = self._riverForecastManager.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[2], False, 
                                                 millis) 
 
+
+        time = self._tpc.getFormattedTime(millis, '%H%M')
+        hazardEventDict['HT0FFXNext'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "HT", 0, "FF", 'X', '0|' + time + '|1', False, millis)
+        hazardEventDict['HT0FFXNextTime'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "HT", 0, "FF", 'X', '0|' + time + '|1', True, millis)
+
+        hazardEventDict['HP0FFXNext'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "HP", 0, "FF", 'X', '0|' + time + '|1', False, millis)
+        hazardEventDict['HP0FFXNextTime'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "HP", 0, "FF", 'X', '0|' + time + '|1', True, millis)
+
+        hazardEventDict['HG0FFXNext'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "HG", 0, "FF", 'X', '0|' + time + '|1', False, millis)
+        hazardEventDict['HG0FFXNextTime'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "HG", 0, "FF", 'X', '0|' + time + '|1', True, millis)
+
+        hazardEventDict['QR0FFXNext'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "QR", 0, "FF", 'X', '0|' + time + '|1', False, millis)
+        hazardEventDict['QR0FFXNextTime'] = self._riverForecastManager.getPhysicalElementValue(
+                pointID, "QR", 0, "FF", 'X', '0|' + time + '|1', True, millis)
+        
+        
     def _preparePointImpacts(self, hazardEvent):
         # Pull out the list of chosen impact text fields
         impacts = []
@@ -178,26 +204,31 @@ class Product(Legacy_Base_Generator.Product):
 
         for key in validVals:
             if key.startswith('impactCheckBox_'):
-                height, impactValue = self._parseImpactKey(key)
-                if height is not None and impactValue is not None:
+                stageFlow, physicalElement, impactValue = self._parseImpactKey(key)
+                if stageFlow is not None and physicalElement is not None and impactValue is not None:
                     textFieldName = 'impactTextField_'+impactValue
                     textFieldValue = hazardEvent.get(textFieldName)
-                    #Ignore impacts lacking a height or text
+                    #Ignore impacts lacking a text field value
                     if textFieldValue is not None:
-                        impacts.append((height, textFieldValue))
+                        impacts.append((stageFlow, physicalElement, textFieldValue))
         return impacts
 
     def _parseImpactKey(self, key):
+        peIdx = 1
+        valueIdx = 2
+
         parts = key.rsplit('_')
         if len(parts) > 1:
-            impactValue = parts[1]
-            height = impactValue.rsplit('-')[0]
-            # Round height - result is a string
-            height = self._tpc.roundFloat(height, returnString=True)
+            impactValue = parts[valueIdx]
+            physicalElement = parts[peIdx]
+            stageFlow = impactValue.rsplit('-')[0]
+            # Round stageFlow - result is a string
+            stageFlow = self._tpc.roundFloat(stageFlow, returnString=True)
         else:
             impactValue = ''
-            height = ''
-        return height, impactValue
+            physicalElement = ''
+            stageFlow = ''
+        return stageFlow, physicalElement, impactValue
 
     def hydrologicCauseMapping(self, hydrologicCause):
         mapping = {
@@ -208,9 +239,10 @@ class Product(Legacy_Base_Generator.Product):
             'floodgate': 'DR',
             'glacier': 'GO',
             'icejam': 'IJ',
-            'snowMelt': 'RS',
+            'snowMelt': 'SM',
             'volcano': 'SM',
             'volcanoLahar': 'SM',
+            'rain': 'RS',
             'default': 'ER'
             }
         if mapping.has_key(hydrologicCause):

@@ -21,11 +21,13 @@ package com.raytheon.uf.common.hazards.productgen.data;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataRequest.ProductRequestType;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
@@ -46,7 +48,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * May 07, 2015    6979    Robert.Blum  Changes for product corrections.
  * Jul 30, 2015    9681    Robert.Blum  Added new method to retrieve all
  *                                      viewable productData.
- * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
+ * Aug 13, 2015    8836    Chris.Cody   Changes for a configurable Event Id
+ * Jul 19, 2016   19207    Robert.Blum  Changes to view products for specific events.
+ * Aug 26, 2016   19223    Kevin.Bisanz Changes to get correctable products for
+ *                                      specific events.
  * 
  * </pre>
  * 
@@ -158,7 +163,23 @@ public class ProductDataUtil {
      */
     public static List<ProductData> retrieveCorrectableProductData(String mode,
             Date currentTime) {
-        ProductDataResponse response = sendRequest(mode, null, null, null,
+        List<IHazardEvent> events = null;
+        return retrieveCorrectableProductDataForEvents(mode, currentTime,
+                events);
+    }
+
+    /**
+     * Sends a request to EDEX that retrieves data that is correctable.
+     * 
+     * @param mode
+     * @param currentTime
+     * @param events
+     * @return
+     */
+    public static List<ProductData> retrieveCorrectableProductDataForEvents(
+            String mode, Date currentTime, List<IHazardEvent> events) {
+        ArrayList<String> eventIDs = getEventIdsFromEvents(events);
+        ProductDataResponse response = sendRequest(mode, null, eventIDs, null,
                 null, null, ProductRequestType.RETRIEVE_CORRECTABLE,
                 currentTime);
         if (response != null && response.getData() != null) {
@@ -201,8 +222,24 @@ public class ProductDataUtil {
      */
     public static List<ProductData> retrieveViewableProductData(String mode,
             Date currentTime) {
-        ProductDataResponse response = sendRequest(mode, null, null, null,
-                null, null, ProductRequestType.RETRIEVE_VIEWABLE, currentTime);
+        return retrieveViewableProductDataForEvents(mode, currentTime, null);
+    }
+
+    /**
+     * Sends a request to EDEX that retrieves data that is viewable for the
+     * specified events.
+     * 
+     * @param mode
+     * @param currentTime
+     * @param eventIdentifiers
+     * @return
+     */
+    public static List<ProductData> retrieveViewableProductDataForEvents(
+            String mode, Date currentTime, Collection<String> eventIdentifiers) {
+        ProductDataResponse response = sendRequest(mode, null,
+                (eventIdentifiers == null ? null : new ArrayList<>(
+                        eventIdentifiers)), null, null, null,
+                ProductRequestType.RETRIEVE_VIEWABLE, currentTime);
         if (response != null && response.getData() != null) {
             return response.getData();
         }
@@ -240,5 +277,27 @@ public class ProductDataUtil {
             handler.error("Unable to send request to server", e);
         }
         return response;
+    }
+
+    /**
+     * Get Event IDs from IHazardEvent objects.
+     * 
+     * @param events
+     * @return
+     */
+    private static ArrayList<String> getEventIdsFromEvents(
+            List<IHazardEvent> events) {
+        /*
+         * An ArrayList is returned (vs List) because the return value is
+         * eventually passed to this.sendRequest(..) which expects an ArrayList.
+         */
+        ArrayList<String> eventIDs = null;
+        if (events != null) {
+            eventIDs = new ArrayList<>(events.size());
+            for (IHazardEvent event : events) {
+                eventIDs.add(event.getEventID());
+            }
+        }
+        return eventIDs;
     }
 }

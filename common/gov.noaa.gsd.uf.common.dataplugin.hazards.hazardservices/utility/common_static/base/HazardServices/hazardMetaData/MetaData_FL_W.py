@@ -13,7 +13,6 @@ class MetaData(CommonMetaData.MetaData):
             metaData = [
                         self.getPreviousEditedText(),
                         self.getInclude(),
-                        self.getEndingSynopsis(),
                         ]
         else:
             pointDetails = [

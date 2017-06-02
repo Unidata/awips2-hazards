@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.product.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
-import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_MODE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAPDATA_COUNTY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NATIONAL;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
@@ -71,6 +70,7 @@ import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
+import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.uf.common.hazards.productgen.ProductGeneration;
 import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
 import com.raytheon.uf.common.hazards.productgen.ProductUtils;
@@ -84,6 +84,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
@@ -224,15 +225,27 @@ import com.vividsolutions.jts.geom.Puntal;
  * Dec 01, 2015 12473      Roger.Ferrel Do not allow issue in operational mode with DRT time.
  * Dec 03, 2015 13609      mduff        Default VTEC mode based on CAVE mode.
  * Feb 24, 2016 13929      Robert.Blum  Remove first part of staging dialog.
+ * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Apr 28, 2016 18267      Chris.Golden Changed to work with new version of mergeHazardEvents().
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance between H.S. sessions in
  *                                      the same CAVE session, since stopping and starting the Jep
  *                                      instances when the latter use numpy is dangerous.
+ * May 06, 2016 18202      Robert.Blum  Changes for operational/test mode.
+ * May 20, 2016 19073      Robert.Blum  Fixed FL.A incorrectly including FF.A and FA.A hazards.
+ * May 27, 2016 16491      Robert.Blum  Improved areValidEvents() to also check for invalid statuses.
+ * Jun 08, 2016  9620      Robert.Blum  Fixed null pointer on event type.
  * Jun 23, 2016 19537      Chris.Golden Changed to use new parameter for merging hazard events.
+ * Jun 23, 2016 19073      Robert.Blum  Fixed includeAll logic.
+ * Jun 24, 2016 16491      Kevin.Bisanz Don't add elapsed events as possibleProductEvents.
+ * Jul 06, 2016 18257      Kevin.Bisanz Add final call to ProductGeneration.generateFrom(..)
+ *                                      to set issueTime during product correction.
  * Jul 25, 2016 19537      Chris.Golden Changed to use new originator parameter for setting geometry resolution
  *                                      of hazard events.
  * Aug 15, 2016 18376      Chris.Golden Added code to make garbage collection of the messenger instance
  *                                      passed in (which is the app builder) more likely.
+ * Aug 19, 2016 16871      Kevin.Bisanz After generation, call areValidEvents(..)
+ *                                      to ensure nothing has elapsed while the
+ *                                      product editor was open.
  * Nov 17, 2016 26313      Chris.Golden Changed to work with the new capacity of hazard types to be associated
  *                                      with more than one UGC type.
  * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
@@ -243,6 +256,9 @@ import com.vividsolutions.jts.geom.Puntal;
  *                                      the parameters to the merge method.
  * Mar 16, 2017 15528      Chris.Golden Removed "checked" as an attribute of hazard events.
  * Mar 30, 2017 15528      Chris.Golden Changed to work with new version of mergeHazardEvents().
+ * Jun 21, 2017 18375      Chris.Golden Added setting of potential events to pending status when
+ *                                      they are previewed or issued.
+ * Jun 26, 2017  19207     Chris.Golden Changes to view products for specific events.
  * </pre>
  * 
  * @author bsteffen
@@ -351,10 +367,10 @@ public class SessionProductManager implements ISessionProductManager {
      * Set the default VTEC mode
      */
     private void setDefaultVtecMode() {
-        if (CAVEMode.getMode() == CAVEMode.PRACTICE) {
+        if (caveMode == CAVEMode.PRACTICE) {
             this.vtecMode = "T";
             this.vtecTestMode = true;
-        } else if (CAVEMode.getMode() == CAVEMode.TEST) {
+        } else if (caveMode == CAVEMode.TEST) {
             this.vtecMode = "T";
             this.vtecTestMode = true;
         } else {
@@ -413,9 +429,13 @@ public class SessionProductManager implements ISessionProductManager {
                     || entry.getValue().getAutoSelect() == false) {
                 continue;
             }
-            Set<IHazardEvent> productEvents = new HashSet<>();
-            Set<IHazardEvent> possibleProductEvents = new HashSet<>();
 
+            /*
+             * Add all the product events that are selected and are allowed by
+             * the product generator.
+             */
+            boolean includeAll = false;
+            Set<IHazardEvent> productEvents = new HashSet<>();
             for (ObservedHazardEvent e : eventManager
                     .getEventsForCurrentSettings()) {
                 if (HazardEventUtilities.isHazardTypeValid(e) == false) {
@@ -426,10 +446,58 @@ public class SessionProductManager implements ISessionProductManager {
                     if (pair[0].equals(key)) {
                         if (selectedEventIdentifiers.contains(e.getEventID())) {
                             productEvents.add(e);
-                        } else if (e.getStatus() != HazardStatus.POTENTIAL
-                                && e.getStatus() != HazardStatus.ENDED
-                                && isIncludeAll(e)) {
-                            possibleProductEvents.add(e);
+                        }
+                        if (isIncludeAll(key)) {
+                            includeAll = true;
+                        }
+                    }
+                }
+            }
+
+            /*
+             * One or more of the selected hazards was defined as includeAll.
+             * Find all the hazard types that are includeAll for this product
+             * generator. Then add any unselected hazards of those types.
+             */
+            Set<IHazardEvent> possibleProductEvents = new HashSet<>();
+            if (includeAll) {
+                Set<String> includeAllHazardTypes = new HashSet<>();
+                for (String[] pair : entry.getValue().getAllowedHazards()) {
+                    String hazardName = pair[0];
+                    if (isIncludeAll(hazardName)) {
+                        /*
+                         * Save this hazardType so we can auto select unselected
+                         * hazard of this type.
+                         */
+                        includeAllHazardTypes.add(hazardName);
+                    }
+                }
+
+                /*
+                 * Add all possible events from the includeAllHazardTypes that
+                 * are not currently selected.
+                 */
+                for (ObservedHazardEvent e : eventManager
+                        .getEventsForCurrentSettings()) {
+                    boolean isSelected = selectedEventIdentifiers.contains(e
+                            .getEventID());
+                    /*
+                     * Selected hazards are productEvents not
+                     * possibleProductEvents.
+                     */
+                    if (isSelected) {
+                        continue;
+                    }
+                    String eventType = HazardEventUtilities.getHazardType(e);
+                    if (eventType != null) {
+                        for (String includeType : includeAllHazardTypes) {
+                            if (eventType.equals(includeType)) {
+                                if (e.getStatus() != HazardStatus.POTENTIAL
+                                        && e.getStatus() != HazardStatus.ELAPSED
+                                        && e.getStatus() != HazardStatus.ENDED) {
+                                    possibleProductEvents.add(e);
+                                }
+                            }
                         }
                     }
                 }
@@ -490,8 +558,9 @@ public class SessionProductManager implements ISessionProductManager {
                         if (selectedEventIdentifiers.contains(e.getEventID())) {
                             productEvents.add(e);
                         } else if (e.getStatus() != HazardStatus.POTENTIAL
+                                && e.getStatus() != HazardStatus.ELAPSED
                                 && e.getStatus() != HazardStatus.ENDED
-                                && isIncludeAll(e)) {
+                                && isIncludeAll(key)) {
                             possibleProductEvents.add(e);
                         }
                     }
@@ -547,8 +616,7 @@ public class SessionProductManager implements ISessionProductManager {
              * review, this is only done if previewing; if issuing, no check is
              * made for megawidgets to be displayed.)
              */
-            EventSet<IEvent> eventSet = buildEventSet(info, issue,
-                    LocalizationManager.getInstance().getCurrentSite());
+            EventSet<IEvent> eventSet = buildEventSet(info, issue);
             if (eventSet == null) {
                 return StagingRequired.NO_APPLICABLE_EVENTS;
             }
@@ -691,9 +759,8 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         if (allProductData.isEmpty() == false) {
-            HazardEventManager.Mode mode = (caveMode == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
-                    : HazardEventManager.Mode.OPERATIONAL;
-            HazardEventManager manager = new HazardEventManager(mode);
+            boolean practice = !CAVEMode.OPERATIONAL.equals(CAVEMode.getMode());
+            HazardEventManager manager = new HazardEventManager(practice);
 
             GeneratedProductList generatedProductList = new GeneratedProductList();
 
@@ -783,9 +850,8 @@ public class SessionProductManager implements ISessionProductManager {
          * validating selected hazards has already ensured that the event set
          * will be non-null.
          */
-        String locMgrSite = LocalizationManager.getInstance().getCurrentSite();
         EventSet<IEvent> events = buildEventSet(productGeneratorInformation,
-                issue, locMgrSite);
+                issue);
 
         String productGeneratorName = productGeneratorInformation
                 .getProductGeneratorName();
@@ -811,10 +877,15 @@ public class SessionProductManager implements ISessionProductManager {
                     productFormats, listener);
         }
 
+        // Ensure nothing has elapsed while the product editor was sitting open.
+        List<IHazardEvent> eventsToCheck = new ArrayList<>(
+                productGeneratorInformation.getProductEvents());
+        boolean shouldContinue = areValidEvents(eventsToCheck, issue);
+
         // Got confirmation to issue above - close the Product Editor
         eventBus.publishAsync(new ProductGenerationConfirmation());
 
-        return true;
+        return shouldContinue;
     }/* end generate() method */
 
     /**
@@ -909,20 +980,47 @@ public class SessionProductManager implements ISessionProductManager {
 
     @Override
     public void issueCorrection(
-            ProductGeneratorInformation productGeneratorInformation) {
+            final ProductGeneratorInformation productGeneratorInformation) {
         StringBuilder sb = new StringBuilder();
         buildProductGenLabel(productGeneratorInformation, sb);
         if (areYouSure(sb.toString())) {
-            try {
-                disseminate(productGeneratorInformation);
-            } catch (Exception e) {
-                statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
-                        e);
-            }
-            sessionManager.setIssueOngoing(false);
+            IPythonJobListener<GeneratedProductList> listener = new IPythonJobListener<GeneratedProductList>() {
+                @Override
+                public void jobFinished(GeneratedProductList result) {
 
-            // Got confirmation to issue above - close the Product Editor
-            eventBus.publishAsync(new ProductGenerationConfirmation());
+                    issue(productGeneratorInformation);
+
+                    sessionManager.setIssueOngoing(false);
+
+                    // Got confirmation to issue above: close the Product Editor
+                    eventBus.publishAsync(new ProductGenerationConfirmation());
+                }
+
+                @Override
+                public void jobFailed(Throwable e) {
+                    statusHandler.handle(Priority.PROBLEM,
+                            e.getLocalizedMessage(), e);
+                }
+            };
+
+            GeneratedProductList generatedProducts = productGeneratorInformation
+                    .getGeneratedProducts();
+
+            String[] productFormats = generatedProducts.get(0).getEntries()
+                    .keySet().toArray(new String[0]);
+
+            // A KeyInfo is needed to trigger product correction.
+            KeyInfo keyInfo = KeyInfo
+                    .createBasicKeyInfo(productGeneratorInformation
+                            .getGenerationID());
+            /*
+             * Call the python one more time to update items such as the
+             * issueTime.
+             * 
+             * This will call the listener's jobFinished(..) callback.
+             */
+            productGen.generateFrom(generatedProducts.getProductInfo(),
+                    generatedProducts, keyInfo, productFormats, listener);
         }
     }
 
@@ -941,10 +1039,8 @@ public class SessionProductManager implements ISessionProductManager {
      */
     @Override
     public void setVTECFormat(String vtecMode, boolean testMode) {
-        if (CAVEMode.PRACTICE.equals(caveMode)) {
-            this.vtecMode = vtecMode;
-            this.vtecTestMode = testMode;
-        }
+        this.vtecMode = vtecMode;
+        this.vtecTestMode = testMode;
     }
 
     /**
@@ -1030,8 +1126,23 @@ public class SessionProductManager implements ISessionProductManager {
     @Override
     public void generateProducts(boolean issue) {
 
-        if (!areValidEvents(selectionManager.getSelectedEvents(), issue)) {
+        /*
+         * Ensure that the events are valid.
+         */
+        List<ObservedHazardEvent> selectedEvents = selectionManager
+                .getSelectedEvents();
+        if (!areValidEvents(selectedEvents, issue)) {
+            setPreviewOrIssueOngoing(issue, false);
             return;
+        }
+
+        /*
+         * Ensure that any events that are potential are made pending.
+         */
+        for (ObservedHazardEvent event : selectedEvents) {
+            if (event.getStatus() == HazardStatus.POTENTIAL) {
+                event.setStatus(HazardStatus.PENDING, false, Originator.OTHER);
+            }
         }
 
         /*
@@ -1119,8 +1230,7 @@ public class SessionProductManager implements ISessionProductManager {
         productGeneratorInfo.setProductFormats(configManager
                 .getProductGeneratorTable().getProductFormats(
                         productGeneratorName));
-        EventSet<IEvent> eventSet = buildEventSet(productGeneratorInfo, false,
-                LocalizationManager.getInstance().getCurrentSite());
+        EventSet<IEvent> eventSet = buildEventSet(productGeneratorInfo, false);
         Map<String, Serializable> dialogInfo = productGen.getDialogInfo(
                 productGeneratorName, eventSet);
         productGeneratorInfo.setDialogSelections(dialogInfo);
@@ -1186,23 +1296,27 @@ public class SessionProductManager implements ISessionProductManager {
      * Ensure selected hazards meet criteria for product generation
      */
     private boolean areValidEvents(
-            Collection<ObservedHazardEvent> selectedEvents, boolean issue) {
+            Collection<? extends IHazardEvent> selectedEvents, boolean issue) {
         if (selectedEvents.isEmpty()) {
             messenger.getWarner().warnUser("Product Generation Error",
                     "No selected events");
             return false;
         }
 
-        List<String> noTypeEventIds = new ArrayList<>(selectedEvents.size());
-        for (ObservedHazardEvent event : selectedEvents) {
-            if (HazardEventUtilities.isHazardTypeValid(event) == false) {
-                noTypeEventIds.add(event.getEventID());
+        List<String> invalidEventIds = new ArrayList<>(selectedEvents.size());
+        for (IHazardEvent event : selectedEvents) {
+            if ((HazardEventUtilities.isHazardTypeValid(event) == false)
+                    || (event.getStatus() == HazardStatus.ELAPSED)
+                    || (event.getStatus() == HazardStatus.ENDED)) {
+                invalidEventIds.add(event.getEventID());
             }
         }
-        if (noTypeEventIds.isEmpty() == false) {
-            showWarningMessage(noTypeEventIds,
-                    (noTypeEventIds.size() > 1 ? "have " : "has ")
-                            + "no event type.");
+        if (invalidEventIds.isEmpty() == false) {
+            showWarningMessage(invalidEventIds,
+                    (invalidEventIds.size() > 1 ? "are" : "is")
+                            + " invalid due to either having no hazard type"
+                            + " set or the hazard status being in an invalid"
+                            + " state for Product Generation.");
             setPreviewOrIssueOngoing(issue, false);
             return false;
         }
@@ -1480,6 +1594,18 @@ public class SessionProductManager implements ISessionProductManager {
                         .getProductGeneratorName() + " failed.");
     }
 
+    /**
+     * Respond to the current site changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler(priority = 1)
+    public void siteChanged(SiteChanged change) {
+        productGen
+                .setSite(sessionManager.getConfigurationManager().getSiteID());
+    }
+
     @Override
     public Collection<ProductGeneratorInformation> getAllProductGeneratorInformationForSelectedHazards(
             boolean issue) {
@@ -1491,10 +1617,9 @@ public class SessionProductManager implements ISessionProductManager {
         return ToStringBuilder.reflectionToString(this);
     }
 
-    private boolean isIncludeAll(IHazardEvent e) {
-        String type = HazardEventUtilities.getHazardType(e);
+    private boolean isIncludeAll(String hazardType) {
         HazardTypes hazardTypes = configManager.getHazardTypes();
-        HazardTypeEntry hazardTypeEntry = hazardTypes.get(type);
+        HazardTypeEntry hazardTypeEntry = hazardTypes.get(hazardType);
         boolean result = hazardTypeEntry.isIncludeAll();
         return result;
     }
@@ -1509,14 +1634,12 @@ public class SessionProductManager implements ISessionProductManager {
      *            Flag indicating whether or not this build has been prompted by
      *            an issue attempt; if false, it has been caused by a preview
      *            attempt.
-     * @param locMgrSite
-     *            Current site.
      * @return Event set, or <code>null</code> if there are no events that
      *         apply.
      */
     private EventSet<IEvent> buildEventSet(
             ProductGeneratorInformation productGeneratorInformation,
-            boolean issue, String locMgrSite) {
+            boolean issue) {
         if (eventManager
                 .setLowResolutionGeometriesVisibleForSelectedEvents(Originator.OTHER) == false) {
             return null;
@@ -1539,10 +1662,9 @@ public class SessionProductManager implements ISessionProductManager {
         events.addAttribute(HazardConstants.CURRENT_TIME, timeManager
                 .getCurrentTime().getTime());
         events.addAttribute(HazardConstants.SITE_ID, configManager.getSiteID());
-        events.addAttribute(HazardConstants.BACKUP_SITEID, locMgrSite);
-        String mode = caveMode == CAVEMode.PRACTICE ? HazardEventManager.Mode.PRACTICE
-                .toString() : HazardEventManager.Mode.OPERATIONAL.toString();
-        events.addAttribute(HAZARD_MODE, mode);
+        events.addAttribute(HazardConstants.BACKUP_SITEID, LocalizationManager
+                .getInstance().getCurrentSite());
+        events.addAttribute(HazardConstants.HAZARD_MODE, caveMode.toString());
         events.addAttribute(HazardConstants.RUN_MODE, caveModeStr);
 
         if (issue) {
@@ -1551,30 +1673,11 @@ public class SessionProductManager implements ISessionProductManager {
             events.addAttribute(HazardConstants.ISSUE_FLAG, "False");
         }
 
-        String vtecModeToUse = "O";
-        if (CAVEMode.PRACTICE.equals(caveMode)) {
-            vtecModeToUse = vtecMode;
-        }
-        events.addAttribute(HazardConstants.VTEC_MODE, vtecModeToUse);
-
-        boolean vtecTestModeToUse = false;
-        if (CAVEMode.OPERATIONAL.equals(caveMode)) {
-            vtecTestModeToUse = false;
-        } else if (CAVEMode.TEST.equals(caveMode)) {
-            vtecTestModeToUse = true;
-        } else {
-            vtecTestModeToUse = vtecTestMode;
-        }
-        events.addAttribute("vtecTestMode", vtecTestModeToUse);
+        events.addAttribute(HazardConstants.VTEC_MODE, vtecMode);
+        events.addAttribute("vtecTestMode", vtecTestMode);
 
         HashMap<String, String> sessionDict = new HashMap<>();
-        // TODO
-        // There is no operational database currently.
-        // When this is fixed, then the correct CAVEMode needs to
-        // be entered into the sessionDict.
-        // sessionDict.put(HazardConstants.TEST_MODE, CAVEMode.getMode()
-        // .toString());
-        sessionDict.put(HazardConstants.TEST_MODE, "PRACTICE");
+        sessionDict.put(HazardConstants.TEST_MODE, caveMode.toString());
         events.addAttribute(HazardConstants.SESSION_DICT, sessionDict);
 
         if (productGeneratorInformation.getDialogSelections() != null) {
@@ -1790,10 +1893,9 @@ public class SessionProductManager implements ISessionProductManager {
 
     private boolean checkForConflicts(IHazardEvent hazardEvent)
             throws HazardEventServiceException {
-        HazardEventManager.Mode mode = (caveMode == CAVEMode.PRACTICE) ? HazardEventManager.Mode.PRACTICE
-                : HazardEventManager.Mode.OPERATIONAL;
+        boolean practice = (CAVEMode.OPERATIONAL.equals(caveMode) == false);
         InteroperabilityRequestServices services = InteroperabilityRequestServices
-                .getServices(mode);
+                .getServices(practice);
         boolean hasConflicts = services.hasConflicts(
                 hazardEvent.getPhenomenon() + "."
                         + hazardEvent.getSignificance(),
@@ -2109,5 +2211,24 @@ public class SessionProductManager implements ISessionProductManager {
                                 .getHazardPhenSig(hazardEvent)).append("\n");
             }
         }
+    }
+
+    @Override
+    public void showUserProductViewerSelection(boolean correction,
+            Collection<String> eventIdentifiers) {
+
+        /*
+         * Get the appropriate product data.
+         */
+        String mode = CAVEMode.getMode().toString();
+        Date time = SimulatedTime.getSystemTime().getTime();
+        List<ProductData> productData = (correction ? ProductDataUtil
+                .retrieveCorrectableProductData(mode, time)
+                : ((eventIdentifiers == null) || eventIdentifiers.isEmpty() ? ProductDataUtil
+                        .retrieveViewableProductData(mode, time)
+                        : ProductDataUtil.retrieveViewableProductDataForEvents(
+                                mode, time, eventIdentifiers)));
+        messenger.getProductViewerChooser()
+                .getProductViewerChooser(productData);
     }
 }

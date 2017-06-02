@@ -23,9 +23,9 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServicesUtil;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.GetHazardActiveTableRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardRequest;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.HazardInteroperabilityRecord;
@@ -34,7 +34,6 @@ import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.Hazar
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.IHazardEventInteropServices;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.DeleteAllInteroperabilityRecordsRequest;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.DeleteInteroperabilityRecordRequest;
-import com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.GetHazardActiveTableRequest;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.InteroperabilityConflictsRequest;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.InteroperabilityRecordQueryRequest;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.requests.PurgeInteroperabilityRecordsRequest;
@@ -54,6 +53,7 @@ import com.raytheon.uf.common.serialization.comm.RequestRouter;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * May 06, 2016 18202      Robert.Blum Changes for operational mode.
  * 
  * </pre>
  * 
@@ -98,18 +98,6 @@ public class InteroperabilityRequestServices implements
         } else {
             return operationalClient;
         }
-    }
-
-    /**
-     * Gets the InteroperabilityRequestServices applicable for the given mode
-     * 
-     * @param mode
-     *            The mode (practice or operational)
-     * @return The InteroperabilityRequestServices instance for the specified
-     *         mode
-     */
-    public static InteroperabilityRequestServices getServices(Mode mode) {
-        return getServices(Mode.PRACTICE.equals(mode));
     }
 
     @Override
@@ -161,7 +149,8 @@ public class InteroperabilityRequestServices implements
     @Override
     public HazardInteroperabilityResponse retrieveByParams(Object... params)
             throws HazardEventServiceException {
-        InteroperabilityRecordQueryRequest request = new InteroperabilityRecordQueryRequest();
+        InteroperabilityRecordQueryRequest request = new InteroperabilityRecordQueryRequest(
+                practice);
         request.setPractice(this.practice);
         for (int i = 0; i < params.length; i++) {
             request.and((String) params[i], (String) params[i + 1],

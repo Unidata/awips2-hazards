@@ -19,14 +19,13 @@ import copy
 import sys
 from PointTrack import *
 from GeneralConstants import *
-import TrackToolCommon
 import TimeUtils
 import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 import GeometryFactory
 import EventFactory
 
-class Recommender(TrackToolCommon.TrackToolCommon):
+class Recommender(RecommenderTemplate.Recommender):
 
     def __init__(self):
         return
@@ -251,8 +250,8 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         shapeList = []
         prevTime = None
         for frameTime in sessionFrameTimes:
-            if not self.sameMinute(frameTime, prevTime):
-                frameLatLon = pointTrack.trackPoint(self.minuteOf(frameTime))
+            if not TimeUtils.isSameMinute(frameTime, prevTime):
+                frameLatLon = pointTrack.trackPoint(TimeUtils.minuteOf(frameTime))
             trackPointShape = {}
             trackPointShape["pointType"] = "tracking"
             trackPointShape["shapeType"] = "point"
@@ -274,16 +273,16 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         lastWorkingFrameIndex = -1
         prevTime = None
         for sesFrTime in sessionFrameTimes:
-            if not self.sameMinute(sesFrTime, prevTime):
+            if not TimeUtils.isSameMinute(sesFrTime, prevTime):
                 lastWorkingFrameIndex += 1
             prevTime = sesFrTime
 
         # Compute a working delta time between frames.
         if lastWorkingFrameIndex < 1:
-            frameTimeStep = self.minuteOf(endTime) - self.minuteOf(startTime)
+            frameTimeStep = TimeUtils.minuteOf(endTime) - TimeUtils.minuteOf(startTime)
         else:
-            frameTimeSpan = self.minuteOf(sessionFrameTimes[lastFrameIndex]) - \
-                 self.minuteOf(sessionFrameTimes[0])
+            frameTimeSpan = TimeUtils.minuteOf(sessionFrameTimes[lastFrameIndex]) - \
+                 TimeUtils.minuteOf(sessionFrameTimes[0])
             frameTimeStep = frameTimeSpan / lastWorkingFrameIndex
 
         # Make a list of times for projected points for the track that are shown
@@ -427,17 +426,17 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         lastWorkingFrameIndex = -1
         prevTime = None
         for sesFrTime in sessionFrameTimes:
-            if not self.sameMinute(sesFrTime, prevTime):
+            if not TimeUtils.isSameMinute(sesFrTime, prevTime):
                 lastWorkingFrameIndex += 1
             prevTime = sesFrTime
 
         # Compute a working delta time between frames.
         endFrameTime = sessionFrameTimes[lastFrameIndex]
         if lastWorkingFrameIndex < 1:
-            frameTimeStep = self.minuteOf(endTime)-self.minuteOf(startTime)
+            frameTimeStep = TimeUtils.minuteOf(endTime)-TimeUtils.minuteOf(startTime)
         else:
-            frameTimeSpan = self.minuteOf(endFrameTime) - \
-                            self.minuteOf(sessionFrameTimes[0])
+            frameTimeSpan = TimeUtils.minuteOf(endFrameTime) - \
+                            TimeUtils.minuteOf(sessionFrameTimes[0])
             frameTimeStep = frameTimeSpan / lastWorkingFrameIndex
 
         # Note cases where the algorithm forces itself back to the previous
@@ -453,8 +452,8 @@ class Recommender(TrackToolCommon.TrackToolCommon):
             revert = False
         pointTrack = PointTrack()
         if revert:
-            pointTrack.twoLatLonOrigTimeInit_(latLon1, self.minuteOf(time1), \
-                         latLon2, self.minuteOf(time2), self.minuteOf(startTime) )
+            pointTrack.twoLatLonOrigTimeInit_(latLon1, TimeUtils.minuteOf(time1), \
+                         latLon2, TimeUtils.minuteOf(time2), TimeUtils.minuteOf(startTime) )
 
         # Try to match up the pivots with the points.
         inputPivotTimes = eventAttributes.get("pivotTimes", [])
@@ -518,13 +517,13 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         elif i < nPivots:
             latLon2 = pivotLatLonWorking[i]
             time2 = pivotTimeWorking[i]
-            pointTrack.twoLatLonOrigTimeInit_(latLon0, self.minuteOf(draggedPointTime), \
-                 latLon2, self.minuteOf(time2), self.minuteOf(startTime))
+            pointTrack.twoLatLonOrigTimeInit_(latLon0, TimeUtils.minuteOf(draggedPointTime), \
+                 latLon2, TimeUtils.minuteOf(time2), TimeUtils.minuteOf(startTime))
             pivotTimeList = [draggedPointTime, time2]
             pivotLatLonList = [latLon0, latLon2]
         else:
-            pointTrack.latLonMotionOrigTimeInit_(latLon0, self.minuteOf(draggedPointTime), \
-                 motion0, self.minuteOf(startTime))
+            pointTrack.latLonMotionOrigTimeInit_(latLon0, TimeUtils.minuteOf(draggedPointTime), \
+                 motion0, TimeUtils.minuteOf(startTime))
             pivotTimeList = [draggedPointTime]
             pivotLatLonList = [latLon0]
         pivotList = []
@@ -537,8 +536,8 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         trackCoordinates = []
         prevTime = None
         for frameTime in sessionFrameTimes:
-            if not self.sameMinute(frameTime, prevTime):
-                frameLatLon = pointTrack.trackPoint(self.minuteOf(frameTime))
+            if not TimeUtils.isSameMinute(frameTime, prevTime):
+                frameLatLon = pointTrack.trackPoint(TimeUtils.minuteOf(frameTime))
             trackPointShape = {}
             trackPointShape["pointType"] = "tracking"
             trackPointShape["shapeType"] = "point"
@@ -550,7 +549,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
         # Reaquire the motion from the start of the event instead of the last
         # frame.  In most cases this won't make much difference, but it can if
         # non-linear tracking is supported at some point.
-        motion0 = pointTrack.speedAndAngleOf(self.minuteOf(startTime))
+        motion0 = pointTrack.speedAndAngleOf(TimeUtils.minuteOf(startTime))
         stormMotion["speed"] = motion0.speed
         stormMotion["bearing"] = motion0.bearing
 
@@ -729,9 +728,7 @@ class Recommender(TrackToolCommon.TrackToolCommon):
             # Set the base geometry.
             assert self.setHazardGeometryFromDictionary(hazardEvent, forJavaObj), "missing event geometry"
     
-            # Set the mode to operational, and save the hazard attributes calculated
-            # previously.
-            hazardEvent.setHazardMode("O")
+            # Save the hazard attributes calculated previously.
             hazardEvent.setHazardAttributes(resultDict)
             
         else:

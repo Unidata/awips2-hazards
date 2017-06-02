@@ -36,6 +36,22 @@
                                              added to the first line of the first bullet.
     Jan 2016       12768   Kevin.Bisanz      Fix FF.W dam validation issue.
                                              Added dm_river_qualifiers().
+    Mar 2016       16055   Kevin.Bisanz      Fixed call to self.tpc.getTimingPhrase(...)
+                                             when expiring a product.
+    Mar 2016       16039   Thomas.Gurney     Fix first line of segment in FL.* CON products
+    Apr 2016       15252   Kevin.Bisanz      Add 'rain' key in hydrologicCauseMapping(...)
+    May 2016       16046   Kevin.Bisanz      Referenced replacing event in firstBullet_CAN if event is replaced.
+    May 2016       19080   David.Gillingham  Renamed initialize to __init__.
+    Jun 2016       14069   David.Gillingham  Fix wording for FA.Y events.
+    Jul 2016       19926   Kevin.Bisanz      Title cased typeOfFlooding text for
+                                             FF.W, FA.W, and FA.Y in
+                                             qualifiers(..);  Fixed validation
+                                             error with FA.Y EXT.
+    Jul 2016       19214   Kevin.Bisanz      Refactored part of getAreaPhraseBullet() into
+                                             TextProductCommon.makeUGCInformation(..)
+    Aug 2016       20654   Kevin.Bisanz      Update getAreaPhraseBullet to handle
+                                             independent cities
+
     @author Tracy.L.Hansen@noaa.gov
 '''
 import collections, os, types, datetime
@@ -43,8 +59,7 @@ from com.raytheon.uf.common.time import SimulatedTime
 
 
 class AttributionFirstBulletText(object):
-
-    def initialize(self, sectionDict, productID, issueTime, testMode, wfoCity, tpc, timeZones=[], areaPhrase=None):
+    def __init__(self, sectionDict, productID, issueTime, testMode, wfoCity, tpc, timeZones=[], areaPhrase=None):
         # Variables to establish
         self.sectionDict = sectionDict
         self.productID = productID
@@ -62,7 +77,8 @@ class AttributionFirstBulletText(object):
         if self.action == 'COR':
             self.action = self.vtecRecord.get('prevAct')
         self.endTime = self.vtecRecord.get('endTime')
-        self.hazardName = self.tpc.hazardName(self.vtecRecord.get('hdln'), testMode, False)
+        prependTestToHazard = self.testMode and self.tpc.isGFEHazard(self.vtecRecord)
+        self.hazardName = self.tpc.hazardName(self.vtecRecord.get('hdln'), prependTestToHazard, False)
 
         # Assume that the following attributes are the same
         # for all the hazards in the section
@@ -156,7 +172,7 @@ class AttributionFirstBulletText(object):
 
         if self.phenSig in ['FA.W', 'FA.Y']:
             preQualifiers = self.preQualifiers()
-            attribution += preQualifiers + self.hazardName + self.qualifiers(addPreposition=False)
+            attribution += preQualifiers + self.hazardName + self.qualifiers(titleCase=False, addPreposition=False)
             attribution += ' has been ' + actionWord + ' for ' + self.areaPhrase + '...'
         else:
             attribution += self.hazardName + ' for ' + self.areaPhrase + ' has been ' + actionWord + '...'
@@ -167,12 +183,12 @@ class AttributionFirstBulletText(object):
         if self.vtecRecord.get('endTime') <= expireTimeCurrent:
             expireWords = ' has expired'
         else:
-            timeWords = self.tpc.getTimingPhrase(self.vtecRecord, [self.sectionDict], expireTimeCurrent)
+            timeWords = self.tpc.getTimingPhrase(self.vtecRecord, self.hazardEventDicts, expireTimeCurrent)
             expireWords = ' will expire ' + timeWords
         attribution = '...The '
         if self.phenSig in ['FA.W', 'FA.Y']:
             preQualifiers = self.preQualifiers()
-            attribution += preQualifiers + self.hazardName + self.qualifiers(addPreposition=False)
+            attribution += preQualifiers + self.hazardName + self.qualifiers(titleCase=False, addPreposition=False)
             attribution += expireWords + ' for ' + self.areaPhrase
         else:
             attribution += self.hazardName + ' for ' + self.areaPhrase + expireWords + '.'
@@ -209,12 +225,10 @@ class AttributionFirstBulletText(object):
             else:
                 timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z')
             preQualifiers = self.preQualifiers()
-            qualifiers = self.qualifiers(addPreposition=False)
+            qualifiers = self.qualifiers(titleCase=False, addPreposition=False)
             attribution += preQualifiers + self.hazardName + qualifiers
             
             attribution += ' remains in effect until ' + timeStr + ' for ' + self.areaPhrase + '...'
-        elif self.phenSig in ['FF.A', 'FA.A']:
-            attribution = 'The ' + self.hazardName + ' continues for'
         else:
             attribution += self.hazardName + ' remains in effect '
         return attribution
@@ -250,11 +264,15 @@ class AttributionFirstBulletText(object):
         if self.geoType == 'area':
             firstBullet = ''
         else:
+            actionValue = ''
             if self.replacement:
                 actionWord = 'replaced'
+                replacedByValue = self.hazardEventDict.get('replacedBy')
+                if replacedByValue:
+                    actionValue = ' by a ' + replacedByValue.lower()
             else:
                 actionWord = 'cancelled'
-            firstBullet = 'The ' + self.hazardName + ' is ' + actionWord + ' for\n' + self.areaPhrase
+            firstBullet = 'The ' + self.hazardName + ' is ' + actionWord + actionValue + ' for\n' + self.areaPhrase
         return firstBullet
     
     def firstBullet_EXP(self):
@@ -270,7 +288,7 @@ class AttributionFirstBulletText(object):
     def firstBullet_NEW(self):
         preQualifiers = self.preQualifiers()
         firstBullet = preQualifiers + self.hazardName
-        qualifiers = self.qualifiers()
+        qualifiers = self.qualifiers(titleCase=True)
         forStr = ''
         if self.geoType == 'area':
             if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
@@ -284,22 +302,16 @@ class AttributionFirstBulletText(object):
             firstBullet += qualifiers
             forStr = ''
         firstBullet += forStr + self.areaPhrase
-        if self.phenSig in ['FF.A', 'FA.A']:
-            firstBullet += '.'
         return firstBullet
 
     def firstBullet_EXB(self):
         firstBullet = self.hazardName + ' to include'
         firstBullet += ' ' + self.areaPhrase
-        if self.phenSig in ['FF.A', 'FA.A']:
-            firstBullet += '.'
         return firstBullet
  
     def firstBullet_EXA(self):
         firstBullet = self.hazardName + ' to include'
         firstBullet += ' ' + self.areaPhrase
-        if self.phenSig in ['FF.A', 'FA.A']:
-            firstBullet += '.'
         return firstBullet
     
     def firstBullet_EXT(self):
@@ -308,20 +320,18 @@ class AttributionFirstBulletText(object):
         if self.geoType == 'area':
             firstBullet = preQualifiers + self.hazardName
             if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
-                if not self.optionalSpecificType and not self.warningType:
+                if not self.optionalSpecificTypeStr and not self.warningTypeStr:
                     firstBullet += ' for...'
             else:
                 forStr = ' for '
         else:
             firstBullet = 'The ' + self.hazardName
             forStr =  ' continues for\n'
-        qualifiers = self.qualifiers()
+        qualifiers = self.qualifiers(titleCase=True)
         if qualifiers:
             firstBullet += qualifiers
             forStr = ''
         firstBullet += forStr + self.areaPhrase
-        if self.phenSig in ['FF.A', 'FA.A']:
-            firstBullet += '.'
         return firstBullet
     
     def firstBullet_CON(self):
@@ -329,18 +339,15 @@ class AttributionFirstBulletText(object):
         forStr = ''
         if self.geoType == 'area':
             preQualifiers = self.preQualifiers()
-            if self.phenSig in ['FF.A', 'FA.A']:
-                return self.areaPhrase + '.'
+            firstBullet = preQualifiers + self.hazardName
+            if self.phenSig == 'FF.W':
+                firstBullet += ' for...'
             else:
-                firstBullet = preQualifiers + self.hazardName
-                if self.phenSig == 'FF.W':
-                    firstBullet += ' for...'
-                else:
-                    forStr = ' for '
+                forStr = ' for '
         else:
             firstBullet = 'The ' + self.hazardName
-            forStr =  ' for\n'
-        qualifiers = self.qualifiers(addPreposition=False)
+            forStr =  ' continues for\n'
+        qualifiers = self.qualifiers(titleCase=True, addPreposition=False)
         if qualifiers:
             firstBullet += qualifiers
         firstBullet += forStr + self.areaPhrase
@@ -359,7 +366,7 @@ class AttributionFirstBulletText(object):
         qualifiers = ''
         if self.phenSig == 'FA.Y':
             if self.advisoryType:
-                qualifiers += self.advisoryType + ' '
+                qualifiers += self._titleCase(self.advisoryType) + ' '
         return qualifiers
 
     def dm_river_qualifiers(self):
@@ -377,18 +384,14 @@ class AttributionFirstBulletText(object):
 
         return qualifiers
 
-    def qualifiers(self, addPreposition=True):
+    def qualifiers(self, titleCase, addPreposition=True):
         qualifiers = ''
+        if titleCase:
+            typeOfFlooding = self._titleCase(self.typeOfFlooding)
+        else:
+            typeOfFlooding = self.typeOfFlooding
 
-        if self.phenSig in ['FF.A', 'FA.A']:
-            if self.immediateCause == 'DM':
-                if self.riverName and self.damOrLeveeName:
-                    qualifiers += ' for...\n'
-                    qualifiers += self.dm_river_qualifiers()
-                    if addPreposition:
-                        qualifiers += ' in '
-                                
-        elif self.phenSig == 'FF.W':
+        if self.phenSig == 'FF.W':
             if self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
                 qualifiers += '\n'
                 qualifiers += self.dm_river_qualifiers()
@@ -399,8 +402,8 @@ class AttributionFirstBulletText(object):
                 qualifiers += '\n' + self.burnScarName
                 if addPreposition:
                     qualifiers += ' in ' 
-            elif self.typeOfFlooding and self.immediateCause not in ['ER', 'IC', 'MC', 'UU']:
-                qualifiers += '\n' + self.typeOfFlooding
+            elif typeOfFlooding and self.immediateCause not in ['ER', 'IC', 'MC', 'UU']:
+                qualifiers += '\n' + typeOfFlooding
                 if addPreposition:
                     qualifiers += ' in...'
 
@@ -415,32 +418,77 @@ class AttributionFirstBulletText(object):
                 qualifiers += self.dm_river_qualifiers()
                 if addPreposition:
                     qualifiers += ' in '
-            elif self.typeOfFlooding:
+            elif typeOfFlooding:
                 if self.action in ['NEW', 'EXT']:
-                    qualifiers += '\n  ' + self.typeOfFlooding
+                    qualifiers += '\n  ' + typeOfFlooding
                 else:
-                    qualifiers += ' for ' + self.typeOfFlooding
+                    qualifiers += ' for ' + typeOfFlooding
                 if addPreposition:
                     qualifiers += ' in...'
 
         elif self.phenSig == 'FA.Y': 
             if self.optionalSpecificTypeStr:
-                qualifiers+= ' with ' +  self.optionalSpecificTypeStr
+                qualifiers+= ' for ' +  self.optionalSpecificTypeStr.title()
             if self.immediateCause not in ['ER', 'IC']:
-                if self.typeOfFlooding:
+                if typeOfFlooding:
                     if self.action in ['NEW', 'EXT']:
                         if self.optionalSpecificTypeStr:
-                            qualifiers += ' for..\n  ' + self.typeOfFlooding
+                            qualifiers += ' for..\n  ' + typeOfFlooding
                         else:
-                            qualifiers += '\n  ' + self.typeOfFlooding
+                            qualifiers += '\n  ' + typeOfFlooding
                     else:
-                        qualifiers += ' for ' + self.typeOfFlooding
+                        qualifiers += ' for ' + typeOfFlooding
                     if addPreposition:
                         qualifiers += ' in...'
             else:
                 if qualifiers and addPreposition:
-                    qualifiers += ' in...'
+                    qualifiers += ' for...'
         return qualifiers
+
+    def _titleCase(self, inputString):
+        '''
+        Given an input string, return the title case version of that string. 
+        This is a simple title case algorithm which capitalizes the first word
+        and every word not in a list of exceptions.
+        
+        Note:  Leading and trailing spaces are removed.  Multiple spaces are
+        collapsed to a single space.
+
+        @param inputString
+        @return The title cased string.
+        '''
+        # Lists are from section 3.49 of the U.S. Government Printing
+        # Office Style Manual:
+        # https://www.gpo.gov/fdsys/pkg/GPO-STYLEMANUAL-2008/pdf/GPO-STYLEMANUAL-2008.pdf
+        articles = ['a','an','the']
+        prepositions = ['at','by','for','in','of','on','to','up']
+        conjunctions = ['and','as','but','if','or','not']
+
+        # Extra items for Hazard Services.
+        extra=['and/or']
+
+        # Words that should not be capitalized.
+        exceptions = []
+        exceptions.extend(articles)
+        exceptions.extend(prepositions)
+        exceptions.extend(conjunctions)
+        exceptions.extend(extra)
+
+        capWords = []
+
+        # Capitalize the first word and every word not in the exception list.
+        if inputString:
+            firstWord = True
+            words = inputString.split()
+            for word in words:
+                if firstWord or word not in exceptions:
+                    capWords.append(word.capitalize())
+                else:
+                    capWords.append(word)
+                firstWord = False
+
+        # Rejoin everything with spaces.
+        return ' '.join(capWords)
 
     # areaPhrase
     def getAreaPhrase(self):
@@ -462,51 +510,49 @@ class AttributionFirstBulletText(object):
         @return: Plain language list of counties/zones in the hazard(s) appropriate
                  for bullet format products
         ''' 
-        # These need to be ordered by area of state.
-        orderedUgcs = []
-        portions = {}
-        ugcPartsOfState = {}
-        for hazardEventDict in self.hazardEventDicts:
-            ugcs = hazardEventDict.get('ugcs', [])
-            ugcPortions = hazardEventDict.get('ugcPortions', {})
-            ugcPartsOfState.update(hazardEventDict.get('ugcPartsOfState', {}))
-            for ugc in ugcs:
-                currentPortion = portions.get(ugc)
-                if not currentPortion:
-                    currentPortion = set()
-                if ugcPortions.get(ugc):
-                    currentPortion.update([ugcPortions.get(ugc)])
-                portions[ugc] = currentPortion
-                orderedUgcs.append(ugc[:2] + ugcPartsOfState.get(ugc, "") + "|" + ugc)
-        orderedUgcs.sort()
+        locationDicts = self.hazardEventDict['locationDicts']
 
         areaPhrase = ""
-        for ougc in orderedUgcs :
-            ugc = ougc.split("|")[1]
-            part = portions.get(ugc, '')
-            textLine = '\n'
-            if part:
-                size = len(part)
-                counter = 0
-                textLine += "  "
-                for portion in part:
-                    textLine += portion
-                    if size > 1:
-                        if counter < size - 2:
-                            textLine += ', '
-                        elif counter < size - 1:
-                            textLine += ' and '
-                    counter += 1
-                textLine += " "
-            else:
-                textLine += "  "
-            textLine += self.tpc.getInformationForUGC(ugc) + " "
-            textLine += self.tpc.getInformationForUGC(ugc, "typeSingular") + " in "
-            part = ugcPartsOfState.get(ugc, "")
-            if part == "" :
-                textLine += self.tpc.getInformationForUGC(ugc, "fullStateName") + "..."
-            else :
-                textLine += part + " " + self.tpc.getInformationForUGC(ugc, "fullStateName") + "..."
+        # For each UGC, build a string like:
+        # Southeastern Montgomery County in central Maryland
+        for entry in locationDicts :
+            ugc = entry["ugc"]
+            ugcType = entry["typeSingular"]
+            independentCityFlag = ugcType.startswith("independent city")
+
+            pieces = []
+
+            # Independent city lines start with "The"
+            if independentCityFlag:
+                pieces.append("The")
+
+            # Add the portion(s) of the UGC.  E.g. Southeastern
+            portionsOfUgc = entry.get('ugcPortions', '')
+            if portionsOfUgc:
+                pieces.append(self.tpc.formatDelimitedList(portionsOfUgc, ', '))
+
+            # Add the name.  E.g. Montgomery
+            pieces.append(entry.get('entityName'))
+
+            # Add the ugcType.  E.g. County
+            # Independent cities don't have a ugcType on the line.
+            if ugcType and not independentCityFlag:
+                pieces.append(ugcType)
+
+            # Add the part of state and the state.  E.g. central Maryland
+            partOfState = entry.get('ugcPartsOfState', '')
+            state = entry.get('fullStateName', '')
+            if state:
+                if partOfState:
+                    pieces.append("in")
+                    pieces.append(partOfState)
+                    pieces.append(state)
+                else :
+                    pieces.append("in")
+                    pieces.append(state)
+
+            textLine = "\n" + " ".join(pieces) + "..."
+
             areaPhrase += textLine
 
         # The below list of cities matches the directives but not WarnGen.
@@ -540,6 +586,7 @@ class AttributionFirstBulletText(object):
             'floodgate':    {'immediateCause': 'DR', 'typeOfFlooding':'a dam floodgate release'},
             'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'a glacier-dammed lake outburst'},
             'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'an ice jam'},
+            'rain':         {'immediateCause': 'RS', 'typeOfFlooding':'rain and snowmelt'},
             'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'extremely rapid snowmelt'},
             'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'extremely rapid snowmelt caused by volcanic eruption'},
             'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'volcanic induced debris flow'},

@@ -50,6 +50,7 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * May 13, 2015  6899      Robert.Blum  Removed notifySessionEventsModified().
  * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted
  *                                      expiration product.
+ * Mar 30, 2016  8837      Robert.Blum  Added changeSite() for service backup.
  * Apr 27, 2017 11853      Chris.Golden Made names of methods more consistent, and
  *                                      added a method to check to see if the
  *                                      product editor is open. Also made thread usage
@@ -194,5 +195,12 @@ public final class ProductEditorView implements
             }
         });
 
+    }
+
+    @Override
+    public void changeSite(String site) {
+        if (productEditor != null) {
+            productEditor.changeSite(site);
+        }
     }
 }

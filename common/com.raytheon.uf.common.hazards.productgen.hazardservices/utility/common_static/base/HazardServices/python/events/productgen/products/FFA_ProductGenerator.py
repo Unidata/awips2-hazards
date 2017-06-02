@@ -11,6 +11,10 @@
     Apr 16, 2015   7579      Robert.Blum Updates for amended Product Editor.
     Nov 09, 2015   7532      Robert.Blum Sorting the vtecRecords so that the product parts for sections
                                          are in the correct order.
+    Jun 08, 2016   9620      Robert.Blum Changed self._purgeHours to a float since purge hours can
+                                         include minutes (15min intervals).
+    Jul 06, 2016  18257      Kevin.Bisanz Added eventSet parameter to executeFrom(..)
+                                         
     
     @author Chris.Cody
     @version 1.0
@@ -40,7 +44,7 @@ class Product(HydroGenerator.Product):
         self._productID = 'FFA'
         self._productCategory = "FFA" #This is necessary to generate the PIL value
         self._productName = 'Flood Watch'
-        self._purgeHours = 8
+        self._purgeHours = 8.0
         self._includeAreaNames = True
         self._includeCityNames = True
         # Not Polygon-based, so locations listed will not be limited to within the polygon, 
@@ -64,9 +68,11 @@ class Product(HydroGenerator.Product):
 
         return dialogDict
 
-    def executeFrom(self, dataList, keyInfo=None):
+    def executeFrom(self, dataList, eventSet, keyInfo=None):
         if keyInfo is not None:
-            dataList = self.correctProduct(dataList, keyInfo, False)
+            dataList = self.correctProduct(dataList, eventSet, keyInfo, False)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList
 
     def execute(self, eventSet, dialogInputMap):

@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager;
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -49,6 +48,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager.
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
  *                                      manager.
+ * May 06, 2016 18202      Robert.Blum  Changes for operational mode.
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * </pre>
@@ -65,10 +65,9 @@ public class SessionManagerFactory {
             IDisplayResourceContextProvider displayResourceContextProvider,
             IFrameContextProvider frameContextProvider,
             BoundedReceptionEventBus<Object> eventBus) {
-        Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
-                : Mode.OPERATIONAL;
+        boolean practice = !CAVEMode.OPERATIONAL.equals(CAVEMode.getMode());
         return new SessionManager(PathManagerFactory.getPathManager(),
-                new HazardEventManager(mode), spatialContextProvider,
+                new HazardEventManager(practice), spatialContextProvider,
                 displayResourceContextProvider, frameContextProvider,
                 messenger, eventBus);
     }

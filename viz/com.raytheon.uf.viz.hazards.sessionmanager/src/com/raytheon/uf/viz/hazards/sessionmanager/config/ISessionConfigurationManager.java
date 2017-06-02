@@ -89,6 +89,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      times.
  * May 04, 2016 18266      Chris.Golden Added passing of data time to method allowing
  *                                      triggering by data layer change.
+ * Jul 08, 2016 13788      Chris.Golden Added validation of hazard events.
  * Jul 27, 2016 19924      Chris.Golden Removed obsolete code related to data layer
  *                                      changes triggering event-driven tools; the
  *                                      configuration of such is now read in within
@@ -481,6 +482,16 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * change.
      */
     public void triggerFrameChangeDrivenTool();
+
+    /**
+     * Validate the specified hazard event.
+     * 
+     * @param hazardEvent
+     *            Hazard event to be validated.
+     * @return Description of validation problems if the hazard event is
+     *         invalid, or <code>null</code> if the event validates properly.
+     */
+    public String validateHazardEvent(IHazardEvent hazardEvent);
 
     /**
      * Execute any shutdown needed.

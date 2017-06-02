@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.client.AbstractHazardEventServicesSoapClient;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.IHazardEventInteropServices;
 
@@ -35,6 +34,7 @@ import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.servi
  * ------------ ---------- ----------- --------------------------
  * Aug 4, 2015  6895     Ben.Phillippe Finished HS data access refactor
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * May 06, 2016 18202      Robert.Blum Changes for operational mode.
  * 
  * </pre>
  * 
@@ -45,19 +45,10 @@ public class HazardEventInteropServicesSoapClient extends
         AbstractHazardEventServicesSoapClient {
 
     /** Static singleton instance */
-    private static IHazardEventInteropServices client;
+    private static IHazardEventInteropServices practiceClient;
 
-    /**
-     * Creates a new HazardEventInteropServicesClient instance
-     * 
-     * @param mode
-     *            The Hazard Services mode, practice or operational
-     */
-    private HazardEventInteropServicesSoapClient(HazardEventManager.Mode mode) {
-        super(IHazardEventInteropServices.PATH,
-                IHazardEventInteropServices.NAMESPACE,
-                IHazardEventInteropServices.SERVICE_NAME, mode);
-    }
+    /** Static singleton instance */
+    private static IHazardEventInteropServices operationalClient;
 
     /**
      * Creates a new HazardEventInteropServicesClient instance
@@ -66,8 +57,9 @@ public class HazardEventInteropServicesSoapClient extends
      *            True if in practice mode, else false if in operational mode
      */
     private HazardEventInteropServicesSoapClient(boolean practice) {
-        this(practice ? HazardEventManager.Mode.PRACTICE
-                : HazardEventManager.Mode.OPERATIONAL);
+        super(IHazardEventInteropServices.PATH,
+                IHazardEventInteropServices.NAMESPACE,
+                IHazardEventInteropServices.SERVICE_NAME, practice);
     }
 
     /**
@@ -78,24 +70,19 @@ public class HazardEventInteropServicesSoapClient extends
      * @return The singleton instance
      */
     public static IHazardEventInteropServices getServices(boolean practice) {
-        if (client == null) {
-            client = new HazardEventInteropServicesSoapClient(practice)
-                    .getPort(IHazardEventInteropServices.class);
+        if (practice) {
+            if (practiceClient == null) {
+                practiceClient = new HazardEventInteropServicesSoapClient(
+                        practice).getPort(IHazardEventInteropServices.class);
+            }
+            return practiceClient;
+        } else {
+            if (operationalClient == null) {
+                operationalClient = new HazardEventInteropServicesSoapClient(
+                        practice).getPort(IHazardEventInteropServices.class);
+            }
+            return operationalClient;
         }
-        return client;
-    }
-
-    /**
-     * Gets the singleton instance
-     * 
-     * @param mode
-     *            The mode, practice or operational
-     * @return The singleton instance
-     */
-    public static IHazardEventInteropServices getServices(
-            HazardEventManager.Mode mode) {
-        return new HazardEventInteropServicesSoapClient(mode)
-                .getPort(IHazardEventInteropServices.class);
     }
 
     /**

@@ -28,6 +28,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.KeyInfo;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -67,6 +68,11 @@ public abstract class AbstractProductDialog extends CaveSWTDialog {
     protected final DataEditorManager editorManager = new DataEditorManager();
 
     /**
+     * Hazard types configuration information.
+     */
+    protected final HazardTypes hazardTypes;
+
+    /**
      * Creates a new AbstractProductDialog on the given shell with the provided
      * generated product lists
      * 
@@ -77,11 +83,15 @@ public abstract class AbstractProductDialog extends CaveSWTDialog {
      * @param generatedProductListStorage
      *            The generated products to be displayed on this
      *            AbstractProductDialog
+     * @param hazardTypes
+     *            Hazard types configuration information.
      */
     public AbstractProductDialog(Shell parentShell, int style,
-            List<GeneratedProductList> generatedProductListStorage) {
+            List<GeneratedProductList> generatedProductListStorage,
+            HazardTypes hazardTypes) {
         super(parentShell, style, CAVE.PERSPECTIVE_INDEPENDENT);
         this.generatedProductListStorage = generatedProductListStorage;
+        this.hazardTypes = hazardTypes;
     }
 
     /**

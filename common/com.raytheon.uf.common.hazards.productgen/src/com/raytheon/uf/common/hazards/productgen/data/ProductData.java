@@ -23,6 +23,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -31,6 +33,7 @@ import javax.persistence.Table;
 
 import com.raytheon.uf.common.dataplugin.persist.PersistableDataObject;
 import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
+import com.raytheon.uf.common.hazards.productgen.ProductUtils;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -48,6 +51,12 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 30, 2015    6929    Robert.Blum  Changed startTime to issueTime.
  * May 07, 2015    6979    Robert.Blum  Added editableEntries.
  * Aug 13, 2015    8836    Chris.Cody   Changes for a configurable Event Id
+ * Sep 11, 2015   10203    Robert.Blum  Added issueTime to the productdata primary key.
+ * Apr 27, 2016   17742    Roger.Ferel  Added getter method for the new columns' values.
+ * Jul 06, 2016   18257    Kevin.Bisanz Implemented toString()
+ * Aug 09, 2016   17067    Robert.Blum  Changes to work with RVS products.
+ * Aug 29, 2016   19223    Kevin.Bisanz Add comment regarding use of concrete
+ *                                      classes with serialization.
  * Feb 01, 2017   15556    Chris.Golden Added copy constructor.
  * </pre>
  * 
@@ -63,18 +72,34 @@ public class ProductData extends PersistableDataObject<String> implements
 
     private static final long serialVersionUID = 1L;
 
+    private static final String[] EXPIRATION_TIME_KEYS = new String[] {
+            "segments", "expirationTime" };
+
+    private static final String[] HAZARD_TYPE_KEYS = new String[] { "segments",
+            "sections", "vtecRecord", "key" };
+
+    private static final String[] USER_NAME_KEYS = new String[] { "segments",
+            "sections", "hazardEvents", "userName" };
+
     @Id
     @DynamicSerializeElement
     private CustomDataId id;
 
-    @Column
-    @DynamicSerializeElement
-    private Date issueTime;
-
+    /*
+     * A Map does not implement Serializable, but a HashMap does. This
+     * variable's data type is intentionally a HashMap instead of a Map so that
+     * this can be persisted using Hibernate default behavior without the need
+     * to implement a custom class which implements
+     * "org.hibernate.usertype.UserType".
+     */
     @Column
     @DynamicSerializeElement
     private HashMap<String, Serializable> data;
 
+    /*
+     * See comment above this.data for the reason this data type is an ArrayList
+     * instead of a List.
+     */
     @Column
     @DynamicSerializeElement
     private ArrayList<EditableEntryMap> editableEntries;
@@ -83,20 +108,27 @@ public class ProductData extends PersistableDataObject<String> implements
 
     }
 
+    /**
+     * Constructor.
+     * 
+     * @param mode
+     * @param productGeneratorName
+     * @param eventIDs
+     * @param issueTime
+     * @param data
+     * @param editableEntries
+     */
     public ProductData(String mode, String productGeneratorName,
             ArrayList<String> eventIDs, Date issueTime,
             HashMap<String, Serializable> data,
             ArrayList<EditableEntryMap> editableEntries) {
-        id = new CustomDataId(mode, productGeneratorName, eventIDs);
-        this.issueTime = issueTime;
+        id = new CustomDataId(mode, productGeneratorName, eventIDs, issueTime);
         this.data = data;
         this.editableEntries = editableEntries;
     }
 
     public ProductData(ProductData other) {
         this.id = new CustomDataId(other.getId());
-        this.issueTime = (other.issueTime == null ? null : new Date(
-                other.issueTime.getTime()));
         this.data = (other.data == null ? null : new HashMap<>(other.data));
         this.editableEntries = (other.editableEntries == null ? null
                 : new ArrayList<EditableEntryMap>(other.editableEntries.size()));
@@ -116,11 +148,11 @@ public class ProductData extends PersistableDataObject<String> implements
     }
 
     public Date getIssueTime() {
-        return issueTime;
+        return id.getIssueTime();
     }
 
     public void setissueTime(Date issueTime) {
-        this.issueTime = issueTime;
+        id.setIssueTime(issueTime);
     }
 
     public ArrayList<String> getEventIDs() {
@@ -161,5 +193,67 @@ public class ProductData extends PersistableDataObject<String> implements
 
     public void setEditableEntries(ArrayList<EditableEntryMap> editableEntries) {
         this.editableEntries = editableEntries;
+    }
+
+    public Long getExpirationTime() {
+        return (Long) ProductUtils.getDataElement(data, EXPIRATION_TIME_KEYS);
+    }
+
+    public String getHazardType() {
+        String type = (String) ProductUtils.getDataElement(data,
+                HAZARD_TYPE_KEYS);
+        return type == null ? "" : type;
+    }
+
+    /**
+     * Generate VTEC column display string from the vtec records in the data.
+     * 
+     * @return vtecStr
+     */
+    public String getVtecStr() {
+        StringBuilder sb = new StringBuilder();
+        String prefix = "";
+        List<?> segments = (List<?>) data.get("segments");
+        if (segments != null && segments.isEmpty() == false) {
+            sb.append("[");
+            for (Object o : segments) {
+                Map<?, ?> segment = (Map<?, ?>) o;
+                List<?> sections = (List<?>) segment.get("sections");
+                for (Object o2 : sections) {
+                    Map<?, ?> section = (Map<?, ?>) o2;
+                    Map<?, ?> vtecRecord = (Map<?, ?>) section
+                            .get("vtecRecord");
+                    sb.append(prefix).append((String) vtecRecord.get("act"));
+                    prefix = ", ";
+                }
+            }
+            sb.append("]");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 
+     * @return user name or empty string if user name not set.
+     */
+    public String getUserName() {
+        Object value = ProductUtils.getDataElement(data, USER_NAME_KEYS);
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return "";
+    }
+
+    @Override
+    public String toString() {
+        StringBuffer sb = new StringBuffer();
+        sb.append(getMode());
+        sb.append(" ");
+        sb.append(getEventIDs());
+        sb.append(" ");
+        sb.append(getVtecStr());
+        sb.append(" ");
+        sb.append(getHazardType());
+        return sb.toString();
     }
 }

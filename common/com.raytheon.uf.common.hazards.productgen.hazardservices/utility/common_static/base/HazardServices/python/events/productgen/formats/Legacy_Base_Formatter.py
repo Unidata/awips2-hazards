@@ -62,7 +62,50 @@
     Jan 28, 2016   13012    Robert.Blum Changes to go along with the new EndingOption megawidgets.
     Feb 03, 2016   14983    Kevin.Bisanz Added optional parameter to _timeBullet(...) to include time
                                          description.
+    Mar 21, 2016   15640    Robert.Blum  Fixed custom edits not getting put in final product.
+    Mar 22, 2016   15645    Robert.Blum  Added logic to correctly produce RiverPro's timeBullet.
+    Mar 31, 2016    8837    Robert.Blum  Added "Issued by" line in the product header for Service backup.
+    Apr 18, 2016   16038    Robert.Blum  RiverPro timeBullet fix for endTimes.
+    Apr 27, 2016   15012    Roger.Ferrel overviewSynopsis add leading period to the return value.
+    May 06, 2016   18202    Robert.Blum  Changes for operational mode.
+    May 11, 2016   16914    Robert.Blum  Removed rainfall statement from FL.A hazards.
+    May 13, 2016   16913   Ben.Phillippe Fixed minor error with geometry
+    May 17, 2016   16046    Kevin.Bisanz Referenced replacing event in overview if event is replaced.
+    May 19, 2016   16545    Robert.Blum  Added overview for when flood category changes and also
+                                         fixed duplicate states issue.
+    May 23, 2016   19077    Robert.Blum  Added state abreviations to areaList for WarnGen hazard types.
+    May 27, 2016   19080    dgilling     Change how AttributionFirstBulletText is called.
+    Jun 07, 2016   19135    dgilling     Add missing test message disclaimers.
+    Jun 15, 2016   14069    dgilling     Ensure test message is in all caps for each bullet.
+    Jun 21, 2016    9620    Robert.Blum  Added comments to clarify local time.
+    Jun 22, 2016   19928    Thomas.Gurney Fix capitalization of hazard name for replacement productss
     Jun 23, 2016   19537    Chris.Golden Changed to use UTC when converting epoch time to datetime.
+    Jun 23, 2016   16045    Kevin.Bisanz Removed unneeded trailing space from
+                                         _getFormattedTime(..) output.
+    Jun 23, 2016   18215    Robert.Blum  Fixed mixed case issues with MND Header.
+    Jun 24, 2016   19929   Thomas.Gurney Remove flood severity change statement from NEW products
+    Jun 27, 2016   18232    Robert.Blum  Emergency Headline and Statement are now editable product parts.
+    Jun 29, 2016   18227    Robert.Blum  Corrected Flash Flood Emergency Text to match WarnGen.
+    Jun 29, 2016   18209    Robert.Blum  Fixed retrieving user edits on followups where the pil changes.
+    Jul 13, 2016   18257    Kevin.Bisanz If action==COR, use prevAct instead for locationsAffected.
+    Jul 13, 2016   18269    Roger.Ferrel Verification of location now done in HID.
+                                         Headline and Statement no longer need to be editable.
+    Jul 18, 2016   18269    Kevin.Bisanz Fix typo calling getAction instead of _getAction
+    Jul 22, 2016   19214    Kevin.Bisanz Add locationsAffectedFallBack if spatial
+                                         query for locationsAffected returns nothing.
+    Jul 25, 2016   20381    dgilling     Correct formatting of locations in headline for FL.W.
+    Jul 29. 2016   19473    Roger.Ferrel Include test messages when in Test mode.
+    Aug 10, 2016   20619    Roger.Ferrel Modified lookup for synopsis in overviewSynopsis.
+    Aug 08, 2016   21056    Robert.Blum  Implemented pathcast.
+    Aug 11, 2016   20655    Robert.Blum  Fixed lookup for Product Level CTAs.
+    Aug 12, 2016   20654    Kevin.Bisanz Add _locationsAffectedFallBack(..)
+    Aug 22, 2016   21056    Robert.Blum  Update to pathcast for creating the fall back locations.
+    Aug 22, 2016   20381    Robert.Blum  Fixed RiverPro Headlines.
+    Aug 23, 2016   21473    Robert.Blum  Fixed Flash Flood Emergency text.
+    Aug 24, 2016   21443   Ben.Phillippe Fixed next issuance wording
+    Aug 25, 2016   21458    Robert.Blum  _additionalInfoStatement now uses framed text.
+    Aug 29, 2016   21444   Ben.Phillippe Time zone now before day of week in formatted time
+    Sep 06, 2016   19202    Sara.Stewart added advisoryUpgraded/endingOption checks
 '''
 
 import FormatTemplate
@@ -79,6 +122,7 @@ import ProductTextUtil
 from BasisText import BasisText
 from AttributionFirstBulletText import AttributionFirstBulletText
 import ForecasterInitials
+import PathcastText
 
 from abc import *
 
@@ -96,6 +140,11 @@ class Format(FormatTemplate.Formatter):
         # product part text strings to be displayed in the Product
         # Editor. 
         if editableEntries:
+            # If this dictionary is passed in, it means
+            # product generation is being triggered by a
+            # change on the product editor. In this case
+            # use those values instead of those from the 
+            # Product Text table.
             self._useProductTextTable = False
             self._editableParts = editableEntries
         else:
@@ -111,8 +160,7 @@ class Format(FormatTemplate.Formatter):
         self._issueFlag = self.productDict.get('issueFlag')
         self._purgeHours = self.productDict.get('purgeHours')
         self._runMode = self.productDict.get('runMode')
-        if self._runMode == 'Practice':
-            self._testMode = True
+        self._testMode = self._runMode in ['Practice', 'Test']
         self._siteInfo = self.bridge.getSiteInfo()
         self.setSiteInfo()
 
@@ -164,7 +212,7 @@ class Format(FormatTemplate.Formatter):
         return text
 
     @abstractmethod
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries, overrideProductText):
         '''
         Must be overridden by the Product Formatter
         '''
@@ -225,15 +273,19 @@ class Format(FormatTemplate.Formatter):
 
         if self.productDict.get('correction', False):
             text += '...CORRECTED'
-        if (self._runMode == 'Practice'):
+        if self._testMode:
             text = 'TEST...' + text + '...TEST \n'
         else:
             text += '\n'
-        text += 'NATIONAL WEATHER SERVICE ' + self._wfoCityState + '\n'
+
+        text += 'National Weather Service ' + self._wfoCityState + '\n'
+        if self._backupWfoCityState and self._backupWfoCityState != self._wfoCityState:
+            text += 'Issued by National Weather Service ' + self._backupWfoCityState + '\n'
+
         text += self.getIssuanceTimeDate(productDict)
-        if (self._runMode == 'Practice' and self._productID == 'FFW'):
+        if self._testMode and self._productID in ['FFW', 'FLW', 'FLS']:
             text += '\n...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n'
-        return text.upper()
+        return text
 
     def _easMessage(self, productDict):
         # ALL CAPS per Mixed Case Text Guidelines
@@ -260,9 +312,7 @@ class Format(FormatTemplate.Formatter):
         for segment in self.productDict.get('segments'):
             vtecRecords = segment.get('vtecRecords')
             for vtecRecord in vtecRecords:
-                action = vtecRecord.get('act')
-                if action == 'COR':
-                    action = vtecRecord.get('prevAct')
+                action = self._getAction(vtecRecord)
                 if action in ('NEW','EXT'):
                     new_ext_productSegments.append(segment)
                 elif action == 'CON':
@@ -288,15 +338,22 @@ class Format(FormatTemplate.Formatter):
         text = self._getVal(ctaKey, productDict)
 
         if text is None:
-            text = ''
             callsToAction =  self._tpc.getVal(productDict, ctaKey, None)
             if callsToAction:
-                text = ''
+                text = ""
                 for cta in callsToAction:
                     cta = cta.strip('\n\t\r')
                     cta = re.sub('\s+',' ',cta)
                     text += cta + '\n\n'
                 text = text.rstrip()
+        if text is None:
+            # Try the previous product label to account for PIL changing
+            prevProductLabel = productDict.get('previousProductLabel', None)
+            if prevProductLabel:
+                key = 'callsToAction_productLevel_' + prevProductLabel
+                text = self._getVal(key, productDict)
+            else:
+                text = ""
         self._setVal(ctaKey, text, productDict, 'Calls To Action - Product Level', required=False)
         return self._getFormattedText(text, startText='PRECAUTIONARY/PREPAREDNESS ACTIONS...\n\n', endText='\n\n')
 
@@ -312,10 +369,10 @@ class Format(FormatTemplate.Formatter):
             for timeZone in self.timezones:
                 fmtIssueTme = self._tpc.getFormattedTime(expireTime, timeZones=[timeZone], format='%I%M %p %Z')
                 ### If more than one timezone, will read like: 
-                ### "The next statement will be issued at Tuesday morning at 600 AM CST. 500 AM MST."
+                ### "The next statement will be issued Tuesday morning at 600 AM CST. 500 AM MST."
                 nextIssue += ' ' + fmtIssueTme + '.'
             
-            partText = 'The next statement will be issued at ' + nextIssue
+            partText = 'The next statement will be issued ' + nextIssue
         self._setVal('nextIssuanceStatement', partText, productDict, 'Next Issuance Statement')
         return self._getFormattedText(partText, endText='\n\n') + '&&\n\n'
 
@@ -324,16 +381,8 @@ class Format(FormatTemplate.Formatter):
         text = self._getVal('additionalInfoStatement', productDict)
         if text is None:
             # Please override this method for your site
-            text = 'Additional information is available at <Web site URL>.'
+            text = 'Additional information is available at |* Web site URL *|.'
         self._setVal('additionalInfoStatement', text, productDict, 'Additional Info Statement')
-        return self._getFormattedText(text, endText='\n\n')
-
-    def _rainFallStatement(self, productDict):
-        # Get saved value from productText table if available
-        text = self._getVal('rainFallStatement', productDict)
-        if text is None:
-            text = 'The segments in this product are river forecasts for selected locations in the watch area.'
-        self._setVal('rainFallStatement', text, productDict, 'Rainfall Statement')
         return self._getFormattedText(text, endText='\n\n')
 
     def _initials(self, productDict):
@@ -358,7 +407,12 @@ class Format(FormatTemplate.Formatter):
         return ugcHeader + '\n'
 
     def _areaList(self, segmentDict):
-        areaList =  self._tpc.formatUGC_names(segmentDict.get('ugcs'))
+        sections = segmentDict.get('sections')
+        hazardEvent = sections[0].get('hazardEvents')[0]
+        if self._tpc.isWarnGenHazard(hazardEvent):
+            areaList = self._tpc.formatUGC_namesWithStateAbrev(segmentDict.get('ugcs'))
+        else:
+            areaList =  self._tpc.formatUGC_names(segmentDict.get('ugcs'))
         areaList = self._tpc.linebreak(areaList, 69, breakStr=[' ', '-'] ).rstrip()
         return areaList + '\n'
 
@@ -408,7 +462,10 @@ class Format(FormatTemplate.Formatter):
                         polygonPointLists.append(list(geometry.coords))
                     else:
                         for geo in geometry:
-                            polygonPointLists.append(list(geo.exterior.coords))
+                            if geo.geom_type == HazardConstants.SHAPELY_POINT:
+                                continue
+                            else:
+                                polygonPointLists.append(list(geo.exterior.coords))
 
         lonLatPoints = []
         for polygon in polygonPointLists:
@@ -444,15 +501,19 @@ class Format(FormatTemplate.Formatter):
             polyStr += ' ' + str(lat) + ' ' + str(lon)
             pointsOnLine += 1
 
-        if (self._runMode == 'Practice' and isPointBasedHazard == False):
-            polyStr = 'This is a test message. Do not take action based on this message. \n\n' + polyStr
+        if self._testMode:
+            hazard = section.get('hazardEvents', [])[0]
+            if self._tpc.isRiverProHazard(hazard):
+                polyStr += '\n\nTHIS IS A TEST MESSAGE. DO NOT TAKE ACTION BASED ON THIS.'
+            elif self._tpc.isWarnGenHazard(hazard):
+                polyStr = 'THIS IS A TEST MESSAGE. DO NOT TAKE ACTION BASED ON THIS MESSAGE.\n\n' + polyStr
         return polyStr + '\n'
 
     def _issuanceTimeDate(self, segmentDict):
         text = self.getIssuanceTimeDate(segmentDict)
         vtecRecords = segmentDict.get('vtecRecords', [])
         phensig = vtecRecords[0].get('key', '')
-        if (self._runMode == 'Practice' and (phensig in ['FA.W', 'FA.Y'] or self._productID == 'FFS')):
+        if self._testMode and self._productID in ['FFS', 'FFA', 'FLS', 'FLW']:
             text += '\n...THIS MESSAGE IS FOR TEST PURPOSES ONLY...\n'
         return text
 
@@ -621,8 +682,7 @@ class Format(FormatTemplate.Formatter):
     ###################### Section Level
 
     def _setUp_section(self, sectionDict):
-        self.attributionFirstBullet = AttributionFirstBulletText()
-        self.attributionFirstBullet.initialize(
+        self.attributionFirstBullet = AttributionFirstBulletText(
             sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, self.timezones)
         return ''
 
@@ -637,6 +697,7 @@ class Format(FormatTemplate.Formatter):
         else:
             sectionDict = dictionary
 
+        # Get saved value from productText table if available
         headline = ''
         hazard = sectionDict.get('hazardEvents')[0]
         includeChoices = hazard.get('include')
@@ -658,8 +719,8 @@ class Format(FormatTemplate.Formatter):
         firstBullet = self.attributionFirstBullet.getFirstBulletText()
 
         startText = '* '
-        if (self._runMode == 'Practice'):
-            startText += "This is a test message.  "
+        if self._testMode:
+            startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(firstBullet, startText=startText, endText='\n\n')
 
     def _firstBullet_point(self, sectionDict):
@@ -672,47 +733,50 @@ class Format(FormatTemplate.Formatter):
 
     def _timeBullet(self, sectionDict, roundMinutes=15, includeTimingDesc=False):
         '''
-        Displays the expiration time/date of the hazard, based on the following logic. 
+        Displays the start and/or end time/date of the hazard. There is specific logic for
+        RiverPro hazards found in getRiverProTimeBullet otherwise the following logic is 
+        used. 
         When hazard extends:
         - Into the next day . . . should include day
         - More than 1 week . . . should include date
         '''
         # Get the endTime from the first hazard
         hazard = sectionDict.get('hazardEvents', None)[0]
-        bulletText = 'Until '
-        endTime = hazard.get('endTime')
-        expireTime = self._tpc.round(endTime, roundMinutes)
+        vtecRecord = sectionDict.get('vtecRecord')
 
-        # Determine how far into the future the expire time is.
-        issueTime = datetime.datetime.utcfromtimestamp(float(self._issueTime)/1000)
-        tdelta = endTime - issueTime
-
-        if (tdelta.days == 6 and endTime.date().weekday() == issueTime.date().weekday()) or \
-            tdelta.days > 6:
-            format = '%l%M %p %Z %a %b %d'
-        elif issueTime.day != endTime.day:
-            format = '%l%M %p %Z %a'
+        if self._tpc.isRiverProHazard(hazard):
+            bulletText = self.getRiverProTimeBullet(hazard, vtecRecord)
         else:
-            format = '%l%M %p %Z'
+            bulletText = 'Until '
+            endTime = hazard.get('endTime')
 
-        timeStr = ''
-        for tz in self.timezones:
-            if len(timeStr) > 0:
-                timeStr += '/'
-            timeStr += self._tpc.formatDatetime(expireTime, format, tz).strip()
+            # Determine how far into the future the end time is.
+            issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000) # Local time
+            tdelta = endTime - issueTime
 
-            if includeTimingDesc == True:
-                vtecRecord = sectionDict.get('vtecRecord')
-                endTime = vtecRecord.get('endTime')
-                timePhrase = self._timeBulletTimeDesc(self._issueTime, endTime, tz)
-                if len(timePhrase) > 0:
-                    timeStr += ' ' + timePhrase
+            if (tdelta.days == 6 and endTime.date().weekday() == issueTime.date().weekday()) or \
+                tdelta.days > 6:
+                format = '%l%M %p %Z %a %b %d'
+            else:
+                format = '%l%M %p %Z %a'
 
-        bulletText += timeStr
+            timeStr = ''
+            for tz in self.timezones:
+                if len(timeStr) > 0:
+                    timeStr += '/'
+                timeStr += self._tpc.formatDatetime(endTime, format, tz).strip()
+
+                if includeTimingDesc == True:
+                    endTime = vtecRecord.get('endTime')
+                    timePhrase = self._timeBulletTimeDesc(self._issueTime, endTime, tz)
+                    if len(timePhrase) > 0:
+                        timeStr += ' ' + timePhrase
+
+            bulletText += timeStr
 
         startText = '* '
-        if (self._runMode == 'Practice' and hazard.get('geoType') != 'point'):
-            startText += "This is a test message.  "
+        if self._testMode and (hazard.get('geoType') != 'point'):
+            startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(bulletText, startText=startText, endText='\n')
 
     def _timeBulletTimeDesc(self, issueTime, endTime, tz):
@@ -734,7 +798,11 @@ class Format(FormatTemplate.Formatter):
         includeChoices = hazard.get('include')
         if includeChoices and 'ffwEmergency' in includeChoices:
             emergencyLocation = self._tpc.getValueOrFramedText('includeEmergencyLocation', hazard, 'Enter Emergency Location')
-            statement = '  This is a Flash Flood Emergency for ' + emergencyLocation + '.'
+            vtecRecord = sectionDict.get('vtecRecord',{})
+            act = self._getAction(vtecRecord)
+            if act in ['NEW', 'EXT']:
+                statement += '  '
+            statement += 'This is a FLASH FLOOD EMERGENCY for ' + emergencyLocation + '. This is a PARTICULARLY DANGEROUS SITUATION. SEEK HIGHER GROUND NOW!'
         return self._getFormattedText(statement, endText='\n\n')
 
     def _impactsBullet(self, sectionDict):
@@ -751,8 +819,8 @@ class Format(FormatTemplate.Formatter):
                 bulletText += '\n'.join(impacts)
         self._setVal('impactsBullet', bulletText, sectionDict, 'Impacts Bullet', required=False)
         startText = '* '
-        if (self._runMode == 'Practice'):
-            startText += "This is a test message.  "
+        if self._testMode:
+            startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
 
     def _basisAndImpactsStatement(self, sectionDict):
@@ -782,25 +850,25 @@ class Format(FormatTemplate.Formatter):
         act = sectionDict.get('vtecRecord',{}).get('act')
         if act in ['NEW', 'EXT']:
             startText = '* '
-        if (self._runMode == 'Practice'):
-            startText += "This is a test message.  "
+        if self._testMode:
+            startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(bulletText, startText=startText, endText='\n\n')
 
     def _locationsAffected(self, sectionDict):
         locationsAffected = ''
         vtecRecord = sectionDict.get('vtecRecord', {})
-        action = vtecRecord.get('act', None)
+        action = self._getAction(vtecRecord)
         # FA.W, FA.Y, and FF.W will only have one hazard per section
         hazardEventDict = sectionDict.get('hazardEvents')[0]
 
-        # This is a optional bullet check to see if it should be included
-        listOfLocationsAffected = hazardEventDict.get("locationsAffectedCheckBox", False)
-        if listOfLocationsAffected:
+        # Get saved value from productText table if available
+        locationsAffected = self._getVal('locationsAffected', sectionDict)
+        if locationsAffected is None:
+            locationsAffected = ''
 
-            # Get saved value from productText table if available
-            locationsAffected = self._getVal('locationsAffected', sectionDict)
-            if locationsAffected is None:
-                locationsAffected = ''
+            # This is a optional bullet check to see if it should be included
+            locationsAffectedChoice = hazardEventDict.get("locationsAffectedRadioButton", None)
+            if locationsAffectedChoice == "cityList":
                 immediateCause = hazardEventDict.get('immediateCause', None)
                 if immediateCause == 'DM' or immediateCause == 'DR':
                     damOrLeveeName = hazardEventDict.get('damOrLeveeName')
@@ -831,15 +899,97 @@ class Format(FormatTemplate.Formatter):
                     else :
                         locationsAffected = "Locations impacted include..."
                     locationsAffected += '\n  ' + self.createLocationsAffected(hazardEventDict)
+            elif locationsAffectedChoice == "pathcast":
+                locationDicts = hazardEventDict.get('locationDicts', None)
+                if locationDicts:
+                    locationsFallBack = self._locationsAffectedFallBack(locationDicts)
+                else:
+                    locationsFallBack = 'the aforementioned areas'
+                pathcastText = PathcastText.PathcastText(sectionDict, self._testMode, self._getAction(vtecRecord), self.timezones, locationsFallBack)
+                locationsAffected += pathcastText.getPathcastText()
 
         self._setVal('locationsAffected', locationsAffected, sectionDict, 'Locations Affected', required=False)
 
         startText = ''
         if action in ['NEW', 'EXT']:
             startText += '* '
-        if (self._runMode == 'Practice'):
-            startText += "This is a test message.  "
+        if self._testMode:
+            startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(locationsAffected.rstrip(),startText=startText, endText='\n\n')
+
+    def _locationsAffectedFallBack(self, locationDicts):
+        '''
+        @param locationDicts List of dictionaries with information about each UGC
+        @return: locationsStr text to be used if the spatial query returns
+                nothing.  For example:
+                "West Central Gage, Northeastern Jefferson and Southeastern Saline Counties"
+
+        Note:  Influenced by AttributionFirstBulletText.getAreaPhrase()
+        '''
+        typeToLocations = {}
+
+        # For each UGC, build a string like:
+        # Southeastern Montgomery
+        # Eventually the type (e.g. "counties") will be appended to the list.
+        for entry in locationDicts:
+            ugc = entry.get('ugc')
+            ugcType = entry.get('typeSingular')
+            independentCityFlag = ugcType.startswith('independent city')
+
+            pieces = []
+
+            # Independent city lines start with "The"
+            if independentCityFlag:
+                pieces.append('The')
+
+            # Add the portion(s) of the UGC.  E.g. Southeastern
+            portionsOfUgc = entry.get('ugcPortions', '')
+            if portionsOfUgc:
+                pieces.append(self._tpc.formatDelimitedList(portionsOfUgc, ', '))
+
+            # Add the name.  E.g. Montgomery
+            pieces.append(entry.get('entityName'))
+
+            location = ' '.join(pieces)
+
+            # Save the location, organized by type. Potentially the
+            # ugcs could be of multiple types.  For example independent
+            # cities and counties in the LWX CWA.  For each type, store the UGC
+            # and the text string built above.
+            if ugcType in typeToLocations:
+                locationUgcs, locations = typeToLocations.get(ugcType)
+            else:
+                locationUgcs = []
+                locations = []
+            locationUgcs.append(ugc)
+            locations.append(location)
+            typeToLocations[ugcType] = (locationUgcs, locations)
+
+        # Now that all the text strings are built, combine them.
+        types = typeToLocations.keys()
+        locationsList = []
+        for ugcType in types:
+            locationUgcs, locations = typeToLocations[ugcType]
+
+            # Join the locations and add the type (e.g. county (or plural)) to the end.
+            locationText = self._tpc.formatDelimitedList(locations, ', ')
+
+            independentCityFlag = ugcType.startswith('independent city')
+            if not independentCityFlag:
+                typeSingularOrPlural = 'typeSingular'
+                if len(locations) > 1:
+                    typeSingularOrPlural = 'typePlural'
+                # All the UGCs should be the same ugcType, so use [0].
+                ugcTypeStr = self._tpc.getInformationForUGC(locationUgcs[0], typeSingularOrPlural)
+                if ugcTypeStr:
+                    locationText += ' ' + ugcTypeStr
+
+            locationsList.append(locationText)
+
+        # Now join the county list with the zone list with the independent city list etc
+        locationsStr = self._tpc.formatDelimitedList(locationsList, ', ')
+
+        return locationsStr
 
     def _additionalComments(self, sectionDict):
         # Get saved value from productText table if available
@@ -911,9 +1061,65 @@ class Format(FormatTemplate.Formatter):
 
     ###################### Utility methods
 
-    def getEndingSynopsisFromEndingOptions(self, hazard):
+    def getRiverProTimeBullet(self, hazardDict, vtecRecord):
+        '''
+            Mimics RiverPro's <EventTime> variable. It uses T_WWA format and considers some special
+            conditions as well. It generally states as "from <EventStartTime> to <EventEndTime>", 
+            The following lists some other special cases:
+            a. If event ending time is missing, <EventTime> outputs: "from event start time until further notice"
+            b. If event start time is missing, <EventTime> outputs: "until event ending time"
+            c. If event start time and ending time are missing, <EventTime> outputs: "until further notice"
+            d. If event becomes effective within 3 hours from the issuance time, <EventTime> outputs "until event ending time"
+            e. If event start time and ending time have the same time phrase, <EventTime> outputs "during event ending time".
+        '''
+        text = ""
+
+        # Get the times
+        startTime = hazardDict.get('startTime')
+        startTimeMillis = self._tpc.getMillis(startTime)
+        endTime = hazardDict.get('endTime')
+        endTimeMillis = self._tpc.getMillis(endTime)
+
+        # Determine if the startTime is in the vtec string
+        startTimePhrase = None
+        vtecString = vtecRecord.get("vtecstr")
+        split = vtecString.split(".")
+        if len(split) >= 6:
+            startTimeStr = split[6]
+            if startTimeStr.startswith('000000T0000Z') == False:
+                # convert to T_WWA format
+                startTimePhrase = self._tpc.timingWordTableFUZZY4(self._issueTime, startTimeMillis, self.timezones[0])[2]
+
+        # Check if endTime is UFN
+        if self._tpc.untilFurtherNotice(endTimeMillis):
+            endTimePhrase = None
+        else:
+            # convert to T_WWA format
+            endTimePhrase = self._tpc.timingWordTableFUZZY4(self._issueTime, endTimeMillis,  self.timezones[0])[2]
+
+        # Handle the special cases
+        if startTimePhrase == endTimePhrase and endTimePhrase != None: # Case E
+            text = "During " + endTimePhrase
+        elif endTimePhrase:
+            if startTimePhrase: 
+                issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000) # Local time
+                tdelta = startTime - issueTime
+                if tdelta.days == 0 and tdelta.seconds <= 10800: # Case D
+                    text = "Until " + endTimePhrase
+                else: # General Case
+                    text = "From " + startTimePhrase + " to " + endTimePhrase
+            else: # Case B
+                text = "Until " + endTimePhrase
+        else:
+            if startTimePhrase: # Case A
+                text = "From " + startTimePhrase + " until further notice"
+            else: # Case C
+                text = "Until further notice"
+        return text  + "."
+
+    def getEndingSynopsisFromEndingOptions(self, hazard):                              
         endingOptionsList = []
-        endingOptions = hazard.get('endingOption', None)
+        endingOptions = hazard.get('endingOption', None)  
         if endingOptions:
             for option in endingOptions:
                 endingOptionsList.append(option)
@@ -921,7 +1127,9 @@ class Format(FormatTemplate.Formatter):
         if len(endingOptionsList) > 0:
             text = ' '.join(endingOptionsList)
             subType = hazard.get('subType')
-            if subType != 'NonConvective':
+            # make sure the advisoryUpgraded checkbox is not checked
+            # before saying flooding is no longer a threat
+            if subType != 'NonConvective' and 'advisoryUpgraded' not in hazard.get('endingOption_identifiers'):
                 text += ' Flooding is no longer expected to pose a threat. Please continue to heed remaining road closures.'
         else:
             text = 'Flooding is no longer expected to pose a threat. Please continue to heed remaining road closures.'
@@ -961,11 +1169,20 @@ class Format(FormatTemplate.Formatter):
         productLabel = productDict.get('productLabel')
         synopsisKey = 'overviewSynopsis_' + productLabel
         synopsis = self._getVal(synopsisKey, productDict)
-
         if synopsis is None:
-            synopsis = productDict.get(synopsisKey, '')
-        self._setVal('overviewSynopsis_' + productLabel, synopsis, productDict, 'Overview Synopsis', required=False)
-        return self._getFormattedText(synopsis, endText='\n\n')
+            synopsis = productDict.get(synopsisKey)
+        if synopsis is None:
+            # Try the previous product label to account for PIL changing
+            prevProductLabel = productDict.get('previousProductLabel', None)
+            if prevProductLabel:
+                key = 'overviewSynopsis_' + prevProductLabel
+                synopsis = self._getVal(key, productDict)
+                if synopsis is None:
+                    synopsis = productDict.get(key, '')
+            else:
+                synopsis = ''
+        self._setVal(synopsisKey, synopsis, productDict, 'Overview Synopsis', required=False)
+        return self._getFormattedText(synopsis.strip(), startText='.', endText='.\n\n')
 
     def setSiteInfo(self):
         # Primary Site
@@ -977,17 +1194,24 @@ class Format(FormatTemplate.Formatter):
         self._areaName = ''  # siteEntry.get('state')  #  'GEORGIA' 
 
         # Backup Site
-        siteEntry = self._siteInfo.get(self._backupSiteID)        
+        siteEntry = self._siteInfo.get(self._backupSiteID)
         self._backupWfoCityState = siteEntry.get('wfoCityState')
         self._backupFullStationID = siteEntry.get('fullStationID')
 
     def createLocationsAffected(self, hazardDict):
-        nullReturn = "mainly rural areas of the aforementioned areas."
         locations = hazardDict.get('locationsAffected', [])
+        locationsAffected = ''
         if locations:
-            return self._tpc.formatDelimitedList(locations, delimiter=', ') + '.'
+            locationsAffected = self._tpc.formatDelimitedList(locations, delimiter=', ') + '.'
         else:
-            return nullReturn
+            locationsAffected = 'mainly rural areas of '
+            locationDicts = hazardDict.get('locationDicts', None)
+            if locationDicts:
+                locationsAffected += self._locationsAffectedFallBack(locationDicts)
+            else:
+                locationsAffected += 'the aforementioned areas'
+
+        return locationsAffected
 
     def getIssuanceTimeDate(self, segmentDict):
         text = ''
@@ -997,8 +1221,6 @@ class Format(FormatTemplate.Formatter):
             break
         text += '\n'
 
-        # The upper() is needed to pass the WarningDecoder.
-        text.upper()
         return text
 
     def getOverviewHeadlinePhrase(self, segments, lineLength=69):
@@ -1008,20 +1230,26 @@ class Format(FormatTemplate.Formatter):
             AT MARBLE ROCK...CEDAR RIVER AT JANESVILLE...CEDAR RIVER AT CEDAR
             FALLS...AND CEDAR RIVER AT WATERLOO...
         '''
+        nwsPhrase = 'The National Weather Service in ' + self._wfoCity
+
         locationPhrases = []
-        areaGroups = []
         replacement = False
+        riseInFcstCategory = False
+        riseInObsCategory = False
+        states = set()
 
         # There could be multiple points sharing a VTEC code e.g. NEW
         for segment in segments:
             ugcs = segment.get('ugcs')
-
-            pointAreaGroups = self._tpc.getGeneralAreaList(ugcs)
-            areaGroups += pointAreaGroups
-            
-
-            nameDescription, nameTypePhrase = self._tpc.getNameDescription(pointAreaGroups)
-            affected = nameDescription + ' '+ nameTypePhrase
+            affectedAreas = set()
+            for ugc in ugcs:
+                states.add(self._tpc.getInformationForUGC(ugc, "fullStateName"))
+                affectedAreas.add(self._tpc.getInformationForUGC(ugc))
+            affected = self._tpc.formatDelimitedList(affectedAreas, delimiter=", ") + " "
+            if len(affectedAreas) > 1:
+                affected += "counties"
+            else:
+                affected += "county"
             # Note there should only be one section with one hazard to process
             for section in segment.get('sections', []):
                 for hazard in section.get('hazardEvents', []):
@@ -1032,61 +1260,60 @@ class Format(FormatTemplate.Formatter):
                         proximity = 'near'
                     riverPointName = hazard.get('riverPointName')
                     locationPhrases.append(riverName + ' ' + proximity + ' ' + riverPointName + ' affecting ' + affected + '.')
+                    # Determine if there was a rise in flood category
+                    prevObsCat = hazard.get('previousObservedCategory', None)
+                    prevFcstCat = hazard.get('previousForecastCategory', None)
+                    prevObsCatName = hazard.get('previousObservedCategoryName', "|* PREVIOUS OBSERVED CATEGORY *|")
+                    prevFcstCatName = hazard.get('previousForecastCategoryName', "|* PREVIOUS FORECAST CATEGORY *|")
+                    obsCat = hazard.get('observedCategory', None)
+                    fcstCat = hazard.get('maxFcstCategory', None)
+                    obsCatName = hazard.get("observedCategoryName")
+                    fcstCatName = hazard.get("maxFcstCategoryName")
+                    if prevFcstCat != None and fcstCat > 0 and fcstCat > prevFcstCat:
+                        riseInFcstCategory = True
+                    if prevObsCat != None and obsCat > 0 and obsCat > prevObsCat:
+                        riseInObsCategory = True
 
-        locationPhrase = '\n'.join(locationPhrases)
-        areaGroups = self._tpc.simplifyAreas(areaGroups)
-        states = self._tpc.getStateDescription(areaGroups)
-        riverPhrase = 'the following rivers in ' + states
+        formattingFunc = lambda s: self._tpc.indentText(s, indentFirstString='  ', 
+              indentNextString='  ', maxWidth=69,
+              breakStrings=[' ', '-', '...'])
+        locationPhrase = '\n\n'.join([formattingFunc(s) for s in locationPhrases])
+        riverPhrase = ' for the following rivers in ' + self._tpc.formatDelimitedList(states, useAnd=False)
 
-        nwsPhrase = 'The National Weather Service in ' + self._wfoCity
         # Use this to determine which first bullet format to use.
         vtecRecords = segment.get('vtecRecords')
         for vtecRecord in vtecRecords:  # NOTE there is only one vtecRecord / hazard to process
             hazName = self._tpc.hazardName(vtecRecord.get('hdln'), self._testMode, False)
 
             if len(hazName):
-                action = vtecRecord.get('act')
-                if action == 'COR':
-                    action = vtecRecord.get('prevAct')
+                action = self._getAction(vtecRecord)
 
-            if action == 'NEW':
-                overview = nwsPhrase + ' has issued a ' + hazName + ' for '+ riverPhrase
-
-            elif action == 'CON':
-                overview = nwsPhrase + ' is continuing the ' + hazName + ' for '+ riverPhrase
-    
-            elif action == 'EXT':
-                overview = nwsPhrase + ' is extending the ' + hazName + ' for '+ riverPhrase
-
+            actionControlPhrase = self._tpc.actionControlPhrase(vtecRecord, self._issueTime, replacement=replacement)
+            if action in ['CON', 'EXT']:
+                if riseInObsCategory or riseInFcstCategory:
+                    if riseInObsCategory:
+                        overview = "Observed flooding changed from " + prevObsCatName + " to " + obsCatName
+                    else:
+                        overview = "Forecast flooding changed from " + prevFcstCatName + " to " + fcstCatName
+                    overview += " severity and increased in duration" + riverPhrase
+                else:
+                    overview = nwsPhrase + actionControlPhrase + hazName + riverPhrase
             elif action == 'CAN':
+                actionValue = ''
                 if replacement:
                     actionWord = 'replacing'
-                else:
-                    actionWord = 'cancelling'
-                overview = nwsPhrase + ' is ' + actionWord + ' the ' + hazName + ' for '+ riverPhrase
-    
+                    if len(replacement) > 0:
+                        actionValue = ' with a ' + replacement.title()
+                overview = nwsPhrase + actionControlPhrase + hazName + actionValue + riverPhrase
             elif action == 'EXP':
-                expTimeCurrent = self._issueTime
-                if vtecRecord.get('endTime') <= expTimeCurrent:
-                    overview = 'The ' + hazName + \
-                      ' for ' + riverPhrase + ' has expired '
-                else:
-                    timeWords = self._tpc.getTimingPhrase(vtecRecord, [], expTimeCurrent, timeZones=self.timezones)
-                    overview = 'The ' + hazName + \
-                      ' for ' + riverPhrase + ' will expire ' + timeWords
-
-            elif action == 'ROU':
-                '''
-                ...The National Weather Service in Omaha/Valley is releasing Test 
-                FORECAST INFORMATION for the following rivers in southeast 
-                Nebraska...
-                '''
-                overview = nwsPhrase + ' is releasing ' + hazName + ' for '+ riverPhrase
+                overview = 'The ' + hazName + riverPhrase + actionControlPhrase
+                if vtecRecord.get('endTime') > self._issueTime:
+                    timeWords = self._tpc.getTimingPhrase(vtecRecord, [], self._issueTime, timeZones=self.timezones)
+                    overview += timeWords
+            elif action in ['NEW', 'ROU']:
+                overview = nwsPhrase + actionControlPhrase + hazName + riverPhrase
 
         overview = '...' + overview + '...\n\n'
-        locationPhrase = self._tpc.indentText(locationPhrase, indentFirstString='  ',
-              indentNextString='  ', maxWidth=69,
-              breakStrings=[' ', '-', '...'])
         return overview + locationPhrase + '\n\n'
 
     def createAdditionalComments(self, hazardDict):
@@ -1101,7 +1328,7 @@ class Format(FormatTemplate.Formatter):
         if not time_ms:
             return emptyValue
         if format is None:
-            format = '%I%M %p %A %Z '
+            format = '%I%M %p %Z %A'
         return self._tpc.getFormattedTime(
                 time_ms, format, stripLeading=stripLeading, timeZones=timeZones)
 
@@ -1167,28 +1394,36 @@ class Format(FormatTemplate.Formatter):
         # Product Editor is regenerating for a change
         if self._useProductTextTable == False:
             return False
-
-        # Determine what level of the product dictionary was passed in
-        if dictionary.get('segments', None):
-            # Product Level
-            for segment in dictionary.get('segments', []):
-                for section in segment.get('sections', []):
+        elif self.overrideProductText:
+            return True
+        else:
+            # Determine what level of the product dictionary was passed in
+            if dictionary.get('segments', None):
+                # Product Level
+                for segment in dictionary.get('segments', []):
+                    for section in segment.get('sections', []):
+                        for hazard in section.get('hazardEvents', []):
+                            if hazard.get('previousEditedTextCheckBox', False):
+                                return True
+            elif dictionary.get('sections', None):
+                # Segment Level Table
+                for section in dictionary.get('sections', []):
                     for hazard in section.get('hazardEvents', []):
                         if hazard.get('previousEditedTextCheckBox', False):
                             return True
-        elif dictionary.get('sections', None):
-            # Segment Level Table
-            for section in dictionary.get('sections', []):
-                for hazard in section.get('hazardEvents', []):
+            else:
+                # Section Level
+                for hazard in dictionary.get('hazardEvents', []):
                     if hazard.get('previousEditedTextCheckBox', False):
                         return True
-        else:
-            # Section Level
-            for hazard in dictionary.get('hazardEvents', []):
-                if hazard.get('previousEditedTextCheckBox', False):
-                    return True
 
         return False
+    
+    def _getAction(self, vtecRecord):
+        action = vtecRecord.get('act', None)
+        if action == 'COR':
+            action = vtecRecord.get('prevAct')
+        return action
 
     def flush(self):
         ''' Flush the print buffer '''

@@ -44,6 +44,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 23, 2013            mnash        Initial creation.
+ * Mar 31, 2016    8837    Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016   19537    Chris.Golden Changed to use visual features for
  *                                      spatial info gathering.
  * </pre>
@@ -74,7 +75,7 @@ public class EDEXRecommenderEngine extends
      */
     @Override
     protected PythonJobCoordinator<EDEXRecommenderScriptManager> getCoordinator() {
-        factory = new EDEXRecommenderPythonFactory();
+        factory = new EDEXRecommenderPythonFactory(getSite());
         return PythonJobCoordinator.newInstance(factory);
     }
 

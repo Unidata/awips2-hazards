@@ -49,7 +49,7 @@ Prob_Severe = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        "pending",
+        #"pending",
         "issued",
         "elapsed",
         "ending",

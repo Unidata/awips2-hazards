@@ -19,6 +19,7 @@
                                                  constant.
     Nov 09, 2015     7532   Robert.Blum          Changed CALLS_TO_ACTION constant.
     Feb 22, 2016    15017   Robert.Blum          Add CREST_STAGE constant.
+    Mar 31, 2016     8837   Robert.Blum          Added SITE constant.
     Sep 02, 2016    15934   Chris.Golden         Added linear unit constants.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
@@ -210,7 +211,7 @@ SITE_CFG_ROOT = "python/gfe/"
 
 #################################
 # Product Generation
-
+SITE = "site"
 #################################
 # Shapely Geometry Constants
 SHAPELY_POINT = "Point"

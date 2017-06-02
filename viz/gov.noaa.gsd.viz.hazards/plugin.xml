@@ -31,10 +31,6 @@
 	                  <reference
 	                        definitionId="com.raytheon.uf.viz.d2d.ui.inD2DActionSet">
 	                  </reference> 
-	                  <test
-	                     args="Practice"
-	                     property="com.raytheon.viz.core.mode.CAVEMode">
-	               	  </test>
 	               </and>
                </visibleWhen>
             </command>
@@ -48,10 +44,6 @@
                      <reference
                            definitionId="com.raytheon.viz.gfe.inGFEActionSet">
                      </reference>
-                     <test
-                        args="Practice"
-                        property="com.raytheon.viz.core.mode.CAVEMode">
-               	     </test>
                   </and>
                </visibleWhen>
             </command>
@@ -65,10 +57,6 @@
 	                  <reference
 	                        definitionId="com.raytheon.viz.hydro.inHydroActionSet">
 	                  </reference>
-	                  <test
-	                        args="Practice"
-	                        property="com.raytheon.viz.core.mode.CAVEMode">
-	               	  </test>
 	               </and>
                </visibleWhen>
             </command>
@@ -82,10 +70,6 @@
 		               <reference
 		                     definitionId="com.raytheon.viz.inMPEActionSet">
 		               </reference>
-		               <test
-			                 args="Practice"
-			                 property="com.raytheon.viz.core.mode.CAVEMode">
-			           </test>
 	               </and>
                </visibleWhen>
             </command>
@@ -98,6 +82,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Hazard Types"
             recursive="true"
             value="HazardServices/hazardTypes">
@@ -106,6 +91,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Hazard Categories"
             recursive="true"
             value="HazardServices/hazardCategories">
@@ -114,6 +100,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Settings"
             recursive="true"
             value="HazardServices/settings">
@@ -122,6 +109,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Product Generator Table"
             recursive="true"
             value="HazardServices/productGeneratorTable">
@@ -130,6 +118,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Alerts"
             recursive="true"
             value="HazardServices/alerts">
@@ -138,6 +127,7 @@
             application="Hazard Services"
             extensionFilter=".py,.json,.xml"
             localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
             name="Startup Config"
             recursive="true"
             value="HazardServices/startUpConfig">
@@ -168,6 +158,15 @@
             name="Product Formats"
             recursive="true"
             value="HazardServices/python/events/productgen/formats">
+      </path>
+      <path
+            application="Hazard Services"
+            extensionFilter=".py"
+            localizationType="COMMON_STATIC"
+            localizationAdapter="com.raytheon.uf.viz.python.localization.CopyPythonClassesAdapter"
+            name="GeoSpatial Config"
+            recursive="true"
+            value="HazardServices/python/events/productgen/geoSpatial">
       </path>
       <path
             application="Hazard Services"

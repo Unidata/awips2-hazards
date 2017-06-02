@@ -27,6 +27,7 @@ import java.util.List;
 import org.eclipse.core.runtime.jobs.Job;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
@@ -65,6 +66,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
+ * Apr 06, 2015  8837      Robert.Blum  Added setupEventIdDisplay().
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * Feb 01, 2017 15556      Chris.Golden Added selection manager.
@@ -281,4 +283,12 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @siteId Site Identifier to Export
      */
     public void exportApplicationSiteData(String siteId);
+
+    /**
+     * Configure the session to update to use the current site identifier.
+     * 
+     * @throws HazardEventServiceException
+     *             If a problem occurs.
+     */
+    public void setupEventIdDisplay() throws HazardEventServiceException;
 }

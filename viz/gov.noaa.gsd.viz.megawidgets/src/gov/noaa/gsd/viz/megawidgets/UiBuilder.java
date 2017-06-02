@@ -11,6 +11,7 @@ package gov.noaa.gsd.viz.megawidgets;
 
 import gov.noaa.gsd.viz.megawidgets.displaysettings.IMultiPageScrollSettings;
 import gov.noaa.gsd.viz.megawidgets.displaysettings.ISinglePageScrollSettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.SinglePageScrollSettings;
 import gov.noaa.gsd.viz.widgets.MultiValueRuler;
 import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
@@ -104,6 +105,7 @@ import com.google.common.collect.Lists;
  *                                           is used by product editor to fix scroll issue.
  * Aug 12, 2015    4123    Chris.Golden      Added code to configure a multi-value
  *                                           scale with appropriate sizing and padding.
+ * Aug 24, 2016   20634    Sara.Stewart      Updated scrolledComposite.addMouseWheelListener
  * Dec 06, 2016   26855    Chris.Golden      Fixed bug that caused the scrollable area of
  *                                           a ScrolledComposite to be sized to be
  *                                           smaller than the latter's available area.
@@ -967,7 +969,8 @@ public class UiBuilder {
      * @return New scrolled composite.
      */
     private static ScrolledComposite buildScrolledComposite(
-            IResizer megawidget, Composite parent, Map<String, Object> paramMap) {
+            final IResizer megawidget, Composite parent,
+            Map<String, Object> paramMap) {
 
         /*
          * Create the scrolled composite and its child. Note that the scrolled
@@ -1064,6 +1067,26 @@ public class UiBuilder {
                     origin.y = maxOrigin;
                 }
                 scrolledComposite.setOrigin(origin);
+
+                /*
+                 * When the scrolled composite is redrawn,
+                 * recordDisplaySettingsAndExtraDataForEvent() uses the
+                 * settings, specifically the setScrollOrigin(), to restore the
+                 * scrolled composite to its original condition before the
+                 * dispose and reload. When the scolled composite's vertical or
+                 * horizontal scrollbar is manipulated with the left mouse
+                 * button, all works well because the vertical and horizontal
+                 * scrollbars have listeners which set the settings. However,
+                 * when the mouse wheel is used, those listeners are not
+                 * triggered. Thus, the scroll origin must be set here as well.
+                 */
+                if (megawidget instanceof SinglePageMegawidget) {
+                    SinglePageMegawidget singlePageMegawidget = (SinglePageMegawidget) megawidget;
+                    SinglePageScrollSettings<Point> scrollSettings = singlePageMegawidget
+                            .getSinglePageScrollSettings();
+                    scrollSettings.setScrollOrigin(scrolledComposite
+                            .getOrigin());
+                }
             }
         });
 

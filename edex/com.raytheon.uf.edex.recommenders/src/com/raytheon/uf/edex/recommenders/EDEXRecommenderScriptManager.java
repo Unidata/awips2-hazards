@@ -49,6 +49,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                     Strings.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Mar 31, 2016  883       Robert.Blum  Removed no arg constructor.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for
  *                                      spatial info gathering.
  * </pre>
@@ -63,17 +64,13 @@ public class EDEXRecommenderScriptManager extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EDEXRecommenderScriptManager.class);
 
-    public EDEXRecommenderScriptManager() throws JepException {
-        this(null);
-    }
-
     /**
      * 
      */
     public EDEXRecommenderScriptManager(String site) throws JepException {
         super(buildScriptPath(), buildPythonPath(site),
                 EDEXRecommenderScriptManager.class.getClassLoader(),
-                "Recommender");
+                "Recommender", site);
     }
 
     /*

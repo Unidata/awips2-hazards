@@ -56,6 +56,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 01, 2016 15676      Chris.Golden Added visual features to hazard event.
  * Mar 26, 2016 15676      Chris.Golden Added more methods to get and set
  *                                      individual visual features.
+ * May 02, 2016 18235      Chris.Golden Added source field.
  * Jun 10, 2016 19537      Chris.Golden Combined base and selected visual feature
  *                                      lists for each hazard event into one,
  *                                      replaced by visibility constraints
@@ -80,6 +81,11 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 
 public interface IHazardEvent extends IEvent {
+
+    public enum Source {
+        USER, RECOMMENDER
+    };
+
     public Comparator<IHazardEvent> SORT_BY_PERSIST_TIME = new Comparator<IHazardEvent>() {
         @Override
         public int compare(IHazardEvent o1, IHazardEvent o2) {
@@ -212,6 +218,10 @@ public interface IHazardEvent extends IEvent {
     public ProductClass getHazardMode();
 
     public void setHazardMode(ProductClass mode);
+
+    public Source getSource();
+
+    public void setSource(Source source);
 
     public Map<String, Serializable> getHazardAttributes();
 

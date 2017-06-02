@@ -11,6 +11,7 @@
     Jun 03, 2015    8530    Robert.Blum Added method for new initials productPart
                                         and removed duplicate $$.
     Jul 06, 2015    7747    Robert.Blum Changes for adding framed text when text fields are left blank on HID.
+    Mar 21, 2016   15640    Robert.Blum Fixed custom edits not getting put in final product.
 '''
 import FormatTemplate
 
@@ -37,7 +38,8 @@ class Format(Legacy_Hydro_Formatter.Format):
             'initials': self._initials,
         }
 
-    def execute(self, productDict, editableEntries=None):
+    def execute(self, productDict, editableEntries, overrideProductText):
+        self.overrideProductText = overrideProductText
         self.productDict = productDict
         self.initialize(editableEntries)
         legacyText = self._createTextProduct()

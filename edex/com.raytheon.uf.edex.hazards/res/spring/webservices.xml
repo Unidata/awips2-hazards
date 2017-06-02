@@ -51,5 +51,31 @@
 			<ref bean="securityOutInterceptor" />
 		</jaxws:outInterceptors>
 	</jaxws:server>
+	
+    <jaxws:server id="HazardVtecServices" address="/hazardVtecServices"
+        bus="cxf">
+        <jaxws:serviceBean>
+            <ref bean="HazardVtecServicesImpl" />
+        </jaxws:serviceBean>
+        <jaxws:inInterceptors>
+            <ref bean="authenticationInterceptor" />
+        </jaxws:inInterceptors>
+        <jaxws:outInterceptors>
+            <ref bean="securityOutInterceptor" />
+        </jaxws:outInterceptors>
+    </jaxws:server>
+
+    <jaxws:server id="PracticeHazardVtecServices" address="/hazardVtecServices/practice"
+        bus="cxf">
+        <jaxws:serviceBean>
+            <ref bean="PracticeHazardVtecServicesImpl" />
+        </jaxws:serviceBean>
+        <jaxws:inInterceptors>
+            <ref bean="authenticationInterceptor" />
+        </jaxws:inInterceptors>
+        <jaxws:outInterceptors>
+            <ref bean="securityOutInterceptor" />
+        </jaxws:outInterceptors>
+    </jaxws:server>
 
 </beans>

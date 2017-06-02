@@ -113,6 +113,17 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  *                                      method.
  * Feb 24, 2016 14667      Robert.Blum  Limiting Flash Flood Recommender to basins inside
  *                                      the CWA.
+ * Mar 09, 2016 16059      Kevin.Bisanz Added INCLUSION_FRACTION_MINIMUM to exclude very small
+ *                                      inclusionFraction values.
+ * Mar 15, 2016 15699      Kevin.Bisanz Fix issues with testInclusion(...).
+ * Apr 01, 2016 15193      Kevin.Bisanz Removed geometry contains(...) check and loop from
+ *                                      testInclusion(...) such that inclusion is based on
+ *                                      area and/or fraction.
+ * Apr 04, 2016 15193      Kevin.Bisanz In getIntersectingMapGeometries(...) removed loop
+ *                                      over hazard geometry because Geometry.intersect()
+ *                                      supports multipolygons and is faster.
+ * May 26, 2016 18249      Roger.Ferrel Fix bug in getIntersectingMapGeometries to properly
+ *                                      check for small polygons.
  * Jun 23, 2016 19537      Chris.Golden Added support for no-hatching event types.
  * Jul 25, 2016 19537      Chris.Golden Changed buildHazardAreaForEvent() to return a map
  *                                      of UGC+geometry identifiers to the geometries, so
@@ -127,6 +138,11 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  *                                      belongs. Also cleaned up public vs. private
  *                                      methods, making methods private as appropriate,
  *                                      and added comments.
+ * Jul 11, 2017 15561      Chris.Golden Added code to allow hazard types that require
+ *                                      neither fraction- nor area-based inclusion testing
+ *                                      to automatically be considered to include UGCs that
+ *                                      intersect them.
+ * 
  * </pre>
  * 
  * @author blawrenc
@@ -155,6 +171,13 @@ public class GeoMapUtilities {
      * inclusion. Currently at 10%.
      */
     private static final double DEFAULT_INTEROPERABILITY_OVERLAP_REQUIREMENT = 0.10;
+
+    /**
+     * Minimum fraction that should be used to indicate inclusion. The value 0.0
+     * is not used because very small numbers (e.g. 3.13692076986235E-9) can
+     * result in certain cases when an area is deselected.
+     */
+    private static final double INCLUSION_FRACTION_MINIMUM = 0.0001;
 
     private static final double KM_PER_DEGREE_AT_EQUATOR = 111.03;
 
@@ -1006,7 +1029,7 @@ public class GeoMapUtilities {
 
         /*
          * By policy, warned areas are recalculated without thresholding if none
-         * meet the thresholds.
+         * meet the thresholds. This finds small polygons counties/zones.
          */
         if (result.isEmpty()) {
             result = getIntersectingMapGeometries(false, hazardEvent,
@@ -1026,18 +1049,13 @@ public class GeoMapUtilities {
         Set<IGeometryData> mapGeometries = getMapGeometries(
                 HazardConstants.MAPDATA_CWA, "", configManager.getSiteID());
 
-        Geometry result = null;
+        List<Geometry> geometries = new ArrayList<>(mapGeometries.size());
         for (IGeometryData mapGeometryData : mapGeometries) {
             Geometry mappingGeometry = mapGeometryData.getGeometry();
-            for (int k = 0; k < mappingGeometry.getNumGeometries(); ++k) {
-                Geometry geometry = mappingGeometry.getGeometryN(k);
-                if (result == null) {
-                    result = geometry;
-                } else {
-                    result = result.union(geometry);
-                }
-            }
+            geometries.add(mappingGeometry.union());
         }
+        Geometry result = geometryFactory.createGeometryCollection(geometries
+                .toArray(new Geometry[geometries.size()]));
         result = GeometryPrecisionReducer.reduce(result, precisionModel);
         return result;
     }
@@ -1073,55 +1091,96 @@ public class GeoMapUtilities {
             double inclusionFraction, boolean inclusionAreaTest,
             double inclusionAreaInSqKm) {
         Set<IGeometryData> result = new HashSet<>();
+        boolean gfeInteroperability = hazardEvent.getHazardAttributes()
+                .containsKey(HazardConstants.GFE_INTEROPERABILITY);
 
-        Geometry geometry = hazardEvent.getFlattenedGeometry();
+        /*
+         * Check for small polygons by making inclusions 0.0.
+         */
+        double myInclusionFraction = applyIntersectionThreshold ? inclusionFraction
+                : 0.0;
+        double myInclusionAreaInSqKm = applyIntersectionThreshold ? inclusionAreaInSqKm
+                : 0.0;
+
+        /*
+         * Get the flattened hazard geometry, and reduce it.
+         */
+        Geometry hazardGeometry = hazardEvent.getFlattenedGeometry();
+        Geometry reducedHazardGeometry = GeometryPrecisionReducer.reduce(
+                hazardGeometry, precisionModel);
+
+        /*
+         * Iterate through the map geometries, adding each in turn that
+         * intersects the hazard event geometry.
+         */
         for (IGeometryData geoData : geometryData) {
 
+            /*
+             * Iterate over the sub-geometries making up the two geometries,
+             * checking them for intersection. Only if at least one of the
+             * hazard sub-geometries intersects one of the map sub-geometries
+             * should further testing be done for this pair.
+             */
+            boolean intersection = false;
             Geometry mapGeometry = geoData.getGeometry();
-
-            for (int j = 0; j < mapGeometry.getNumGeometries(); ++j) {
-
-                for (int k = 0; k < geometry.getNumGeometries(); ++k) {
-
-                    Geometry hazardGeometry = geometry.getGeometryN(k);
-                    Geometry mapDatabaseGeometry = mapGeometry.getGeometryN(j);
-
-                    if (hazardGeometry.intersects(mapDatabaseGeometry)) {
-
-                        /*
-                         * The default rule is to include the geometry.
-                         */
-                        boolean defaultIncludeGeometry = true;
-
-                        /*
-                         * A default inclusion test is run on interoperability
-                         * hazards due to differences in grid resolution.
-                         */
-                        if (hazardEvent.getHazardAttributes().containsKey(
-                                HazardConstants.GFE_INTEROPERABILITY)) {
-                            defaultIncludeGeometry = defaultInclusionTest(
-                                    mapGeometry, hazardGeometry);
-                        }
-
-                        if (applyIntersectionThreshold) {
-
-                            boolean includeGeometry = testInclusion(
-                                    mapGeometry, hazardGeometry,
-                                    inclusionFractionTest, inclusionFraction,
-                                    inclusionAreaTest, inclusionAreaInSqKm);
-
-                            if ((includeGeometry && defaultIncludeGeometry)
-                                    || mapDatabaseGeometry
-                                            .contains(hazardGeometry)
-                                    || hazardGeometry
-                                            .contains(mapDatabaseGeometry)) {
-                                result.add(geoData);
-                            }
-                        } else if (defaultIncludeGeometry) {
-                            result.add(geoData);
-                        }
+            for (int j = 0; j < hazardGeometry.getNumGeometries(); j++) {
+                Geometry hazardSubGeometry = hazardGeometry.getGeometryN(j);
+                for (int k = 0; k < mapGeometry.getNumGeometries(); k++) {
+                    if (hazardSubGeometry.intersects(mapGeometry
+                            .getGeometryN(k))) {
+                        intersection = true;
+                        break;
                     }
                 }
+                if (intersection) {
+                    break;
+                }
+            }
+            if (intersection == false) {
+                continue;
+            }
+
+            /*
+             * Reduce the map geometry.
+             */
+            Geometry reducedMapGeometry = GeometryPrecisionReducer.reduce(
+                    mapGeometry, precisionModel);
+
+            /*
+             * The default rule is to include the geometry.
+             */
+            boolean defaultIncludeGeometry = true;
+
+            /*
+             * A default inclusion test is run on interoperability hazards due
+             * to differences in grid resolution.
+             */
+            if (gfeInteroperability) {
+                defaultIncludeGeometry = defaultInclusionTest(
+                        reducedMapGeometry, reducedHazardGeometry);
+            }
+
+            if (defaultIncludeGeometry) {
+
+                /*
+                 * If either of the geometries is a GeometryCollection,
+                 * testInclusion(...)'s Geometry.intersection call will throw an
+                 * exception. If this is ever found to be an issue, the code
+                 * will need to loop over each contained Geometry and call
+                 * testInclusion(). However, that is slower than a single call
+                 * with complex geometries involving multipolygons, so hopefully
+                 * this will not be an issue.
+                 */
+                boolean includeGeometry = testInclusion(reducedMapGeometry,
+                        reducedHazardGeometry, inclusionFractionTest,
+                        myInclusionFraction, inclusionAreaTest,
+                        myInclusionAreaInSqKm);
+
+                if (includeGeometry) {
+                    result.add(geoData);
+                }
+            } else if (defaultIncludeGeometry) {
+                result.add(geoData);
             }
         }
         return result;
@@ -1262,27 +1321,50 @@ public class GeoMapUtilities {
             double inclusionFraction, boolean inclusionAreaTest,
             double inclusionAreaInSqKm) {
         try {
-            if (inclusionFractionTest == false) {
-                inclusionFraction = 0.0001;
-            }
-
-            mapGeometry = GeometryPrecisionReducer.reduce(mapGeometry,
-                    precisionModel);
-            hazardGeometry = GeometryPrecisionReducer.reduce(hazardGeometry,
-                    precisionModel);
             Geometry intersection = hazardGeometry.intersection(mapGeometry);
             double intersectionAreaInSquareDegrees = intersection.getArea();
             double intersectionFraction = intersectionAreaInSquareDegrees
                     / mapGeometry.getArea();
 
-            boolean included = intersectionFraction > inclusionFraction;
-            if (included && inclusionAreaTest) {
-                Point centroid = intersection.getCentroid();
-                double cosLat = Math.cos(Math.PI * centroid.getCoordinate().y);
-                double inclusionAreaInSquareDegrees = inclusionAreaInSqKm
-                        / (KM_PER_DEGREE_AT_EQUATOR * KM_PER_DEGREE_AT_EQUATOR * cosLat);
-                included = intersectionAreaInSquareDegrees > inclusionAreaInSquareDegrees;
+            boolean included = false;
+            boolean minInclusionSatisfied = intersectionFraction > INCLUSION_FRACTION_MINIMUM;
+
+            if (minInclusionSatisfied) {
+                // Check if included by fraction.
+                boolean includedByFrac = false;
+                if (inclusionFractionTest) {
+                    includedByFrac = intersectionFraction > inclusionFraction;
+                }
+
+                // Check if included by area.
+                boolean includedByArea = false;
+                if (inclusionAreaTest) {
+                    Point centroid = intersection.getCentroid();
+                    double cosLat = Math.cos(Math.toRadians(centroid
+                            .getCoordinate().y));
+                    double inclusionAreaInSquareDegrees = inclusionAreaInSqKm
+                            / (KM_PER_DEGREE_AT_EQUATOR
+                                    * KM_PER_DEGREE_AT_EQUATOR * cosLat);
+
+                    includedByArea = intersectionAreaInSquareDegrees > inclusionAreaInSquareDegrees;
+                }
+
+                if (inclusionFractionTest && !inclusionAreaTest) {
+                    // Only the inclusion fraction test is active.
+                    included = includedByFrac;
+                } else if (!inclusionFractionTest && inclusionAreaTest) {
+                    // Only the inclusion area test is active.
+                    included = includedByArea;
+                } else if (inclusionFractionTest && inclusionAreaTest) {
+                    // Both the inclusion fraction and inclusion area tests are
+                    // active and both must indicate inclusion.
+                    included = includedByFrac && includedByArea;
+                } else {
+                    // Neither test is required, so inclusion is automatic.
+                    included = true;
+                }
             }
+
             return included;
         } catch (TopologyException e) {
 

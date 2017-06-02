@@ -12,9 +12,9 @@ import com.google.common.collect.Lists;
  * 
  * This class does not correspond to any database table. It is a pseudo parent
  * (holder) class for SHEF child data (SHEF Observed, SHEF Forecast, or
- * SHEFPrecip). Changes to Hydrograph attribute values does not trigger a
- * requery of SHEF data. Hydrograph (and sub objects) are Data only access
- * objects and do not query for data.
+ * SHEFPrecip). Changes to Hydrograph attribute values do not trigger a requery
+ * of SHEF data. Hydrograph (and sub objects) are Data only access objects and
+ * do not query for data.
  * 
  * <pre>
  * 
@@ -26,6 +26,7 @@ import com.google.common.collect.Lists;
  * May 1, 2014  3581       bkowal      Relocate to common hazards hydro
  * May 08, 2015 6562       Chris.Cody  Restructure River Forecast Points/Recommender
  * May 28, 2015 7139       Chris.Cody  Add SHEF Precip sub class. Add get earliest/latest SHEF object
+ * May 04, 2016 15584      Kevin.Bisanz Add toString()
  * 
  * </pre>
  * 
@@ -243,6 +244,18 @@ public abstract class Hydrograph<T extends SHEFBase> {
         } else {
             return (RiverHydroConstants.MISSING_VALUE);
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("LID PE TS: ");
+        sb.append(getLid());
+        sb.append(" ");
+        sb.append(getPhysicalElement());
+        sb.append(" ");
+        sb.append(getTypeSource());
+        return sb.toString();
     }
 
 }

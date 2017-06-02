@@ -21,6 +21,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 
 import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.map.MapDescriptor;
 import com.raytheon.uf.viz.core.rsc.LoadProperties;
 import com.raytheon.uf.viz.core.rsc.tools.GenericToolsResourceData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
@@ -40,6 +41,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
  * Jul 25, 2016   19537    Chris.Golden Moved app builder use from spatial display
  *                                      to here, since this class should be doing
  *                                      any interaction with the app builder.
+ * Jun 22, 2017   15561    Chris.Golden Use the specified Descriptor when
+ *                                      constructing a Spatial Display.
  * </pre>
  * 
  * @author Chris.Golden
@@ -110,7 +113,9 @@ public class SpatialDisplayResourceData extends
     @Override
     public SpatialDisplay construct(LoadProperties loadProperties,
             IDescriptor descriptor) throws VizException {
-        return new SpatialDisplay(this, loadProperties);
+        SpatialDisplay spatialDisplay = new SpatialDisplay(this, loadProperties);
+        spatialDisplay.setDescriptor((MapDescriptor) descriptor);
+        return spatialDisplay;
     }
 
     @Override

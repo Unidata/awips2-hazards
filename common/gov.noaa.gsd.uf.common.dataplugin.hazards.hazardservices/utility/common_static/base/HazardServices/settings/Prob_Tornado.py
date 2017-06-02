@@ -49,7 +49,7 @@ Prob_Tornado = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        "pending",
+        #"pending",
         "issued",
         "elapsed",
         "ending",

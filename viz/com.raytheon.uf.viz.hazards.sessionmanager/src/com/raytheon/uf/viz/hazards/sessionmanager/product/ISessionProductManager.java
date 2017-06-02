@@ -52,6 +52,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  * Jun 02, 2015 7138       Robert.Blum  Changes for issuing RVS products.
  * Jul 30, 2015 9681       Robert.Blum  Changes for viewOnly products.
  * Feb 24, 2016 13929      Robert.Blum  Remove first part of staging dialog.
+ * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
  * </pre>
  * 
  * @author bsteffen
@@ -225,4 +226,21 @@ public interface ISessionProductManager {
      */
     public void createProductsFromGeneratedProductList(boolean issue,
             List<GeneratedProductList> generatedProductsList);
+
+    /**
+     * Show the product viewer selection for the specified events, or for all
+     * events if no events are specified.
+     * 
+     * @param correction
+     *            Flag indicating whether or not the selection is to be shown
+     *            for correction instead of viewing.
+     * @param eventIdentifiers
+     *            Identifiers of events for which to show the product viewer
+     *            selection; if <code>null</code>, show the selection for all
+     *            events. Note that this parameter is ignored if
+     *            <code>correction</code> is <code>true</code>, as in that case
+     *            all correctable events are shown.
+     */
+    public void showUserProductViewerSelection(boolean correction,
+            Collection<String> eventIdentifiers);
 }

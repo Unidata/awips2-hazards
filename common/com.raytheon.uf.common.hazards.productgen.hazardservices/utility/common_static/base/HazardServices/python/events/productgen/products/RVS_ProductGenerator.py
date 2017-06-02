@@ -23,7 +23,7 @@ class Product(HydroGenerator.Product):
         self._productCategory = 'RVS'
         self._RVS_ProductName = "RVS Product"
         self._productName = 'RVS Product'
-        self._purgeHours = 8
+        self._purgeHours = 8.0
         self._includeAreaNames = False
         self._includeCityNames = False
 
@@ -80,9 +80,11 @@ class Product(HydroGenerator.Product):
         return dialogDict
 
 
-    def executeFrom(self, dataList, keyInfo=None):
+    def executeFrom(self, dataList, eventSet, keyInfo=None):
         if keyInfo is not None:
-            dataList = self.correctProduct(dataList, keyInfo, False)
+            dataList = self.correctProduct(dataList, eventSet, keyInfo, False)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList
 
     def execute(self, eventSet, dialogInputMap):
@@ -111,8 +113,7 @@ class Product(HydroGenerator.Product):
         # Create a RVS for all valid hazard events in the database
         if whichEvents == 'Report on all hazards':
             # Get all the current hazard events
-            mode = self._sessionDict.get('hazardMode', 'PRACTICE').upper()
-            hazardEvents = HazardDataAccess.getHazardEventsBySite(self._siteID, mode)
+            hazardEvents = HazardDataAccess.getHazardEventsBySite(self._siteID, self._practice)
 
         rvsHazardEvents = []
         for hazardEvent in hazardEvents:

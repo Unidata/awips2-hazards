@@ -33,6 +33,7 @@ Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version=
  com.raytheon.uf.common.hazards.configuration;bundle-version="1.0.0"
 Export-Package: com.raytheon.uf.common.hazards.productgen,
  com.raytheon.uf.common.hazards.productgen.data,
- com.raytheon.uf.common.hazards.productgen.editable
+ com.raytheon.uf.common.hazards.productgen.editable,
+ com.raytheon.uf.common.hazards.productgen.request
 Import-Package: com.raytheon.uf.common.dataplugin.persist,
  com.raytheon.uf.common.dataplugin.text.request

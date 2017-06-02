@@ -73,6 +73,9 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Aug 26, 2015 9641       Robert.Blum  Changed ugc Pattern so basisBullets would not match
  *                                      it.
  * Dec 04, 2015 12981      Roger.Ferrel Added {@link #getDataElement(IGeneratedProduct, String[])}.
+ * Mar 09, 2016 14035      Kevin.Bisanz Fix wrapping/indenting to handle case
+ *                                      of bullet containing newline.
+ * Apr 27, 2016 17742      Roger.Ferrel Added {@link #getDataElement(Map, String[])}.
  * </pre>
  * 
  * @author jsanchez
@@ -151,7 +154,7 @@ public class ProductUtils {
     }
 
     /**
-     * Wraps the text independent of being locked before or after.
+     * Wraps the text.
      * 
      * @param text
      * @return
@@ -171,6 +174,11 @@ public class ProductUtils {
 
         StringBuffer sb = new StringBuffer();
 
+        /*
+         * The inBullet flag indicates if the current group of lines is within a
+         * bullet and therefore should be indented. The flag is reset when
+         * crossing a blank line.
+         */
         boolean inBullet = false;
         String addLine = "";
         String[] lines = text.split("\n");
@@ -178,6 +186,7 @@ public class ProductUtils {
             String line = lines[i];
 
             if (line.trim().length() == 0) { // BLANK LINE
+                // Crossing a blank line, no longer in a bullet.
                 inBullet = false;
                 addLine = line;
             } else if (line.length() <= MAX_WIDTH) { // LESS THAN MAX
@@ -190,6 +199,9 @@ public class ProductUtils {
                 }
                 addLine = line;
             } else { // NEEDS TO BE WRAPPED
+                if (line.startsWith(BULLET_START)) {
+                    inBullet = true;
+                }
                 addLine = wrapLongLines(line, inBullet);
             }
 
@@ -216,10 +228,6 @@ public class ProductUtils {
      */
     private static String wrapLongLines(String line, boolean inBullet) {
         StringBuffer sb = new StringBuffer(line.length());
-
-        if (line.startsWith(BULLET_START)) {
-            inBullet = true;
-        }
 
         Pattern p = getPattern(line);
         Matcher m = p.matcher(line.trim());
@@ -337,16 +345,29 @@ public class ProductUtils {
     }
 
     /**
-     * Search the prouct's data for the desired element.
+     * Search the product's data for the desired element.
      * 
      * @param product
      * @param mapKeys
-     *            Keys for maps in the order maps should be found.
+     *            Keys for maps/lists in the order they should be found.
      * @return null if element not found
      */
     public static Object getDataElement(IGeneratedProduct product,
             String[] mapKeys) {
         Map<?, ?> data = product.getData();
+        return getDataElement(data, mapKeys);
+    }
+
+    /**
+     * Search the data map for the desired element.
+     * 
+     * @param data
+     * @param mapKeys
+     *            Keys for maps/lists in the order they should be found where
+     *            the last entry is the element to return.
+     * @return null if element not found
+     */
+    public static Object getDataElement(Map<?, ?> data, String[] mapKeys) {
         if (data == null) {
             return null;
         }

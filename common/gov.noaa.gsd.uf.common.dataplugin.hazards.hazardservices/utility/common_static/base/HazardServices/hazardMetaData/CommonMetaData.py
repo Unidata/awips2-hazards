@@ -33,13 +33,13 @@ from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
 from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
 from com.raytheon.uf.common.hazards.hydro import RiverForecastGroup
 from RiverForecastUtils import *
+from HazardConstants import MISSING_VALUE
 
 from ProbUtils import ProbUtils
 import numpy as np
 import datetime, math
 
 import VTECConstants
-from LocalizationInterface import LocalizationInterface
 from HazardConstants import *
 import os, sys, re
 from collections import OrderedDict
@@ -66,8 +66,25 @@ class MetaData(object):
         self.probUtils = ProbUtils()
         self.CENTRAL_PROCESSOR = False 
 
+    # This validate method is an interface to allow subclasses (MetaData_*.py)
+    # to define what it means for the meta-data to be valid, allowing for 
+    # cross-megawidget validation.
+    #
+    # This validate method is defined as base method which defines the need for
+    # itself and derived MetaData_*.py classes to return a string which contains
+    # either an error message which states why the validation failed, or the
+    # value of None, which means that validation was successful.
+    #
+    # The default implementation of this method, contained below, always returns 
+    # the successful string of None. In this way, derived classes only need to
+    # implement a validate method when needed.
+    def validate(self, hazardEvent):
+        return None
+           
     def editableWhenNew(self):
-        return self.hazardStatus == "pending"
+        # TODO When proposed for a follow up is implemented add more logic
+        #      here to return false for the follow up case.
+        return self.hazardStatus == "pending" or self.hazardStatus == "proposed"
     
     def getPointID(self):
         return {
@@ -181,17 +198,28 @@ class MetaData(object):
             }        
     def floodSeverityChoices(self):
         return [
-            self.floodSeverityNone(),
-            self.floodSeverityArealOrFlash(),
+            self.floodSeverityNoFlood(),
             self.floodSeverityMinor(),
             self.floodSeverityModerate(),
             self.floodSeverityMajor(),
             self.floodSeverityUnknown()
         ]        
+    def floodSeverityNoFlood(self):
+        ''' Determines which 'N' selection should be displayed based on the PhenSig.
+            Selection is based on section 4.1.2 s(Flood Severity) from NWSI 10-1703:
+            For Flood/Flash Flood Watches, Areal Flood Warnings, and Flash Flood Warnings,
+            this element is coded as zero (0).
+        '''
+        phenSig = self.hazardEvent.getPhensig()
+        if phenSig in ["FL.A", "FF.A", "FA.W", "FF.W"]:
+            floodSeverity = self.floodSeverityArealOrFlash()
+        else:
+            floodSeverity = self.floodSeverityNone()
+        return floodSeverity
     def floodSeverityNone(self):
-            return {"displayString": "N (None)", "identifier": "N", "productString": ""}
+        return {"displayString": "N (None)","identifier": "N","productString": ""}
     def floodSeverityArealOrFlash(self):
-        return {"displayString": "0 (Areal Flood or Flash Flood Products)", "identifier": "0", "productString": ""}
+        return {"displayString": "N (Flood or Flash Flood)","identifier": "0","productString": ""}
     def floodSeverityMinor(self):
         return {"displayString": "1 (Minor)", "identifier": "1", "productString": "Minor"}
     def floodSeverityModerate(self):
@@ -200,6 +228,21 @@ class MetaData(object):
         return {"displayString": "3 (Major)", "identifier": "3", "productString": "Major"}
     def floodSeverityUnknown(self):
         return {"displayString": "U (Unknown)", "identifier": "U", "productString": ""}
+
+    def getHiddenFloodSeverity(self):
+        return {
+             "fieldName": "floodSeverity",
+             "fieldType":"HiddenField",
+             "values": "0",
+             "overrideOldValues": True
+            }        
+    def getHiddenFloodSeverityNone(self):
+        return {
+             "fieldName": "floodSeverity",
+             "fieldType":"HiddenField",
+             "values": "N",
+             "overrideOldValues": True
+            }        
 
     def getFloodRecord(self):
         return {
@@ -283,7 +326,7 @@ class MetaData(object):
         return { 
                 "identifier": "ffwEmergency",
                 "displayString": "**SELECT FOR FLASH FLOOD EMERGENCY**",
-                "productString": "...Flash flood emergency for #includeEmergencyLocation#...",
+                "productString": "...Flash flood emergency for |* includeEmergencyLocation *|...",
                 "detailFields": [
                             {
                              "fieldType": "Composite",
@@ -341,7 +384,51 @@ class MetaData(object):
         return {
                 "identifier":"flashFlooding", "displayString": "Flash flooding occurring"
                 }
-                                           
+                 
+    def validateRainSoFar(self,hazardEvent):
+        rainAmt = hazardEvent.get("rainAmt")
+        if rainAmt == "rainKnown":
+            lowerAmt = hazardEvent.get("rainSoFarLowerBound")
+            upperAmt = hazardEvent.get("rainSoFarUpperBound")
+            hazardEventId = hazardEvent.getEventID()
+            return self._validateRange(hazardEventId,lowerAmt,upperAmt,"Rain So Far")
+        return None
+
+    def validateEndingOptions(self,hazardEvent):
+        endingOptions = hazardEvent.get('endingOption', None)
+        
+        if endingOptions is not None:
+            if 'advisoryUpgraded' in endingOptions and ('rainEnded' in endingOptions or 'recedingWater' in endingOptions):
+                return "Cannot select Advisory Upgraded with Water is receding and/or Heavy rain ended Ending Options"
+        return None
+        
+    def validateAdditionalRain(self,hazardEvent,checkStatus=False):
+        if checkStatus:
+            if hazardEvent.getStatus() in ["elapsed","ending","ended"]:
+                return None
+        additionalInfo = hazardEvent.get("additionalInfo",[])
+        if not "addtlRain" in additionalInfo:
+             return None
+        lowerAmt = hazardEvent.get("additionalRainLowerBound")
+        upperAmt = hazardEvent.get("additionalRainUpperBound")
+        hazardEventId = hazardEvent.getEventID()
+        return self._validateRange(hazardEventId,lowerAmt,upperAmt,"Additional Rain")
+
+    def _validateRange(self,hazardEventId,lowerAmt,upperAmt,rangeType):
+        if (lowerAmt > upperAmt) :
+            return hazardEventId + ": Please enter a range ascending from left to right for \"" + rangeType + "\"." 
+        else :
+            return None
+
+    def validateLocation(self, hazardEvent):
+        includeLocation = hazardEvent.get("include")
+        if includeLocation is not None:
+            location = hazardEvent.get("includeEmergencyLocation")
+            if location is None or not location.strip():
+                hazardEventId = hazardEvent.getEventID()
+                return hazardEventId + ': Enter Flash Flood Emergency Location'
+        return None
+                                            
     def getRainAmt(self):
         return {
                "fieldType":"RadioButtons",
@@ -360,32 +447,33 @@ class MetaData(object):
     def enterAmount(self):                
         return  {"identifier":"rainKnown", "displayString":"",
                  "detailFields": [
-                       {
-                        "fieldType": "FractionRange",
-                        "fieldName": "rainSoFarLowerBound:rainSoFarUpperBound",
+                    {
+                        "fieldType": "FractionSpinner",
+                        "fieldName": "rainSoFarLowerBound",
                         "label": "Between",
-                        "betweenLabel": "and",
                         "sendEveryChange": False,
-                        "minValue": {
-                                     "rainSoFarLowerBound": 0,
-                                     "rainSoFarUpperBound": 0
-                                    },
-                        "maxValue": {
-                                     "rainSoFarLowerBound": 99,
-                                     "rainSoFarUpperBound": 99
-                                    },
-                        "values": {
-                                   "rainSoFarLowerBound": 0,
-                                   "rainSoFarUpperBound": 0
-                                  },
+                        "minValue": 0,
+                        "maxValue": 99,
+                        "values": 0,
                         "incrementDelta": 1,
                         "precision": 1
-                       },
-                       {
+                    },
+                    {
+                        "fieldType": "FractionSpinner",
+                        "fieldName": "rainSoFarUpperBound",
+                        "label": " and",
+                        "sendEveryChange": False,
+                        "minValue": 0,
+                        "maxValue": 99,
+                        "values": 0,
+                        "incrementDelta": 1,
+                        "precision": 1
+                    },
+                    {
                         "fieldType": "Label",
                         "fieldName": "rainAmtSuffix",
                         "label": "inches of rain have fallen"
-                       }
+                    }
                  ]
                 }
  
@@ -443,7 +531,7 @@ class MetaData(object):
     def basisEnteredText(self):
         return {"identifier": "basisEnteredText",
                 "displayString": "Enter basis statement...",
-                "productString": "#basisEnteredText#",
+                "productString": "|* basisEnteredText *|",
                 "detailFields": [
                             {
                              "fieldType": "Text",
@@ -460,34 +548,70 @@ class MetaData(object):
              "fieldType":"CheckBox",
              "fieldName": "listOfCities",
              "label": "Select for a list of cities",
-             "value": defaultOn,
+             "values": defaultOn,
             }
 
-    def getLocationsAffected(self, defaultOn=True):
+    def getLocationsAffected(self, hazardEvent):
+        trackPoints = hazardEvent.get("trackPoints", None)
+        stormMotion = hazardEvent.get("stormMotion", None)
+        value = self.noLocations().get("identifier")
+        if trackPoints and stormMotion:
+            # StormTrack Recommender was used to create hazard
+            # Default to pathcast
+            value = self.pathcast().get("identifier")
         return {
-             "fieldType":"CheckBox",
-             "fieldName": "locationsAffectedCheckBox",
-             "label": "Select for locations affected",
-             "value": defaultOn,
+             "fieldType":"RadioButtons",
+             "fieldName": "locationsAffectedRadioButton",
+             "label": "Lcations Affected (4th Bullet)",
+             "choices": [self.pathcast(), self.cityList(), self.noLocations()],
+             "values": value
+            }
+
+    def pathcast(self):
+        return {"identifier": "pathcast",
+                "displayString": "Pathcast",
+            }
+
+    def cityList(self):
+        return {"identifier": "cityList",
+                "displayString": "List of Cities",
+            }
+
+    def noLocations(self):
+        return {"identifier": "noLocations",
+                "displayString": "None",
             }
  
-    def getPreviousEditedText(self, defaultOn=False):
+    def getPreviousEditedText(self, defaultOn=True):
         return {
              "fieldType":"CheckBox",
              "fieldName": "previousEditedTextCheckBox",
              "label": "Use Previous Edited Text",
-             "value": defaultOn,
+             "values": defaultOn,
             }
 
-    def getAdditionalInfo(self):
+    def getForceSegment(self):
+        return {
+             "fieldType": "Text",
+             "fieldName": "forceSeg",
+             "expandHorizontally": False,
+             "label" : "Segment Number:",
+             "maxChars": 4,
+             "visibleChars": 4,
+             "editable": True,
+             "numericOnly" : True
+             }
+
+    def getAdditionalInfo(self, refreshMetadata=False):
             return {
                      "fieldType":"CheckBoxes",
                      "fieldName": "additionalInfo",
                      "showAllNoneButtons" : False,
                      "label": "Additional Info:",
                      "choices": self.additionalInfoChoices(),
-                     "lines": 3
-                    }                    
+                     "lines": 3,
+                     "refreshMetadata": refreshMetadata,
+                    }
     def listOfDrainages(self):
         return {"identifier":"listOfDrainages",
                 "displayString": "Automated list of drainages",
@@ -496,43 +620,44 @@ class MetaData(object):
         return  {"identifier":"addtlRain",
                  "displayString": "Additional rainfall",
                  "productString": 
-                    '''Additional rainfall amounts of #additionalRainLowerBound# to #additionalRainUpperBound# inches are possible in the
+                    '''Additional rainfall amounts of |* additionalRainLowerBound *| to |* additionalRainUpperBound *| inches are possible in the
                     warned area.''',
                  "detailFields": [
-                            {
-                             "fieldType": "FractionRange",
-                             "fieldName": "additionalRainLowerBound:additionalRainUpperBound",
+                        {
+                             "fieldType": "FractionSpinner",
+                             "fieldName": "additionalRainLowerBound",
                              "label": "of",
-                             "betweenLabel": "to",
                              "sendEveryChange": False,
-                             "minValue": {
-                                          "additionalRainLowerBound": 0,
-                                          "additionalRainUpperBound": 0
-                                         },
-                             "maxValue": {
-                                          "additionalRainLowerBound": 99,
-                                          "additionalRainUpperBound": 99
-                                         },
-                             "values": {
-                                        "additionalRainLowerBound": 0,
-                                        "additionalRainUpperBound": 0
-                                       },
+                             "minValue": 0,
+                             "maxValue": 99,
+                             "values": 0,
                              "incrementDelta": 1,
                              "precision": 1
-                            },
-                            {
+                        },
+                        {
+                             "fieldType": "FractionSpinner",
+                             "fieldName": "additionalRainUpperBound",
+                             "label": " to",
+                             "sendEveryChange": False,
+                             "minValue": 0,
+                             "maxValue": 99,
+                             "values": 0,
+                             "incrementDelta": 1,
+                             "precision": 1
+                        },
+                        {
                              "fieldType": "Label",
                              "fieldName": "additionalRainSuffix",
                              "label": "inches is expected"
-                            }
+                        }
                        ]
                       }
     def floodMoving(self):
         return {"identifier":"floodMoving",
                 "displayString": "Flood waters are moving down",
                 "productString":
-                '''Flood waters are moving down the #riverName# from #upstreamLocation# to 
-                #floodLocation#. The flood crest is expected to reach #downstreamLocation# by #additionalInfoFloodMovingTime#.''',
+                '''Flood waters are moving down the |* riverName *| from |* upstreamLocation *| to 
+                |* floodLocation *|. The flood crest is expected to reach |* downstreamLocation *| by |* additionalInfoFloodMovingTime *|.''',
                 "detailFields": [
                             {
                              "fieldName":"additionalInfoFloodMovingTime",
@@ -850,7 +975,12 @@ class MetaData(object):
     
     Moderate to heavy rain has ended in the area and Flash Flooding is
     no longer a concern. 
+    *********
+    Advisory upgraded:
     
+    The threat for widespread areal flooding has increased over the area. 
+    Therefore the flood advisory has been upgraded to a flood warning. 
+    Please refer to that bulletin for more information.
     '''        
     def getEndingOption(self):
         choices = self.endingOptionChoices()
@@ -870,10 +1000,17 @@ class MetaData(object):
         return {"identifier":"rainEnded",
                 "displayString": "Heavy rain ended",
                 "productString": 'The heavy rain has ended.'}
+    def advisoryUpgraded(self):  # EXP / CAN
+        return {"identifier":"advisoryUpgraded",
+                "displayString": "Advisory Upgraded",
+                "productString": "The threat for widespread areal flooding has increased over the area. " \
+                    "Therefore the flood advisory has been upgraded to a flood warning. " \
+                    "Please refer to that bulletin for more information."}
+        
     def riverFlooding(self):  # EXP / CAN
         return {"identifier":"riverFlooding",
                 "displayString": "River Flooding",
-                "productString": '''Flooding on the #riverName# river has receded and is no longer expected
+                "productString": '''Flooding on the |* riverName *| river has receded and is no longer expected
 to pose a significant threat. Please continue to heed all road closures.'''}
         
     # CAP FIELDS
@@ -1439,9 +1576,8 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             impactDataList = self.riverForecastManager.getImpactsDataList(pointID, currentTime.month, currentTime.day)
             plist = JUtilHandler.javaCollectionToPyCollection(impactDataList)
             
-            characterizations, descriptions =  self.riverForecastUtils.getImpacts(plist, primaryPE,  self.riverForecastPoint, filterValues)
-            charDescDict = dict(zip(characterizations, descriptions))
-            impactChoices, values =  self.makeImpactsChoices(charDescDict)
+            characterizations, physicalElements, descriptions = self.riverForecastUtils.getImpacts(plist, primaryPE, self.riverForecastPoint, filterValues)
+            impactChoices, values = self.makeImpactsChoices(characterizations, physicalElements, descriptions)
             
             if len(impactChoices) == 0:
                 # Reset the attribute
@@ -1460,14 +1596,19 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                     referenceValue =  self.riverForecastUtils.getMaximumForecastLevel( self.riverForecastPoint, primaryPE)
                 elif referenceTypeValue == 'Current Observed' :
                     referenceValue =  self.riverForecastUtils.getObservedLevel( self.riverForecastPoint)
+                elif referenceTypeValue == 'Current Obs/Max Fcst':
+                    fcstLevel = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, primaryPE)
+                    obsLevel = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
+                    referenceValue = max(fcstLevel,obsLevel)
 
                 floatValues = []
                 floatMap = {}
+                valueIdx = 2
                 for value in values:
                     # Split out the float value
                     strings = value.split('-')
                     strings = strings[0].split('_')
-                    floatValue = float(strings[1])
+                    floatValue = float(strings[valueIdx])
                     floatValues.append(floatValue)
                     floatMap[floatValue] = value
 
@@ -1476,41 +1617,49 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
                 # Sort the float Values
                 floatValues.sort()
-                if searchTypeValue == 'All Below Upper Stage/Flow':
-                    for floatValue in floatValues:
-                        if floatValue <= referenceValue + stageWindowUpper:
-                            checkedValues.append(floatMap.get(floatValue))
+                if referenceValue == None or referenceValue == MISSING_VALUE:
+                    # No obs or maxfcst value to reference. Default to checking
+                    # the first impact only.
+                    if len(floatValues) > 0 :
+                        defaultChoice = floatMap.get(floatValues[0], None)
+                        if defaultChoice:
+                            checkedValues.append(defaultChoice)
                 else:
-                    windowValues = []
-                    if searchTypeValue == 'Closest in Stage/Flow Window':
+                    if searchTypeValue == 'All Below Upper Stage/Flow':
                         for floatValue in floatValues:
-                            if floatValue > referenceValue + stageWindowLower and floatValue < referenceValue + stageWindowUpper:
-                                windowValues.append(floatValue)
-                         
-                        closest = -9999
-                        delta = 9999
-                        # select closest to the reference value
-                        for value in windowValues:
-                            if abs(value - referenceValue) < delta:
-                                closest = value
-                                delta = abs(value - referenceValue)
-                        
-                        if (closest != -9999): 
-                            checkedValues.append(floatMap.get(closest))
-                         
-                    elif searchTypeValue == 'Highest in Stage/Flow Window':
-                        for floatValue in floatValues:
-                            if floatValue > referenceValue + stageWindowLower and floatValue < referenceValue + stageWindowUpper:
-                                windowValues.append(floatValue)
-                         
-                        highest = -9999
-                        # select the highest in the list
-                        for value in windowValues:
-                            if value > highest:
-                                highest = value;
-                        
-                        if highest != -9999: 
-                            checkedValues.append(floatMap.get(highest))
+                            if floatValue <= referenceValue + stageWindowUpper:
+                                checkedValues.append(floatMap.get(floatValue))
+                    else:
+                        windowValues = []
+                        if searchTypeValue == 'Closest in Stage/Flow Window':
+                            for floatValue in floatValues:
+                                if floatValue > referenceValue + stageWindowLower and floatValue < referenceValue + stageWindowUpper:
+                                    windowValues.append(floatValue)
+                             
+                            closest = -9999
+                            delta = 9999
+                            # select closest to the reference value
+                            for value in windowValues:
+                                if abs(value - referenceValue) < delta:
+                                    closest = value
+                                    delta = abs(value - referenceValue)
+                            
+                            if (closest != -9999):
+                                checkedValues.append(floatMap.get(closest))
+                             
+                        elif searchTypeValue == 'Highest in Stage/Flow Window':
+                            for floatValue in floatValues:
+                                if floatValue > referenceValue + stageWindowLower and floatValue < referenceValue + stageWindowUpper:
+                                    windowValues.append(floatValue)
+                             
+                            highest = -9999
+                            # select the highest in the list
+                            for value in windowValues:
+                                if value > highest:
+                                    highest = value;
+                            
+                            if highest != -9999: 
+                                checkedValues.append(floatMap.get(highest))
                     
             selectedForecastPoints = {
                                       "fieldType":"CheckBoxes",
@@ -1521,10 +1670,25 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                                       "extraData" : { "origList" : checkedValues },
                                       }
         else:
-            from HazardConstants import MISSING_VALUE
             headerLabel = "Crest to Use"
             selectionLabel = "CrestStg/Flow - CrestDate"
             defCrest, crestList =  self.riverForecastUtils.getHistoricalCrest( self.riverForecastPoint, primaryPE, filterValues)
+
+            # Prune any duplicate entries from the list of crests.
+            #
+            # TODO: This is needed because duplicate entries are being found in
+            # at least one case (run RFR with "include points below advisory"
+            # checked, select one of the HY.S events, and change its event type
+            # to FL.A). Presumably no such duplicates should be returned from
+            # the river forecast utils; this should be looked into.
+            #
+            prunedCrestList = []
+            lastCrest = None
+            for crest in crestList:
+                if crest != lastCrest:
+                    lastCrest = crest
+                    prunedCrestList.append(crest)
+            crestList = prunedCrestList
 
             if defCrest.startswith(str(MISSING_VALUE)):
                 defCrest = ""
@@ -1572,18 +1736,18 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
         return grp
 
-    def makeImpactsChoices(self, charDescDict):
+    def makeImpactsChoices(self, characterizations, physicalElements, descriptions):
         choices = []
         values = []
         
-        sortedCharsAsKeys = sorted(charDescDict.keys())
-        
-        for char in sortedCharsAsKeys:
-            id = "impactCheckBox_" + str(char)
-            desc = charDescDict.get(char)
+        zipped = zip(characterizations, physicalElements, descriptions)
+        zipped.sort()
+        for char, pe, desc in zipped :
+            id = "impactCheckBox_" + pe + '_'+ char
             entry = {
                      "identifier": id,
                      "displayString":str(char) ,
+                     "physicalElement": pe,
                      "detailFields": [ 
                                      {
                                      "fieldType": "Text",
@@ -1604,11 +1768,12 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         # Sort the choices so they are in order on the HID
         floatValues = []
         floatMap = {}
+        valueIdx = 2
         for value in values:
             # Split out the float value
             strings = value.split('-')
             strings = strings[0].split('_')
-            floatValue = float(strings[1])
+            floatValue = float(strings[valueIdx])
             floatValues.append(floatValue)
             floatMap[floatValue] = value
 
@@ -2604,7 +2769,10 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
     if triggerIdentifiers is not None:
         impactsCrestsChanges = {}
 
-        if originalList:
+        # Use "originalList is not None" instead of "if originalList" so
+        # that if originalList is empty, the statement will still evaluate
+        # to true.
+        if originalList is not None:
             currentVals = mutableProperties["impactCheckBoxes"]['values']
             textFields = [tf for tf in mutableProperties if tf.startswith('impactTextField_')]
             
@@ -2620,7 +2788,7 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
         
     if triggerIdentifiers is None:
         impactsCrestsChanges = {}
-        if originalList:
+        if originalList is not None:
             impactsCrestsChanges["impactCheckBoxes"] = { "values": originalList }
 
 
@@ -2662,7 +2830,6 @@ def applyRiseCrestFallInterdependencies(triggerIdentifiers, mutableProperties):
     # If any are to be updated, iterate through them, setting their descriptive text
     # appropriately, and return the resulting changed values.
     if len(toBeUpdated) > 0:
-        from HazardConstants import MISSING_VALUE
         newMutableProperties = {}
         from datetime import datetime
         for identifier in toBeUpdated:

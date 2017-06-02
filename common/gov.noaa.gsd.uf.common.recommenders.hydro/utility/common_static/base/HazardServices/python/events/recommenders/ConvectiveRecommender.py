@@ -371,13 +371,17 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def getCurrentEvents(self, eventSet):
         siteID = eventSet.getAttributes().get('siteID')        
-        mode = eventSet.getAttributes().get('hazardMode', 'PRACTICE').upper()
+#        caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
         # Get current events from Session Manager (could include pending / potential)
         currentEvents = [event for event in eventSet]
         eventIDs = [event.getEventID() for event in eventSet]
 
         # Add in those from the Database
-        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, mode) 
+        databaseEvents = HazardDataAccess.getHazardEventsBySite(siteID, practice) 
         for event in databaseEvents:
             if event.getEventID() not in eventIDs:
                 currentEvents.append(event)

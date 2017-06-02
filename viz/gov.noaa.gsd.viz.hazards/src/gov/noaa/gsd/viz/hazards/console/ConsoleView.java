@@ -39,10 +39,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -56,9 +54,6 @@ import org.eclipse.jface.action.IMenuCreator;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MenuAdapter;
-import org.eclipse.swt.events.MenuEvent;
-import org.eclipse.swt.events.MenuListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -72,12 +67,10 @@ import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
-import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.views.PartAdapter2;
@@ -121,6 +114,10 @@ import com.raytheon.viz.ui.views.PartAdapter2;
  *                                           the list, and to handle null sites.
  * Nov 23, 2015    3473    Robert.Blum       Removed code for importing service backup.
  * Dec 03, 2015   13609    mduff             Set VTEC mode options based on CAVE mode.
+ * Apr 13, 2016   13609    Robert.Blum       Fix to select the correct menu option on
+ *                                           startup.
+ * May 02, 2016   16373    mduff             Removed product view and product correction
+ *                                           menus.
  * Jul 25, 2016   19537    Chris.Golden      Fixed bug that sometimes manifested when
  *                                           Hazard Services was closing so that another
  *                                           session of Hazard Services could open via
@@ -139,6 +136,13 @@ import com.raytheon.viz.ui.views.PartAdapter2;
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
  *                                           design concerns, untangle spaghetti, and
  *                                           add history list viewing.
+ * Jun 02, 2017    1961    Chris.Golden      Fixed bug that caused all time ruler
+ *                                           navigation buttons to do nothing.
+ * Jun 26, 2017   19207    Chris.Golden      Removed obsolete product viewer selection
+ *                                           code.
+ * Jun 30, 2017   19223    Chris.Golden      Added ability to change the text and
+ *                                           enabled state of a row menu's menu item
+ *                                           after it is displayed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -166,7 +170,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     static final String BUTTON_PAN_BACKWARD = "backward";
 
     /**
-     * Center on current time button identifier.
+     * Show current time button identifier.
      */
     static final String BUTTON_CURRENT_TIME = "currentTime";
 
@@ -196,14 +200,50 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             BUTTON_ZOOM_IN);
 
     /**
+     * Zoom out button description.
+     */
+    static final String BUTTON_DESCRIPTION_ZOOM_OUT = "Zoom Out Timeline";
+
+    /**
+     * Page back button description.
+     */
+    static final String BUTTON_DESCRIPTION_PAGE_BACKWARD = "Page Back Timeline";
+
+    /**
+     * Pan back button description.
+     */
+    static final String BUTTON_DESCRIPTION_PAN_BACKWARD = "Pan Back Timeline";
+
+    /**
+     * Show current time button description.
+     */
+    static final String BUTTON_DESCRIPTION_CURRENT_TIME = "Show Current Time";
+
+    /**
+     * Pan forward button description.
+     */
+    static final String BUTTON_DESCRIPTION_PAN_FORWARD = "Pan Forward Timeline";
+
+    /**
+     * Page forward button description.
+     */
+    static final String BUTTON_DESCRIPTION_PAGE_FORWARD = "Page Forward Timeline";
+
+    /**
+     * Zoom in button description.
+     */
+    static final String BUTTON_DESCRIPTION_ZOOM_IN = "Zoom In Timeline";
+
+    /**
      * Descriptions of the buttons (whether the ones below the tree widget, or
      * those on the toolbar), each of which corresponds to the file name of the
      * button at the same index in {@link #TOOLBAR_BUTTON_IMAGE_FILE_NAMES}.
      */
     static final ImmutableList<String> BUTTON_DESCRIPTIONS = ImmutableList.of(
-            "Zoom Out Timeline", "Page Back Timeline", "Pan Back Timeline",
-            "Show Current Time", "Pan Forward Timeline",
-            "Page Forward Timeline", "Zoom In Timeline");
+            BUTTON_DESCRIPTION_ZOOM_OUT, BUTTON_DESCRIPTION_PAGE_BACKWARD,
+            BUTTON_DESCRIPTION_PAN_BACKWARD, BUTTON_DESCRIPTION_CURRENT_TIME,
+            BUTTON_DESCRIPTION_PAN_FORWARD, BUTTON_DESCRIPTION_PAGE_FORWARD,
+            BUTTON_DESCRIPTION_ZOOM_IN);
 
     /**
      * Selected time mode tooltip text.
@@ -273,11 +313,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      * Export site configuration data command menu item text.
      */
     private static final String EXPORT_HAZARD_SITE_MENU_TEXT = "Export Hazard Site";
-
-    /**
-     * View product command menu item text.
-     */
-    private static final String VIEW_PRODUCT_MENU_TEXT = "View Product...";
 
     /**
      * Change VTEC mode menu header text.
@@ -441,240 +476,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     /**
-     * Review/correct products menu command action.
-     */
-    private class ReviewAndCorrectProductsAction extends BasicAction {
-
-        // Private Classes
-
-        /**
-         * Menu creator used to create the individual menu items that allow the
-         * user to begin the review and/or correction process of particular
-         * products.
-         */
-        private class MenuCreator implements IMenuCreator {
-
-            // Private Variables
-
-            /**
-             * Menu to be populated.
-             */
-            private Menu menu;
-
-            /**
-             * Map of product data elements to the text used to represent them
-             * in their menu items. This is used during the menu creation
-             * process, and is otherwise empty.
-             */
-            private final Map<List<ProductData>, String> textForProductData = new IdentityHashMap<>();
-
-            /**
-             * Menu listener used to determine when this menu is to be shown and
-             * to repopulate with the latest product data at that time.
-             */
-            private final MenuListener listener = new MenuAdapter() {
-
-                @Override
-                public void menuShown(MenuEvent e) {
-
-                    /*
-                     * Clear the old menu items out, then rebuild them.
-                     */
-                    for (MenuItem item : menu.getItems()) {
-                        item.dispose();
-                    }
-                    createMenuItems();
-                }
-            };
-
-            // Public Methods
-
-            @Override
-            public void dispose() {
-                menu.removeMenuListener(listener);
-                menu.dispose();
-                menu = null;
-            }
-
-            @Override
-            public Menu getMenu(Control parent) {
-                return getMenu(parent.getMenu());
-            }
-
-            @Override
-            public Menu getMenu(Menu parent) {
-                if (menu != null) {
-                    menu.dispose();
-                }
-                menu = new Menu(parent);
-                menu.addMenuListener(listener);
-                createMenuItems();
-                return menu;
-            }
-
-            // Private Methods
-
-            /**
-             * Fill in the menu with the menu items appropriate to the current
-             * product data.
-             */
-            private void createMenuItems() {
-
-                /*
-                 * Get the product data elements from which to build the menu
-                 * items. If none are available, create a single "no entry" menu
-                 * item that is disabled; otherwise, create a menu item for each
-                 * element.
-                 */
-                List<List<ProductData>> productData = presenter
-                        .getReviewMenuItems();
-                if (productData != null) {
-
-                    /*
-                     * Precalculate the text to be used to represent the product
-                     * data elements, since it is used in the sort process
-                     * below, and the actual menu item generation as well. This
-                     * avoids having to recalculate each one two or more times.
-                     */
-                    for (List<ProductData> list : productData) {
-                        textForProductData.put(list, createMenuItemText(list));
-                    }
-
-                    /*
-                     * Sort the product data so that the text strings shown in
-                     * the menu items are in alphabetical order.
-                     */
-                    Collections.sort(productData,
-                            new Comparator<List<ProductData>>() {
-
-                                @Override
-                                public int compare(List<ProductData> o1,
-                                        List<ProductData> o2) {
-                                    String text1 = textForProductData.get(o1);
-                                    String text2 = textForProductData.get(o2);
-                                    return text1.compareTo(text2);
-                                }
-                            });
-
-                    /*
-                     * Create the menu items.
-                     */
-                    for (List<ProductData> list : productData) {
-                        addReviewAndCorrectProductMenuItem(
-                                textForProductData.get(list), list);
-                    }
-
-                    /*
-                     * Clear out the map of product data to text.
-                     */
-                    textForProductData.clear();
-                } else {
-                    addEmptyMenuItem();
-                }
-            }
-
-            /**
-             * Add an empty menu item indicating that there are no reviewable
-             * and correctable products.
-             */
-            private void addEmptyMenuItem() {
-                MenuItem item = new MenuItem(menu, SWT.PUSH);
-                item.setText("None available");
-                item.setEnabled(false);
-            }
-
-            /**
-             * Add a review-and-correct-product menu item.
-             * 
-             * @param text
-             *            Text to be shown in the menu item.
-             * @param productData
-             *            Products to be reviewed and/or corrected if the menu
-             *            item is invoked.
-             */
-            private void addReviewAndCorrectProductMenuItem(String text,
-                    List<ProductData> productData) {
-                IContributionItem item = new ActionContributionItem(
-                        new ReviewAndCorrectProductsAction(text, productData));
-                item.fill(menu, -1);
-            }
-
-            /**
-             * Create the text for a review-and-correct-product menu item.
-             * 
-             * @param productData
-             *            Product data from which to generate the text.
-             * @return Text to be used.
-             */
-            private String createMenuItemText(List<ProductData> productData) {
-                ProductData first = productData.get(0);
-                String productIdentifier = first.getProductGeneratorName()
-                        .replace("_ProductGenerator", "");
-                StringBuilder stringBuilder = new StringBuilder();
-                stringBuilder.append(productIdentifier);
-                stringBuilder.append(" - ");
-                stringBuilder.append(Joiner.on(",").join(first.getEventIDs()));
-                return stringBuilder.toString();
-            }
-        };
-
-        // Private Variables
-
-        /**
-         * Product data to be reviewed and/or corrected when this item is
-         * invoked. If <code>null</code>, there is nothing to be done when
-         * invoked.
-         */
-        private final List<ProductData> productData;
-
-        // Public Constructors
-
-        /**
-         * Construct an instance for holding the menu item acting as the header,
-         * from which the submenu pops up listing whichever
-         * review-and-correct-product menu items are appropriate.
-         */
-        public ReviewAndCorrectProductsAction() {
-            super("Review/Correct Product(s)", null, Action.AS_DROP_DOWN_MENU,
-                    null);
-            this.productData = null;
-            setMenuCreator(new MenuCreator());
-        }
-
-        /**
-         * Construct an instance that when invoked begins the review and
-         * correction process for the specified product data.
-         * 
-         * @param text
-         *            Text to be displayed for the menu item.
-         * @param productData
-         *            Product data to be reviewed and/or corrected if this
-         *            action is invoked.
-         */
-        public ReviewAndCorrectProductsAction(String text,
-                List<ProductData> productData) {
-            super(text, null, Action.AS_PUSH_BUTTON, null);
-            this.productData = productData;
-        }
-
-        // Public Methods
-
-        @Override
-        public void run() {
-            RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    if (reviewAndCorrectProductsInvocationHandler != null) {
-                        reviewAndCorrectProductsInvocationHandler
-                                .commandInvoked(productData);
-                    }
-                }
-            });
-        }
-    }
-
-    /**
      * Change VTEC mode action.
      */
     private class ChangeVtecFormatAction extends BasicAction {
@@ -720,22 +521,28 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             private void createMenuItems() {
 
                 CAVEMode mode = CAVEMode.getMode();
-                List<VtecFormatMode> list = new ArrayList<>();
+                List<Action> list = new ArrayList<>();
                 if (mode == CAVEMode.PRACTICE) {
-                    list.add(VtecFormatMode.TEST_T_VTEC);
-                    list.add(VtecFormatMode.NORMAL_X_VTEC);
-                    list.add(VtecFormatMode.NORMAL_E_VTEC);
+                    list.add(new ChangeVtecFormatAction(
+                            VtecFormatMode.TEST_T_VTEC, true));
+                    list.add(new ChangeVtecFormatAction(
+                            VtecFormatMode.NORMAL_X_VTEC, false));
+                    list.add(new ChangeVtecFormatAction(
+                            VtecFormatMode.NORMAL_E_VTEC, false));
                 } else if (mode == CAVEMode.TEST) {
-                    list.add(VtecFormatMode.TEST_T_VTEC);
+                    list.add(new ChangeVtecFormatAction(
+                            VtecFormatMode.TEST_T_VTEC, true));
                 } else {
-                    list.add(VtecFormatMode.NORMAL_O_VTEC);
-                    list.add(VtecFormatMode.TEST_T_VTEC);
+                    list.add(new ChangeVtecFormatAction(
+                            VtecFormatMode.NORMAL_O_VTEC, true));
+                    list.add(new ChangeVtecFormatAction(
+                            VtecFormatMode.TEST_T_VTEC, false));
                 }
 
-                for (VtecFormatMode vtecFormat : list) {
-                    IContributionItem item = new ActionContributionItem(
-                            new ChangeVtecFormatAction(vtecFormat));
-                    item.fill(menu, -1);
+                for (Action action : list) {
+                    IContributionItem contrib = new ActionContributionItem(
+                            action);
+                    contrib.fill(menu, -1);
                 }
             }
         }
@@ -766,10 +573,14 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
          * specified.
          * 
          * @param mode
-         *            New VTEC format mode.
+         *            VTEC format mode.
+         * @param checked
+         *            Flag indicating whether or not the action is to be checked
+         *            to begin with.
          */
-        public ChangeVtecFormatAction(VtecFormatMode mode) {
+        public ChangeVtecFormatAction(VtecFormatMode mode, boolean checked) {
             super(mode.toString(), null, Action.AS_RADIO_BUTTON, null);
+            setChecked(checked);
             vtecFormatMode = mode;
             if (vtecFormatMode == VtecFormatMode.NORMAL_O_VTEC) {
                 setChecked(true);
@@ -968,19 +779,20 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
 
         @Override
         public void run() {
-            if (getToolTipText().equals(BUTTON_ZOOM_OUT)) {
+            if (getToolTipText().equals(BUTTON_DESCRIPTION_ZOOM_OUT)) {
                 temporalDisplay.zoomTimeOut();
-            } else if (getToolTipText().equals(BUTTON_PAGE_BACKWARD)) {
+            } else if (getToolTipText()
+                    .equals(BUTTON_DESCRIPTION_PAGE_BACKWARD)) {
                 temporalDisplay.pageTimeBack();
-            } else if (getToolTipText().equals(BUTTON_PAN_BACKWARD)) {
+            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_PAN_BACKWARD)) {
                 temporalDisplay.panTimeBack();
-            } else if (getToolTipText().equals(BUTTON_CURRENT_TIME)) {
+            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_CURRENT_TIME)) {
                 temporalDisplay.showCurrentTime();
-            } else if (getToolTipText().equals(BUTTON_PAN_FORWARD)) {
+            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_PAN_FORWARD)) {
                 temporalDisplay.panTimeForward();
-            } else if (getToolTipText().equals(BUTTON_PAGE_FORWARD)) {
+            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_PAGE_FORWARD)) {
                 temporalDisplay.pageTimeForward();
-            } else if (getToolTipText().equals(BUTTON_ZOOM_IN)) {
+            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_ZOOM_IN)) {
                 temporalDisplay.zoomTimeIn();
             }
         }
@@ -1099,11 +911,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      * Command invocation handler.
      */
     private ICommandInvocationHandler<Command> commandInvocationHandler;
-
-    /**
-     * Review and correct products invocation handler.
-     */
-    private ICommandInvocationHandler<List<ProductData>> reviewAndCorrectProductsInvocationHandler;
 
     /**
      * Toggle state change handler.
@@ -1519,10 +1326,10 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             }
             return Collections.emptyList();
         } else {
-            CommandConsoleAction resetEventsCommandAction = new CommandConsoleAction(
-                    RESET_EVENTS_COMMAND_MENU_TEXT, null, null, Command.RESET);
 
             SeparatorAction sep = new SeparatorAction();
+
+            changeSiteAction = new ChangeSiteAction();
 
             CommandConsoleAction exportHazardConfigAction = new CommandConsoleAction(
                     EXPORT_HAZARD_SITE_MENU_TEXT, null, null,
@@ -1541,28 +1348,21 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     Toggle.SHOW_HATCHED_AREAS);
             showHatchedAreaAction.setChecked(true);
 
+            ChangeVtecFormatAction changeVtecFormatAction = new ChangeVtecFormatAction();
+
             ToggleConsoleAction showHistoryListsAction = new ToggleConsoleAction(
                     SHOW_HISTORY_LISTS_MENU_TEXT, null, null,
                     Toggle.SHOW_HISTORY_LISTS);
 
-            Action reviewAndCorrectProductsAction = new ReviewAndCorrectProductsAction();
-            CommandConsoleAction viewProductAction = new CommandConsoleAction(
-                    VIEW_PRODUCT_MENU_TEXT, null, null, Command.VIEW_PRODUCT);
+            List<Action> actions = Lists.newArrayList(changeSiteAction,
+                    exportHazardConfigAction, sep, checkHazardConflictsAction,
+                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep,
+                    changeVtecFormatAction, sep, showHistoryListsAction, sep);
 
-            List<Action> actions = Lists.newArrayList(resetEventsCommandAction,
-                    sep, exportHazardConfigAction, sep,
-                    checkHazardConflictsAction, autoCheckHazardConflictsAction,
-                    showHatchedAreaAction, showHistoryListsAction, sep,
-                    reviewAndCorrectProductsAction, viewProductAction);
-
-            if (CAVEMode.PRACTICE.equals(CAVEMode.getMode())) {
-                ChangeVtecFormatAction changeVtecFormat = new ChangeVtecFormatAction();
-                actions.add(changeVtecFormat);
+            if ((CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false)
+                    && addPracticeModeMenuItems(actions)) {
                 actions.add(sep);
             }
-
-            changeSiteAction = new ChangeSiteAction();
-            actions.add(changeSiteAction);
 
             return actions;
         }
@@ -1691,12 +1491,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public void setReviewAndCorrectProductsInvocationHandler(
-            ICommandInvocationHandler<List<ProductData>> reviewAndCorrectProductsInvocationHandler) {
-        this.reviewAndCorrectProductsInvocationHandler = reviewAndCorrectProductsInvocationHandler;
-    }
-
-    @Override
     public void setToggleChangeHandler(
             IStateChangeHandler<Toggle, Boolean> toggleStateChangeHandler) {
         this.toggleStateChangeHandler = toggleStateChangeHandler;
@@ -1711,6 +1505,17 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     @Override
     public IStateChanger<String, String> getSiteChanger() {
         return siteChangerDelegate;
+    }
+
+    @Override
+    public void handleContributionItemUpdate(final IContributionItem item,
+            final String text, final boolean enabled) {
+        executeOnCreatedViewPart(new Runnable() {
+            @Override
+            public void run() {
+                getViewPart().handleContributionItemUpdate(item, text, enabled);
+            }
+        });
     }
 
     // Protected Methods
@@ -1758,6 +1563,21 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     // Private Methods
+
+    /**
+     * Add any menu items to the specified list that are appropriate for display
+     * in the main UI's menu when in practice mode .
+     * 
+     * @param actions
+     *            List to which to add any menu items.
+     * @return True if one or more items were added, false otherwise.
+     */
+    protected boolean addPracticeModeMenuItems(List<Action> actions) {
+        CommandConsoleAction resetEventsCommandAction = new CommandConsoleAction(
+                RESET_EVENTS_COMMAND_MENU_TEXT, null, null, Command.RESET);
+        actions.add(resetEventsCommandAction);
+        return true;
+    }
 
     /**
      * Detach the view part if a forced detach is required.

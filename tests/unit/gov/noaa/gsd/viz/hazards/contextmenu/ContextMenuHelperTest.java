@@ -77,7 +77,7 @@ public class ContextMenuHelperTest {
                     public void schedule(Runnable runnable) {
                         VizApp.runAsync(runnable);
                     }
-                });
+                }, null);
     }
 
     @Test
@@ -219,7 +219,7 @@ public class ContextMenuHelperTest {
 
     private List<String> buildSelections() {
         List<IContributionItem> items = contextMenuHelper
-                .getSelectedHazardManagementItems(Originator.OTHER);
+                .getSelectedHazardManagementItems(Originator.OTHER, null);
         List<String> selections = selectionsFromItems(items);
         return selections;
     }
@@ -238,7 +238,7 @@ public class ContextMenuHelperTest {
         when(selectionManager.getSelectedEvents()).thenReturn(
                 Collections.EMPTY_LIST);
         List<IContributionItem> items = contextMenuHelper
-                .getSelectedHazardManagementItems(Originator.OTHER);
+                .getSelectedHazardManagementItems(Originator.OTHER, null);
         assertEquals(items.size(), 0);
     }
 }

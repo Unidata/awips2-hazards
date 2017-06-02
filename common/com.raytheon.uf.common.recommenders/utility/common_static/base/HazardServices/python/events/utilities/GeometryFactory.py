@@ -27,7 +27,10 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    01/22/13                      mnash       Initial Creation.
+#    01/22/13                      mnash          Initial Creation.
+#    02/29/16        15016         kbisanz        Update createCollection(..) to
+#                                                 return None if provided an
+#                                                 empty GeometryCollection
 #    
 # 
 #
@@ -95,11 +98,19 @@ def createCollection(geometries):
     GeometryCollection.
     '''
     # remove any empty geometries
-    for g in geometries :
+    for g in list(geometries) :
         if g.is_empty :
             geometries.remove(g)
-    text = 'GEOMETRYCOLLECTION (%s)' % ', '.join(g.wkt for g in geometries)
-    return wkt.loads(text)
+
+    if len(geometries) > 0:
+        # If geometries still has items, create a new collection
+        text = 'GEOMETRYCOLLECTION (%s)' % ', '.join(g.wkt for g in geometries)
+        retval = wkt.loads(text)
+    else:
+        # No items in geometries
+        retval = None
+
+    return retval
 
 def performCascadedUnion(polygons):
     '''    

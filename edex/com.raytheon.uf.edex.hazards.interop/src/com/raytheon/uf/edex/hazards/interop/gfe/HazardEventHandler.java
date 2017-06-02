@@ -41,7 +41,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
@@ -198,12 +197,11 @@ public class HazardEventHandler {
         this.initialized = true;
     }
 
-    private GridParmInfo getGridParmInfo(String siteID, Mode mode) {
-        switch (mode) {
-        case OPERATIONAL:
-            return this.operationalGridParmInfoMap.get(siteID);
-        default:
+    private GridParmInfo getGridParmInfo(String siteID, boolean practice) {
+        if (practice) {
             return this.practiceGridParmInfoMap.get(siteID);
+        } else {
+            return this.operationalGridParmInfoMap.get(siteID);
         }
     }
 
@@ -237,7 +235,7 @@ public class HazardEventHandler {
          * Determine which parm should be used.
          */
         GridParmInfo gridParmInfo = this.getGridParmInfo(
-                hazardEvent.getSiteID(), notification.getMode());
+                hazardEvent.getSiteID(), notification.isPracticeMode());
 
         switch (notification.getType()) {
         case STORE:
@@ -276,11 +274,8 @@ public class HazardEventHandler {
     }
 
     private HazardEventManager getHazardEventManager(String parmID) {
-        Mode mode = this.determineHazardsMode(parmID);
-        if (mode == null) {
-            return null;
-        }
-        HazardEventManager hazardEventManager = new HazardEventManager(mode);
+        boolean practice = this.isHazardsModePractice(parmID);
+        HazardEventManager hazardEventManager = new HazardEventManager(practice);
 
         return hazardEventManager;
     }
@@ -406,9 +401,9 @@ public class HazardEventHandler {
                 synchronized (this) {
                     events = GfeInteroperabilityUtil
                             .queryForInteroperabilityHazards(
-                                    this.determineHazardsMode(parmID) == Mode.PRACTICE,
-                                    siteID, hazardParts[0], hazardParts[1],
-                                    startDate, endDate);
+                                    this.isHazardsModePractice(parmID), siteID,
+                                    hazardParts[0], hazardParts[1], startDate,
+                                    endDate);
                 }
 
                 GridLocation gridLocation = discreteGridSlice.getGridParmInfo()
@@ -449,7 +444,7 @@ public class HazardEventHandler {
                     HazardEvent hazardEvent = this.createNewHazard(
                             hazardEventManager, hazardState, startDate,
                             endDate, siteID, hazardType, hazardMultiPolygon,
-                            this.determineHazardsMode(parmID) == Mode.PRACTICE);
+                            this.isHazardsModePractice(parmID));
                     if (hazardEvent == null) {
                         statusHandler.handle(Priority.PROBLEM,
                                 "Hazard creation failed!");
@@ -561,16 +556,11 @@ public class HazardEventHandler {
                          * determine if a hazard geometry does not completely
                          * match the grid region that it is associated with.
                          */
-                        HazardEvent hazardEvent = this
-                                .createNewHazard(
-                                        hazardEventManager,
-                                        hazardState,
-                                        startDate,
-                                        endDate,
-                                        siteID,
-                                        hazardType,
-                                        differenceGeometry,
-                                        this.determineHazardsMode(parmID) == Mode.PRACTICE);
+                        HazardEvent hazardEvent = this.createNewHazard(
+                                hazardEventManager, hazardState, startDate,
+                                endDate, siteID, hazardType,
+                                differenceGeometry,
+                                this.isHazardsModePractice(parmID));
                         if (hazardEvent == null) {
                             statusHandler.handle(Priority.PROBLEM,
                                     "Hazard creation failed!");
@@ -601,7 +591,7 @@ public class HazardEventHandler {
 
                     synchronized (this) {
                         HazardEventInteropServicesSoapClient.getServices(
-                                this.determineHazardsMode(parmID))
+                                this.isHazardsModePractice(parmID))
                                 .storeEventList(gfeInteroperabilityRecords);
                     }
                 }
@@ -623,8 +613,8 @@ public class HazardEventHandler {
 
         List<HazardEvent> events = GfeInteroperabilityUtil
                 .queryForInteroperabilityHazards(
-                        this.determineHazardsMode(parmID) == Mode.PRACTICE,
-                        siteID, null, null, startDate, endDate);
+                        this.isHazardsModePractice(parmID), siteID, null, null,
+                        startDate, endDate);
 
         if (events != null) {
             Set<String> eventIdentifiers = new HashSet<>(events.size());
@@ -744,15 +734,15 @@ public class HazardEventHandler {
         }
     }
 
-    private Mode determineHazardsMode(String parmID) {
+    private boolean isHazardsModePractice(String parmID) {
         if (PARM_OPERATIONAL_PATTERN.matcher(parmID).matches()) {
-            return Mode.OPERATIONAL;
+            return false;
         } else if (PARM_TEST_PATTERN.matcher(parmID).matches()
                 || PARM_PRACTICE_PATTERN.matcher(parmID).matches()) {
-            return Mode.PRACTICE;
+            return true;
         }
 
-        return null;
+        return true;
     }
 
     private ProductClass determineProductClass(String parmID) {

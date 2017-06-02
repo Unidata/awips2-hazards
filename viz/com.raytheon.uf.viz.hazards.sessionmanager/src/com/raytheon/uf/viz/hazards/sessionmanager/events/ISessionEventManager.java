@@ -34,6 +34,7 @@ import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -92,12 +93,15 @@ import com.vividsolutions.jts.geom.Geometry;
  * Mar 13, 2015 6090       Dan Schaffer Relaxed geometry validity check.
  * Sep 15, 2015 7629       Robert.Blum  Added method that persists a list of events.
  * Feb 24, 2016 14667      Robert.Blum  Limiting Flash Flood Recommender to basins inside the CWA.
+ * Mar 14, 2016 12145      mduff        Handle the case where a new event identifier cannot be
+ *                                      generated.
  * Mar 24, 2016 15676      Chris.Golden Changed setModifiedEventGeometry() to return true if it
  *                                      succeeds in changing the geometry, false otherwise.
  * Mar 26, 2016 15676      Chris.Golden Removed geometry validity checks (that is, checks to see
  *                                      if Geometry objects pass the isValid() test), as the
  *                                      session event manager shouldn't be policing this; it should
  *                                      assume it gets valid geometries.
+ * Apr 04, 2016 15192      Robert.Blum  Added new copyEvents() method.
  * Jun 06, 2016 19432      Chris.Golden Added method to set a flag indicating whether newly-created
  *                                      (by the user) hazard events should be added to the selected
  *                                      set or not.
@@ -156,10 +160,16 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * selected and checked.
      * 
      * @param event
+     *            Nascent event.
      * @param originator
-     * @return
+     * @return Event that was added. This will generally not be the same object
+     *         as the passed-in <code>event</code>, since addition requires that
+     *         a specific subclass of {@link IHazardEvent} is created.
+     * @throws HazardEventServiceException
+     *             If a problem occurs while attempting to add the hazard event.
      */
-    public E addEvent(IHazardEvent event, IOriginator originator);
+    public E addEvent(IHazardEvent event, IOriginator originator)
+            throws HazardEventServiceException;
 
     /**
      * Merge the contents of the new event into the old event, using the
@@ -431,35 +441,43 @@ public interface ISessionEventManager<E extends IHazardEvent> {
     /**
      * Checks all events for conflicts.
      * 
-     * @param
-     * @return A map of events with a map of any conflicting events and lists of
-     *         corresponding conflicting geometries.
+     * @return Map pairing events with maps. The latter in turn pair identifiers
+     *         (of events that conflict with the enclosing map's event) with the
+     *         list of area names where the conflict is occurring.
+     * @throws HazardEventServiceException
+     *             If a problem occurs while attempting to get the conflicting
+     *             hazard events.
      */
-    public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents();
+    public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents()
+            throws HazardEventServiceException;
 
     /**
-     * Tests if a specific event conflicts spatially with an existing event or
-     * event(s).
+     * Determine which events and geometries, if any, if a specific event
+     * conflicts spatially with an existing event or event(s).
      * 
      * @param event
-     *            Event to test for conflicts
+     *            Event to test for conflicts.
      * @param startTime
-     *            - modified start time of hazard event
+     *            Start time of hazard event
      * @param endTime
-     *            - modified end time of hazard event
+     *            End time of hazard event
      * @param geometry
-     *            - modified geometry of hazard event.
+     *            Geometry of hazard event.
      * @param phenSigSubtype
-     *            Contains phenomena, significance and an optional sub-type.
-     * 
-     * @return A map of events which conflict spatially with an existing event
-     *         or events. Each event in the map will have a list of area names
-     *         where the conflict is occurring. This map will be empty if there
-     *         are no conflicting hazards.
+     *            Type of the event, consisting of the phenomenon, optional
+     *            significance, and optional sub-type.
+     * @return Map pairing events which conflict spatially with the specified
+     *         event with the list of area names where the conflict is
+     *         occurring. This map will be empty if there are no conflicting
+     *         hazards.
+     * @throws HazardEventServiceException
+     *             If a problem occurs while attempting to get the conflicting
+     *             hazard events.
      */
     public Map<IHazardEvent, Collection<String>> getConflictingEvents(
             IHazardEvent event, Date startTime, Date endTime,
-            Geometry geometry, String phenSigSubtype);
+            Geometry geometry, String phenSigSubtype)
+            throws HazardEventServiceException;
 
     /**
      * Get a map of selected event identifiers to any events with which they
@@ -764,6 +782,15 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public void saveEvents(List<IHazardEvent> events, boolean addToHistory,
             boolean treatAsIssuance);
+
+    /**
+     * Copy the specified hazard events, creating a copy with pending status and
+     * no type for each.
+     * 
+     * @param events
+     *            Events to be copied.
+     */
+    public void copyEvents(List<IHazardEvent> events);
 
     /**
      * Revert the event with the specified identifier to the most recently saved

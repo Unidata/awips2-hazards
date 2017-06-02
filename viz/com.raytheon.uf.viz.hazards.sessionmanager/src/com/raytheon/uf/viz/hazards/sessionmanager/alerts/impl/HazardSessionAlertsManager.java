@@ -55,6 +55,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * ------------ ---------- ------------ --------------------------
  * July 08, 2013   1325    daniel.s.schaffer@noaa.gov Initial creation
  * Nov 20, 2013    2159    daniel.s.schaffer@noaa.gov Now interoperable with DRT
+ * May 26, 2016   17529    bkowal       Cancel alerts for ended hazards even if
+ *                                      the alert is not active.
  * Feb 21, 2017   29138    Chris.Golden Added use of session manager's runnable
  *                                      asynchronous scheduler to avoid having
  *                                      notifications processed outside the
@@ -216,20 +218,20 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
     @Override
     public void cancelAlert(IHazardAlert hazardAlert) {
         synchronized (sharedLock) {
-            if (!activeAlerts.remove(hazardAlert)) {
-                IHazardAlertJob alertJobToRemove = null;
-                for (IHazardAlertJob hazardAlertJob : scheduledAlertJobs) {
-                    if (hazardAlertJob.getHazardAlert().equals(hazardAlert)) {
-                        alertJobToRemove = hazardAlertJob;
-                        alertJobToRemove.cancel();
-                        break;
-                    }
+            activeAlerts.remove(hazardAlert);
+            IHazardAlertJob alertJobToRemove = null;
+            for (IHazardAlertJob hazardAlertJob : scheduledAlertJobs) {
+                if (hazardAlertJob.getHazardAlert().equals(hazardAlert)) {
+                    alertJobToRemove = hazardAlertJob;
+                    alertJobToRemove.cancel();
+                    break;
                 }
-                scheduledAlertJobs.remove(alertJobToRemove);
             }
-            postAlertsModifiedNotification();
+            if (alertJobToRemove != null) {
+                scheduledAlertJobs.remove(alertJobToRemove);
+                postAlertsModifiedNotification();
+            }
         }
-
     }
 
     private void deleteAnyExistingAlerts() {

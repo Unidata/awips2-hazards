@@ -66,13 +66,13 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                      return a single recommender.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
-
 public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScriptManager> {
 
     private static final IUFStatusHandler statusHandler = UFStatus
@@ -82,7 +82,9 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
 
     private final Map<String, String> recommenderToCoordinator = new HashMap<String, String>();
 
-    public static final String DEFAULT_RECOMMENDER_JOB_COORDINATOR = "Recommenders";
+    protected String site;
+
+    public static final String DEFAULT_RECOMMENDER_JOB_COORDINATOR = "Recommenders - ";
 
     /**
      * 
@@ -249,7 +251,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         }
         if (recommenderToCoordinator.containsKey(recommenderName) == false) {
             recommenderToCoordinator.put(recommenderName,
-                    DEFAULT_RECOMMENDER_JOB_COORDINATOR);
+                    DEFAULT_RECOMMENDER_JOB_COORDINATOR + site);
         }
         return PythonJobCoordinator.getInstance(recommenderToCoordinator
                 .get(recommenderName));
@@ -263,7 +265,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         for (EventRecommender rec : recommenders) {
             String coordinator = rec.getThreadManager();
             if (coordinator == null || coordinator.isEmpty()) {
-                coordinator = DEFAULT_RECOMMENDER_JOB_COORDINATOR;
+                coordinator = DEFAULT_RECOMMENDER_JOB_COORDINATOR + site;
             }
             recommenderToCoordinator.put(rec.getName(), coordinator);
         }
@@ -295,4 +297,23 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
     }
 
     protected abstract PythonJobCoordinator<P> getCoordinator();
+
+    /**
+     * @return the site
+     */
+    public String getSite() {
+        return site;
+    }
+
+    /**
+     * Sets the site for the recommender engine.
+     * 
+     * @param site
+     */
+    public void setSite(String site) {
+        this.site = site;
+        shutdownEngine();
+        recommenderToCoordinator.clear();
+        buildMap();
+    }
 }

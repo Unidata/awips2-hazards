@@ -1,35 +1,35 @@
 """
-This class will access the maps database.  The initial intended functionality 
-is to retrieve geospatial data and associated metadata.  For example, dam break
-inundation polygons and associated 'damInfo' metadata are stored in mapdata.daminfo
-table.  This module will retrieve these data to be used in recommenders and 
-product generation.
-
-It is envisioned that this module can/will be extended to access similar information
-like burn scar areas.   
+This class accesses the maps database to retrieve geospatial data and associated
+metadata. For example, dam break inundation polygons and associated 'damInfo'
+metadata are stored in mapdata.daminfo table. This module will retrieve these
+data to be used in recommenders and product generation.
 
  @since: February 2015
  @author: GSD Hazard Services Team
- 
+
  History:
- Date         Ticket#    Engineer    Description
- ------------ ---------- ----------- --------------------------
- Feb 03, 2015            kmanross     Initial development
- Aug 03, 2015   9920     Robert.Blum Fixed duplicate alias sql error.
- Aug 14, 2015   9920     Robert.Blum Additional changes to stay in sync with ufcore.
-                                     Parameters are no longer required on mapdata requests.
- Sep 10, 2015   11510    Robert.Blum Fixed query bug caused by recent merge.
+ Date         Ticket#    Engineer       Description
+ ------------ -------    -----------    --------------------------
+ Feb 03, 2015            kmanross       Initial development
+ Aug 03, 2015   9920     Robert.Blum    Fixed duplicate alias sql error.
+ Aug 14, 2015   9920     Robert.Blum    Additional changes to stay in sync with ufcore.
+                                        Parameters are no longer required on mapdata requests.
+ Sep 10, 2015  11510     Robert.Blum    Fixed query bug caused by recent merge.
+ May 18, 2016  17342     Ben.Phillippe  Added location constraint to polygon query
+ 8 Jun 16      15523     K. Manross/
+                         J. Wakefield   Added BurnScar accessors
 
 """
 
 from shapely.geometry import Polygon
 from ufpy.dataaccess import DataAccessLayer
 import DamMetaData
-
+import BurnScarMetaData
+    
 class MapsDatabaseAccessor(object):
     def __init__(self):
         pass
-        
+
     def _extract_poly_coords(self, geom):
         if geom.type == 'Polygon':
             exterior_coords = geom.exterior.coords[:]
@@ -47,9 +47,9 @@ class MapsDatabaseAccessor(object):
             raise ValueError('Unhandled geometry type: ' + repr(geom.type))
         return {'exterior_coords': exterior_coords,
                 'interior_coords': interior_coords}
-        
+
     def getPolygonNames(self, tablename, locationField="name", columns=[]):
-        
+
         table = "mapdata."+tablename
         req = DataAccessLayer.newDataRequest()
         req.setDatatype("maps")
@@ -64,12 +64,10 @@ class MapsDatabaseAccessor(object):
         nameList = []
         for retGeom in retGeoms :
             nameList.append(retGeom.getLocationName())
-            
-        return nameList
 
-        
+        return nameList
     
-    def getPolygonDict(self, tablename, locationField="name", columns=[]):
+    def getPolygonDict(self, tablename, siteID, locationField="name", columns=[]):
         
         table = "mapdata."+tablename
         req = DataAccessLayer.newDataRequest()
@@ -77,6 +75,7 @@ class MapsDatabaseAccessor(object):
         req.addIdentifier("table", table)
         req.addIdentifier("geomField", "the_geom")
         req.addIdentifier("locationField", locationField)
+        req.addIdentifier("cwa", siteID)
 
         if columns:
             req.setParameters(columns)
@@ -86,15 +85,15 @@ class MapsDatabaseAccessor(object):
         for retGeom in retGeoms :
             poly = self._extract_poly_coords(retGeom.getGeometry())
             formattedPoly = [list(c) for c in poly['exterior_coords']]
-            
+
             try:
                 id = retGeom.getLocationName()
                 if id:
                    retDict[id] = formattedPoly
-                
+
             except:
                 print "No 'name' column in table:", table
-            
+
         return retDict
 
     def getDamInundationMetadata(self, damName):
@@ -103,4 +102,10 @@ class MapsDatabaseAccessor(object):
 
     def getAllDamInundationMetadata(self):
         return DamMetaData.damInundationMetadata
-    
+
+    def getBurnScarMetadata(self, burnscarName):
+        burnScarAreaMetadata = BurnScarMetaData.burnScarAreaMetadata
+        return burnScarAreaMetadata.get(burnscarName)
+
+    def getAllBurnScarMetadata(self):
+        return BurnScarMetaData.burnScarAreaMetadata

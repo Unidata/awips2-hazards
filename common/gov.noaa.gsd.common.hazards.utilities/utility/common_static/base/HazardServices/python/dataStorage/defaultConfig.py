@@ -6,9 +6,9 @@ statuses = [
                       "displayString": "proposed",
                      },
 
-                     {
-                      "displayString": "pending",
-                     },
+#                     {
+#                      "displayString": "pending",
+#                     },
 
                      {
                       "displayString": "issued",

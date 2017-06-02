@@ -25,15 +25,24 @@ class MetaData(CommonMetaData.MetaData):
                     self.getPreviousEditedText(),
                     self.getWarningType(),
                     self.getImmediateCause(),
+                    self.getHiddenFloodSeverity(),
                     self.getSource(),
                     self.getEventType(),
+                    self.getFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(False),
-                    self.getAdditionalInfo(),
-                    self.getRiver(),
-                    self.getFloodLocation(),
-                    self.getUpstreamLocation(),
-                    self.getDownstreamLocation(),
+                    self.getLocationsAffected(self.hazardEvent),
+                    self.getAdditionalInfo(refreshMetadata=True),
+                    ]
+            if (hazardEvent is not None
+                and hazardEvent.get('additionalInfo') is not None
+                and 'floodMoving' in hazardEvent.get('additionalInfo')):
+                metaData += [
+                        self.getRiver(),
+                        self.getFloodLocation(),
+                        self.getUpstreamLocation(),
+                        self.getDownstreamLocation(),
+                        ]
+            metaData += [
                     self.getCTAs(),  
                     # Preserving CAP defaults for future reference.                  
 #                     self.getCAP_Fields([
@@ -53,17 +62,26 @@ class MetaData(CommonMetaData.MetaData):
                     self.getPreviousEditedText(),
                     self.getWarningType(),
                     self.getImmediateCause(),
+                    self.getHiddenFloodSeverity(),
                     self.getSource(),
                     self.getEventType(),
+                    self.getFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(False),
-                    self.getAdditionalInfo(),
-                    self.getRiver(),
-                    self.getFloodLocation(),
-                    self.getUpstreamLocation(),
-                    self.getDownstreamLocation(),
-                    self.getCTAs(), 
-                ] 
+                    self.getLocationsAffected(self.hazardEvent),
+                    self.getAdditionalInfo(refreshMetadata=True),
+                    ]
+            if (hazardEvent is not None
+                and hazardEvent.get('additionalInfo') is not None
+                and 'floodMoving' in hazardEvent.get('additionalInfo')):
+                metaData += [
+                        self.getRiver(),
+                        self.getFloodLocation(),
+                        self.getUpstreamLocation(),
+                        self.getDownstreamLocation(),
+                        ]
+            metaData += [
+                    self.getCTAs(),
+                ]
             
         return {
                 METADATA_KEY: metaData
@@ -147,7 +165,6 @@ class MetaData(CommonMetaData.MetaData):
                  "choices": [
                         self.eventTypeThunder(),
                         self.eventTypeRain(),
-                        self.eventTypeFlooding(),
                         self.eventTypeGenericFlooding(),
                         ]
                     }
@@ -176,11 +193,32 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaReportFlooding(),
             ]
 
+    def getFloodOccurring(self, defaultOn=False):
+        return {
+             "fieldType":"CheckBox",
+             "fieldName": "flood",
+             "label": "Flooding occurring",
+             "value": defaultOn,
+            }
+
     def endingOptionChoices(self):
         return [
             self.recedingWater(),
             self.rainEnded(),
             ]
+
+    def validate(self,hazardEvent):
+        message1 = self.validateRainSoFar(hazardEvent)
+        message2 = self.validateAdditionalRain(hazardEvent)
+        if (message1 is None and message2 is None):
+            retmsg = None
+        elif (message1 is None and message2 is not None):
+            retmsg = message2
+        elif (message1 is not None and message2 is None):
+            retmsg = message1
+        elif (message1 is not None and message2 is not None):
+            retmsg = "\n" + message1 + "\n \n" + message2
+        return retmsg
         
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)

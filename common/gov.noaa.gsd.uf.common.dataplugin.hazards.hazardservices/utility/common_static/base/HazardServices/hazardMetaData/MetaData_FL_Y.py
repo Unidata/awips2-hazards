@@ -9,21 +9,27 @@ class MetaData(CommonMetaData.MetaData):
         self.initialize(hazardEvent, metaDict)
         self.basedOnLookupPE = '{:15s}'.format('YES')
         
-        pointDetails = [
+        if self.hazardStatus == "ending":
+            metaData = [
+                        self.getPreviousEditedText(),
+                        self.getInclude(),
+                        ]
+        else:
+            pointDetails = [
                         self.getPreviousEditedText(),
                         self.getPointID(),
                         self.getImmediateCause(),
-                        self.getFloodSeverity(),
+                        self.getHiddenFloodSeverityNone(),
                         self.getFloodRecord(),
                         self.getInclude(),
                         ]
-        pointDetails.extend(self.getRiseCrestFall())
-     
-        crests = [self.getCrestsOrImpacts("crests")]
+            pointDetails.extend(self.getRiseCrestFall())
+
+            crests = [self.getCrestsOrImpacts("crests")]
          
-        impacts = [self.getCrestsOrImpacts("impacts")]
+            impacts = [self.getCrestsOrImpacts("impacts")]
         
-        metaData = [
+            metaData = [
                        {
                 "fieldType": "TabbedComposite",
                 "fieldName": "FLWTabbedComposite",

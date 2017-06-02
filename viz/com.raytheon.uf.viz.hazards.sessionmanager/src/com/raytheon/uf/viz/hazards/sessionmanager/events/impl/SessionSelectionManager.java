@@ -27,7 +27,6 @@ import java.util.TreeSet;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastAccessedEventModified;
@@ -49,6 +48,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      events to database when
  *                                      changing from potential to
  *                                      pending status.
+ * Jun 21, 2017   18375    Chris.Golden Removed setting of potential
+ *                                      events to pending status when
+ *                                      they are selected.
  * </pre>
  * 
  * @author Chris.Golden
@@ -754,15 +756,6 @@ public class SessionSelectionManager implements
                 .addAll(selectedCurrentAndHistoricalEventIdentifiers);
 
         /*
-         * Set any potential events that are now selected to be pending.
-         */
-        for (ObservedHazardEvent event : selectedEvents) {
-            if (event.getStatus() == HazardStatus.POTENTIAL) {
-                event.setStatus(HazardStatus.PENDING, false, Originator.OTHER);
-            }
-        }
-
-        /*
          * If the selected historical indices only need pruning, remove any
          * selected indices for events for which the current versions are no
          * longer selected. Otherwise, rebuild the map of events to selected
@@ -942,10 +935,6 @@ public class SessionSelectionManager implements
                         selectedEventVersionIdentifier.getFirst()).add(
                         selectedEventVersionIdentifier.getSecond());
             }
-            if (selectedEvent.getStatus() == HazardStatus.POTENTIAL) {
-                selectedEvent.setStatus(HazardStatus.PENDING, false,
-                        Originator.OTHER);
-            }
         } else {
             throw new IllegalStateException(
                     "event to be selected not found in list of session events");
@@ -1061,17 +1050,12 @@ public class SessionSelectionManager implements
 
                 /*
                  * Add the event and its identifier to the appropriate lists and
-                 * set, and ensure that if it has potential status, it is
-                 * changed to pending.
+                 * set.
                  */
                 this.selectedEventIdentifiers.add(eventIdentifier);
                 this.selectedEventIdentifiersOrdered.add(insertionIndex,
                         eventIdentifier);
                 this.selectedEvents.add(insertionIndex, event);
-                if (event.getStatus() == HazardStatus.POTENTIAL) {
-                    event.setStatus(HazardStatus.PENDING, false,
-                            Originator.OTHER);
-                }
                 insertionIndex++;
                 selectedSomething = true;
             }

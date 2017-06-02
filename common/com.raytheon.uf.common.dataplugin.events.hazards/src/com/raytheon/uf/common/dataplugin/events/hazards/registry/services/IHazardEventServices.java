@@ -48,6 +48,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQuery
  *                                      request server
  * Apr 13, 2017 33142     Chris.Golden  Added ability to delete all events
  *                                      with a particular event identifier.
+ * May 03, 2016 18193     Ben.Phillippe Replication of Hazard VTEC Records
+ * 
  * </pre>
  * 
  * @author bphillip
@@ -228,13 +230,5 @@ public interface IHazardEventServices {
     @WebMethod(operationName = "lookupRegion")
     public String lookupRegion(@WebParam(name = "siteID") String siteID)
             throws HazardEventServiceException;;
-
-    /**
-     * Method used to test connectivity to this set of services
-     * 
-     * @return A ping response
-     */
-    @WebMethod(operationName = "ping")
-    public String ping();
 
 }

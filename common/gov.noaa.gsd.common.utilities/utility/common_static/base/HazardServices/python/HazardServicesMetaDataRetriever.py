@@ -30,10 +30,12 @@ def getMetaData(javaHazardEvent, javaMetaDict):
     """
     hazardEvent = JUtil.javaObjToPyVal(javaHazardEvent)
     metaDict = JUtil.javaObjToPyVal(javaMetaDict)
+    site = metaDict.get("site", None)
     metaObject, filePath = HazardMetaDataAccessor.getHazardMetaData(HAZARD_METADATA,
                                                     hazardEvent.getPhenomenon(),
                                                     hazardEvent.getSignificance(),
-                                                    hazardEvent.getSubType())
+                                                    hazardEvent.getSubType(),
+                                                    site)
     if hasattr(metaObject, "execute") and callable(getattr(metaObject, "execute")):
         metaData = metaObject.execute(hazardEvent, metaDict)
         metaData[METADATA_FILE_PATH_KEY] = filePath
@@ -41,3 +43,26 @@ def getMetaData(javaHazardEvent, javaMetaDict):
         return metaData
     else:
         return '{"' + METADATA_KEY + '": [] }'
+
+def validate(javaHazardEvent):
+    """
+    @param javaHazardEvent: Hazard event from Java. 
+    @return: Either None if there are no validation problems, or a string describing
+    the problem if there is one.
+    """
+   
+    # Fetch the metadata object that may be used for validation.
+    hazardEvent = JUtil.javaObjToPyVal(javaHazardEvent)
+    metaObject, filePath = HazardMetaDataAccessor.getHazardMetaData(HAZARD_METADATA,
+                                                    hazardEvent.getPhenomenon(),
+                                                    hazardEvent.getSignificance(),
+                                                    hazardEvent.getSubType(),
+                                                    None)
+    
+    # Ensure there is a validate() method, and call it, returning the result.
+    if hasattr(metaObject, "validate") and callable(getattr(metaObject, "validate")):
+        errorMsg = metaObject.validate(hazardEvent)
+        return json.dumps(errorMsg)
+    else:
+        return None
+    

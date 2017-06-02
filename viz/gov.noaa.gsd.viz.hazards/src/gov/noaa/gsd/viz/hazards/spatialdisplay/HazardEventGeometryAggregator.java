@@ -28,10 +28,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.measure.converter.UnitConverter;
+
+import org.geotools.geometry.jts.JTS;
+import org.opengis.geometry.MismatchedDimensionException;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.crs.ProjectedCRS;
+import org.opengis.referencing.operation.MathTransform;
+import org.opengis.referencing.operation.TransformException;
+
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
+import com.raytheon.uf.common.geospatial.MapUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.viz.points.PointsDataManager;
+import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -53,6 +66,7 @@ import com.vividsolutions.jts.geom.Polygon;
  * Jul 25, 2016   19537    Chris.Golden Made deholePolygon() static and
  *                                      package-private, as it is needed
  *                                      in the spatial display components.
+ * Aug 15, 2016   19219    Kevin.Bisanz Combine hazards within X miles.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced
  *                                      geometries.
  * </pre>
@@ -68,6 +82,9 @@ public class HazardEventGeometryAggregator {
 
     /** Geotools factory **/
     private final GeometryFactory geometryFactory = new GeometryFactory();
+
+    /** Transforms lat/lon to meters **/
+    private MathTransform geometryToMetersTransform = null;
 
     /** size of input array **/
     private int size = 0;
@@ -96,13 +113,18 @@ public class HazardEventGeometryAggregator {
      * regions.
      * 
      * @param events
-     * @return events
+     *            Events to consider for aggregation.
+     * @param combineHazardDistance
+     *            Distance in miles within which hazards should be aggregated.
+     * @return events Aggregated events
      */
     public Collection<HazardEvent> aggregateEvents(
-            Collection<BaseHazardEvent> events) {
+            Collection<BaseHazardEvent> events, double combineHazardDistance) {
+        // Convert miles into meters.
+        combineHazardDistance = convertMileToMeter(combineHazardDistance);
 
-        List<HazardEvent> list = new ArrayList<HazardEvent>(1);
-        combinedGeometries = new ConcurrentHashMap<Point, Geometry>();
+        List<HazardEvent> list = new ArrayList<>(1);
+        combinedGeometries = new ConcurrentHashMap<>();
         // Add all events to the original map, convert to observed hazard
         for (BaseHazardEvent baseEvent : events) {
 
@@ -134,7 +156,7 @@ public class HazardEventGeometryAggregator {
                         evaluateGeometries();
                     } catch (Exception e) {
                         statusHandler
-                                .error("Geometry intersection evaluation and aggreagation failed!.",
+                                .error("Geometry intersection evaluation and aggregation failed!.",
                                         e);
                     }
                     intersectionCount++;
@@ -149,10 +171,10 @@ public class HazardEventGeometryAggregator {
 
                     while (size != origSize) {
                         try {
-                            evaluateDistance();
+                            evaluateDistance(combineHazardDistance);
                         } catch (Exception e) {
                             statusHandler
-                                    .error("Geometry distance evaluation and aggreagation failed!.",
+                                    .error("Geometry distance evaluation and aggregation failed!.",
                                             e);
                         }
                         distanceCount++;
@@ -236,8 +258,11 @@ public class HazardEventGeometryAggregator {
     /**
      * A single pass to aggregate geometries that are within a given distance of
      * each other.
+     * 
+     * @param distance
+     *            Distance value to use as threshold for aggregating geometries.
      */
-    private void evaluateDistance() throws Exception {
+    private void evaluateDistance(double distance) throws Exception {
 
         // force evaluation of map first
         int internalOrigSize = combinedGeometries.size();
@@ -258,7 +283,7 @@ public class HazardEventGeometryAggregator {
                 }
 
                 if (p1 != p2 && geom1 != null && geom2 != null
-                        && withInDistance(geom1, geom2)) {
+                        && withInDistance(geom1, geom2, distance)) {
                     Geometry aggrGeom = aggregateGeometries(geom1, geom2);
                     combinedGeometries.put(aggrGeom.getCentroid(), aggrGeom);
                     // remove other geometries
@@ -356,17 +381,68 @@ public class HazardEventGeometryAggregator {
     /**
      * Determine whether given geometries are within distance params for
      * combining.
+     * 
+     * @param geo1
+     * @param geo2
+     * @param distance
+     * @return
      */
-    private boolean withInDistance(Geometry geo1, Geometry geo2) {
+    private boolean withInDistance(Geometry geo1, Geometry geo2, double distance) {
         // Determine if two geometries are within the required distance from
         // each other to be combined
         boolean withInDistance = false;
 
-        double distance = geo1.distance(geo2);
-        if (distance < 0.01) {
-            withInDistance = true;
+        try {
+            /*
+             * Transform lat/lon based geometry into one based on meters so that
+             * the results of Geometry.distance(Geometry) is a meters values.
+             */
+            MathTransform metersTransform = getGeometryToMetersTransform();
+            Geometry geo1a = JTS.transform(geo1, metersTransform);
+            Geometry geo2a = JTS.transform(geo2, metersTransform);
+            double geomDistance = geo1a.distance(geo2a);
+            if (geomDistance <= distance) {
+                withInDistance = true;
+            }
+        } catch (MismatchedDimensionException | TransformException
+                | FactoryException e) {
+            withInDistance = false;
+            statusHandler.handle(Priority.ERROR, e.getLocalizedMessage(), e);
         }
         return withInDistance;
+    }
+
+    /**
+     * 
+     * @return MathTransform suitable for transforming lat/lon Geometry to
+     *         meters
+     * @throws FactoryException
+     */
+    private MathTransform getGeometryToMetersTransform()
+            throws FactoryException {
+        if (geometryToMetersTransform == null) {
+            // Center the projection on the WFO center.
+            PointsDataManager pdm = PointsDataManager.getInstance();
+            Coordinate wfoCenter = pdm.getWfoCenter();
+            ProjectedCRS crs = MapUtil.constructStereographic(
+                    MapUtil.AWIPS_EARTH_RADIUS, MapUtil.AWIPS_EARTH_RADIUS,
+                    wfoCenter.y, wfoCenter.x);
+            geometryToMetersTransform = MapUtil.getTransformFromLatLon(crs);
+        }
+        return geometryToMetersTransform;
+    }
+
+    /**
+     * Convert a value in miles to a value in meters.
+     * 
+     * @param distance
+     *            In miles
+     * @return Value in meters
+     */
+    private double convertMileToMeter(double distance) {
+        UnitConverter mileToMeter = javax.measure.unit.NonSI.MILE
+                .getConverterTo(javax.measure.unit.SI.METER);
+        return mileToMeter.convert(distance);
     }
 
 }

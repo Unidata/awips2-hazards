@@ -51,6 +51,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  *                                     Strings.
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial
  *                                      info collection.
  * </pre>
@@ -65,10 +66,6 @@ public class CAVERecommenderScriptManager extends
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CAVERecommenderScriptManager.class);
 
-    public CAVERecommenderScriptManager() throws JepException {
-        this(null);
-    }
-
     /**
      * @throws JepException
      * 
@@ -76,7 +73,7 @@ public class CAVERecommenderScriptManager extends
     public CAVERecommenderScriptManager(String site) throws JepException {
         super(buildScriptPath(), buildPythonPath(site),
                 CAVERecommenderScriptManager.class.getClassLoader(),
-                "Recommender");
+                "Recommender", site);
     }
 
     /*

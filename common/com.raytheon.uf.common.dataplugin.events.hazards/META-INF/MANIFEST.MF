@@ -21,7 +21,8 @@ Require-Bundle: com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  com.raytheon.uf.common.security;bundle-version="1.14.0",
  gov.noaa.gsd.common.visuals;bundle-version="1.0.0",
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
- org.codehaus.jackson;bundle-version="1.7.3"
+ org.codehaus.jackson;bundle-version="1.7.3",
+ com.raytheon.uf.common.message;bundle-version="1.14.1"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Import-Package: com.google.common.base,
@@ -39,6 +40,7 @@ Export-Package: com.raytheon.uf.common.dataplugin.events.hazards,
  com.raytheon.uf.common.dataplugin.events.hazards.datastorage,
  com.raytheon.uf.common.dataplugin.events.hazards.event,
  com.raytheon.uf.common.dataplugin.events.hazards.event.collections,
+ com.raytheon.uf.common.dataplugin.events.hazards.event.vtec,
  com.raytheon.uf.common.dataplugin.events.hazards.registry,
  com.raytheon.uf.common.dataplugin.events.hazards.registry.geometryadapters,
  com.raytheon.uf.common.dataplugin.events.hazards.registry.services,

@@ -43,6 +43,7 @@ import com.raytheon.uf.viz.python.VizPythonJob;
  * Mar 06, 2013            mnash        Initial creation
  * Jan 29, 2015 3626       Chris.Golden Added EventSet to arguments for getting dialog
  *                                      info.
+ * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * May 03, 2016 18376      Chris.Golden Changed to support reuse of Jep instance
  *                                      between H.S. sessions in the same CAVE session,
  *                                      since stopping and starting the Jep instances
@@ -94,7 +95,7 @@ public final class CAVERecommenderEngine extends
 
     @Override
     protected PythonJobCoordinator<CAVERecommenderScriptManager> getCoordinator() {
-        factory = new CAVERecommenderPythonFactory();
+        factory = new CAVERecommenderPythonFactory(site);
         return PythonJobCoordinator.newInstance(factory);
     }
 

@@ -19,6 +19,7 @@
  **/
 package gov.noaa.gsd.viz.hazards.risecrestfall;
 
+import gov.noaa.gsd.common.hazards.utilities.hazardservices.StageDischargeUtils;
 import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
 
 import java.text.DecimalFormat;

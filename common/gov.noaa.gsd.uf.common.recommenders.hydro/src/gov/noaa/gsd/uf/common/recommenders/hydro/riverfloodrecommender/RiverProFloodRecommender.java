@@ -65,8 +65,16 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jan 15, 2016 9387       Robert.Blum       Fixed bug where negative intervals where
  *                                           being saved as the events duration befure
  *                                           ufn was selected.
+ * May 10, 2016 18240      Kevin.Bisanz      Always create hazard if point selected when
+ *                                           RFR is invoked.
+ * May 27, 2016 19137      Roger.Ferrel      In {@link #buildRiseCrestFallAttributes(RiverForecastPoint, Map, IHazardEvent)}
+ *                                           when missing Fall Below Time use Forecast Fall Below Action Stage Time.
  * Jun 23, 2016 19537      Chris.Golden      Removed spatial info parameter from method.
  * Jul 25, 2016 19537      Chris.Golden      Moved constant definition to HazardConstants.
+ * Aug 09, 2016 20382      Ben.Phillippe     Impacts CurObs and MaxFcst values updated
+ * Aug 16, 2016 15017      Robert.Blum       Added observed crest, forecast crest, and max forecast attributes
+ *                                           to the hazard event.
+ * Aug 26, 2016 21435      Sara.Stewart      Added Crests MaxFcst and CurObs attributes
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -157,7 +165,7 @@ public class RiverProFloodRecommender {
             RiverForecastPoint riverForecastPoint) {
 
         IHazardEvent riverHazard = new BaseHazardEvent();
-        Map<String, Serializable> hazardAttributes = new HashMap<String, Serializable>();
+        Map<String, Serializable> hazardAttributes = new HashMap<>();
 
         if (riverForecastPoint.isIncludedInRecommendation()
                 || includeNonFloodPoints) {
@@ -178,6 +186,11 @@ public class RiverProFloodRecommender {
             double currentStage = riverForecastPoint.getCurrentObservation()
                     .getValue();
 
+            double impactsMaxFcst = riverForecastPoint
+                    .getMaximumForecastValue();
+            hazardAttributes.put(HazardConstants.IMPACTS_CUR_OBS, currentStage);
+            hazardAttributes.put(HazardConstants.IMPACTS_MAX_FCST,
+                    impactsMaxFcst);
             hazardAttributes.put(HazardConstants.CURRENT_STAGE, currentStage);
 
             long currentStageTime = riverForecastPoint.getCurrentObservation()
@@ -234,7 +247,7 @@ public class RiverProFloodRecommender {
      */
     private EventSet<IHazardEvent> getPotentialRiverHazards(
             boolean includeNonFloodPoints, Map<String, Object> dialogInputMap) {
-        EventSet<IHazardEvent> potentialRiverEventSet = new EventSet<IHazardEvent>();
+        EventSet<IHazardEvent> potentialRiverEventSet = new EventSet<>();
 
         String pointID = (String) dialogInputMap
                 .get(HazardConstants.SELECTED_POINT_ID);
@@ -248,7 +261,9 @@ public class RiverProFloodRecommender {
                 String groupId = riverForecastPoint.getGroupId();
                 RiverForecastGroup riverForecastGroup = getRiverForecastGroup(
                         groupId, recommenderData);
-                if (riverForecastGroup.isIncludedInRecommendation() == true) {
+                // If a specific point is provided, create a hazard for it.
+                if (riverForecastGroup.isIncludedInRecommendation() == true
+                        || riverForecastGroup.isPointIdInGroup(pointID)) {
                     IHazardEvent riverHazard = setRiverHazard(
                             includeNonFloodPoints, riverForecastPoint);
                     riverHazard.setStatus(HazardStatus.PENDING);
@@ -344,6 +359,34 @@ public class RiverProFloodRecommender {
         Date maxObservedForecastCrestDate = riverForecastPoint
                 .getMaximumObservedForecastTime();
 
+        double forecastCrest = riverForecastPoint.getForecastCrestValue();
+        long forecastCrestTime = riverForecastPoint.getForecastCrestTime();
+        hazardAttributes.put(HazardConstants.CREST_STAGE_FORECAST,
+                forecastCrest);
+        hazardAttributes.put(HazardConstants.CREST_TIME_FORECAST,
+                forecastCrestTime);
+
+        double crestsMaxFcst = riverForecastPoint.getMaximumForecastValue();
+        double crestsCurrentStage = riverForecastPoint.getCurrentObservation()
+                .getValue();
+
+        hazardAttributes.put(HazardConstants.CRESTS_MAX_FCST, crestsMaxFcst);
+
+        hazardAttributes
+                .put(HazardConstants.CRESTS_CUR_OBS, crestsCurrentStage);
+
+        double observedCrest = riverForecastPoint.getObservedCrestValue();
+        long observedCrestTime = riverForecastPoint.getObservedCrestTime();
+        hazardAttributes.put(HazardConstants.CREST_STAGE_OBSERVED,
+                observedCrest);
+        hazardAttributes.put(HazardConstants.CREST_TIME_OBSERVED,
+                observedCrestTime);
+
+        hazardAttributes.put(HazardConstants.MAX_FORECAST_STAGE,
+                riverForecastPoint.getMaximumForecastValue());
+        hazardAttributes.put(HazardConstants.MAX_FORECAST_TIME,
+                riverForecastPoint.getMaximumForecastTime());
+
         if (maxObservedForecastCrestDate != null) {
             hazardAttributes.put(HazardConstants.CREST,
                     maxObservedForecastCrestDate.getTime());
@@ -366,14 +409,27 @@ public class RiverProFloodRecommender {
                     .getVirtualFallBelowTime(riverForecastPoint, true);
             riverHazardEvent.setEndTime(new Date(virtualEndTime));
         } else {
+            long ffbasTime = riverForecastPoint
+                    .getForecastFallBelowActionStageTime();
+
             hazardAttributes.put(HazardConstants.FALL_BELOW,
                     RiverHydroConstants.MISSING_VALUE);
-            Calendar ufnCal = Calendar.getInstance();
-            ufnCal.setTimeInMillis(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
-            riverHazardEvent.setEndTime(ufnCal.getTime());
-            hazardAttributes.put(
-                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                    true);
+
+            if (ffbasTime > 0) {
+                hazardAttributes
+                        .put(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                                false);
+                Calendar ffbasCal = Calendar.getInstance();
+                ffbasCal.setTimeInMillis(ffbasTime);
+                riverHazardEvent.setEndTime(ffbasCal.getTime());
+            } else {
+                hazardAttributes
+                        .put(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                                true);
+                Calendar ufnCal = Calendar.getInstance();
+                ufnCal.setTimeInMillis(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+                riverHazardEvent.setEndTime(ufnCal.getTime());
+            }
 
             long latestTime = 0L;
             HydrographForecast hydrographForecast = riverForecastPoint

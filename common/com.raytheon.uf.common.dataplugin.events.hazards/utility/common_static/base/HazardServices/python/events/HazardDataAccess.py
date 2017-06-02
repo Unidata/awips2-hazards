@@ -31,6 +31,8 @@
 #    12/05/13        2527          bkowal         Use JUtil to convert Hazards
 #    4/8/15          7091          hansen         Added getHazardEventsBySite
 #    05/13/15        8161          mduff          Changes for Jep upgrade.
+#    May 06, 2016   18202          Robert.Blum    Changes for operational mode.
+#    Jun 09, 2016   17516          mduff          Added getCurrentEvents.
 #    02/27/17       29138          Chris.Golden   Changed to work with new
 #                                                 version of HazardEventManager.
 #    03/16/17       29138          Chris.Golden   Added method to retrieve
@@ -39,24 +41,24 @@
 
 import JUtil
 from com.raytheon.uf.common.dataplugin.events.hazards.datastorage import HazardEventManager
-Mode = HazardEventManager.Mode
+from EventSet import EventSet
 
-def getHazardEvent(eventId, mode):        
-    manager = HazardEventManager(Mode.valueOf(mode))
+def getHazardEvent(eventId, practice):
+    manager = HazardEventManager(practice)
     event = manager.getLatestByEventID(eventId, True)
     if event is None:
         return None
     return JUtil.javaObjToPyVal(event)
 
-def getMostRecentHistoricalHazardEvent(eventId, mode):
-    manager = HazardEventManager(Mode.valueOf(mode))
+def getMostRecentHistoricalHazardEvent(eventId, practice):
+    manager = HazardEventManager(practice)
     events = manager.getHistoryByEventID(eventId, False)
     if not events:
         return None
     return JUtil.javaObjToPyVal(events[-1])
 
-def getHazardEventsBySite(siteID, mode):
-    manager = HazardEventManager(Mode.valueOf(mode))
+def getHazardEventsBySite(siteID, practice):
+    manager = HazardEventManager(practice)
     hazardEventMap = manager.getLatestBySiteID(siteID, True)
     if ((hazardEventMap == None) or (hazardEventMap.size() == 0)):
         return []
@@ -67,3 +69,39 @@ def getHazardEventsBySite(siteID, mode):
         item = iterator.next()
         hazardEvents.append(JUtil.javaObjToPyVal(item.getValue()))
     return hazardEvents
+
+# Given the specified event set that holds current events provided to the
+# caller, as well as the site identifier and the hazard mode, get the list
+# of events including the ones passed in but augmented with any from the
+# database, but filtering out ended and elapsed events before returning the
+# list. 
+def getCurrentEvents(eventSet):
+    
+    # Get the site identifier, and determine whether or not practice mode is
+    # in effect.
+    siteID = eventSet.getAttributes().get('siteID')        
+    caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+    practice = True
+    if caveMode == 'OPERATIONAL':
+        practice = False
+
+    # Get the current events that were passed in.
+    currentEvents = []
+    for event in eventSet:
+        currentEvents.append(event)
+
+    # Get the events from the database for this site, and add any that are
+    # not already in the passed-in event set to the list of current events.
+    databaseEvents = getHazardEventsBySite(siteID, practice) 
+    eventIDs = [event.getEventID() for event in currentEvents]
+    for event in databaseEvents:
+        if event.getEventID() not in eventIDs:
+            currentEvents.append(event)
+            eventIDs.append(event.getEventID())
+
+    # Filter out elapsed and ended hazards.
+    validEvents = []
+    for event in currentEvents:
+        if event.getStatus() != 'ELAPSED' and event.getStatus() != 'ENDED':
+            validEvents.append(event)
+    return validEvents

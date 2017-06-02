@@ -42,6 +42,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -69,9 +70,10 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
-import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Mode;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.configuration.backup.BackupSites;
@@ -226,8 +228,14 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      instead of just one recommender.
  * Mar 22, 2016 15676      Chris.Golden Changed line styles returned to make more sense
  *                                      (dotted was referred to as dashed).
+ * Mar 29, 2016 16009      Robert.Blum  Fixed NPE that occurred when backupsites.xml was
+ *                                      not overridden by the site.
+ * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Apr 01, 2016 16225      Chris.Golden Added ability to cancel tasks that are scheduled
  *                                      to run at regular intervals.
+ * Apr 06, 2016  8837      Robert.Blum  Changing sites now changes the eventid as well.
+ * Apr 25, 2016 17611      Robert.Blum  ConfigLoader can now incrementally override
+ *                                      python configuration files.
  * Apr 25, 2016 18129      Chris.Golden Changed time-interval-triggered tasks to be
  *                                      triggered close to the instant when the CAVE
  *                                      current time ticks over to a new minute.
@@ -240,6 +248,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      avoid triggering if the data time passed in is
  *                                      not later than the last data time that triggered
  *                                      the same tool.
+ * May 06, 2016 18202      Robert.Blum  Changes for operational mode.
+ * Jul 08, 2016 13788      Chris.Golden Added validation of hazard events.
  * Jul 27, 2016 19924      Chris.Golden Removed obsolete code related to data layer
  *                                      changes triggering event-driven tools; the
  *                                      configuration of such is now read in within the
@@ -296,13 +306,6 @@ import com.raytheon.viz.core.mode.CAVEMode;
 
 public class SessionConfigurationManager implements
         ISessionConfigurationManager<ObservedSettings> {
-
-    /**
-     * Empty map standing in for an environment map, which will be needed in the
-     * future to specify information not specific to a hazard event that affects
-     * the generation of metadata for an event.
-     */
-    private static final Map<String, Serializable> ENVIRONMENT = new HashMap<>();
 
     /**
      * Metadata group megawidget type.
@@ -459,15 +462,22 @@ public class SessionConfigurationManager implements
 
         loadAllSettings();
 
+        Map<String, Object> configLoaderParams = new HashMap<>();
+        configLoaderParams.put(HazardConstants.SITE, this.getSiteID());
+        configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+
         associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
                 commonStaticBase,
                 HazardsConfigurationConstants.START_UP_CONFIG_PY),
                 new StartUpConfigObserver());
 
-        startUpConfig = new ConfigLoader<StartUpConfig>(
-                pathManager
-                        .getStaticLocalizationFile(HazardsConfigurationConstants.START_UP_CONFIG_PY),
-                StartUpConfig.class);
+        LocalizationFile file = pathManager
+                .getStaticLocalizationFile(HazardsConfigurationConstants.START_UP_CONFIG_PY);
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardsConfigurationConstants.STARTUP_CONFIG_DIR);
+        startUpConfig = new ConfigLoader<StartUpConfig>(file,
+                StartUpConfig.class, null, PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
         loaderPool.schedule(startUpConfig);
 
         associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
@@ -475,25 +485,19 @@ public class SessionConfigurationManager implements
                 HazardsConfigurationConstants.HAZARD_CATEGORIES_PY),
                 new HazardCategoriesObserver());
 
-        hazardCategories = new ConfigLoader<HazardCategories>(
-                pathManager
-                        .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY),
-                HazardCategories.class);
+        file = pathManager
+                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
+        configLoaderParams
+                .put(HazardConstants.DATA_TYPE,
+                        HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR);
+        hazardCategories = new ConfigLoader<HazardCategories>(file,
+                HazardCategories.class, null,
+                PythonBuildPaths.buildIncludePath(), new HashMap<>(
+                        configLoaderParams));
         loaderPool.schedule(hazardCategories);
 
-        // THe HazardMetaData needs an include path that includes Hazard
-        // Categories.
-        StringBuilder metadataIncludes = new StringBuilder();
-        metadataIncludes.append(pathManager
-                .getStaticLocalizationFile(
-                        HazardsConfigurationConstants.HAZARD_CATEGORIES_PY)
-                .getFile().getParent());
-        metadataIncludes
-                .append(":")
-                .append(pathManager
-                        .getStaticLocalizationFile(
-                                HazardsConfigurationConstants.VTEC_CONSTANTS_PY)
-                        .getFile().getParent());
+        file = pathManager
+                .getStaticLocalizationFile(HazardsConfigurationConstants.VTEC_CONSTANTS_PY);
 
         // Add observer to base file
         associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
@@ -501,17 +505,20 @@ public class SessionConfigurationManager implements
                 HazardsConfigurationConstants.HAZARD_METADATA_PY),
                 new HazardMetaDataObserver());
 
-        LocalizationFile file = pathManager
+        file = pathManager
                 .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_METADATA_PY);
-        metadataIncludes.append(":").append(file.getFile().getParent());
         for (LocalizationFile f : pathManager.listStaticFiles(
                 "HazardServices/hazardMetaData/", new String[] { ".py" },
                 false, true)) {
             // Force download the file so python has it
             f.getFile();
         }
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardsConfigurationConstants.HAZARD_METADATA_DIR);
         hazardMetaData = new ConfigLoader<HazardMetaData>(file,
-                HazardMetaData.class, null, metadataIncludes.toString());
+                HazardMetaData.class, null,
+                PythonBuildPaths.buildIncludePath(), new HashMap<>(
+                        configLoaderParams));
         loaderPool.schedule(hazardMetaData);
 
         // Add observer to base file
@@ -520,10 +527,14 @@ public class SessionConfigurationManager implements
                         HazardsConfigurationConstants.HAZARD_TYPES_PY),
                 new HazardTypesObserver());
 
-        hazardTypes = new ConfigLoader<HazardTypes>(
-                pathManager
-                        .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY),
-                HazardTypes.class);
+        file = pathManager
+                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
+
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR);
+        hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class,
+                null, PythonBuildPaths.buildIncludePath(), new HashMap<>(
+                        configLoaderParams));
         loaderPool.schedule(hazardTypes);
 
         ensureHazardTypeEntriesExistForAllTypes();
@@ -594,10 +605,14 @@ public class SessionConfigurationManager implements
                 HazardsConfigurationConstants.ALERTS_CONFIG_PATH),
                 new HazardAlertsConfigObserver());
 
-        alertsConfig = new ConfigLoader<HazardAlertsConfig>(
-                pathManager
-                        .getStaticLocalizationFile(HazardsConfigurationConstants.ALERTS_CONFIG_PATH),
-                HazardAlertsConfig.class);
+        file = pathManager
+                .getStaticLocalizationFile(HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardConstants.ALERT_CONFIG_DATA);
+        alertsConfig = new ConfigLoader<HazardAlertsConfig>(file,
+                HazardAlertsConfig.class, null,
+                PythonBuildPaths.buildIncludePath(), new HashMap<>(
+                        configLoaderParams));
         loaderPool.schedule(alertsConfig);
 
         // Add observer to base file
@@ -606,10 +621,14 @@ public class SessionConfigurationManager implements
                 HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY),
                 new ProductGeneratorTableObserver());
 
-        pgenTable = new ConfigLoader<ProductGeneratorTable>(
-                pathManager
-                        .getStaticLocalizationFile(HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY),
-                ProductGeneratorTable.class);
+        file = pathManager
+                .getStaticLocalizationFile(HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_DIR);
+        pgenTable = new ConfigLoader<ProductGeneratorTable>(file,
+                ProductGeneratorTable.class, null,
+                PythonBuildPaths.buildIncludePath(), new HashMap<>(
+                        configLoaderParams));
         loaderPool.schedule(pgenTable);
 
         // Add observer to base file
@@ -618,10 +637,15 @@ public class SessionConfigurationManager implements
                 HazardsConfigurationConstants.DEFAULT_CONFIG_PY),
                 new DefaultConfigObserver());
 
-        settingsConfig = new ConfigLoader<SettingsConfig[]>(
-                pathManager
-                        .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY),
-                SettingsConfig[].class, "viewConfig");
+        file = pathManager
+                .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardConstants.VIEW_CONFIG_DATA);
+        configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, false);
+        settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
+                SettingsConfig[].class, "viewConfig",
+                PythonBuildPaths.buildIncludePath(), new HashMap<>(
+                        configLoaderParams));
         loaderPool.schedule(settingsConfig);
 
         loadBackupSites();
@@ -645,6 +669,12 @@ public class SessionConfigurationManager implements
     }
 
     protected void loadAllSettings() {
+        Map<String, Object> configLoaderParams = new HashMap<>();
+        configLoaderParams.put(HazardConstants.SITE, this.getSiteID());
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardConstants.SETTINGS_DATA);
+        configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+
         Settings previousPersisted = null;
         if (settings != null) {
             for (ConfigLoader<Settings> settingsConfig : allSettings) {
@@ -659,8 +689,9 @@ public class SessionConfigurationManager implements
                 new String[] { ".py" }, false, true);
         List<ConfigLoader<Settings>> allSettings = new ArrayList<ConfigLoader<Settings>>();
         for (LocalizationFile file : files) {
-            ConfigLoader<Settings> loader = new ConfigLoader<Settings>(file,
-                    Settings.class);
+            ConfigLoader<Settings> loader = new ConfigLoader<>(file,
+                    Settings.class, null, PythonBuildPaths.buildIncludePath(),
+                    configLoaderParams);
             if (file.getFile().length() != 0) {
                 allSettings.add(loader);
                 loaderPool.schedule(loader);
@@ -713,8 +744,26 @@ public class SessionConfigurationManager implements
          */
         if ((backupSites == null) || (backupSites.getSites() == null)
                 || (backupSites.getSites().length == 0)) {
+            String[] startupConfigBackupSites = startUpConfig.getConfig()
+                    .getBackupSites();
+            if (startupConfigBackupSites == null) {
+                startupConfigBackupSites = new String[0];
+            }
             backupSites = new BackupSites();
             backupSites.setSites(startUpConfig.getConfig().getBackupSites());
+        }
+
+        /*
+         * Ensure the current site is part of the list.
+         */
+        String currentSite = LocalizationManager
+                .getContextName(LocalizationLevel.SITE);
+        String[] sites = backupSites.getSites();
+        if (Arrays.asList(sites).contains(currentSite) == false) {
+            String[] newSites = new String[sites.length + 1];
+            System.arraycopy(sites, 0, newSites, 0, sites.length);
+            newSites[newSites.length - 1] = currentSite;
+            backupSites.setSites(newSites);
         }
     }
 
@@ -772,7 +821,13 @@ public class SessionConfigurationManager implements
                     e);
         }
         if (allSettings.contains(settings) == false) {
-            allSettings.add(new ConfigLoader<>(f, Settings.class));
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, this.getSiteID());
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardConstants.SETTINGS_DATA);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+            allSettings.add(new ConfigLoader<>(f, Settings.class, null,
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams));
         }
     }
 
@@ -847,6 +902,13 @@ public class SessionConfigurationManager implements
     public void setSiteID(String siteIdentifier, IOriginator originator) {
         if (Utils.equal(siteIdentifier, this.siteIdentifier) == false) {
             this.siteIdentifier = siteIdentifier;
+            try {
+                sessionManager.setupEventIdDisplay();
+            } catch (HazardEventServiceException e) {
+                statusHandler.error(
+                        "Unable to setup event identifier to use new site ID.",
+                        e);
+            }
             notificationSender.postNotificationAsync(new SiteChanged(
                     siteIdentifier, originator));
         }
@@ -921,16 +983,19 @@ public class SessionConfigurationManager implements
             IHazardEvent hazardEvent) {
 
         /*
+         * Create the environment map.
+         */
+        Map<String, Serializable> environmentMap = new HashMap<String, Serializable>();
+        environmentMap.put(HazardConstants.SITE, getSiteID());
+
+        /*
          * Get the metadata, which is a map with at least one entry holding the
          * list of megawidget specifiers that applies, as well as an optional
          * entry for a map of event modifier identifiers to script function
-         * names. For now, just pass an empty environment map.
-         * 
-         * TODO: Substitute an actual map of environmental parameters for the
-         * empty placeholder.
+         * names.
          */
         IPythonExecutor<ContextSwitchingPythonEval, Map<String, Object>> executor = new MetaDataScriptExecutor(
-                hazardEvent, ENVIRONMENT);
+                hazardEvent, environmentMap);
         Map<String, Object> result = null;
         try {
             result = PYTHON_JOB_COORDINATOR.submitSyncJob(executor);
@@ -1827,9 +1892,23 @@ public class SessionConfigurationManager implements
         public void fileUpdated(FileUpdatedMessage message) {
             LocalizationFile file = pathManager
                     .getStaticLocalizationFile(HazardsConfigurationConstants.START_UP_CONFIG_PY);
+
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, getSiteID());
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardsConfigurationConstants.STARTUP_CONFIG_DIR);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+
             startUpConfig = new ConfigLoader<StartUpConfig>(file,
-                    StartUpConfig.class);
+                    StartUpConfig.class, null,
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
+
             loaderPool.schedule(startUpConfig);
+
+            /*
+             * TODO: Send out notification of change? How to ensure that change
+             * propagates?
+             */
         }
     }
 
@@ -1839,10 +1918,24 @@ public class SessionConfigurationManager implements
         public void fileUpdated(FileUpdatedMessage message) {
             LocalizationFile file = pathManager
                     .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
+
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, getSiteID());
+            configLoaderParams
+                    .put(HazardConstants.DATA_TYPE,
+                            HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+
             hazardCategories = new ConfigLoader<HazardCategories>(file,
-                    HazardCategories.class);
+                    HazardCategories.class, null,
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
             loaderPool.schedule(hazardCategories);
             ensureHazardTypeEntriesExistForAllTypes();
+
+            /*
+             * TODO: Send out notification of change? How to ensure that change
+             * propagates?
+             */
         }
     }
 
@@ -1850,23 +1943,25 @@ public class SessionConfigurationManager implements
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
-            StringBuilder metadataIncludes = new StringBuilder();
 
             LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
-
-            metadataIncludes.append(file.getFile().getParent());
-            file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.VTEC_CONSTANTS_PY);
-            metadataIncludes.append(":").append(file.getFile().getParent());
-
-            file = pathManager
                     .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_METADATA_PY);
-            metadataIncludes.append(":").append(file.getFile().getParent());
+
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, getSiteID());
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardsConfigurationConstants.HAZARD_METADATA_DIR);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
 
             hazardMetaData = new ConfigLoader<HazardMetaData>(file,
-                    HazardMetaData.class, null, metadataIncludes.toString());
+                    HazardMetaData.class, null,
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
             loaderPool.schedule(hazardMetaData);
+
+            /*
+             * TODO: Send out notification of change? How to ensure that change
+             * propagates?
+             */
         }
     }
 
@@ -1876,9 +1971,24 @@ public class SessionConfigurationManager implements
         public void fileUpdated(FileUpdatedMessage message) {
             LocalizationFile file = pathManager
                     .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
-            hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class);
+
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, getSiteID());
+            configLoaderParams
+                    .put(HazardConstants.DATA_TYPE,
+                            HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+
+            hazardTypes = new ConfigLoader<HazardTypes>(file,
+                    HazardTypes.class, null,
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
             loaderPool.schedule(hazardTypes);
             ensureHazardTypeEntriesExistForAllTypes();
+
+            /*
+             * TODO: Send out notification of change? How to ensure that change
+             * propagates?
+             */
         }
     }
 
@@ -1889,18 +1999,25 @@ public class SessionConfigurationManager implements
         public void fileUpdated(FileUpdatedMessage message) {
             LocalizationFile file = pathManager
                     .getStaticLocalizationFile(HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
+
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, getSiteID());
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardConstants.ALERT_CONFIG_DATA);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+
             alertsConfig = new ConfigLoader<HazardAlertsConfig>(file,
-                    HazardAlertsConfig.class);
+                    HazardAlertsConfig.class, null,
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
             loaderPool.schedule(alertsConfig);
 
-            Mode mode = CAVEMode.getMode() == CAVEMode.PRACTICE ? Mode.PRACTICE
-                    : Mode.OPERATIONAL;
+            boolean practice = (CAVEMode.getMode() != CAVEMode.OPERATIONAL);
             sessionManager.getAlertsManager().addAlertGenerationStrategy(
                     HazardNotification.class,
                     new HazardEventExpirationAlertStrategy(sessionManager
                             .getAlertsManager(), timeManager,
                             SessionConfigurationManager.this,
-                            new HazardEventManager(mode),
+                            new HazardEventManager(practice),
                             new AllHazardsFilterStrategy()));
         }
 
@@ -1913,8 +2030,16 @@ public class SessionConfigurationManager implements
         public void fileUpdated(FileUpdatedMessage message) {
             LocalizationFile file = pathManager
                     .getStaticLocalizationFile(HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
+
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, getSiteID());
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_DIR);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
+
             pgenTable = new ConfigLoader<ProductGeneratorTable>(file,
-                    ProductGeneratorTable.class);
+                    ProductGeneratorTable.class, null,
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
             loaderPool.schedule(pgenTable);
         }
     }
@@ -1925,8 +2050,16 @@ public class SessionConfigurationManager implements
         public void fileUpdated(FileUpdatedMessage message) {
             LocalizationFile file = pathManager
                     .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
+
+            Map<String, Object> configLoaderParams = new HashMap<>();
+            configLoaderParams.put(HazardConstants.SITE, getSiteID());
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardConstants.VIEW_CONFIG_DATA);
+            configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, false);
+
             settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
-                    SettingsConfig[].class, "viewConfig");
+                    SettingsConfig[].class, "viewConfig",
+                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
             loaderPool.schedule(settingsConfig);
         }
     }
@@ -1954,6 +2087,20 @@ public class SessionConfigurationManager implements
                             + Joiner.on(", ").join(missingHazardTypes)
                             + ". Please ensure that HazardTypes.py has entries "
                             + "for all of these hazard types.");
+        }
+    }
+
+    @Override
+    public String validateHazardEvent(IHazardEvent hazardEvent) {
+        IPythonExecutor<ContextSwitchingPythonEval, String> executor = new ValidateScriptExecutor(
+                hazardEvent);
+        try {
+            return PYTHON_JOB_COORDINATOR.submitSyncJob(executor);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error executing validate job for hazard event: "
+                            + hazardEvent.getEventID(), e);
+            return null;
         }
     }
 

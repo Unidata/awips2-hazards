@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.hazards.hydro;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -59,6 +60,17 @@ import com.raytheon.uf.common.util.Pair;
  * Jun 23, 2015 8866       Chris.Cody  Initialize RFP index and value fields for SHEF Forecast data
  * Aug 18, 2015 9650       Robert.Blum Replacing Long.MIN_VALUE to the missing value constant.
  * Feb 19, 2016 15014      Robert.Blum Updates due to FloodDAO changes.
+ * Mar 02, 2016 11898      Robert.Blum Fix calculation of stageTrend.
+ * Apr 28, 2016 18247      Robert.Blum Fixed computeForecastPointMofo to use maximum observed data
+ *                                     instead of current observed data.
+ * May 06, 2016 17520      Kevin.Bisanz Added getRiverForecastGroupSubData(hsaId,forecastGroup)
+ *                                     to handle situation of multiple HSAs in single forecast group.
+ * May 09, 2016 17514      Robert.Blum  Added calculation of fallBelowActionStageTime.
+ * Jun 01, 2017 15561      Chris.Golden Changed to no longer use "type" attribute,
+ *                                      so that the latter's existence is not relied
+ *                                      upon; hazard type is already provided for each
+ *                                      hazard event by its phenomenon, significance
+ *                                      and subtype.
  * </pre>
  * 
  * @author Chris.Cody
@@ -180,7 +192,7 @@ public class RiverForecastManager {
      * @param isSubDataNeeded
      *            Flag indicating whether this is a Deep query (true) or a
      *            Shallow query (false)
-     * @return List containing all RiverForcastGroup Data.
+     * @return List containing all RiverForecastGroup Data.
      */
     public List<RiverForecastGroup> getAllRiverForecastGroupList(
             boolean isSubDataNeeded) {
@@ -314,7 +326,7 @@ public class RiverForecastManager {
             if ((isSubDataNeeded == true) && (forecastGroupList != null)
                     && (forecastGroupList.isEmpty() == false)) {
                 for (RiverForecastGroup forecastGroup : forecastGroupList) {
-                    getRiverForecastGroupSubData(forecastGroup);
+                    getRiverForecastGroupSubData(hsaId, forecastGroup);
                 }
             }
         }
@@ -440,13 +452,30 @@ public class RiverForecastManager {
      */
     protected void getRiverForecastGroupSubData(
             RiverForecastGroup riverForecastGroup) {
+        getRiverForecastGroupSubData(null, riverForecastGroup);
+    }
+
+    /**
+     * Retrieve and set subdata for a RiverForecastGroup within a provided HSA.
+     * 
+     * @param hsaId
+     *            HSA ID used to limit results
+     * @param riverForecastGroup
+     *            RiverForecastGroup to fill and compute data
+     */
+    protected void getRiverForecastGroupSubData(String hsaId,
+            RiverForecastGroup riverForecastGroup) {
 
         List<RiverForecastPoint> riverForecastPointList = null;
 
         List<String> groupIdList = Lists.newArrayListWithExpectedSize(1);
         groupIdList.add(riverForecastGroup.getGroupId());
+        List<String> hsaList = null;
+        if (hsaId != null) {
+            hsaList = Arrays.asList(hsaId);
+        }
         riverForecastPointList = floodDAO.queryRiverForecastPointList(null,
-                null, groupIdList, null);
+                hsaList, groupIdList, null);
         if ((riverForecastPointList != null)
                 && (riverForecastPointList.isEmpty() == false)) {
             for (RiverForecastPoint riverForecastPoint : riverForecastPointList) {
@@ -955,9 +984,9 @@ public class RiverForecastManager {
      * Conditions: The River Point Forecast must have successfully queried its
      * Hydrograph Forecast Data, determined the Maximum Forecast from the
      * Forecast Time Series and set the values in the parent RiverForecastPoint
-     * <code>computeHydrographForecastInfo</code>. The River Poind Forecast must
+     * <code>computeHydrographForecastInfo</code>. The River Point Forecast must
      * have also queried for its Hydrograph Observed Data and determined its
-     * Current Observed value from the Observed Time Series and set the values
+     * Maximum Observed value from the Observed Time Series and set the values
      * in the parent RiverForecastPoint
      * <code>computeHydrographObservedInfo</code>.
      * 
@@ -980,25 +1009,25 @@ public class RiverForecastManager {
         SHEFForecast maximumSHEFForecast = riverForecastPoint
                 .getMaximumSHEFForecast();
 
-        SHEFObserved currentSHEFObservation = riverForecastPoint
-                .getCurrentObservation();
+        SHEFObserved maximumSHEFObservation = riverForecastPoint
+                .getMaximumSHEFObserved();
 
-        if ((currentSHEFObservation != null) && (maximumSHEFForecast != null)) {
-            if ((currentSHEFObservation.getValue() != RiverHydroConstants.MISSING_VALUE)
+        if ((maximumSHEFObservation != null) && (maximumSHEFForecast != null)) {
+            if ((maximumSHEFObservation.getValue() != RiverHydroConstants.MISSING_VALUE)
                     || (maximumSHEFForecast.getValue() != RiverHydroConstants.MISSING_VALUE)) {
-                if (currentSHEFObservation.getValue() > maximumSHEFForecast
+                if (maximumSHEFObservation.getValue() > maximumSHEFForecast
                         .getValue()) {
                     riverForecastPoint
-                            .setMaximumObservedForecastValue(currentSHEFObservation
+                            .setMaximumObservedForecastValue(maximumSHEFObservation
                                     .getValue());
 
                     int maxObservedForecastCategory = computeFloodStageCategory(
                             riverForecastPoint,
-                            currentSHEFObservation.getValue());
+                            maximumSHEFObservation.getValue());
                     riverForecastPoint
                             .setMaximumObservedForecastCategory(maxObservedForecastCategory);
                     riverForecastPoint.setMaximumObservedForecastTime(new Date(
-                            currentSHEFObservation.getObsTime()));
+                            maximumSHEFObservation.getObsTime()));
                 } else {
                     riverForecastPoint
                             .setMaximumObservedForecastValue(maximumSHEFForecast
@@ -1021,17 +1050,17 @@ public class RiverForecastManager {
                     .setMaximumObservedForecastCategory(maxObservedForecastCategory);
             riverForecastPoint.setMaximumObservedForecastTime(new Date(
                     maximumSHEFForecast.getValidTime()));
-        } else if (currentSHEFObservation != null) {
+        } else if (maximumSHEFObservation != null) {
             riverForecastPoint
-                    .setMaximumObservedForecastValue(currentSHEFObservation
+                    .setMaximumObservedForecastValue(maximumSHEFObservation
                             .getValue());
 
             int maxObservedForecastCategory = computeFloodStageCategory(
-                    riverForecastPoint, currentSHEFObservation.getValue());
+                    riverForecastPoint, maximumSHEFObservation.getValue());
             riverForecastPoint
                     .setMaximumObservedForecastCategory(maxObservedForecastCategory);
             riverForecastPoint.setMaximumObservedForecastTime(new Date(
-                    currentSHEFObservation.getObsTime()));
+                    maximumSHEFObservation.getObsTime()));
         }
     }
 
@@ -1188,6 +1217,7 @@ public class RiverForecastManager {
     // compute_fcst_info
     private void computeHydrographForecastInfo(
             RiverForecastPoint riverForecastPoint, long currentSystemTime) {
+        double actionStage = riverForecastPoint.getActionStage();
 
         /* initialize all the forecast point stage data */
         riverForecastPoint
@@ -1200,6 +1230,8 @@ public class RiverForecastManager {
                 .setForecastRiseAboveTime(RiverHydroConstants.MISSING_VALUE);
         riverForecastPoint
                 .setForecastFallBelowTime(RiverHydroConstants.MISSING_VALUE);
+        riverForecastPoint
+                .setForecastFallBelowActionStageTime(RiverHydroConstants.MISSING_VALUE);
         riverForecastPoint
                 .setForecastCrestValue(RiverHydroConstants.MISSING_VALUE_DOUBLE);
         riverForecastPoint
@@ -1228,6 +1260,7 @@ public class RiverForecastManager {
 
             double maxForecastStageValue = RiverHydroConstants.MISSING_VALUE;
             long maxForecastBasisTime = RiverHydroConstants.MISSING_VALUE;
+            double prevForecastStageValue = RiverHydroConstants.MISSING_VALUE_DOUBLE;
             for (int k = 0; k < shefForecastListSize; k++) {
                 SHEFForecast shefForecast = shefForecastList.get(k);
                 double forecastStageValue = shefForecast.getValue();
@@ -1245,6 +1278,21 @@ public class RiverForecastManager {
                         maxForecastBasisTime = forecastBasisTime;
                     }
                 }
+
+                if (prevForecastStageValue != RiverHydroConstants.MISSING_VALUE_DOUBLE) {
+                    if (prevForecastStageValue >= actionStage
+                            && forecastStageValue < actionStage) {
+                        if (riverForecastPoint
+                                .getForecastFallBelowActionStageTime() == RiverHydroConstants.MISSING_VALUE_DOUBLE) {
+                            riverForecastPoint
+                                    .setForecastFallBelowActionStageTime(shefForecast
+                                            .getTime());
+                        }
+
+                    }
+                }
+                // Save the value so that it can be compared with the next.
+                prevForecastStageValue = forecastStageValue;
             }
 
             SHEFForecast maximumSHEFForecast = shefForecastList
@@ -2303,11 +2351,9 @@ public class RiverForecastManager {
 
         double stageWindow = RiverHydroConstants.MISSING_VALUE_DOUBLE;
 
-        double obsRefStageValue = RiverHydroConstants.MISSING_VALUE_DOUBLE;
+        double refStageValue = RiverHydroConstants.MISSING_VALUE_DOUBLE;
         HydroGraphTrend observedTrend = HydroGraphTrend.MISSING;
         int shefObservedListSize = 0;
-        double fcstRefStageValue = RiverHydroConstants.MISSING_VALUE_DOUBLE;
-        HydroGraphTrend forecastTrend = HydroGraphTrend.MISSING;
         int shefForecastListSize = 0;
         /*
          * set STAGE_WINDOW as fp[].chg_threshold, if fp[].chg_threshold is
@@ -2358,7 +2404,7 @@ public class RiverForecastManager {
                 SHEFObserved shefObserved = shefObservedList.get(i);
                 double tempObsValue = shefObserved.getValue();
                 if (tempObsValue != RiverHydroConstants.MISSING_VALUE_DOUBLE) {
-                    obsRefStageValue = shefObservedList.get(i).getValue();
+                    refStageValue = shefObservedList.get(i).getValue();
                     break;
                 }
             }
@@ -2381,15 +2427,15 @@ public class RiverForecastManager {
                  * earliest to latest
                  */
                 if ((obsCheckStageValue != RiverHydroConstants.MISSING_VALUE_DOUBLE)
-                        && (obsRefStageValue != RiverHydroConstants.MISSING_VALUE_DOUBLE)) {
-                    if ((obsCheckStageValue < (obsRefStageValue - stageWindow))
+                        && (refStageValue != RiverHydroConstants.MISSING_VALUE_DOUBLE)) {
+                    if ((obsCheckStageValue < (refStageValue - stageWindow))
                             && ((obsMinSet == false) || (obsCheckStageValue <= obsMinStageValue))) {
                         obsMinStageValue = obsCheckStageValue;
                         obsMinStageTime = obsCheckStageTime;
                         obsMinSet = true;
                     }
 
-                    if ((obsCheckStageValue > (obsRefStageValue + stageWindow))
+                    if ((obsCheckStageValue > (refStageValue + stageWindow))
                             && ((obsMaxSet == false) || (obsCheckStageValue >= obsMaxStageValue))) {
                         obsMaxStageValue = obsCheckStageValue;
                         obsMaxStageTime = obsCheckStageTime;
@@ -2420,9 +2466,9 @@ public class RiverForecastManager {
              */
 
             if (obsMinSet || obsMaxSet) {
-                if (obsCompStageValue > obsRefStageValue) {
+                if (obsCompStageValue > refStageValue) {
                     observedTrend = HydroGraphTrend.FALL;
-                } else if (obsCompStageValue < obsRefStageValue) {
+                } else if (obsCompStageValue < refStageValue) {
                     observedTrend = HydroGraphTrend.RISE;
                 } else {
                     observedTrend = HydroGraphTrend.UNCHANGED;
@@ -2439,7 +2485,7 @@ public class RiverForecastManager {
              * account for the possibility of a missing value indicator...
              */
             SHEFObserved shefObserved = shefObservedList.get(0);
-            obsRefStageValue = shefObserved.getValue();
+            refStageValue = shefObserved.getValue();
         }
 
         /* -------------------------------------------------------------- */
@@ -2497,7 +2543,7 @@ public class RiverForecastManager {
             if (shefObservedListSize > 0) {
                 fcstStartIndex = 0;
             } else {
-                fcstRefStageValue = shefForecastList.get(0).getValue();
+                refStageValue = shefForecastList.get(0).getValue();
                 fcstStartIndex = 1;
             }
 
@@ -2516,15 +2562,15 @@ public class RiverForecastManager {
                  */
 
                 if ((fcstCheckStageValue != RiverHydroConstants.MISSING_VALUE_DOUBLE)
-                        && (fcstRefStageValue != RiverHydroConstants.MISSING_VALUE_DOUBLE)) {
-                    if ((fcstCheckStageValue < (fcstRefStageValue - stageWindow))
+                        && (refStageValue != RiverHydroConstants.MISSING_VALUE_DOUBLE)) {
+                    if ((fcstCheckStageValue < (refStageValue - stageWindow))
                             && ((fcstMinSet == false) || (fcstCheckStageValue < fcstMinStageValue))) {
                         fcstMinStageValue = fcstCheckStageValue;
                         fcstMinStageTime = fcstCheckStageTime;
                         fcstMinSet = true;
                     }
 
-                    if ((fcstCheckStageValue > (fcstRefStageValue + stageWindow))
+                    if ((fcstCheckStageValue > (refStageValue + stageWindow))
                             && ((fcstMaxSet == false) || (fcstCheckStageValue > fcstMaxStageValue))) {
                         fcstMaxStageValue = fcstCheckStageValue;
                         fcstMaxStageTime = fcstCheckStageTime;
@@ -2557,9 +2603,9 @@ public class RiverForecastManager {
              */
 
             if (fcstMinSet || fcstMaxSet) {
-                if (fcstCompStageValue < fcstRefStageValue) {
+                if (fcstCompStageValue < refStageValue) {
                     hydroGraphTrend = HydroGraphTrend.FALL;
-                } else if (fcstCompStageValue > fcstRefStageValue) {
+                } else if (fcstCompStageValue > refStageValue) {
                     hydroGraphTrend = HydroGraphTrend.RISE;
                 } else {
                     hydroGraphTrend = HydroGraphTrend.UNCHANGED;
@@ -2771,8 +2817,10 @@ public class RiverForecastManager {
      * @param forecastPointList
      *            List of RiverForecastPoint objects for the given HSA
      * @param eventMap
-     *            Map of previous event data items [ < Event Id, Map [property ,
-     *            value>> ]
+     *            Map of event identifiers to dictionaries representing previous
+     *            events [ < Event Id, Map [property , value>> ] with the child
+     *            maps including "phen" and "sig" entries for phenomenon and
+     *            significance.
      */
     public List<HydroEvent> constructHydroEventList(String hsaId,
             List<RiverForecastPoint> forecastPointList,

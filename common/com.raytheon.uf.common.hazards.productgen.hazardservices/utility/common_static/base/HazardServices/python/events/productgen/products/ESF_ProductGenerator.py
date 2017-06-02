@@ -43,7 +43,7 @@ class Product(HydroGenerator.Product):
         self._areaName = '' 
         # Number of hours past issuance time for expireTime
         # If -1, use the end time of the hazard
-        self._purgeHours = 8
+        self._purgeHours = 8.0
         self._ESF_ProductName = 'Hydrologic Outlook'
         self._includeAreaNames = False
         self._includeCityNames = False
@@ -117,7 +117,9 @@ class Product(HydroGenerator.Product):
          '''  
         productDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
 
-    def executeFrom(self, dataList, keyInfo=None):
+    def executeFrom(self, dataList, eventSet, keyInfo=None):
         if keyInfo is not None:
-            dataList = self.correctProduct(dataList, keyInfo, False)
+            dataList = self.correctProduct(dataList, eventSet, keyInfo, False)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList

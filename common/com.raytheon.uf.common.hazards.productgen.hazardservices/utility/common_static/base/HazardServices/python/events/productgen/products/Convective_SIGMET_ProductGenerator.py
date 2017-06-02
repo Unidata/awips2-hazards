@@ -162,6 +162,7 @@ class Product(HydroGenerator.Product):
         for event in eventSet:
             self._adjustForVisualFeatureChange(event, eventSetAttrs)
         
+        productDict['issueTime'] = self._issueTime
         productDict['eventDicts'] = eventDicts
         productDict['productID'] = 'SIGMET.Convective'
         productDict['productName'] = 'CONVECTIVE SIGMET'     
@@ -530,7 +531,9 @@ WIND GUSTS TO 100KTS RPRTD.
          '''  
         productDict['narrativeForecastInformation'] = self._section.hazardEvent.get('narrativeForecastInformation', default)
 
-    def executeFrom(self, dataList, prevDataList=None):
+    def executeFrom(self, dataList, eventSet, prevDataList=None):
         if prevDataList is not None:
-            dataList = self.correctProduct(dataList, prevDataList, False)
+            dataList = self.correctProduct(dataList, eventSet, prevDataList, False)
+        else:
+            self.updateExpireTimes(dataList)
         return dataList

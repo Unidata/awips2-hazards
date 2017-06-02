@@ -41,6 +41,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Nov 10, 2015 12762      Chris.Golden      Added support for use of new recommender manager.
  * Apr 01, 2016 16225      Chris.Golden      Added ability to cancel tasks that are scheduled to run
  *                                           at regular intervals.
+ * Jun 08, 2017 16373      Chris.Golden      Corrected spelling of RUN_RECOMMENDER.
  * </pre>
  * 
  * @author Chris Golden
@@ -51,7 +52,7 @@ public class ToolAction {
      * Recommender actions
      */
     public enum RecommenderActionEnum {
-        RUN_RECOMMENDER_WITH_PARAMETERS, RUN_RECOMENDER, RECOMMENDATIONS, ENABLE_EVENT_DRIVEN_TOOLS
+        RUN_RECOMMENDER_WITH_PARAMETERS, RUN_RECOMMENDER, RECOMMENDATIONS, ENABLE_EVENT_DRIVEN_TOOLS
     };
 
     // Private Variables

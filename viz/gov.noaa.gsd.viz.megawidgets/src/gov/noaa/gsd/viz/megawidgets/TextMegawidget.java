@@ -41,7 +41,9 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
@@ -103,6 +105,7 @@ import com.raytheon.uf.viz.spellchecker.text.SpellCheckTextViewer;
  * Oct 08, 2015  12165     Chris.Golden      Added option to show no border, so that
  *                                           a read-only text field can look like a
  *                                           label.
+ * Mar 03, 2016   7452     Robert.Blum       Added new numericOnly property.
  * Oct 25, 2016  21677     Chris.Golden      Fixed behavior when set to be non-editable
  *                                           so that text can still be scrolled,
  *                                           selected, etc.
@@ -279,6 +282,31 @@ public class TextMegawidget extends StatefulMegawidget implements IControl {
         }
         gc.dispose();
         textViewer.getTextWidget().setLayoutData(gridData);
+
+        /*
+         * Add a listener to reject any text that includes non-numeric elements,
+         * and ensure the text that was supplied as the starting state will
+         * work.
+         */
+        if (specifier.isNumericOnly()) {
+            if ((state != null) && (state.matches("^[0-9]*$") == false)) {
+                state = "";
+            }
+            textViewer.getTextWidget().addListener(SWT.Verify, new Listener() {
+
+                @Override
+                public void handleEvent(Event e) {
+                    char[] chars = new char[e.text.length()];
+                    e.text.getChars(0, chars.length, chars, 0);
+                    for (int j = 0; j < chars.length; j++) {
+                        if ((chars[j] < '0') || (chars[j] > '9')) {
+                            e.doit = false;
+                            return;
+                        }
+                    }
+                }
+            });
+        }
 
         /*
          * If only ending state changes are to result in notifications, bind
