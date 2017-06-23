@@ -197,13 +197,20 @@ class ProbUtils(object):
                           ((20,40), { "red": 1, "green": 1, "blue": 0 }),
         
         '''
-        colorsList = event.get('convectiveProbTrendGraph', [])
+        colorsList = event.get('convectiveProbTrendGraph', self.getGraphProbsBasedOnDuration(event))
+        print '\n\n[PU]: colorsList', colorsList
         probTrend = [entry.get('y') for entry in colorsList]
+        print '\t[PU]: probTrend', probTrend
 
         probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5)
 
+        print '\t[PU]: probTrendTimeInterval', probTrendTimeInterval
+
         ### Add 1 to duration to get "inclusive" 
         probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
+        
+        print '\t[PU]: probTrendTimeIntervals', probTrendTimeIntervals
+        
         oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
 
         oneMinuteProbs = np.interp(oneMinuteTimeIntervals, probTrendTimeIntervals, probTrend)
@@ -688,16 +695,38 @@ class ProbUtils(object):
         meanDir = dirStats.get('weightedAverage')
         stdDir = dirStats.get('stdDev')
         
+        if np.isnan(stdDir):
+            # if NaN, go minimum
+            stdDir = 12
+        elif stdDir > 45:
+            stdDir = 45
+        elif stdDir < 12:
+            stdDir = 12
 
-        stdDir = 45 if stdDir > 45 else stdDir
-        stdDir = 12 if stdDir < 12 else stdDir
+        if np.isnan(stdSpd):
+            # if NaN, go minimum
+            stdSpd = 4
+        elif stdSpd > 20:
+            stdSpd = 20
+        elif stdSpd < 4:
+            stdSpd = 4
 
-        stdSpd = 20 if stdSpd > 20 else stdSpd
-        stdSpd = 4 if stdSpd < 4 else stdSpd
+        if np.isnan(meanSpd):
+            # if NaN, go minimum
+            meanSpd = 1
+        elif meanSpd > 102:
+            meanSpd = 102
+        elif meanSpd < 0:
+            meanSpd = 0
 
-        meanSpd = 102 if meanSpd > 102 else meanSpd
+        if np.isnan(meanDir):
+            # if NaN, go minimum
+            meanDir = 1 
+        elif meanDir > 359:
+            meanDir = meanDir%360
+        elif meanDir < 0:
+            meanDir = meanDir%360
 
-        
         return {
                 'convectiveObjectDir' : meanDir,
                 'convectiveObjectDirUnc' : stdDir,

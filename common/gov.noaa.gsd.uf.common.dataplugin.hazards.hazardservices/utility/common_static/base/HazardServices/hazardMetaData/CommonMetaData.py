@@ -2063,8 +2063,8 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldName": "convectiveObjectDir",
                         "sendEveryChange": False,
                         "label": "Motion Vector: Dir (deg)",
-                        "minValue": 1,
-                        "maxValue": 360,
+                        "minValue": 0,
+                        "maxValue": 359,
                         "values": int(wdir),
                         "incrementDelta": 5,
                         "showScale": False,
@@ -2076,8 +2076,8 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldName": "convectiveObjectSpdKts",
                         "label": "Spd (kts)",
                         "sendEveryChange": False,
-                        "minValue": 0,
-                        "maxValue": 200,
+                        "minValue": 1,
+                        "maxValue": 102,
                         "values": int(wspd),
                         "showScale": False,
                         "modifyRecommender": recommender,
@@ -2088,8 +2088,8 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldName": "convectiveObjectDirUnc",
                         "label": "Dir Uncertainty (deg)",
                         "sendEveryChange": False,
-                        "minValue": 0,
-                        "maxValue": 60,
+                        "minValue": 12,
+                        "maxValue": 45,
                         "values":  self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectDirUnc'),
                         "incrementDelta": 5,
                         "showScale": False,
@@ -2101,7 +2101,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldName": "convectiveObjectSpdKtsUnc",
                         "label": "Speed Uncertainty (kts)",
                         "sendEveryChange": False,
-                        "minValue": 0,
+                        "minValue": 4,
                         "maxValue": 20,
                         "values": self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectSpdKtsUnc'),
                         "showScale": False,
@@ -2405,6 +2405,8 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
 
         probs = [entry.get('y') for entry in convectiveProbTrendGraphVals]
         mins = [entry.get('x') for entry in convectiveProbTrendGraphVals]
+        if len(mins) == 0:
+            return []
         duration = mins[-1]
         delta = np.average(np.diff(mins))
         probsArr = np.array(probs)
