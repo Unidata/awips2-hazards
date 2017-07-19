@@ -22,8 +22,6 @@ package com.raytheon.uf.common.hazards.productgen.product;
 import java.util.ArrayList;
 import java.util.List;
 
-import jep.JepException;
-
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -31,11 +29,13 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
-import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
+import com.raytheon.uf.common.python.concurrent.PythonInterpreterFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.util.FileUtil;
+
+import jep.JepException;
 
 /**
  * Factory to create a ProductScript object.
@@ -69,13 +69,23 @@ import com.raytheon.uf.common.util.FileUtil;
  * @version 1.0
  */
 
-public class ProductScriptFactory extends
-        AbstractPythonScriptFactory<ProductScript> {
+public class ProductScriptFactory
+        implements PythonInterpreterFactory<ProductScript> {
 
     /**
      * All of the utility directories off of the
-     * {@link PYTHON_UTILITY_DIRECTORY} directory which must be added to the Jep
-     * path for the product generation framework and product generators.
+     * {@link HazardsConfigurationConstants#GFE_LOCALIZATION_DIR} directory
+     * which must be added to the Jep path for the product generation framework
+     * and product generators.
+     */
+    private final static String[] GFE_UTILITY_SUBDIRECTORIES = {
+            HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR };
+
+    /**
+     * All of the utility directories off of the
+     * {@link HazardsConfigurationConstants#HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR}
+     * directory which must be added to the Jep path for the product generation
+     * framework and product generators.
      */
     private final static String[] PYTHON_UTILITY_SUBDIRECTORIES = {
             HazardsConfigurationConstants.PYTHON_LOCALIZATION_BRIDGE_DIR,
@@ -90,9 +100,9 @@ public class ProductScriptFactory extends
 
     /**
      * All of the utility directories off of the
-     * {@link HAZARD_SERVICES_UTILITY_DIRECTORY} directory which must be added
-     * to the Jep path for the product generation framework and product
-     * generators.
+     * {@link HazardsConfigurationConstants#HAZARD_SERVICES_DIR} directory which
+     * must be added to the Jep path for the product generation framework and
+     * product generators.
      */
     private final static String[] HAZARD_SERVICES_UTILITY_SUBDIRECTORIES = {
             HazardsConfigurationConstants.HAZARD_METADATA_DIR,
@@ -108,17 +118,6 @@ public class ProductScriptFactory extends
      * Default Constructor.
      */
     public ProductScriptFactory() {
-        this(ProductScript.DEFAULT_PRODUCT_GENERATION_JOB_COORDINATOR, 1);
-    }
-
-    /**
-     * @param name
-     *            reference name to get instance
-     * @param maxThreads
-     *            max number of threads
-     */
-    private ProductScriptFactory(String name, int maxThreads) {
-        super(name, maxThreads);
     }
 
     /**
@@ -143,9 +142,17 @@ public class ProductScriptFactory extends
                     LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
             List<String> utilityPathList = new ArrayList<String>();
 
+            String gfePath = manager
+                    .getFile(baseContext,
+                            HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
+                    .getPath();
+            utilityPathList.add(gfePath);
+            for (String utilityDir : GFE_UTILITY_SUBDIRECTORIES) {
+                utilityPathList.add(FileUtil.join(gfePath, utilityDir));
+            }
+
             String pythonPath = manager
-                    .getFile(
-                            baseContext,
+                    .getFile(baseContext,
                             HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR)
                     .getPath();
             utilityPathList.add(pythonPath);
@@ -153,17 +160,18 @@ public class ProductScriptFactory extends
                 utilityPathList.add(FileUtil.join(pythonPath, utilityDir));
             }
 
-            String hazardServicesPath = manager.getFile(baseContext,
-                    HazardsConfigurationConstants.HAZARD_SERVICES_DIR)
+            String hazardServicesPath = manager
+                    .getFile(baseContext,
+                            HazardsConfigurationConstants.HAZARD_SERVICES_DIR)
                     .getPath();
             utilityPathList.add(hazardServicesPath);
             for (String utilityDir : HAZARD_SERVICES_UTILITY_SUBDIRECTORIES) {
-                utilityPathList.add(FileUtil.join(hazardServicesPath,
-                        utilityDir));
+                utilityPathList
+                        .add(FileUtil.join(hazardServicesPath, utilityDir));
             }
 
-            String includePath = PyUtil.buildJepIncludePath(utilityPathList
-                    .toArray(new String[0]));
+            String includePath = PyUtil.buildJepIncludePath(
+                    utilityPathList.toArray(new String[0]));
 
             return new ProductScript(includePath, site);
         } catch (JepException e) {

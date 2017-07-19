@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jep.JepException;
-
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
@@ -48,6 +46,8 @@ import com.raytheon.uf.common.python.controller.PythonScriptController;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+
+import jep.JepException;
 
 /**
  * Provides to execute methods in the product generator.
@@ -167,13 +167,15 @@ public class ProductScript extends PythonScriptController {
     protected ProductScript(final String jepIncludePath, String site)
             throws JepException {
         super(PythonBuildPaths.buildPythonInterfacePath(PRODUCTS_DIRECTORY,
-                PYTHON_INTERFACE), PyUtil
-                .buildJepIncludePath(PythonBuildPaths.buildDirectoryPath(
-                        FORMATS_DIRECTORY, site), PythonBuildPaths
-                        .buildDirectoryPath(PRODUCTS_DIRECTORY, site),
-                        PythonBuildPaths.buildDirectoryPath(
-                                GEOSPATIAL_DIRECTORY, site), PythonBuildPaths
-                                .buildIncludePath(), jepIncludePath),
+                PYTHON_INTERFACE),
+                PyUtil.buildJepIncludePath(
+                        PythonBuildPaths.buildDirectoryPath(FORMATS_DIRECTORY,
+                                site),
+                        PythonBuildPaths.buildDirectoryPath(PRODUCTS_DIRECTORY,
+                                site),
+                        PythonBuildPaths
+                                .buildDirectoryPath(GEOSPATIAL_DIRECTORY, site),
+                        PythonBuildPaths.buildIncludePath(), jepIncludePath),
                 ProductScript.class.getClassLoader(), PYTHON_CLASS);
 
         productsDir = PythonBuildPaths
@@ -198,11 +200,10 @@ public class ProductScript extends PythonScriptController {
         eventUtilDirObserver = new EventUtilitiesDirectoryUpdateObserver();
         eventUtilDir.addFileUpdatedObserver(eventUtilDirObserver);
 
-        String scriptPath = PythonBuildPaths.buildDirectoryPath(
-                PRODUCTS_DIRECTORY, site);
+        String scriptPath = PythonBuildPaths
+                .buildDirectoryPath(PRODUCTS_DIRECTORY, site);
         jep.eval(INTERFACE + " = " + PYTHON_INTERFACE + "('" + scriptPath
-                + "', '"
-                + HazardsConfigurationConstants.PYTHON_EVENTS_DIRECTORY
+                + "', '" + HazardsConfigurationConstants.PYTHON_EVENTS_DIRECTORY
                 + File.separator + PRODUCTS_DIRECTORY + "', '" + site + "')");
         List<String> errors = getStartupErrors();
         if (errors.size() > 0) {
@@ -250,11 +251,10 @@ public class ProductScript extends PythonScriptController {
             }
 
             // Run the generator and formatters
-            retVal = formatProduct(
-                    product,
-                    formats,
+            retVal = formatProduct(product, formats,
                     (GeneratedProductList) execute(GENERATOR_EXECUTE_METHOD,
-                            INTERFACE, args), false);
+                            INTERFACE, args),
+                    false);
 
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
@@ -280,8 +280,8 @@ public class ProductScript extends PythonScriptController {
      *         the generator
      */
     public GeneratedProductList updateProduct(String product,
-            EventSet<IEvent> eventSet,
-            List<Map<String, Serializable>> dataList, String... formats) {
+            EventSet<IEvent> eventSet, List<Map<String, Serializable>> dataList,
+            String... formats) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
         args.put(EVENT_SET, eventSet);
@@ -294,11 +294,10 @@ public class ProductScript extends PythonScriptController {
             }
 
             // Run the generator update method and formatters
-            retVal = formatProduct(
-                    product,
-                    formats,
+            retVal = formatProduct(product, formats,
                     (GeneratedProductList) execute(GENERATOR_UPDATE_METHOD,
-                            INTERFACE, args), true);
+                            INTERFACE, args),
+                    true);
 
         } catch (JepException e) {
             statusHandler.handle(Priority.ERROR,
@@ -335,9 +334,7 @@ public class ProductScript extends PythonScriptController {
             }
 
             // Run the generator executeFrom method and formatters
-            retVal = formatProduct(
-                    product,
-                    formats,
+            retVal = formatProduct(product, formats,
                     (GeneratedProductList) execute(
                             GENERATOR_EXECUTE_FROM_METHOD, INTERFACE, args),
                     false);
@@ -349,9 +346,8 @@ public class ProductScript extends PythonScriptController {
         return retVal;
     }
 
-    private GeneratedProductList formatProduct(String product,
-            String[] formats, GeneratedProductList retVal,
-            boolean overrideProductText) {
+    private GeneratedProductList formatProduct(String product, String[] formats,
+            GeneratedProductList retVal, boolean overrideProductText) {
         Map<String, Object> args = new HashMap<String, Object>(
                 getStarterMap(product));
 
@@ -420,8 +416,8 @@ public class ProductScript extends PythonScriptController {
             retVal = (Map<String, Serializable>) execute(methodName, INTERFACE,
                     args);
         } catch (JepException e) {
-            statusHandler.handle(Priority.ERROR, "Unable to get info from "
-                    + methodName, e);
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to get info from " + methodName, e);
         }
 
         return retVal;
@@ -430,9 +426,8 @@ public class ProductScript extends PythonScriptController {
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.uf.common.python.controller.PythonScriptController#fileUpdated
-     * (com.raytheon.uf.common.localization.FileUpdatedMessage)
+     * @see com.raytheon.uf.common.python.controller.PythonScriptController#
+     * fileUpdated (com.raytheon.uf.common.localization.FileUpdatedMessage)
      */
     @Override
     public void fileUpdated(FileUpdatedMessage message) {
@@ -544,7 +539,8 @@ public class ProductScript extends PythonScriptController {
                 true);
 
         for (LocalizationFile lFile : lFiles) {
-            final String modName = resolveCorrectName(lFile.getFile().getName());
+            final String modName = resolveCorrectName(
+                    lFile.getFile().getName());
             if (productGeneratorName.equals(modName)) {
                 return lFile;
             }
@@ -633,8 +629,8 @@ public class ProductScript extends PythonScriptController {
         return productInfo;
     }
 
-    private class FormatsDirectoryUpdateObserver implements
-            ILocalizationFileObserver {
+    private class FormatsDirectoryUpdateObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
@@ -658,8 +654,8 @@ public class ProductScript extends PythonScriptController {
         }
     }
 
-    private class TextUtilitiesDirectoryUpdateObserver implements
-            ILocalizationFileObserver {
+    private class TextUtilitiesDirectoryUpdateObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
@@ -682,8 +678,8 @@ public class ProductScript extends PythonScriptController {
         }
     }
 
-    private class EventUtilitiesDirectoryUpdateObserver implements
-            ILocalizationFileObserver {
+    private class EventUtilitiesDirectoryUpdateObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {

@@ -19,13 +19,12 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
-import jep.JepException;
-
-import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
+import com.raytheon.uf.common.python.concurrent.PythonInterpreterFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+
+import jep.JepException;
 
 /**
  * Factory for use with the Python concurrency code to allow for multiple
@@ -46,8 +45,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * @version 1.0
  */
 
-public class CAVERecommenderPythonFactory extends
-        AbstractPythonScriptFactory<CAVERecommenderScriptManager> {
+public class CAVERecommenderPythonFactory
+        implements PythonInterpreterFactory<CAVERecommenderScriptManager> {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CAVERecommenderPythonFactory.class);
@@ -55,21 +54,14 @@ public class CAVERecommenderPythonFactory extends
     private final String site;
 
     public CAVERecommenderPythonFactory(String site) {
-        this(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR
-                + site, 1, site);
-    }
-
-    public CAVERecommenderPythonFactory(String name, int maxThreads, String site) {
-        super(name, maxThreads);
         this.site = site;
     }
 
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.uf.common.python.concurrent.IPythonScriptFactory#getPythonScript
-     * ()
+     * @see com.raytheon.uf.common.python.concurrent.IPythonScriptFactory#
+     * getPythonScript ()
      */
     @Override
     public CAVERecommenderScriptManager createPythonScript() {

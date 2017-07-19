@@ -9,11 +9,6 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
-import gov.noaa.gsd.common.utilities.IBinarySerializable;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
-import gov.noaa.gsd.common.utilities.SerializableBytes;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
@@ -22,9 +17,8 @@ import java.io.ObjectStreamException;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -40,6 +34,11 @@ import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
 import com.vividsolutions.jts.operation.valid.IsValidOp;
+
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
+import gov.noaa.gsd.common.utilities.SerializableBytes;
 
 /**
  * Description: Wrapper for a {@link Geometry}. Note that this class is
@@ -125,8 +124,8 @@ public class GeometryWrapper implements IRotatable, IScaleable {
          *            Geometry wrapper.
          */
         SerializationProxy(GeometryWrapper geometryWrapper) {
-            geometryBytes = new SerializableBytes(WKB_WRITER.get().write(
-                    geometryWrapper.geometry));
+            geometryBytes = new SerializableBytes(
+                    WKB_WRITER.get().write(geometryWrapper.geometry));
             centerPoint = geometryWrapper.centerPoint;
             rotation = geometryWrapper.rotation;
         }
@@ -142,8 +141,9 @@ public class GeometryWrapper implements IRotatable, IScaleable {
          */
         private Object readResolve() throws ObjectStreamException {
             try {
-                return new GeometryWrapper(WKB_READER.get().read(
-                        geometryBytes.getBytes()), centerPoint, rotation);
+                return new GeometryWrapper(
+                        WKB_READER.get().read(geometryBytes.getBytes()),
+                        centerPoint, rotation);
             } catch (ParseException e) {
                 throw new InvalidObjectException(
                         "unable to parse wrapped JTS geometry: " + e);
@@ -233,13 +233,14 @@ public class GeometryWrapper implements IRotatable, IScaleable {
          * get the center point.
          */
         Coordinate firstPoint = geometry.getCoordinate();
-        Geometry unrotatedGeometry = AffineTransformation.rotationInstance(
-                rotation * -1.0, firstPoint.x, firstPoint.y)
+        Geometry unrotatedGeometry = AffineTransformation
+                .rotationInstance(rotation * -1.0, firstPoint.x, firstPoint.y)
                 .transform(geometry);
         Coordinate center = unrotatedGeometry.getEnvelopeInternal().centre();
         centerPoint = new Coordinate(center.x, center.y, 0.0);
-        AffineTransformation.rotationInstance(rotation, firstPoint.x,
-                firstPoint.y).transform(centerPoint, centerPoint);
+        AffineTransformation
+                .rotationInstance(rotation, firstPoint.x, firstPoint.y)
+                .transform(centerPoint, centerPoint);
     }
 
     /**
@@ -256,8 +257,8 @@ public class GeometryWrapper implements IRotatable, IScaleable {
     public GeometryWrapper(ByteArrayInputStream bytesInputStream)
             throws IOException {
         try {
-            this.geometry = WKB_READER.get().read(
-                    new InputStreamInStream(bytesInputStream));
+            this.geometry = WKB_READER.get()
+                    .read(new InputStreamInStream(bytesInputStream));
         } catch (ParseException e) {
             throw new IOException("unable to parse serialized geometry", e);
         }
@@ -265,9 +266,10 @@ public class GeometryWrapper implements IRotatable, IScaleable {
                 PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
                         ByteOrder.BIG_ENDIAN),
                 PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
-                        ByteOrder.BIG_ENDIAN), 0.0);
-        this.rotation = PrimitiveAndStringBinaryTranslator.readDouble(
-                bytesInputStream, ByteOrder.BIG_ENDIAN);
+                        ByteOrder.BIG_ENDIAN),
+                0.0);
+        this.rotation = PrimitiveAndStringBinaryTranslator
+                .readDouble(bytesInputStream, ByteOrder.BIG_ENDIAN);
     }
 
     // Private Constructors
@@ -318,15 +320,17 @@ public class GeometryWrapper implements IRotatable, IScaleable {
             return false;
         }
         GeometryWrapper otherGeometryWrapper = (GeometryWrapper) other;
-        return (((geometry == otherGeometryWrapper.geometry) || ((geometry != null)
-                && (otherGeometryWrapper.geometry != null) && geometry
-                    .equals(otherGeometryWrapper.geometry))) && (rotation == otherGeometryWrapper.rotation));
+        return (((geometry == otherGeometryWrapper.geometry)
+                || ((geometry != null)
+                        && (otherGeometryWrapper.geometry != null)
+                        && geometry.equals(otherGeometryWrapper.geometry)))
+                && (rotation == otherGeometryWrapper.rotation));
     }
 
     @Override
     public int hashCode() {
-        return (int) (((geometry == null ? 0L : (double) geometry.hashCode()) + (Double
-                .valueOf(rotation).hashCode())) % Integer.MAX_VALUE);
+        return (int) (((geometry == null ? 0L : (double) geometry.hashCode())
+                + (Double.valueOf(rotation).hashCode())) % Integer.MAX_VALUE);
     }
 
     @SuppressWarnings("unchecked")
@@ -350,8 +354,9 @@ public class GeometryWrapper implements IRotatable, IScaleable {
         /*
          * Rotate the geometry by the specified delta.
          */
-        Geometry geometry = AffineTransformation.rotationInstance(delta,
-                centerPoint.x, centerPoint.y).transform(getGeometry());
+        Geometry geometry = AffineTransformation
+                .rotationInstance(delta, centerPoint.x, centerPoint.y)
+                .transform(getGeometry());
 
         /*
          * Return a new instance with the rotated geometry and the altered
@@ -388,7 +393,8 @@ public class GeometryWrapper implements IRotatable, IScaleable {
          * center point, and rotates it back to the original rotation.
          */
         AffineTransformation transformer = AffineTransformation
-                .rotationInstance(rotation * -1.0, centerPoint.x, centerPoint.y);
+                .rotationInstance(rotation * -1.0, centerPoint.x,
+                        centerPoint.y);
         transformer.translate(centerPoint.x * -1.0, centerPoint.y * -1.0);
         transformer.scale(horizontalMultiplier, verticalMultiplier);
         transformer.translate(centerPoint.x, centerPoint.y);
@@ -426,8 +432,8 @@ public class GeometryWrapper implements IRotatable, IScaleable {
      * {@link #getGeometry()}, ignoring the passed-in parameters.
      */
     @Override
-    public Geometry asGeometry(GeometryFactory geometryFactory,
-            double flatness, int limit) {
+    public Geometry asGeometry(GeometryFactory geometryFactory, double flatness,
+            int limit) {
         return getGeometry();
     }
 

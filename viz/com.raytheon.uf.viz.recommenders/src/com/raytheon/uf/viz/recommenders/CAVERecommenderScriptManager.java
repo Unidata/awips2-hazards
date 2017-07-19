@@ -19,12 +19,8 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.Serializable;
 import java.util.Map;
-
-import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -33,6 +29,9 @@ import com.raytheon.uf.common.recommenders.AbstractRecommenderScriptManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import jep.JepException;
 
 /**
  * CAVE-side implementation of the {@link AbstractRecommenderScriptManager}. Has
@@ -60,8 +59,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * @version 1.0
  */
 
-public class CAVERecommenderScriptManager extends
-        AbstractRecommenderScriptManager {
+public class CAVERecommenderScriptManager
+        extends AbstractRecommenderScriptManager {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CAVERecommenderScriptManager.class);
@@ -87,8 +86,8 @@ public class CAVERecommenderScriptManager extends
     public EventSet<IEvent> executeEntireRecommender(String recommenderName,
             EventSet<IEvent> eventSet) {
         if (inventory.containsKey(recommenderName)) {
-            statusHandler
-                    .handle(Priority.VERBOSE, "Running " + recommenderName);
+            statusHandler.handle(Priority.VERBOSE,
+                    "Running " + recommenderName);
             try {
                 String recName = resolveCorrectName(recommenderName);
                 if (isInstantiated(recName) == false) {

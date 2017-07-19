@@ -10,7 +10,6 @@
 package gov.noaa.gsd.common.visuals;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -18,6 +17,7 @@ import java.util.zip.GZIPOutputStream;
 import javax.xml.bind.DatatypeConverter;
 
 import com.raytheon.uf.common.util.ByteArrayOutputStreamPool;
+import com.raytheon.uf.common.util.PooledByteArrayOutputStream;
 
 /**
  * Description: Translator providing utility methods for converting
@@ -80,7 +80,7 @@ public class VisualFeaturesListBinaryTranslator {
      */
     public static byte[] serializeToBytes(VisualFeaturesList visualFeatures)
             throws IOException {
-        ByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
+        PooledByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
                 .getInstance().getStream(BYTE_ARRAY_INITIAL_SIZE);
         VisualFeaturesListBinarySerializer.serialize(visualFeatures,
                 bytesOutputStream);
@@ -130,7 +130,7 @@ public class VisualFeaturesListBinaryTranslator {
          * byte array output streams do not handle being closed multiple times
          * well.
          */
-        ByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
+        PooledByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
                 .getInstance().getStream(BYTE_ARRAY_INITIAL_SIZE);
         byte[] compressedBytes = null;
         try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(
@@ -153,8 +153,8 @@ public class VisualFeaturesListBinaryTranslator {
      * @throws IOException
      *             If a problem occurs during deserialization.
      */
-    public static VisualFeaturesList deserializeFromCompressedBytes(byte[] bytes)
-            throws IOException {
+    public static VisualFeaturesList deserializeFromCompressedBytes(
+            byte[] bytes) throws IOException {
         VisualFeaturesList visualFeatures = null;
         try (ByteArrayInputStream bytesInputStream = new ByteArrayInputStream(
                 bytes);
@@ -167,7 +167,7 @@ public class VisualFeaturesListBinaryTranslator {
              * having to recreate the buffer each time.
              */
             byte[] buffer = BYTE_BUFFER.get();
-            ByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
+            PooledByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
                     .getInstance().getStream(BYTE_ARRAY_INITIAL_SIZE);
             int readCount;
             while ((readCount = gzipInputStream.read(buffer)) > 0) {

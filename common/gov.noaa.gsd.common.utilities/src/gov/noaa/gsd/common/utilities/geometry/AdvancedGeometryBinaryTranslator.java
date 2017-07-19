@@ -9,12 +9,7 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
-import gov.noaa.gsd.common.utilities.IBinarySerializable;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
-
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -28,6 +23,11 @@ import javax.xml.bind.DatatypeConverter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.common.util.ByteArrayOutputStreamPool;
+import com.raytheon.uf.common.util.PooledByteArrayOutputStream;
+
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
 
 /**
  * Description: Translator providing utility methods for converting
@@ -118,6 +118,7 @@ public class AdvancedGeometryBinaryTranslator {
          * Map of advanced geometry classes to their types.
          */
         private static final Map<Class<? extends IAdvancedGeometry>, Type> TYPES_FOR_CLASSES;
+
         static {
             Map<Class<? extends IAdvancedGeometry>, Type> map = new HashMap<>(
                     Type.values().length);
@@ -175,8 +176,8 @@ public class AdvancedGeometryBinaryTranslator {
         public static Type getValueForOrdinal(int ordinal)
                 throws IllegalArgumentException {
             if ((ordinal < 0) || (ordinal >= ALL_VALUES.size())) {
-                throw new IllegalArgumentException("ordinal value " + ordinal
-                        + " is out of range");
+                throw new IllegalArgumentException(
+                        "ordinal value " + ordinal + " is out of range");
             }
             return ALL_VALUES.get(ordinal);
         }
@@ -282,8 +283,8 @@ public class AdvancedGeometryBinaryTranslator {
          * Get the type of the geometry to be deserialized based upon its
          * ordinal read from the stream.
          */
-        int ordinal = PrimitiveAndStringBinaryTranslator.readShort(
-                bytesInputStream, ByteOrder.BIG_ENDIAN);
+        int ordinal = PrimitiveAndStringBinaryTranslator
+                .readShort(bytesInputStream, ByteOrder.BIG_ENDIAN);
         Type type = null;
         try {
             type = Type.getValueForOrdinal(ordinal);
@@ -318,7 +319,7 @@ public class AdvancedGeometryBinaryTranslator {
          * byte array output streams do not handle being closed multiple times
          * well.
          */
-        ByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
+        PooledByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
                 .getInstance().getStream(BYTE_ARRAY_INITIAL_SIZE);
         byte[] compressedBytes = null;
         try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(
@@ -354,7 +355,7 @@ public class AdvancedGeometryBinaryTranslator {
              * having to recreate the buffer each time.
              */
             byte[] buffer = BYTE_BUFFER.get();
-            ByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
+            PooledByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
                     .getInstance().getStream(BYTE_ARRAY_INITIAL_SIZE);
             int readCount;
             while ((readCount = gzipInputStream.read(buffer)) > 0) {
@@ -371,8 +372,8 @@ public class AdvancedGeometryBinaryTranslator {
             /*
              * Deserialize the geometry from the uncompressed bytes.
              */
-            geometry = deserializeFromBinaryStream(new ByteArrayInputStream(
-                    uncompressedBytes));
+            geometry = deserializeFromBinaryStream(
+                    new ByteArrayInputStream(uncompressedBytes));
         }
         return geometry;
     }

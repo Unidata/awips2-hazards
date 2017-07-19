@@ -20,7 +20,8 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-import org.codehaus.jackson.JsonNode;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * 

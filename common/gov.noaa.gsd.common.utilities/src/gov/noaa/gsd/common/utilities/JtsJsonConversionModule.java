@@ -11,19 +11,18 @@ package gov.noaa.gsd.common.utilities;
 
 import java.io.IOException;
 
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonLocation;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.Version;
-import org.codehaus.jackson.map.DeserializationContext;
-import org.codehaus.jackson.map.JsonDeserializer;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializerProvider;
-import org.codehaus.jackson.map.module.SimpleModule;
-
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonLocation;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKTReader;
@@ -90,9 +89,10 @@ public class JtsJsonConversionModule extends SimpleModule {
     // Public Static Methods
 
     /**
-     * Get the instance to be used. The instance <a
-     * href="http://wiki.fasterxml.com/JacksonFAQ">is thread-safe</a>, so it may
-     * be used by multiple {@link ObjectMapper} objects across multiple threads.
+     * Get the instance to be used. The instance
+     * <a href="http://wiki.fasterxml.com/JacksonFAQ">is thread-safe</a>, so it
+     * may be used by multiple {@link ObjectMapper} objects across multiple
+     * threads.
      * 
      * @return Instance to be used.
      */
@@ -106,7 +106,7 @@ public class JtsJsonConversionModule extends SimpleModule {
      * Construct a standard instance.
      */
     private JtsJsonConversionModule() {
-        super("Geometry", new Version(1, 0, 0, null));
+        super("Geometry", new Version(1, 0, 0, null, null, null));
 
         /*
          * Configure the module to serialize and deserialize Geometry objects to
@@ -116,8 +116,8 @@ public class JtsJsonConversionModule extends SimpleModule {
 
             @Override
             public void serialize(Geometry value, JsonGenerator jsonGenerator,
-                    SerializerProvider provider) throws IOException,
-                    JsonProcessingException {
+                    SerializerProvider provider)
+                            throws IOException, JsonProcessingException {
                 jsonGenerator.writeString(WKT_WRITER.get().write(value));
             }
         });
@@ -125,8 +125,8 @@ public class JtsJsonConversionModule extends SimpleModule {
 
             @Override
             public Geometry deserialize(JsonParser jsonParser,
-                    DeserializationContext context) throws IOException,
-                    JsonProcessingException {
+                    DeserializationContext context)
+                            throws IOException, JsonProcessingException {
                 try {
                     return WKT_READER.get().read(jsonParser.getText());
                 } catch (ParseException e) {

@@ -20,7 +20,6 @@
 package com.raytheon.uf.common.dataplugin.events.hazards.registry.geometryadapters;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -29,6 +28,7 @@ import javax.xml.bind.DatatypeConverter;
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
 import com.raytheon.uf.common.util.ByteArrayOutputStreamPool;
+import com.raytheon.uf.common.util.PooledByteArrayOutputStream;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
@@ -86,9 +86,9 @@ public class GeometryAdapter extends XmlAdapter<String, Geometry> {
     };
 
     /**
-     * <a
-     * href="https://en.wikipedia.org/wiki/Well-known_text#Well-known_binary">
-     * Well-Known Binary</a> reader, used for deserializing geometries. It is
+     * <a href=
+     * "https://en.wikipedia.org/wiki/Well-known_text#Well-known_binary"> Well-
+     * Known Binary</a> reader, used for deserializing geometries. It is
      * thread-local because <code>WKBReader</code> is not explicitly declared to
      * be thread-safe. This class's static methods may be called simultaneously
      * by multiple threads, and each thread must be able to deserialize
@@ -103,9 +103,9 @@ public class GeometryAdapter extends XmlAdapter<String, Geometry> {
     };
 
     /**
-     * <a
-     * href="https://en.wikipedia.org/wiki/Well-known_text#Well-known_binary">
-     * Well-Known Binary</a> writer, used for serializing geometries. It is
+     * <a href=
+     * "https://en.wikipedia.org/wiki/Well-known_text#Well-known_binary"> Well-
+     * Known Binary</a> writer, used for serializing geometries. It is
      * thread-local because <code>WKBWriter</code> is not explicitly declared to
      * be thread-safe. This class's static methods may be called simultaneously
      * by multiple threads, and each thread must be able to serialize geometries
@@ -145,9 +145,9 @@ public class GeometryAdapter extends XmlAdapter<String, Geometry> {
              * avoid having to recreate the buffer each time.
              */
             byte[] buffer = BYTE_BUFFER.get();
-            ByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
-                    .getInstance().getStream(
-                            bytes.length * COMPRESSION_RATIO_ASSUMPTION);
+            PooledByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
+                    .getInstance()
+                    .getStream(bytes.length * COMPRESSION_RATIO_ASSUMPTION);
             int readCount;
             while ((readCount = gzipInputStream.read(buffer)) > 0) {
                 bytesOutputStream.write(buffer, 0, readCount);
@@ -184,9 +184,9 @@ public class GeometryAdapter extends XmlAdapter<String, Geometry> {
          * the pooled byte array output streams do not handle being closed
          * multiple times well.
          */
-        ByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
-                .getInstance().getStream(
-                        bytes.length / COMPRESSION_RATIO_ASSUMPTION);
+        PooledByteArrayOutputStream bytesOutputStream = ByteArrayOutputStreamPool
+                .getInstance()
+                .getStream(bytes.length / COMPRESSION_RATIO_ASSUMPTION);
         byte[] compressedBytes = null;
         try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(
                 bytesOutputStream)) {

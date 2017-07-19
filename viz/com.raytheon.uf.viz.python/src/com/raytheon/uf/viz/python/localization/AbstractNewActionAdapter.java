@@ -21,7 +21,7 @@ package com.raytheon.uf.viz.python.localization;
 
 import org.eclipse.jface.action.IMenuManager;
 
-import com.raytheon.uf.viz.localization.filetreeview.FileTreeEntryData;
+import com.raytheon.uf.viz.localization.perspective.view.FileTreeEntryData;
 
 /**
  * Adds a "New ..." menu action to the localization menu for certain file types.
@@ -41,7 +41,8 @@ import com.raytheon.uf.viz.localization.filetreeview.FileTreeEntryData;
  * @version 1.0
  */
 
-public abstract class AbstractNewActionAdapter extends CopyPythonClassesAdapter {
+public abstract class AbstractNewActionAdapter
+        extends CopyPythonClassesAdapter {
 
     @Override
     public boolean addContextMenuItems(IMenuManager menuMgr,

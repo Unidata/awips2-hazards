@@ -5,7 +5,8 @@ Bundle-SymbolicName: com.raytheon.uf.common.hazards.configuration
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
-Require-Bundle: org.codehaus.jackson;bundle-version="1.7.3",
+Require-Bundle: com.fasterxml.jackson,
+ org.apache.commons.lang3,
  org.jep;bundle-version="2.3.0",
  com.raytheon.uf.common.localization;bundle-version="1.14.0",
  com.raytheon.uf.common.python;bundle-version="1.12.1174",

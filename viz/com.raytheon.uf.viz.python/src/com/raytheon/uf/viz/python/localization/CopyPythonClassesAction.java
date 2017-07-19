@@ -20,8 +20,8 @@
 package com.raytheon.uf.viz.python.localization;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
@@ -38,21 +38,21 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
+import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
+import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.LocalizationUtil;
 import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
-import com.raytheon.uf.common.localization.exception.LocalizationOpFailedException;
+import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.raytheon.uf.viz.localization.LocalizationPerspectiveUtils;
-import com.raytheon.uf.viz.localization.service.ILocalizationService;
+import com.raytheon.uf.viz.localization.perspective.service.ILocalizationService;
+import com.raytheon.uf.viz.localization.perspective.service.LocalizationPerspectiveUtils;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 
 /**
@@ -75,7 +75,7 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  *                                     are disabled in the sub-menu. Ensure that
  *                                     files are not temporarily overwritten when
  *                                     the save to localization fails.
- *                                     
+ * 
  * 
  * </pre>
  * 
@@ -119,15 +119,16 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
         String fullFilePath = this.file.getName();
         final String name = FilenameUtils.getName(fullFilePath);
 
-        final String newFullFilePath = FilenameUtils
-                .getFullPathNoEndSeparator(fullFilePath)
-                + IOUtils.DIR_SEPARATOR + name;
+        final String newFullFilePath = FilenameUtils.getFullPathNoEndSeparator(
+                fullFilePath) + IOUtils.DIR_SEPARATOR + name;
 
         IPathManager pm = PathManagerFactory.getPathManager();
-        final LocalizationFile originalFile = pm.getLocalizationFile(
-                this.file.getContext(), fullFilePath);
-        this.newFile = pm.getLocalizationFile(pm.getContext(this.file
-                .getContext().getLocalizationType(), level), newFullFilePath);
+        final LocalizationFile originalFile = pm
+                .getLocalizationFile(this.file.getContext(), fullFilePath);
+        this.newFile = pm.getLocalizationFile(
+                pm.getContext(this.file.getContext().getLocalizationType(),
+                        level),
+                newFullFilePath);
         boolean overwrite = true;
         if (this.newFile.exists()) {
             Shell parent = VizWorkbenchManager.getInstance().getCurrentWindow()
@@ -175,7 +176,7 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
             observers[0] = observer;
             newFile.addFileUpdatedObserver(observer);
             newFile.save();
-        } catch (LocalizationOpFailedException e) {
+        } catch (LocalizationException e) {
             this.restoreOldFile();
             statusHandler.handle(Priority.ERROR,
                     "Unable to save file to localization", e);
@@ -194,7 +195,8 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
             statusHandler.handle(Priority.ERROR,
                     "Failed to restore the original localization file: "
                             + this.file.getName()
-                            + ". Please close and re-open the file.", e);
+                            + ". Please close and re-open the file.",
+                    e);
         }
     }
 
@@ -235,8 +237,9 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
         for (int i = 0; i < levels.length; ++i) {
             LocalizationLevel level = levels[i];
             if (level.isSystemLevel() == false) {
-                new ActionContributionItem(new CopyPythonClassesInternalAction(
-                        level)).fill(menu, -1);
+                new ActionContributionItem(
+                        new CopyPythonClassesInternalAction(level)).fill(menu,
+                                -1);
             }
         }
     }
@@ -259,7 +262,8 @@ public class CopyPythonClassesAction extends Action implements IMenuCreator {
             String fileCtxName = this.file.getContext().getContextName();
             String levelCtxName = LocalizationManager.getContextName(level);
             if ((fileCtxName == null && levelCtxName == null)
-                    || (fileCtxName != null && fileCtxName.equals(levelCtxName))) {
+                    || (fileCtxName != null
+                            && fileCtxName.equals(levelCtxName))) {
                 // same context name
                 enabled = false;
             }

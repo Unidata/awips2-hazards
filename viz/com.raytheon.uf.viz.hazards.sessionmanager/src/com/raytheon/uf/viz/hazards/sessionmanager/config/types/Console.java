@@ -20,7 +20,8 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-import org.codehaus.jackson.annotate.JsonProperty;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 

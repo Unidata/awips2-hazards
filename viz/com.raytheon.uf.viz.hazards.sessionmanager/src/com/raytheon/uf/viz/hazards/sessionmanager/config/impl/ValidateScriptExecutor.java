@@ -9,12 +9,12 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import gov.noaa.gsd.common.utilities.JsonConverter;
-import jep.JepException;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+
+import gov.noaa.gsd.common.utilities.JsonConverter;
+import jep.JepException;
 
 /**
  * Description: Hazard event validation script executor.
@@ -30,8 +30,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * @author Chris.Golden
  * @version 1.0
  */
-public class ValidateScriptExecutor extends
-        ContextuallyAwareScriptExecutor<String> {
+public class ValidateScriptExecutor
+        extends ContextuallyAwareScriptExecutor<String> {
 
     // Private Static Constants
 

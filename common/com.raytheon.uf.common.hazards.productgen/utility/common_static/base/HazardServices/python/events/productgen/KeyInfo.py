@@ -40,7 +40,7 @@
 import JUtil
 from com.raytheon.uf.common.hazards.productgen import KeyInfo as JavaKeyInfo
 from com.raytheon.uf.common.dataplugin.events.hazards.event import HazardServicesEventIdUtil
-from com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil import IdDisplayType
+IdDisplayType = HazardServicesEventIdUtil.IdDisplayType
 
 class KeyInfo(JUtil.JavaWrapperClass):
 

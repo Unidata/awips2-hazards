@@ -9,14 +9,10 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import gov.noaa.gsd.common.utilities.JsonConverter;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
-
-import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -24,6 +20,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
+
+import gov.noaa.gsd.common.utilities.JsonConverter;
+import jep.JepException;
 
 /**
  * Description: Event modifying script executor.
@@ -42,8 +41,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
  * @author Chris.Golden
  * @version 1.0
  */
-public class EventModifyingScriptExecutor extends
-        ContextuallyAwareScriptExecutor<ModifiedHazardEvent> {
+public class EventModifyingScriptExecutor
+        extends ContextuallyAwareScriptExecutor<ModifiedHazardEvent> {
 
     // Private Static Constants
 
@@ -69,12 +68,7 @@ public class EventModifyingScriptExecutor extends
      * String used to invoke the metadata-generating function.
      */
     private static final String INVOKE_FUNCTION = ConfigScriptFactory.EVENT_MODIFIER_FUNCTION_NAME
-            + "("
-            + FUNCTION_NAME
-            + ", "
-            + HAZARD_EVENT
-            + ", "
-            + EXTRA_DATA
+            + "(" + FUNCTION_NAME + ", " + HAZARD_EVENT + ", " + EXTRA_DATA
             + ")";
 
     // Private Static Variables
@@ -147,8 +141,8 @@ public class EventModifyingScriptExecutor extends
         String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
         String otherHazardType = HazardEventUtilities
                 .getHazardType(otherExecutor.hazardEvent);
-        return ((hazardType == otherHazardType) || ((hazardType != null) && hazardType
-                .equals(otherHazardType)));
+        return ((hazardType == otherHazardType) || ((hazardType != null)
+                && hazardType.equals(otherHazardType)));
     }
 
     @SuppressWarnings("unchecked")
@@ -165,19 +159,22 @@ public class EventModifyingScriptExecutor extends
             return null;
         }
         IHazardEvent result = (IHazardEvent) script.getValue(INVOKE_FUNCTION);
-        String jsonData = (result == null ? null : (String) result
-                .getHazardAttribute(ConfigScriptFactory.EXTRA_DATA_ATTRIBUTE));
+        String jsonData = (result == null ? null
+                : (String) result.getHazardAttribute(
+                        ConfigScriptFactory.EXTRA_DATA_ATTRIBUTE));
         Map<String, Map<String, Object>> modifiedMutableProperties = null;
         try {
-            modifiedMutableProperties = (Map<String, Map<String, Object>>) (jsonData == null ? Collections
-                    .emptyMap() : JsonConverter.fromJson(jsonData));
+            modifiedMutableProperties = (Map<String, Map<String, Object>>) (jsonData == null
+                    ? Collections.emptyMap()
+                    : JsonConverter.fromJson(jsonData));
         } catch (Exception e) {
             statusHandler.error(
                     "Could not get convert mutable properties from JSON.", e);
             return null;
         }
         if (result != null) {
-            result.removeHazardAttribute(ConfigScriptFactory.EXTRA_DATA_ATTRIBUTE);
+            result.removeHazardAttribute(
+                    ConfigScriptFactory.EXTRA_DATA_ATTRIBUTE);
         }
         return new ModifiedHazardEvent(result, modifiedMutableProperties);
     }

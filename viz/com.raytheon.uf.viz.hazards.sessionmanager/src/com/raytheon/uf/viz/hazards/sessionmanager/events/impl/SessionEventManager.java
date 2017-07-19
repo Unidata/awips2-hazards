@@ -2830,8 +2830,8 @@ public class SessionEventManager implements
         oldEvent.setWorkStation(newEvent.getWorkStation(), originator);
 
         /*
-         * Set the hazard type and time range via the session manager if not a
-         * forced merge.
+         * Set the hazard type, time range, and geometry via the session manager
+         * if not a forced merge.
          */
         if (forceMerge) {
             oldEvent.setHazardType(newEvent.getPhenomenon(),
@@ -2839,16 +2839,17 @@ public class SessionEventManager implements
                     originator);
             oldEvent.setTimeRange(newEvent.getStartTime(),
                     newEvent.getEndTime(), originator);
+            oldEvent.setGeometry(newEvent.getGeometry(), originator);
         } else {
             setEventType(oldEvent, newEvent.getPhenomenon(),
                     newEvent.getSignificance(), newEvent.getSubType(),
                     originator);
             setEventTimeRange(oldEvent, newEvent.getStartTime(),
                     newEvent.getEndTime(), originator);
+            setEventGeometry(oldEvent, newEvent.getGeometry(), originator);
         }
 
         oldEvent.setCreationTime(newEvent.getCreationTime(), originator);
-        oldEvent.setGeometry(newEvent.getGeometry(), originator);
 
         /*
          * If the keep visual features flag is set, only use the visual features

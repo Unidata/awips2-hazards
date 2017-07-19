@@ -9,22 +9,21 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
-import gov.noaa.gsd.common.utilities.IBinarySerializable;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.core.JsonFactory;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
+
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
 
 /**
  * Description: Interface that must be implemented by any classes providing
@@ -171,8 +170,8 @@ public interface IAdvancedGeometry extends Serializable, IBinarySerializable {
      *            there will be no more than 2<sup>10</sup>, or 1024, points per
      *            flattened curve in the result.
      */
-    public Geometry asGeometry(GeometryFactory geometryFactory,
-            double flatness, int limit);
+    public Geometry asGeometry(GeometryFactory geometryFactory, double flatness,
+            int limit);
 
     /**
      * Get the centroid of the geometry. The centroid may not be exact in all

@@ -27,19 +27,18 @@ import java.util.Map;
 
 import javax.xml.bind.JAXB;
 
-import jep.Jep;
-import jep.JepException;
-import jep.NamingConventionClassEnquirer;
-
-import org.codehaus.jackson.map.DeserializationConfig;
-import org.codehaus.jackson.map.ObjectMapper;
-
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.raytheon.uf.common.localization.FileLocker;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+
+import jep.Jep;
+import jep.JepException;
+import jep.NamingConventionClassEnquirer;
 
 /**
  * This is the primary interface which allows asynchronous loading. At
@@ -97,7 +96,8 @@ public class ConfigLoader<T> implements Runnable {
         this(lfile, clazz, null);
     }
 
-    public ConfigLoader(LocalizationFile lfile, Class<T> clazz, String pyVarName) {
+    public ConfigLoader(LocalizationFile lfile, Class<T> clazz,
+            String pyVarName) {
         this(lfile, clazz, pyVarName, null);
     }
 
@@ -107,7 +107,8 @@ public class ConfigLoader<T> implements Runnable {
     }
 
     public ConfigLoader(LocalizationFile lfile, Class<T> clazz,
-            String pyVarName, String pyIncludes, Map<String, Object> parameters) {
+            String pyVarName, String pyIncludes,
+            Map<String, Object> parameters) {
         this.lfile = lfile;
         this.clazz = clazz;
         this.pyVarName = pyVarName;
@@ -122,8 +123,8 @@ public class ConfigLoader<T> implements Runnable {
                 return;
             }
             File file = lfile.getFile();
-            String ext = file.getName().substring(
-                    file.getName().lastIndexOf('.'));
+            String ext = file.getName()
+                    .substring(file.getName().lastIndexOf('.'));
             try {
                 if (ext.equals(".py")) {
                     this.config = loadPython();
@@ -136,10 +137,9 @@ public class ConfigLoader<T> implements Runnable {
                             "Cannot load config file " + lfile.getName());
                 }
             } catch (Throwable e) {
-                statusHandler
-                        .handle(Priority.PROBLEM,
-                                "Unable to load configuration from: "
-                                        + lfile.getName(), e);
+                statusHandler.handle(Priority.PROBLEM,
+                        "Unable to load configuration from: " + lfile.getName(),
+                        e);
             }
             if (this.config == null) {
                 try {
@@ -154,8 +154,8 @@ public class ConfigLoader<T> implements Runnable {
 
     private T loadJson() throws LocalizationException, IOException {
         ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(
-                DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                false);
 
         StringBuilder sb = new StringBuilder();
         char[] buffer = new char[1024];
@@ -199,8 +199,8 @@ public class ConfigLoader<T> implements Runnable {
             if (incrementalOverride != null && incrementalOverride) {
                 String dataType = (String) parameters.get(DATA_TYPE);
                 if (dataType == null) {
-                    statusHandler
-                            .error("ConfigLoader: Error no data type specified.");
+                    statusHandler.error(
+                            "ConfigLoader: Error no data type specified.");
                     jep.close();
                     return null;
                 }
@@ -228,8 +228,8 @@ public class ConfigLoader<T> implements Runnable {
         String json = (String) jep.getValue("json.dumps(" + varName + ")");
         jep.close();
         ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(
-                DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                false);
         return mapper.readValue(json, clazz);
 
     }

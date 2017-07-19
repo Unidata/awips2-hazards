@@ -21,7 +21,7 @@ Require-Bundle: com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  com.raytheon.uf.common.security;bundle-version="1.14.0",
  gov.noaa.gsd.common.visuals;bundle-version="1.0.0",
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
- org.codehaus.jackson;bundle-version="1.7.3",
+ com.fasterxml.jackson,
  com.raytheon.uf.common.message;bundle-version="1.14.1"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy

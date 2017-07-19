@@ -50,6 +50,8 @@ public class HazardsConfigurationConstants {
 
     public static final String HAZARD_SERVICES_DIR = "HazardServices";
 
+    public static final String GFE_LOCALIZATION_DIR = "gfe";
+
     public static final String PYTHON_LOCALIZATION_DIR = "python";
 
     public static final String HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
@@ -110,21 +112,14 @@ public class HazardsConfigurationConstants {
     public static final String PRODUCT_GENERATOR_TABLE_DIR = "productGeneratorTable";
 
     public static final String PRODUCT_GENERATOR_RELATIVE_PATH = HAZARD_SERVICES_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_EVENTS_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_PRODUCTGEN_DIR
-            + File.separator
+            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
+            + PYTHON_LOCALIZATION_EVENTS_DIR + File.separator
+            + PYTHON_LOCALIZATION_PRODUCTGEN_DIR + File.separator
             + PYTHON_LOCALIZATION_PRODUCTS_DIR + File.separator;
 
     public static final String RECOMMENDERS_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_EVENTS_DIR
-            + File.separator
+            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
+            + PYTHON_LOCALIZATION_EVENTS_DIR + File.separator
             + PYTHON_LOCALIZATION_RECOMMENDERS_DIR;
 
     public static final String RECOMMENDERS_CONFIG_LOCALIZATION_DIR = RECOMMENDERS_LOCALIZATION_DIR
@@ -172,16 +167,11 @@ public class HazardsConfigurationConstants {
             + "VTECConstants.py";
 
     public static final String TEXT_UTILITIES_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_DIR
-            + File.separator
+            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
             + PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR;
 
     public static final String EVENT_UTILITIES_LOCALIZATION_DIR = HAZARD_SERVICES_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_DIR
-            + File.separator
-            + PYTHON_LOCALIZATION_EVENTS_DIR
-            + File.separator
+            + File.separator + PYTHON_LOCALIZATION_DIR + File.separator
+            + PYTHON_LOCALIZATION_EVENTS_DIR + File.separator
             + PYTHON_UTILITIES_DIR;
 }

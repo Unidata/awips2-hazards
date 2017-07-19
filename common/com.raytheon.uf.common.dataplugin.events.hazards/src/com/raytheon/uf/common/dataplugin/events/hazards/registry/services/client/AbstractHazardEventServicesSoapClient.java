@@ -63,6 +63,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Aug 4, 2015  6895     Ben.Phillippe Finished HS data access refactor
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
+ * Mar 14, 2016 16534    mduff         Update for new AESEncryptor.
  * May 06, 2016 18202    Robert.Blum   Changes for operational mode.
  * </pre>
  * 
@@ -74,6 +75,7 @@ public class AbstractHazardEventServicesSoapClient extends Service {
     /** The logger */
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(AbstractHazardEventServicesSoapClient.class);
+
     static {
         try {
             initializeRegistryInfo();
@@ -197,8 +199,9 @@ public class AbstractHazardEventServicesSoapClient extends Service {
         if (TRUST_STORE_PATH == null) {
             File file = new File("jssecacerts");
             if (!file.isFile()) {
-                File dir = new File(new File(System.getProperty("java.home"),
-                        "lib"), "security");
+                File dir = new File(
+                        new File(System.getProperty("java.home"), "lib"),
+                        "security");
                 file = new File(dir, "jssecacerts");
                 if (!file.isFile()) {
                     file = new File(dir, "cacerts");
@@ -207,8 +210,9 @@ public class AbstractHazardEventServicesSoapClient extends Service {
             TRUST_STORE_PATH = file.getPath();
             TRUST_STORE_PASSWORD = "changeit";
         } else {
-            TRUST_STORE_PASSWORD = new AESEncryptor().decrypt(
-                    System.getProperty("edex.security.encryption.key"),
+            AESEncryptor encryptor = new AESEncryptor(
+                    System.getProperty("edex.security.encryption.key"));
+            TRUST_STORE_PASSWORD = encryptor.decrypt(
                     System.getProperty("edex.security.truststore.password"));
         }
     }
@@ -302,8 +306,8 @@ public class AbstractHazardEventServicesSoapClient extends Service {
             OutputStream out = null;
             try {
                 ks.setCertificateEntry(host, cert);
-                out = new BufferedOutputStream(new FileOutputStream(
-                        TRUST_STORE_PATH));
+                out = new BufferedOutputStream(
+                        new FileOutputStream(TRUST_STORE_PATH));
                 ks.store(out,
                         System.getProperty("javax.net.ssl.trustStorePassword")
                                 .toCharArray());

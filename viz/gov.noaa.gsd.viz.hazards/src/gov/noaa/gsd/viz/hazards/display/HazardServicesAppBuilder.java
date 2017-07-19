@@ -7,45 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
-import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
-import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
-import gov.noaa.gsd.viz.hazards.console.ConsoleView;
-import gov.noaa.gsd.viz.hazards.console.IConsoleHandler;
-import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
-import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
-import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailHandler;
-import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter;
-import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstView;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.product.ProductPresenter;
-import gov.noaa.gsd.viz.hazards.product.ProductView;
-import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
-import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorView;
-import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
-import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingView;
-import gov.noaa.gsd.viz.hazards.risecrestfall.GraphicalEditor;
-import gov.noaa.gsd.viz.hazards.setting.SettingsPresenter;
-import gov.noaa.gsd.viz.hazards.setting.SettingsView;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialDisplayHandler;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
-import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
-import gov.noaa.gsd.viz.hazards.tools.ToolsView;
-import gov.noaa.gsd.viz.hazards.ui.QuestionDialog;
-import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
-import gov.noaa.gsd.viz.mvp.IMainUiContributor;
-import gov.noaa.gsd.viz.mvp.IView;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -59,9 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-
-import net.engio.mbassy.bus.error.IPublicationErrorHandler;
-import net.engio.mbassy.bus.error.PublicationError;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -148,6 +106,47 @@ import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.alerts.AlertVizPresenter;
+import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigPresenter;
+import gov.noaa.gsd.viz.hazards.alerts.AlertsConfigView;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter;
+import gov.noaa.gsd.viz.hazards.console.ConsoleView;
+import gov.noaa.gsd.viz.hazards.console.IConsoleHandler;
+import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter;
+import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailView;
+import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailHandler;
+import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter;
+import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstView;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.product.ProductPresenter;
+import gov.noaa.gsd.viz.hazards.product.ProductView;
+import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorPresenter;
+import gov.noaa.gsd.viz.hazards.producteditor.ProductEditorView;
+import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter;
+import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingView;
+import gov.noaa.gsd.viz.hazards.risecrestfall.GraphicalEditor;
+import gov.noaa.gsd.viz.hazards.setting.SettingsPresenter;
+import gov.noaa.gsd.viz.hazards.setting.SettingsView;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialDisplayHandler;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplayResourceData;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
+import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
+import gov.noaa.gsd.viz.hazards.tools.ToolsView;
+import gov.noaa.gsd.viz.hazards.ui.QuestionDialog;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
+import gov.noaa.gsd.viz.mvp.IMainUiContributor;
+import gov.noaa.gsd.viz.mvp.IView;
+import net.engio.mbassy.bus.error.IPublicationErrorHandler;
+import net.engio.mbassy.bus.error.PublicationError;
 
 /**
  * Description: Builder of the Hazard Services application and its components
@@ -317,10 +316,10 @@ import com.vividsolutions.jts.geom.Coordinate;
  * @author The Hazard Services Team
  * @version 1.0
  */
-public class HazardServicesAppBuilder implements IPerspectiveListener4,
-        IGlobalChangedListener, IWorkbenchListener, IFrameChangedListener,
-        IConsoleHandler, IHazardDetailHandler, ISpatialDisplayHandler,
-        IMessenger {
+public class HazardServicesAppBuilder
+        implements IPerspectiveListener4, IGlobalChangedListener,
+        IWorkbenchListener, IFrameChangedListener, IConsoleHandler,
+        IHazardDetailHandler, ISpatialDisplayHandler, IMessenger {
 
     // Public Static Constants
 
@@ -419,8 +418,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         @Override
         public List<Long> getTimeMatchBasisDataLayerTimes() {
-            return (timeMatchBasisTimes == null ? null : Collections
-                    .unmodifiableList(timeMatchBasisTimes));
+            return (timeMatchBasisTimes == null ? null
+                    : Collections.unmodifiableList(timeMatchBasisTimes));
         }
     };
 
@@ -450,8 +449,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
                 @Override
                 public void run() {
-                    setUpDataUpdateDetectorsForResource(resourcePair
-                            .getResource());
+                    setUpDataUpdateDetectorsForResource(
+                            resourcePair.getResource());
                 }
             });
         }
@@ -469,8 +468,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
                 @Override
                 public void run() {
-                    removeDataUpdateDetectorsForResource(resourcePair
-                            .getResource());
+                    removeDataUpdateDetectorsForResource(
+                            resourcePair.getResource());
                 }
             });
         }
@@ -500,8 +499,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
              */
             AbstractTimeMatcher timeMatcher = spatialDisplay.getDescriptor()
                     .getTimeMatcher();
-            AbstractVizResource<?, ?> timeMatchBasisResource = (timeMatcher instanceof D2DTimeMatcher ? ((D2DTimeMatcher) timeMatcher)
-                    .getTimeMatchBasis() : null);
+            AbstractVizResource<?, ?> timeMatchBasisResource = (timeMatcher instanceof D2DTimeMatcher
+                    ? ((D2DTimeMatcher) timeMatcher).getTimeMatchBasis()
+                    : null);
             List<Long> newTimeMatchBasisTimes = null;
             if (timeMatchBasisResource != null) {
                 DataTime[] dataTimes = timeMatchBasisResource.getDataTimes();
@@ -519,7 +519,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
              * times, and trigger any tools that should run in response to a
              * Time Match Basis change.
              */
-            if (Utils.equal(timeMatchBasisTimes, newTimeMatchBasisTimes) == false) {
+            if (Utils.equal(timeMatchBasisTimes,
+                    newTimeMatchBasisTimes) == false) {
                 timeMatchBasisTimes = newTimeMatchBasisTimes;
                 RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
 
@@ -718,10 +719,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 if ((cause != null) && (cause.getCause() != null)) {
                     cause = cause.getCause();
                 }
-                statusHandler.error(
-                        error.getListener().getClass() + "."
-                                + error.getHandler().getName() + "(): "
-                                + error.getMessage(), cause);
+                statusHandler.error(error.getListener().getClass() + "."
+                        + error.getHandler().getName() + "(): "
+                        + error.getMessage(), cause);
             }
         });
 
@@ -734,71 +734,61 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         IPathManager pathManager = PathManagerFactory.getPathManager();
         LocalizationContext localizationContext = pathManager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
-        String pythonPath = pathManager.getFile(localizationContext,
-                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
+        String pythonPath = pathManager
+                .getFile(localizationContext,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
                 .getPath();
         String hazardServicesPythonPath = pathManager
-                .getFile(
-                        localizationContext,
+                .getFile(localizationContext,
                         HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR)
                 .getPath();
-        String localizationUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR);
-        String vtecUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
-        String logUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+        String localizationUtilitiesPath = FileUtil.join(
+                hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR);
+        String vtecUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
+        String logUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
         String eventsPath = FileUtil.join(hazardServicesPythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR);
         String eventsUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
                 HazardsConfigurationConstants.PYTHON_UTILITIES_DIR);
-        String recommendersPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
-        String generatorsPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
+        String recommendersPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
+        String generatorsPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
         String generatorsProductsPath = FileUtil.join(generatorsPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR);
         String generatorsFormatsPath = FileUtil.join(generatorsPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_FORMATS_DIR);
-        String generatorsGeoSpatialPath = FileUtil
-                .join(generatorsPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEOSPATIAL_DIR);
-        String recommendersConfigPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_CONFIG_DIR);
-        String geoUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
-        String shapeUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
-        String textUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
-        String dataStoragePath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
+        String generatorsGeoSpatialPath = FileUtil.join(generatorsPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEOSPATIAL_DIR);
+        String recommendersConfigPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_CONFIG_DIR);
+        String geoUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
+        String shapeUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
+        String textUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
+        String dataStoragePath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
         String bridgePath = FileUtil.join(hazardServicesPythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_BRIDGE_DIR);
-        String generalUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
-        String trackUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR);
+        String generalUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
+        String trackUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR);
 
-        String hazardServicesPath = pathManager.getFile(localizationContext,
-                HazardsConfigurationConstants.HAZARD_SERVICES_DIR).getPath();
+        String hazardServicesPath = pathManager
+                .getFile(localizationContext,
+                        HazardsConfigurationConstants.HAZARD_SERVICES_DIR)
+                .getPath();
         String hazardTypesPath = FileUtil.join(hazardServicesPath,
                 HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR);
         String hazardMetaDataPath = FileUtil.join(hazardServicesPath,
@@ -808,20 +798,27 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_GFE_DIR);
         String timePath = FileUtil.join(pythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_TIME_DIR);
-        String dataAccessPath = FileUtil
-                .join(pythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+        String dataAccessPath = FileUtil.join(pythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+
+        String gfeBasePath = pathManager
+                .getFile(localizationContext,
+                        HazardsConfigurationConstants.GFE_LOCALIZATION_DIR)
+                .getPath();
+        String gfePythonPath = FileUtil.join(gfeBasePath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR);
 
         PythonSideEffectsApplier.initialize(PyUtil.buildJepIncludePath(
-                pythonPath, hazardServicesPythonPath,
-                localizationUtilitiesPath, logUtilitiesPath, vtecUtilitiesPath,
-                geoUtilitiesPath, shapeUtilitiesPath, textUtilitiesPath,
-                dataStoragePath, eventsPath, eventsUtilitiesPath, bridgePath,
-                hazardServicesPath, hazardTypesPath, hazardMetaDataPath,
-                gfePath, timePath, generalUtilitiesPath, trackUtilitiesPath,
-                dataAccessPath, recommendersPath, recommendersConfigPath,
-                generatorsPath, generatorsProductsPath, generatorsFormatsPath,
-                generatorsGeoSpatialPath), getClass().getClassLoader());
+                pythonPath, hazardServicesPythonPath, localizationUtilitiesPath,
+                logUtilitiesPath, vtecUtilitiesPath, geoUtilitiesPath,
+                shapeUtilitiesPath, textUtilitiesPath, dataStoragePath,
+                eventsPath, eventsUtilitiesPath, bridgePath, hazardServicesPath,
+                hazardTypesPath, hazardMetaDataPath, gfePath, timePath,
+                generalUtilitiesPath, trackUtilitiesPath, dataAccessPath,
+                recommendersPath, recommendersConfigPath, generatorsPath,
+                generatorsProductsPath, generatorsFormatsPath,
+                generatorsGeoSpatialPath, gfePythonPath),
+                getClass().getClassLoader());
 
         /*
          * For testing and demos, force DRT for operational mode start HS
@@ -885,7 +882,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             @Override
             public void warnUser(final String title, final String warning) {
 
-                if (Display.getDefault().getThread() == Thread.currentThread()) {
+                if (Display.getDefault().getThread() == Thread
+                        .currentThread()) {
                     MessageDialog.openWarning(null, title, warning);
                 } else {
                     Display.getDefault().asyncExec(new Runnable() {
@@ -907,9 +905,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         this.continueCanceller = new IContinueCanceller() {
 
             @Override
-            public boolean getUserAnswerToQuestion(String title, String question) {
-                String[] buttons = new String[] {
-                        HazardConstants.CANCEL_BUTTON,
+            public boolean getUserAnswerToQuestion(String title,
+                    String question) {
+                String[] buttons = new String[] { HazardConstants.CANCEL_BUTTON,
                         HazardConstants.CONTINUE_BUTTON };
                 MessageDialog dialog = new MessageDialog(
                         getBestParentForModalDialog(), title, null, question,
@@ -947,7 +945,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             @Override
             public void getProductViewerChooser(
                     final List<ProductData> productData) {
-                if (Display.getDefault().getThread() == Thread.currentThread()) {
+                if (Display.getDefault().getThread() == Thread
+                        .currentThread()) {
                     Shell shell = VizWorkbenchManager.getInstance()
                             .getCurrentWindow().getShell();
                     if (productSelectionDialog == null
@@ -977,7 +976,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     final ToolType type,
                     final RecommenderExecutionContext context,
                     final Map<String, Serializable> dialogInput) {
-                if (Display.getDefault().getThread() == Thread.currentThread()) {
+                if (Display.getDefault().getThread() == Thread
+                        .currentThread()) {
                     Dict dict = new Dict();
                     for (String parameter : dialogInput.keySet()) {
                         dict.put(parameter, dialogInput.get(parameter));
@@ -1046,8 +1046,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         IPreferenceStore preferenceStore = HazardServicesActivator.getDefault()
                 .getPreferenceStore();
         loadedFromBundle = (loadedFromBundle && ((preferenceStore
-                .contains(START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE) == false) || preferenceStore
-                .getBoolean(START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE)));
+                .contains(START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE) == false)
+                || preferenceStore.getBoolean(
+                        START_VIEWS_HIDDEN_WHEN_LOADED_FROM_BUNDLE)));
 
         // Open the console.
         createConsole(loadedFromBundle, false);
@@ -1097,8 +1098,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
         addResourceListeners();
 
-        perspectiveDescriptorMap.put(PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow().getActivePage().getPerspective(),
+        perspectiveDescriptorMap.put(
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                        .getActivePage().getPerspective(),
                 spatialDisplay.getDescriptor());
     }
 
@@ -1166,8 +1168,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     int frameIndex = framesInfo.getFrameIndex();
                     if ((frameCount > 0)
                             && (frameIndex != HazardConstants.NO_FRAMES_INDEX)) {
-                        final long selectedTime = framesInfo.getFrameTimes()[frameIndex]
-                                .getValidTime().getTimeInMillis();
+                        final long selectedTime = framesInfo
+                                .getFrameTimes()[frameIndex].getValidTime()
+                                        .getTimeInMillis();
                         RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
                             @Override
                             public void run() {
@@ -1242,7 +1245,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             List<Shell> primaryModal = new ArrayList<>(children.size());
             List<Shell> applicationModal = new ArrayList<>(children.size());
             for (Shell child : children) {
-                if ((child.getStyle() & (SWT.SYSTEM_MODAL | SWT.APPLICATION_MODAL)) != 0) {
+                if ((child.getStyle()
+                        & (SWT.SYSTEM_MODAL | SWT.APPLICATION_MODAL)) != 0) {
                     applicationModal.add(child);
                 } else if ((child.getStyle() & SWT.PRIMARY_MODAL) != 0) {
                     primaryModal.add(child);
@@ -1250,7 +1254,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     modeless.add(child);
                 }
             }
-            List<Shell> parents = (applicationModal.isEmpty() == false ? applicationModal
+            List<Shell> parents = (applicationModal.isEmpty() == false
+                    ? applicationModal
                     : (primaryModal.isEmpty() == false ? primaryModal
                             : modeless));
 
@@ -1338,8 +1343,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         contributors.add((ToolsView) toolsPresenter.getView());
         contributors.add((ProductView) productPresenter.getView());
         contributors.add((HazardDetailView) hazardDetailPresenter.getView());
-        contributors.add((HazardTypeFirstView) hazardTypeFirstPresenter
-                .getView());
+        contributors
+                .add((HazardTypeFirstView) hazardTypeFirstPresenter.getView());
         contributors.add((AlertsConfigView) alertsConfigPresenter.getView());
         contributors.add((SpatialView) spatialPresenter.getView());
         contributors.add(consoleView);
@@ -1374,8 +1379,9 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * will not be set, etc.
          */
         if (perspectiveChanged) {
-            consolePresenter.settingsModified(new SettingsLoaded(sessionManager
-                    .getConfigurationManager(), Originator.OTHER));
+            consolePresenter.settingsModified(
+                    new SettingsLoaded(sessionManager.getConfigurationManager(),
+                            Originator.OTHER));
         }
     }
 
@@ -1601,8 +1607,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     resourceList.addPostAddListener(addListener);
                     resourceList.addPostRemoveListener(removeListener);
                     for (ResourcePair resourcePair : resourceList) {
-                        setUpDataUpdateDetectorsForResource(resourcePair
-                                .getResource());
+                        setUpDataUpdateDetectorsForResource(
+                                resourcePair.getResource());
                     }
                 }
             }
@@ -1611,8 +1617,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
              * Trigger the data layer update notification, in case there is a
              * Time Match Basis product already loaded.
              */
-            resourceChangeListener
-                    .resourceChanged(ChangeType.DATA_UPDATE, null);
+            resourceChangeListener.resourceChanged(ChangeType.DATA_UPDATE,
+                    null);
         } else {
             VizApp.runAsync(new Runnable() {
 
@@ -1633,8 +1639,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          * Remove any listeners for specific resource data updates.
          */
         for (AbstractVizResource<?, ?> resource : monitoredVizResources) {
-            resource.getResourceData().removeChangeListener(
-                    resourceChangeListener);
+            resource.getResourceData()
+                    .removeChangeListener(resourceChangeListener);
         }
         monitoredVizResources.clear();
 
@@ -1666,8 +1672,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
          */
         AbstractEditor editor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
-        IDescriptor descriptor = (editor != null ? editor
-                .getActiveDisplayPane().getDescriptor() : null);
+        IDescriptor descriptor = (editor != null
+                ? editor.getActiveDisplayPane().getDescriptor() : null);
         if (descriptor == null) {
             Display.getDefault().asyncExec(new Runnable() {
 
@@ -1750,7 +1756,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         if (resource instanceof IResourceGroup) {
             for (ResourcePair resourcePair : ((IResourceGroup) resource)
                     .getResourceList()) {
-                removeDataUpdateDetectorsForResource(resourcePair.getResource());
+                removeDataUpdateDetectorsForResource(
+                        resourcePair.getResource());
             }
         }
     }
@@ -1903,8 +1910,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             public void run() {
                 if (spatialDisplay != null) {
                     ((SpatialDisplayResourceData) spatialDisplay
-                            .getResourceData()).setSettings(change
-                            .getSettings());
+                            .getResourceData())
+                                    .setSettings(change.getSettings());
                 }
             }
         });
@@ -1953,10 +1960,10 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     @Deprecated
     private boolean shouldCall(IOriginator originator,
             HazardServicesPresenter<?> presenter) {
-        if (((originator == UIOriginator.HAZARD_INFORMATION_DIALOG) && presenter
-                .getClass().equals(HazardDetailPresenter.class))
-                || ((originator == UIOriginator.CONSOLE) && presenter
-                        .getClass().equals(ConsolePresenter.class))) {
+        if (((originator == UIOriginator.HAZARD_INFORMATION_DIALOG)
+                && presenter.getClass().equals(HazardDetailPresenter.class))
+                || ((originator == UIOriginator.CONSOLE) && presenter.getClass()
+                        .equals(ConsolePresenter.class))) {
             return false;
         }
         return true;
@@ -1976,8 +1983,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
     public void showProductEditorView(
             List<GeneratedProductList> generatedProductsList) {
         this.productEditorPresenter.showProductEditorDetail(
-                generatedProductsList, this.sessionManager
-                        .getConfigurationManager().getSiteID());
+                generatedProductsList,
+                this.sessionManager.getConfigurationManager().getSiteID());
     }
 
     /**
@@ -1988,8 +1995,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
             List<GeneratedProductList> generatedProductsList) {
         final ProductViewer productViewer = new ProductViewer(
                 VizWorkbenchManager.getInstance().getCurrentWindow().getShell(),
-                generatedProductsList, this.sessionManager
-                        .getConfigurationManager().getHazardTypes());
+                generatedProductsList,
+                this.sessionManager.getConfigurationManager().getHazardTypes());
         VizApp.runSync(new Runnable() {
             @Override
             public void run() {
@@ -2048,14 +2055,19 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
         }
 
         /*
-         * Recreate the console and the hazard detail views.
+         * Recreate the console and the hazard detail views. The latter is done
+         * asynchronously because from Eclipse 4.x appears to throw a null
+         * pointer exception if it is done within this method's body.
          */
         createConsole(false, true);
-        createHazardDetailDisplay(false);
+        VizApp.runAsync(new Runnable() {
+            public void run() {
+                createHazardDetailDisplay(false);
+            }
+        });
 
         /*
-         * Check perspective type and reconfigure Hazard Services and its
-         * components accordingly.
+         * Ensure that the selected time is synchronized with the current frame.
          */
         VizApp.runAsync(new Runnable() {
             @Override
@@ -2106,8 +2118,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
                     }
                 }
             }
-            spatialDisplay = spatialDisplayResourceData.construct(
-                    new LoadProperties(), descriptor);
+            spatialDisplay = spatialDisplayResourceData
+                    .construct(new LoadProperties(), descriptor);
         } catch (VizException e1) {
             statusHandler.error("Error creating spatial display", e1);
         }
@@ -2154,8 +2166,8 @@ public class HazardServicesAppBuilder implements IPerspectiveListener4,
 
     @Override
     public void perspectiveChanged(IWorkbenchPage page,
-            IPerspectiveDescriptor perspective,
-            IWorkbenchPartReference partRef, String changeId) {
+            IPerspectiveDescriptor perspective, IWorkbenchPartReference partRef,
+            String changeId) {
 
         // No action.
     }

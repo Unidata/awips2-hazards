@@ -9,34 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.common.utilities.Sort;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Command;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Toggle;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.VtecFormatMode;
-import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
-import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
-import gov.noaa.gsd.viz.hazards.toolbar.IContributionManagerAware;
-import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
-import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
-import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
-import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
-import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
-import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
-import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
-import gov.noaa.gsd.viz.mvp.IMainUiContributor;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -73,7 +45,37 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.core.mode.CAVEMode;
+import com.raytheon.viz.ui.views.DetachPart;
 import com.raytheon.viz.ui.views.PartAdapter2;
+
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.Sort;
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Command;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Toggle;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.VtecFormatMode;
+import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
+import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.hazards.toolbar.IActionBarsAware;
+import gov.noaa.gsd.viz.hazards.toolbar.IContributionManagerAware;
+import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
+import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
+import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.ViewPartDelegateView;
+import gov.noaa.gsd.viz.hazards.ui.ViewPartWidgetDelegateHelper;
+import gov.noaa.gsd.viz.mvp.IMainUiContributor;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 /**
  * Console view, an implementation of IConsoleView that provides an Eclipse
@@ -131,6 +133,8 @@ import com.raytheon.viz.ui.views.PartAdapter2;
  *                                           #21271.
  * Aug 29, 2016   19537    Chris.Golden      Changed to make show hatched areas menu
  *                                           item start in checked state.
+ * Oct 03, 2016   22299    Kevin.Bisanz      Set IActionBars on ComboAction contributions
+ *                                           to fix missing view menu.
  * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to
  *                                           settings.
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
@@ -257,8 +261,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      */
     private static final ImmutableList<String> TOOLBAR_BUTTON_IMAGE_FILE_NAMES = ImmutableList
             .of("timeZoomOut.png", "timeJumpBackward.png", "timeBackward.png",
-                    "timeCurrent.png", "timeForward.png",
-                    "timeJumpForward.png", "timeZoomIn.png");
+                    "timeCurrent.png", "timeForward.png", "timeJumpForward.png",
+                    "timeZoomIn.png");
 
     /**
      * Suffix for the preferences key used to determine whether or not to detach
@@ -697,7 +701,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
          * appropriate.
          */
         public ChangeSiteAction() {
-            super(CHANGE_SITE_HEADER_TEXT, null, Action.AS_DROP_DOWN_MENU, null);
+            super(CHANGE_SITE_HEADER_TEXT, null, Action.AS_DROP_DOWN_MENU,
+                    null);
             this.site = null;
             setMenuCreator(new MenuCreator());
         }
@@ -742,8 +747,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      * Timeline navigation action. Each instance is for one of the navigation
      * buttons in the toolbar.
      */
-    private class NavigationAction extends BasicAction implements
-            ITemporallyAware {
+    private class NavigationAction extends BasicAction
+            implements ITemporallyAware {
 
         // Private Variables
 
@@ -784,13 +789,17 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             } else if (getToolTipText()
                     .equals(BUTTON_DESCRIPTION_PAGE_BACKWARD)) {
                 temporalDisplay.pageTimeBack();
-            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_PAN_BACKWARD)) {
+            } else if (getToolTipText()
+                    .equals(BUTTON_DESCRIPTION_PAN_BACKWARD)) {
                 temporalDisplay.panTimeBack();
-            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_CURRENT_TIME)) {
+            } else if (getToolTipText()
+                    .equals(BUTTON_DESCRIPTION_CURRENT_TIME)) {
                 temporalDisplay.showCurrentTime();
-            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_PAN_FORWARD)) {
+            } else if (getToolTipText()
+                    .equals(BUTTON_DESCRIPTION_PAN_FORWARD)) {
                 temporalDisplay.panTimeForward();
-            } else if (getToolTipText().equals(BUTTON_DESCRIPTION_PAGE_FORWARD)) {
+            } else if (getToolTipText()
+                    .equals(BUTTON_DESCRIPTION_PAGE_FORWARD)) {
                 temporalDisplay.pageTimeForward();
             } else if (getToolTipText().equals(BUTTON_DESCRIPTION_ZOOM_IN)) {
                 temporalDisplay.zoomTimeIn();
@@ -801,8 +810,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     /**
      * Selected time mode combo action.
      */
-    private class SelectedTimeModeAction extends ComboAction implements
-            ITemporallyAware {
+    private class SelectedTimeModeAction extends ComboAction
+            implements ITemporallyAware {
 
         // Private Variables
 
@@ -878,15 +887,16 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     item.setText(SelectedTimeMode.values()[j].getName());
                     item.addSelectionListener(listener);
                     if ((temporalDisplay != null)
-                            && SelectedTimeMode.values()[j].getName().equals(
-                                    temporalDisplay.getSelectedTimeMode()
-                                            .getName())) {
+                            && SelectedTimeMode.values()[j].getName()
+                                    .equals(temporalDisplay
+                                            .getSelectedTimeMode().getName())) {
                         item.setSelection(true);
                     }
                 }
             } else {
-                String selectedTimeMode = (temporalDisplay != null ? temporalDisplay
-                        .getSelectedTimeMode().getName() : null);
+                String selectedTimeMode = (temporalDisplay != null
+                        ? temporalDisplay.getSelectedTimeMode().getName()
+                        : null);
                 for (MenuItem item : menu.getItems()) {
                     item.setSelection(item.getText().equals(selectedTimeMode));
                 }
@@ -971,7 +981,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                         public ICommandInvoker<Sort> call() throws Exception {
                             return getViewPart().getSortInvoker();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Site state changer. The identifier is ignored.
@@ -1039,7 +1050,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                                 throws Exception {
                             return getViewPart().getTimeRangeChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Columns state changer delegate.
@@ -1053,7 +1065,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                                 throws Exception {
                             return getViewPart().getColumnsChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Column-based filters state changer delegate.
@@ -1067,7 +1080,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                                 throws Exception {
                             return getViewPart().getColumnFiltersChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Tree contents state changer delegate.
@@ -1081,7 +1095,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                                 throws Exception {
                             return getViewPart().getTreeContentsChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * View part listener.
@@ -1145,27 +1160,34 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 if (loadedFromBundle) {
                     potentialDetach = false;
                     if (getViewPart().isDocked() == false) {
-                        WorkbenchPage page = (WorkbenchPage) getActiveWorkbenchPage(true);
+                        WorkbenchPage page = (WorkbenchPage) getActiveWorkbenchPage(
+                                true);
                         IPreferenceStore preferenceStore = HazardServicesActivator
                                 .getDefault().getPreferenceStore();
-                        preferenceStore
-                                .setValue(
-                                        page.getPerspective().getId()
-                                                + FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX,
-                                        true);
+                        preferenceStore.setValue(
+                                page.getPerspective().getId()
+                                        + FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX,
+                                true);
                         Rectangle bounds = getViewPart().getShell().getBounds();
-                        preferenceStore.setValue(page.getPerspective().getId()
-                                + LAST_DETACHED_BOUNDS_X_SUFFIX, bounds.x);
-                        preferenceStore.setValue(page.getPerspective().getId()
-                                + LAST_DETACHED_BOUNDS_Y_SUFFIX, bounds.y);
-                        preferenceStore.setValue(page.getPerspective().getId()
-                                + LAST_DETACHED_BOUNDS_WIDTH_SUFFIX,
+                        preferenceStore.setValue(
+                                page.getPerspective().getId()
+                                        + LAST_DETACHED_BOUNDS_X_SUFFIX,
+                                bounds.x);
+                        preferenceStore.setValue(
+                                page.getPerspective().getId()
+                                        + LAST_DETACHED_BOUNDS_Y_SUFFIX,
+                                bounds.y);
+                        preferenceStore.setValue(
+                                page.getPerspective().getId()
+                                        + LAST_DETACHED_BOUNDS_WIDTH_SUFFIX,
                                 bounds.width);
-                        preferenceStore.setValue(page.getPerspective().getId()
-                                + LAST_DETACHED_BOUNDS_HEIGHT_SUFFIX,
+                        preferenceStore.setValue(
+                                page.getPerspective().getId()
+                                        + LAST_DETACHED_BOUNDS_HEIGHT_SUFFIX,
                                 bounds.height);
-                        page.attachView(page
-                                .findViewReference(ConsoleViewPart.ID));
+                        DetachPart.attach(
+                                page.findViewReference(ConsoleViewPart.ID)
+                                        .getPart(true));
                     }
                     setViewPartVisible(false);
                 }
@@ -1199,8 +1221,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
         this.presenter = presenter;
         this.temporalControlsInToolBar = temporalControlsInToolBar;
         this.currentSite = currentSite;
-        List<String> sortedBackupSites = (backupSites == null ? new ArrayList<String>()
-                : new ArrayList<>(backupSites));
+        List<String> sortedBackupSites = (backupSites == null
+                ? new ArrayList<String>() : new ArrayList<>(backupSites));
         Collections.sort(sortedBackupSites);
         this.backupSites = ImmutableList.copyOf(sortedBackupSites);
         executeOnCreatedViewPart(new Runnable() {
@@ -1232,7 +1254,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     .contributeToMainUI(type);
             totalContributions.addAll(contributions);
             if ((contributions.size() > 0)
-                    && ((contributions.get(contributions.size() - 1) instanceof SeparatorAction) == false)) {
+                    && ((contributions.get(contributions.size()
+                            - 1) instanceof SeparatorAction) == false)) {
                 totalContributions.add(new SeparatorAction());
             }
         }
@@ -1252,8 +1275,9 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 IActionBars actionBars = getViewPart()
                         .getMainActionBarsManager();
                 IContributionManager contributionManager = (type
-                        .equals(RCPMainUserInterfaceElement.TOOLBAR) ? actionBars
-                        .getToolBarManager() : actionBars.getMenuManager());
+                        .equals(RCPMainUserInterfaceElement.TOOLBAR)
+                                ? actionBars.getToolBarManager()
+                                : actionBars.getMenuManager());
                 contributionManager.removeAll();
 
                 /*
@@ -1265,9 +1289,21 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                         contributionManager.add(new Separator());
                     } else {
                         contributionManager.add(contribution);
+
+                        /*
+                         * The setting of a IContributionManager and IActionBars
+                         * allows the widget and containing toolbar/menubar to
+                         * be resized when the contribution is updated (e.g. by
+                         * a ComboAction's text changing).
+                         */
                         if (contribution instanceof IContributionManagerAware) {
                             ((IContributionManagerAware) contribution)
-                                    .setContributionManager(contributionManager);
+                                    .setContributionManager(
+                                            contributionManager);
+                        }
+                        if (contribution instanceof IActionBarsAware) {
+                            ((IActionBarsAware) contribution)
+                                    .setActionBars(actionBars);
                         }
                     }
                 }
@@ -1279,7 +1315,12 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                  * seems to force the toolbar to render itself and all its
                  * actions properly.
                  */
-                contributionManager.update(true);
+                Display.getDefault().asyncExec(new Runnable() {
+                    public void run() {
+                        // contributionManager.update(true);
+                        actionBars.updateActionBars();
+                    }
+                });
             }
         });
     }
@@ -1302,7 +1343,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                  * Create the navigation actions for the toolbar.
                  */
                 list.add(new SeparatorAction());
-                for (int j = 0; j < TOOLBAR_BUTTON_IMAGE_FILE_NAMES.size(); j++) {
+                for (int j = 0; j < TOOLBAR_BUTTON_IMAGE_FILE_NAMES
+                        .size(); j++) {
                     Action action = new NavigationAction(
                             TOOLBAR_BUTTON_IMAGE_FILE_NAMES.get(j),
                             BUTTON_DESCRIPTIONS.get(j));
@@ -1431,7 +1473,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                  */
                 ConsoleViewPart viewPart = getViewPart();
                 if (viewPart != null) {
-                    viewPart.setActiveCountdownTimers(countdownTimersForEventIdentifiers);
+                    viewPart.setActiveCountdownTimers(
+                            countdownTimersForEventIdentifiers);
                 }
             }
         });
@@ -1532,7 +1575,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      *             Whenever this method is invoked.
      */
     @Override
-    protected void actionExecutionAttemptedUponNonexistentViewPart(Runnable job) {
+    protected void actionExecutionAttemptedUponNonexistentViewPart(
+            Runnable job) {
         throw new IllegalStateException(
                 "view part creation not attempted before invocation of action: "
                         + job);
@@ -1588,10 +1632,13 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 .getPreferenceStore();
         if (preferenceStore.getBoolean(page.getPerspective().getId()
                 + FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX)) {
-            preferenceStore.setValue(page.getPerspective().getId()
-                    + FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX, false);
+            preferenceStore.setValue(
+                    page.getPerspective().getId()
+                            + FORCE_DETACH_CONSOLE_WHEN_NEXT_SHOWING_SUFFIX,
+                    false);
             if (getViewPart().isDocked()) {
-                page.detachView(page.findViewReference(ConsoleViewPart.ID));
+                DetachPart.detach(page.findViewReference(ConsoleViewPart.ID)
+                        .getPart(true));
                 final Rectangle bounds = new Rectangle(
                         preferenceStore.getInt(page.getPerspective().getId()
                                 + LAST_DETACHED_BOUNDS_X_SUFFIX),
@@ -1613,8 +1660,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 Display.getCurrent().asyncExec(new Runnable() {
                     @Override
                     public void run() {
-                        getViewPart().getShell()
-                                .setLocation(bounds.x, bounds.y);
+                        getViewPart().getShell().setLocation(bounds.x,
+                                bounds.y);
                     }
                 });
             }

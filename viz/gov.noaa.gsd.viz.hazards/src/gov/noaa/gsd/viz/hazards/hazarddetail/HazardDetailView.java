@@ -9,6 +9,26 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+
+import org.eclipse.jface.action.Action;
+import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.ui.IPartListener2;
+import org.eclipse.ui.IWorkbenchPartReference;
+import org.eclipse.ui.internal.WorkbenchPage;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
+import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.viz.ui.views.DetachPart;
+
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.TimeResolution;
@@ -32,25 +52,6 @@ import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IWidget;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
-import org.eclipse.jface.action.Action;
-import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.ui.IPartListener2;
-import org.eclipse.ui.IWorkbenchPartReference;
-import org.eclipse.ui.internal.WorkbenchPage;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Range;
-import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.common.util.Pair;
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Hazard detail view, providing an an SWT-based view of hazard details.
@@ -142,8 +143,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * @version 1.0
  */
 @SuppressWarnings("restriction")
-public class HazardDetailView extends
-        ViewPartDelegateView<HazardDetailViewPart> implements
+public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
+        implements
         IHazardDetailViewDelegate<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
@@ -419,7 +420,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getVisibleTimeRangeChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Visible event state changer delegate.
@@ -433,7 +435,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getVisibleEventChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Category state changer delegate.
@@ -447,7 +450,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getCategoryChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Type state changer delegate.
@@ -461,7 +465,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getTypeChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Time range state changer delegate.
@@ -475,7 +480,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getTimeRangeChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Time range boundaries state changer delegate.
@@ -490,7 +496,8 @@ public class HazardDetailView extends
                             return getViewPart()
                                     .getTimeRangeBoundariesChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Time resolution state changer delegate.
@@ -504,7 +511,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getTimeResolutionChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Duration state changer delegate.
@@ -518,7 +526,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getDurationChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Metadata state changer delegate.
@@ -531,7 +540,8 @@ public class HazardDetailView extends
                         public IMetadataStateChanger call() throws Exception {
                             return getViewPart().getMetadataChanger();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Notifier invoker delegate.
@@ -545,7 +555,8 @@ public class HazardDetailView extends
                                 throws Exception {
                             return getViewPart().getNotifierInvoker();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Button invoker delegate.
@@ -555,10 +566,12 @@ public class HazardDetailView extends
                     new Callable<ICommandInvoker<Command>>() {
 
                         @Override
-                        public ICommandInvoker<Command> call() throws Exception {
+                        public ICommandInvoker<Command> call()
+                                throws Exception {
                             return getViewPart().getButtonInvoker();
                         }
-                    }, this), RUNNABLE_ASYNC_SCHEDULER);
+                    }, this),
+            RUNNABLE_ASYNC_SCHEDULER);
 
     /**
      * Flag indicating whether or not the view part is showing (the alternative
@@ -624,10 +637,12 @@ public class HazardDetailView extends
                  * being detached, then if it is being instantiated as a result
                  * of a bundle load, minimize it.
                  */
-                WorkbenchPage page = (WorkbenchPage) getActiveWorkbenchPage(true);
+                WorkbenchPage page = (WorkbenchPage) getActiveWorkbenchPage(
+                        true);
                 if ((usePreviousSizeAndPosition == false) && (page != null)) {
-                    page.detachView(page
-                            .findViewReference(HazardDetailViewPart.ID));
+                    DetachPart.detach(
+                            page.findViewReference(HazardDetailViewPart.ID)
+                                    .getPart(true));
                 } else if (loadedFromBundle && isViewPartDocked()) {
                     setViewPartVisible(false);
                     viewPartShowing = false;
@@ -652,12 +667,9 @@ public class HazardDetailView extends
     // Public Methods
 
     @Override
-    public final void initialize(
-            long minVisibleTime,
-            long maxVisibleTime,
+    public final void initialize(long minVisibleTime, long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
-            boolean showStartEndTimeScale,
-            boolean buildForWideViewing,
+            boolean showStartEndTimeScale, boolean buildForWideViewing,
             boolean includeIssueButton,
             Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers) {
         this.minVisibleTime = minVisibleTime;
@@ -703,14 +715,14 @@ public class HazardDetailView extends
                     if (isChecked() && (showing == false)) {
                         setDetailViewVisibility(true, true);
                         if (detailViewVisibilityChangeHandler != null) {
-                            detailViewVisibilityChangeHandler.stateChanged(
-                                    null, true);
+                            detailViewVisibilityChangeHandler.stateChanged(null,
+                                    true);
                         }
                     } else if ((isChecked() == false) && showing) {
                         setDetailViewVisibility(false, true);
                         if (detailViewVisibilityChangeHandler != null) {
-                            detailViewVisibilityChangeHandler.stateChanged(
-                                    null, false);
+                            detailViewVisibilityChangeHandler.stateChanged(null,
+                                    false);
                         }
                     }
                 }
@@ -795,7 +807,8 @@ public class HazardDetailView extends
      *            Action for which execution was attempted.
      */
     @Override
-    protected void actionExecutionAttemptedUponNonexistentViewPart(Runnable job) {
+    protected void actionExecutionAttemptedUponNonexistentViewPart(
+            Runnable job) {
 
         /*
          * No action.
@@ -813,9 +826,8 @@ public class HazardDetailView extends
          * Do the basic initialization.
          */
         getViewPart().initialize(minVisibleTime, maxVisibleTime,
-                currentTimeProvider, showStartEndTimeScale,
-                buildForWideViewing, includeIssueButton,
-                extraDataForEventVersionIdentifiers);
+                currentTimeProvider, showStartEndTimeScale, buildForWideViewing,
+                includeIssueButton, extraDataForEventVersionIdentifiers);
 
         /*
          * Register the megawidget display settings change handler with the view
@@ -827,8 +839,8 @@ public class HazardDetailView extends
          */
         getViewPart().getMegawidgetDisplaySettingsChanger()
                 .setStateChangeHandler(megawidgetDisplaySettingsChangeHandler);
-        getViewPart().getMegawidgetDisplaySettingsChanger().setStates(
-                megawidgetDisplaySettingsForEventVersionIdentifiers);
+        getViewPart().getMegawidgetDisplaySettingsChanger()
+                .setStates(megawidgetDisplaySettingsForEventVersionIdentifiers);
     }
 
     /**

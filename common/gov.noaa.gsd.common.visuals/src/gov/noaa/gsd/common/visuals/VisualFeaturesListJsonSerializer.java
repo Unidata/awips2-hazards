@@ -9,24 +9,23 @@
  */
 package gov.noaa.gsd.common.visuals;
 
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.SerializerProvider;
-
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
+
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
 
 /**
  * Description: Helper class for {@link VisualFeaturesListJsonConverter}
@@ -134,11 +133,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         public void serializeProperty(
                                 ImmutableList<String> value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeListOfStrings(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeListOfStrings(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEMPLATES);
                         }
                     })
@@ -148,11 +144,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(IAdvancedGeometry value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeGeometry(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeGeometry(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_GEOMETRY);
                         }
                     })
@@ -162,11 +155,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(SerializableColor value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeColor(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeColor(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_BORDER_COLOR);
                         }
                     })
@@ -176,11 +166,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(SerializableColor value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeColor(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeColor(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_FILL_COLOR);
                         }
                     })
@@ -190,11 +177,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Double value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeDouble(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeDouble(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_BORDER_THICKNESS);
                         }
                     })
@@ -204,11 +188,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(BorderStyle value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeBorderStyle(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeBorderStyle(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_BORDER_STYLE);
                         }
                     })
@@ -218,11 +199,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(FillStyle value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeFillStyle(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeFillStyle(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_FILL_STYLE);
                         }
                     })
@@ -232,11 +210,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Double value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeDouble(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeDouble(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_DIAMETER);
                         }
                     })
@@ -246,11 +221,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(SymbolShape value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeSymbolShape(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeSymbolShape(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE);
                         }
                     })
@@ -260,7 +232,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(String value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
+                                        throws JsonGenerationException {
                             serializeString(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_LABEL);
                         }
@@ -271,11 +243,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Double value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeDouble(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeDouble(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_OFFSET_LENGTH);
                         }
                     })
@@ -285,11 +254,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Double value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeDouble(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeDouble(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_OFFSET_DIR);
                         }
                     })
@@ -299,11 +265,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Integer value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeInteger(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeInteger(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_SIZE);
                         }
                     })
@@ -313,11 +276,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(SerializableColor value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeColor(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeColor(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_COLOR);
                         }
                     })
@@ -327,10 +287,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(DragCapability value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeDragCapability(
-                                    value,
-                                    generator,
+                                        throws JsonGenerationException {
+                            serializeDragCapability(value, generator,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_DRAGGABILITY);
                         }
@@ -341,11 +299,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Boolean value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeBoolean(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeBoolean(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE);
                         }
                     })
@@ -355,11 +310,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Boolean value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeBoolean(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeBoolean(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_ROTATABLE);
                         }
                     })
@@ -369,11 +321,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Boolean value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
-                            serializeBoolean(
-                                    value,
-                                    generator,
-                                    identifier,
+                                        throws JsonGenerationException {
+                            serializeBoolean(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_SCALEABLE);
                         }
                     })
@@ -383,11 +332,12 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         @Override
                         public void serializeProperty(Boolean value,
                                 JsonGenerator generator, String identifier)
-                                throws JsonGenerationException {
+                                        throws JsonGenerationException {
                             serializeBoolean(value, generator, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TOPMOST);
                         }
-                    }).build();
+                    })
+            .build();
 
     /**
      * Immutable map pairing property names with the fetchers to be used to
@@ -402,7 +352,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                         public TemporallyVariantProperty<ImmutableList<String>> fetchPropertyValue(
                                 VisualFeature visualFeature) {
                             return VisualFeaturesListJsonSerializer
-                                    .getIdentifiersOfVisualFeatureTemplates(visualFeature);
+                                    .getIdentifiersOfVisualFeatureTemplates(
+                                            visualFeature);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_GEOMETRY,
@@ -567,7 +518,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                                 VisualFeature visualFeature) {
                             return visualFeature.getTopmost();
                         }
-                    }).build();
+                    })
+            .build();
 
     // Package-Private Static Methods
 
@@ -588,7 +540,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     static void serialize(VisualFeaturesList visualFeatures,
             JsonGenerator jsonGenerator, SerializerProvider provider)
-            throws IOException, JsonProcessingException {
+                    throws IOException, JsonProcessingException {
         jsonGenerator.writeStartArray();
         for (VisualFeature visualFeature : visualFeatures) {
             serializeVisualFeature(visualFeature, jsonGenerator);
@@ -613,8 +565,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     @SuppressWarnings("unchecked")
     private static void serializeVisualFeature(VisualFeature visualFeature,
-            JsonGenerator jsonGenerator) throws IOException,
-            JsonProcessingException {
+            JsonGenerator jsonGenerator)
+                    throws IOException, JsonProcessingException {
 
         /*
          * Start the creation of a JSON object to represent the visual feature.
@@ -645,20 +597,23 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<Integer>) fetcher,
                         (IPropertySerializer<Integer>) serializer);
-            } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_DOUBLE)) {
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_DOUBLE)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<Double>) fetcher,
                         (IPropertySerializer<Double>) serializer);
-            } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_STRING)) {
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_STRING)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<String>) fetcher,
                         (IPropertySerializer<String>) serializer);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_LIST_OF_STRINGS)) {
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_LIST_OF_STRINGS)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<ImmutableList<String>>) fetcher,
                         (IPropertySerializer<ImmutableList<String>>) serializer);
-            } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_COLOR)) {
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_COLOR)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<SerializableColor>) fetcher,
                         (IPropertySerializer<SerializableColor>) serializer);
@@ -667,8 +622,8 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<IAdvancedGeometry>) fetcher,
                         (IPropertySerializer<IAdvancedGeometry>) serializer);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_BORDER_STYLE)) {
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_BORDER_STYLE)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<BorderStyle>) fetcher,
                         (IPropertySerializer<BorderStyle>) serializer);
@@ -677,13 +632,13 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<FillStyle>) fetcher,
                         (IPropertySerializer<FillStyle>) serializer);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<SymbolShape>) fetcher,
                         (IPropertySerializer<SymbolShape>) serializer);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_DRAGGABILITY)) {
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_DRAGGABILITY)) {
                 fetchAndSerializeProperty(jsonGenerator, visualFeature, name,
                         (IPropertyFetcher<DragCapability>) fetcher,
                         (IPropertySerializer<DragCapability>) serializer);
@@ -695,10 +650,9 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                  * failures because the code was not modified to handle a new
                  * type of property.
                  */
-                throw new IllegalStateException(
-                        "internal error: property \""
-                                + name
-                                + "\" could not be serialized as it is of an unexpected type");
+                throw new IllegalStateException("internal error: property \""
+                        + name
+                        + "\" could not be serialized as it is of an unexpected type");
             }
         }
 
@@ -783,18 +737,16 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
                 generator.writeStartObject();
                 P defaultProperty = property.getDefaultProperty();
                 if (defaultProperty != null) {
-                    generator
-                            .writeFieldName(VisualFeaturesListJsonConverter.TEMPORALLY_VARIANT_KEY_DEFAULT);
+                    generator.writeFieldName(
+                            VisualFeaturesListJsonConverter.TEMPORALLY_VARIANT_KEY_DEFAULT);
                     serializer.serializeProperty(defaultProperty, generator,
                             identifier);
                 }
                 for (Map.Entry<Range<Date>, P> entry : propertiesForTimeRanges
                         .entrySet()) {
                     Range<Date> timeRange = entry.getKey();
-                    generator.writeFieldName(timeRange.lowerEndpoint()
-                            .getTime()
-                            + " "
-                            + timeRange.upperEndpoint().getTime());
+                    generator.writeFieldName(timeRange.lowerEndpoint().getTime()
+                            + " " + timeRange.upperEndpoint().getTime());
                     serializer.serializeProperty(entry.getValue(), generator,
                             identifier);
                 }
@@ -808,8 +760,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
              * end of a JSON object.
              */
             throw new IllegalStateException(
-                    "internal error: property \""
-                            + propertyName
+                    "internal error: property \"" + propertyName
                             + "\" could not be serialized due to an unexpected problem",
                     e);
         }
@@ -829,9 +780,9 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      * @throws JsonGenerationException
      *             If an error occurs during serialization.
      */
-    private static void serializeBoolean(Boolean value,
-            JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+    private static void serializeBoolean(Boolean value, JsonGenerator generator,
+            String identifier, String propertyName)
+                    throws JsonGenerationException {
         try {
             generator.writeBoolean(value);
         } catch (IOException e) {
@@ -854,13 +805,13 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      * @throws JsonGenerationException
      *             If an error occurs during serialization.
      */
-    private static void serializeInteger(Integer value,
-            JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+    private static void serializeInteger(Integer value, JsonGenerator generator,
+            String identifier, String propertyName)
+                    throws JsonGenerationException {
         try {
             if (value.equals(VisualFeature.INTEGER_OF_EVENT_TYPE)) {
-                generator
-                        .writeString(VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
+                generator.writeString(
+                        VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
             } else {
                 generator.writeNumber(value);
             }
@@ -886,11 +837,11 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeDouble(Double value, JsonGenerator generator,
             String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             if (value.equals(VisualFeature.DOUBLE_OF_EVENT_TYPE)) {
-                generator
-                        .writeString(VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
+                generator.writeString(
+                        VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
             } else {
                 generator.writeNumber(value);
             }
@@ -916,11 +867,11 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeString(String value, JsonGenerator generator,
             String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             if (value.equals(VisualFeature.STRING_OF_EVENT_TYPE)) {
-                generator
-                        .writeString(VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
+                generator.writeString(
+                        VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
             } else {
                 generator.writeString(value);
             }
@@ -946,7 +897,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeListOfStrings(List<String> value,
             JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             generator.writeStartArray();
             for (String string : value) {
@@ -975,11 +926,11 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeColor(SerializableColor value,
             JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             if (value.equals(VisualFeature.COLOR_OF_EVENT_TYPE)) {
-                generator
-                        .writeString(VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
+                generator.writeString(
+                        VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE);
             } else {
                 generator.writeObject(value);
             }
@@ -1005,7 +956,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeGeometry(IAdvancedGeometry value,
             JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             generator.writeObject(value);
         } catch (IOException e) {
@@ -1030,7 +981,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeBorderStyle(BorderStyle value,
             JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             generator.writeString(value.getDescription());
         } catch (IOException e) {
@@ -1055,7 +1006,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeFillStyle(FillStyle value,
             JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             generator.writeString(value.getDescription());
         } catch (IOException e) {
@@ -1080,7 +1031,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeSymbolShape(SymbolShape value,
             JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             generator.writeString(value.getDescription());
         } catch (IOException e) {
@@ -1105,7 +1056,7 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
      */
     private static void serializeDragCapability(DragCapability value,
             JsonGenerator generator, String identifier, String propertyName)
-            throws JsonGenerationException {
+                    throws JsonGenerationException {
         try {
             generator.writeString(value.getDescription());
         } catch (IOException e) {
@@ -1129,8 +1080,9 @@ class VisualFeaturesListJsonSerializer extends VisualFeaturesListSerializer {
     private static JsonGenerationException createValueSerializationException(
             Object value, String identifier, String propertyName,
             Throwable cause) {
-        return new JsonGenerationException("visual feature \"" + identifier
-                + "\": could not serialize \"" + value + "\" for property \""
-                + propertyName + "\"", cause);
+        return new JsonGenerationException(
+                "visual feature \"" + identifier + "\": could not serialize \""
+                        + value + "\" for property \"" + propertyName + "\"",
+                cause);
     }
 }

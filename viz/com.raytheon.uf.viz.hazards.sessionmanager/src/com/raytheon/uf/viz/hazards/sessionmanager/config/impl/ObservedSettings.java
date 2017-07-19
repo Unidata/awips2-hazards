@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -34,9 +32,9 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.codehaus.jackson.annotate.JsonProperty;
 import org.eclipse.core.runtime.Assert;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -50,6 +48,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
  * Settings object that notified the SessionConfigurationManager whenever a
@@ -155,8 +155,9 @@ public class ObservedSettings implements ISettings {
     }
 
     private MapCenter getMapCenterCopy(MapCenter original) {
-        return (original == null ? null : new MapCenter(original.getLon(),
-                original.getLat(), original.getZoom()));
+        return (original == null ? null
+                : new MapCenter(original.getLon(), original.getLat(),
+                        original.getZoom()));
     }
 
     private Map<String, Column> getColumnsCopy(Map<String, Column> original) {
@@ -173,16 +174,16 @@ public class ObservedSettings implements ISettings {
     private void settingsChanged(boolean notify, Type changed,
             IOriginator originator) {
         if (notify) {
-            settingsChanged(new SettingsModified(configManager, changed,
-                    originator));
+            settingsChanged(
+                    new SettingsModified(configManager, changed, originator));
         }
     }
 
     private void settingsChanged(boolean notify, Set<Type> changed,
             IOriginator originator) {
         if (notify) {
-            settingsChanged(new SettingsModified(configManager, changed,
-                    originator));
+            settingsChanged(
+                    new SettingsModified(configManager, changed, originator));
         }
     }
 
@@ -424,12 +425,12 @@ public class ObservedSettings implements ISettings {
     public void apply(ISettings other, IOriginator originator) {
         Set<Type> changed = EnumSet.noneOf(Type.class);
         changed.addAll(setSettingsID(other.getSettingsID(), false, originator));
-        changed.addAll(setVisibleTypes(other.getVisibleTypes(), false,
-                originator));
+        changed.addAll(
+                setVisibleTypes(other.getVisibleTypes(), false, originator));
         changed.addAll(setVisibleStatuses(other.getVisibleStatuses(), false,
                 originator));
-        changed.addAll(setToolbarTools(other.getToolbarTools(), false,
-                originator));
+        changed.addAll(
+                setToolbarTools(other.getToolbarTools(), false, originator));
         changed.addAll(setDefaultTimeDisplayDuration(
                 other.getDefaultTimeDisplayDuration(), false, originator));
         changed.addAll(setTimeResolution(other.getTimeResolution(), false,
@@ -437,11 +438,12 @@ public class ObservedSettings implements ISettings {
         changed.addAll(setMapCenter(other.getMapCenter(), false, originator));
         changed.addAll(setDefaultCategory(other.getDefaultCategory(), false,
                 originator));
-        changed.addAll(setPossibleSites(other.getPossibleSites(), false,
-                originator));
-        changed.addAll(setVisibleSites(other.getVisibleSites(), false,
-                originator));
-        changed.addAll(setDisplayName(other.getDisplayName(), false, originator));
+        changed.addAll(
+                setPossibleSites(other.getPossibleSites(), false, originator));
+        changed.addAll(
+                setVisibleSites(other.getVisibleSites(), false, originator));
+        changed.addAll(
+                setDisplayName(other.getDisplayName(), false, originator));
         changed.addAll(setDefaultDuration(other.getDefaultDuration(), false,
                 originator));
         changed.addAll(setVisibleColumns(other.getVisibleColumns(), false,
@@ -449,8 +451,8 @@ public class ObservedSettings implements ISettings {
         changed.addAll(setColumns(other.getColumns(), false, originator));
         changed.addAll(setStaticSettingsID(other.getStaticSettingsID(), false,
                 originator));
-        changed.addAll(setAddToSelected(other.getAddToSelected(), false,
-                originator));
+        changed.addAll(
+                setAddToSelected(other.getAddToSelected(), false, originator));
         changed.addAll(setAddGeometryToSelected(
                 other.getAddGeometryToSelected(), false, originator));
         changed.addAll(setEventIdDisplayType(other.getEventIdDisplayType(),
@@ -491,75 +493,86 @@ public class ObservedSettings implements ISettings {
             changed.addAll(setSettingsID(update.getSettingsID(), false, null));
         }
         if (changed(getVisibleTypes(), persisted.getVisibleTypes()) == false) {
-            changed.addAll(setVisibleTypes(update.getVisibleTypes(), false,
-                    null));
+            changed.addAll(
+                    setVisibleTypes(update.getVisibleTypes(), false, null));
         }
-        if (changed(getVisibleStatuses(), persisted.getVisibleStatuses()) == false) {
+        if (changed(getVisibleStatuses(),
+                persisted.getVisibleStatuses()) == false) {
             changed.addAll(setVisibleStatuses(update.getVisibleStatuses(),
                     false, null));
         }
         if (changed(getToolbarTools(), persisted.getToolbarTools()) == false) {
-            changed.addAll(setToolbarTools(update.getToolbarTools(), false,
-                    null));
+            changed.addAll(
+                    setToolbarTools(update.getToolbarTools(), false, null));
         }
         if (changed(getDefaultTimeDisplayDuration(),
                 persisted.getDefaultTimeDisplayDuration()) == false) {
             changed.addAll(setDefaultTimeDisplayDuration(
                     update.getDefaultTimeDisplayDuration(), false, null));
         }
-        if (changed(getTimeResolution(), persisted.getTimeResolution()) == false) {
-            changed.addAll(setTimeResolution(update.getTimeResolution(), false,
-                    null));
+        if (changed(getTimeResolution(),
+                persisted.getTimeResolution()) == false) {
+            changed.addAll(
+                    setTimeResolution(update.getTimeResolution(), false, null));
         }
         if (changed(getMapCenter(), persisted.getMapCenter()) == false) {
             changed.addAll(setMapCenter(update.getMapCenter(), false, null));
         }
-        if (changed(getDefaultCategory(), persisted.getDefaultCategory()) == false) {
+        if (changed(getDefaultCategory(),
+                persisted.getDefaultCategory()) == false) {
             changed.addAll(setDefaultCategory(update.getDefaultCategory(),
                     false, null));
         }
-        if (changed(getPossibleSites(), persisted.getPossibleSites()) == false) {
-            changed.addAll(setPossibleSites(update.getPossibleSites(), false,
-                    null));
+        if (changed(getPossibleSites(),
+                persisted.getPossibleSites()) == false) {
+            changed.addAll(
+                    setPossibleSites(update.getPossibleSites(), false, null));
         }
         if (changed(getVisibleSites(), persisted.getVisibleSites()) == false) {
-            changed.addAll(setVisibleSites(update.getVisibleSites(), false,
-                    null));
+            changed.addAll(
+                    setVisibleSites(update.getVisibleSites(), false, null));
         }
         if (changed(getDisplayName(), persisted.getDisplayName()) == false) {
-            changed.addAll(setDisplayName(update.getDisplayName(), false, null));
+            changed.addAll(
+                    setDisplayName(update.getDisplayName(), false, null));
         }
-        if (changed(getDefaultDuration(), persisted.getDefaultDuration()) == false) {
+        if (changed(getDefaultDuration(),
+                persisted.getDefaultDuration()) == false) {
             changed.addAll(setDefaultDuration(update.getDefaultDuration(),
                     false, null));
         }
-        if (changed(getVisibleColumns(), persisted.getVisibleColumns()) == false) {
-            changed.addAll(setVisibleColumns(update.getVisibleColumns(), false,
-                    null));
+        if (changed(getVisibleColumns(),
+                persisted.getVisibleColumns()) == false) {
+            changed.addAll(
+                    setVisibleColumns(update.getVisibleColumns(), false, null));
         }
         if (changed(getColumns(), persisted.getColumns()) == false) {
             changed.addAll(setColumns(update.getColumns(), false, null));
         }
-        if (changed(getStaticSettingsID(), persisted.getStaticSettingsID()) == false) {
+        if (changed(getStaticSettingsID(),
+                persisted.getStaticSettingsID()) == false) {
             changed.addAll(setStaticSettingsID(update.getStaticSettingsID(),
                     false, null));
         }
-        if (changed(getAddToSelected(), persisted.getAddToSelected()) == false) {
-            changed.addAll(setAddToSelected(update.getAddToSelected(), false,
-                    null));
+        if (changed(getAddToSelected(),
+                persisted.getAddToSelected()) == false) {
+            changed.addAll(
+                    setAddToSelected(update.getAddToSelected(), false, null));
         }
         if (changed(getAddGeometryToSelected(),
                 persisted.getAddGeometryToSelected()) == false) {
             changed.addAll(setAddGeometryToSelected(
                     update.getAddGeometryToSelected(), false, null));
         }
-        if (changed(getEventIdDisplayType(), persisted.getEventIdDisplayType()) == false) {
-            changed.addAll(setEventIdDisplayType(
-                    update.getEventIdDisplayType(), false, null));
+        if (changed(getEventIdDisplayType(),
+                persisted.getEventIdDisplayType()) == false) {
+            changed.addAll(setEventIdDisplayType(update.getEventIdDisplayType(),
+                    false, null));
         }
-        if (changed(getPerspectiveIDs(), persisted.getPerspectiveIDs()) == false) {
-            changed.addAll(setPerspectiveIDs(update.getPerspectiveIDs(), false,
-                    null));
+        if (changed(getPerspectiveIDs(),
+                persisted.getPerspectiveIDs()) == false) {
+            changed.addAll(
+                    setPerspectiveIDs(update.getPerspectiveIDs(), false, null));
         }
         if (changed(getDeselectAfterIssuing(),
                 persisted.getDeselectAfterIssuing()) == false) {
@@ -580,7 +593,8 @@ public class ObservedSettings implements ISettings {
         setSettingsID(settingsID, true, originator);
     }
 
-    public void setVisibleTypes(Set<String> visibleTypes, IOriginator originator) {
+    public void setVisibleTypes(Set<String> visibleTypes,
+            IOriginator originator) {
         setVisibleTypes(visibleTypes, true, originator);
     }
 
@@ -589,7 +603,8 @@ public class ObservedSettings implements ISettings {
         setVisibleStatuses(visibleStatuses, true, originator);
     }
 
-    public void setToolbarTools(List<Tool> toolbarTools, IOriginator originator) {
+    public void setToolbarTools(List<Tool> toolbarTools,
+            IOriginator originator) {
         setToolbarTools(toolbarTools, true, originator);
     }
 
@@ -618,7 +633,8 @@ public class ObservedSettings implements ISettings {
         setPossibleSites(possibleSites, true, originator);
     }
 
-    public void setVisibleSites(Set<String> visibleSites, IOriginator originator) {
+    public void setVisibleSites(Set<String> visibleSites,
+            IOriginator originator) {
         setVisibleSites(visibleSites, true, originator);
     }
 
@@ -626,7 +642,8 @@ public class ObservedSettings implements ISettings {
         setDisplayName(displayName, true, originator);
     }
 
-    public void setDefaultDuration(Long defaultDuration, IOriginator originator) {
+    public void setDefaultDuration(Long defaultDuration,
+            IOriginator originator) {
         setDefaultDuration(defaultDuration, true, originator);
     }
 
@@ -635,7 +652,8 @@ public class ObservedSettings implements ISettings {
         setVisibleColumns(visibleColumns, true, originator);
     }
 
-    public void setColumns(Map<String, Column> columns, IOriginator originator) {
+    public void setColumns(Map<String, Column> columns,
+            IOriginator originator) {
         setColumns(columns, true, originator);
     }
 
@@ -644,7 +662,8 @@ public class ObservedSettings implements ISettings {
         setStaticSettingsID(staticSettingsID, true, originator);
     }
 
-    public void setAddToSelected(Boolean addToSelected, IOriginator originator) {
+    public void setAddToSelected(Boolean addToSelected,
+            IOriginator originator) {
         setAddToSelected(addToSelected, true, originator);
     }
 
@@ -698,8 +717,8 @@ public class ObservedSettings implements ISettings {
         return EnumSet.noneOf(Type.class);
     }
 
-    protected Set<Type> setToolbarTools(List<Tool> toolbarTools,
-            boolean notify, IOriginator originator) {
+    protected Set<Type> setToolbarTools(List<Tool> toolbarTools, boolean notify,
+            IOriginator originator) {
         if (changed(toolbarTools, getToolbarTools())) {
             delegate.setToolbarTools(getToolbarToolsCopy(toolbarTools));
             settingsChanged(notify, Type.TOOLS, originator);
@@ -711,7 +730,8 @@ public class ObservedSettings implements ISettings {
     protected Set<Type> setDefaultTimeDisplayDuration(
             Long defaultTimeDisplayDuration, boolean notify,
             IOriginator originator) {
-        if (changed(defaultTimeDisplayDuration, getDefaultTimeDisplayDuration())) {
+        if (changed(defaultTimeDisplayDuration,
+                getDefaultTimeDisplayDuration())) {
             delegate.setDefaultTimeDisplayDuration(defaultTimeDisplayDuration);
             settingsChanged(notify, Type.DEFAULT_DISPLAY_DURATION, originator);
             return EnumSet.of(Type.DEFAULT_DISPLAY_DURATION);
@@ -779,8 +799,8 @@ public class ObservedSettings implements ISettings {
         return EnumSet.noneOf(Type.class);
     }
 
-    protected Set<Type> setDefaultDuration(Long defaultDuration,
-            boolean notify, IOriginator originator) {
+    protected Set<Type> setDefaultDuration(Long defaultDuration, boolean notify,
+            IOriginator originator) {
         if (changed(defaultDuration, getDefaultDuration())) {
             delegate.setDefaultDuration(defaultDuration);
             settingsChanged(notify, Type.DEFAULT_EVENT_DURATION, originator);

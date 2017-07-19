@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.edex.recommenders;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.Serializable;
 import java.util.Map;
 
@@ -33,6 +31,8 @@ import com.raytheon.uf.common.recommenders.executors.RecommenderExecutor;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * Engine used by EDEX to create a new {@link EDEXRecommenderScriptManager}.
@@ -53,8 +53,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * @version 1.0
  */
 
-public class EDEXRecommenderEngine extends
-        AbstractRecommenderEngine<EDEXRecommenderScriptManager> {
+public class EDEXRecommenderEngine
+        extends AbstractRecommenderEngine<EDEXRecommenderScriptManager> {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EDEXRecommenderEngine.class);
@@ -69,14 +69,14 @@ public class EDEXRecommenderEngine extends
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.uf.common.recommenders.AbstractRecommenderEngine#getCoordinator
-     * ()
+     * @see com.raytheon.uf.common.recommenders.AbstractRecommenderEngine#
+     * getCoordinator ()
      */
     @Override
-    protected PythonJobCoordinator<EDEXRecommenderScriptManager> getCoordinator() {
+    protected PythonJobCoordinator<EDEXRecommenderScriptManager> createCoordinator() {
         factory = new EDEXRecommenderPythonFactory(getSite());
-        return PythonJobCoordinator.newInstance(factory);
+        return new PythonJobCoordinator<>(NUM_RECOMMENDER_THREADS,
+                RECOMMENDER_THREAD_POOL_NAME + " - " + site, factory);
     }
 
     public EventSet<IEvent> runRecommender(String recommenderName,
@@ -85,12 +85,11 @@ public class EDEXRecommenderEngine extends
         IPythonExecutor<EDEXRecommenderScriptManager, EventSet<IEvent>> executor = new RecommenderExecutor<EDEXRecommenderScriptManager>(
                 recommenderName, eventSet, visualFeatures, dialogInfo);
         try {
-            return getCoordinator(recommenderName).submitSyncJob(executor);
+            return getCoordinator().submitJob(executor).get();
         } catch (Exception e) {
-            statusHandler
-                    .handle(Priority.PROBLEM,
-                            "Unable to submit job to run execute method of recommender",
-                            e);
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to submit job to run execute method of recommender",
+                    e);
         }
         return null;
     }

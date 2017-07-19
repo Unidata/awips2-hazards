@@ -18,13 +18,12 @@
  **/
 package com.raytheon.uf.edex.recommenders;
 
-import jep.JepException;
-
-import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
-import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
+import com.raytheon.uf.common.python.concurrent.PythonInterpreterFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+
+import jep.JepException;
 
 /**
  * Creates a new thread pool for recommenders on EDEX.
@@ -44,8 +43,8 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * @version 1.0
  */
 
-public class EDEXRecommenderPythonFactory extends
-        AbstractPythonScriptFactory<EDEXRecommenderScriptManager> {
+public class EDEXRecommenderPythonFactory
+        implements PythonInterpreterFactory<EDEXRecommenderScriptManager> {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EDEXRecommenderPythonFactory.class);
@@ -56,8 +55,6 @@ public class EDEXRecommenderPythonFactory extends
      * 
      */
     public EDEXRecommenderPythonFactory(String site) {
-        super(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR
-                + site, 1);
         this.site = site;
     }
 

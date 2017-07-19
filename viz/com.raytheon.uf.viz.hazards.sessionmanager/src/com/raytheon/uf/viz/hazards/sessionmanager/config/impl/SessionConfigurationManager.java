@@ -28,15 +28,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_STATES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_VISIBLE_COLUMNS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.TIME_RESOLUTION;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
-import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
-import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
-import gov.noaa.gsd.viz.megawidgets.ISpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 import java.io.File;
 import java.io.InputStream;
@@ -56,10 +47,10 @@ import java.util.Set;
 
 import javax.xml.bind.JAXB;
 
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.eclipse.swt.widgets.Display;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -138,6 +129,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
 import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 /**
  * Implementation of ISessionConfigurationManager with asynchronous config file
@@ -304,8 +305,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * @version 1.0
  */
 
-public class SessionConfigurationManager implements
-        ISessionConfigurationManager<ObservedSettings> {
+public class SessionConfigurationManager
+        implements ISessionConfigurationManager<ObservedSettings> {
 
     /**
      * Metadata group megawidget type.
@@ -327,6 +328,7 @@ public class SessionConfigurationManager implements
      * metadata megawidgets.
      */
     private static final ImmutableMap<String, Object> METADATA_GROUP_SPECIFIER_PARAMETERS;
+
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(GroupSpecifier.MEGAWIDGET_TYPE, METADATA_GROUP_TYPE);
@@ -346,6 +348,7 @@ public class SessionConfigurationManager implements
     private static final Color WHITE = new Color(1.0f, 1.0f, 1.0f);
 
     private static final MegawidgetSpecifierManager EMPTY_MEGAWIDGET_SPECIFIER_MANAGER;
+
     static {
         MegawidgetSpecifierManager manager = null;
         try {
@@ -353,17 +356,16 @@ public class SessionConfigurationManager implements
                     Collections.<Map<String, Object>> emptyList(),
                     ISpecifier.class);
         } catch (Exception e) {
-            statusHandler.error(
-                    "unexpected error while creating empty megawidget specifier manager: "
+            statusHandler
+                    .error("unexpected error while creating empty megawidget specifier manager: "
                             + e, e);
         }
         EMPTY_MEGAWIDGET_SPECIFIER_MANAGER = manager;
     }
 
     private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
-            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
+            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER, Collections.<String> emptySet(),
             Collections.<String> emptySet(), Collections.<String> emptySet(),
-            Collections.<String> emptySet(),
             Collections.<String, String> emptyMap(),
             Collections.<String> emptySet(), null, null);
 
@@ -371,8 +373,8 @@ public class SessionConfigurationManager implements
      * Python job coordinator that handles both metadata fetching scripts and
      * event modifying scripts.
      */
-    private static final PythonJobCoordinator<ContextSwitchingPythonEval> PYTHON_JOB_COORDINATOR = PythonJobCoordinator
-            .newInstance(new ConfigScriptFactory());
+    private static final PythonJobCoordinator<ContextSwitchingPythonEval> PYTHON_JOB_COORDINATOR = new PythonJobCoordinator<>(
+            1, "configScriptFactory", new ConfigScriptFactory());
 
     private ISessionNotificationSender notificationSender;
 
@@ -466,13 +468,13 @@ public class SessionConfigurationManager implements
         configLoaderParams.put(HazardConstants.SITE, this.getSiteID());
         configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
 
-        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
-                commonStaticBase,
-                HazardsConfigurationConstants.START_UP_CONFIG_PY),
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase,
+                        HazardsConfigurationConstants.START_UP_CONFIG_PY),
                 new StartUpConfigObserver());
 
-        LocalizationFile file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.START_UP_CONFIG_PY);
+        LocalizationFile file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.START_UP_CONFIG_PY);
         configLoaderParams.put(HazardConstants.DATA_TYPE,
                 HazardsConfigurationConstants.STARTUP_CONFIG_DIR);
         startUpConfig = new ConfigLoader<StartUpConfig>(file,
@@ -480,45 +482,43 @@ public class SessionConfigurationManager implements
                 new HashMap<>(configLoaderParams));
         loaderPool.schedule(startUpConfig);
 
-        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
-                commonStaticBase,
-                HazardsConfigurationConstants.HAZARD_CATEGORIES_PY),
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase,
+                        HazardsConfigurationConstants.HAZARD_CATEGORIES_PY),
                 new HazardCategoriesObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
-        configLoaderParams
-                .put(HazardConstants.DATA_TYPE,
-                        HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR);
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
+        configLoaderParams.put(HazardConstants.DATA_TYPE,
+                HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR);
         hazardCategories = new ConfigLoader<HazardCategories>(file,
                 HazardCategories.class, null,
-                PythonBuildPaths.buildIncludePath(), new HashMap<>(
-                        configLoaderParams));
+                PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
         loaderPool.schedule(hazardCategories);
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.VTEC_CONSTANTS_PY);
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.VTEC_CONSTANTS_PY);
 
         // Add observer to base file
-        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
-                commonStaticBase,
-                HazardsConfigurationConstants.HAZARD_METADATA_PY),
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase,
+                        HazardsConfigurationConstants.HAZARD_METADATA_PY),
                 new HazardMetaDataObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_METADATA_PY);
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.HAZARD_METADATA_PY);
         for (LocalizationFile f : pathManager.listStaticFiles(
-                "HazardServices/hazardMetaData/", new String[] { ".py" },
-                false, true)) {
+                "HazardServices/hazardMetaData/", new String[] { ".py" }, false,
+                true)) {
             // Force download the file so python has it
             f.getFile();
         }
         configLoaderParams.put(HazardConstants.DATA_TYPE,
                 HazardsConfigurationConstants.HAZARD_METADATA_DIR);
         hazardMetaData = new ConfigLoader<HazardMetaData>(file,
-                HazardMetaData.class, null,
-                PythonBuildPaths.buildIncludePath(), new HashMap<>(
-                        configLoaderParams));
+                HazardMetaData.class, null, PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
         loaderPool.schedule(hazardMetaData);
 
         // Add observer to base file
@@ -527,14 +527,14 @@ public class SessionConfigurationManager implements
                         HazardsConfigurationConstants.HAZARD_TYPES_PY),
                 new HazardTypesObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.HAZARD_TYPES_PY);
 
         configLoaderParams.put(HazardConstants.DATA_TYPE,
                 HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR);
         hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class,
-                null, PythonBuildPaths.buildIncludePath(), new HashMap<>(
-                        configLoaderParams));
+                null, PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
         loaderPool.schedule(hazardTypes);
 
         ensureHazardTypeEntriesExistForAllTypes();
@@ -548,8 +548,8 @@ public class SessionConfigurationManager implements
          * to reinitialize said tool running.
          */
         eventDrivenTools = new ConfigLoader<EventDrivenTools>(
-                pathManager
-                        .getStaticLocalizationFile(HazardsConfigurationConstants.EVENT_DRIVEN_TOOLS_PY),
+                pathManager.getStaticLocalizationFile(
+                        HazardsConfigurationConstants.EVENT_DRIVEN_TOOLS_PY),
                 EventDrivenTools.class);
         loaderPool.schedule(eventDrivenTools);
         EventDrivenTools tools = eventDrivenTools.getConfig();
@@ -570,13 +570,14 @@ public class SessionConfigurationManager implements
                                         + "will not be executed.");
                     } else {
                         SessionConfigurationManager.this.sessionManager
-                                .runTools(
-                                        entry.getToolType(),
+                                .runTools(entry.getToolType(),
                                         entry.getToolIdentifiers(),
-                                        (entry.getTriggerType() == TriggerType.TIME_INTERVAL ? RecommenderExecutionContext
-                                                .getTimeIntervalContext()
-                                                : (entry.getTriggerType() == TriggerType.FRAME_CHANGE ? RecommenderExecutionContext
-                                                        .getFrameChangeContext()
+                                        (entry.getTriggerType() == TriggerType.TIME_INTERVAL
+                                                ? RecommenderExecutionContext
+                                                        .getTimeIntervalContext()
+                                                : (entry.getTriggerType() == TriggerType.FRAME_CHANGE
+                                                        ? RecommenderExecutionContext
+                                                                .getFrameChangeContext()
                                                         : RecommenderExecutionContext
                                                                 .getDataLayerUpdateContext())));
                     }
@@ -600,52 +601,52 @@ public class SessionConfigurationManager implements
         setEventDrivenToolRunningEnabled(true);
 
         // Add observer to base file
-        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
-                commonStaticBase,
-                HazardsConfigurationConstants.ALERTS_CONFIG_PATH),
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase,
+                        HazardsConfigurationConstants.ALERTS_CONFIG_PATH),
                 new HazardAlertsConfigObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
         configLoaderParams.put(HazardConstants.DATA_TYPE,
                 HazardConstants.ALERT_CONFIG_DATA);
         alertsConfig = new ConfigLoader<HazardAlertsConfig>(file,
                 HazardAlertsConfig.class, null,
-                PythonBuildPaths.buildIncludePath(), new HashMap<>(
-                        configLoaderParams));
+                PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
         loaderPool.schedule(alertsConfig);
 
         // Add observer to base file
-        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
-                commonStaticBase,
-                HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY),
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase,
+                        HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY),
                 new ProductGeneratorTableObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
         configLoaderParams.put(HazardConstants.DATA_TYPE,
                 HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_DIR);
         pgenTable = new ConfigLoader<ProductGeneratorTable>(file,
                 ProductGeneratorTable.class, null,
-                PythonBuildPaths.buildIncludePath(), new HashMap<>(
-                        configLoaderParams));
+                PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
         loaderPool.schedule(pgenTable);
 
         // Add observer to base file
-        associateObserverWithLocalizationFile(pathManager.getLocalizationFile(
-                commonStaticBase,
-                HazardsConfigurationConstants.DEFAULT_CONFIG_PY),
+        associateObserverWithLocalizationFile(
+                pathManager.getLocalizationFile(commonStaticBase,
+                        HazardsConfigurationConstants.DEFAULT_CONFIG_PY),
                 new DefaultConfigObserver());
 
-        file = pathManager
-                .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
+        file = pathManager.getStaticLocalizationFile(
+                HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
         configLoaderParams.put(HazardConstants.DATA_TYPE,
                 HazardConstants.VIEW_CONFIG_DATA);
         configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, false);
         settingsConfig = new ConfigLoader<SettingsConfig[]>(file,
                 SettingsConfig[].class, "viewConfig",
-                PythonBuildPaths.buildIncludePath(), new HashMap<>(
-                        configLoaderParams));
+                PythonBuildPaths.buildIncludePath(),
+                new HashMap<>(configLoaderParams));
         loaderPool.schedule(settingsConfig);
 
         loadBackupSites();
@@ -698,8 +699,8 @@ public class SessionConfigurationManager implements
                 if (previousPersisted != null) {
                     try {
                         String fileName = file.getFile(false).getName();
-                        if (fileName.startsWith(previousPersisted
-                                .getSettingsID() + ".")) {
+                        if (fileName.startsWith(
+                                previousPersisted.getSettingsID() + ".")) {
                             Settings s = loader.getConfig();
                             if (s.getSettingsID().equals(
                                     previousPersisted.getSettingsID())) {
@@ -784,17 +785,18 @@ public class SessionConfigurationManager implements
     }
 
     @Override
-    /** 
-     * Retrieve a clone of the current settings instance.
-     * Note: Settings must be changed (saved) before modifications persist. 
+    /**
+     * Retrieve a clone of the current settings instance. Note: Settings must be
+     * changed (saved) before modifications persist.
+     * 
      * @return A clone copy of the currently set Settings instance
      */
     public ObservedSettings getSettings() {
         if (settings != null) {
             return settings;
         } else if (!allSettings.isEmpty()) {
-            this.settings = new ObservedSettings(this, allSettings.get(0)
-                    .getConfig());
+            this.settings = new ObservedSettings(this,
+                    allSettings.get(0).getConfig());
             settingsChanged(new SettingsLoaded(this, Originator.OTHER));
         }
         return settings;
@@ -807,11 +809,10 @@ public class SessionConfigurationManager implements
         contents.append(settings.getSettingsID());
         contents.append(" = ");
         ObjectMapper mapper = new ObjectMapper();
-        mapper.getSerializationConfig().setSerializationInclusion(
-                Inclusion.NON_NULL);
+        mapper.getSerializationConfig()
+                .withSerializationInclusion(JsonInclude.Include.NON_NULL);
         try {
-            contents.append(mapper.defaultPrettyPrintingWriter()
-                    .writeValueAsString(settings));
+            contents.append(mapper.writeValueAsString(settings));
             String contentsAsString = contents.toString();
             contentsAsString = contentsAsString.replaceAll("true", "True")
                     .replaceAll("false", "False");
@@ -909,8 +910,8 @@ public class SessionConfigurationManager implements
                         "Unable to setup event identifier to use new site ID.",
                         e);
             }
-            notificationSender.postNotificationAsync(new SiteChanged(
-                    siteIdentifier, originator));
+            notificationSender.postNotificationAsync(
+                    new SiteChanged(siteIdentifier, originator));
         }
     }
 
@@ -998,7 +999,7 @@ public class SessionConfigurationManager implements
                 hazardEvent, environmentMap);
         Map<String, Object> result = null;
         try {
-            result = PYTHON_JOB_COORDINATOR.submitSyncJob(executor);
+            result = PYTHON_JOB_COORDINATOR.submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.error("Error executing metadata-fetching job.", e);
             return EMPTY_HAZARD_EVENT_METADATA;
@@ -1017,8 +1018,7 @@ public class SessionConfigurationManager implements
         File scriptFile = null;
         Map<String, String> eventModifyingFunctionNamesForIdentifiers = null;
         if (result.containsKey(HazardConstants.FILE_PATH_KEY)) {
-            scriptFile = PathManagerFactory
-                    .getPathManager()
+            scriptFile = PathManagerFactory.getPathManager()
                     .getStaticLocalizationFile(
                             (String) result.get(HazardConstants.FILE_PATH_KEY))
                     .getFile();
@@ -1034,7 +1034,8 @@ public class SessionConfigurationManager implements
         List<Map<String, Object>> specifiersList = (List<Map<String, Object>>) result
                 .get(HazardConstants.METADATA_KEY);
         if (specifiersList.isEmpty()) {
-            return (eventModifyingFunctionNamesForIdentifiers == null ? EMPTY_HAZARD_EVENT_METADATA
+            return (eventModifyingFunctionNamesForIdentifiers == null
+                    ? EMPTY_HAZARD_EVENT_METADATA
                     : new HazardEventMetadata(
                             EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
                             Collections.<String> emptySet(),
@@ -1044,9 +1045,8 @@ public class SessionConfigurationManager implements
                             Collections.<String> emptySet(), scriptFile,
                             eventModifyingFunctionNamesForIdentifiers));
         }
-        specifiersList = MegawidgetSpecifierManager
-                .makeRawSpecifiersScrollable(specifiersList,
-                        METADATA_GROUP_SPECIFIER_PARAMETERS);
+        specifiersList = MegawidgetSpecifierManager.makeRawSpecifiersScrollable(
+                specifiersList, METADATA_GROUP_SPECIFIER_PARAMETERS);
 
         Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
@@ -1065,9 +1065,11 @@ public class SessionConfigurationManager implements
                 specifiersList, HazardConstants.METADATA_EDIT_RISE_CREST_FALL);
 
         try {
-            return new HazardEventMetadata(new MegawidgetSpecifierManager(
-                    specifiersList, IControlSpecifier.class,
-                    timeManager.getCurrentTimeProvider(), sideEffectsApplier),
+            return new HazardEventMetadata(
+                    new MegawidgetSpecifierManager(specifiersList,
+                            IControlSpecifier.class,
+                            timeManager.getCurrentTimeProvider(),
+                            sideEffectsApplier),
                     refreshTriggeringMetadataKeys,
                     overrideOldValuesMetadataKeys,
                     affectingModifyFlagMetadataKeys,
@@ -1213,8 +1215,8 @@ public class SessionConfigurationManager implements
              */
             Object parameterValue = map.get(parameterName);
             if ((parameterValue != null)
-                    && ((parameterValue instanceof String == false) || (((String) parameterValue)
-                            .isEmpty() == false))
+                    && ((parameterValue instanceof String == false)
+                            || (((String) parameterValue).isEmpty() == false))
                     && map.containsKey(HazardConstants.FIELD_NAME)) {
                 valuesForTriggerIdentifiers.put(
                         map.get(HazardConstants.FIELD_NAME).toString(),
@@ -1269,7 +1271,8 @@ public class SessionConfigurationManager implements
                     });
                 }
             };
-            PYTHON_JOB_COORDINATOR.submitAsyncJob(executor, pythonJobListener);
+            PYTHON_JOB_COORDINATOR.submitJobWithCallback(executor,
+                    pythonJobListener);
         } catch (Exception e) {
             handleEventModifyingScriptExecutionError(hazardEvent, functionName,
                     e);
@@ -1305,8 +1308,8 @@ public class SessionConfigurationManager implements
         SettingsConfig viewConfig = getSettingsConfig();
         for (Page page : viewConfig.getPages()) {
             for (Field field : page.getPageFields()) {
-                if (field.getFieldName().equals(
-                        SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
+                if (field.getFieldName()
+                        .equals(SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
                     config[0] = new Field(field);
                     config[0].setFieldType("HierarchicalChoicesMenu");
                     config[0].setLabel("Hazard &Types");
@@ -1346,23 +1349,25 @@ public class SessionConfigurationManager implements
                 if (field.getFieldType().equals(SETTING_FIELD_TYPE_GROUP)) {
                     field = field.getFields().get(0);
                 }
-                if (field.getFieldName().equals(
-                        SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
-                    field.setChoices(getHazardInfoConfig()
-                            .getHazardCategories());
+                if (field.getFieldName()
+                        .equals(SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
+                    field.setChoices(
+                            getHazardInfoConfig().getHazardCategories());
                 } else if (field.getFieldName().equals(SETTING_HAZARD_SITES)) {
                     Set<String> pSites = getSettingsValue(
                             SETTING_HAZARD_POSSIBLE_SITES, settings);
                     List<String> possibleSites = new ArrayList<String>(pSites);
                     Collections.sort(possibleSites);
-                    List<Choice> choices = new ArrayList<>(possibleSites.size());
+                    List<Choice> choices = new ArrayList<>(
+                            possibleSites.size());
                     for (String site : possibleSites) {
                         choices.add(new Choice(site, site));
                     }
                     field.setChoices(choices);
-                } else if (field.getFieldName().equals(SETTING_VISIBLE_COLUMNS)) {
-                    List<String> possibleColumns = new ArrayList<>(settings
-                            .getColumns().keySet());
+                } else if (field.getFieldName()
+                        .equals(SETTING_VISIBLE_COLUMNS)) {
+                    List<String> possibleColumns = new ArrayList<>(
+                            settings.getColumns().keySet());
                     Collections.sort(possibleColumns);
                     List<Choice> choices = new ArrayList<>(
                             possibleColumns.size());
@@ -1504,8 +1509,8 @@ public class SessionConfigurationManager implements
      */
     private MatchCriteria getMatchCriteria(IHazardEvent event) {
         ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
-        List<String> paramList = Lists.newArrayList(HazardEventUtilities
-                .getHazardType(event));
+        List<String> paramList = Lists
+                .newArrayList(HazardEventUtilities.getHazardType(event));
         match.setParameterName(paramList);
         return match;
     }
@@ -1539,8 +1544,9 @@ public class SessionConfigurationManager implements
     @Override
     public long getDefaultDuration(IHazardEvent event) {
         String type = HazardEventUtilities.getHazardType(event);
-        return (type != null ? hazardTypes.getConfig().get(type)
-                .getDefaultDuration() : getSettings().getDefaultDuration());
+        return (type != null
+                ? hazardTypes.getConfig().get(type).getDefaultDuration()
+                : getSettings().getDefaultDuration());
     }
 
     @Override
@@ -1565,8 +1571,8 @@ public class SessionConfigurationManager implements
                     ImmutableList.copyOf(Collections.<String> emptyList()));
         }
 
-        return durationChoicesForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event));
+        return durationChoicesForHazardTypes
+                .get(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
@@ -1581,13 +1587,13 @@ public class SessionConfigurationManager implements
             timeResolutionsForHazardTypes = new HashMap<>();
             for (Map.Entry<String, HazardTypeEntry> entry : hazardTypes
                     .getConfig().entrySet()) {
-                timeResolutionsForHazardTypes.put(entry.getKey(), entry
-                        .getValue().getTimeResolution());
+                timeResolutionsForHazardTypes.put(entry.getKey(),
+                        entry.getValue().getTimeResolution());
             }
             timeResolutionsForHazardTypes.put(null, TimeResolution.MINUTES);
         }
-        return timeResolutionsForHazardTypes.get(HazardEventUtilities
-                .getHazardType(event));
+        return timeResolutionsForHazardTypes
+                .get(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
@@ -1615,13 +1621,10 @@ public class SessionConfigurationManager implements
                             if (attribute != null) {
                                 map.put(attribute, subEntry.getKey());
                             } else {
-                                statusHandler
-                                        .warn("\""
-                                                + attributeName
-                                                + "\" is not a valid hazard event attribute "
-                                                + "(found in 'modifyRecommenders' entry for hazard type "
-                                                + entry.getKey()
-                                                + "); skipping.");
+                                statusHandler.warn("\"" + attributeName
+                                        + "\" is not a valid hazard event attribute "
+                                        + "(found in 'modifyRecommenders' entry for hazard type "
+                                        + entry.getKey() + "); skipping.");
                             }
                         }
                     }
@@ -1632,8 +1635,8 @@ public class SessionConfigurationManager implements
                     .<HazardEventFirstClassAttribute, String> emptyMap());
         }
 
-        return recommendersForTriggersForHazardTypes.get(
-                HazardEventUtilities.getHazardType(event)).get(change);
+        return recommendersForTriggersForHazardTypes
+                .get(HazardEventUtilities.getHazardType(event)).get(change);
     }
 
     @Override
@@ -1674,8 +1677,8 @@ public class SessionConfigurationManager implements
             }
         }
 
-        return typesAllowingAnyStartTime.contains(HazardEventUtilities
-                .getHazardType(event));
+        return typesAllowingAnyStartTime
+                .contains(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
@@ -1698,8 +1701,8 @@ public class SessionConfigurationManager implements
             typesAllowingTimeExpand.add(null);
         }
 
-        return typesAllowingTimeExpand.contains(HazardEventUtilities
-                .getHazardType(event));
+        return typesAllowingTimeExpand
+                .contains(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
@@ -1722,8 +1725,8 @@ public class SessionConfigurationManager implements
             typesAllowingTimeShrink.add(null);
         }
 
-        return typesAllowingTimeShrink.contains(HazardEventUtilities
-                .getHazardType(event));
+        return typesAllowingTimeShrink
+                .contains(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
@@ -1816,8 +1819,8 @@ public class SessionConfigurationManager implements
     @Override
     public String getHazardCategory(IHazardEvent event) {
         if (HazardEventUtilities.isHazardTypeValid(event) == false) {
-            return (String) event
-                    .getHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
+            return (String) event.getHazardAttribute(
+                    ISessionEventManager.ATTR_HAZARD_CATEGORY);
         }
         for (Entry<String, String[][]> entry : hazardCategories.getConfig()
                 .entrySet()) {
@@ -1876,8 +1879,8 @@ public class SessionConfigurationManager implements
         return this.backupSites.getSites();
     }
 
-    private class SettingsDirectoryUpdateObserver implements
-            ILocalizationFileObserver {
+    private class SettingsDirectoryUpdateObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
@@ -1890,8 +1893,8 @@ public class SessionConfigurationManager implements
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
-            LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.START_UP_CONFIG_PY);
+            LocalizationFile file = pathManager.getStaticLocalizationFile(
+                    HazardsConfigurationConstants.START_UP_CONFIG_PY);
 
             Map<String, Object> configLoaderParams = new HashMap<>();
             configLoaderParams.put(HazardConstants.SITE, getSiteID());
@@ -1912,18 +1915,18 @@ public class SessionConfigurationManager implements
         }
     }
 
-    private class HazardCategoriesObserver implements ILocalizationFileObserver {
+    private class HazardCategoriesObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
-            LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
+            LocalizationFile file = pathManager.getStaticLocalizationFile(
+                    HazardsConfigurationConstants.HAZARD_CATEGORIES_PY);
 
             Map<String, Object> configLoaderParams = new HashMap<>();
             configLoaderParams.put(HazardConstants.SITE, getSiteID());
-            configLoaderParams
-                    .put(HazardConstants.DATA_TYPE,
-                            HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR);
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardsConfigurationConstants.HAZARD_CATEGORIES_LOCALIZATION_DIR);
             configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
 
             hazardCategories = new ConfigLoader<HazardCategories>(file,
@@ -1944,8 +1947,8 @@ public class SessionConfigurationManager implements
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
 
-            LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_METADATA_PY);
+            LocalizationFile file = pathManager.getStaticLocalizationFile(
+                    HazardsConfigurationConstants.HAZARD_METADATA_PY);
 
             Map<String, Object> configLoaderParams = new HashMap<>();
             configLoaderParams.put(HazardConstants.SITE, getSiteID());
@@ -1969,19 +1972,18 @@ public class SessionConfigurationManager implements
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
-            LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.HAZARD_TYPES_PY);
+            LocalizationFile file = pathManager.getStaticLocalizationFile(
+                    HazardsConfigurationConstants.HAZARD_TYPES_PY);
 
             Map<String, Object> configLoaderParams = new HashMap<>();
             configLoaderParams.put(HazardConstants.SITE, getSiteID());
-            configLoaderParams
-                    .put(HazardConstants.DATA_TYPE,
-                            HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR);
+            configLoaderParams.put(HazardConstants.DATA_TYPE,
+                    HazardsConfigurationConstants.HAZARD_TYPES_LOCALIZATION_DIR);
             configLoaderParams.put(HazardConstants.INCREMENTAL_OVERRIDE, true);
 
-            hazardTypes = new ConfigLoader<HazardTypes>(file,
-                    HazardTypes.class, null,
-                    PythonBuildPaths.buildIncludePath(), configLoaderParams);
+            hazardTypes = new ConfigLoader<HazardTypes>(file, HazardTypes.class,
+                    null, PythonBuildPaths.buildIncludePath(),
+                    configLoaderParams);
             loaderPool.schedule(hazardTypes);
             ensureHazardTypeEntriesExistForAllTypes();
 
@@ -1992,13 +1994,13 @@ public class SessionConfigurationManager implements
         }
     }
 
-    private class HazardAlertsConfigObserver implements
-            ILocalizationFileObserver {
+    private class HazardAlertsConfigObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
-            LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
+            LocalizationFile file = pathManager.getStaticLocalizationFile(
+                    HazardsConfigurationConstants.ALERTS_CONFIG_PATH);
 
             Map<String, Object> configLoaderParams = new HashMap<>();
             configLoaderParams.put(HazardConstants.SITE, getSiteID());
@@ -2014,8 +2016,8 @@ public class SessionConfigurationManager implements
             boolean practice = (CAVEMode.getMode() != CAVEMode.OPERATIONAL);
             sessionManager.getAlertsManager().addAlertGenerationStrategy(
                     HazardNotification.class,
-                    new HazardEventExpirationAlertStrategy(sessionManager
-                            .getAlertsManager(), timeManager,
+                    new HazardEventExpirationAlertStrategy(
+                            sessionManager.getAlertsManager(), timeManager,
                             SessionConfigurationManager.this,
                             new HazardEventManager(practice),
                             new AllHazardsFilterStrategy()));
@@ -2023,13 +2025,13 @@ public class SessionConfigurationManager implements
 
     }
 
-    private class ProductGeneratorTableObserver implements
-            ILocalizationFileObserver {
+    private class ProductGeneratorTableObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
-            LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
+            LocalizationFile file = pathManager.getStaticLocalizationFile(
+                    HazardsConfigurationConstants.PRODUCT_GENERATOR_TABLE_PY);
 
             Map<String, Object> configLoaderParams = new HashMap<>();
             configLoaderParams.put(HazardConstants.SITE, getSiteID());
@@ -2048,8 +2050,8 @@ public class SessionConfigurationManager implements
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
-            LocalizationFile file = pathManager
-                    .getStaticLocalizationFile(HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
+            LocalizationFile file = pathManager.getStaticLocalizationFile(
+                    HazardsConfigurationConstants.DEFAULT_CONFIG_PY);
 
             Map<String, Object> configLoaderParams = new HashMap<>();
             configLoaderParams.put(HazardConstants.SITE, getSiteID());
@@ -2095,10 +2097,10 @@ public class SessionConfigurationManager implements
         IPythonExecutor<ContextSwitchingPythonEval, String> executor = new ValidateScriptExecutor(
                 hazardEvent);
         try {
-            return PYTHON_JOB_COORDINATOR.submitSyncJob(executor);
+            return PYTHON_JOB_COORDINATOR.submitJob(executor).get();
         } catch (Exception e) {
-            statusHandler.error(
-                    "Error executing validate job for hazard event: "
+            statusHandler
+                    .error("Error executing validate job for hazard event: "
                             + hazardEvent.getEventID(), e);
             return null;
         }

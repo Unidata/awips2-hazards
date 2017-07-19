@@ -19,12 +19,13 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-
 import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
-import org.codehaus.jackson.annotate.JsonProperty;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
  * Built from the objects defined in StartupConfig localization file.

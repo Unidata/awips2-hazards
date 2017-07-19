@@ -9,10 +9,6 @@
  */
 package gov.noaa.gsd.common.visuals;
 
-import gov.noaa.gsd.common.utilities.JsonConverter;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -22,24 +18,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.codehaus.jackson.JsonLocation;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.map.DeserializationContext;
-import org.codehaus.jackson.node.ArrayNode;
-import org.codehaus.jackson.node.NullNode;
-import org.codehaus.jackson.node.ObjectNode;
-import org.codehaus.jackson.node.TextNode;
-import org.codehaus.jackson.type.TypeReference;
-
+import com.fasterxml.jackson.core.JsonLocation;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.NullNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.reflect.TypeToken;
+
+import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
 
 /**
  * Description: Helper class for {@link VisualFeaturesListJsonConverter}
@@ -97,7 +96,8 @@ import com.google.common.reflect.TypeToken;
  * @author Chris.Golden
  * @version 1.0
  */
-class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer {
+class VisualFeaturesListJsonDeserializer
+        extends VisualFeaturesListDeserializer {
 
     // Private Interfaces
 
@@ -186,9 +186,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public List<String> deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeListOfStrings(
-                                    node,
-                                    identifier,
+                            return deserializeListOfStrings(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEMPLATES);
                         }
                     })
@@ -198,10 +196,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public IAdvancedGeometry deserializeProperty(
                                 JsonNode node, String identifier)
-                                throws JsonParseException {
-                            return deserializeGeometry(
-                                    node,
-                                    identifier,
+                                        throws JsonParseException {
+                            return deserializeGeometry(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_GEOMETRY);
                         }
                     })
@@ -211,10 +207,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public SerializableColor deserializeProperty(
                                 JsonNode node, String identifier)
-                                throws JsonParseException {
-                            return deserializeColor(
-                                    node,
-                                    identifier,
+                                        throws JsonParseException {
+                            return deserializeColor(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_BORDER_COLOR);
                         }
                     })
@@ -224,10 +218,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public SerializableColor deserializeProperty(
                                 JsonNode node, String identifier)
-                                throws JsonParseException {
-                            return deserializeColor(
-                                    node,
-                                    identifier,
+                                        throws JsonParseException {
+                            return deserializeColor(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_FILL_COLOR);
                         }
                     })
@@ -237,8 +229,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Double deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeNonNegativeDouble(
-                                    node,
+                            return deserializeNonNegativeDouble(node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_BORDER_THICKNESS,
                                     false);
@@ -250,9 +241,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public BorderStyle deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeBorderStyle(
-                                    node,
-                                    identifier,
+                            return deserializeBorderStyle(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_BORDER_STYLE);
                         }
                     })
@@ -262,9 +251,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public FillStyle deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeFillStyle(
-                                    node,
-                                    identifier,
+                            return deserializeFillStyle(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_FILL_STYLE);
                         }
                     })
@@ -274,8 +261,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Double deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeNonNegativeDouble(
-                                    node,
+                            return deserializeNonNegativeDouble(node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_DIAMETER,
                                     true);
@@ -287,9 +273,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public SymbolShape deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeSymbolShape(
-                                    node,
-                                    identifier,
+                            return deserializeSymbolShape(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_SYMBOL_SHAPE);
                         }
                     })
@@ -309,8 +293,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Double deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeNonNegativeDouble(
-                                    node,
+                            return deserializeNonNegativeDouble(node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_OFFSET_LENGTH,
                                     false);
@@ -322,8 +305,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Double deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeNonNegativeDouble(
-                                    node,
+                            return deserializeNonNegativeDouble(node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_OFFSET_DIR,
                                     false);
@@ -335,8 +317,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Integer deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeNonNegativeInteger(
-                                    node,
+                            return deserializeNonNegativeInteger(node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_SIZE,
                                     true);
@@ -348,10 +329,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public SerializableColor deserializeProperty(
                                 JsonNode node, String identifier)
-                                throws JsonParseException {
-                            return deserializeColor(
-                                    node,
-                                    identifier,
+                                        throws JsonParseException {
+                            return deserializeColor(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TEXT_COLOR);
                         }
                     })
@@ -359,12 +338,9 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                     new IPropertyDeserializer<DragCapability>() {
 
                         @Override
-                        public DragCapability deserializeProperty(
-                                JsonNode node, String identifier)
-                                throws JsonParseException {
-                            return deserializeDragCapability(
-                                    node,
-                                    identifier,
+                        public DragCapability deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeDragCapability(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_DRAGGABILITY);
                         }
                     })
@@ -374,9 +350,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Boolean deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeBoolean(
-                                    node,
-                                    identifier,
+                            return deserializeBoolean(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE);
                         }
                     })
@@ -386,9 +360,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Boolean deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeBoolean(
-                                    node,
-                                    identifier,
+                            return deserializeBoolean(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_ROTATABLE);
                         }
                     })
@@ -398,9 +370,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                         @Override
                         public Boolean deserializeProperty(JsonNode node,
                                 String identifier) throws JsonParseException {
-                            return deserializeBoolean(
-                                    node,
-                                    identifier,
+                            return deserializeBoolean(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_SCALEABLE);
                         }
                     })
@@ -413,7 +383,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                             return deserializeBoolean(node, identifier,
                                     VisualFeaturesListJsonConverter.KEY_TOPMOST);
                         }
-                    }).build();
+                    })
+            .build();
 
     /**
      * Immutable map pairing property names with the assigners to be used to
@@ -619,7 +590,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                                 VisualFeature visualFeature) {
                             visualFeature.setTopmost(value);
                         }
-                    }).build();
+                    })
+            .build();
 
     // Package-Private Static Methods
 
@@ -638,8 +610,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      *             If the JSON is malformed.
      */
     static VisualFeaturesList deserialize(JsonParser jsonParser,
-            DeserializationContext context) throws IOException,
-            JsonProcessingException {
+            DeserializationContext context)
+                    throws IOException, JsonProcessingException {
 
         /*
          * Prepare for the deserialization.
@@ -653,7 +625,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
         if (node instanceof ArrayNode == false) {
             throw new JsonParseException(
                     "expected JSON array holding visual features but got \""
-                            + node + "\"", JsonLocation.NA);
+                            + node + "\"",
+                    JsonLocation.NA);
         }
         VisualFeaturesList list = new VisualFeaturesList();
 
@@ -707,7 +680,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
         if (node instanceof ObjectNode == false) {
             throw new JsonParseException(
                     "expected JSON object holding visual feature but got \""
-                            + node + "\"", JsonLocation.NA);
+                            + node + "\"",
+                    JsonLocation.NA);
         }
         ObjectNode objectNode = (ObjectNode) node;
 
@@ -718,13 +692,14 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
         String identifier = null;
         node = objectNode.get(VisualFeaturesListJsonConverter.KEY_IDENTIFIER);
         if (node instanceof TextNode == false) {
-            throw new JsonParseException("expected valid unique string "
-                    + "identifier for visual feature at index " + index
-                    + " but "
-                    + (node == null ? "none was provided" : "got " + node),
+            throw new JsonParseException(
+                    "expected valid unique string "
+                            + "identifier for visual feature at index "
+                            + index + " but " + (node == null
+                                    ? "none was provided" : "got " + node),
                     JsonLocation.NA);
         }
-        identifier = node.getTextValue();
+        identifier = node.textValue();
         if (identifier.isEmpty()) {
             throw new JsonParseException("expected valid unique string "
                     + "identifier for visual feature at index " + index
@@ -743,22 +718,20 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
         /*
          * Ensure visibility constraints are supplied.
          */
-        node = objectNode
-                .get(VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS);
+        node = objectNode.get(
+                VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS);
         VisibilityConstraints visibilityConstraints = null;
         if (node instanceof TextNode) {
-            visibilityConstraints = VisibilityConstraints.getInstance(node
-                    .getTextValue());
+            visibilityConstraints = VisibilityConstraints
+                    .getInstance(node.textValue());
         } else if (node == null) {
             visibilityConstraints = VisibilityConstraints.ALWAYS;
         }
         if (visibilityConstraints == null) {
-            throw createValueDeserializationException(
-                    identifier,
+            throw createValueDeserializationException(identifier,
                     VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS,
-                    "one of: "
-                            + Joiner.on(", ").join(
-                                    VisibilityConstraints.getDescriptions()),
+                    "one of: " + Joiner.on(", ")
+                            .join(VisibilityConstraints.getDescriptions()),
                     node, null, null);
         } else {
             visualFeature.setVisibilityConstraints(visibilityConstraints);
@@ -768,7 +741,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
          * Iterate through the properties of the object, processing each in
          * turn.
          */
-        Iterator<Map.Entry<String, JsonNode>> iterator = objectNode.getFields();
+        Iterator<Map.Entry<String, JsonNode>> iterator = objectNode.fields();
         while (iterator.hasNext()) {
             Map.Entry<String, JsonNode> entry = iterator.next();
             String name = entry.getKey();
@@ -780,7 +753,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
              * properties that have null values.
              */
             if (name.equals(VisualFeaturesListJsonConverter.KEY_IDENTIFIER)
-                    || name.equals(VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS)
+                    || name.equals(
+                            VisualFeaturesListJsonConverter.KEY_VISIBILITY_CONSTRAINTS)
                     || (node == null) || (node instanceof NullNode)) {
                 continue;
             }
@@ -811,39 +785,33 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<Integer>) deserializer,
                         (IPropertyAssigner<Integer>) assigner);
-            } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_DOUBLE)) {
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_DOUBLE)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<Double>) deserializer,
                         (IPropertyAssigner<Double>) assigner);
-            } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_STRING)) {
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_STRING)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<String>) deserializer,
                         (IPropertyAssigner<String>) assigner);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_LIST_OF_STRINGS)) {
-                deserializeAndAssignProperty(
-                        node,
-                        visualFeature,
-                        name,
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_LIST_OF_STRINGS)) {
+                deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<ImmutableList<String>>) deserializer,
                         (IPropertyAssigner<ImmutableList<String>>) assigner);
-            } else if (type.equals(VisualFeaturesListJsonConverter.TYPE_COLOR)) {
-                deserializeAndAssignProperty(
-                        node,
-                        visualFeature,
-                        name,
+            } else if (type
+                    .equals(VisualFeaturesListJsonConverter.TYPE_COLOR)) {
+                deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<SerializableColor>) deserializer,
                         (IPropertyAssigner<SerializableColor>) assigner);
             } else if (type
                     .equals(VisualFeaturesListJsonConverter.TYPE_GEOMETRY)) {
-                deserializeAndAssignProperty(
-                        node,
-                        visualFeature,
-                        name,
+                deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<IAdvancedGeometry>) deserializer,
                         (IPropertyAssigner<IAdvancedGeometry>) assigner);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_BORDER_STYLE)) {
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_BORDER_STYLE)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<BorderStyle>) deserializer,
                         (IPropertyAssigner<BorderStyle>) assigner);
@@ -852,13 +820,13 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<FillStyle>) deserializer,
                         (IPropertyAssigner<FillStyle>) assigner);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_SYMBOL_SHAPE)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<SymbolShape>) deserializer,
                         (IPropertyAssigner<SymbolShape>) assigner);
-            } else if (type
-                    .equals(VisualFeaturesListJsonConverter.TYPE_DRAGGABILITY)) {
+            } else if (type.equals(
+                    VisualFeaturesListJsonConverter.TYPE_DRAGGABILITY)) {
                 deserializeAndAssignProperty(node, visualFeature, name,
                         (IPropertyDeserializer<DragCapability>) deserializer,
                         (IPropertyAssigner<DragCapability>) assigner);
@@ -870,10 +838,9 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                  * failures because the code was not modified to handle a new
                  * type of property.
                  */
-                throw new IllegalStateException(
-                        "internal error: property \""
-                                + name
-                                + "\" could not be deserialized as it is of an unexpected type");
+                throw new IllegalStateException("internal error: property \""
+                        + name
+                        + "\" could not be deserialized as it is of an unexpected type");
             }
         }
 
@@ -905,8 +872,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static <P extends Serializable> void deserializeAndAssignProperty(
             JsonNode node, VisualFeature visualFeature, String propertyName,
-            IPropertyDeserializer<P> deserializer, IPropertyAssigner<P> assigner)
-            throws JsonParseException {
+            IPropertyDeserializer<P> deserializer,
+            IPropertyAssigner<P> assigner) throws JsonParseException {
 
         /*
          * If the node is an object representation and does not have any of the
@@ -924,16 +891,16 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
              * Create the temporally variant property object with the default
              * found in the node, if one is found.
              */
-            property = new TemporallyVariantProperty<>(
-                    deserializePropertyValue(
-                            node.get(VisualFeaturesListJsonConverter.TEMPORALLY_VARIANT_KEY_DEFAULT),
-                            identifier, deserializer));
+            property = new TemporallyVariantProperty<>(deserializePropertyValue(
+                    node.get(
+                            VisualFeaturesListJsonConverter.TEMPORALLY_VARIANT_KEY_DEFAULT),
+                    identifier, deserializer));
 
             /*
              * Iterate through the key-value pairings for the node, processing
              * each in turn as a time range paired with a property value.
              */
-            Iterator<String> iterator = node.getFieldNames();
+            Iterator<String> iterator = node.fieldNames();
             while (iterator.hasNext()) {
 
                 /*
@@ -941,7 +908,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                  * with above.
                  */
                 String key = iterator.next();
-                if (key.equals(VisualFeaturesListJsonConverter.TEMPORALLY_VARIANT_KEY_DEFAULT)) {
+                if (key.equals(
+                        VisualFeaturesListJsonConverter.TEMPORALLY_VARIANT_KEY_DEFAULT)) {
                     continue;
                 }
 
@@ -1055,9 +1023,9 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static <P> P deserializePropertyValue(JsonNode node,
             String identifier, IPropertyDeserializer<P> deserializer)
-            throws JsonParseException {
-        return ((node != null) && (node instanceof NullNode == false) ? deserializer
-                .deserializeProperty(node, identifier) : null);
+                    throws JsonParseException {
+        return ((node != null) && (node instanceof NullNode == false)
+                ? deserializer.deserializeProperty(node, identifier) : null);
     }
 
     /**
@@ -1076,7 +1044,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
     private static Boolean deserializeBoolean(JsonNode node, String identifier,
             String propertyName) throws JsonParseException {
         try {
-            return VisualFeaturesListJsonConverter.CONVERTER.readValue(node,
+            return VisualFeaturesListJsonConverter.CONVERTER.treeToValue(node,
                     Boolean.class);
         } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
@@ -1102,14 +1070,14 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static Integer deserializeNonNegativeInteger(JsonNode node,
             String identifier, String propertyName, boolean positive)
-            throws JsonParseException {
+                    throws JsonParseException {
 
         /*
          * If the node is a string specifying the event type integer, use that.
          */
         if (node.isTextual()
                 && VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE
-                        .equals(node.getTextValue())) {
+                        .equals(node.textValue())) {
             return VisualFeature.INTEGER_OF_EVENT_TYPE;
         }
 
@@ -1119,15 +1087,13 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
         int value = 0;
         Throwable throwable = null;
         try {
-            value = VisualFeaturesListJsonConverter.CONVERTER.readValue(node,
+            value = VisualFeaturesListJsonConverter.CONVERTER.treeToValue(node,
                     Integer.class);
         } catch (IOException e) {
             throwable = e;
         }
         if ((throwable != null) || (value < 0) || (positive && (value == 0))) {
-            throw createValueDeserializationException(
-                    identifier,
-                    propertyName,
+            throw createValueDeserializationException(identifier, propertyName,
                     (positive ? "positive" : "non-negative") + " integer value",
                     node, null, throwable);
         }
@@ -1152,14 +1118,14 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static Double deserializeNonNegativeDouble(JsonNode node,
             String identifier, String propertyName, boolean positive)
-            throws JsonParseException {
+                    throws JsonParseException {
 
         /*
          * If the node is a string specifying the event type double, use that.
          */
         if (node.isTextual()
                 && VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE
-                        .equals(node.getTextValue())) {
+                        .equals(node.textValue())) {
             return VisualFeature.DOUBLE_OF_EVENT_TYPE;
         }
 
@@ -1169,7 +1135,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
         double value = 0.0;
         Throwable throwable = null;
         try {
-            value = VisualFeaturesListJsonConverter.CONVERTER.readValue(node,
+            value = VisualFeaturesListJsonConverter.CONVERTER.treeToValue(node,
                     Double.class);
         } catch (IOException e) {
             throwable = e;
@@ -1178,7 +1144,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
                 || (positive && (value == 0.0))) {
             throw createValueDeserializationException(identifier, propertyName,
                     (positive ? "positive" : "non-negative")
-                            + " floating-point value", node, null, throwable);
+                            + " floating-point value",
+                    node, null, throwable);
         }
         return value;
     }
@@ -1204,14 +1171,14 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
          */
         if (node.isTextual()
                 && VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE
-                        .equals(node.getTextValue())) {
+                        .equals(node.textValue())) {
             return VisualFeature.STRING_OF_EVENT_TYPE;
         }
 
         /*
          * Expect the value as a string.
          */
-        String value = node.getTextValue();
+        String value = node.textValue();
         return ((value != null) && (value.isEmpty() == false) ? value : null);
     }
 
@@ -1231,9 +1198,9 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
     private static List<String> deserializeListOfStrings(JsonNode node,
             String identifier, String propertyName) throws JsonParseException {
         try {
-            return VisualFeaturesListJsonConverter.CONVERTER.readValue(node,
-                    new TypeReference<List<String>>() {
-                    });
+            return VisualFeaturesListJsonConverter.CONVERTER
+                    .readerFor(new TypeReference<List<String>>() {
+                    }).readValue(node);
         } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
                     "list of strings", node, null, e);
@@ -1261,7 +1228,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
          */
         if (node.isTextual()
                 && VisualFeaturesListJsonConverter.PROPERTY_VALUE_EVENT_TYPE
-                        .equals(node.getTextValue())) {
+                        .equals(node.textValue())) {
             return VisualFeature.COLOR_OF_EVENT_TYPE;
         }
 
@@ -1279,7 +1246,7 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
              * specified.
              */
             SerializableColor color = VisualFeaturesListJsonConverter.CONVERTER
-                    .readValue(node, SerializableColor.class);
+                    .treeToValue(node, SerializableColor.class);
             if (node.has(COLOR_KEY_ALPHA) == false) {
                 color.setAlpha(1.0f);
             }
@@ -1307,8 +1274,8 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
             String identifier, String propertyName) throws JsonParseException {
         IAdvancedGeometry geometry;
         try {
-            geometry = JsonConverter
-                    .fromJsonNode(node, IAdvancedGeometry.class);
+            geometry = JsonConverter.fromJsonNode(node,
+                    IAdvancedGeometry.class);
         } catch (IOException e) {
             throw createValueDeserializationException(identifier, propertyName,
                     "advanced geometry", node, null, e);
@@ -1335,16 +1302,13 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static BorderStyle deserializeBorderStyle(JsonNode node,
             String identifier, String propertyName) throws JsonParseException {
-        String description = node.getTextValue();
+        String description = node.textValue();
         BorderStyle style = BorderStyle.getInstance(description);
         if (style == null) {
-            throw createValueDeserializationException(
-                    identifier,
-                    propertyName,
-                    "one of: "
-                            + Joiner.on(", ").join(
-                                    BorderStyle.getDescriptions()), node, null,
-                    null);
+            throw createValueDeserializationException(identifier, propertyName,
+                    "one of: " + Joiner.on(", ")
+                            .join(BorderStyle.getDescriptions()),
+                    node, null, null);
         }
         return style;
     }
@@ -1364,12 +1328,10 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static FillStyle deserializeFillStyle(JsonNode node,
             String identifier, String propertyName) throws JsonParseException {
-        String description = node.getTextValue();
+        String description = node.textValue();
         FillStyle style = FillStyle.getInstance(description);
         if (style == null) {
-            throw createValueDeserializationException(
-                    identifier,
-                    propertyName,
+            throw createValueDeserializationException(identifier, propertyName,
                     "one of: "
                             + Joiner.on(", ").join(FillStyle.getDescriptions()),
                     node, null, null);
@@ -1392,16 +1354,13 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static SymbolShape deserializeSymbolShape(JsonNode node,
             String identifier, String propertyName) throws JsonParseException {
-        String description = node.getTextValue();
+        String description = node.textValue();
         SymbolShape style = SymbolShape.getInstance(description);
         if (style == null) {
-            throw createValueDeserializationException(
-                    identifier,
-                    propertyName,
-                    "one of: "
-                            + Joiner.on(", ").join(
-                                    SymbolShape.getDescriptions()), node, null,
-                    null);
+            throw createValueDeserializationException(identifier, propertyName,
+                    "one of: " + Joiner.on(", ")
+                            .join(SymbolShape.getDescriptions()),
+                    node, null, null);
         }
         return style;
     }
@@ -1421,16 +1380,13 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
      */
     private static DragCapability deserializeDragCapability(JsonNode node,
             String identifier, String propertyName) throws JsonParseException {
-        String description = node.getTextValue();
+        String description = node.textValue();
         DragCapability draggability = DragCapability.getInstance(description);
         if (draggability == null) {
-            throw createValueDeserializationException(
-                    identifier,
-                    propertyName,
-                    "one of: "
-                            + Joiner.on(", ").join(
-                                    DragCapability.getDescriptions()), node,
-                    null, null);
+            throw createValueDeserializationException(identifier, propertyName,
+                    "one of: " + Joiner.on(", ")
+                            .join(DragCapability.getDescriptions()),
+                    node, null, null);
         }
         return draggability;
     }
@@ -1490,16 +1446,10 @@ class VisualFeaturesListJsonDeserializer extends VisualFeaturesListDeserializer 
     private static JsonParseException createValueDeserializationException(
             String identifier, String propertyName, String valueDescription,
             JsonNode node, String badValueDescription, Throwable cause) {
-        return new JsonParseException(
-                "visual feature \""
-                        + identifier
-                        + "\": expected value for property \""
-                        + propertyName
-                        + "\" to be "
-                        + valueDescription
-                        + " but got "
-                        + (badValueDescription == null ? ""
-                                : badValueDescription + " ") + "\"" + node
-                        + "\"", JsonLocation.NA, cause);
+        return new JsonParseException("visual feature \"" + identifier
+                + "\": expected value for property \"" + propertyName
+                + "\" to be " + valueDescription + " but got "
+                + (badValueDescription == null ? "" : badValueDescription + " ")
+                + "\"" + node + "\"", JsonLocation.NA, cause);
     }
 }

@@ -39,19 +39,20 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
- * 
+ * Mar 14, 2016 16534      mduff       Update for new AESEncryptor.
  * </pre>
  * 
  * @author bphillip
  * @version 1.0
  */
-public class GetRegistryInfoHandler implements
-        IRequestHandler<GetRegistryInfoRequest> {
+public class GetRegistryInfoHandler
+        implements IRequestHandler<GetRegistryInfoRequest> {
 
     @Override
     public HazardEventResponse handleRequest(GetRegistryInfoRequest request)
             throws Exception {
-        AESEncryptor encryptor = new AESEncryptor();
+        AESEncryptor encryptor = new AESEncryptor(
+                System.getProperty("edex.security.encryption.key"));
         HazardEventResponse response = HazardEventResponse.create();
         Map<String, String> properties = new HashMap<String, String>();
         properties.put(GetRegistryInfoRequest.REGISTRY_URL_KEY,
@@ -60,7 +61,6 @@ public class GetRegistryInfoHandler implements
                 System.getProperty("edex.security.auth.user"));
         properties.put(GetRegistryInfoRequest.REGISTRY_USER_PASSWORD_KEY,
                 encryptor.decrypt(
-                        System.getProperty("edex.security.encryption.key"),
                         System.getProperty("edex.security.auth.password")));
         response.setPayload(properties);
         return response;

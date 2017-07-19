@@ -10,6 +10,7 @@
 package gov.noaa.gsd.viz.hazards.toolbar;
 
 import org.eclipse.jface.action.IContributionManager;
+import org.eclipse.ui.IActionBars;
 
 /**
  * Abstract class from which may be derived classes encapsulating toolbar combo
@@ -26,12 +27,13 @@ import org.eclipse.jface.action.IContributionManager;
  *                                           that this action may be created
  *                                           before the toolbar manager to which
  *                                           it will be assigned exists.
+ * Oct 03, 2016    22299   Kevin.Bisanz      Implemented IActionBarsAware.
  * </pre>
  * 
  * @author Chris.Golden
  */
-public abstract class ComboAction extends PulldownAction implements
-        IContributionManagerAware {
+public abstract class ComboAction extends PulldownAction
+        implements IContributionManagerAware, IActionBarsAware {
 
     // Private Static Constants
 
@@ -63,6 +65,11 @@ public abstract class ComboAction extends PulldownAction implements
      */
     private IContributionManager contributionManager;
 
+    /**
+     * Action bar manager.
+     */
+    private IActionBars actionBars;
+
     // Public Constructors
 
     /**
@@ -80,7 +87,8 @@ public abstract class ComboAction extends PulldownAction implements
     // Public Methods
 
     @Override
-    public void setContributionManager(IContributionManager contributionManager) {
+    public void setContributionManager(
+            IContributionManager contributionManager) {
         this.contributionManager = contributionManager;
     }
 
@@ -93,16 +101,28 @@ public abstract class ComboAction extends PulldownAction implements
      */
     public void setSelectedChoice(String choiceText) {
 
-        // Set the text of the action to the newly selected choice,
-        // and force the contribution manager to update; without the
-        // latter, the drop-down widget disappears from the toolbar.
+        /*
+         * Set the text of the action to the newly selected choice, and force
+         * the contribution manager and action bars to update; without the
+         * forced updates, the drop-down widget disappears from the toolbar.
+         */
         setText(choiceText);
         if (contributionManager != null) {
             contributionManager.update(true);
         }
+        if (actionBars != null) {
+            actionBars.updateActionBars();
+        }
 
-        // Set the tooltip text to include the choice.
-        setToolTipText(description + DESCRIPTION_VALUE_SEPARATOR_TEXT
-                + choiceText);
+        /*
+         * Set the tooltip text to include the choice.
+         */
+        setToolTipText(
+                description + DESCRIPTION_VALUE_SEPARATOR_TEXT + choiceText);
+    }
+
+    @Override
+    public void setActionBars(IActionBars actionBars) {
+        this.actionBars = actionBars;
     }
 }

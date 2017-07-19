@@ -9,10 +9,6 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
-import gov.noaa.gsd.common.utilities.IBinarySerializable;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -20,9 +16,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdapter;
 import com.vividsolutions.jts.geom.Coordinate;
@@ -30,6 +25,10 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
 import com.vividsolutions.jts.geom.Polygon;
+
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
 
 /**
  * Description: Ellipse, with the center point described as a latitude-longitude
@@ -81,7 +80,8 @@ public class Ellipse implements IRotatable, IScaleable {
      * {@link #asGeometry(GeometryFactory, double, int)}.
      */
     private static final double[] ANGLES_IN_RADIANS_OF_POLYGON_POINTS = { 0.0,
-            Math.toRadians(90.0), Math.toRadians(180.0), Math.toRadians(270.0) };
+            Math.toRadians(90.0), Math.toRadians(180.0),
+            Math.toRadians(270.0) };
 
     /**
      * Serial version UID.
@@ -166,11 +166,12 @@ public class Ellipse implements IRotatable, IScaleable {
                 PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
                         ByteOrder.BIG_ENDIAN),
                 PrimitiveAndStringBinaryTranslator.readDouble(bytesInputStream,
-                        ByteOrder.BIG_ENDIAN), 0.0);
-        this.width = PrimitiveAndStringBinaryTranslator.readDouble(
-                bytesInputStream, ByteOrder.BIG_ENDIAN);
-        this.height = PrimitiveAndStringBinaryTranslator.readDouble(
-                bytesInputStream, ByteOrder.BIG_ENDIAN);
+                        ByteOrder.BIG_ENDIAN),
+                0.0);
+        this.width = PrimitiveAndStringBinaryTranslator
+                .readDouble(bytesInputStream, ByteOrder.BIG_ENDIAN);
+        this.height = PrimitiveAndStringBinaryTranslator
+                .readDouble(bytesInputStream, ByteOrder.BIG_ENDIAN);
         try {
             this.units = LinearUnit
                     .getValueForOrdinal(PrimitiveAndStringBinaryTranslator
@@ -178,8 +179,8 @@ public class Ellipse implements IRotatable, IScaleable {
         } catch (IllegalArgumentException e) {
             throw new IOException("unknown linear unit", e);
         }
-        this.rotation = PrimitiveAndStringBinaryTranslator.readDouble(
-                bytesInputStream, ByteOrder.BIG_ENDIAN);
+        this.rotation = PrimitiveAndStringBinaryTranslator
+                .readDouble(bytesInputStream, ByteOrder.BIG_ENDIAN);
     }
 
     // Public Methods
@@ -231,15 +232,16 @@ public class Ellipse implements IRotatable, IScaleable {
         return (centerPoint.equals(otherEllipse.centerPoint)
                 && (width == otherEllipse.width)
                 && (height == otherEllipse.height)
-                && (units == otherEllipse.units) && (rotation == otherEllipse.rotation));
+                && (units == otherEllipse.units)
+                && (rotation == otherEllipse.rotation));
     }
 
     @Override
     public int hashCode() {
         return (int) ((((long) centerPoint.hashCode())
                 + ((long) Double.valueOf(width).hashCode())
-                + (Double.valueOf(height).hashCode()) + (units.ordinal()) + (Double
-                    .valueOf(rotation).hashCode())) % Integer.MAX_VALUE);
+                + (Double.valueOf(height).hashCode()) + (units.ordinal())
+                + (Double.valueOf(rotation).hashCode())) % Integer.MAX_VALUE);
     }
 
     @SuppressWarnings("unchecked")
@@ -264,9 +266,9 @@ public class Ellipse implements IRotatable, IScaleable {
             throw new IllegalArgumentException(
                     "scale multipliers must be non-zero numbers");
         }
-        return (G) new Ellipse(new Coordinate(centerPoint), width
-                * Math.abs(horizontalMultiplier), height
-                * Math.abs(verticalMultiplier), units, rotation);
+        return (G) new Ellipse(new Coordinate(centerPoint),
+                width * Math.abs(horizontalMultiplier),
+                height * Math.abs(verticalMultiplier), units, rotation);
     }
 
     @Override
@@ -296,8 +298,8 @@ public class Ellipse implements IRotatable, IScaleable {
      * the resulting polygon.
      */
     @Override
-    public Geometry asGeometry(GeometryFactory geometryFactory,
-            double flatness, int limit) {
+    public Geometry asGeometry(GeometryFactory geometryFactory, double flatness,
+            int limit) {
 
         /*
          * Ensure that the limit is large enough.
@@ -311,8 +313,8 @@ public class Ellipse implements IRotatable, IScaleable {
          */
         List<Coordinate> coordinates = new ArrayList<>(
                 STARTING_NUMBER_OF_POLYGON_COORDINATES);
-        coordinates
-                .add(getCircumferentialPoint(ANGLES_IN_RADIANS_OF_POLYGON_POINTS[0]));
+        coordinates.add(getCircumferentialPoint(
+                ANGLES_IN_RADIANS_OF_POLYGON_POINTS[0]));
 
         /*
          * For each of the four quadrants, add the necessary points. Each
@@ -334,8 +336,8 @@ public class Ellipse implements IRotatable, IScaleable {
         /*
          * Create a polygon from the resulting points.
          */
-        return geometryFactory.createPolygon(coordinates
-                .toArray(new Coordinate[coordinates.size()]));
+        return geometryFactory.createPolygon(
+                coordinates.toArray(new Coordinate[coordinates.size()]));
     }
 
     @Override
@@ -409,10 +411,9 @@ public class Ellipse implements IRotatable, IScaleable {
      * @return Radius of the ellipse.
      */
     private double getRadius(double angleRadians) {
-        return (width * height / 4.0)
-                / Math.sqrt(Math.pow(Math.sin(angleRadians) * (width / 2.0),
-                        2.0)
-                        + Math.pow(Math.cos(angleRadians) * (height / 2.0), 2.0));
+        return (width * height / 4.0) / Math.sqrt(
+                Math.pow(Math.sin(angleRadians) * (width / 2.0), 2.0) + Math
+                        .pow(Math.cos(angleRadians) * (height / 2.0), 2.0));
     }
 
     /**
@@ -475,9 +476,12 @@ public class Ellipse implements IRotatable, IScaleable {
         boolean noRecursion = true;
         if (limit > 0) {
             LineSegment lineSegment = new LineSegment(startPoint, endPoint);
-            double middleAngleRadians = (startAngleRadians + endAngleRadians + (endAngleRadians < startAngleRadians ? 2.0 * Math.PI
-                    : 0.0)) / 2.0;
-            Coordinate middlePoint = getCircumferentialPoint(middleAngleRadians);
+            double middleAngleRadians = (startAngleRadians + endAngleRadians
+                    + (endAngleRadians < startAngleRadians ? 2.0 * Math.PI
+                            : 0.0))
+                    / 2.0;
+            Coordinate middlePoint = getCircumferentialPoint(
+                    middleAngleRadians);
             if (lineSegment.distance(middlePoint) > flatness) {
                 addLatLonCoordinatesApproximatingCurve(coordinates,
                         startAngleRadians, middleAngleRadians, startPoint,

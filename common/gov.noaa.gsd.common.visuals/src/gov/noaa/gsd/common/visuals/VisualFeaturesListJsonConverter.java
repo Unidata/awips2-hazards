@@ -9,29 +9,28 @@
  */
 package gov.noaa.gsd.common.visuals;
 
-import gov.noaa.gsd.common.utilities.JtsJsonConversionModule;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
-import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonParser;
-import org.codehaus.jackson.JsonProcessingException;
-import org.codehaus.jackson.Version;
-import org.codehaus.jackson.map.DeserializationConfig;
-import org.codehaus.jackson.map.DeserializationContext;
-import org.codehaus.jackson.map.JsonDeserializer;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.SerializerProvider;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
-import org.codehaus.jackson.map.module.SimpleModule;
-
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.raytheon.uf.common.colormap.Color;
+
+import gov.noaa.gsd.common.utilities.JtsJsonConversionModule;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 
 /**
  * Description: Class providing methods allowing the conversion of
@@ -274,8 +273,7 @@ public class VisualFeaturesListJsonConverter {
             .put(KEY_FILL_COLOR, TYPE_COLOR)
             .put(KEY_BORDER_THICKNESS, TYPE_DOUBLE)
             .put(KEY_BORDER_STYLE, TYPE_BORDER_STYLE)
-            .put(KEY_FILL_STYLE, TYPE_FILL_STYLE)
-            .put(KEY_DIAMETER, TYPE_DOUBLE)
+            .put(KEY_FILL_STYLE, TYPE_FILL_STYLE).put(KEY_DIAMETER, TYPE_DOUBLE)
             .put(KEY_SYMBOL_SHAPE, TYPE_SYMBOL_SHAPE)
             .put(KEY_LABEL, TYPE_STRING)
             .put(KEY_TEXT_OFFSET_LENGTH, TYPE_DOUBLE)
@@ -294,25 +292,24 @@ public class VisualFeaturesListJsonConverter {
      * visual features simultaneously.)
      */
     static final ObjectMapper CONVERTER = new ObjectMapper();
+
     static {
 
         /*
          * Configure the converter to ignore unknown properties, and to include
          * in serialization all non-null members of an object.
          */
-        CONVERTER
-                .configure(
-                        DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
-                        false);
-        CONVERTER.getSerializationConfig().setSerializationInclusion(
-                Inclusion.NON_NULL);
+        CONVERTER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                false);
+        CONVERTER.getSerializationConfig()
+                .withSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         /*
          * Configure the converter to serialize and deserialize objects expected
          * to be of type VisualFeaturesList using custom routines.
          */
         SimpleModule module = new SimpleModule("VisualFeaturesList",
-                new Version(1, 0, 0, null));
+                new Version(1, 0, 0, null, null, null));
         module.addSerializer(VisualFeaturesList.class,
                 new JsonSerializer<VisualFeaturesList>() {
 
@@ -320,7 +317,7 @@ public class VisualFeaturesListJsonConverter {
                     public void serialize(VisualFeaturesList value,
                             JsonGenerator jsonGenerator,
                             SerializerProvider provider) throws IOException,
-                            JsonProcessingException {
+                                    JsonProcessingException {
                         VisualFeaturesListJsonSerializer.serialize(value,
                                 jsonGenerator, provider);
                     }
@@ -329,12 +326,11 @@ public class VisualFeaturesListJsonConverter {
                 new JsonDeserializer<VisualFeaturesList>() {
 
                     @Override
-                    public VisualFeaturesList deserialize(
-                            JsonParser jsonParser,
+                    public VisualFeaturesList deserialize(JsonParser jsonParser,
                             DeserializationContext context) throws IOException,
-                            JsonProcessingException {
-                        return VisualFeaturesListJsonDeserializer.deserialize(
-                                jsonParser, context);
+                                    JsonProcessingException {
+                        return VisualFeaturesListJsonDeserializer
+                                .deserialize(jsonParser, context);
                     }
                 });
         CONVERTER.registerModule(module);
@@ -376,8 +372,8 @@ public class VisualFeaturesListJsonConverter {
      * @throws JsonProcessingException
      *             If the JSON is malformed.
      */
-    public static VisualFeaturesList fromJson(String json) throws IOException,
-            JsonProcessingException {
+    public static VisualFeaturesList fromJson(String json)
+            throws IOException, JsonProcessingException {
         return CONVERTER.readValue(json, VisualFeaturesList.class);
     }
 

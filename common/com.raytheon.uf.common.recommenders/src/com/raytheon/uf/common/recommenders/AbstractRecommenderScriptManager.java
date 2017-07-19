@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -29,9 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-
-import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
@@ -48,13 +43,14 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.python.PyUtil;
-import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.python.controller.PythonScriptController;
-import com.raytheon.uf.common.recommenders.executors.RecommenderMetadataExecutor;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.util.FileUtil;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import jep.JepException;
 
 /**
  * Manages the inventory of recommenders and sends requests to run recommenders
@@ -109,8 +105,8 @@ import com.raytheon.uf.common.util.FileUtil;
  * @author mnash
  * @version 1.0
  */
-public abstract class AbstractRecommenderScriptManager extends
-        PythonScriptController {
+public abstract class AbstractRecommenderScriptManager
+        extends PythonScriptController {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(AbstractRecommenderScriptManager.class);
@@ -156,14 +152,13 @@ public abstract class AbstractRecommenderScriptManager extends
         this.site = site;
         inventory = new ConcurrentHashMap<String, EventRecommender>();
 
-        recommenderDir = PythonBuildPaths
-                .buildLocalizationDirectory(HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
+        recommenderDir = PythonBuildPaths.buildLocalizationDirectory(
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR);
         recommenderDir.addFileUpdatedObserver(this);
 
-        String scriptPath = PythonBuildPaths
-                .buildDirectoryPath(
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
-                        site);
+        String scriptPath = PythonBuildPaths.buildDirectoryPath(
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_RECOMMENDERS_DIR,
+                site);
 
         IPathManager manager = PathManagerFactory.getPathManager();
         LocalizationContext baseContext = manager.getContext(
@@ -202,8 +197,8 @@ public abstract class AbstractRecommenderScriptManager extends
             LocalizationType localizationType,
             LocalizationLevel localizationLevel, String fileLocation) {
         IPathManager pathMgr = PathManagerFactory.getPathManager();
-        LocalizationContext localizationContext = pathMgr.getContext(
-                localizationType, localizationLevel);
+        LocalizationContext localizationContext = pathMgr
+                .getContext(localizationType, localizationLevel);
 
         return pathMgr.getLocalizationFile(localizationContext, fileLocation);
     }
@@ -214,12 +209,11 @@ public abstract class AbstractRecommenderScriptManager extends
      * @return
      */
     protected static String buildScriptPath() {
-        recommenderDir = getLocalizationFile(
-                LocalizationType.COMMON_STATIC,
+        recommenderDir = getLocalizationFile(LocalizationType.COMMON_STATIC,
                 LocalizationLevel.BASE,
                 HazardsConfigurationConstants.RECOMMENDERS_CONFIG_LOCALIZATION_DIR);
-        String recommenderScriptPath = FileUtil.join(recommenderDir.getFile()
-                .getPath(), "RecommenderInterface.py");
+        String recommenderScriptPath = FileUtil.join(
+                recommenderDir.getFile().getPath(), "RecommenderInterface.py");
         return PyUtil.buildJepIncludePath(recommenderScriptPath);
     }
 
@@ -233,13 +227,18 @@ public abstract class AbstractRecommenderScriptManager extends
 
         List<String> includePathList = new ArrayList<>();
 
-        String pythonPath = manager.getFile(recommenderDir.getContext(),
-                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
+        String pythonPath = manager
+                .getFile(recommenderDir.getContext(),
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
+                .getPath();
+
+        String gfeBasePath = manager
+                .getFile(recommenderDir.getContext(),
+                        HazardsConfigurationConstants.GFE_LOCALIZATION_DIR)
                 .getPath();
 
         String hazardServicesPythonPath = manager
-                .getFile(
-                        recommenderDir.getContext(),
+                .getFile(recommenderDir.getContext(),
                         HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR)
                 .getPath();
 
@@ -259,23 +258,20 @@ public abstract class AbstractRecommenderScriptManager extends
         LocalizationLevel[] levels = manager.getAvailableLevels();
         for (int i = levels.length - 1; i >= 0; i--) {
             LocalizationLevel level = levels[i];
-            LocalizationContext lc = manager.getContext(
-                    LocalizationType.COMMON_STATIC, level);
-            if (site != null
-                    && (level == LocalizationLevel.SITE || level == LocalizationLevel.CONFIGURED)) {
+            LocalizationContext lc = manager
+                    .getContext(LocalizationType.COMMON_STATIC, level);
+            if (site != null && (level == LocalizationLevel.SITE
+                    || level == LocalizationLevel.CONFIGURED)) {
                 lc.setContextName(site);
             }
-            includePathList
-                    .add(manager
-                            .getLocalizationFile(
-                                    lc,
-                                    HazardsConfigurationConstants.RECOMMENDERS_LOCALIZATION_DIR)
-                            .getFile().getPath());
+            includePathList.add(manager
+                    .getLocalizationFile(lc,
+                            HazardsConfigurationConstants.RECOMMENDERS_LOCALIZATION_DIR)
+                    .getFile().getPath());
         }
 
-        String dataAccessPath = FileUtil
-                .join(pythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+        String dataAccessPath = FileUtil.join(pythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
         includePathList.add(dataAccessPath);
 
         String dataTimePath = FileUtil.join(pythonPath,
@@ -294,66 +290,61 @@ public abstract class AbstractRecommenderScriptManager extends
                 HazardsConfigurationConstants.PYTHON_UTILITIES_DIR);
         includePathList.add(utilitiesPath);
 
-        String productGenPath = FileUtil
-                .join(eventsPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
+        String productGenPath = FileUtil.join(eventsPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
         includePathList.add(productGenPath);
 
         String productsPath = FileUtil.join(productGenPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR);
         includePathList.add(productsPath);
 
-        String geoSpatialPath = FileUtil
-                .join(productGenPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEOSPATIAL_DIR);
+        String geoSpatialPath = FileUtil.join(productGenPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEOSPATIAL_DIR);
         includePathList.add(geoSpatialPath);
 
         String bridgePath = FileUtil.join(hazardServicesPythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_BRIDGE_DIR);
         includePathList.add(bridgePath);
 
-        String trackUtilPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR);
+        String trackUtilPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_TRACK_UTILITIES_DIR);
         includePathList.add(trackUtilPath);
 
-        String geoUtilPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
+        String geoUtilPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
         includePathList.add(geoUtilPath);
 
-        String genUtilPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
+        String genUtilPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GENERAL_UTILITIES_DIR);
         includePathList.add(genUtilPath);
 
-        String vtecUtilPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
+        String vtecUtilPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
         includePathList.add(vtecUtilPath);
 
-        String logUtilPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+        String logUtilPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
         includePathList.add(logUtilPath);
 
-        String localizationUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR);
+        String localizationUtilitiesPath = FileUtil.join(
+                hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR);
         includePathList.add(localizationUtilitiesPath);
 
-        String dataStoragePath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
+        String dataStoragePath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
         includePathList.add(dataStoragePath);
 
-        String textUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
+        String textUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
         includePathList.add(textUtilitiesPath);
 
-        String includePath = PyUtil.buildJepIncludePath(includePathList
-                .toArray(new String[includePathList.size()]));
+        String gfePythonPath = FileUtil.join(gfeBasePath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR);
+        includePathList.add(gfePythonPath);
+
+        String includePath = PyUtil.buildJepIncludePath(
+                includePathList.toArray(new String[includePathList.size()]));
         return includePath;
     }
 
@@ -553,19 +544,23 @@ public abstract class AbstractRecommenderScriptManager extends
                     HazardConstants.RECOMMENDER_GET_SPATIAL_INFO_METHOD,
                     INTERFACE, args);
         } catch (JepException e) {
-            statusHandler.handle(Priority.ERROR, "Unable to get info from "
-                    + HazardConstants.RECOMMENDER_GET_SPATIAL_INFO_METHOD
-                    + " for recommender " + recName, e);
+            statusHandler.handle(Priority.ERROR,
+                    "Unable to get info from "
+                            + HazardConstants.RECOMMENDER_GET_SPATIAL_INFO_METHOD
+                            + " for recommender " + recName,
+                    e);
             return new VisualFeaturesList();
         }
     }
 
-    private LocalizationFile lookupRecommenderLocalization(final String recName) {
+    private LocalizationFile lookupRecommenderLocalization(
+            final String recName) {
         IPathManager manager = PathManagerFactory.getPathManager();
         LocalizationFile[] lFiles = manager.listStaticFiles(
                 recommenderDir.getName(), new String[] { "py" }, false, true);
         for (LocalizationFile lFile : lFiles) {
-            final String modName = resolveCorrectName(lFile.getFile().getName());
+            final String modName = resolveCorrectName(
+                    lFile.getFile().getName());
             if (recName.equals(modName)) {
                 return lFile;
             }
@@ -577,9 +572,8 @@ public abstract class AbstractRecommenderScriptManager extends
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.uf.common.python.controller.PythonScriptController#fileUpdated
-     * (com.raytheon.uf.common.localization.FileUpdatedMessage)
+     * @see com.raytheon.uf.common.python.controller.PythonScriptController#
+     * fileUpdated (com.raytheon.uf.common.localization.FileUpdatedMessage)
      */
     @Override
     public void fileUpdated(FileUpdatedMessage message) {
@@ -638,24 +632,10 @@ public abstract class AbstractRecommenderScriptManager extends
             results = (Map<String, Serializable>) execute(GET_SCRIPT_METADATA,
                     INTERFACE, args);
         } catch (JepException e) {
-            statusHandler.handle(Priority.WARN, "Recommender " + modName
-                    + " is unable to be instantiated", e);
+            statusHandler.handle(Priority.WARN,
+                    "Recommender " + modName + " is unable to be instantiated",
+                    e);
             return null;
-        } catch (Throwable e) {
-            RecommenderMetadataExecutor<AbstractRecommenderScriptManager> executor = new RecommenderMetadataExecutor<AbstractRecommenderScriptManager>(
-                    modName);
-            PythonJobCoordinator<AbstractRecommenderScriptManager> coordinator = PythonJobCoordinator
-                    .getInstance(AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR
-                            + site);
-            try {
-                results = coordinator.submitSyncJob(executor);
-            } catch (InterruptedException e1) {
-                statusHandler.handle(Priority.PROBLEM,
-                        e1.getLocalizedMessage(), e1);
-            } catch (ExecutionException e1) {
-                statusHandler.handle(Priority.PROBLEM,
-                        e1.getLocalizedMessage(), e1);
-            }
         }
         EventRecommender reco = new EventRecommender();
         reco.setName(modName);
@@ -664,14 +644,9 @@ public abstract class AbstractRecommenderScriptManager extends
             Object auth = results.get(EventRecommender.AUTHOR);
             Object desc = results.get(EventRecommender.DESCRIPTION);
             Object vers = results.get(EventRecommender.VERSION);
-            Object threadManager = results.get(EventRecommender.THREAD_MANAGER);
             reco.setAuthor(auth != null ? auth.toString() : "");
             reco.setDescription(desc != null ? desc.toString() : "");
             reco.setVersion(vers != null ? vers.toString() : "");
-            reco.setThreadManager(threadManager != null ? threadManager
-                    .toString()
-                    : AbstractRecommenderEngine.DEFAULT_RECOMMENDER_JOB_COORDINATOR
-                            + site);
         }
         return reco;
     }
@@ -692,14 +667,14 @@ public abstract class AbstractRecommenderScriptManager extends
             events.setAttributes(((EventSet<IEvent>) obj).getAttributes());
             events.addAll((Set<IEvent>) obj);
         } else if (obj instanceof List) {
-            statusHandler.handle(Priority.VERBOSE, "Return objects of type "
-                    + obj.getClass()
-                    + " are not supported, but will handle for now.");
+            statusHandler.handle(Priority.VERBOSE,
+                    "Return objects of type " + obj.getClass()
+                            + " are not supported, but will handle for now.");
             events.addAll((List<IEvent>) obj);
         } else if (obj instanceof IEvent) {
-            statusHandler.handle(Priority.VERBOSE, "Return objects of type "
-                    + obj.getClass()
-                    + " are not supported, but will handle for now.");
+            statusHandler.handle(Priority.VERBOSE,
+                    "Return objects of type " + obj.getClass()
+                            + " are not supported, but will handle for now.");
             events.add((IEvent) obj);
         } else if (obj == null) {
             // do nothing, we just want to return an empty events
@@ -752,8 +727,8 @@ public abstract class AbstractRecommenderScriptManager extends
         execute("importTextUtility", INTERFACE, null);
     }
 
-    private class EventUtilitiesDirectoryUpdateObserver implements
-            ILocalizationFileObserver {
+    private class EventUtilitiesDirectoryUpdateObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {
@@ -776,8 +751,8 @@ public abstract class AbstractRecommenderScriptManager extends
         }
     }
 
-    private class TextUtilitiesDirectoryUpdateObserver implements
-            ILocalizationFileObserver {
+    private class TextUtilitiesDirectoryUpdateObserver
+            implements ILocalizationFileObserver {
 
         @Override
         public void fileUpdated(FileUpdatedMessage message) {

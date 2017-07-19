@@ -38,7 +38,6 @@ import com.raytheon.uf.common.dataplugin.shef.tables.VtecpracticeId;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecrecord;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecsever;
 import com.raytheon.uf.common.dataplugin.shef.tables.Vtecsignif;
-import com.raytheon.uf.common.dataplugin.text.db.AfosToAwips;
 import com.raytheon.uf.common.dataplugin.warning.AbstractWarningRecord;
 import com.raytheon.uf.common.dataplugin.warning.PracticeWarningRecord;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -47,7 +46,6 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
-import com.raytheon.uf.edex.plugin.text.dao.AfosToAwipsDao;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
@@ -97,7 +95,13 @@ public class RiverProHazardsCreator {
     private static final CoreDao dao = new CoreDao(
             DaoConfig.forDatabase(IHFS_DB));
 
-    private static final AfosToAwipsDao a2aDao = new AfosToAwipsDao();
+    /*
+     * TODO: As of 17.1.1, the class this variable uses as its type is gone.
+     * Since the enclosing class needs overhaul anyway as part of
+     * interoperability, the variable declaration is being commented out for
+     * now.
+     */
+    // private static final AfosToAwipsDao a2aDao = new AfosToAwipsDao();
 
     public void createHazards(List<PluginDataObject> objects) {
         if (!objects.isEmpty()) {
@@ -106,8 +110,8 @@ public class RiverProHazardsCreator {
             try {
                 gaugeLocations = calculateGaugeLocations();
             } catch (Throwable t) {
-                statusHandler
-                        .error("Unable to query for gauge data, events will not be interoperable with RiverPro");
+                statusHandler.error(
+                        "Unable to query for gauge data, events will not be interoperable with RiverPro");
                 return;
             }
 
@@ -138,27 +142,38 @@ public class RiverProHazardsCreator {
                         try {
                             String xxxId = warning.getOfficeid();
                             String wmottaaii = warning.getWmoid().split(" ")[0];
-                            List<AfosToAwips> list = a2aDao.lookupAfosId(
-                                    wmottaaii, xxxId).getIdList();
-                            for (AfosToAwips a2a : list) {
-                                if (a2a.getAfosid().contains(warning.getPil())) {
-                                    productId = a2a.getAfosid();
-                                    break;
-                                }
-                            }
+
+                            /*
+                             * TODO: a2aDao has been commented out as of 17.1.1
+                             * transition (see TODO above); thus, an exception
+                             * is thrown here, since the commented-out code
+                             * below cannot be compiled or run.
+                             */
+                            throw new DataAccessLayerException(
+                                    "not implemented");
+                            // List<AfosToAwips> list = a2aDao
+                            // .lookupAfosId(wmottaaii, xxxId).getIdList();
+                            // for (AfosToAwips a2a : list) {
+                            // if (a2a.getAfosid()
+                            // .contains(warning.getPil())) {
+                            // productId = a2a.getAfosid();
+                            // break;
+                            // }
+                            // }
                         } catch (DataAccessLayerException e) {
-                            statusHandler
-                                    .handle(Priority.PROBLEM,
-                                            "Unable to query afos_to_awips table for afosId",
-                                            e);
+                            statusHandler.handle(Priority.PROBLEM,
+                                    "Unable to query afos_to_awips table for afosId",
+                                    e);
                         }
                         // testing whether it should go to the practice
                         // table, or to the regular table.
                         if (obj instanceof PracticeWarningRecord) {
                             VtecpracticeId id = new VtecpracticeId(pt.getKey(),
-                                    productId, warning.getIssueTime().getTime());
+                                    productId,
+                                    warning.getIssueTime().getTime());
                             Vtecpractice event = new Vtecpractice(id);
-                            event.setBegintime(warning.getStartTime().getTime());
+                            event.setBegintime(
+                                    warning.getStartTime().getTime());
                             event.setEndtime(warning.getEndTime().getTime());
                             Calendar floodCrestTime = warning.getFloodCrest();
                             if (floodCrestTime != null) {
@@ -177,9 +192,11 @@ public class RiverProHazardsCreator {
                             dao.create(event);
                         } else {
                             VteceventId id = new VteceventId(pt.getKey(),
-                                    productId, warning.getIssueTime().getTime());
+                                    productId,
+                                    warning.getIssueTime().getTime());
                             Vtecevent event = new Vtecevent(id);
-                            event.setBegintime(warning.getStartTime().getTime());
+                            event.setBegintime(
+                                    warning.getStartTime().getTime());
                             event.setEndtime(warning.getEndTime().getTime());
                             Calendar floodCrestTime = warning.getFloodCrest();
                             if (floodCrestTime != null) {
@@ -192,12 +209,15 @@ public class RiverProHazardsCreator {
                             event.setVteccause(retrieveVtecObject(
                                     warning.getImmediateCause(), IMMED_CAUSE,
                                     Vteccause.class));
-                            event.setVtecaction(retrieveVtecObject(
-                                    warning.getAct(), ACTION, Vtecaction.class));
-                            event.setVtecphenom(retrieveVtecObject(
-                                    warning.getPhen(), PHENOM, Vtecphenom.class));
-                            event.setVtecsignif(retrieveVtecObject(
-                                    warning.getSig(), SIGNIF, Vtecsignif.class));
+                            event.setVtecaction(
+                                    retrieveVtecObject(warning.getAct(), ACTION,
+                                            Vtecaction.class));
+                            event.setVtecphenom(
+                                    retrieveVtecObject(warning.getPhen(),
+                                            PHENOM, Vtecphenom.class));
+                            event.setVtecsignif(
+                                    retrieveVtecObject(warning.getSig(), SIGNIF,
+                                            Vtecsignif.class));
                             event.setVtecsever(retrieveVtecObject(
                                     warning.getFloodSeverity(), SEVERITY,
                                     Vtecsever.class));
@@ -253,9 +273,10 @@ public class RiverProHazardsCreator {
     private <T extends Object> T retrieveVtecObject(String firstColumnValue,
             String firstColumnName, Class<T> clazz) {
         List<Object[]> objects = DatabaseQueryUtil.executeDatabaseQuery(
-                QUERY_MODE.MODE_HQLQUERY, "from " + clazz.getSimpleName()
-                        + " where " + firstColumnName + "='" + firstColumnValue
-                        + "'", IHFS_DB, clazz.getSimpleName());
+                QUERY_MODE.MODE_HQLQUERY,
+                "from " + clazz.getSimpleName() + " where " + firstColumnName
+                        + "='" + firstColumnValue + "'",
+                IHFS_DB, clazz.getSimpleName());
         for (Object[] obs : objects) {
             if (obs.length != 0) {
                 T cause = (T) obs[0];

@@ -19,8 +19,6 @@
  **/
 package gov.noaa.gsd.viz.hazards.risecrestfall;
 
-import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
-
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -62,8 +60,10 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IEventApplier;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
-import com.raytheon.viz.ui.dialogs.AwipsCalendar;
+import com.raytheon.viz.ui.dialogs.CalendarDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+
+import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
 
 /**
  * Graphical rise/crest/fall editor. Allows the user to set these times via
@@ -97,8 +97,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * @version 1.0
  */
 
-public class GraphicalEditor extends CaveSWTDialog implements
-        IRiseCrestFallEditor, IDataUpdate {
+public class GraphicalEditor extends CaveSWTDialog
+        implements IRiseCrestFallEditor, IDataUpdate {
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(GraphicalEditor.class);
@@ -177,8 +177,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
     public GraphicalEditor(Shell parentShell, IHazardEvent event,
             IEventApplier applier) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL
-                | SWT.RESIZE);
+        super(parentShell,
+                SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL | SWT.RESIZE);
         this.event = event;
         this.applier = applier;
     }
@@ -383,8 +383,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         double maxForecastStage = (Double) event
                 .getHazardAttribute(HazardConstants.MAX_FORECAST_STAGE);
-        graphData
-                .setCrestValueMaxForecastValue(maxForecastStage == forecastCrest);
+        graphData.setCrestValueMaxForecastValue(
+                maxForecastStage == forecastCrest);
         double observedCrest = (Double) event
                 .getHazardAttribute(HazardConstants.CREST_STAGE_OBSERVED);
         graphData.setCrestValue(Math.max(observedCrest, forecastCrest));
@@ -431,8 +431,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         Label crestValLbl = new Label(leftComp, SWT.NONE);
         crestValLbl.setText(crestValLblTxt);
-        crestValLbl.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false,
-                false));
+        crestValLbl.setLayoutData(
+                new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
         gl = new GridLayout(3, false);
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
@@ -443,8 +443,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         Label beginTimeLbl = new Label(leftComp, SWT.NONE);
         beginTimeLbl.setText(beginTimeLblTxt);
-        beginTimeLbl.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true,
-                false));
+        beginTimeLbl
+                .setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         gd.widthHint = 125;
@@ -647,8 +647,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
                             riseMsgChk.setSelection(true);
                         }
                     } else {
-                        riseTxt.setText(dateFormat.format(graphData
-                                .getRiseDate()));
+                        riseTxt.setText(
+                                dateFormat.format(graphData.getRiseDate()));
                     }
                 }
                 displayCanvas.setVisible(EventType.RISE,
@@ -657,7 +657,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
         });
 
         Label crestLbl = new Label(rightComp, SWT.NONE);
-        crestLbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
+        crestLbl.setLayoutData(
+                new GridData(SWT.RIGHT, SWT.CENTER, true, false));
         crestLbl.setText(crestLblTxt);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -703,8 +704,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
                             crestMsgChk.setSelection(true);
                         }
                     } else {
-                        crestTxt.setText(dateFormat.format(graphData
-                                .getCrestDate()));
+                        crestTxt.setText(
+                                dateFormat.format(graphData.getCrestDate()));
                     }
                 }
                 displayCanvas.setVisible(EventType.CREST,
@@ -759,8 +760,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
                             fallMsgChk.setSelection(true);
                         }
                     } else {
-                        fallTxt.setText(dateFormat.format(graphData
-                                .getFallDate()));
+                        fallTxt.setText(
+                                dateFormat.format(graphData.getFallDate()));
                     }
                 }
                 displayCanvas.setVisible(EventType.FALL,
@@ -905,8 +906,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
 
         if (crestTime > SimulatedTime.getSystemTime().getMillis()) {
             newAttributes.put(HazardConstants.CREST_STAGE_FORECAST, crestValue);
-            newAttributes.put(HazardConstants.CREST_STAGE, Math.max(crestValue,
-                    (Double) attributes
+            newAttributes.put(HazardConstants.CREST_STAGE,
+                    Math.max(crestValue, (Double) attributes
                             .get(HazardConstants.CREST_STAGE_OBSERVED)));
             if (graphData.isCrestValueMaxForecastValue()) {
                 newAttributes.put(HazardConstants.MAX_FORECAST_STAGE,
@@ -916,8 +917,8 @@ public class GraphicalEditor extends CaveSWTDialog implements
             }
         } else {
             newAttributes.put(HazardConstants.CREST_STAGE_OBSERVED, crestValue);
-            newAttributes.put(HazardConstants.CREST_STAGE, Math.max(crestValue,
-                    (Double) attributes
+            newAttributes.put(HazardConstants.CREST_STAGE,
+                    Math.max(crestValue, (Double) attributes
                             .get(HazardConstants.CREST_STAGE_FORECAST)));
         }
 
@@ -941,7 +942,7 @@ public class GraphicalEditor extends CaveSWTDialog implements
             time = HazardConstants.MISSING_VALUE;
         }
         Date date = new Date(t);
-        AwipsCalendar calendarDlg = new AwipsCalendar(this.shell, date, 2);
+        CalendarDialog calendarDlg = new CalendarDialog(this.shell, date, 2);
         Object obj = calendarDlg.open();
         if (obj != null) {
             time = ((Date) obj).getTime();

@@ -9,10 +9,6 @@
  */
 package gov.noaa.gsd.common.utilities.geometry;
 
-import gov.noaa.gsd.common.utilities.IBinarySerializable;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -20,9 +16,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -32,6 +27,10 @@ import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+
+import gov.noaa.gsd.common.utilities.IBinarySerializable;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
 
 /**
  * Description: Container of one or more instances of {@link IAdvancedGeometry},
@@ -98,8 +97,8 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
          */
         Envelope envelope = null;
         for (IAdvancedGeometry child : children) {
-            Envelope childEnvelope = AdvancedGeometryUtilities.getJtsGeometry(
-                    child).getEnvelopeInternal();
+            Envelope childEnvelope = AdvancedGeometryUtilities
+                    .getJtsGeometry(child).getEnvelopeInternal();
             if (envelope == null) {
                 envelope = childEnvelope;
             } else {
@@ -123,8 +122,8 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
      */
     public AdvancedGeometryCollection(ByteArrayInputStream bytesInputStream)
             throws IOException {
-        int count = PrimitiveAndStringBinaryTranslator.readInteger(
-                bytesInputStream, ByteOrder.BIG_ENDIAN);
+        int count = PrimitiveAndStringBinaryTranslator
+                .readInteger(bytesInputStream, ByteOrder.BIG_ENDIAN);
         List<IAdvancedGeometry> children = new ArrayList<>(count);
         for (int j = 0; j < count; j++) {
             children.add(AdvancedGeometryBinaryTranslator
@@ -160,8 +159,9 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
             return false;
         }
         AdvancedGeometryCollection otherAdvancedGeometryCollection = (AdvancedGeometryCollection) other;
-        return ((children == otherAdvancedGeometryCollection.children) || ((children != null) && children
-                .equals(otherAdvancedGeometryCollection.children)));
+        return ((children == otherAdvancedGeometryCollection.children)
+                || ((children != null) && children
+                        .equals(otherAdvancedGeometryCollection.children)));
     }
 
     @Override
@@ -220,8 +220,8 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
     }
 
     @Override
-    public Geometry asGeometry(GeometryFactory geometryFactory,
-            double flatness, int limit) {
+    public Geometry asGeometry(GeometryFactory geometryFactory, double flatness,
+            int limit) {
         List<Geometry> geometries = new ArrayList<>(children.size());
         for (IAdvancedGeometry child : children) {
             geometries.add(child.asGeometry(geometryFactory, flatness, limit));
@@ -241,8 +241,8 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
          */
         Geometry geometry = null;
         for (IAdvancedGeometry child : children) {
-            Geometry childGeometry = child.asGeometry(geometryFactory,
-                    flatness, limit);
+            Geometry childGeometry = child.asGeometry(geometryFactory, flatness,
+                    limit);
             if (geometry == null) {
                 geometry = childGeometry;
             } else {

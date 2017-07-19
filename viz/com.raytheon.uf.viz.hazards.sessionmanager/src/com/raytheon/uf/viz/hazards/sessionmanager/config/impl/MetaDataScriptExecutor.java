@@ -9,16 +9,15 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import gov.noaa.gsd.common.utilities.JsonConverter;
-
 import java.io.Serializable;
 import java.util.Map;
-
-import jep.JepException;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+
+import gov.noaa.gsd.common.utilities.JsonConverter;
+import jep.JepException;
 
 /**
  * Description: Metadata fetching configuration script executor.
@@ -36,8 +35,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * @author Chris.Golden
  * @version 1.0
  */
-public class MetaDataScriptExecutor extends
-        ContextuallyAwareScriptExecutor<Map<String, Object>> {
+public class MetaDataScriptExecutor
+        extends ContextuallyAwareScriptExecutor<Map<String, Object>> {
 
     // Private Static Constants
 

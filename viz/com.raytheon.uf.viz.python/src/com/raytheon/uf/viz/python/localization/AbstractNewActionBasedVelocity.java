@@ -22,10 +22,10 @@ package com.raytheon.uf.viz.python.localization;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Properties;
-import java.util.Map;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Properties;
 
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
@@ -37,25 +37,25 @@ import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
 
 import com.raytheon.uf.common.localization.FileUpdatedMessage;
+import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.ILocalizationFileObserver;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
-import com.raytheon.uf.common.localization.LocalizationFile;
-import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.localization.FileUpdatedMessage.FileChangeType;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
-import com.raytheon.uf.common.localization.exception.LocalizationOpFailedException;
+import com.raytheon.uf.common.localization.LocalizationFile;
+import com.raytheon.uf.common.localization.PathManagerFactory;
+import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
-import com.raytheon.uf.viz.localization.LocalizationPerspectiveUtils;
-import com.raytheon.uf.viz.localization.service.ILocalizationService;
+import com.raytheon.uf.viz.localization.perspective.service.ILocalizationService;
+import com.raytheon.uf.viz.localization.perspective.service.LocalizationPerspectiveUtils;
 
 /**
- * Uses velocity to generate a python file based on a template supplied
- * by a child class.
+ * Uses velocity to generate a python file based on a template supplied by a
+ * child class.
  * 
  * <pre>
  * 
@@ -71,8 +71,8 @@ import com.raytheon.uf.viz.localization.service.ILocalizationService;
  * @version 1.0
  */
 
-public abstract class AbstractNewActionBasedVelocity extends Action implements
-        INewBasedVelocityAction {
+public abstract class AbstractNewActionBasedVelocity extends Action
+        implements INewBasedVelocityAction {
     private static final String MENU_TEXT = "New ...";
 
     private IUFStatusHandler statusHandler;
@@ -121,9 +121,9 @@ public abstract class AbstractNewActionBasedVelocity extends Action implements
     public void run() {
         IInputValidator validator = this.getInputValidator();
 
-        InputDialog dialog = new InputDialog(Display.getCurrent()
-                .getActiveShell(), this.dialogTitle, this.dialogMessage,
-                this.initialValue, validator);
+        InputDialog dialog = new InputDialog(
+                Display.getCurrent().getActiveShell(), this.dialogTitle,
+                this.dialogMessage, this.initialValue, validator);
         int returnCode = dialog.open();
         if (returnCode != Window.OK) {
             return;
@@ -145,14 +145,14 @@ public abstract class AbstractNewActionBasedVelocity extends Action implements
         /*
          * these are parameters that are common to all hazards templates.
          */
-        velocityContextValues.put("author", LocalizationManager.getInstance()
-                .getCurrentUser());
+        velocityContextValues.put("author",
+                LocalizationManager.getInstance().getCurrentUser());
         velocityContextValues.put("scriptName", scriptName);
         VelocityContext velocityContext = this
                 .buildVelocityContext(velocityContextValues);
 
-        Template template = this.getVelocityEngine().getTemplate(
-                this.velocityTemplate);
+        Template template = this.getVelocityEngine()
+                .getTemplate(this.velocityTemplate);
         template.merge(velocityContext, writer);
         try {
             writer.close();
@@ -185,7 +185,7 @@ public abstract class AbstractNewActionBasedVelocity extends Action implements
             observers[0] = observer;
             file.addFileUpdatedObserver(observer);
             file.save();
-        } catch (LocalizationOpFailedException e) {
+        } catch (LocalizationException e) {
             statusHandler.handle(Priority.ERROR,
                     "Unable to save file to localization", e);
         }

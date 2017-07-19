@@ -17,17 +17,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
-import org.codehaus.jackson.annotate.JsonTypeInfo;
-import org.codehaus.jackson.map.DeserializationConfig;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
-import org.codehaus.jackson.node.NullNode;
-import org.codehaus.jackson.node.ObjectNode;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -53,12 +52,12 @@ import com.vividsolutions.jts.geom.Geometry;
  * </p>
  * <ol>
  * <li>be mutable, with getter and setter methods for its member data;</li>
- * <li>include a <code>public</code> constructor annotated with {@literal}
- * {@link JsonCreator}, with parameters all appropriately annotated with
- * {@literal @}{@link JsonProperty}; or</li>
- * <li>include a <code>public static</code> method annotated with {@literal}
- * {@link JsonFactory}, with parameters all appropriately annotated with
- * {@literal @}{@link JsonProperty}.</li>
+ * <li>include a <code>public</code> constructor annotated with
+ * {@literal} {@link JsonCreator}, with parameters all appropriately annotated
+ * with {@literal @}{@link JsonProperty}; or</li>
+ * <li>include a <code>public static</code> method annotated with
+ * {@literal} {@link JsonFactory}, with parameters all appropriately annotated
+ * with {@literal @}{@link JsonProperty}.</li>
  * </ol>
  * <p>
  * Objects that are to be serialized and deserialized in cases where, upon
@@ -106,6 +105,8 @@ import com.vividsolutions.jts.geom.Geometry;
  */
 public class JsonConverter extends ObjectMapper {
 
+    private static final long serialVersionUID = -688455815974169112L;
+
     // Private Static Constants
 
     /**
@@ -129,18 +130,17 @@ public class JsonConverter extends ObjectMapper {
      * Well-Known Text.
      */
     private static final ObjectMapper CONVERTER = new ObjectMapper();
+
     static {
 
         /*
          * Configure the converter to ignore unknown properties, and to include
          * in serialization all non-null members of an object.
          */
-        CONVERTER
-                .configure(
-                        DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES,
-                        false);
-        CONVERTER.getSerializationConfig().setSerializationInclusion(
-                Inclusion.NON_NULL);
+        CONVERTER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                false);
+        CONVERTER.getSerializationConfig()
+                .withSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         /*
          * Configure the converter to serialize and deserialize objects expected
@@ -227,7 +227,8 @@ public class JsonConverter extends ObjectMapper {
      *            Type of the desired object.
      * @return Object of the desired type.
      */
-    public static <T> T fromDictionary(Map<?, ?> dictionary, Class<T> objectType) {
+    public static <T> T fromDictionary(Map<?, ?> dictionary,
+            Class<T> objectType) {
         return CONVERTER.convertValue(dictionary, objectType);
     }
 
@@ -275,7 +276,7 @@ public class JsonConverter extends ObjectMapper {
          */
         Class<?> objectType = null;
         try {
-            objectType = Class.forName(rootNode.get(KEY_CLASS).getTextValue());
+            objectType = Class.forName(rootNode.get(KEY_CLASS).textValue());
         } catch (ClassNotFoundException e) {
             throw new IOException("Unable to deserialize object from JSON.", e);
         }
@@ -320,7 +321,7 @@ public class JsonConverter extends ObjectMapper {
          */
         ObjectNode rootNode = CONVERTER.createObjectNode();
         rootNode.put(KEY_CLASS, object.getClass().getCanonicalName());
-        rootNode.put(KEY_INSTANCE,
+        rootNode.set(KEY_INSTANCE,
                 CONVERTER.convertValue(object, JsonNode.class));
 
         /*
@@ -387,8 +388,8 @@ public class JsonConverter extends ObjectMapper {
          * fussing with the thread-specific context class loader is explained
          * here:
          * 
-         * http://stackoverflow.com/questions/19694928/jackson-jersey-deserialize
-         * -exception-for-id-type-id-class-no-such-class
+         * http://stackoverflow.com/questions/19694928/jackson-jersey-
+         * deserialize -exception-for-id-type-id-class-no-such-class
          * 
          * Essentially, the Jackson object mapper, if attempting to deserialize
          * an instance of a (sub)class of a class or interface that uses the
@@ -403,7 +404,7 @@ public class JsonConverter extends ObjectMapper {
                 .getContextClassLoader();
         Thread.currentThread().setContextClassLoader(classLoader);
         try {
-            return CONVERTER.readValue(node, objectType);
+            return CONVERTER.treeToValue(node, objectType);
         } finally {
             Thread.currentThread().setContextClassLoader(originalClassLoader);
         }
@@ -428,29 +429,29 @@ public class JsonConverter extends ObjectMapper {
             return list;
         } else if (node.isObject()) {
             Map<String, Object> map = new HashMap<>(node.size());
-            Iterator<String> keys = node.getFieldNames();
+            Iterator<String> keys = node.fieldNames();
             while (keys.hasNext()) {
                 String key = keys.next();
                 map.put(key, fromJsonNode(node.get(key)));
             }
             return map;
         } else if (node.isBoolean()) {
-            return node.getBooleanValue();
+            return node.asBoolean();
         } else if (node.isDouble()) {
-            return node.getDoubleValue();
+            return node.asDouble();
         } else if (node.isLong()) {
-            return node.getLongValue();
+            return node.asLong();
         } else if (node.isInt()) {
-            return node.getIntValue();
+            return node.asInt();
         } else if (node.isNumber()) {
-            return node.getNumberValue().floatValue();
+            return node.numberValue().floatValue();
         } else if (node.isTextual()) {
-            return node.getTextValue();
+            return node.textValue();
         } else if (node.isNull()) {
             return null;
         } else {
-            throw new IllegalArgumentException("could not parse JSON node \""
-                    + node + "\"");
+            throw new IllegalArgumentException(
+                    "could not parse JSON node \"" + node + "\"");
         }
     }
 

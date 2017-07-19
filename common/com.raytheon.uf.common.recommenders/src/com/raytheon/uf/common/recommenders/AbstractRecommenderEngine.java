@@ -19,19 +19,15 @@
  **/
 package com.raytheon.uf.common.recommenders;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
-import com.raytheon.uf.common.python.concurrent.AbstractPythonScriptFactory;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
+import com.raytheon.uf.common.python.concurrent.PythonInterpreterFactory;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.recommenders.executors.EntireRecommenderExecutor;
 import com.raytheon.uf.common.recommenders.executors.RecommenderDialogInfoExecutor;
@@ -43,6 +39,8 @@ import com.raytheon.uf.common.recommenders.executors.RecommenderSpatialInfoExecu
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * An abstract class waiting for implementation to call the corresponding
@@ -78,9 +76,13 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(AbstractRecommenderEngine.class);
 
-    protected AbstractPythonScriptFactory<P> factory;
+    protected static final String RECOMMENDER_THREAD_POOL_NAME = "Recommenders";
 
-    private final Map<String, String> recommenderToCoordinator = new HashMap<String, String>();
+    protected static final int NUM_RECOMMENDER_THREADS = 1;
+
+    protected PythonInterpreterFactory<P> factory;
+
+    protected PythonJobCoordinator<P> coordinator;
 
     protected String site;
 
@@ -105,7 +107,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         IPythonExecutor<P, EventSet<IEvent>> executor = new EntireRecommenderExecutor<P>(
                 recommenderName, eventSet);
         try {
-            getCoordinator(recommenderName).submitAsyncJob(executor, listener);
+            getCoordinator().submitJobWithCallback(executor, listener);
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to submit job to run entire recommender", e);
@@ -128,12 +130,11 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         IPythonExecutor<P, EventSet<IEvent>> executor = new RecommenderExecutor<P>(
                 recommenderName, eventSet, visualFeatures, dialogInfo);
         try {
-            getCoordinator(recommenderName).submitAsyncJob(executor, listener);
+            getCoordinator().submitJobWithCallback(executor, listener);
         } catch (Exception e) {
-            statusHandler
-                    .handle(Priority.PROBLEM,
-                            "Unable to submit job to run execute method of recommender",
-                            e);
+            statusHandler.handle(Priority.PROBLEM,
+                    "Unable to submit job to run execute method of recommender",
+                    e);
         }
     }
 
@@ -154,7 +155,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         IPythonExecutor<P, Map<String, Serializable>> executor = new RecommenderDialogInfoExecutor<P>(
                 recommenderName, eventSet);
         try {
-            return getCoordinator(recommenderName).submitSyncJob(executor);
+            return getCoordinator().submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to submit job to get dialog information", e);
@@ -179,7 +180,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         IPythonExecutor<P, VisualFeaturesList> executor = new RecommenderSpatialInfoExecutor<P>(
                 recommenderName, eventSet);
         try {
-            return getCoordinator(recommenderName).submitSyncJob(executor);
+            return getCoordinator().submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to submit job to get spatial information", e);
@@ -198,7 +199,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         IPythonExecutor<P, Map<String, Serializable>> executor = new RecommenderMetadataExecutor<P>(
                 recommenderName);
         try {
-            return getCoordinator(recommenderName).submitSyncJob(executor);
+            return getCoordinator().submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to submit job to get script metadata", e);
@@ -209,7 +210,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
     public List<EventRecommender> getInventory() {
         IPythonExecutor<P, List<EventRecommender>> executor = new RecommenderInventoryExecutor<P>();
         try {
-            return getCoordinator().submitSyncJob(executor);
+            return getCoordinator().submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to submit job to get inventory", e);
@@ -230,45 +231,12 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         IPythonExecutor<P, EventRecommender> executor = new RecommenderLoaderInventoryExecutor<P>(
                 recommenderName);
         try {
-            return getCoordinator().submitSyncJob(executor);
+            return getCoordinator().submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to submit job to get inventory", e);
         }
         return null;
-    }
-
-    /**
-     * Users can register multiple possible job coordinators for recommenders.
-     * 
-     * @param recommenderName
-     * @return
-     */
-    protected PythonJobCoordinator<P> getCoordinator(String recommenderName) {
-        if (recommenderToCoordinator.isEmpty()
-                || recommenderToCoordinator.containsKey(recommenderName) == false) {
-            buildMap();
-        }
-        if (recommenderToCoordinator.containsKey(recommenderName) == false) {
-            recommenderToCoordinator.put(recommenderName,
-                    DEFAULT_RECOMMENDER_JOB_COORDINATOR + site);
-        }
-        return PythonJobCoordinator.getInstance(recommenderToCoordinator
-                .get(recommenderName));
-    }
-
-    /**
-     * Builds the map that is needed to determine which recommender is best.
-     */
-    private void buildMap() {
-        List<EventRecommender> recommenders = getInventory();
-        for (EventRecommender rec : recommenders) {
-            String coordinator = rec.getThreadManager();
-            if (coordinator == null || coordinator.isEmpty()) {
-                coordinator = DEFAULT_RECOMMENDER_JOB_COORDINATOR + site;
-            }
-            recommenderToCoordinator.put(rec.getName(), coordinator);
-        }
     }
 
     /**
@@ -284,19 +252,25 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         }
     }
 
+    public PythonJobCoordinator<P> getCoordinator() {
+        if (coordinator == null) {
+            coordinator = createCoordinator();
+        }
+        return coordinator;
+    }
+
+    protected abstract PythonJobCoordinator<P> createCoordinator();
+
     /**
      * Shuts down the engine, and frees any threads that were originally
      * allocated. This should be called once we are done using the recommender
      * engine (not each time, but when the application that uses it has ended).
      */
     public void shutdownEngine() {
-        for (String coordName : new HashSet<String>(
-                recommenderToCoordinator.values())) {
-            PythonJobCoordinator.getInstance(coordName).shutdown();
+        if (coordinator != null) {
+            coordinator.shutdown();
         }
     }
-
-    protected abstract PythonJobCoordinator<P> getCoordinator();
 
     /**
      * @return the site
@@ -313,7 +287,5 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
     public void setSite(String site) {
         this.site = site;
         shutdownEngine();
-        recommenderToCoordinator.clear();
-        buildMap();
     }
 }

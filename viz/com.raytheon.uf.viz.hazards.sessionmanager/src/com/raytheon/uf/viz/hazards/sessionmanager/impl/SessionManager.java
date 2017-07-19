@@ -19,9 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-
 import java.util.Collection;
 import java.util.List;
 
@@ -37,7 +34,7 @@ import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManagerFactory;
-import com.raytheon.uf.common.localization.exception.LocalizationOpFailedException;
+import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.site.SiteMap;
@@ -76,6 +73,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl.SessionRecom
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.impl.SessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
 /**
  * Implementation of ISessionManager.
@@ -175,8 +175,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * @author bsteffen
  * @version 1.0
  */
-public class SessionManager implements
-        ISessionManager<ObservedHazardEvent, ObservedSettings> {
+public class SessionManager
+        implements ISessionManager<ObservedHazardEvent, ObservedSettings> {
 
     /**
      * Scheduler to be used to ensure that result notifications are published on
@@ -403,8 +403,8 @@ public class SessionManager implements
     @Override
     public void toggleAutoHazardChecking() {
         autoHazardChecking = !autoHazardChecking;
-        sender.postNotificationAsync(new SessionAutoCheckConflictsModified(
-                Originator.OTHER));
+        sender.postNotificationAsync(
+                new SessionAutoCheckConflictsModified(Originator.OTHER));
     }
 
     @Override
@@ -435,17 +435,19 @@ public class SessionManager implements
         try {
             IServerRequest clearTableReq = new ClearPracticeVTECTableRequest(
                     SiteMap.getInstance().getSite4LetterId(
-                            configManager.getSiteID()), VizApp.getWsId());
+                            configManager.getSiteID()),
+                    VizApp.getWsId());
             ThriftClient.sendRequest(clearTableReq);
         } catch (VizException e) {
-            statusHandler
-                    .error("Error clearing practice VTEC active table.", e);
+            statusHandler.error("Error clearing practice VTEC active table.",
+                    e);
         }
 
         try {
             IServerRequest clearVtecTableReq = new ClearPracticeHazardVtecTableRequest(
                     SiteMap.getInstance().getSite4LetterId(
-                            configManager.getSiteID()), VizApp.getWsId());
+                            configManager.getSiteID()),
+                    VizApp.getWsId());
             ThriftClient.sendRequest(clearVtecTableReq);
         } catch (VizException e) {
             statusHandler.error("Error clearing Hazard Event VTEC records.", e);
@@ -470,7 +472,7 @@ public class SessionManager implements
             if ((localizationFile != null) && localizationFile.exists()) {
                 try {
                     localizationFile.delete();
-                } catch (LocalizationOpFailedException e) {
+                } catch (LocalizationException e) {
                     statusHandler.error("Error while reseting.", e);
                 }
             }
@@ -613,8 +615,8 @@ public class SessionManager implements
 
     @Override
     public void setupEventIdDisplay() throws HazardEventServiceException {
-        boolean isPracticeMode = (CAVEMode.OPERATIONAL.equals(CAVEMode
-                .getMode()) == false);
+        boolean isPracticeMode = (CAVEMode.OPERATIONAL
+                .equals(CAVEMode.getMode()) == false);
         HazardServicesEventIdUtil.setupHazardEventId(isPracticeMode,
                 configManager.getSiteID());
     }

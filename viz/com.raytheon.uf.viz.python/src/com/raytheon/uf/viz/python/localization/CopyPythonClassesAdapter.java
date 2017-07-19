@@ -23,9 +23,9 @@ import org.apache.commons.io.FilenameUtils;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.Separator;
 
-import com.raytheon.uf.viz.localization.adapter.LocalizationPerspectiveAdapter;
-import com.raytheon.uf.viz.localization.filetreeview.FileTreeEntryData;
-import com.raytheon.uf.viz.localization.filetreeview.LocalizationFileEntryData;
+import com.raytheon.uf.viz.localization.perspective.adapter.LocalizationPerspectiveAdapter;
+import com.raytheon.uf.viz.localization.perspective.view.FileTreeEntryData;
+import com.raytheon.uf.viz.localization.perspective.view.LocalizationFileEntryData;
 
 /**
  * Adds a new 'Copy Python Classes ...' menu item to the localization context
@@ -53,8 +53,8 @@ public class CopyPythonClassesAdapter extends LocalizationPerspectiveAdapter {
     @Override
     public boolean addContextMenuItems(IMenuManager menuMgr,
             FileTreeEntryData[] selectedData) {
-        if (selectedData.length == 1
-                && selectedData[0].getClass() == LocalizationFileEntryData.class) {
+        if (selectedData.length == 1 && selectedData[0]
+                .getClass() == LocalizationFileEntryData.class) {
             LocalizationFileEntryData localizationFileEntryData = (LocalizationFileEntryData) selectedData[0];
             if (localizationFileEntryData.isDirectory() == false
                     && FilenameUtils.isExtension(

@@ -19,17 +19,17 @@
  **/
 package com.raytheon.uf.common.hazards.configuration.types;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import com.google.common.collect.Sets;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
  * 
@@ -264,8 +264,8 @@ public class HazardTypeEntry {
      * @return the ugcTypes
      */
     public Set<String> getUgcTypes() {
-        return (ugcTypes == null ? Collections.<String> emptySet() : Sets
-                .newHashSet(ugcTypes));
+        return (ugcTypes == null ? Collections.<String> emptySet()
+                : Sets.newHashSet(ugcTypes));
     }
 
     /**
@@ -317,7 +317,8 @@ public class HazardTypeEntry {
      * @param hazardTypeFirstRecommender
      *            The hazard-type-first recommender.
      */
-    public void setHazardTypeFirstRecommender(String hazardTypeFirstRecommender) {
+    public void setHazardTypeFirstRecommender(
+            String hazardTypeFirstRecommender) {
         this.hazardTypeFirstRecommender = hazardTypeFirstRecommender;
     }
 
@@ -343,18 +344,18 @@ public class HazardTypeEntry {
 
     public void setDurationChoiceList(List<String> durationChoiceList) {
         this.durationChoiceList = (durationChoiceList == null ? new String[0]
-                : durationChoiceList.toArray(new String[durationChoiceList
-                        .size()]));
+                : durationChoiceList
+                        .toArray(new String[durationChoiceList.size()]));
     }
 
     public List<String> getReplacedBy() {
-        return (replacedBy == null ? Collections.<String> emptyList() : Arrays
-                .asList(replacedBy));
+        return (replacedBy == null ? Collections.<String> emptyList()
+                : Arrays.asList(replacedBy));
     }
 
     public void setReplacedBy(List<String> replacedBy) {
-        this.replacedBy = (replacedBy == null ? new String[0] : replacedBy
-                .toArray(new String[replacedBy.size()]));
+        this.replacedBy = (replacedBy == null ? new String[0]
+                : replacedBy.toArray(new String[replacedBy.size()]));
     }
 
     public long getDefaultDuration() {

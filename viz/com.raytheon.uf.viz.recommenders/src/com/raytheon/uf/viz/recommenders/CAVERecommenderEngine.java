@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.recommenders;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.Serializable;
 import java.util.Map;
 
@@ -30,6 +28,8 @@ import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
 import com.raytheon.uf.viz.python.VizPythonJob;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * A single class in which all recommender actions will go through.
@@ -56,8 +56,8 @@ import com.raytheon.uf.viz.python.VizPythonJob;
  * @version 1.0
  */
 
-public final class CAVERecommenderEngine extends
-        AbstractRecommenderEngine<CAVERecommenderScriptManager> {
+public final class CAVERecommenderEngine
+        extends AbstractRecommenderEngine<CAVERecommenderScriptManager> {
 
     // Private Static Constants
 
@@ -65,8 +65,8 @@ public final class CAVERecommenderEngine extends
      * Instance of recommender engine to be used for all Hazard Services
      * sessions. A single instance is shared, instead of starting up and
      * shutting down one instance per session, because of bad numpy-Jep
-     * interactions as described <a
-     * href="https://github.com/mrj0/jep/issues/28">here</a>. By keeping a
+     * interactions as described
+     * <a href="https://github.com/mrj0/jep/issues/28">here</a>. By keeping a
      * singleton around, Jep with numpy loaded is never shut down.
      */
     private static final CAVERecommenderEngine CAVE_RECOMMENDER_ENGINE = new CAVERecommenderEngine();
@@ -94,9 +94,10 @@ public final class CAVERecommenderEngine extends
     // Public Methods
 
     @Override
-    protected PythonJobCoordinator<CAVERecommenderScriptManager> getCoordinator() {
+    protected PythonJobCoordinator<CAVERecommenderScriptManager> createCoordinator() {
         factory = new CAVERecommenderPythonFactory(site);
-        return PythonJobCoordinator.newInstance(factory);
+        return new PythonJobCoordinator<>(NUM_RECOMMENDER_THREADS,
+                RECOMMENDER_THREAD_POOL_NAME + " - " + site, factory);
     }
 
     @Override
@@ -104,8 +105,8 @@ public final class CAVERecommenderEngine extends
             EventSet<IEvent> eventSet, VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo,
             IPythonJobListener<EventSet<IEvent>> listener) {
-        VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(
-                recommenderName, listener);
+        VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(recommenderName,
+                listener);
         super.runExecuteRecommender(recommenderName, eventSet, visualFeatures,
                 dialogInfo, job);
     }
@@ -114,8 +115,8 @@ public final class CAVERecommenderEngine extends
     public void runEntireRecommender(String recommenderName,
             EventSet<IEvent> eventSet,
             IPythonJobListener<EventSet<IEvent>> listener) {
-        VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(
-                recommenderName, listener);
+        VizPythonJob<EventSet<IEvent>> job = new VizPythonJob<>(recommenderName,
+                listener);
         super.runEntireRecommender(recommenderName, eventSet, job);
     }
 

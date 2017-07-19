@@ -88,6 +88,10 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductGeneration.class);
 
+    private static final String GENERATION_THREAD_POOL_NAME = "ProductGenerators";
+
+    private static final int NUM_GENERATION_THREADS = 1;
+
     /**
      * Instance of this class to be used for all Hazard Services sessions. A
      * single instance is shared, instead of starting up and shutting down one
@@ -131,7 +135,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      */
     private ProductGeneration() {
         factory = new ProductScriptFactory();
-        coordinator = PythonJobCoordinator.newInstance(factory);
+        coordinator = new PythonJobCoordinator<>(NUM_GENERATION_THREADS,
+                GENERATION_THREAD_POOL_NAME, factory);
         if (statusHandler.isPriorityEnabled(Priority.DEBUG)) {
             String c = coordinator.toString();
             statusHandler
@@ -190,9 +195,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
      * @param listener
      *            the listener to the aysnc job
      */
-    public void generate(String productGeneratorName,
-            EventSet<IEvent> eventSet, Map<String, Serializable> dialogInfo,
-            String[] productFormats,
+    public void generate(String productGeneratorName, EventSet<IEvent> eventSet,
+            Map<String, Serializable> dialogInfo, String[] productFormats,
             IPythonJobListener<GeneratedProductList> listener) {
 
         /*
@@ -204,7 +208,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
                 productGeneratorName, eventSet, dialogInfo, productFormats);
 
         try {
-            coordinator.submitAsyncJob(executor, listener);
+            coordinator.submitJobWithCallback(executor, listener);
         } catch (Exception e) {
             statusHandler.error("Error executing async job", e);
         }
@@ -228,7 +232,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
                 productFormats);
 
         try {
-            coordinator.submitAsyncJob(executor, listener);
+            coordinator.submitJobWithCallback(executor, listener);
         } catch (Exception e) {
             statusHandler.error("Error executing async job", e);
         }
@@ -265,10 +269,11 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
         validate(productFormats, productGeneratorName, eventSet, listener);
 
         IPythonExecutor<ProductScript, GeneratedProductList> executor = new UpdateProductExecutor(
-                productGeneratorName, eventSet, updatedDataList, productFormats);
+                productGeneratorName, eventSet, updatedDataList,
+                productFormats);
 
         try {
-            coordinator.submitAsyncJob(executor, listener);
+            coordinator.submitJobWithCallback(executor, listener);
         } catch (Exception e) {
             statusHandler.error("Error executing async job", e);
         }
@@ -281,7 +286,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
                 product, eventSet);
         Map<String, Serializable> retVal = null;
         try {
-            retVal = coordinator.submitSyncJob(executor);
+            retVal = coordinator.submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.error("Error executing job", e);
         }
@@ -299,7 +304,8 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
     public File getScriptFile(String product) {
         return pathManager.getStaticLocalizationFile(
                 HazardsConfigurationConstants.PRODUCT_GENERATOR_RELATIVE_PATH
-                        + product + PYTHON_FILENAME_SUFFIX).getFile();
+                        + product + PYTHON_FILENAME_SUFFIX)
+                .getFile();
     }
 
     @Override
@@ -309,7 +315,7 @@ public class ProductGeneration implements IDefineDialog, IProvideMetadata {
                 product, eventSet);
         Map<String, Serializable> retVal = null;
         try {
-            retVal = coordinator.submitSyncJob(executor);
+            retVal = coordinator.submitJob(executor).get();
         } catch (Exception e) {
             statusHandler.error("Error executing job", e);
         }
