@@ -11,19 +11,6 @@ package gov.noaa.gsd.viz.hazards.tools;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FIELDS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.FILE_PATH_KEY;
-import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
-import gov.noaa.gsd.viz.hazards.utilities.Utilities;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
-import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 import java.io.File;
 import java.io.Serializable;
@@ -37,7 +24,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -51,9 +37,22 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
+import gov.noaa.gsd.viz.hazards.utilities.Utilities;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
+
 /**
- * Tool dialog, used to allow the user to specify parameters for tool
- * executions.
+ * Base class from which to derive tool dialogs, used to allow the user to
+ * specify parameters for tool executions, show results of such executions etc.
  * <p>
  * When instantiated, the dialog is passed a JSON string holding a dictionary
  * which in turn contains the following parameters:
@@ -61,33 +60,35 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * <dt><code>fields</code></dt>
  * <dd>List of dictionaries, with each of the latter defining a megawidget.</dd>
  * <dt><code>valueDict</code></dt>
- * <dd>Dictionary mapping tool parameter identifiers to their starting values.</dd>
+ * <dd>Dictionary mapping tool parameter identifiers to their starting values.
+ * </dd>
  * <dt><code>filePath</code></dt>
  * <dd>String containing the full path to the script used to run the
  * recommender. If the recommender defines an
  * <code>applyInterdependencies()</code> function for
  * {@link gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier}, it
  * is found within this file.</dd>
- * <dt><code>runToolTriggers</code></dt>
- * <dd>Optional list of megawidget identifier strings indicating which of the
- * megawidgets defined within <code>fields</code> are to trigger tool execution
- * when invoked, if any.</dd>
  * <dt><code>title</code></dt>
  * <dd>Optional string giving the dialog title.</dd>
+ * <dt><code>minInitialWidth</code></dt>
+ * <dd>Optional integer giving the minimum initial width the dialog should be
+ * allowed in pixels.</dd>
  * <dt><code>maxInitialWidth</code></dt>
- * <dd>Optional integer giving the maximum initial width the the dialog should
- * be allowed in pixels.</dd>
+ * <dd>Optional integer giving the maximum initial width the dialog should be
+ * allowed in pixels.</dd>
  * <dt><code>maxInitialHeight</code></dt>
- * <dd>Optional integer giving the maximum initial height the the dialog should
- * be allowed in pixels.</dd>
+ * <dd>Optional integer giving the maximum initial height the dialog should be
+ * allowed in pixels.</dd>
  * <dt><code>minimumVisibleTime</code></dt>
  * <dd>Minimum visible time as required by
  * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
- * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
+ * if no megawidgets of the latter type are included in <code>fields</code>.
+ * </dd>
  * <dt><code>maximumVisibleTime</code></dt>
  * <dd>Maximum visible time as required by
  * {@link gov.noaa.gsd.viz.megawidgets.TimeScaleSpecifier}. This is not required
- * if no megawidgets of the latter type are included in <code>fields</code>.</dd>
+ * if no megawidgets of the latter type are included in <code>fields</code>.
+ * </dd>
  * </dl>
  * 
  * <pre>
@@ -130,11 +131,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                            not expect exception when initializing
  * Nov 10, 2015  12762     Chris.Golden      Added support for use of new recommender
  *                                           manager.
+ * Aug 15, 2017  22757     Chris.Golden      Refactored to become an abstract base class
+ *                                           for all tool dialogs.
  * </pre>
  * 
  * @author Chris.Golden
  */
-class ToolDialog extends BasicDialog {
+abstract class AbstractToolDialog extends BasicDialog {
 
     // Private Static Constants
 
@@ -142,12 +145,7 @@ class ToolDialog extends BasicDialog {
      * Logging mechanism.
      */
     private static final transient IUFStatusHandler statusHandler = UFStatus
-            .getHandler(ToolDialog.class);
-
-    /**
-     * OK button text.
-     */
-    private static final String OK_BUTTON_TEXT = "Run";
+            .getHandler(AbstractToolDialog.class);
 
     // Private Variables
 
@@ -159,12 +157,12 @@ class ToolDialog extends BasicDialog {
     /**
      * Dialog dictionary, used to hold the dialog's parameters.
      */
-    private Dict dialogDict = null;
+    private Dict dialogDict;
 
     /**
      * Values dictionary, used to hold the dialog's megawidgets' values.
      */
-    private Dict valuesDict = null;
+    private Dict valuesDict;
 
     /**
      * Current time provider.
@@ -194,14 +192,7 @@ class ToolDialog extends BasicDialog {
     private final File pythonSideEffectsScriptFile;
 
     /**
-     * List of megawidget identifiers that, when their associated megawidgets
-     * are invoked, should result in the tool being run; if <code>null</code>,
-     * none cause such invocations.
-     */
-    private final List<String> runToolTriggerIdentifiers;
-
-    /**
-     * Execution context in which the tool is to be run.
+     * Execution context in which the tool is or was running.
      */
     private final RecommenderExecutionContext context;
 
@@ -236,16 +227,16 @@ class ToolDialog extends BasicDialog {
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public ToolDialog(ToolsPresenter presenter, Shell parent, String tool,
-            ToolType type, RecommenderExecutionContext context,
+    public AbstractToolDialog(ToolsPresenter presenter, Shell parent,
+            String tool, ToolType type, RecommenderExecutionContext context,
             String jsonParams) {
         super(parent);
         this.presenter = presenter;
         this.tool = tool;
         this.type = type;
         this.context = context;
-        setShellStyle(SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE
-                | SWT.RESIZE);
+        setShellStyle(
+                SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE | SWT.RESIZE);
         setBlockOnOpen(false);
 
         /*
@@ -255,40 +246,27 @@ class ToolDialog extends BasicDialog {
         try {
             dialogDict = Dict.getInstance(jsonParams);
         } catch (Exception e) {
-            statusHandler
-                    .error("ToolDialog.<init>: Error: Problem parsing JSON for dialog dictionary.",
-                            e);
+            statusHandler.error(
+                    "ToolDialog.<init>: Error: Problem parsing JSON for dialog dictionary.",
+                    e);
         }
         try {
-            valuesDict = dialogDict
-                    .getDynamicallyTypedValue(HazardConstants.VALUES_DICTIONARY_KEY);
+            valuesDict = dialogDict.getDynamicallyTypedValue(
+                    HazardConstants.VALUES_DICTIONARY_KEY);
         } catch (Exception e) {
-            statusHandler
-                    .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
-                            e);
+            statusHandler.error(
+                    "ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
+                    e);
         }
         String scriptFile = null;
         try {
             scriptFile = dialogDict.getDynamicallyTypedValue(FILE_PATH_KEY);
         } catch (Exception e) {
-            statusHandler
-                    .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
-                            e);
+            statusHandler.error(
+                    "ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
+                    e);
         }
         pythonSideEffectsScriptFile = new File(scriptFile);
-        List<String> triggers = null;
-        try {
-            triggers = dialogDict
-                    .getDynamicallyTypedValue(HazardConstants.RUN_TOOL_TRIGGERS_LIST_KEY);
-            if (triggers == null) {
-                triggers = new ArrayList<>();
-            }
-        } catch (Exception e) {
-            statusHandler
-                    .error("ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
-                            e);
-        }
-        runToolTriggerIdentifiers = triggers;
     }
 
     // Public Methods
@@ -409,12 +387,13 @@ class ToolDialog extends BasicDialog {
         for (Object specifier : megawidgetSpecifiers) {
             megawidgetSpecifiersList.add((Dict) specifier);
         }
-        int horizontalMargin = convertHorizontalDLUsToPixels(IDialogConstants.HORIZONTAL_MARGIN);
+        int horizontalMargin = convertHorizontalDLUsToPixels(
+                IDialogConstants.HORIZONTAL_MARGIN);
         megawidgetSpecifiersList = MegawidgetSpecifierManager
-                .makeRawSpecifiersScrollable(
-                        megawidgetSpecifiersList,
+                .makeRawSpecifiersScrollable(megawidgetSpecifiersList,
                         horizontalMargin,
-                        convertVerticalDLUsToPixels(IDialogConstants.VERTICAL_MARGIN),
+                        convertVerticalDLUsToPixels(
+                                IDialogConstants.VERTICAL_MARGIN),
                         horizontalMargin, 0);
 
         /*
@@ -428,21 +407,22 @@ class ToolDialog extends BasicDialog {
          */
         try {
             PythonSideEffectsApplier sideEffectsApplier = null;
-            if (PythonSideEffectsApplier
-                    .containsSideEffectsEntryPointFunction(pythonSideEffectsScriptFile)) {
+            if (PythonSideEffectsApplier.containsSideEffectsEntryPointFunction(
+                    pythonSideEffectsScriptFile)) {
                 sideEffectsApplier = new PythonSideEffectsApplier(
                         pythonSideEffectsScriptFile);
             }
-            megawidgetManager = new MegawidgetManager(
-                    top,
-                    megawidgetSpecifiersList,
-                    valuesDict,
+            megawidgetManager = new MegawidgetManager(top,
+                    megawidgetSpecifiersList, valuesDict,
                     new MegawidgetManagerAdapter() {
 
                         @Override
                         public void commandInvoked(MegawidgetManager manager,
                                 String identifier) {
-                            System.out.println("TBD do something about this");
+
+                            /*
+                             * No action.
+                             */
                         }
 
                         @Override
@@ -459,11 +439,11 @@ class ToolDialog extends BasicDialog {
                         public void sideEffectMutablePropertyChangeErrorOccurred(
                                 MegawidgetManager manager,
                                 MegawidgetPropertyException exception) {
-                            statusHandler
-                                    .error("ToolDialog.MegawidgetManager error occurred "
+                            statusHandler.error(
+                                    "ToolDialog.MegawidgetManager error occurred "
                                             + "while attempting to apply megawidget "
                                             + "interdependencies: " + exception,
-                                            exception);
+                                    exception);
                         }
 
                     }, minVisibleTime, maxVisibleTime, currentTimeProvider,
@@ -482,25 +462,6 @@ class ToolDialog extends BasicDialog {
     }
 
     @Override
-    protected void createButtonsForButtonBar(Composite parent) {
-        super.createButtonsForButtonBar(parent);
-        Button ok = getButton(IDialogConstants.OK_ID);
-        ok.setText(OK_BUTTON_TEXT);
-        setButtonLayoutData(ok);
-    }
-
-    @Override
-    protected void buttonPressed(int buttonId) {
-        super.buttonPressed(buttonId);
-        if (buttonId == IDialogConstants.OK_ID) {
-            presenter
-                    .publish(new ToolAction(
-                            ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                            tool, type, getState(), context));
-        }
-    }
-
-    @Override
     protected Point getInitialSize() {
 
         /*
@@ -512,21 +473,39 @@ class ToolDialog extends BasicDialog {
          * Let the superclass's implementation determine the initial size, and
          * then shrink it down to fit within both the bounds of the display as
          * determined above, and also the maximum initial size of the dialog, if
-         * such was provided as part of its configuration.
+         * such was provided as part of its configuration. Also ensure it is at
+         * least the minimum initial width, if that was provided.
          */
         Point size = super.getInitialSize();
+        int min = 0;
+        if (dialogDict.containsKey(HazardConstants.MIN_INITIAL_WIDTH_KEY)) {
+            int providedMin = ((Number) dialogDict
+                    .get(HazardConstants.MIN_INITIAL_WIDTH_KEY)).intValue();
+            if (providedMin > min) {
+                min = providedMin;
+            }
+        }
+        if (min > size.x) {
+            size.x = min;
+        }
         int max = bounds.width;
         if (dialogDict.containsKey(HazardConstants.MAX_INITIAL_WIDTH_KEY)) {
-            max = ((Number) dialogDict
+            int providedMax = ((Number) dialogDict
                     .get(HazardConstants.MAX_INITIAL_WIDTH_KEY)).intValue();
+            if (providedMax < max) {
+                max = providedMax;
+            }
         }
         if (max < size.x) {
             size.x = max;
         }
         max = bounds.height;
         if (dialogDict.containsKey(HazardConstants.MAX_INITIAL_HEIGHT_KEY)) {
-            max = ((Number) dialogDict
+            int providedMax = ((Number) dialogDict
                     .get(HazardConstants.MAX_INITIAL_HEIGHT_KEY)).intValue();
+            if (providedMax < max) {
+                max = providedMax;
+            }
         }
         if (max < size.y) {
             size.y = max;
@@ -553,5 +532,39 @@ class ToolDialog extends BasicDialog {
         return size;
     }
 
-    // Private Methods
+    /**
+     * Get the presenter.
+     * 
+     * @return Presenter.
+     */
+    protected ToolsPresenter getPresenter() {
+        return presenter;
+    }
+
+    /**
+     * Get the execution context in which the tool is or was running.
+     * 
+     * @return Execution context.
+     */
+    protected RecommenderExecutionContext getContext() {
+        return context;
+    }
+
+    /**
+     * Get the identifier of the tool for which the dialog is being shown.
+     * 
+     * @return Tool identifier.
+     */
+    protected String getTool() {
+        return tool;
+    }
+
+    /**
+     * Get the type of the tool for which the dialog is being shown.
+     * 
+     * @return Type of the tool.
+     */
+    protected ToolType getType() {
+        return type;
+    }
 }

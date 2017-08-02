@@ -106,6 +106,13 @@
     Aug 25, 2016   21458    Robert.Blum  _additionalInfoStatement now uses framed text.
     Aug 29, 2016   21444   Ben.Phillippe Time zone now before day of week in formatted time
     Sep 06, 2016   19202    Sara.Stewart added advisoryUpgraded/endingOption checks
+    Sep 20, 2016   21609    Kevin.Bisanz FF products now use locationsAffectedFallBack
+                                         text in summary headline.
+    Sep 21, 2016   21462    Robert.Blum  Added logic for new Dam Info radio button choice.
+    Sep 28, 2016   21624    Roger.Ferrel Summary message on dam failure now states "potential failure".
+    Oct 18, 2016   22489    Robert.Blum  Fixed cityList product part to use comma's instead of "...". 
+    Oct 21, 2016   21565    Mark.Fegan   orrected wording for replaced products.
+    Nov 07, 2016    22119   Kevin.Bisanz  Remove unused ProductTextUtil import.
 '''
 
 import FormatTemplate
@@ -118,22 +125,26 @@ from com.raytheon.uf.common.hazards.productgen import ProductUtils
 from QueryAfosToAwips import QueryAfosToAwips
 from Bridge import Bridge
 from TextProductCommon import TextProductCommon
-import ProductTextUtil
 from BasisText import BasisText
-from AttributionFirstBulletText import AttributionFirstBulletText
 import ForecasterInitials
 import PathcastText
+import TimeUtils
 
 from abc import *
 
 class Format(FormatTemplate.Formatter):
 
-    def initialize(self, editableEntries=None) :
+    def __init__(self):
         self.bridge = Bridge()
         self.basisText = BasisText()
         areaDict = self.bridge.getAreaDictionary()
         self._tpc = TextProductCommon()
         self._tpc.setUp(areaDict)
+
+    def initialize(self, editableEntries=None) :
+
+        # To ensure time calls are based on Zulu
+        os.environ['TZ'] = "GMT0"
         self.timezones = []
 
         # Dictionary that will hold the KeyInfo entries of the
@@ -381,7 +392,7 @@ class Format(FormatTemplate.Formatter):
         text = self._getVal('additionalInfoStatement', productDict)
         if text is None:
             # Please override this method for your site
-            text = 'Additional information is available at |* Web site URL *|.'
+            text = 'Additional information is available at www.weather.gov.'
         self._setVal('additionalInfoStatement', text, productDict, 'Additional Info Statement')
         return self._getFormattedText(text, endText='\n\n')
 
@@ -427,7 +438,7 @@ class Format(FormatTemplate.Formatter):
                     cityList.update(hazard.get('cityList', []))
             if cityList:
                 cityListText = 'Including the cities of '
-                cityListText += self._tpc.getTextListStr(list(cityList))
+                cityListText += self._tpc.punctuateList(list(cityList))
         self._setVal('cityList', cityListText, segmentDict, 'City List', required=False)
         return self._getFormattedText(cityListText, endText='\n')
 
@@ -591,17 +602,18 @@ class Format(FormatTemplate.Formatter):
                         replacesList.append(replaces)
 
                 #determine the actionWords
-                if replacedByList:
-                    # replaced added below
-                    actionWords = 'is'
-                else:
+                actionWords = ''
+                # Note: replaced is handled below
+                if not replacedByList:
                     actionWords = self._tpc.actionControlWord(vtecRecord, self._issueTime)
 
                 if immediateCause in ['DM']:
+                    hazStr += ' for the '
+                    if vtecRecord['sig'] and vtecRecord['sig'] == 'A':
+                        hazStr += 'potential '
                     if hydrologicCause and hydrologicCause == 'siteImminent':
-                        hazStr = hazStr + ' for the imminent failure of '
-                    else:
-                        hazStr = hazStr + ' for the failure of '
+                        hazStr += 'imminent ' 
+                    hazStr += 'failure of '
 
                     # Add the damOrLeveeNames - could be multiple
                     if len(damOrLeveeNames) > 0:
@@ -635,7 +647,10 @@ class Format(FormatTemplate.Formatter):
                         hazStr = hazStr + ' ' + timeWords
 
                 if vtecRecord.get('phen') == 'FF' and vtecRecord.get('sig') != 'A':
-                    ugcPhrase = self._tpc.getAreaPhrase(vtecRecord.get('id'))
+                    # Use same text in the summary headline as the locations
+                    # affected text when the hazard is not near any city.
+                    locationDicts = hazard.get('locationDicts')
+                    ugcPhrase = self._locationsAffectedFallBack(locationDicts)
                     hazStr += ' for ' + ugcPhrase
 
                 if len(hazStr):
@@ -650,8 +665,11 @@ class Format(FormatTemplate.Formatter):
 
                 # Add replaceStr
                 if len(replacedByList) > 0:
-                    replaceStr =  ' REPLACED BY '
                     names = self._tpc.formatDelimitedList(replacedByList, delimiter=', ')
+                    article = 'A'
+                    if re.match('[AaEeIiOoUu]', names):
+                        article = 'AN'
+                    replaceStr = ' HAS BEEN REPLACED WITH {} '.format(article)
                     replaceStr += names + '...'
                 elif len(replacesList) > 0:
                     replaceStr =  '\n...REPLACES '
@@ -667,8 +685,9 @@ class Format(FormatTemplate.Formatter):
                 # Could have multiple headlines per segment
                 if headlineStr:
                     headlineStr += '\n'
-                headlineStr += headline
-
+                # collapse any multiple spaces
+                headlineStr += re.sub(' +',' ',headline)
+            
         # All CAPS per Mixed Case Guidelines
         headlineStr = headlineStr.upper()
         self._setVal('summaryHeadlines', headlineStr, segmentDict, 'Summary Headlines', required=False)
@@ -682,8 +701,6 @@ class Format(FormatTemplate.Formatter):
     ###################### Section Level
 
     def _setUp_section(self, sectionDict):
-        self.attributionFirstBullet = AttributionFirstBulletText(
-            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, self.timezones)
         return ''
 
     def _endSection(self, sectionDict):
@@ -868,37 +885,40 @@ class Format(FormatTemplate.Formatter):
 
             # This is a optional bullet check to see if it should be included
             locationsAffectedChoice = hazardEventDict.get("locationsAffectedRadioButton", None)
-            if locationsAffectedChoice == "cityList":
-                immediateCause = hazardEventDict.get('immediateCause', None)
-                if immediateCause == 'DM' or immediateCause == 'DR':
-                    damOrLeveeName = hazardEventDict.get('damOrLeveeName')
-                    if damOrLeveeName:
-                        damInfo = self._damInfo().get(damOrLeveeName)
-                        if damInfo:
-                            # Scenario
-                            scenario = hazardEventDict.get('scenario')
-                            if scenario:
-                                scenarios = damInfo.get('scenarios')
-                                if scenarios:
-                                    scenarioText = scenarios.get(scenario)
-                                    if scenarioText:
-                                        locationsAffected += scenarioText + '\n\n'
-                            # Rule of Thumb
-                            ruleOfThumb = damInfo.get('ruleofthumb')
-                            if ruleOfThumb:
-                                locationsAffected += ruleOfThumb + '\n\n'
-
-                if not locationsAffected:
-                    phen = vtecRecord.get("phen")
-                    sig = vtecRecord.get("sig")
-                    geoType = hazardEventDict.get('geoType')
-                    if phen == "FF" :
-                        locationsAffected = "Some locations that will experience flash flooding include..."
-                    elif phen == "FA" or phen == "FL" :
-                        locationsAffected = "Some locations that will experience flooding include..."
-                    else :
-                        locationsAffected = "Locations impacted include..."
-                    locationsAffected += '\n  ' + self.createLocationsAffected(hazardEventDict)
+            if locationsAffectedChoice == "damInfo":
+                damOrLeveeName = hazardEventDict.get('damOrLeveeName')
+                if damOrLeveeName:
+                    damInfo = self._damInfo().get(damOrLeveeName)
+                    if damInfo:
+                        # Scenario
+                        scenarioText = None
+                        scenario = hazardEventDict.get('scenario')
+                        if scenario:
+                            scenarios = damInfo.get('scenarios')
+                            if scenarios:
+                                scenarioText = scenarios.get(scenario)
+                        if not scenarioText:
+                            scenarioText = "|* Enter Scenario Text *|" 
+                        locationsAffected += scenarioText + '\n\n'
+                        # Rule of Thumb
+                        ruleOfThumb = damInfo.get('ruleofthumb')
+                        if ruleOfThumb:
+                            locationsAffected += ruleOfThumb + '\n\n'
+                        else:
+                            locationsAffected += "|* Enter Rule of Thumb *|\n\n"
+                    else:
+                        locationsAffected += "|* Enter Scenario and Rule of Thumb Text *|\n\n"
+            elif locationsAffectedChoice == "cityList":
+                phen = vtecRecord.get("phen")
+                sig = vtecRecord.get("sig")
+                geoType = hazardEventDict.get('geoType')
+                if phen == "FF" :
+                    locationsAffected = "Some locations that will experience flash flooding include..."
+                elif phen == "FA" or phen == "FL" :
+                    locationsAffected = "Some locations that will experience flooding include..."
+                else :
+                    locationsAffected = "Locations impacted include..."
+                locationsAffected += '\n  ' + self.createLocationsAffected(hazardEventDict)
             elif locationsAffectedChoice == "pathcast":
                 locationDicts = hazardEventDict.get('locationDicts', None)
                 if locationDicts:
@@ -928,6 +948,11 @@ class Format(FormatTemplate.Formatter):
         '''
         typeToLocations = {}
 
+        # get duplicate UGC data from DuplicateUGCs.py
+        duplicateUGCs = self.bridge.getDuplicateUGCs()
+
+        useStates = False   # Should the state be included in the text?
+
         # For each UGC, build a string like:
         # Southeastern Montgomery
         # Eventually the type (e.g. "counties") will be appended to the list.
@@ -935,6 +960,10 @@ class Format(FormatTemplate.Formatter):
             ugc = entry.get('ugc')
             ugcType = entry.get('typeSingular')
             independentCityFlag = ugcType.startswith('independent city')
+
+            # If this UGC is in the list of UGCs with duplicate names in the
+            # same WFO, the state name should be included.
+            useStates |= (ugc in duplicateUGCs)
 
             pieces = []
 
@@ -957,39 +986,113 @@ class Format(FormatTemplate.Formatter):
             # cities and counties in the LWX CWA.  For each type, store the UGC
             # and the text string built above.
             if ugcType in typeToLocations:
-                locationUgcs, locations = typeToLocations.get(ugcType)
+                locationEntries, locations = typeToLocations.get(ugcType)
             else:
-                locationUgcs = []
+                locationEntries = []
                 locations = []
-            locationUgcs.append(ugc)
+            locationEntries.append(entry)
             locations.append(location)
-            typeToLocations[ugcType] = (locationUgcs, locations)
+            typeToLocations[ugcType] = (locationEntries, locations)
 
         # Now that all the text strings are built, combine them.
         types = typeToLocations.keys()
         locationsList = []
         for ugcType in types:
-            locationUgcs, locations = typeToLocations[ugcType]
+            locationEntries, locations = typeToLocations[ugcType]
 
-            # Join the locations and add the type (e.g. county (or plural)) to the end.
-            locationText = self._tpc.formatDelimitedList(locations, ', ')
+            boundaries = [(0, len(locationEntries))]
+            if useStates:
+                # Get start/end index of locations with common state and part
+                # of state info.
+                boundaries = self._calcLocationBoundaries(locationEntries)
 
-            independentCityFlag = ugcType.startswith('independent city')
-            if not independentCityFlag:
-                typeSingularOrPlural = 'typeSingular'
-                if len(locations) > 1:
-                    typeSingularOrPlural = 'typePlural'
-                # All the UGCs should be the same ugcType, so use [0].
-                ugcTypeStr = self._tpc.getInformationForUGC(locationUgcs[0], typeSingularOrPlural)
-                if ugcTypeStr:
-                    locationText += ' ' + ugcTypeStr
-
-            locationsList.append(locationText)
+            for boundary in boundaries:
+                (start, end) = boundary
+                locationText = self._joinLocationsWithType(ugcType, locationEntries[start:end], locations[start:end]);
+                if useStates:
+                    partOfState = locationEntries[start].get('ugcPartsOfState')
+                    state = locationEntries[start].get('fullStateName')
+                    if partOfState or state:
+                       locationText += ' in'
+                       if partOfState:
+                           locationText += ' {0}'.format(partOfState)
+                       if state:
+                           locationText += ' {0}'.format(state)
+                locationsList.append(locationText)
 
         # Now join the county list with the zone list with the independent city list etc
         locationsStr = self._tpc.formatDelimitedList(locationsList, ', ')
 
         return locationsStr
+
+    def _calcLocationBoundaries(self, locationEntries):
+        '''
+        Determines the boundary of each group of locations with a different
+        state or part of state.  Each tuple has a start and end value such that
+        locationEntries[start:end] is a group which has the same state and part
+        of state information. For example: [(0, 7), (7, 8), (8, 14), (14, 19),
+        (19, 26)].  The start index is inclusive while the end index is
+        exclusive.  The values may be used to slice the locationEntries list.
+        Each slice of locationEntries[start:end] contains elements with a
+        common state and part of state.
+
+        @param locationEntries List of dicts with info about each location
+                (state, part of state, etc).  Assumption: The list is ordered
+                by state and then part of state.
+        @return List of tuples with start/end index values for each group which
+                has the same state and part of state information.
+        '''
+        boundaries = []
+        if len(locationEntries) > 0:
+            prevPartsOfState = "NonExistentPartOfState"
+            prevState = "NonExistentState"
+            startSlice = -1
+            endSlice = -1
+
+            # Loop over each location entry and note when a new state or part
+            # of state begins.
+            for i in range(0, len(locationEntries)):
+                curPartsOfState = locationEntries[i].get('ugcPartsOfState')
+                curState = locationEntries[i].get('fullStateName')
+                if(prevPartsOfState != curPartsOfState or prevState != curState):
+                    if i != 0:
+                        # Record start/end of previous slice.
+                        boundaries.append((startSlice, endSlice))
+                    startSlice = i
+                endSlice = i+1
+                prevPartsOfState = curPartsOfState
+                prevState = curState
+            # Record the last slice explicitly because there is no following slice.
+            boundaries.append((startSlice, endSlice))
+
+        return boundaries
+
+    def _joinLocationsWithType(self, ugcType, locationEntries, locations):
+        '''
+        Joins each string into a comma delimited list and appends the
+        type of UGC.  For example:
+        "West Central Gage, Northeastern Jefferson and Southeastern Saline Counties"
+        @param ugcType The type of this UGC.  E.g. county
+        @param locationEntries List of dicts with info about each location
+                (state, part of state, etc)
+        @param locations List of locations.  E.g. "Southeastern Saline"
+        @return String with the provided locations joined together
+        '''
+        # Join the locations
+        locationText = self._tpc.formatDelimitedList(locations, ', ')
+
+        independentCityFlag = ugcType.startswith('independent city')
+        if not independentCityFlag:
+            typeSingularOrPlural = 'typeSingular'
+            if len(locations) > 1:
+                typeSingularOrPlural = 'typePlural'
+            # All the UGCs should be the same ugcType, so use [0].
+            ugcTypeStr = self._tpc.getInformationForUGC(locationEntries[0].get('ugc'), typeSingularOrPlural)
+            if ugcTypeStr:
+                # Add the type (e.g. county (or plural)) to the end.
+                locationText += ' ' + ugcTypeStr
+
+        return locationText
 
     def _additionalComments(self, sectionDict):
         # Get saved value from productText table if available
@@ -1076,9 +1179,9 @@ class Format(FormatTemplate.Formatter):
 
         # Get the times
         startTime = hazardDict.get('startTime')
-        startTimeMillis = self._tpc.getMillis(startTime)
+        startTimeMillis = TimeUtils.datetimeToEpochTimeMillis(startTime)
         endTime = hazardDict.get('endTime')
-        endTimeMillis = self._tpc.getMillis(endTime)
+        endTimeMillis = TimeUtils.datetimeToEpochTimeMillis(endTime)
 
         # Determine if the startTime is in the vtec string
         startTimePhrase = None
@@ -1102,7 +1205,7 @@ class Format(FormatTemplate.Formatter):
             text = "During " + endTimePhrase
         elif endTimePhrase:
             if startTimePhrase: 
-                issueTime = datetime.datetime.fromtimestamp(float(self._issueTime)/1000) # Local time
+                issueTime = datetime.datetime.utcfromtimestamp(float(self._issueTime)/1000)
                 tdelta = startTime - issueTime
                 if tdelta.days == 0 and tdelta.seconds <= 10800: # Case D
                     text = "Until " + endTimePhrase
@@ -1253,6 +1356,9 @@ class Format(FormatTemplate.Formatter):
             # Note there should only be one section with one hazard to process
             for section in segment.get('sections', []):
                 for hazard in section.get('hazardEvents', []):
+                    if hazard.get('phen') in [ 'FL' ] and hazard.get('sig') in [ 'A', 'W' ]:
+                        # the headline in river flood products should contain both the city and state
+                        nwsPhrase = 'The National Weather Service in ' + self._wfoCityState
                     riverName = hazard.get('riverName_GroupName')
                     proximity = hazard.get('proximity')
                     replacement = hazard.get('replacedBy', False)

@@ -44,6 +44,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtiliti
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
+import com.raytheon.uf.common.hazards.configuration.ServerConfigLookupProxy;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
@@ -93,6 +94,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -141,6 +143,7 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView;
 import gov.noaa.gsd.viz.hazards.tools.ToolsPresenter;
 import gov.noaa.gsd.viz.hazards.tools.ToolsView;
+import gov.noaa.gsd.viz.hazards.ui.HazardServicesPerspectiveListener;
 import gov.noaa.gsd.viz.hazards.ui.QuestionDialog;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 import gov.noaa.gsd.viz.mvp.IMainUiContributor;
@@ -267,6 +270,8 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             handler threads, so as to avoid messages arriving out
  *                                             of order.
  * Aug 24, 2016 21424      Kevin.Bisanz        Updated wording/formatting of hazard conflict dialog.
+ * Oct 05, 2016 22300      Kevin.Bisanz        Add call to HazardServicesPerspectiveListener.
+ *                                             initializeListener(..).
  * Oct 05, 2016 22870      Chris.Golden        Added support for event-driven tools triggered
  *                                             by frame changes. This involves tracking which frame
  *                                             changes are caused by H.S. asking for them, and which
@@ -280,6 +285,10 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             just the end of said range. Also added refresh of the
  *                                             spatial display when the frame is changed (without this,
  *                                             the display does not always show the new frame).
+ * Oct 10, 2016 22300      Kevin.Bisanz        Added shouldOpenHsInPerspective(..) to fix HS being open
+ *                                             in Localization. Also moved code in perspectiveActivated
+ *                                             into a Runnable to fix the "PartRenderingEngine limbo"
+ *                                             issue.
  * Oct 11, 2016 21873      Chris.Golden        Fixed bug that caused null pointer exceptions in some
  *                                             cases when switching perspectives. Also changed the
  *                                             choosing of a D2D frame in response to a selected time
@@ -287,12 +296,15 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             ever be a frame with a reference time later than the
  *                                             selected time; it has to be at the selected time or,
  *                                             failing that, the most recent frame before that.
+ * Oct 12, 2016 21424      Kevin.Bisanz        When issuing, only display conflicts involving
+ *                                             selected events.
  * Nov 15, 2016 26331      Chris.Golden        Fixed bug that manifested when importing a previously
  *                                             exported CAVE perspective display; a null pointer
  *                                             exception would occur because the spatial display's
  *                                             descriptor parameter would not yet be non-null. The
  *                                             fix was to have it asynchronously attempt to register
  *                                             again later.
+ * Dec 02, 2016 26624      bkowal              Initialize a {@link ServerConfigLookupProxy} instance.
  * Feb 01, 2017 15556      Chris.Golden        Minor changes to support console refactor, including
  *                                             implementation of the new console handler and
  *                                             hazard detail handler interfaces. Also moved methods
@@ -311,6 +323,9 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             that IMessenger interface implementations of methods
  *                                             that do not return anything are executed using the UI
  *                                             thread.
+ * Aug 15, 2017 22757      Chris.Golden        Added ability for recommenders to specify either a
+ *                                             message to display, or a dialog to display, with their
+ *                                             results (that is, within the returned event set).
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -699,6 +714,9 @@ public class HazardServicesAppBuilder
     private void initialize(SpatialDisplay spatialDisplay) {
         this.spatialDisplay = spatialDisplay;
 
+        ServerConfigLookupProxy
+                .initInstance(new VizServerConfigLookupWrapper());
+
         /*
          * Add an error handler so that any uncaught exceptions within message
          * handlers are output using the status handler as an error.
@@ -1001,6 +1019,29 @@ public class HazardServicesAppBuilder
                     VisualFeaturesList visualFeatures) {
                 spatialPresenter.setToolVisualFeatures(type, tool, context,
                         visualFeatures);
+            }
+
+            @Override
+            public void showToolResults(final String tool, final ToolType type,
+                    RecommenderExecutionContext context,
+                    final Map<String, Serializable> dialogResults) {
+                if (Display.getDefault().getThread() == Thread
+                        .currentThread()) {
+                    Dict dict = new Dict();
+                    for (String parameter : dialogResults.keySet()) {
+                        dict.put(parameter, dialogResults.get(parameter));
+                    }
+                    toolsPresenter.showToolResults(tool, type, context,
+                            dict.toJSONString());
+                } else {
+                    Display.getDefault().asyncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            showToolResults(tool, type, context, dialogResults);
+                        }
+                    });
+                }
             }
         };
 
@@ -2012,10 +2053,20 @@ public class HazardServicesAppBuilder
 
         ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
                 .getEventManager();
+        ISessionSelectionManager<ObservedHazardEvent> sessionSelectionManager = sessionManager
+                .getSelectionManager();
 
         Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = null;
         try {
+            List<ObservedHazardEvent> selectedEvents = sessionSelectionManager
+                    .getSelectedEvents();
             conflictMap = sessionEventManager.getAllConflictingEvents();
+
+            /*
+             * Keep only conflicts which are selected events. Modifying the
+             * map's key set reflects the changes in the map itself.
+             */
+            conflictMap.keySet().retainAll(selectedEvents);
         } catch (HazardEventServiceException e) {
             statusHandler.error("Could not get map of all conflicting events; "
                     + "assuming should not continue.", e);
@@ -2035,8 +2086,8 @@ public class HazardServicesAppBuilder
     }
 
     @Override
-    public void perspectiveActivated(IWorkbenchPage page,
-            IPerspectiveDescriptor perspective) {
+    public void perspectiveActivated(final IWorkbenchPage page,
+            final IPerspectiveDescriptor perspective) {
         statusHandler.debug("HazardServicesAppBuilder.perspectiveActivated(): "
                 + "perspective activated: page = " + page + ", perspective = "
                 + perspective.getDescription());
@@ -2047,7 +2098,8 @@ public class HazardServicesAppBuilder
          */
         AbstractEditor activeEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
-        if (activeEditor == null) {
+        if (activeEditor == null
+                || shouldOpenHsInPerspective(perspective) == false) {
             closeHazardServices("Hazard Services cannot run in the "
                     + perspective.getLabel()
                     + " perspective, and must therefore shut down.");
@@ -2055,105 +2107,166 @@ public class HazardServicesAppBuilder
         }
 
         /*
-         * Recreate the console and the hazard detail views. The latter is done
-         * asynchronously because from Eclipse 4.x appears to throw a null
-         * pointer exception if it is done within this method's body.
-         */
-        createConsole(false, true);
-        VizApp.runAsync(new Runnable() {
-            public void run() {
-                createHazardDetailDisplay(false);
-            }
-        });
-
-        /*
-         * Ensure that the selected time is synchronized with the current frame.
+         * The majority of this method is in a Runnable to work around the
+         * "PartRenderingEngine limbo" issue discovered in Eclipse 4.
+         *
+         * The issue is that sometimes old views from the old perspective become
+         * visible.
+         *
+         * When the HID is detached in the D2D perspective, switching to Hydro
+         * and back will cause Eclipse to enter a limbo state about 50% of the
+         * time. It seems to be the case that the order that listeners are fired
+         * in is not well defined and sometimes this perspectiveActivated is
+         * called before the internal Eclipse code has finished.
+         * Showing/creating views in this state causes issues. It seems that
+         * Eclipse is parenting views to the limbo shell and then making those
+         * views visible.
+         *
+         * Running this in a Runnable delays the Hazard Services code and allows
+         * the Eclipse code to finish (because Eclipse won't run anything from
+         * the run queue until it has finished firing all of its listeners).
+         *
+         * https://bugs.eclipse.org/bugs/show_bug.cgi?id=473278
          */
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {
-                handleFrameChange();
-            }
-        });
 
-        /*
-         * Ensure this object no longer listens for frame changes with the old
-         * spatial display's descriptor.
-         */
-        spatialDisplay.getDescriptor().removeFrameChangedListener(this);
+                /*
+                 * Removed when the page is closed, inside the listener.
+                 */
+                HazardServicesPerspectiveListener.initializeListener(page);
 
-        /*
-         * Get the tool layer data from the old tool layer, and delete the
-         * latter.
-         * 
-         * Note: The current implementation creates and destroys the resource
-         * every time the user switches from one perspective to another. This
-         * occurs even if the original perspective remains open. As a result,
-         * resources are constantly created and destroyed as the user switches
-         * from perspective to perspective. This would not normally be a
-         * requirement for a simple abstract viz resource. However, in this
-         * implementation everything has been so tightly coupled together. And
-         * this is despite all of the component-to-component messaging (rather
-         * than direction interaction) that occurs.
-         */
-        spatialDisplay.perspectiveChanging();
-        SpatialDisplayResourceData spatialDisplayResourceData = (SpatialDisplayResourceData) spatialDisplay
-                .getResourceData();
-        spatialDisplay.dispose();
-        unacknowledgedFrameTimeChanges.clear();
+                /*
+                 * Recreate the console and the hazard detail views.
+                 */
+                createConsole(false, true);
+                createHazardDetailDisplay(false);
 
-        /*
-         * Create a new tool layer for the new perspective.
-         */
-        try {
-            IDescriptor descriptor = perspectiveDescriptorMap.get(perspective);
-            if (descriptor == null) {
-                AbstractEditor abstractEditor = EditorUtil
-                        .getActiveEditorAs(AbstractEditor.class);
-                if (abstractEditor != null) {
-                    IDisplayPane displayPane = abstractEditor
-                            .getActiveDisplayPane();
-                    if (displayPane != null) {
-                        descriptor = displayPane.getDescriptor();
+                /*
+                 * Ensure that the selected time is synchronized with the
+                 * current frame.
+                 */
+                VizApp.runAsync(new Runnable() {
+                    @Override
+                    public void run() {
+                        handleFrameChange();
                     }
+                });
+
+                /*
+                 * Ensure this object no longer listens for frame changes with
+                 * the old spatial display's descriptor.
+                 */
+                spatialDisplay.getDescriptor().removeFrameChangedListener(
+                        HazardServicesAppBuilder.this);
+
+                /*
+                 * Get the tool layer data from the old tool layer, and delete
+                 * the latter.
+                 * 
+                 * Note: The current implementation creates and destroys the
+                 * resource every time the user switches from one perspective to
+                 * another. This occurs even if the original perspective remains
+                 * open. As a result, resources are constantly created and
+                 * destroyed as the user switches from perspective to
+                 * perspective. This would not normally be a requirement for a
+                 * simple abstract viz resource. However, in this implementation
+                 * everything has been so tightly coupled together. And this is
+                 * despite all of the component-to-component messaging (rather
+                 * than direction interaction) that occurs.
+                 */
+                spatialDisplay.perspectiveChanging();
+                SpatialDisplayResourceData spatialDisplayResourceData = (SpatialDisplayResourceData) spatialDisplay
+                        .getResourceData();
+                spatialDisplay.dispose();
+                unacknowledgedFrameTimeChanges.clear();
+
+                /*
+                 * Create a new tool layer for the new perspective.
+                 */
+                try {
+                    IDescriptor descriptor = perspectiveDescriptorMap
+                            .get(perspective);
+                    if (descriptor == null) {
+                        AbstractEditor abstractEditor = EditorUtil
+                                .getActiveEditorAs(AbstractEditor.class);
+                        if (abstractEditor != null) {
+                            IDisplayPane displayPane = abstractEditor
+                                    .getActiveDisplayPane();
+                            if (displayPane != null) {
+                                descriptor = displayPane.getDescriptor();
+                            }
+                        }
+                    }
+                    spatialDisplay = spatialDisplayResourceData
+                            .construct(new LoadProperties(), descriptor);
+                } catch (VizException e1) {
+                    statusHandler.error("Error creating spatial display", e1);
+                }
+
+                /*
+                 * Create a new spatial view for the new tool layer.
+                 */
+                addSpatialDisplayResourceToPerspective();
+
+                /*
+                 * Make this object listen for frame changes with the new
+                 * spatial display's descriptor.
+                 */
+                addFrameChangedListener();
+
+                /*
+                 * Rebuild the console menubar.
+                 */
+                buildMenuBar();
+
+                /*
+                 * Rebuild the console toolbar.
+                 */
+                buildToolBar();
+
+                /*
+                 * Update the spatial display.
+                 */
+                spatialPresenter.updateAllDisplayables(true);
+
+                if (perspectiveDescriptorMap
+                        .containsKey(perspective) == false) {
+                    perspectiveDescriptorMap.put(perspective,
+                            spatialDisplay.getDescriptor());
                 }
             }
-            spatialDisplay = spatialDisplayResourceData
-                    .construct(new LoadProperties(), descriptor);
-        } catch (VizException e1) {
-            statusHandler.error("Error creating spatial display", e1);
+        });
+    }
+
+    /**
+     * @param perspective
+     * @return True if Hazard Services should be shown in the provided
+     *         perspective, false otherwise.
+     */
+    private boolean shouldOpenHsInPerspective(
+            IPerspectiveDescriptor perspective) {
+        String perspectiveId = perspective.getId();
+        boolean retval = true;
+        /*
+         * Don't open HS in the Localization perspective. This value is from
+         * com.raytheon.uf.viz.localization.perspective.LocalizationPerspective.
+         * ID. The constant isn't reference to avoid having Hazard Services
+         * require Localization in the manifest.
+         */
+        if (perspectiveId
+                .equals("com.raytheon.uf.viz.ui.LocalizationPerspective")) {
+            /*
+             * After https://cm1.oma.us.ray.com/redmine/issues/5929 is fixed,
+             * the following code should work again: AbstractEditor activeEditor
+             * = EditorUtil .getActiveEditorAs(AbstractEditor.class); if
+             * (activeEditor == null) return; }
+             */
+            retval = false;
         }
 
-        /*
-         * Create a new spatial view for the new tool layer.
-         */
-        addSpatialDisplayResourceToPerspective();
-
-        /*
-         * Make this object listen for frame changes with the new spatial
-         * display's descriptor.
-         */
-        addFrameChangedListener();
-
-        /*
-         * Rebuild the console menubar.
-         */
-        buildMenuBar();
-
-        /*
-         * Rebuild the console toolbar.
-         */
-        buildToolBar();
-
-        /*
-         * Update the spatial display.
-         */
-        spatialPresenter.updateAllDisplayables(true);
-
-        if (perspectiveDescriptorMap.containsKey(perspective) == false) {
-            perspectiveDescriptorMap.put(perspective,
-                    spatialDisplay.getDescriptor());
-        }
+        return retval;
     }
 
     @Override

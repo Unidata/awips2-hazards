@@ -22,6 +22,8 @@ segments, VTEC codes, HVTEC codes, and vtecRecords.
 #    Mar 08, 2016    15016        Kevin.Bisanz    Verify VTEC of FL.A has
 #                                                 floodSeverity=0 in
 #                                                 _convertEventsToVTECrecords(...)
+#    Sep 15, 2016    19147        Robert.Blum     Defaulting TZ environment variable to GMT.
+#    Nov 02, 2016    22975        Robert.Blum     Fixed issue with incorrect PILs when working with FLW and FLS products.
 #
     
 
@@ -77,6 +79,9 @@ class VTECEngine(VTECTableUtil):
           only used in places where there are multiple products for the same
           hazard types issued at an office.  Example: PAFG (Fairbanks, AK).
         '''
+
+        # To ensure time calls are based on Zulu
+        os.environ['TZ'] = "GMT0"
 
         VTECTableUtil.__init__(self)
         # save data
@@ -382,11 +387,10 @@ class VTECEngine(VTECTableUtil):
         '''
         vtecRecords = self.getVtecRecords(segment)
         for vtecRecord in vtecRecords:
-            hazardEvent = None
             for hazardEvent in self._hazardEvents:
-                if hazardEvent.getEventID() == vtecRecord.get('eventID'):
+                if hazardEvent.getEventID() in vtecRecord.get('eventID', set()):
+                    vtecRecord['pil'] = Pil(self._productCategory, vtecRecord, hazardEvent).getPil()
                     break
-            vtecRecord['pil'] = Pil(self._productCategory, vtecRecord, hazardEvent).getPil()
         
     def _calcVTECString(self, segment):
         '''Calculates the P-VTEC and H-VTEC strings for the segment.
@@ -1249,8 +1253,10 @@ class VTECEngine(VTECTableUtil):
 
                 d['hvtec'] = hvtec
 
+                # mktime works since TZ is explicitly set to GMTO
                 d['startTime'] = float(time.mktime(hazardEvent.getStartTime().timetuple()))
 
+                # mktime works since TZ is explicitly set to GMTO
                 d['endTime'] = float(time.mktime(hazardEvent.getEndTime().timetuple()))
 
                 d['act'] = '???'   #Determined after merges

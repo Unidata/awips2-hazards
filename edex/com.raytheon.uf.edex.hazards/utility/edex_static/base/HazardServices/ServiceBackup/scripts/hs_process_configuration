@@ -5,6 +5,11 @@
 # This is run at the backup site to import the backed up site's Hazard Services
 # site configuration into the localization store.
 ##############################################################################
+
+# This script can be executed by root or the following user.  Paths will be
+# chown'd to this user.
+nonRootUser=awips
+
 if [ ${#AWIPS_HOME} = 0 ]
 then
     AWIPS_HOME=/awips2
@@ -12,7 +17,23 @@ fi
 
 source ${AWIPS_HOME}/edex/data/utility/edex_static/base/HazardServices/ServiceBackup/configuration/svcbu.properties
 source ${HS_SCRIPTS_DIR}/serviceBackupUtil.sh
-HS_SVC_CFG_TAR_PREFIX=HazardServicesConfig
+
+# When exiting the script, run this function.
+function onExit {
+    # If the task is still in progress by this PID, we didn't hit the
+    # markTaskSuccess at the end.  So mark the task as failed.
+    lock_file=$(getLockFile "hs_process_configuration" ${SITE_ID})
+    lock_status=$(isOperationInProgressByMe "hs_process_configuration" ${SITE_ID})
+    if [[ "${lock_status}" = "true" ]]
+    then
+        markTaskFailed ${lock_file}
+    fi
+}
+trap onExit EXIT
+
+HS_SVC_CFG_TAR_PREFIX=HazardServicesServiceBackup
+HS_CFG_DIR=HazardServicesConfig
+HS_DB_DIR=HazardServicesDatabase
 
 # $1 = Path to packaged configuration data from MHS
 import_file=${1}
@@ -42,17 +63,11 @@ USER=$(whoami)
 if [ $USER = "root" ]
 then
     echo "Running script as root"
-elif [ $USER = "awips" ]
+elif [ $USER = $nonRootUser ]
 then
-    echo "Running script as user awips" 
+    echo "Running script as user $nonRootUser"
 else
-    echo "Script must be run as user root or awips"
-    markTaskFailed ${lock_file}
-    exit 1
-fi
-
-if [ ${#SITE_IDENTIFIER} = 0 ]; then
-    echo "Mandatory variable: SITE_IDENTIFIER unset. Program exits."
+    echo "Script must be run as user root or $nonRootUser"
     markTaskFailed ${lock_file}
     exit 1
 fi
@@ -75,12 +90,6 @@ else
 fi
 
 HS_SVC_BKUP_FILENAME=$(basename ${import_file})
-
-if [ ${CAPS_SITE_ID} = ${SITE_IDENTIFIER} ]; then
-    echo "Cannot import Backup Site Data for the Local Site Id ${SITE_IDENTIFIER}"
-    markTaskFailed ${lock_file}
-    exit 1
-fi
 
 # Retrieve the Site File for the Site to Backup
 OUTPUT_DIR=$(getTempDirectory "hs_process_configuration" ${SITE_ID})
@@ -108,68 +117,79 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+doImportConfig=0
+doImportDatabase=0
 echo "Checking format of received configuration data..."
-if [ -d ${HS_SVC_CFG_TAR_PREFIX} ]; then
+if [ -d ${HS_CFG_DIR} ]; then
     echo "AWIPS II configuration received.  OK to proceed!"
-else
-    echo "Incorrectly formatted configuration received.  Cannot continue!"
+    doImportConfig=1
+fi
+if [ -d ${HS_DB_DIR} ]; then
+    echo "AWIPS II database information received.  OK to proceed!"
+    doImportDatabase=1
+fi
+if [ $doImportConfig = 0 ] && [ $doImportDatabase = 0 ]; then
+    echo "Incorrectly formatted file received.  Cannot continue!"
     markTaskFailed ${lock_file}
     exit 1
 fi
 
-echo "Checking if localization directories exist for ${CAPS_SITE_ID}"
-edex_configured_dest=${LOCALIZATION_PATH}/edex_static/configured/${CAPS_SITE_ID}/
-edex_site_dest=${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/
-common_configured_dest=${LOCALIZATION_PATH}/common_static/configured/${CAPS_SITE_ID}/
-common_site_dest=${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/
+if [ $doImportConfig = 1 ]; then
+   echo "Checking if localization directories exist for ${CAPS_SITE_ID}"
+   edex_site_dest=${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/
+   common_site_dest=${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/
 
-if [ -d ${edex_configured_dest} ]; then
-    echo "edex_static configured directory exists for ${CAPS_SITE_ID}"
-else
-    echo "Creating edex_static configured directory for ${CAPS_SITE_ID}" 
-    mkdir -p ${edex_configured_dest}
+   if [ -d ${edex_site_dest} ]; then
+      echo "edex_static site directory exists for ${CAPS_SITE_ID}"
+   else
+      echo "Creating edex_static site directory for ${CAPS_SITE_ID}"
+      mkdir -p ${edex_site_dest}
+   fi
+
+   if [ -d ${common_site_dest} ]; then
+      echo "common_static site directory exists for ${CAPS_SITE_ID}"
+   else
+      echo "Creating common_static site directory for ${CAPS_SITE_ID}"
+      mkdir -p ${common_site_dest}
+   fi
+
+   echo "${CAPS_SITE_ID}'s localization directories have been verified"
+
+   echo "Copying ${OUTPUT_DIR}/${HS_CFG_DIR}/${CAPS_SITE_ID} files into localization directories"
+   cp -r ${OUTPUT_DIR}/${HS_CFG_DIR}/edex_static/site/${CAPS_SITE_ID}/HazardServices ${edex_site_dest}
+   cp -r ${OUTPUT_DIR}/${HS_CFG_DIR}/common_static/site/${CAPS_SITE_ID}/HazardServices  ${common_site_dest}
+   echo "Files successfully copied!"
 fi
 
-if [ -d ${edex_site_dest} ]; then
-    echo "edex_static site directory exists for ${CAPS_SITE_ID}"
-else
-    echo "Creating edex_static site directory for ${CAPS_SITE_ID}" 
-    mkdir -p ${edex_site_dest}
+
+if [ $doImportDatabase = 1 ]; then
+   echo "Creating database table import directories if not present"
+   database_dest_temp=${HS_EDEX_DATA_SVCBU_DB}/.svcbutemporary
+   database_dest_final=${HS_EDEX_DATA_SVCBU_DB}
+   mkdir -p ${database_dest_temp}
+   mkdir -p ${database_dest_final}
+
+   echo "Moving database files into directory"
+   cp ${OUTPUT_DIR}/${HS_DB_DIR}/* ${database_dest_temp}
+   # To prevent the deserialization from reading partial files, use a mv since it
+   # should be atomic (if directories are on the same file system).
+   mv ${database_dest_temp}/* ${database_dest_final}
+   rmdir ${database_dest_temp}
+   echo "Files successfully copied!"
 fi
-
-if [ -d ${common_configured_dest} ]; then
-    echo "common_static configured directory exists for ${CAPS_SITE_ID}"
-else
-    echo "Creating common_static configured directory for ${CAPS_SITE_ID}"
-    mkdir -p ${common_configured_dest}
-fi
-
-if [ -d ${common_site_dest} ]; then
-    echo "common_static site directory exists for ${CAPS_SITE_ID}"
-else
-    echo "Creating common_static site directory for ${CAPS_SITE_ID}"
-    mkdir -p ${common_site_dest}
-fi
-
-echo "${CAPS_SITE_ID}'s localization directories have been verified"
-
-echo "Copying ${OUTPUT_DIR}/${HS_SVC_CFG_TAR_PREFIX}/${CAPS_SITE_ID} files into localization directories under ${edex_configured_dest}"
-cp -r ${OUTPUT_DIR}/${HS_SVC_CFG_TAR_PREFIX}/edex_static/configured/${CAPS_SITE_ID}/HazardServices ${edex_configured_dest}
-cp -r ${OUTPUT_DIR}/${HS_SVC_CFG_TAR_PREFIX}/edex_static/site/${CAPS_SITE_ID}/HazardServices ${edex_site_dest}
-cp -r ${OUTPUT_DIR}/${HS_SVC_CFG_TAR_PREFIX}/common_static/configured/${CAPS_SITE_ID}/HazardServices ${common_configured_dest}
-cp -r ${OUTPUT_DIR}/${HS_SVC_CFG_TAR_PREFIX}/common_static/site/${CAPS_SITE_ID}/HazardServices  ${common_site_dest}
-echo "Files successfully copied!"
 
 echo "Changing ownership of received configuration"
 if [ $USER = "root" ]
 then
-    chown -R awips:fxalpha ${LOCALIZATION_PATH}/edex_static/configured/${CAPS_SITE_ID}/HazardServices
-    chown -R awips:fxalpha ${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/HazardServices
-    chown -R awips:fxalpha ${LOCALIZATION_PATH}/common_static/configured/${CAPS_SITE_ID}/HazardServices
-    chown -R awips:fxalpha ${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/HazardServices
-elif [ $USER = "awips" ]
+    chown -R $nonRootUser:fxalpha ${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/HazardServices
+    chown -R $nonRootUser:fxalpha ${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/HazardServices
+    chown -R $nonRootUser:fxalpha ${HAZARD_SERVICES_LOG}
+    chown -R $nonRootUser:fxalpha ${HS_LOCK_DIR}
+    chown -R $nonRootUser:fxalpha ${HS_EDEX_DATA_SVCBU_DB}
+    chown -R $nonRootUser:fxalpha ${HS_SVCBU_HOME}
+elif [ $USER = "$nonRootUser" ]
 then
-    echo "Files already owned by awips"
+    echo "Files already owned by $nonRootUser"
 fi
 
 # Cleanup

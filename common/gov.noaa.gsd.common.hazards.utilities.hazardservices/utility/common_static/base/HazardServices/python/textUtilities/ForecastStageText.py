@@ -31,6 +31,7 @@
     Jul 28, 2016    20385  Ben.Phillippe     When no forecast present, changed wording to "A forecast is not
                                              available at this time"
     Aug 16, 2016    15017  Robert.Blum       Updates to variable names.
+    Oct 26, 2016    22580  Mark.Fegan        Match Forecast Text on replaced products to new product.
 
     @author Tracy.L.Hansen@noaa.gov
 '''
@@ -68,6 +69,7 @@ class ForecastStageText(object):
         self.sig = hazardDict.get('sig')
         self.primaryPE = hazardDict.get('primaryPE')
         self.pointID = hazardDict.get('pointID')
+        self.replacedBy = hazardDict.get('replacedBy')
 
 
         # ForecastCrestStage
@@ -187,7 +189,12 @@ class ForecastStageText(object):
         if self.fcstFallFSTime_str == None and self.fcstRiseFSTime_str == None:
             crestOnly = True
 
-        # Determine which template method to use
+        # determine if this product is being replaced
+        replaced = True
+        if not self.replacedBy:
+            replaced = False
+
+         # Determine which template method to use
         bulletText = ''
         if self.maxForecastStage == None or self.maxForecastStage == MISSING_VALUE:
             if self.pil == "FLW":
@@ -220,11 +227,11 @@ class ForecastStageText(object):
                 else:
                     bulletText = self.VTEC_FLS_NONFFX_FLOW()
 
-        elif self.sig == "Y":
-            #bulletText = self.VTEC_FLOOD_ADVISORY()
+        elif self.sig == "Y" and not replaced:
+           #bulletText = self.VTEC_FLOOD_ADVISORY()
             bulletText = self.VTEC_FLD_ADVISORY()
 
-        elif self.sig == "A":
+        elif self.sig == "A" and not replaced:
             bulletText = self.VTEC_FLOOD_WATCH()
 
         elif self.HP0FFXNext and self.HP0FFXNextTime:

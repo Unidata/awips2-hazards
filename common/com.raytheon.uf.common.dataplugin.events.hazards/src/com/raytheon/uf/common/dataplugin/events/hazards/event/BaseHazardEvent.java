@@ -21,10 +21,6 @@ package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.VisualFeature;
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -34,7 +30,13 @@ import java.util.Map;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil.IdDisplayType;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * An {@link IHazardEvent} that has no storage annotations, rather, it can be
@@ -71,6 +73,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      geometries instead of JTS geometries.
  * Sep 21, 2016 15934      Chris.Golden Changed to work with new version of
  *                                      AdvancedGeometryUtilities.
+ * Oct 27, 2016 22956     Ben.Phillippe Changed getDisplayEventID to use
+ *                                      FULL_ON_DIFF.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag. Also
  *                                      added insert time record.
  * Feb 16, 2017 29138      Chris.Golden Removed the visible-in-history-list flag
@@ -189,8 +193,8 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public VisualFeature getVisualFeature(String identifier) {
-        return (visualFeatures == null ? null : visualFeatures
-                .getByIdentifier(identifier));
+        return (visualFeatures == null ? null
+                : visualFeatures.getByIdentifier(identifier));
     }
 
     @Override
@@ -220,7 +224,8 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public String getDisplayEventID() {
-        return (HazardServicesEventIdUtil.getDisplayId(getEventID()));
+        return HazardServicesEventIdUtil.getDisplayId(getEventID(),
+                IdDisplayType.FULL_ON_DIFF);
     }
 
     @Override

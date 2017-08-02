@@ -52,6 +52,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jul 19, 2016   19207    Robert.Blum  Changes to view products for specific events.
  * Aug 26, 2016   19223    Kevin.Bisanz Changes to get correctable products for
  *                                      specific events.
+ * Nov 07, 2016 22119      Kevin.Bisanz Changes to export/import product data by officeID.
  * 
  * </pre>
  * 
@@ -61,7 +62,7 @@ import com.raytheon.uf.common.status.UFStatus;
 
 public class ProductDataUtil {
 
-    private static final IUFStatusHandler handler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductDataUtil.class);
 
     /**
@@ -70,6 +71,7 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
+     * @param officeID
      * @param issueTime
      * @param data
      * @param editableEntries
@@ -77,13 +79,13 @@ public class ProductDataUtil {
      */
     public static ProductDataResponse createProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
-            Date issueTime, Map<String, Serializable> data,
+            String officeID, Date issueTime, Map<String, Serializable> data,
             List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, issueTime, data, editableEntries,
+                eventIDs, officeID, issueTime, data, editableEntries,
                 ProductRequestType.CREATE, null);
         if (response.getExceptions() != null) {
-            handler.error(
+            statusHandler.error(
                     "Unable to store product data, most likely the database already contains an entry",
                     response.getExceptions());
         }
@@ -96,6 +98,7 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
+     * @param officeID
      * @param issueTime
      * @param data
      * @param editableEntries
@@ -103,13 +106,13 @@ public class ProductDataUtil {
      */
     public static ProductDataResponse updateProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
-            Date issueTime, Map<String, Serializable> data,
+            String officeID, Date issueTime, Map<String, Serializable> data,
             List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, issueTime, data, editableEntries,
+                eventIDs, officeID, issueTime, data, editableEntries,
                 ProductRequestType.UPDATE, null);
         if (response.getExceptions() != null) {
-            handler.error(
+            statusHandler.error(
                     "Unable to update product data, most likely the database does not contain a matching entry",
                     response.getExceptions());
         }
@@ -127,9 +130,10 @@ public class ProductDataUtil {
     public static ProductDataResponse deleteProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, null, null, null, ProductRequestType.DELETE, null);
+                eventIDs, null, null, null, null, ProductRequestType.DELETE,
+                null);
         if (response.getExceptions() != null) {
-            handler.error(
+            statusHandler.error(
                     "Unable to delete product data, most likely the database does not contain a matching entry",
                     response.getExceptions());
         }
@@ -147,11 +151,51 @@ public class ProductDataUtil {
     public static List<ProductData> retrieveProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, null, null, null, ProductRequestType.RETRIEVE, null);
+                eventIDs, null, null, null, null, ProductRequestType.RETRIEVE,
+                null);
         if (response != null && response.getData() != null) {
             return response.getData();
         }
         return new ArrayList<ProductData>();
+    }
+
+    /**
+     * Sends a request to EDEX that exports data
+     *
+     * @param mode
+     * @param productGeneratorName
+     * @param eventIDs
+     * @param officeID
+     * @param filePath
+     * @return
+     */
+    public static ProductDataResponse exportProductData(String mode,
+            String productGeneratorName, ArrayList<String> eventIDs,
+            String officeID, String filePath) {
+        ProductDataResponse response = sendRequest(mode, productGeneratorName,
+                eventIDs, officeID, null, null, null, ProductRequestType.EXPORT,
+                null, filePath);
+        if (response.getExceptions() != null) {
+            statusHandler.error("Unable to export product data",
+                    response.getExceptions());
+        }
+        return response;
+    }
+
+    /**
+     * Sends a request to EDEX that imports data
+     *
+     * @param filePath
+     * @return
+     */
+    public static ProductDataResponse importProductData(String filePath) {
+        ProductDataResponse response = sendRequest(null, null, null, null, null,
+                null, null, ProductRequestType.IMPORT, null, filePath);
+        if (response.getExceptions() != null) {
+            statusHandler.error("Unable to import product data",
+                    response.getExceptions());
+        }
+        return response;
     }
 
     /**
@@ -180,7 +224,7 @@ public class ProductDataUtil {
             String mode, Date currentTime, List<IHazardEvent> events) {
         ArrayList<String> eventIDs = getEventIdsFromEvents(events);
         ProductDataResponse response = sendRequest(mode, null, eventIDs, null,
-                null, null, ProductRequestType.RETRIEVE_CORRECTABLE,
+                null, null, null, ProductRequestType.RETRIEVE_CORRECTABLE,
                 currentTime);
         if (response != null && response.getData() != null) {
             return response.getData();
@@ -194,6 +238,7 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
+     * @param officeID
      * @param issueTime
      * @param data
      * @param editableEntries
@@ -201,13 +246,13 @@ public class ProductDataUtil {
      */
     public static ProductDataResponse createOrUpdateProductData(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
-            Date issueTime, Map<String, Serializable> data,
+            String officeID, Date issueTime, Map<String, Serializable> data,
             List<EditableEntryMap> editableEntries) {
         ProductDataResponse response = sendRequest(mode, productGeneratorName,
-                eventIDs, issueTime, data, editableEntries,
+                eventIDs, officeID, issueTime, data, editableEntries,
                 ProductRequestType.SAVE_OR_UPDATE, null);
         if (response.getExceptions() != null) {
-            handler.error("Unable to store product data",
+            statusHandler.error("Unable to store product data",
                     response.getExceptions());
         }
         return response;
@@ -238,7 +283,7 @@ public class ProductDataUtil {
             String mode, Date currentTime, Collection<String> eventIdentifiers) {
         ProductDataResponse response = sendRequest(mode, null,
                 (eventIdentifiers == null ? null : new ArrayList<>(
-                        eventIdentifiers)), null, null, null,
+                eventIdentifiers)), null, null, null, null,
                 ProductRequestType.RETRIEVE_VIEWABLE, currentTime);
         if (response != null && response.getData() != null) {
             return response.getData();
@@ -252,6 +297,7 @@ public class ProductDataUtil {
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
+     * @param officeID
      * @param issueTime
      * @param data
      * @param editableEntries
@@ -262,19 +308,45 @@ public class ProductDataUtil {
      */
     private static ProductDataResponse sendRequest(String mode,
             String productGeneratorName, ArrayList<String> eventIDs,
-            Date issueTime, Map<String, Serializable> data,
+            String officeID, Date issueTime, Map<String, Serializable> data,
             List<EditableEntryMap> editableEntries, ProductRequestType type,
             Date currentTime) {
+        return sendRequest(mode, productGeneratorName, eventIDs, officeID,
+                issueTime, data, editableEntries, type, currentTime, null);
+    }
+
+    /**
+     * Helper method for sending the request through.
+     *
+     * @param mode
+     * @param productGeneratorName
+     * @param eventIDs
+     * @param officeID
+     * @param issueTime
+     * @param data
+     * @param editableEntries
+     * @param type
+     * @param currentTime
+     * @param filePath
+     *
+     * @return
+     */
+    private static ProductDataResponse sendRequest(String mode,
+            String productGeneratorName, ArrayList<String> eventIDs,
+            String officeID, Date issueTime, Map<String, Serializable> data,
+            List<EditableEntryMap> editableEntries, ProductRequestType type,
+            Date currentTime, String filePath) {
         ProductData productData = new ProductData(mode, productGeneratorName,
-                eventIDs, issueTime, (HashMap<String, Serializable>) data,
+                eventIDs, officeID, issueTime,
+                (HashMap<String, Serializable>) data,
                 (ArrayList<EditableEntryMap>) editableEntries);
         ProductDataRequest request = new ProductDataRequest(productData, type,
-                currentTime);
+                currentTime, filePath);
         ProductDataResponse response = null;
         try {
             response = (ProductDataResponse) RequestRouter.route(request);
         } catch (Exception e) {
-            handler.error("Unable to send request to server", e);
+            statusHandler.error("Unable to send request to server", e);
         }
         return response;
     }

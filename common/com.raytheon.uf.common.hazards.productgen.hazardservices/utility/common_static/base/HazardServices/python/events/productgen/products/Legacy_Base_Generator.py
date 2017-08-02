@@ -84,8 +84,14 @@
                                          formatting logic into formatter.
     Aug 26, 2016   21458    Robert.Blum  Fixed framing code.
     Sep 06, 2016   19202    Sara.Stewart Added attributes to endingOption 
+    Sep 12, 2016   19147    Robert.Blum  Use TimeUtils.py and default TZ to gmt.
     Sep 16, 2016   15934    Chris.Golden Changed to work with new advanced geometries in hazard events.
-
+    Oct 07, 2016   21777    Robert.Blum  Fixed issue with multiple logger handlers.
+    Oct 21, 2016   22489    Robert.Blum  Fixed _getCityList() to handle GFE's accurateCities flag.
+    Oct 27, 2016   22963    Robert.Blum  Fixed query error related to pathcast code.
+    Nov 10, 2016   22119    Kevin.Bisanz Add siteID argument to
+                                         ProductTextUtil.createOrUpdateProductText(..)
+    Nov 30, 2016   26598    dgilling     Save previousFloodSeverity for FL.W followups.
 '''
 
 import ProductTemplate
@@ -109,6 +115,8 @@ import SpatialQuery
 import JUtil
 from dateutil import tz
 import PathCastUtil
+import TimeUtils
+import pwd
 
 from abc import *
 
@@ -219,11 +227,6 @@ class Product(ProductTemplate.Product):
         return ProductSegmentGroup(productID, productName, geoType, vtecEngine, mapType, segmented, productSegments, etn, formatPolygon)
 
     def __init__(self):
-        # This needs to set by each v3 product generator
-        # to allow VTECEngineWrapper to init correctly.
-        self._productGeneratorName = ''
-
-    def _initialize(self):
         self.bridge = Bridge()
         self._areaDictionary = self.bridge.getAreaDictionary()
         self._cityLocation = self.bridge.getCityLocation()
@@ -234,13 +237,23 @@ class Product(ProductTemplate.Product):
         self._siteInfo = self.bridge.getSiteInfo()
 
         self.logger = logging.getLogger('Legacy_Base_Generator')
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'com.raytheon.uf.common.hazards.productgen', 'Legacy_Base_Generator', level=logging.INFO))
-        self.logger.setLevel(logging.INFO)  
+        self.logger.setLevel(logging.INFO)
 
+        # This needs to set by each v3 product generator
+        # to allow VTECEngineWrapper to init correctly.
+        self._productGeneratorName = ''
+
+    def _initialize(self):
         # Default is True -- Products which are not VTEC can override and set to False
         self._vtecProduct = True
         self._vtecEngine = None
+
+        # To ensure time calls are based on Zulu
+        os.environ['TZ'] = "GMT0"
 
     @abstractmethod
     def defineDialog(self, eventSet):
@@ -433,14 +446,6 @@ class Product(ProductTemplate.Product):
     def _getVariables(self, eventSet, dialogInputMap=None):
         self._inputHazardEvents = eventSet.getEvents()
         metaDict = eventSet.getAttributes()
-        if dialogInputMap:
-            if self._productID == 'RVS':
-                # Dont save the staging values for RVS.
-                self._dialogInputMap = dialogInputMap
-            else:
-                self._storeDialogInputMap(dialogInputMap)
-        else:
-            self._dialogInputMap = {}
 
         # List of vtecEngineWrappers generated for these products
         #  Used at end to save vtec records if issueFlag is on
@@ -486,6 +491,15 @@ class Product(ProductTemplate.Product):
         self._vtecMode = vtecMode
         self._vtecTestMode = bool(metaDict.get('vtecTestMode'))
 
+        if dialogInputMap:
+            if self._productID == 'RVS':
+                # Dont save the staging values for RVS.
+                self._dialogInputMap = dialogInputMap
+            else:
+                self._storeDialogInputMap(dialogInputMap)
+        else:
+            self._dialogInputMap = {}
+
         self._preProcessHazardEvents(self._inputHazardEvents)
 
     def _storeDialogInputMap(self, dialogInputMap):
@@ -498,7 +512,7 @@ class Product(ProductTemplate.Product):
                     value = list(value)
                 # Some values may be lists e.g. calls to action
                 value = json.dumps(value)
-                ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], value)
+                ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], self._siteID, value)
         self.flush()
 
     def _addDialogInputMapToDict(self, dialogInputMap, productDict):
@@ -808,7 +822,9 @@ class Product(ProductTemplate.Product):
         hazardDict[HazardConstants.END_TIME] = hazardEvent.getEndTime()
         hazardDict[HazardConstants.CREATION_TIME] = hazardEvent.getCreationTime()
         hazardDict['geometry'] = hazardEvent.getProductGeometry()
-        hazardDict['userName'] = hazardEvent.getUserName()
+        # The user generating the product will not always necessarily be the
+        # user that last modified the Hazard Event.
+        hazardDict['userName'] = pwd.getpwuid(os.getuid()).pw_name
 
         if hazardEvent.get('pointID'):
             # Add RiverForecastPoint data to the dictionary
@@ -1107,9 +1123,33 @@ class Product(ProductTemplate.Product):
     def _getCityList(self, hazardEvents):
         cityList = []
         if not self._polygonBased: # area based
-            self._productSegment.cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
-            for city, ugcCity in self._productSegment.cityInfo:
-                cityList.append(city)
+            # Get all the hazard types in the product
+            hazardTypes = set()
+            for hazardEvent in hazardEvents:
+                hazardTypes.add(hazardEvent.getHazardType())
+
+            # Check if accurateCities is set
+            accurateCities = True
+            # Check the HazardType entry for each
+            for hazardType in hazardTypes:
+                hazardTypeEntry = self.bridge.getHazardTypes(hazardType)
+                if hazardTypeEntry.get("accurateCities", False) == False:
+                    accurateCities = False;
+                    break;
+            if accurateCities:
+                # This uses the cities from CityLocation.py
+                cityInfo = self.getCityInfo(self._productSegment.ugcs, returnType='list')
+                for city, latLon in cityInfo:
+                    # Check if the Point is inside the Geometry
+                    point = GeometryFactory.createPoint((latLon[1], latLon[0]))
+                    for hazardEvent in hazardEvents:
+                        if hazardEvent.getProductGeometry().contains(point):
+                            cityList.append(city)
+                            break
+            else:
+                # This uses ugcCities from the Area Dictionary
+                for ugc in self._productSegment.ugcs:
+                    cityList.extend(self._tpc.getInformationForUGC(ugc, "primaryLocations"))
         else: # polygon-based
             for hazardEvent in hazardEvents:
                 cityList.extend(self._getCityListForPolygon(hazardEvent))
@@ -1239,6 +1279,7 @@ class Product(ProductTemplate.Product):
                                 hazardEvent.set('previousObservedCategory', eventDict.get('observedCategory', None))
                                 hazardEvent.set('previousForecastCategoryName', eventDict.get('maxFcstCategoryName', None))
                                 hazardEvent.set('previousObservedCategoryName', eventDict.get('observedCategoryName', None))
+                                hazardEvent.set('previousFloodSeverity', vtecRecord.get('hvtec', {}).get(HazardConstants.FLOOD_SEVERITY, None))
                                 break
 
     def getSegmentHazardEvents(self, segments, hazardEventList=None):
@@ -1532,7 +1573,7 @@ class Product(ProductTemplate.Product):
         hazardEvent.setHazardAttributes(attributes)
 
         # Update the geometry as well
-        hazardEvent.setGeometry(GeometryFactory.createCollection([geometry]))
+        hazardEvent.setProductGeometry(GeometryFactory.createCollection([geometry]))
 
         # Call the original method with the updated hazardEvent to get the hazard dictionary.
         return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
@@ -1552,7 +1593,7 @@ class Product(ProductTemplate.Product):
         hazardEvent.setHazardAttributes(attributes)
 
         # Update the geometry as well
-        hazardEvent.setGeometry(GeometryFactory.createCollection([prevHazardEvent.getFlattenedGeometry()]))
+        hazardEvent.setProductGeometry(prevHazardEvent.getFlattenedGeometry())
 
         # Call the original method with the updated hazardEvent to get the hazard dictionary.
         return self._createHazardEventDictionary(hazardEvent, vtecRecord, metaData)
@@ -1594,7 +1635,7 @@ class Product(ProductTemplate.Product):
 
         # Update the geometry as well
         if geometry:
-            prevHazardEvent.setProductGeometry(GeometryFactory.createCollection([geometry]))
+            prevHazardEvent.setProductGeometry(geometry)
 
         # Call the original method with the updated prevHazardEvent to get the section dictionary.
         return self._createHazardEventDictionary(prevHazardEvent, vtecRecord, metaData)

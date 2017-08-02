@@ -30,7 +30,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(self.hazardEvent),
+                    self.getLocationsAffected(),
                     self.getAdditionalInfo(refreshMetadata=True),
                     ]
             if (hazardEvent is not None
@@ -67,7 +67,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(self.hazardEvent),
+                    self.getLocationsAffected(),
                     self.getAdditionalInfo(refreshMetadata=True),
                     ]
             if (hazardEvent is not None

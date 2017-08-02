@@ -37,7 +37,6 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
         metadata['eventState'] = 'Pending'
         metadata['includeEventTypes'] = [ "SIGMET.Convective" ]
-        metadata['background'] = True
         
         return metadata
 

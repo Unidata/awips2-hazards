@@ -27,15 +27,20 @@ import java.util.Map;
 
 import javax.xml.bind.JAXB;
 
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
+
 import com.raytheon.uf.common.hazards.configuration.backup.BackupSites;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
-import com.raytheon.uf.common.localization.PathManager;
+import com.raytheon.uf.common.localization.LocalizationUtil;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.common.util.RunProcess;
 import com.raytheon.uf.edex.core.EDEXUtil;
@@ -52,6 +57,9 @@ import com.raytheon.uf.edex.core.EDEXUtil;
  * Sep 01, 2015 3473       Chris.Cody  Import SvcBackupUtil. Originally from com.raytheon.edex.plugin.gfe
  * Nov 23, 2015 3473       Robert.Blum Removed un-needed code and reading backups sites from xml file.
  * Feb 10, 2016 8837       Benjamin.Phillippe  Fixed location of service backup scripts
+ * Nov 03, 2016 22119      Kevin.Bisanz Error if no backup sites listed.
+ * Nov 14, 2016 22119      Kevin.Bisanz Add getHazardServicesSvcbuProperty(..)
+ * 
  * </pre>
  * 
  * @author bphillip
@@ -101,6 +109,10 @@ public class SvcBackupUtil {
     private static String executeProcess(String... args) throws Exception {
         StringBuilder sb = new StringBuilder();
         String[] backupSites = getBackupSites();
+        if (CollectionUtil.isNullOrEmpty(backupSites)) {
+            throw new Exception("Unable to determine backup sites.");
+        }
+
         for (String site : backupSites) {
             sb.append(site).append(",");
         }
@@ -134,10 +146,11 @@ public class SvcBackupUtil {
         processOutput = proc.getStdout();
         if (exitValue != 0) {
             statusHandler.error(processOutput);
-            throw new Exception("Process terminated abnormally: "
-                    + processOutput);
+            throw new Exception(
+                    "Process terminated abnormally: " + processOutput);
         }
         return processOutput;
+
     }
 
     /**
@@ -171,8 +184,8 @@ public class SvcBackupUtil {
                 try {
                     in.close();
                 } catch (IOException e) {
-                    statusHandler.error(
-                            "Unable to close process input stream!", e);
+                    statusHandler.error("Unable to close process input stream!",
+                            e);
                 }
             }
             try {
@@ -185,8 +198,8 @@ public class SvcBackupUtil {
             try {
                 p.getErrorStream().close();
             } catch (IOException e1) {
-                statusHandler
-                        .error("Unable to close process error stream!", e1);
+                statusHandler.error("Unable to close process error stream!",
+                        e1);
             }
         }
 
@@ -216,11 +229,33 @@ public class SvcBackupUtil {
     }
 
     private static String getHazardServicesScriptsDir() {
-        return EDEXUtil.getEdexUtility() + PathManager.SEPARATOR
-                + "edex_static" + PathManager.SEPARATOR + "base"
-                + PathManager.SEPARATOR + "HazardServices"
-                + PathManager.SEPARATOR + "ServiceBackup"
-                + PathManager.SEPARATOR + "scripts";
+        return FileUtil.join(EDEXUtil.getEdexUtility(), "edex_static", "base",
+                "HazardServices", "ServiceBackup", "scripts");
+    }
+
+    /**
+     * Load the service backup properties file and return the value of the
+     * requested property.
+     *
+     * @param prop
+     *            Property key to find.
+     * @return Value of the property, or null if not found.
+     */
+    public static String getHazardServicesSvcbuProperty(String prop) {
+        String propFile = FileUtil.join(EDEXUtil.getEdexUtility(),
+                "edex_static", "base", "HazardServices", "ServiceBackup",
+                "configuration", "svcbu.properties");
+
+        String value = null;
+
+        try {
+            Configuration config = new PropertiesConfiguration(propFile);
+            value = config.getString(prop);
+        } catch (ConfigurationException e) {
+            statusHandler.error(e.getLocalizedMessage(), e);
+        }
+
+        return value;
     }
 
     /**
@@ -233,8 +268,8 @@ public class SvcBackupUtil {
 
         Map<LocalizationLevel, LocalizationFile> files = pathMgr
                 .getTieredLocalizationFile(LocalizationType.COMMON_STATIC,
-                        "HazardServices" + PathManager.SEPARATOR + "settings"
-                                + PathManager.SEPARATOR + "backupSites.xml");
+                        LocalizationUtil.join("HazardServices", "settings",
+                                "backupSites.xml"));
         LocalizationFile file = null;
         if (files.containsKey(LocalizationLevel.SITE)) {
             file = files.get(LocalizationLevel.SITE);

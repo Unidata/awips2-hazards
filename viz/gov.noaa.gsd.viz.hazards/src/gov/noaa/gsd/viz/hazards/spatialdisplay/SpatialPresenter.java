@@ -15,26 +15,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.C
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.CONTEXT_MENU_SEND_TO_BACK;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.LOW_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.SpatialEntity;
-import gov.noaa.gsd.common.visuals.VisualFeature;
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialEntityManager.EventDisplayChange;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventVisualFeatureEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -50,10 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.engio.mbassy.listener.Enveloped;
-import net.engio.mbassy.listener.Handler;
-import net.engio.mbassy.subscription.MessageEnvelope;
-
 import org.apache.commons.lang.time.DateUtils;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -66,6 +42,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
+import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -74,6 +51,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
@@ -103,6 +81,30 @@ import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialEntityManager.EventDisplayChange;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventVisualFeatureEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
+import net.engio.mbassy.listener.Enveloped;
+import net.engio.mbassy.listener.Handler;
+import net.engio.mbassy.subscription.MessageEnvelope;
 
 /**
  * Spatial presenter, used to mediate between the model and the spatial view.
@@ -206,6 +208,9 @@ import com.vividsolutions.jts.geom.Point;
  *                                           hazard event to not trigger a hazard area recalculation.
  * Oct 19, 2016 21873      Chris.Golden      Adjusted selected time rounding to work with different
  *                                           hazard event types' different time resolutions.
+ * Nov 03, 2016 22960      bkowal            Notify the user if a gage is not selected.
+ * Dec 14, 2016 26813      bkowal            Use the active Hazard Services site when determining
+ *                                           which counties to render for "Select by Area".
  * Feb 01, 2017 15556      Chris.Golden      Changed to use new selection manager. Also changed to
  *                                           take advantage of new finer-grained settings change
  *                                           messages. Also moved bring to front and send to back
@@ -279,6 +284,7 @@ public class SpatialPresenter extends
      * Starting size for a list of spatial entities of a particular type.
      */
     static final Map<SpatialEntityType, Integer> INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS;
+
     static {
         Map<SpatialEntityType, Integer> map = new EnumMap<>(
                 SpatialEntityType.class);
@@ -313,7 +319,8 @@ public class SpatialPresenter extends
         @Override
         public void stateChanged(Object identifier,
                 Set<IEntityIdentifier> selectedSpatialEntityIdentifiers) {
-            handleUserSpatialEntitySelectionChange(selectedSpatialEntityIdentifiers);
+            handleUserSpatialEntitySelectionChange(
+                    selectedSpatialEntityIdentifiers);
         }
 
         @Override
@@ -342,7 +349,8 @@ public class SpatialPresenter extends
     private final ICommandInvocationHandler<EntityGeometryModificationContext> modifyGeometryInvocationHandler = new ICommandInvocationHandler<EntityGeometryModificationContext>() {
 
         @Override
-        public void commandInvoked(EntityGeometryModificationContext identifier) {
+        public void commandInvoked(
+                EntityGeometryModificationContext identifier) {
             handleUserModificationOfSpatialEntity(identifier);
         }
     };
@@ -390,17 +398,15 @@ public class SpatialPresenter extends
         @Override
         public void stateChanged(Toggle identifier, Boolean value) {
             if (identifier == Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT) {
-                getModel()
-                        .getConfigurationManager()
-                        .getSettings()
+                getModel().getConfigurationManager().getSettings()
                         .setAddGeometryToSelected(value,
                                 UIOriginator.SPATIAL_DISPLAY);
             } else if (identifier == Toggle.ADD_CREATED_EVENTS_TO_SELECTED) {
                 getModel().getConfigurationManager().getSettings()
                         .setAddToSelected(value, UIOriginator.SPATIAL_DISPLAY);
             } else {
-                getModel().getEventManager().setAddCreatedEventsToSelected(
-                        value);
+                getModel().getEventManager()
+                        .setAddCreatedEventsToSelected(value);
             }
         }
 
@@ -529,6 +535,11 @@ public class SpatialPresenter extends
     private final Comparator<ObservedHazardEvent> sendSelectedToBack = Collections
             .reverseOrder(sendSelectedToFront);
 
+    /**
+     * River forecast manager.
+     */
+    private final RiverForecastManager riverForecastManager = new RiverForecastManager();
+
     // Public Constructors
 
     /**
@@ -543,10 +554,10 @@ public class SpatialPresenter extends
      */
     public SpatialPresenter(
             ISessionManager<ObservedHazardEvent, ObservedSettings> model,
-            ISpatialDisplayHandler displayDisposedHandler,
+            ISpatialDisplayHandler displayHandler,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
-        this.displayHandler = displayDisposedHandler;
+        this.displayHandler = displayHandler;
         this.spatialEntityManager = new SpatialEntityManager(model,
                 Collections.unmodifiableSet(selectedEventIdentifiers));
     }
@@ -629,7 +640,8 @@ public class SpatialPresenter extends
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventGeometryModified(SessionEventGeometryModified change) {
+    public void sessionEventGeometryModified(
+            SessionEventGeometryModified change) {
         setUndoRedoEnableState();
         spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
                 false);
@@ -684,8 +696,9 @@ public class SpatialPresenter extends
     @Enveloped(messages = { SessionEventAttributesModified.class,
             SessionEventMetadataModified.class })
     public void sessionEventAttributesModified(MessageEnvelope change) {
-        spatialEntityManager.replaceEntitiesForEvent(change
-                .<SessionEventModified> getMessage().getEvent(), false, false);
+        spatialEntityManager.replaceEntitiesForEvent(
+                change.<SessionEventModified> getMessage().getEvent(), false,
+                false);
     }
 
     /**
@@ -759,6 +772,17 @@ public class SpatialPresenter extends
         if (change.getChanged().contains(ObservedSettings.Type.FILTERS)) {
             updateAllDisplayables(false);
         }
+    }
+
+    /**
+     * Respond to the current site changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void siteChanged(SiteChanged change) {
+        getView().setCurrentSite(change.getSiteIdentifier());
     }
 
     /**
@@ -899,6 +923,8 @@ public class SpatialPresenter extends
     @Override
     protected void initialize(ISpatialView<?, ?> view) {
         getView().initialize(this,
+                getModel().getConfigurationManager().getSiteID(),
+                getModel().getConfigurationManager().getSiteID(),
                 spatialEntityManager.getSelectedSpatialEntityIdentifiers());
         spatialEntityManager.setView(view);
 
@@ -914,19 +940,19 @@ public class SpatialPresenter extends
          */
         getView().getSelectedSpatialEntityIdentifiersChanger()
                 .setStateChangeHandler(selectedEntityIdentifiersChangeHandler);
-        getView().getCreateShapeInvoker().setCommandInvocationHandler(
-                createShapeInvocationHandler);
-        getView().getModifyGeometryInvoker().setCommandInvocationHandler(
-                modifyGeometryInvocationHandler);
-        getView().getSelectByAreaInvoker().setCommandInvocationHandler(
-                selectByAreaInvocationHandler);
-        getView().getSelectLocationInvoker().setCommandInvocationHandler(
-                selectLocationInvocationHandler);
-        getView().getGageActionInvoker().setCommandInvocationHandler(
-                gageActionInvocationHandler);
+        getView().getCreateShapeInvoker()
+                .setCommandInvocationHandler(createShapeInvocationHandler);
+        getView().getModifyGeometryInvoker()
+                .setCommandInvocationHandler(modifyGeometryInvocationHandler);
+        getView().getSelectByAreaInvoker()
+                .setCommandInvocationHandler(selectByAreaInvocationHandler);
+        getView().getSelectLocationInvoker()
+                .setCommandInvocationHandler(selectLocationInvocationHandler);
+        getView().getGageActionInvoker()
+                .setCommandInvocationHandler(gageActionInvocationHandler);
         getView().getToggleChanger().setStateChangeHandler(toggleChangeHandler);
-        getView().getCommandInvoker().setCommandInvocationHandler(
-                commandInvocationHandler);
+        getView().getCommandInvoker()
+                .setCommandInvocationHandler(commandInvocationHandler);
 
         updateAllDisplayables(false);
     }
@@ -991,8 +1017,8 @@ public class SpatialPresenter extends
         ISessionSelectionManager<ObservedHazardEvent> selectionManager = getModel()
                 .getSelectionManager();
         if (entityIdentifier instanceof IHazardEventEntityIdentifier) {
-            eventManager
-                    .setCurrentEvent(((IHazardEventEntityIdentifier) entityIdentifier)
+            eventManager.setCurrentEvent(
+                    ((IHazardEventEntityIdentifier) entityIdentifier)
                             .getEventIdentifier());
         } else {
             eventManager.setCurrentEvent((String) null);
@@ -1008,9 +1034,8 @@ public class SpatialPresenter extends
          * Create the manage hazards menu items, if any, on a submenu.
          */
         List<IAction> actions = new ArrayList<>();
-        List<IContributionItem> items = helper
-                .getSelectedHazardManagementItems(UIOriginator.SPATIAL_DISPLAY,
-                        null);
+        List<IContributionItem> items = helper.getSelectedHazardManagementItems(
+                UIOriginator.SPATIAL_DISPLAY, null);
         IAction action = helper.createMenu("Manage hazards",
                 items.toArray(new IContributionItem[items.size()]));
         if (action != null) {
@@ -1024,20 +1049,20 @@ public class SpatialPresenter extends
          */
         List<IContributionItem> spatialItems = new ArrayList<>();
         if (eventManager.isCurrentEvent()) {
-            GeometryResolution resolution = getGeometryResolutionForEvent(eventManager
-                    .getCurrentEvent());
+            GeometryResolution resolution = getGeometryResolutionForEvent(
+                    eventManager.getCurrentEvent());
             if (resolution == GeometryResolution.LOW) {
-                spatialItems
-                        .add(createContributionItem(
-                                CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT,
-                                new Runnable() {
+                spatialItems.add(createContributionItem(
+                        CONTEXT_MENU_HIGH_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT,
+                        new Runnable() {
 
-                                    @Override
-                                    public void run() {
-                                        eventManager
-                                                .setHighResolutionGeometryVisibleForCurrentEvent(UIOriginator.SPATIAL_DISPLAY);
-                                    }
-                                }, scheduler));
+                            @Override
+                            public void run() {
+                                eventManager
+                                        .setHighResolutionGeometryVisibleForCurrentEvent(
+                                                UIOriginator.SPATIAL_DISPLAY);
+                            }
+                        }, scheduler));
             } else if (resolution == GeometryResolution.HIGH) {
                 spatialItems.add(createContributionItem(
                         CONTEXT_MENU_LOW_RESOLUTION_GEOMETRY_FOR_CURRENT_EVENT,
@@ -1046,7 +1071,8 @@ public class SpatialPresenter extends
                             @Override
                             public void run() {
                                 eventManager
-                                        .setLowResolutionGeometryVisibleForCurrentEvent(UIOriginator.SPATIAL_DISPLAY);
+                                        .setLowResolutionGeometryVisibleForCurrentEvent(
+                                                UIOriginator.SPATIAL_DISPLAY);
                             }
                         }, scheduler));
             }
@@ -1062,7 +1088,8 @@ public class SpatialPresenter extends
         List<ObservedHazardEvent> selectedEvents = selectionManager
                 .getSelectedEvents();
         for (ObservedHazardEvent event : selectedEvents) {
-            GeometryResolution resolution = getGeometryResolutionForEvent(event);
+            GeometryResolution resolution = getGeometryResolutionForEvent(
+                    event);
             if (resolution != null) {
                 resolutionsFound.add(resolution);
             }
@@ -1078,7 +1105,8 @@ public class SpatialPresenter extends
                         @Override
                         public void run() {
                             eventManager
-                                    .setHighResolutionGeometriesVisibleForSelectedEvents(UIOriginator.SPATIAL_DISPLAY);
+                                    .setHighResolutionGeometriesVisibleForSelectedEvents(
+                                            UIOriginator.SPATIAL_DISPLAY);
                         }
                     }, scheduler));
         }
@@ -1090,7 +1118,8 @@ public class SpatialPresenter extends
                         @Override
                         public void run() {
                             eventManager
-                                    .setLowResolutionGeometriesVisibleForSelectedEvents(UIOriginator.SPATIAL_DISPLAY);
+                                    .setLowResolutionGeometriesVisibleForSelectedEvents(
+                                            UIOriginator.SPATIAL_DISPLAY);
                         }
                     }, scheduler));
         }
@@ -1102,21 +1131,22 @@ public class SpatialPresenter extends
          */
         if (selectedEvents.size() == 1) {
             ObservedHazardEvent event = selectedEvents.get(0);
-            List<?> contextMenuEntries = (List<?>) event
-                    .getHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+            List<?> contextMenuEntries = (List<?>) event.getHazardAttribute(
+                    HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
             if (contextMenuEntries != null) {
                 ISessionConfigurationManager<ObservedSettings> configManager = getModel()
                         .getConfigurationManager();
                 for (Object contextMenuEntry : contextMenuEntries) {
-                    if (contextMenuEntry
-                            .equals(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
-                        if (eventManager.canEventAreaBeChanged(event) == false) {
+                    if (contextMenuEntry.equals(
+                            HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)) {
+                        if (eventManager
+                                .canEventAreaBeChanged(event) == false) {
                             continue;
                         }
                         String hazardType = event.getHazardType();
-                        if ((hazardType != null)
-                                && (configManager.getHazardTypes()
-                                        .get(hazardType).getHatchingStyle() == HatchingStyle.NONE)) {
+                        if ((hazardType != null) && (configManager
+                                .getHazardTypes().get(hazardType)
+                                .getHatchingStyle() == HatchingStyle.NONE)) {
                             continue;
                         }
                         spatialItems.add(createContributionItem(
@@ -1232,7 +1262,8 @@ public class SpatialPresenter extends
          * Otherwise, find the event that goes with the visual feature and give
          * it the new version.
          */
-        if (context.getIdentifier() instanceof ToolVisualFeatureEntityIdentifier) {
+        if (context
+                .getIdentifier() instanceof ToolVisualFeatureEntityIdentifier) {
 
             /*
              * Ensure the visual feature's associated tool is the same as the
@@ -1240,16 +1271,15 @@ public class SpatialPresenter extends
              */
             ToolVisualFeatureEntityIdentifier toolIdentifier = (ToolVisualFeatureEntityIdentifier) context
                     .getIdentifier();
-            if (toolIdentifier.getToolIdentifier().equals(
-                    spatialInfoCollectingToolIdentifier)) {
+            if (toolIdentifier.getToolIdentifier()
+                    .equals(spatialInfoCollectingToolIdentifier)) {
 
                 /*
                  * Find and modify the visual feature, then run the recommender
                  * with the modified visual feature list.
                  */
-                VisualFeature feature = toolVisualFeatures
-                        .getByIdentifier(toolIdentifier
-                                .getVisualFeatureIdentifier());
+                VisualFeature feature = toolVisualFeatures.getByIdentifier(
+                        toolIdentifier.getVisualFeatureIdentifier());
                 if (feature != null) {
                     feature.setGeometry(context.getSelectedTime(),
                             context.getGeometry());
@@ -1288,14 +1318,14 @@ public class SpatialPresenter extends
                  * latter's geometry to match.
                  */
                 if (hazardIdentifier instanceof HazardEventVisualFeatureEntityIdentifier) {
-                    VisualFeature feature = event
-                            .getVisualFeature(((HazardEventVisualFeatureEntityIdentifier) hazardIdentifier)
+                    VisualFeature feature = event.getVisualFeature(
+                            ((HazardEventVisualFeatureEntityIdentifier) hazardIdentifier)
                                     .getVisualFeatureIdentifier());
                     if (feature != null) {
                         feature.setGeometry(
                                 getTimeAtResolutionForEvent(event.getEventID(),
-                                        context.getSelectedTime()), context
-                                        .getGeometry());
+                                        context.getSelectedTime()),
+                                context.getGeometry());
                         event.setVisualFeature(feature,
                                 UIOriginator.SPATIAL_DISPLAY);
                     }
@@ -1316,9 +1346,9 @@ public class SpatialPresenter extends
                      * Attempt to set the event geometry; if the geometry is
                      * rejected, redraw the event containing the geometry.
                      */
-                    if (eventManager
-                            .setEventGeometry(event, context.getGeometry(),
-                                    UIOriginator.SPATIAL_DISPLAY) == false) {
+                    if (eventManager.setEventGeometry(event,
+                            context.getGeometry(),
+                            UIOriginator.SPATIAL_DISPLAY) == false) {
                         spatialEntityManager.replaceEntitiesForEvent(event,
                                 false, true);
                     }
@@ -1386,10 +1416,10 @@ public class SpatialPresenter extends
                     context.getDatabaseTableName());
             hazardEvent.addHazardAttribute(
                     HazardConstants.GEOMETRY_MAP_NAME_KEY, context.getLegend());
-            hazardEvent
-                    .addHazardAttribute(
-                            HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
-                            Lists.newArrayList(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
+            hazardEvent.addHazardAttribute(
+                    HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                    Lists.newArrayList(
+                            HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
         }
 
         selectByAreaGeometriesForEventIdentifiers.put(eventIdentifier,
@@ -1414,9 +1444,8 @@ public class SpatialPresenter extends
         Set<String> eventIdentifiers = new HashSet<>(identifiers.size(), 1.0f);
         for (IEntityIdentifier identifier : identifiers) {
             if (identifier instanceof IHazardEventEntityIdentifier) {
-                eventIdentifiers
-                        .add(((IHazardEventEntityIdentifier) identifier)
-                                .getEventIdentifier());
+                eventIdentifiers.add(((IHazardEventEntityIdentifier) identifier)
+                        .getEventIdentifier());
             }
         }
 
@@ -1452,6 +1481,27 @@ public class SpatialPresenter extends
     private void handleUserInvocationOfGageAction(String gageIdentifier) {
 
         /*
+         * If the gage identifier is not provided, notify the user and do
+         * nothing more.
+         */
+        if (gageIdentifier == null) {
+            displayHandler.getWarner().warnUser("Error",
+                    "A gage must be selected to use this feature.");
+            return;
+        }
+
+        /*
+         * Ensure that the selected gage is within the forecast area.
+         */
+        String area = riverForecastManager
+                .getAreaInundationCoordinates(gageIdentifier);
+        if (area == null) {
+            displayHandler.getWarner().warnUser("Error",
+                    "The selected gage is not within the current forecast area. Unable to generate a hazard.");
+            return;
+        }
+
+        /*
          * If the configuration includes a gage-first recommender, run it using
          * the gage identifier as the value for a selected point identifier in a
          * dictionary that is provided as additional event set attributes.
@@ -1479,7 +1529,7 @@ public class SpatialPresenter extends
                 .getGagePointFirstRecommender();
         return ((gagePointFirstRecommender == null)
                 || gagePointFirstRecommender.isEmpty() ? null
-                : gagePointFirstRecommender);
+                        : gagePointFirstRecommender);
     }
 
     /**
@@ -1532,9 +1582,9 @@ public class SpatialPresenter extends
         if (event.getHazardType() == null) {
             return null;
         }
-        return (event.getHazardAttribute(VISIBLE_GEOMETRY).equals(
-                LOW_RESOLUTION_GEOMETRY_IS_VISIBLE) ? GeometryResolution.LOW
-                : GeometryResolution.HIGH);
+        return (event.getHazardAttribute(VISIBLE_GEOMETRY)
+                .equals(LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)
+                        ? GeometryResolution.LOW : GeometryResolution.HIGH);
     }
 
     /**
@@ -1609,8 +1659,8 @@ public class SpatialPresenter extends
          * the necessary information and return it.
          */
         ObservedHazardEvent event = selectedEvents.get(0);
-        if (event.getHazardAttributes().containsKey(
-                HazardConstants.GEOMETRY_REFERENCE_KEY)) {
+        if (event.getHazardAttributes()
+                .containsKey(HazardConstants.GEOMETRY_REFERENCE_KEY)) {
             String eventIdentifier = event.getEventID();
             SpatialEntity<? extends IEntityIdentifier> spatialEntity = spatialEntityManager
                     .getFirstPolygonalSpatialEntityForEvent(eventIdentifier);
@@ -1619,14 +1669,13 @@ public class SpatialPresenter extends
             }
             Set<Geometry> selectByAreaGeometries = selectByAreaGeometriesForEventIdentifiers
                     .get(eventIdentifier);
-            return new SelectByAreaContext(
-                    spatialEntity.getIdentifier(),
+            return new SelectByAreaContext(spatialEntity.getIdentifier(),
                     (selectByAreaGeometries == null ? new HashSet<Geometry>()
                             : selectByAreaGeometries),
-                    (String) event
-                            .getHazardAttribute(HazardConstants.GEOMETRY_REFERENCE_KEY),
-                    (String) event
-                            .getHazardAttribute(HazardConstants.GEOMETRY_MAP_NAME_KEY));
+                    (String) event.getHazardAttribute(
+                            HazardConstants.GEOMETRY_REFERENCE_KEY),
+                    (String) event.getHazardAttribute(
+                            HazardConstants.GEOMETRY_MAP_NAME_KEY));
         }
         return null;
     }
@@ -1645,8 +1694,7 @@ public class SpatialPresenter extends
     private IHazardEvent buildHazardEvent(IAdvancedGeometry geometry,
             boolean checkValidity) {
         if (checkValidity && (geometry.isValid() == false)) {
-            statusHandler.handle(
-                    Priority.WARN,
+            statusHandler.handle(Priority.WARN,
                     "Invalid geometry: "
                             + geometry.getValidityProblemDescription()
                             + "; new geometry will not be used.");
@@ -1654,8 +1702,8 @@ public class SpatialPresenter extends
         }
         IHazardEvent hazardEvent = new BaseHazardEvent();
         hazardEvent.setGeometry(geometry);
-        hazardEvent.setCreationTime(getModel().getTimeManager()
-                .getCurrentTime());
+        hazardEvent
+                .setCreationTime(getModel().getTimeManager().getCurrentTime());
         return addEvent(hazardEvent);
     }
 
@@ -1684,10 +1732,11 @@ public class SpatialPresenter extends
         if ((Boolean.TRUE.equals(getModel().getConfigurationManager()
                 .getSettings().getAddGeometryToSelected()))
                 && (event.getHazardType() == null)
-                && (getModel().getSelectionManager().getSelectedEvents().size() == 1)) {
+                && (getModel().getSelectionManager().getSelectedEvents()
+                        .size() == 1)) {
 
-            ObservedHazardEvent existingEvent = getModel()
-                    .getSelectionManager().getSelectedEvents().get(0);
+            ObservedHazardEvent existingEvent = getModel().getSelectionManager()
+                    .getSelectedEvents().get(0);
 
             /*
              * Combine the existing and new geometry.
@@ -1707,8 +1756,8 @@ public class SpatialPresenter extends
                     existingEvent, true)) {
                 getModel().getEventManager().setEventGeometry(existingEvent,
                         geometry, UIOriginator.SPATIAL_DISPLAY);
-                existingEvent
-                        .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+                existingEvent.removeHazardAttribute(
+                        HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
             }
 
             return existingEvent;
@@ -1733,7 +1782,8 @@ public class SpatialPresenter extends
      *            Time to be rounded down.
      * @return Time rounded down as appropriate.
      */
-    private Date getTimeAtResolutionForEvent(String eventIdentifier, Date time) {
+    private Date getTimeAtResolutionForEvent(String eventIdentifier,
+            Date time) {
         return DateUtils.truncate(time,
                 HazardConstants.TRUNCATION_UNITS_FOR_TIME_RESOLUTIONS
                         .get(getModel().getEventManager()
@@ -1754,8 +1804,8 @@ public class SpatialPresenter extends
             }
             Geometry[] asArray = new Geometry[geometriesOfSelected.size()];
             GeometryCollection geometryCollection = geometryFactory
-                    .createGeometryCollection(geometriesOfSelected
-                            .toArray(asArray));
+                    .createGeometryCollection(
+                            geometriesOfSelected.toArray(asArray));
             Point center = geometryCollection.getCentroid();
             Coordinate[] hullCoordinates = geometryCollection.convexHull()
                     .getCoordinates();
@@ -1774,8 +1824,8 @@ public class SpatialPresenter extends
          * Get the set of selected events.
          */
         selectedEventIdentifiers.clear();
-        selectedEventIdentifiers.addAll(getModel().getSelectionManager()
-                .getSelectedEventIdentifiers());
+        selectedEventIdentifiers.addAll(
+                getModel().getSelectionManager().getSelectedEventIdentifiers());
 
         /*
          * Enable the edit-multi-point-geometry buttons only if there is exactly

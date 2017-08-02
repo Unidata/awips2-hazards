@@ -34,6 +34,12 @@
 # Sep 14, 2015 3473       Chris.Cody  Initial version
 # Nov 23, 2015 3473       Robert.Blum Additional changes for service backup.
 # Dec 01, 2015 3473       Robert.Blum Fixed logging
+# Nov 10, 2016 22119      Kevin.Bisanz Improve error handling.  Remove copying
+#                                     CONFIGURED localization level because
+#                                     Hazard Services has none. Changes for
+#                                     exporting database tables.
+# Dec 14, 2016 22119      Kevin.Bisanz Add options to export config, ProductText,
+#                                     and ProductData individually.
 #
 ##
 
@@ -45,23 +51,145 @@ fi
 source ${AWIPS_HOME}/edex/data/utility/edex_static/base/HazardServices/ServiceBackup/configuration/svcbu.properties
 source ${HS_SCRIPTS_DIR}/serviceBackupUtil.sh
 
+function copyToTempDirectory()
+{
+   src="$1"
+   dest="$2"
+
+   CP_COMMAND="rsync -aq --exclude=*.pyo --exclude=*.pyc --exclude=*.md5"
+
+   if [ -e $src ]
+   then
+      echo "Copying $src to temporary directory..."
+      ${CP_COMMAND} $src $dest
+   else
+      echo "Skipping copying $src to temporary directory"
+   fi
+}
+
+# When exiting the script, run this function.
+function onExit {
+    # If the task is still in progress by this PID, we didn't hit the
+    # markTaskSuccess at the end.  So mark the task as failed.
+    lock_file=$(getLockFile "hs_exportConfiguration" ${SITE_ID})
+    lock_status=$(isOperationInProgressByMe "hs_exportConfiguration" ${SITE_ID})
+    if [[ "${lock_status}" = "true" ]]
+    then
+        echo "Task failed: Ended without marking success." >&2
+        markTaskFailed ${lock_file}
+    fi
+}
+trap onExit EXIT
+
+function printUsage() {
+   space='    '
+   basename=$(basename $0)
+   cat<<EOF
+
+Usage:
+   $0 -$siteIdOpt SiteID OPTIONS
+
+Required:
+   -$siteIdOpt SiteID${space}Site ID being exported
+Required Options (one or more of):
+   -$exportConfigOpt     ${space}Export configuration data
+   -$exportProductTextOpt FILE${space}Export serialized ProductText database table with given name.
+   -$exportProductDataOpt FILE${space}Export serialized ProductData database table with given name.
+
+Examples:
+   $basename -$siteIdOpt OAX -$exportConfigOpt
+   $basename -$siteIdOpt OAX -$exportProductTextOpt ProductText.bin
+   $basename -$siteIdOpt OAX -$exportProductDataOpt ProductData.bin
+   $basename -$siteIdOpt OAX -$exportConfigOpt -$exportProductTextOpt ProductText.bin -$exportProductDataOpt ProductData.bin
+EOF
+}
+
+siteIdOpt='s'
+exportConfigOpt='c'
+exportProductTextOpt='t'
+exportProductDataOpt='d'
+doExportConfig=0
+doExportProductText=0
+doExportProductData=0
+# Options requiring arguments are followed by a colon such as "s:t:d:"
+while getopts "${siteIdOpt}:${exportConfigOpt}${exportProductTextOpt}:${exportProductDataOpt}:" opt
+do
+   case $opt in
+
+      s)
+      siteIdArg=$OPTARG
+      ;;
+
+      c)
+      doExportConfig=1
+      ;;
+
+      t)
+      doExportProductText=1
+      productTextArg=$OPTARG
+      ;;
+
+      d)
+      doExportProductData=1
+      productDataArg=$OPTARG
+      ;;
+
+      \?)
+      # getopts should print error
+      printUsage
+      exit 1
+      ;;
+
+      :)
+      # getopts should print error
+      printUsage
+      exit 1
+      ;;
+
+   esac
+done
+
+if    [ ! $doExportConfig = 1 ] \
+   && [ ! $doExportProductText = 1 ] \
+   && [ ! $doExportProductData = 1 ]
+then
+   printUsage
+   exit 1
+fi
+
 # $1 = Site name
-if [ ${#1} = 0 ]
+if [ ${#siteIdArg} = 0 ]
 then
     configureLogging "svcbu_hs_export_configuration" "ERR"
     echo "Null/Empty Site Id for Export Configuration. Fail. Exit 1"
     exit 1
 fi
 
-SITE_ID=`echo ${1} | tr '[A-Z]' '[a-z]'`
-CAPS_SITE_ID=`echo ${1} | tr [a-z] [A-Z]`
+if [ $doExportProductText = 1 ] && \
+   [ ! -f "${productTextArg}" ]
+then
+    configureLogging "svcbu_hs_export_configuration" "ERR"
+    echo "${productTextArg} is not a valid file path. Fail. Exit 1"
+    exit 1
+fi
+
+if [ $doExportProductData = 1 ] && \
+   [ ! -f "${productDataArg}" ]
+then
+    configureLogging "svcbu_hs_export_configuration" "ERR"
+    echo "${productDataArg} is not a valid file path. Fail. Exit 1"
+    exit 1
+fi
+
+SITE_ID=`echo ${siteIdArg} | tr '[A-Z]' '[a-z]'`
+CAPS_SITE_ID=`echo ${siteIdArg} | tr [a-z] [A-Z]`
 export SITE_ID
 
 # Create the log file
 configureLogging "svcbu_export_config" ${SITE}
 
-lock_file=$(getLockFile "exportConfiguration" ${SITE_ID})
-lock_status=$(isOperationInProgress "exportConfiguration" ${SITE_ID})
+lock_file=$(getLockFile "hs_exportConfiguration" ${SITE_ID})
+lock_status=$(isOperationInProgress "hs_exportConfiguration" ${SITE_ID})
 if [[ "${lock_status}" = "true" ]]
 then
     echo "Cannot export configuration for ${CAPS_SITE_ID}.  Export configuration process already in progress!"
@@ -95,31 +223,51 @@ fi
 echo "Clearing contents of ${OUTPUT_DIR}"
 rm -rf ${OUTPUT_DIR}/*
 
-echo "Preparing configuration files for export..."
-edexDest=${OUTPUT_DIR}/HazardServicesConfig/edex_static
-commonDest=${OUTPUT_DIR}/HazardServicesConfig/common_static
-caveDest=${OUTPUT_DIR}/HazardServicesConfig/cave_static
+if [ ${doExportConfig} = 1 ]
+then
+   echo "Preparing configuration files for export..."
+   edexDest=${OUTPUT_DIR}/HazardServicesConfig/edex_static
+   commonDest=${OUTPUT_DIR}/HazardServicesConfig/common_static
+   caveDest=${OUTPUT_DIR}/HazardServicesConfig/cave_static
 
-echo "Making temporary common configuration directories..."
-mkdir -p ${commonDest}/configured/${CAPS_SITE_ID}/HazardServices
-mkdir -p ${commonDest}/site/${CAPS_SITE_ID}/HazardServices
+   echo "Making temporary common configuration directories..."
+   mkdir -p ${commonDest}/site/${CAPS_SITE_ID}/HazardServices
 
-echo "Making temporary edex configuration directories..."
-mkdir -p ${edexDest}/configured/${CAPS_SITE_ID}/HazardServices
-mkdir -p ${edexDest}/site/${CAPS_SITE_ID}/HazardServices
+   echo "Making temporary edex configuration directories..."
+   mkdir -p ${edexDest}/site/${CAPS_SITE_ID}/HazardServices
 
-CP_COMMAND="rsync -aq --exclude=*.pyo --exclude=*.pyc --exclude=*.md5"
+   tmpSrc=${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/HazardServices
+   tmpDest=${commonDest}/site/${CAPS_SITE_ID}/
+   copyToTempDirectory $tmpSrc $tmpDest
 
-# Copies the localization information to the staging area
-echo "Copying ${LOCALIZATION_PATH}/common_static/configured/${CAPS_SITE_ID}/HazardServices to temporary directory..."
-${CP_COMMAND} ${LOCALIZATION_PATH}/common_static/configured/${CAPS_SITE_ID}/HazardServices ${commonDest}/configured/${CAPS_SITE_ID}/
-echo "Copying ${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/HazardServices to temporary directory..."
-${CP_COMMAND} ${LOCALIZATION_PATH}/common_static/site/${CAPS_SITE_ID}/HazardServices ${commonDest}/site/${CAPS_SITE_ID}/
+   tmpSrc=${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/HazardServices
+   tmpDest=${edexDest}/site/${CAPS_SITE_ID}/
+   copyToTempDirectory $tmpSrc $tmpDest
+fi
 
-echo "Copying ${LOCALIZATION_PATH}/edex_static/configured/${CAPS_SITE_ID}/HazardServices to temporary directory..."
-${CP_COMMAND} ${LOCALIZATION_PATH}/edex_static/configured/${CAPS_SITE_ID}/HazardServices ${edexDest}/configured/${CAPS_SITE_ID}/
-echo "Copying  ${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/HazardServices to temporary directory..."
-${CP_COMMAND} ${LOCALIZATION_PATH}/edex_static/site/${CAPS_SITE_ID}/HazardServices ${edexDest}/site/${CAPS_SITE_ID}/
+if [ ${doExportProductText} = 1 ]
+then
+   echo "Making temporary database directories..."
+   dataDest=${OUTPUT_DIR}/HazardServicesDatabase
+   mkdir -p ${dataDest}
+
+   tmpSrc=${productTextArg}
+   tmpDest=${dataDest}
+   copyToTempDirectory $tmpSrc $tmpDest
+   rm $tmpSrc  # remove temporary database record serialization
+fi
+
+if [ ${doExportProductData} = 1 ]
+then
+   echo "Making temporary database directories..."
+   dataDest=${OUTPUT_DIR}/HazardServicesDatabase
+   mkdir -p ${dataDest}
+
+   tmpSrc=${productDataArg}
+   tmpDest=${dataDest}
+   copyToTempDirectory $tmpSrc $tmpDest
+   rm $tmpSrc  # remove temporary database record serialization
+fi
 
 echo "Preparing site ${CAPS_SITE_ID}'s compressed file for exporting to central server..."
 
@@ -129,7 +277,16 @@ cd ${site_dir}
 
 # Tar up everything.
 echo "Tarring and zipping configuration to file ${HS_SVC_CFG_TAR_PREFIX}.${SITE_ID}.tar.gz"
-tar -c ${HS_SVC_CFG_TAR_PREFIX} HazardServicesConfig | gzip -9 > ${HS_SVC_CFG_TAR_PREFIX}.${SITE_ID}.tar.gz
+dirsToTar=""
+if [ -d HazardServicesConfig ]
+then
+   dirsToTar="$dirsToTar HazardServicesConfig"
+fi
+if [ -d HazardServicesDatabase ]
+then
+   dirsToTar="$dirsToTar HazardServicesDatabase"
+fi
+tar -c $dirsToTar | gzip -9 > ${HS_SVC_CFG_TAR_PREFIX}.${SITE_ID}.tar.gz
 if [ $? -ne 0 ]
 then
     echo "Failed to make ${HS_SVC_CFG_TAR_PREFIX}.${SITE_ID}.tar.gz. Program exits now."
@@ -160,6 +317,8 @@ echo "Removing ${site_dir}/siteID.txt"
 rm -f ${site_dir}/siteID.txt
 echo "Removing ${site_dir}/HazardServicesConfig"
 rm -rf ${site_dir}/HazardServicesConfig
+echo "Removing ${site_dir}/HazardServicesDatabase"
+rm -rf ${site_dir}/HazardServicesDatabase
 
 echo "Sending the tar file to the central server..."
 

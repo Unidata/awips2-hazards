@@ -54,7 +54,7 @@ Event-Driven Tools
          EventDrivenTools.append(cpEntry)
     else:
          cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
-                            "triggerType": "DATA_LAYER_CHANGE", "dataTypes": [ "RADAR" ]}
+                            "triggerType": "DATA_LAYER_CHANGE" }
          EventDrivenTools.append(cpEntry)  
 '''
 

@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import com.vividsolutions.jts.geom.Coordinate;
+
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Input handler for modifying an edited drawable in some way.
@@ -29,6 +29,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 29, 2016   15928    Chris.Golden Initial creation.
+ * Sep 08, 2017   15561    Chris.Golden Fixed bug that caused geometry modifications
+ *                                      performed upon a multi-geometry event to
+ *                                      potentially strip away all the geometries
+ *                                      making up said event except the one that was
+ *                                      modified.
  * </pre>
  * 
  * @author Chris.Golden
@@ -123,7 +128,11 @@ public abstract class ModificationInputHandler<M extends ManipulationPoint>
              */
             if (getSpatialDisplay().checkGeometryValidity(modifiedGeometry)) {
                 getSpatialDisplay().handleUserModificationOfDrawable(
-                        editedDrawable, modifiedGeometry);
+                        editedDrawable,
+                        getSpatialDisplay()
+                                .buildModifiedGeometryForSpatialEntity(
+                                        (IDrawable<?>) editedDrawable,
+                                        modifiedGeometry));
             } else {
                 getSpatialDisplay().updateBoundingBoxDrawable(editedDrawable,
                         editedDrawable);

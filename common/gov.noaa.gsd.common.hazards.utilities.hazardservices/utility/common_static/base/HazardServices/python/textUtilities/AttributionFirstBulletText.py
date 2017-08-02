@@ -51,15 +51,49 @@
                                              TextProductCommon.makeUGCInformation(..)
     Aug 2016       20654   Kevin.Bisanz      Update getAreaPhraseBullet to handle
                                              independent cities
+    Oct 2016       21656   Mark.Fegan        Corrected wording in FA.W/FA.Y replacement.
+    Oct 2017       21647   Sara Stewart      Modified RS text
 
     @author Tracy.L.Hansen@noaa.gov
 '''
-import collections, os, types, datetime
-from com.raytheon.uf.common.time import SimulatedTime
+
+
+import abc
+import calendar
+import datetime
+
+from dateutil import tz
 
 
 class AttributionFirstBulletText(object):
-    def __init__(self, sectionDict, productID, issueTime, testMode, wfoCity, tpc, timeZones=[], areaPhrase=None):
+    """Creates the attribution and first bullet text for hazard products.
+    
+    This is implemented as an abstract base class, and subclasses must 
+    implement the following methods:
+        attribution_CAN()
+        attribution_EXP()
+        attribution_UPG()
+        attribution_NEW()
+        attribution_EXB()
+        attribution_EXA()
+        attribution_EXT() 
+        attribution_CON()
+        attribution_ROU()
+        firstBullet_CAN()
+        firstBullet_EXP()
+        firstBullet_UPG()
+        firstBullet_NEW()
+        firstBullet_EXB()
+        firstBullet_EXA()
+        firstBullet_EXT() 
+        firstBullet_CON()
+        firstBullet_ROU()
+        getAreaPhrase()
+    """
+    
+    __metaclass__ = abc.ABCMeta
+    
+    def __init__(self, sectionDict, productID, issueTime, testMode, wfoCity, tpc, timeZones=[]):
         # Variables to establish
         self.sectionDict = sectionDict
         self.productID = productID
@@ -87,24 +121,16 @@ class AttributionFirstBulletText(object):
         self.geoType = self.hazardEventDict.get('geoType')
         self.immediateCause = self.hazardEventDict.get('immediateCause')
 
-        # The below list of cities matches the directives but not WarnGen.
-        # Also it uses the "Select for a list of cities" checkbox on the HID.
-        # WarnGen has this same selection but it toggles the 4th bullet.
-        # Commenting this out so the HID checkbox can be repurposed to toggle
-        # the 4th bullet to match WarnGen.
-
-#         self.cityList = []
-#         self.cityListFlag = False
-#         for hazardEventDict in self.hazardEventDicts:
-#             listOfCities = hazardEventDict.get('listOfCities', [])
-#             if listOfCities:
-#                 self.cityListFlag = True
-#                 self.cityList.extend(hazardEventDict.get('cityList', []))
-
         self.nwsPhrase = 'The National Weather Service in ' + self.wfoCity + ' has '
+        self.areaPhrase = self.getAreaPhrase()
 
-        if not areaPhrase:
-            self.areaPhrase = self.getAreaPhrase()
+        # Check for the replacedBy attribute
+        self.replacement = False
+        self.replacementName = ''
+        self.replacedBy = self.hazardEventDict.get('replacedBy', None)
+        if self.replacedBy:
+            self.replacement = True
+            self.replacementName = self.tpc.hazardName(self.replacedBy, False, True)
 
         # TODO - Rewrite module (mainly qualifiers method) to handle sections
         # that have multiple hazard events. There is no gaurantee that the 
@@ -136,11 +162,6 @@ class AttributionFirstBulletText(object):
             self.riverName = self.hazardEventDict.get('riverName')
         self.streamName = self.hazardEventDict.get('streamName')
 
-        # Check for the replacedBy attribute
-        self.replacement = False
-        if self.hazardEventDict.get('replacedBy', None):
-            self.replacement = True
-
     # attribution
     def getAttributionText(self):
         if self.action == 'CAN':
@@ -162,82 +183,44 @@ class AttributionFirstBulletText(object):
         elif self.action == 'ROU':
             attribution = self.attribution_ROU()
         return attribution
-    
+
+    @abc.abstractmethod
     def attribution_CAN(self):
-        attribution = '...The '
-        if self.replacement:
-            actionWord = 'replaced'
-        else:
-            actionWord = 'cancelled'
+        raise NotImplementedError
 
-        if self.phenSig in ['FA.W', 'FA.Y']:
-            preQualifiers = self.preQualifiers()
-            attribution += preQualifiers + self.hazardName + self.qualifiers(titleCase=False, addPreposition=False)
-            attribution += ' has been ' + actionWord + ' for ' + self.areaPhrase + '...'
-        else:
-            attribution += self.hazardName + ' for ' + self.areaPhrase + ' has been ' + actionWord + '...'
-        return attribution
-    
+    @abc.abstractmethod
     def attribution_EXP(self):
-        expireTimeCurrent = self.issueTime
-        if self.vtecRecord.get('endTime') <= expireTimeCurrent:
-            expireWords = ' has expired'
-        else:
-            timeWords = self.tpc.getTimingPhrase(self.vtecRecord, self.hazardEventDicts, expireTimeCurrent)
-            expireWords = ' will expire ' + timeWords
-        attribution = '...The '
-        if self.phenSig in ['FA.W', 'FA.Y']:
-            preQualifiers = self.preQualifiers()
-            attribution += preQualifiers + self.hazardName + self.qualifiers(titleCase=False, addPreposition=False)
-            attribution += expireWords + ' for ' + self.areaPhrase
-        else:
-            attribution += self.hazardName + ' for ' + self.areaPhrase + expireWords + '.'
-        return attribution
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def attribution_UPG(self):
-        attribution = self.nwsPhrase + 'upgraded the'
-        return attribution
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def attribution_NEW(self):
-        attribution = self.nwsPhrase + 'issued a'
-        return attribution
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def attribution_EXB(self):
-        attribution = self.nwsPhrase + 'expanded the'
-        return attribution
+        raise NotImplementedError
  
+    @abc.abstractmethod
     def attribution_EXA(self):
-        attribution = self.nwsPhrase + 'expanded the'
-        return attribution
-    
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def attribution_EXT(self):
-        if self.geoType == 'area': # FFW_FFS, FLW_FLS area, FFA area:
-            attribution = self.nwsPhrase + 'extended the'
-        else: # point
-            attribution = 'The ' + self.hazardName + ' is now in effect ' 
-        return attribution
-    
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def attribution_CON(self):
-        attribution = '...The '
-        if self.phenSig in ['FA.Y', 'FA.W']:
-            if self.timeZones is not None and len(self.timeZones) > 0:
-                timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z', timeZones=self.timeZones)
-            else:
-                timeStr = self.tpc.getFormattedTime(self.endTime, format='%H%M %p %Z')
-            preQualifiers = self.preQualifiers()
-            qualifiers = self.qualifiers(titleCase=False, addPreposition=False)
-            attribution += preQualifiers + self.hazardName + qualifiers
-            
-            attribution += ' remains in effect until ' + timeStr + ' for ' + self.areaPhrase + '...'
-        else:
-            attribution += self.hazardName + ' remains in effect '
-        return attribution
-       
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def attribution_ROU(self):
-        attribution = self.nwsPhrase + 'released '
-        return attribution
+        raise NotImplementedError
             
-    # First Bullet        
+    # First Bullet   
     def getFirstBulletText(self):
         if self.action == 'CAN':
             firstBullet = self.firstBullet_CAN()
@@ -260,190 +243,41 @@ class AttributionFirstBulletText(object):
 
         return firstBullet
 
+    @abc.abstractmethod
     def firstBullet_CAN(self):
-        if self.geoType == 'area':
-            firstBullet = ''
-        else:
-            actionValue = ''
-            if self.replacement:
-                actionWord = 'replaced'
-                replacedByValue = self.hazardEventDict.get('replacedBy')
-                if replacedByValue:
-                    actionValue = ' by a ' + replacedByValue.lower()
-            else:
-                actionWord = 'cancelled'
-            firstBullet = 'The ' + self.hazardName + ' is ' + actionWord + actionValue + ' for\n' + self.areaPhrase
-        return firstBullet
-    
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def firstBullet_EXP(self):
-        firstBullet = ''
-        return firstBullet
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def firstBullet_UPG(self):
-        # TODO - Post-Hydro fix this
-        firstBullet = self.hazardName + ' for...\n'
-        firstBullet +=self.areaPhrase
-        return firstBullet
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def firstBullet_NEW(self):
-        preQualifiers = self.preQualifiers()
-        firstBullet = preQualifiers + self.hazardName
-        qualifiers = self.qualifiers(titleCase=True)
-        forStr = ''
-        if self.geoType == 'area':
-            if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
-                if not self.optionalSpecificTypeStr and not self.warningTypeStr:
-                    firstBullet += ' for...'
-            else:
-                forStr = ' for '
-        else:
-            forStr =  ' for\n'
-        if qualifiers:
-            firstBullet += qualifiers
-            forStr = ''
-        firstBullet += forStr + self.areaPhrase
-        return firstBullet
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def firstBullet_EXB(self):
-        firstBullet = self.hazardName + ' to include'
-        firstBullet += ' ' + self.areaPhrase
-        return firstBullet
+        raise NotImplementedError
  
+    @abc.abstractmethod
     def firstBullet_EXA(self):
-        firstBullet = self.hazardName + ' to include'
-        firstBullet += ' ' + self.areaPhrase
-        return firstBullet
-    
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def firstBullet_EXT(self):
-        preQualifiers = self.preQualifiers()
-        forStr = ''
-        if self.geoType == 'area':
-            firstBullet = preQualifiers + self.hazardName
-            if self.phenSig in ['FF.W', 'FA.W', 'FA.Y']:
-                if not self.optionalSpecificTypeStr and not self.warningTypeStr:
-                    firstBullet += ' for...'
-            else:
-                forStr = ' for '
-        else:
-            firstBullet = 'The ' + self.hazardName
-            forStr =  ' continues for\n'
-        qualifiers = self.qualifiers(titleCase=True)
-        if qualifiers:
-            firstBullet += qualifiers
-            forStr = ''
-        firstBullet += forStr + self.areaPhrase
-        return firstBullet
-    
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def firstBullet_CON(self):
-        firstBullet = ''
-        forStr = ''
-        if self.geoType == 'area':
-            preQualifiers = self.preQualifiers()
-            firstBullet = preQualifiers + self.hazardName
-            if self.phenSig == 'FF.W':
-                firstBullet += ' for...'
-            else:
-                forStr = ' for '
-        else:
-            firstBullet = 'The ' + self.hazardName
-            forStr =  ' continues for\n'
-        qualifiers = self.qualifiers(titleCase=True, addPreposition=False)
-        if qualifiers:
-            firstBullet += qualifiers
-        firstBullet += forStr + self.areaPhrase
-        return firstBullet
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def firstBullet_ROU(self):
-        if self.geoType == 'area':
-            forStr = ' for...'
-        else:
-            forStr = ' for\n'
-        firstBullet = self.hazardName + forStr
-        firstBullet += self.areaPhrase
-        return firstBullet
-
-    def preQualifiers(self,):
-        qualifiers = ''
-        if self.phenSig == 'FA.Y':
-            if self.advisoryType:
-                qualifiers += self._titleCase(self.advisoryType) + ' '
-        return qualifiers
-
-    def dm_river_qualifiers(self):
-        qualifiers = ''
-
-        # Add the type of flooding to the string if available
-        if self.typeOfFlooding:
-            typeOfFloodingCap = self.typeOfFlooding.capitalize()
-            qualifiers += typeOfFloodingCap + ' on '
-            qualifiers += 'the '
-        else:
-            qualifiers += 'The '
-
-        qualifiers += self.riverName + ' below ' + self.damOrLeveeName
-
-        return qualifiers
-
-    def qualifiers(self, titleCase, addPreposition=True):
-        qualifiers = ''
-        if titleCase:
-            typeOfFlooding = self._titleCase(self.typeOfFlooding)
-        else:
-            typeOfFlooding = self.typeOfFlooding
-
-        if self.phenSig == 'FF.W':
-            if self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
-                qualifiers += '\n'
-                qualifiers += self.dm_river_qualifiers()
-
-                if addPreposition:
-                    qualifiers += ' in '
-            elif self.subType == 'BurnScar' and self.burnScarName:
-                qualifiers += '\n' + self.burnScarName
-                if addPreposition:
-                    qualifiers += ' in ' 
-            elif typeOfFlooding and self.immediateCause not in ['ER', 'IC', 'MC', 'UU']:
-                qualifiers += '\n' + typeOfFlooding
-                if addPreposition:
-                    qualifiers += ' in...'
-
-        elif self.phenSig == 'FA.W':
-            if self.immediateCause in ['ER', 'IC', 'MC', 'UU']:
-                if self.warningTypeStr:
-                    qualifiers += ' for ' + self.warningTypeStr
-                    if addPreposition:
-                        qualifiers += ' in...'
-            elif self.immediateCause == 'DM' and self.riverName and self.damOrLeveeName:
-                qualifiers += '\n'
-                qualifiers += self.dm_river_qualifiers()
-                if addPreposition:
-                    qualifiers += ' in '
-            elif typeOfFlooding:
-                if self.action in ['NEW', 'EXT']:
-                    qualifiers += '\n  ' + typeOfFlooding
-                else:
-                    qualifiers += ' for ' + typeOfFlooding
-                if addPreposition:
-                    qualifiers += ' in...'
-
-        elif self.phenSig == 'FA.Y': 
-            if self.optionalSpecificTypeStr:
-                qualifiers+= ' for ' +  self.optionalSpecificTypeStr.title()
-            if self.immediateCause not in ['ER', 'IC']:
-                if typeOfFlooding:
-                    if self.action in ['NEW', 'EXT']:
-                        if self.optionalSpecificTypeStr:
-                            qualifiers += ' for..\n  ' + typeOfFlooding
-                        else:
-                            qualifiers += '\n  ' + typeOfFlooding
-                    else:
-                        qualifiers += ' for ' + typeOfFlooding
-                    if addPreposition:
-                        qualifiers += ' in...'
-            else:
-                if qualifiers and addPreposition:
-                    qualifiers += ' for...'
-        return qualifiers
+        raise NotImplementedError
 
     def _titleCase(self, inputString):
         '''
@@ -490,22 +324,21 @@ class AttributionFirstBulletText(object):
         # Rejoin everything with spaces.
         return ' '.join(capWords)
 
-    # areaPhrase
+    @abc.abstractmethod
     def getAreaPhrase(self):
-        if self.geoType != 'point' and ( self.productID in ['FFA', 'FFS'] or 
-        (self.phenSig in ['FA.Y', 'FA.W'] and self.action not in ['NEW', 'EXT'])):
-            areaPhrase = self.tpc.getAreaPhrase(self.vtecRecord.get('id'))
-        elif self.productID == 'FFW':
-            areaPhrase = self.getAreaPhraseBullet()
-        elif self.phenSig in ['FA.W', 'FA.Y']:
-            areaPhrase = self.getAreaPhraseBullet()
-        elif self.phen in 'FL' or self.phenSig == 'HY.S':
-            areaPhrase = self.getAreaPhraseForPoints(self.hazardEventDict)
-        else:
-            areaPhrase = ''
-        return areaPhrase.rstrip()
+        raise NotImplementedError
 
-    def getAreaPhraseBullet(self):
+    def _getAreaPhraseForPoints(self, hazardEventDict):
+        proximity = hazardEventDict.get('proximity', '')
+        # TODO fix rfp to never return None or decide what the below default value should be
+        if not proximity:
+            proximity = 'near'
+        return 'the {} {} {}'.format(
+                                     hazardEventDict.get('riverName_GroupName', ''), 
+                                     proximity, 
+                                     hazardEventDict.get('riverPointName', ''))
+
+    def _getAreaPhraseBullet(self):
         '''
         @return: Plain language list of counties/zones in the hazard(s) appropriate
                  for bullet format products
@@ -568,13 +401,20 @@ class AttributionFirstBulletText(object):
 
         return areaPhrase
 
-    def getAreaPhraseForPoints(self, hazardEventDict):
-        proximity = hazardEventDict.get('proximity', '')
-        # TODO fix rfp to never return None or decide what the below default value should be
-        if not proximity:
-            proximity = 'near'
-        return  '  the ' + hazardEventDict.get('riverName_GroupName', '') + ' ' + proximity + ' ' + hazardEventDict.get('riverPointName', '') + '.'
+    def _dm_river_qualifiers(self):
+        qualifiers = ''
 
+        # Add the type of flooding to the string if available
+        if self.typeOfFlooding:
+            typeOfFloodingCap = self.typeOfFlooding.capitalize()
+            qualifiers += typeOfFloodingCap + ' on '
+            qualifiers += 'the '
+        else:
+            qualifiers += 'The '
+
+        qualifiers += self.riverName + ' below ' + self.damOrLeveeName
+
+        return qualifiers
 
     # The following tables are temporarily here until we determine the best central place to keep them.        
     def hydrologicCauseMapping(self, hydrologicCause, key):
@@ -587,7 +427,7 @@ class AttributionFirstBulletText(object):
             'glacier':      {'immediateCause': 'GO', 'typeOfFlooding':'a glacier-dammed lake outburst'},
             'icejam':       {'immediateCause': 'IJ', 'typeOfFlooding':'an ice jam'},
             'rain':         {'immediateCause': 'RS', 'typeOfFlooding':'rain and snowmelt'},
-            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'extremely rapid snowmelt'},
+            'snowMelt':     {'immediateCause': 'RS', 'typeOfFlooding':'extremely rapid snowmelt'}, # matches WarnGen products
             'volcano':      {'immediateCause': 'SM', 'typeOfFlooding':'extremely rapid snowmelt caused by volcanic eruption'},
             'volcanoLahar': {'immediateCause': 'SM', 'typeOfFlooding':'volcanic induced debris flow'},
             'default':      {'immediateCause': 'ER', 'typeOfFlooding':'excessive rain'}
@@ -603,7 +443,7 @@ class AttributionFirstBulletText(object):
             'DR' : 'A dam floodgate release',
             'GO' : 'A glacier-dammed lake outburst',
             'IJ' : 'An ice jam',
-            'RS' : 'Extremely rapid snowmelt',
+            'RS' : '', #Blanked out to match GFE products
             'SM' : 'Extremely rapid snowmelt caused by volcanic eruption'
             }
         if mapping.has_key(immediateCuase):
@@ -636,6 +476,36 @@ class AttributionFirstBulletText(object):
         damInfoDict = mapsAccessor.getAllDamInundationMetadata()
         return damInfoDict
 
-    def flush(self):
-        ''' Flush the print buffer '''
-        os.sys.__stdout__.flush()
+    def _headlineExpireTimePhrase(self, expireTime, duration, timeZones):
+        expireTime = expireTime.replace(tzinfo=tz.tzutc())
+        durationInMin = duration.total_seconds() / 60
+        if durationInMin >= 360:
+            dateTimeFormat = "%I%M %p %Z %A"
+        else:
+            dateTimeFormat = "%I%M %p %Z"
+        time1 = self._formatUseNoonMidnight(expireTime, dateTimeFormat, 15, timeZones[0])
+        secondTimeZone = timeZones[1] if len(timeZones) > 1 else timeZones[0]
+        time2 = self._formatUseNoonMidnight(expireTime, dateTimeFormat, 15, secondTimeZone)
+        timeStr = self._formatTwoTimes(time1, time2)
+        return timeStr.upper()    
+
+    def _formatUseNoonMidnight(self, dateTime, dateFormat, interval, timeZone):
+        workingDate = dateTime
+        if interval > 0:
+            workingDate = self.tpc.round(dateTime, interval)
+            
+        locTz = tz.gettz(timeZone)
+        workingDate = workingDate.astimezone(locTz)
+        
+        dateTimeStr = workingDate.strftime(dateFormat)
+        if dateTimeStr[0] == '0':
+            dateTimeStr = dateTimeStr[1:]
+        dateTimeStr = dateTimeStr.replace("1200 AM", "midnight", 1)
+        dateTimeStr = dateTimeStr.replace("1200 PM", "noon", 1)
+        return dateTimeStr
+
+    def _formatTwoTimes(self, time1, time2):
+        timeStr = time1
+        if time2 and time1 != time2:
+            timeStr += '/' + time2 + '/'
+        return timeStr

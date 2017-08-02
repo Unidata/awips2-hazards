@@ -24,9 +24,6 @@ class Product(HydroGenerator.Product):
         self._RVS_ProductName = "RVS Product"
         self._productName = 'RVS Product'
         self._purgeHours = 8.0
-        self._includeAreaNames = False
-        self._includeCityNames = False
-
         self._vtecProduct = False
 
     def defineScriptMetadata(self):

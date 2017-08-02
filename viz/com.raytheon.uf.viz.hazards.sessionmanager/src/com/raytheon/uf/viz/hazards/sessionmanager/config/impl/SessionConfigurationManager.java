@@ -79,6 +79,7 @@ import com.raytheon.uf.common.localization.LocalizationContext.LocalizationType;
 import com.raytheon.uf.common.localization.LocalizationFile;
 import com.raytheon.uf.common.localization.PathManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
+import com.raytheon.uf.common.localization.SaveableOutputStream;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
@@ -273,6 +274,8 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      changes from mid-August broke metadata refresh
  *                                      if the value of the specifier parameter was
  *                                      a boolean, for example, instead of a string.
+ * Oct 04, 2016 22573      Robert.Blum  Updated validateHazardEvent() to check for null
+ *                                      hazard type.
  * Oct 05, 2016 22870      Chris.Golden Added support for event-driven tools triggered
  *                                      by frame changes.
  * Oct 06, 2016 22894      Chris.Golden Added method to get session attributes for a
@@ -280,6 +283,8 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Oct 19, 2016 21873      Chris.Golden Added time resolution, both for hazard types
  *                                      and for the current settings (and with the
  *                                      latter, startup-config).
+ * Nov 28, 2016 26181      bkowal       Corrected JSON serialization and updated JSON output
+ *                                      to be pretty printed. Eliminated a few more warnings.
  * Feb 01, 2017 15556      Chris.Golden Changed to include originator when setting
  *                                      the site identifier.
  * Mar 27, 2017 15528      Chris.Golden Added gathering of set of metadata megawidget
@@ -693,25 +698,20 @@ public class SessionConfigurationManager
             ConfigLoader<Settings> loader = new ConfigLoader<>(file,
                     Settings.class, null, PythonBuildPaths.buildIncludePath(),
                     configLoaderParams);
-            if (file.getFile().length() != 0) {
+            if (file.exists()) {
                 allSettings.add(loader);
                 loaderPool.schedule(loader);
                 if (previousPersisted != null) {
-                    try {
-                        String fileName = file.getFile(false).getName();
-                        if (fileName.startsWith(
-                                previousPersisted.getSettingsID() + ".")) {
-                            Settings s = loader.getConfig();
-                            if (s.getSettingsID().equals(
-                                    previousPersisted.getSettingsID())) {
-                                settings.applyPersistedChanges(
-                                        previousPersisted, s);
-                                previousPersisted = null;
-                            }
+                    String fileName = file.getPath();
+                    if (fileName.startsWith(
+                            previousPersisted.getSettingsID() + ".")) {
+                        Settings s = loader.getConfig();
+                        if (s.getSettingsID()
+                                .equals(previousPersisted.getSettingsID())) {
+                            settings.applyPersistedChanges(previousPersisted,
+                                    s);
+                            previousPersisted = null;
                         }
-                    } catch (LocalizationException e) {
-                        statusHandler.handle(Priority.PROBLEM,
-                                e.getLocalizedMessage(), e);
                     }
                 }
             }
@@ -809,14 +809,15 @@ public class SessionConfigurationManager
         contents.append(settings.getSettingsID());
         contents.append(" = ");
         ObjectMapper mapper = new ObjectMapper();
-        mapper.getSerializationConfig()
-                .withSerializationInclusion(JsonInclude.Include.NON_NULL);
-        try {
-            contents.append(mapper.writeValueAsString(settings));
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        try (SaveableOutputStream sos = f.openOutputStream()) {
+            contents.append(mapper.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(settings));
             String contentsAsString = contents.toString();
             contentsAsString = contentsAsString.replaceAll("true", "True")
                     .replaceAll("false", "False");
-            f.write(contentsAsString.getBytes());
+            sos.write(contentsAsString.getBytes());
+            sos.save();
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, "Unable to save settings.",
                     e);
@@ -2094,16 +2095,19 @@ public class SessionConfigurationManager
 
     @Override
     public String validateHazardEvent(IHazardEvent hazardEvent) {
-        IPythonExecutor<ContextSwitchingPythonEval, String> executor = new ValidateScriptExecutor(
-                hazardEvent);
-        try {
-            return PYTHON_JOB_COORDINATOR.submitJob(executor).get();
-        } catch (Exception e) {
-            statusHandler
-                    .error("Error executing validate job for hazard event: "
-                            + hazardEvent.getEventID(), e);
-            return null;
+        if (hazardEvent != null) {
+            IPythonExecutor<ContextSwitchingPythonEval, String> executor = new ValidateScriptExecutor(
+                    hazardEvent);
+            try {
+                return PYTHON_JOB_COORDINATOR.submitJob(executor).get();
+            } catch (Exception e) {
+                statusHandler
+                        .error("Error executing validate job for hazard event: "
+                                + hazardEvent.getEventID(), e);
+                return null;
+            }
         }
+        return null;
     }
 
     @Override

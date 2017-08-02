@@ -9,9 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
-import gov.noaa.gsd.viz.megawidgets.displaysettings.SelectableMultiPageScrollSettings;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,6 +28,9 @@ import org.eclipse.swt.widgets.Display;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.SelectableMultiPageScrollSettings;
 
 /**
  * Tabbed composite megawidget, a megawidget that contains tabs, each associated
@@ -61,14 +61,16 @@ import com.google.common.collect.ImmutableSet;
  *                                           selected tab.
  * Apr 14, 2015    6935    Chris.Golden      Added visible page name mutable
  *                                           property.
+ * Nov 15, 2016    22754   Robert.Blum       Fix layout issue with ExpandBar megawidgets
+ *                                           on the HID.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  * @see TabbedCompositeSpecifier
  */
-public class TabbedCompositeMegawidget extends ContainerMegawidget implements
-        IResizer {
+public class TabbedCompositeMegawidget extends ContainerMegawidget
+        implements IResizer {
 
     // Protected Static Constants
 
@@ -76,6 +78,7 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
      * Set of all mutable property names for instances of this class.
      */
     protected static final Set<String> MUTABLE_PROPERTY_NAMES;
+
     static {
         Set<String> names = new HashSet<>(
                 ContainerMegawidget.MUTABLE_PROPERTY_NAMES);
@@ -102,6 +105,11 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
     private final SelectableMultiPageScrollSettings<Point, Integer> displaySettings = new SelectableMultiPageScrollSettings<>(
             getClass());
 
+    /**
+     * Resize listener supplied at creation time.
+     */
+    private final IResizeListener resizeListener;
+
     // Protected Constructors
 
     /**
@@ -117,7 +125,7 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
      */
     protected TabbedCompositeMegawidget(TabbedCompositeSpecifier specifier,
             Composite parent, Map<String, Object> paramMap)
-            throws MegawidgetException {
+                    throws MegawidgetException {
         super(specifier);
 
         /*
@@ -141,14 +149,35 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
                 int selectedIndex = tabFolder.getSelectionIndex();
                 displaySettings.setSelection(selectedIndex);
                 if (selectedIndex != -1) {
-                    String tabName = (String) tabFolder.getItem(
-                            tabFolder.getSelectionIndex()).getData();
+                    String tabName = (String) tabFolder
+                            .getItem(tabFolder.getSelectionIndex()).getData();
                     Point origin = displaySettings
                             .getScrollOriginForPage(tabName);
                     if (origin != null) {
-                        scrolledCompositesForTabPages.get(tabName).setOrigin(
-                                origin);
+                        scrolledCompositesForTabPages.get(tabName)
+                                .setOrigin(origin);
                     }
+                }
+            }
+        });
+
+        /*
+         * Remember the resize listener passed in, then create a copy of the
+         * creation-time parameters map, so that alterations to its resize
+         * listener do not affect the original. Then alter the copy to hold a
+         * reference to a new resize listener that allows this megawidget to
+         * layout the selected CTabItem's composite before passing on
+         * notifications of a size change to the original listener.
+         */
+        resizeListener = (IResizeListener) paramMap.get(RESIZE_LISTENER);
+        paramMap = new HashMap<>(paramMap);
+        paramMap.put(RESIZE_LISTENER, new IResizeListener() {
+
+            @Override
+            public void sizeChanged(IResizer megawidget) {
+                ((Composite) tabFolder.getSelection().getControl()).layout();
+                if (resizeListener != null) {
+                    resizeListener.sizeChanged(TabbedCompositeMegawidget.this);
                 }
             }
         });
@@ -158,8 +187,10 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
          * appropriate.
          */
         Map<String, ScrolledComposite> scrolledCompositesForTabPages = (specifier
-                .isScrollable() ? new HashMap<String, ScrolledComposite>(
-                specifier.getPageNames().size(), 1.0f) : null);
+                .isScrollable()
+                        ? new HashMap<String, ScrolledComposite>(
+                                specifier.getPageNames().size(), 1.0f)
+                        : null);
 
         /*
          * Iterate through the tabs, creating for each a page with its child
@@ -205,7 +236,8 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
             List<IControl> children = createChildMegawidgets(tabPage,
                     specifier.getColumnCountForPage(pageName),
                     specifier.isEnabled(), specifier.isEditable(),
-                    specifier.getChildSpecifiersForPage(pageName), pageParamMap);
+                    specifier.getChildSpecifiersForPage(pageName),
+                    pageParamMap);
             allChildren.addAll(children);
 
             /*
@@ -227,8 +259,8 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
          * Remember the scrolled composites for the tab pages if the megawidget
          * is scrollable.
          */
-        this.scrolledCompositesForTabPages = (specifier.isScrollable() ? ImmutableMap
-                .copyOf(scrolledCompositesForTabPages) : null);
+        this.scrolledCompositesForTabPages = (specifier.isScrollable()
+                ? ImmutableMap.copyOf(scrolledCompositesForTabPages) : null);
 
         /*
          * Select whichever tab goes with the page that is to start off visible.
@@ -290,16 +322,17 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
             @SuppressWarnings("unchecked")
             @Override
             public void run() {
-                if ((displaySettings.getMegawidgetClass() == TabbedCompositeMegawidget.this
-                        .getClass())
+                if ((displaySettings
+                        .getMegawidgetClass() == TabbedCompositeMegawidget.this
+                                .getClass())
                         && (displaySettings instanceof SelectableMultiPageScrollSettings)) {
                     Integer selectedIndex = ((SelectableMultiPageScrollSettings<Point, Integer>) displaySettings)
                             .getSelection();
                     if ((tabFolder.isDisposed() == false)
                             && ((selectedIndex == null) || (tabFolder
                                     .getItemCount() > selectedIndex))) {
-                        tabFolder.setSelection(selectedIndex == null ? 0
-                                : selectedIndex);
+                        tabFolder.setSelection(
+                                selectedIndex == null ? 0 : selectedIndex);
                         TabbedCompositeMegawidget.this.displaySettings
                                 .setSelection(selectedIndex);
                     }
@@ -311,7 +344,8 @@ public class TabbedCompositeMegawidget extends ContainerMegawidget implements
                             ScrolledComposite scrolledComposite = scrolledCompositesForTabPages
                                     .get(entry.getKey());
                             if ((scrolledComposite != null)
-                                    && (scrolledComposite.isDisposed() == false)) {
+                                    && (scrolledComposite
+                                            .isDisposed() == false)) {
                                 scrolledComposite.setOrigin(entry.getValue());
                                 TabbedCompositeMegawidget.this.displaySettings
                                         .setScrollOriginForPage(entry.getKey(),

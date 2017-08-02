@@ -24,7 +24,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getMinorFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(self.hazardEvent),
+                    self.getLocationsAffected(),
                     self.getAdditionalInfo(),
                     self.getCTAs(),   
                     # Preserving CAP defaults for future reference.                 
@@ -46,7 +46,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getEventType(),
                     self.getMinorFloodOccurring(),
                     self.getRainAmt(),
-                    self.getLocationsAffected(self.hazardEvent),
+                    self.getLocationsAffected(),
                     self.getAdditionalInfo(),
                     self.getCTAs(),
                 ]

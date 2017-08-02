@@ -20,7 +20,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.AAWUinitialize(hazardEvent, metaDict)
-        sys.stderr.writelines(['Calling Strong Surface Wind', '\n'])
+        CommonMetaData.writelines(sys.stderr, ['Calling Strong Surface Wind', '\n'])
         
         hazardEvent.setVisualFeatures(VisualFeatures([]))
         

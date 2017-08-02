@@ -44,12 +44,23 @@ from HazardConstants import *
 import os, sys, re
 from collections import OrderedDict
 from MapsDatabaseAccessor import MapsDatabaseAccessor
+import logging
+import UFStatusHandler
+
 import pprint
 from com.raytheon.uf.common.time import SimulatedTime
 from scipy import interpolate
 
 
 class MetaData(object):
+    
+    def __init__(self):
+        self.logger = logging.getLogger('CommonMetaData')
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
+        self.logger.addHandler(UFStatusHandler.UFStatusHandler(
+            'gov.noaa.gsd.uf.common.dataplugin.hazards.hazardservices', 'CommonMetaData', level=logging.INFO))
+        self.logger.setLevel(logging.INFO)
 
     def initialize(self, hazardEvent, metaDict):
         self.hazardEvent = hazardEvent
@@ -551,20 +562,23 @@ class MetaData(object):
              "values": defaultOn,
             }
 
-    def getLocationsAffected(self, hazardEvent):
-        trackPoints = hazardEvent.get("trackPoints", None)
-        stormMotion = hazardEvent.get("stormMotion", None)
-        value = self.noLocations().get("identifier")
-        if trackPoints and stormMotion:
+    def getLocationsAffected(self):
+        choices = [self.cityList(), self.noLocations()]
+        if self.hazardEvent.get("trackPoints") and self.hazardEvent.get("stormMotion"):
             # StormTrack Recommender was used to create hazard
-            # Default to pathcast
-            value = self.pathcast().get("identifier")
+            choices.insert(0, self.pathcast())
+
         return {
              "fieldType":"RadioButtons",
              "fieldName": "locationsAffectedRadioButton",
-             "label": "Lcations Affected (4th Bullet)",
-             "choices": [self.pathcast(), self.cityList(), self.noLocations()],
-             "values": value
+             "label": "Locations Affected (4th Bullet)",
+             "choices": choices,
+             "values": choices[0].get("identifier"),
+            }
+
+    def damInfo(self):
+        return {"identifier": "damInfo",
+                "displayString": "Dam Info",
             }
 
     def pathcast(self):
@@ -667,8 +681,15 @@ class MetaData(object):
                       ]
                      }
  
-    def getRiver(self):
-        riverName = self.hazardEvent.get('riverName', '')
+    def getRiver(self, damOrLeveeName=None):
+        riverName = self.hazardEvent.get('riverName','')
+        if not riverName and damOrLeveeName:
+            # Attempt to populate the riverName from the dam metadata if available
+            mapsAccessor = MapsDatabaseAccessor()
+            damMetaData = mapsAccessor.getDamInundationMetadata(damOrLeveeName)
+            if damMetaData:
+                riverName = damMetaData.get("riverName", "")
+
         return {
              "fieldType": "Text",
              "fieldName": "riverName",
@@ -759,6 +780,12 @@ class MetaData(object):
                 "displayString": "Act Quickly",
                 "productString": 
                 "Move to higher ground now. Act quickly to protect your life."}
+
+    def ctaFFWEmergency(self):
+        return {"identifier": "ffwEmergencyCTA",
+                "displayString": "FLASH FLOOD EMERGENCY",
+                "productString": 
+                "Move to higher ground now! This is an extremely dangerous and life-threatening situation. Do not attempt to travel unless you are fleeing an area subject to flooding or under an evacuation order."}
 
     def ctaChildSafety(self):
         return {"identifier": "childSafetyCTA",
@@ -925,7 +952,7 @@ class MetaData(object):
     def ctaLastStatement(self):
         return {"identifier": "lastStatementCTA",
                 "displayString": "Last river flood statement on this event",
-                "productString": "This will be the last river flood statement on this event.  Stay tuned to developments."}
+                "productString": "This will be the last river flood statement on this event. Stay tuned to developments."}
 
     def ctaWarningInEffect(self):
         return {"identifier":  "warningInEffectCTA",
@@ -1349,12 +1376,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
         choices.reverse()
         
+        # Ensure 'Current Obs/Max Fcst' is the default selection (the last element).
         refStageFlow = {
                             "fieldType": "ComboBox",
                             "fieldName": parm + "ReferenceStageFlow",
                             "label": "Reference Stage Flow:",
                             "choices": choices,
-                            "values":  choices[0],
+                            "values":  choices[-1],
                             "expandHorizontally": False 
                         }
         return refStageFlow
@@ -1597,68 +1625,62 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                 elif referenceTypeValue == 'Current Observed' :
                     referenceValue =  self.riverForecastUtils.getObservedLevel( self.riverForecastPoint)
                 elif referenceTypeValue == 'Current Obs/Max Fcst':
-                    fcstLevel = self._riverForecastUtils.getMaximumForecastLevel(self._riverForecastPoint, primaryPE)
-                    obsLevel = self._riverForecastUtils.getObservedLevel(self._riverForecastPoint)
+                    fcstLevel = self.riverForecastUtils.getMaximumForecastLevel(self.riverForecastPoint, primaryPE)
+                    obsLevel = self.riverForecastUtils.getObservedLevel(self.riverForecastPoint)
                     referenceValue = max(fcstLevel,obsLevel)
-
-                floatValues = []
-                floatMap = {}
-                valueIdx = 2
-                for value in values:
-                    # Split out the float value
-                    strings = value.split('-')
-                    strings = strings[0].split('_')
-                    floatValue = float(strings[valueIdx])
-                    floatValues.append(floatValue)
-                    floatMap[floatValue] = value
 
                 stageWindowLower = filters['Stage Window Lower']['values']
                 stageWindowUpper = filters['Stage Window Upper']['values']
+    
+                tupleList, tupleMap = self.createImpactsData(values)
 
-                # Sort the float Values
-                floatValues.sort()
+                # Sort the list of tuples
+                tupleList.sort()
                 if referenceValue == None or referenceValue == MISSING_VALUE:
                     # No obs or maxfcst value to reference. Default to checking
                     # the first impact only.
-                    if len(floatValues) > 0 :
-                        defaultChoice = floatMap.get(floatValues[0], None)
+                    if len(tupleList) > 0 :
+                        defaultChoice = tupleMap.get(tupleList[0], None)
                         if defaultChoice:
                             checkedValues.append(defaultChoice)
                 else:
                     if searchTypeValue == 'All Below Upper Stage/Flow':
-                        for floatValue in floatValues:
-                            if floatValue <= referenceValue + stageWindowUpper:
-                                checkedValues.append(floatMap.get(floatValue))
+                        for impactTuple in tupleList:
+                            value, trend = impactTuple
+                            if value <= referenceValue + stageWindowUpper:
+                                checkedValues.append(tupleMap.get(impactTuple))
                     else:
-                        windowValues = []
+                        windowTuples = []
                         if searchTypeValue == 'Closest in Stage/Flow Window':
-                            for floatValue in floatValues:
-                                if floatValue > referenceValue + stageWindowLower and floatValue < referenceValue + stageWindowUpper:
-                                    windowValues.append(floatValue)
-                             
-                            closest = -9999
+                            for impactTuple in tupleList:
+                                value, trend = impactTuple
+                                if value > referenceValue + stageWindowLower and value < referenceValue + stageWindowUpper:
+                                    windowTuples.append(tuple)
+
+                            closest = (-9999, "Rising")
                             delta = 9999
                             # select closest to the reference value
-                            for value in windowValues:
+                            for impactTuple in windowTuples:
+                                value, trend = impactTuple
                                 if abs(value - referenceValue) < delta:
-                                    closest = value
+                                    closest = impactTuple
                                     delta = abs(value - referenceValue)
-                            
-                            if (closest != -9999):
-                                checkedValues.append(floatMap.get(closest))
-                             
+                            if (closest[0] != -9999):
+                                checkedValues.append(tupleMap.get(closest))
+
                         elif searchTypeValue == 'Highest in Stage/Flow Window':
-                            for floatValue in floatValues:
-                                if floatValue > referenceValue + stageWindowLower and floatValue < referenceValue + stageWindowUpper:
-                                    windowValues.append(floatValue)
-                             
-                            highest = -9999
+                            for impactTuple in tupleList:
+                                value, trend = impactTuple
+                                if value > referenceValue + stageWindowLower and value < referenceValue + stageWindowUpper:
+                                    windowTuples.append(impactTuple)
+
+                            highest = (-9999, "Rising")
                             # select the highest in the list
-                            for value in windowValues:
-                                if value > highest:
-                                    highest = value;
-                            
-                            if highest != -9999: 
+                            for impactTuple in windowTuples:
+                                value, trend = impactTuple
+                                if value > highest[0]:
+                                    highest = impactTuple;
+                            if highest[0] != -9999: 
                                 checkedValues.append(floatMap.get(highest))
                     
             selectedForecastPoints = {
@@ -1764,18 +1786,23 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             values.append(id)
         return choices, values
 
-    def sortImpactsChoices(self, choices, values):
-        # Sort the choices so they are in order on the HID
-        floatValues = []
-        floatMap = {}
-        valueIdx = 2
+    def createImpactsData(self, values):
+        tupleList = []
+        tupleMap = {}
         for value in values:
             # Split out the float value
             strings = value.split('-')
+            trend = strings[3]
             strings = strings[0].split('_')
-            floatValue = float(strings[valueIdx])
-            floatValues.append(floatValue)
-            floatMap[floatValue] = value
+            floatValue = float(strings[2])
+            impactTuple = (floatValue, trend)
+            tupleList.append(impactTuple)
+            tupleMap[impactTuple] = value
+        return tupleList, tupleMap
+
+    def sortImpactsChoices(self, choices, values):
+        # Sort the choices so they are in order on the HID
+        floatValues, floatMap = self.createImpactsData(values)
 
         # Sort the list of floats
         floatValues.sort()
@@ -1905,15 +1932,17 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
     def damOrLeveeChoices(self):
         damList = []
-        mapsAccessor = MapsDatabaseAccessor()
-        damOrLeveeNames = mapsAccessor.getPolygonNames(DAMINUNDATION_TABLE)
-        damOrLeveeNames.sort()
-        for damOrLeveeName in damOrLeveeNames:
-            ids = {}
-            ids["identifier"] = damOrLeveeName
-            ids["displayString"] = damOrLeveeName
-            ids["productString"] = damOrLeveeName
-            damList.append(ids)
+        try:
+            mapsAccessor = MapsDatabaseAccessor()
+            damOrLeveeNames = mapsAccessor.getPolygonNames(DAMINUNDATION_TABLE)
+            for damOrLeveeName in sorted(damOrLeveeNames):
+                ids = {}
+                ids["identifier"] = damOrLeveeName
+                ids["displayString"] = damOrLeveeName
+                ids["productString"] = damOrLeveeName
+                damList.append(ids)
+        except:
+            self.logger.exception("Could not retrieve dam inundation data.")
         return damList
 
     def includeFloodPointTable(self):
@@ -2749,8 +2778,6 @@ def applyFLInterdependencies(triggerIdentifiers, mutableProperties):
         if originalList is not None:
             impactsCrestsChanges["impactCheckBoxes"] = { "values": originalList }
 
-
-
     # Return None if no changes were needed for until-further-notice or for
     # impacts and crests; if changes were needed for only one of these,
     # return those changes; and if changes were needed for both, merge the
@@ -2810,3 +2837,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
 def toBasis(eventType, eventTypeToBasis):   
     return eventTypeToBasis[eventType]
 
+def writelines(file, lines):
+    for line in lines:
+        file.write(line)
+    file.flush()

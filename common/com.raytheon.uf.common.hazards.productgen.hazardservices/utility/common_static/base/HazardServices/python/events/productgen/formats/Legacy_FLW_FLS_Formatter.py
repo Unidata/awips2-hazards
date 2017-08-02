@@ -30,6 +30,7 @@ import types, re, sys
 from KeyInfo import KeyInfo
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 import Legacy_Hydro_Formatter
+import AttributionFirstBulletText_FLW_FLS
 
 class Format(Legacy_Hydro_Formatter.Format):
 
@@ -109,6 +110,11 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Section Level
 
+    def _setUp_section(self, sectionDict):
+        self.attributionFirstBullet = AttributionFirstBulletText_FLW_FLS.AttributionFirstBulletText(
+            sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, self.timezones)
+        return ''
+
     def _timeBullet(self, sectionDict):
         endText = ''
         timeBullet = super(Format, self)._timeBullet(sectionDict)
@@ -149,7 +155,10 @@ class Format(Legacy_Hydro_Formatter.Format):
             bulletText += ', ' + basis
         self._setVal('basisBullet', bulletText, sectionDict, 'Basis Bullet')
 
-        startText = '* '
+        if sectionDict.get('vtecRecord', {}).get('act') in ['NEW', 'EXT']:
+            startText = '* '
+        else:
+            startText = ''
         if self._testMode:
             startText += "THIS IS A TEST MESSAGE. "
         return self._getFormattedText(bulletText, startText=startText, endText='\n\n')

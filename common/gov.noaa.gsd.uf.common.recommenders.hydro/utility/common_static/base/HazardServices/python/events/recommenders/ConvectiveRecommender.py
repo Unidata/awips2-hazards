@@ -100,7 +100,6 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["description"] = "Ingests convective cell identification and attributes from automated source"
         metaDict["eventState"] = "Pending"
         metaDict['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
-        metaDict['background'] = True
         metaDict['includeDataLayerTimes'] = True
         return metaDict
 
@@ -194,14 +193,14 @@ class Recommender(RecommenderTemplate.Recommender):
         ### no identifiers, set them to nothing in case the Swath Recommender set that
         ### attribute, as this recommender knows which ones should be saved in which category.
         if (identifiersOfEventsToSaveToHistory):
-            mergedEventSet.addAttribute("saveToHistory", identifiersOfEventsToSaveToHistory)
+            mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, identifiersOfEventsToSaveToHistory)
         else:
-            mergedEventSet.addAttribute("saveToHistory", None)
+            mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, None)
         if (identifiersOfEventsToSaveToDatabase):
-            mergedEventSet.addAttribute("saveToDatabase", identifiersOfEventsToSaveToDatabase)
+            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, identifiersOfEventsToSaveToDatabase)
         else:
-            mergedEventSet.addAttribute("saveToDatabase", None)
-        mergedEventSet.addAttribute("treatAsIssuance", True)
+            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, None)
+        mergedEventSet.addAttribute(TREAT_AS_ISSUANCE_KEY, True)
         return mergedEventSet
     
 

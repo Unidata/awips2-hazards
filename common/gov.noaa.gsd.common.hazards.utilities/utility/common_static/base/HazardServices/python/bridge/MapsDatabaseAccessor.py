@@ -18,17 +18,18 @@ data to be used in recommenders and product generation.
  May 18, 2016  17342     Ben.Phillippe  Added location constraint to polygon query
  8 Jun 16      15523     K. Manross/
                          J. Wakefield   Added BurnScar accessors
-
+ Nov 08, 2016  25643  David.Gillingham  Code cleanup in getPolygonNames and 
+                                        getPolygonDict
+ Nov 16, 2016  22971     Robert.Blum    Changes for incremental overrides.
 """
 
 from shapely.geometry import Polygon
 from ufpy.dataaccess import DataAccessLayer
-import DamMetaData
-import BurnScarMetaData
+from Bridge import Bridge
     
 class MapsDatabaseAccessor(object):
     def __init__(self):
-        pass
+        self.bridge = Bridge()
 
     def _extract_poly_coords(self, geom):
         if geom.type == 'Polygon':
@@ -49,63 +50,48 @@ class MapsDatabaseAccessor(object):
                 'interior_coords': interior_coords}
 
     def getPolygonNames(self, tablename, locationField="name", columns=[]):
-
-        table = "mapdata."+tablename
         req = DataAccessLayer.newDataRequest()
         req.setDatatype("maps")
+        table = "mapdata." + tablename
         req.addIdentifier("table", table)
         req.addIdentifier("geomField", "the_geom")
         req.addIdentifier("locationField", locationField)
-
-        if columns:
-            req.setParameters(columns)
-        retGeoms = DataAccessLayer.getGeometryData(req)
-
-        nameList = []
-        for retGeom in retGeoms :
-            nameList.append(retGeom.getLocationName())
-
-        return nameList
+        locNames = DataAccessLayer.getAvailableLocationNames(req)
+        return list(locNames)
     
     def getPolygonDict(self, tablename, siteID, locationField="name", columns=[]):
-        
-        table = "mapdata."+tablename
         req = DataAccessLayer.newDataRequest()
         req.setDatatype("maps")
+        table = "mapdata." + tablename
         req.addIdentifier("table", table)
         req.addIdentifier("geomField", "the_geom")
         req.addIdentifier("locationField", locationField)
         req.addIdentifier("cwa", siteID)
-
         if columns:
             req.setParameters(columns)
+
         retGeoms = DataAccessLayer.getGeometryData(req)
 
         retDict = {}
-        for retGeom in retGeoms :
-            poly = self._extract_poly_coords(retGeom.getGeometry())
-            formattedPoly = [list(c) for c in poly['exterior_coords']]
-
-            try:
-                id = retGeom.getLocationName()
-                if id:
-                   retDict[id] = formattedPoly
-
-            except:
-                print "No 'name' column in table:", table
+        for retGeom in retGeoms:
+            id = retGeom.getLocationName()
+            if id:
+                poly = self._extract_poly_coords(retGeom.getGeometry())
+                formattedPoly = [list(c) for c in poly['exterior_coords']]
+                retDict[id] = formattedPoly
 
         return retDict
 
     def getDamInundationMetadata(self, damName):
-        damInundationMetadata = DamMetaData.damInundationMetadata
+        damInundationMetadata = self.bridge.getDamMetaData()
         return damInundationMetadata.get(damName)
 
     def getAllDamInundationMetadata(self):
-        return DamMetaData.damInundationMetadata
+        return self.bridge.getDamMetaData()
 
     def getBurnScarMetadata(self, burnscarName):
-        burnScarAreaMetadata = BurnScarMetaData.burnScarAreaMetadata
+        burnScarAreaMetadata = self.bridge.getBurnScarMetaData()
         return burnScarAreaMetadata.get(burnscarName)
 
     def getAllBurnScarMetadata(self):
-        return BurnScarMetaData.burnScarAreaMetadata
+        return self.bridge.getBurnScarMetaData()

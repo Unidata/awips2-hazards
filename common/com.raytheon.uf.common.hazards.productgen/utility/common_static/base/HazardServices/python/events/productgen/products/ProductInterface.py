@@ -197,6 +197,7 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
         data = self.keyInfoDictToPythonDict(productData)
 
         if isinstance(data, dict): 
+            errors = []
             # Dictionary containing the formatted products
             productDict = OrderedDict()
             for format in formats:
@@ -217,17 +218,18 @@ class ProductInterface(HazardServicesPythonOverriderInterface.HazardServicesPyth
                     editableEntryMap = EditableEntryMap(format, JUtil.pyValToJavaObj(self.pyDictToKeyInfoDict(editableEntries)))
                     generatedProduct.addEditableEntry(editableEntryMap)
 
-                except Exception, e:
-                    productDict[format] = ['Failed to execute ' + format + '. Make sure it exists. Check log for errors. ']
+                except Exception as err:
+                    errMsg = 'ERROR:  Failed to execute ' + format + '. ' + str(err)
+                    productDict[format] = [errMsg]
+                    errors.append(errMsg)
                     exc_type, exc_value, exc_traceback = sys.exc_info()
                     print traceback.format_exc(limit=20)
                     os.sys.__stdout__.flush()
 
             # TODO Use JUtil.pyValToJavaObj() when JUtil.pyDictToJavaMap() is fully resolved
-#             print "Product Interface", productDict
-#             os.sys.__stdout__.flush()
-            
             generatedProduct.setEntries(JUtil.pyDictToJavaMap(productDict))
+            if errors:
+                generatedProduct.setErrors('\n'.join(errors))
 
     def createProductsFromDictionary(self, dataList, eventSet, genProdList, updateList):
         if dataList is not None:

@@ -38,7 +38,6 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
         metadata['eventState'] = 'Pending'
         metadata['onlyIncludeTriggerEvents'] = True
-        metadata['background'] = True
         
         return metadata
 

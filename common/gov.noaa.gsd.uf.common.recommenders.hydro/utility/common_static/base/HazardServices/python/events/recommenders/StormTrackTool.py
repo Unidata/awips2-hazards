@@ -11,6 +11,7 @@ features instead of special-case Java code in the latter's core to allow the sto
 tool to be user-interactive.
 """
 import RecommenderTemplate
+from HazardConstants import SELECTED_TIME_KEY
 
 import datetime
 import time
@@ -225,7 +226,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Get the point that the storm dot was dragged to, and the selected
         # time in milliseconds.
         draggedPoint = visualFeatures[0]["geometry"].asShapely()[0]
-        draggedPointTime = sessionAttributes.get("selectedTime")
+        draggedPointTime = sessionAttributes.get(SELECTED_TIME_KEY)
 
         # Call method that sets the initial motion of the weather event. This
         # is a reasonable method for a focal point to customize.
@@ -320,10 +321,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         # Finalize our set of output attributes.
         resultDict = {}
-        resultDict["creationTime"] = currentTime
         resultDict["trackPoints"] = shapeList
-        resultDict["startTime"] = startTime
-        resultDict["endTime"] = endTime
         resultDict["lastFrameTime"] = sessionFrameTimes[lastFrameIndex]
         resultDict["status"] = "pending"
         resultDict["stormMotion"] = stormMotion
@@ -348,7 +346,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         return resultDict
 
-    def updateEventAttributes(self, visualFeature, sessionAttributes, eventAttributes):
+    def updateEventAttributes(self, visualFeature, sessionAttributes, hazardEvent):
         '''
         @summary Update event attributes in response to a track point visual feature
         drag.
@@ -357,7 +355,7 @@ class Recommender(RecommenderTemplate.Recommender):
         in milliseconds.
         @param sessionAttributes: Session attributes associated with the event set
         passed into the recommender.
-        @param eventAttributes Attributes of the hazard event being modified.
+        @param hazardEvent Hazard event being modified.
         @return: updated event attributes.
         '''
 
@@ -380,8 +378,8 @@ class Recommender(RecommenderTemplate.Recommender):
         currentTime = long(sessionAttributes["currentTime"])
         currentFrameIndex = framesInfo["frameIndex"]
         currentFrameTime = sessionFrameTimes[currentFrameIndex]
-        startTime = eventAttributes["startTime"]
-        endTime = eventAttributes["endTime"]
+        startTime = TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getStartTime())
+        endTime = TimeUtils.datetimeToEpochTimeMillis(hazardEvent.getEndTime())
 
         # Get the new location of the point that was dragged, and its identifier,
         # which is also an epoch time in milliseconds.
@@ -391,6 +389,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Filter our shape list to remove any points that do not match a frame,
         # and note information about the earliest and latest point, plus the
         # polygon.
+        eventAttributes = hazardEvent.getHazardAttributes()
         eventShapes = eventAttributes.get("trackPoints", [])
         shapeList = []
         time1 = 0
@@ -826,7 +825,7 @@ class Recommender(RecommenderTemplate.Recommender):
                         # the visual features need to be recreated. 
                         eventAttributes = self.updateEventAttributes(changedFeature, \
                                                                      eventSet.getAttributes(), \
-                                                                     hazardEvent.getHazardAttributes())
+                                                                     hazardEvent)
                         forJavaObj = self.getAndDeleteForJavaObj(eventAttributes)
                         hazardEvent.setHazardAttributes(eventAttributes)
                         self.setHazardGeometryFromDictionary(hazardEvent, forJavaObj)

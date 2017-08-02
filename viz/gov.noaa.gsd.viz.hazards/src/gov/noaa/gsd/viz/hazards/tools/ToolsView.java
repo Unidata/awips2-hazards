@@ -7,11 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
-import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +31,11 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
+import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
+import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
 
 /**
  * Tools view, an implementation of IToolsView that provides an SWT-based view.
@@ -63,13 +63,17 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Apr 01, 2016  16225     Chris.Golden      Added ability to cancel tasks that are scheduled to run
  *                                           at regular intervals.
  * Jun 08, 2017  16373     Chris.Golden      Corrected spelling of RUN_RECOMMENDER.
+ * Aug 15, 2017   22757    Chris.Golden      Added ability for recommenders to specify
+ *                                           either a message to display, or a dialog to
+ *                                           display, with their results (that is, within
+ *                                           the returned event set).
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ToolsView implements
-        IToolsView<Action, RCPMainUserInterfaceElement> {
+public class ToolsView
+        implements IToolsView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
@@ -130,7 +134,8 @@ public class ToolsView implements
          */
         public ToolsPulldownAction() {
             super("");
-            setImageDescriptor(getImageDescriptorForFile(TOOLS_TOOLBAR_IMAGE_FILE_NAME));
+            setImageDescriptor(
+                    getImageDescriptorForFile(TOOLS_TOOLBAR_IMAGE_FILE_NAME));
             setToolTipText(TOOLS_TOOLBAR_BUTTON_TOOLTIP_TEXT);
             toolsChanged();
         }
@@ -237,7 +242,7 @@ public class ToolsView implements
     /**
      * Tool dialog.
      */
-    private ToolDialog toolDialog = null;
+    private AbstractToolDialog toolDialog = null;
 
     /**
      * Dialog dispose listener.
@@ -311,9 +316,30 @@ public class ToolsView implements
             toolDialog.open();
             return;
         }
-        toolDialog = new ToolDialog(presenter, PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow().getShell(), tool, type, context,
-                jsonParams);
+        toolDialog = new ToolParameterDialog(presenter,
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
+                tool, type, context, jsonParams);
+        toolDialog.open();
+        toolDialog.getShell().addDisposeListener(dialogDisposeListener);
+    }
+
+    @Override
+    public void showToolResults(String tool, ToolType type,
+            RecommenderExecutionContext context, String jsonParams) {
+        if (toolDialog != null) {
+            Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+                    .getShell();
+            MessageDialog.openInformation(shell, "Hazard Services",
+                    "Another tool dialog is already showing. In order to "
+                            + "start a tool, first allow the other tool "
+                            + "to complete its execution, or dismiss its "
+                            + "dialog.");
+            toolDialog.open();
+            return;
+        }
+        toolDialog = new ToolResultDialog(presenter,
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
+                tool, type, context, jsonParams);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);
     }

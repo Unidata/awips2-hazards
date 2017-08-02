@@ -39,6 +39,11 @@
  May 24, 2016  15584     Kevin.Bisanz Renamed getFlowUnits(..) to getStageFlowUnits(..).
  Jun 23, 2016 19537      Chris.Golden Changed to use UTC when converting from epoch time to datetime.
  Aug 15, 2016  20622     Robert.Blum  Fixed duplicate fieldName value megawidget error.
+ Sep 15, 2016  19147     Robert.Blum  Replaced fromtimestamp() with utcfromtimestamp().
+ Nov 03, 2016  23171     Robert.Blum  Refactored to fix issues with determining the 
+                                      correct Historical Crest to select.
+ Nov 07, 2016  23171     Robert.Blum  Addidtional fix for "Crest To Use" to correctly
+                                      apply the max depth below flood stage value.
 '''
 
 from com.raytheon.uf.common.time import SimulatedTime
@@ -85,6 +90,15 @@ class RiverForecastUtils(object):
                                           'UNCHANGED': 'steady',
                                           'FALL': 'falling',
                                           'MISSING': 'unknown'}
+
+    # Search Type Options for both both impacts and crest
+    CLOSEST_IN_STAGE_FLOW_WINDOW = "Closest in Stage/Flow Window"
+    HIGHEST_IN_STAGE_FLOW_WINDOW = "Highest in Stage/Flow Window"
+
+    # Search Type Options for crest only
+    CLOSEST_IN_STAGE_FLOW_YEAR_WINDOW = "Closest in Stage/Flow, Year Window"
+    RECENT_IN_STAGE_FLOW_YEAR_WINDOW = "Recent in Stage/Flow, Year Window"
+    RECENT_IN_STAGE_FLOW_WINDOW = "Recent in Stage/Flow Window"
 
     def __init__(self):
         pass
@@ -175,7 +189,7 @@ class RiverForecastUtils(object):
         if filters is None :
             return [], [], []
 
-        listTuple, maxIndex, diffIndex, recentIndex = self.getIndices(impactDataList, filters, primaryPE, riverForecastPoint, 'Impacts')
+        listTuple = self.createTupleList(impactDataList, 'Impacts')
 
         characterizations = []
         physicalElements = []
@@ -199,10 +213,7 @@ class RiverForecastUtils(object):
         return characterizations, physicalElements, descriptions
 
 
-    def getIndices(self, plist, filters, primaryPhysicalElement, riverForecastPoint, impactsOrCrests):
-
-        currTime = self.getCurrentTimeMS()
-
+    def createTupleList(self, plist, impactsOrCrests):
         if len(plist)==2:
             if isinstance(plist[0],bool) and isinstance(plist[1],list):
                 plist = plist[1]
@@ -221,16 +232,66 @@ class RiverForecastUtils(object):
                 continue
             pytuple = ( first, second )
             listTuple.append(pytuple)
+        return listTuple
 
+    def getHistoricalCrest(self, riverForecastPoint, primaryPE, filters=None) :
+        '''
+        Emulates the functionality of the <HistCrestStg>, <HistCrestDate> template variable.
+        e.g. 44.4
+
+        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
+                                         load_variableValue.c - load_pcc_variable_value()
+
+        @param forecastPointID: The river forecast point identifier.
+        @return: The stage, date associated with the flood-of-record for this
+                                   forecast point.
+        '''
+        if filters is None :
+            return None, None
+
+        crestHistoryList = [ ]
+        if primaryPE.startswith(PE_Q) :
+            crestHistoryList = riverForecastPoint.getFlowCrestHistory()
+        elif primaryPE.startswith(PE_H) :
+            crestHistoryList = riverForecastPoint.getStageCrestHistory()
+
+        listTuple, index = self.getHistoricalCrestIndex(crestHistoryList, filters, primaryPE, riverForecastPoint)
+
+        # Index value need to be compared to None rather than submitted to a
+        # pure boolean test, otherwise index value of 0 (first value in list)
+        # will fail to get picked up.
+        stageDate = MISSING_STAGE_DATE
+        if index != None:
+            stageDate = listTuple[index]
+
+        # Sort by descending crest value
+        n = len(listTuple)-1
+        t = 0
+        while t<n :
+            tt = t+1
+            while tt<=n :
+                if listTuple[t][0]<listTuple[tt][0] :
+                    lt = listTuple[t]
+                    listTuple[t] = listTuple[tt]
+                    listTuple[tt] = lt
+                tt += 1
+            t += 1
+
+        choiceList = []
+        for oneTuple in listTuple :
+            choiceList.append(self.encodeStageDate(oneTuple))
+        return ( self.encodeStageDate( stageDate ), choiceList )
+
+    def getHistoricalCrestIndex(self, plist, filters, primaryPhysicalElement, riverForecastPoint):
+        currTime = self.getCurrentTimeMS()
+        listTuple = self.createTupleList(plist, "Crests")
 
         referenceType = filters['Reference Type']
-        depthBelowFloodStage = filters.get('Depth Below Flood Stage', float(0.0) )
-        flowWindowLower = filters.get('Flow Window Lower', float(0.0) )
-        flowWindowUpper = filters.get('Flow Window Upper', float(0.0) )
-        stageWindowLower = filters.get('Stage Window Lower', float(0.0) )
-        stageWindowUpper = filters.get('Stage Window Upper', float(0.0) )
-
-        ### yearLookBack found only in Crests.  Expect 'None' for impacts
+        depthBelowFloodStage = filters.get('Depth Below Flood Stage', 0.0)
+        flowWindowLower = filters.get('Flow Window Lower', 0.0)
+        flowWindowUpper = filters.get('Flow Window Upper', 0.0)
+        stageWindowLower = filters.get('Stage Window Lower', 0.0)
+        stageWindowUpper = filters.get('Stage Window Upper', 0.0)
         yearLookBack = filters.get('Year Lookback')
 
         searchType = filters['Search Type']
@@ -239,14 +300,11 @@ class RiverForecastUtils(object):
         else :
             flowStageWindow = 0
 
-        if impactsOrCrests == 'Impacts':
+        if primaryPhysicalElement.startswith(PE_H) :
             floodStage = float(riverForecastPoint.getFloodStage())
-        elif impactsOrCrests == 'Crests':
-            floodStage = float(riverForecastPoint.getFloodFlow())
         else:
-            floodStage = None
+            floodStage = float(riverForecastPoint.getFloodFlow())
 
-        ### Note: currentDate is only used with 'Crests'
         currentDate = 0
         if referenceType == 'Max Forecast' :
             referenceValue = riverForecastPoint.getMaximumForecastValue()
@@ -270,15 +328,12 @@ class RiverForecastUtils(object):
         if referenceValue is None:
             referenceValue = float(0.0)
 
-        ### curDateDate through minDateDate used with Crests only
         minDateDate = None
-        if impactsOrCrests == 'Crests':
-            curDateDate = datetime.datetime.utcfromtimestamp(currentDate / 1000)
-            minYear = curDateDate.year+yearLookBack
-            if searchType.find("Year Window")<0 or minYear<datetime.MINYEAR :
-                minYear = datetime.MINYEAR
-            minDateDate = datetime.datetime(minYear, curDateDate.month, curDateDate.day)
-
+        curDateDate = datetime.datetime.utcfromtimestamp(currentDate / 1000)
+        minYear = curDateDate.year+yearLookBack
+        if searchType.find("Year Window")<0 or minYear<datetime.MINYEAR :
+            minYear = datetime.MINYEAR
+        minDateDate = datetime.datetime(minYear, curDateDate.month, curDateDate.day)
 
         # Flow offsets are all in percent, stage offsets are all in feet.
         if primaryPhysicalElement.startswith('Q') :
@@ -301,110 +356,44 @@ class RiverForecastUtils(object):
 
         maximumValue = MISSING_VALUE
         differenceValue = math.fabs(MISSING_VALUE) # start with a huge value
-
-        maxIndex = None
-        diffIndex = None
-        ### recentDate, recentIndex are for Crests only
         recentDate = minDateDate
-        recentIndex = None
-
-        if lowerBound > floodValueStage :
-            lowerBound = floodValueStage
-
-        ### For Impacts only
-        if searchType.find("All Below") >= 0 :
-            lowerBound = 0
-
+        returnIndex = None
 
         for index, val in enumerate(listTuple) :
             stageOrFlow, impactOrDate = val
 
-            if stageOrFlow<lowerBound or stageOrFlow>upperBound :
+            # Check if below max depth below flood stage value
+            if stageOrFlow < floodValueStage :
+                continue
 
-                if impactsOrCrests == 'Impacts':
-                    continue
-                else: #impactsOrCrests == 'Crests'
-                    if impactOrDate<minDateDate:
+            # Check if outside stage/flow window
+            if stageOrFlow<lowerBound or stageOrFlow>upperBound :
+                continue
+
+            # Check if outside the year lookback window
+            if searchType == self.CLOSEST_IN_STAGE_FLOW_YEAR_WINDOW or \
+                searchType == self.RECENT_IN_STAGE_FLOW_YEAR_WINDOW:
+                if impactOrDate<minDateDate:
                         continue
 
-            if stageOrFlow > maximumValue :
-                maximumValue = stageOrFlow
-                maxIndex = index
+            if searchType == self.HIGHEST_IN_STAGE_FLOW_WINDOW:
+                if stageOrFlow > maximumValue :
+                    maximumValue = stageOrFlow
+                    returnIndex = index
+            elif searchType == self.CLOSEST_IN_STAGE_FLOW_WINDOW or \
+                searchType == self.CLOSEST_IN_STAGE_FLOW_YEAR_WINDOW:
+                diffVal = math.fabs(referenceValue - stageOrFlow )
+                if diffVal < differenceValue :
+                    differenceValue = diffVal
+                    returnIndex = index
 
-            diffVal = math.fabs(referenceValue - stageOrFlow )
-            if diffVal < differenceValue :
-                differenceValue = diffVal
-                diffIndex = index
-
-            if impactsOrCrests == 'Crests':
+            elif searchType == self.RECENT_IN_STAGE_FLOW_WINDOW or \
+                searchType == self.RECENT_IN_STAGE_FLOW_YEAR_WINDOW:
                 if impactOrDate > recentDate :
                     recentDate = impactOrDate
-                    recentIndex = index
+                    returnIndex = index
 
-        return listTuple, maxIndex, diffIndex, recentIndex
-
-
-    def getHistoricalCrest(self, riverForecastPoint, primaryPE, filters=None) :
-        '''
-        Emulates the functionality of the <HistCrestStg>, <HistCrestDate> template variable.
-        e.g. 44.4
-
-        Reference: AWIPS2_baseline/nativeLib/rary.ohd.whfs/src/RPFEngine/TEXT/
-                                         load_variableValue.c - load_pcc_variable_value()
-
-        @param forecastPointID: The river forecast point identifier.
-        @return: The stage, date associated with the flood-of-record for this
-                                   forecast point.
-        '''
-        if filters is None :
-            return None, None
-        plist = [ ]
-
-        if primaryPE.startswith(PE_Q) :
-            jlist = riverForecastPoint.getFlowCrestHistory()
-            plist = JUtilHandler.javaCollectionToPyCollection(jlist)
-        elif primaryPE.startswith(PE_H) :
-            jlist = riverForecastPoint.getStageCrestHistory()
-            plist = JUtilHandler.javaCollectionToPyCollection(jlist)
-
-        listTuple, maxIndex, diffIndex, recentIndex = self.getIndices(plist, filters, primaryPE, riverForecastPoint, 'Crests')
-
-        # Index values need to be compared to None rather than submitted to a
-        # pure boolean test, otherwise index value of 0 (first value in list)
-        # will fail to get picked up.
-
-        stageDate = MISSING_STAGE_DATE
-        searchType = filters['Search Type']
-        if searchType.find("Highest") >= 0 :
-            if maxIndex != None :
-                stageDate =listTuple[maxIndex]
-        elif searchType.find("Closest") >= 0 :
-            if diffIndex != None :
-                stageDate = listTuple[diffIndex]
-        elif recentIndex != None : # most recent
-            stageDate = listTuple[recentIndex]
-        else :
-            stageDate = MISSING_STAGE_DATE
-
-        # Sort by descending crest value
-        n = len(listTuple)-1
-        t = 0
-        while t<n :
-            tt = t+1
-            while tt<=n :
-                if listTuple[t][0]<listTuple[tt][0] :
-                    lt = listTuple[t]
-                    listTuple[t] = listTuple[tt]
-                    listTuple[tt] = lt
-                tt += 1
-            t += 1
-
-        choiceList = []
-        for oneTuple in listTuple :
-            choiceList.append(self.encodeStageDate(oneTuple))
-        return ( self.encodeStageDate( stageDate ), choiceList )
-
-
+        return listTuple, returnIndex
 
     ###############################################################
     #
@@ -477,8 +466,6 @@ class RiverForecastUtils(object):
             elif primaryPE.startswith(PE_Q):
                 pass
             return maximumForecastLevel
-
-
 
     def getMaximumForecastCatName(self, riverForecastPoint):
         '''
@@ -561,7 +548,6 @@ class RiverForecastUtils(object):
 
         return crestTimeOrValue
 
-
     def getForecastCrestStage(self, riverForecastPoint):
         '''
         Emulates the functionality of the <FcstCrestStg> template variable.
@@ -604,7 +590,6 @@ class RiverForecastUtils(object):
         '''
         return math.fabs(riverForecastPoint.getForecastDepartureFromFloodStage())
 
-
     def getStageFlowUnits(self, primaryPE):
         '''
         Emulates the functionality of the <ImpCompUnits> template variable.
@@ -631,20 +616,16 @@ class RiverForecastUtils(object):
          else:
              return t
 
-
-    '''
-    Retrieve a RiverForecastPoint from a RiverForecastGroup.
-    The RiverForecastGroup must be from a Deep query
-    '''
     def getRiverForecastPointFromRiverForecastGroup(self, pointID, riverForecastGroup):
+        '''
+        Retrieve a RiverForecastPoint from a RiverForecastGroup.
+        The RiverForecastGroup must be from a Deep query
+        '''
         if pointID is not None and riverForecastGroup is not None:
             riverForecastPointList = riverForecastGroup.getForecastPointList()
             if riverForecastPointList is not None:
-                pyRiverForecastPointList = JUtil.javaObjToPyVal(riverForecastPointList)
-                for riverForecastPoint in pyRiverForecastPointList:
+                for riverForecastPoint in riverForecastPointList:
                     riverForecastPointID = riverForecastPoint.getLid()
                     if pointID == riverForecastPointID:
                         return riverForecastPoint
         return None
-
-

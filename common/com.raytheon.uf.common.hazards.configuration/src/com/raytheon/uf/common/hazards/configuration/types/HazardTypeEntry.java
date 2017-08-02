@@ -73,6 +73,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jun 23, 2016 19537      Chris.Golden Made hatching style an enum.
  * Oct 06, 2016 22894      Chris.Golden Added sessionAttributes list.
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
+ * Oct 21, 2016 22489      Robert.Blum  Added accurateCities flag.
  * Nov 17, 2016 26313      Chris.Golden Changed UGC type to be a set of
  *                                      zero or more types.
  * </pre>
@@ -135,6 +136,8 @@ public class HazardTypeEntry {
     private long defaultDuration;
 
     private boolean allowUntilFurtherNotice;
+
+    private boolean accurateCities = false;
 
     private Map<String, List<String>> modifyRecommenders;
 
@@ -492,5 +495,20 @@ public class HazardTypeEntry {
 
     public void setTimeResolution(TimeResolution timeResolution) {
         this.timeResolution = timeResolution;
+    }
+
+    /**
+     * @return the accurateCities
+     */
+    public boolean isAccurateCities() {
+        return accurateCities;
+    }
+
+    /**
+     * @param accurateCities
+     *            the accurateCities to set
+     */
+    public void setAccurateCities(boolean accurateCities) {
+        this.accurateCities = accurateCities;
     }
 }

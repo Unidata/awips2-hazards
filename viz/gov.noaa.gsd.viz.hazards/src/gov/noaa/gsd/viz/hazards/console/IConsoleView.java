@@ -9,6 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import com.google.common.collect.ImmutableList;
+
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Command;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Toggle;
@@ -18,12 +24,6 @@ import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import com.google.common.collect.ImmutableList;
 
 /**
  * Console view, an interface describing the methods that a class must implement
@@ -51,13 +51,14 @@ import com.google.common.collect.ImmutableList;
  *                                           add history list viewing.
  * Jun 26, 2017   19207    Chris.Golden      Removed obsolete product viewer selection
  *                                           code.
+ * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E>,
-        IConsoleTree {
+public interface IConsoleView<C, E extends Enum<E>>
+        extends IView<C, E>, IConsoleTree {
 
     // Public Methods
 
@@ -78,6 +79,8 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E>,
      * @param filterSpecifiers
      *            List of maps, each one holding a specifier for a megawidget
      *            representing a filter.
+     * @param localizedSite
+     *            Localized site identifier.
      * @param currentSite
      *            Current site identifier.
      * @param backupSites
@@ -91,7 +94,8 @@ public interface IConsoleView<C, E extends Enum<E>> extends IView<C, E>,
             Date currentTime, long visibleTimeRange,
             TimeResolution timeResolution,
             ImmutableList<Map<String, Object>> filterSpecifiers,
-            String currentSite, ImmutableList<String> backupSites,
+            String localizedSite, String currentSite,
+            ImmutableList<String> backupSites,
             boolean temporalControlsInToolBar);
 
     /**

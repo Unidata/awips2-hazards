@@ -33,14 +33,14 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * The goal is to have ALL of the data necessary to generate and manipulate
  * River Flood Recommender objects in a single repository that resides within
  * the CAVE application Address Space. Furthermore, this class can be set to
- * dispose of is repository data when a ProductGenerationComplete message is
+ * dispose of its repository data when a ProductGenerationComplete message is
  * processed (by the Handler of said message. This will allow the application
  * and Python scripts to re-use River Flood Recommender data items without
  * having to requery for data.
  * <p>
  * Caveat: Currently, there does not exist a way for a Non River Flood
  * Recommender specific Python script to determine whether it is executed as
- * part of a Recommender or if it is being exected independently. So, while it
+ * part of a Recommender or if it is being executed independently. So, while it
  * may be necessary to requery individual objects for independent scripts; it is
  * not necessary to requery a complete set of data for each operation on River
  * Flood Recommender Data.
@@ -55,6 +55,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------ ---------- ----------- --------------------------
  * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
  * Aug 27, 2015 9713       Robert.Blum Reducing cache time to 30 seconds.
+ * Nov 18, 2016 26439      Kevin.Bisanz Store and check siteID of cached data.
  * </pre>
  * 
  * @author Chris.Cody
@@ -78,11 +79,16 @@ public class RecommenderDataCache {
 
     /**
      * Flag denoting whether to purge Recommender Cache when called upon
-     * Recommender generation completion. This class does NOT add itself ] as a
+     * Recommender generation completion. This class does NOT add itself as a
      * Message Handler. It must be called by a completion handler.
      */
     // TODO Make this option configurable
     private static boolean PurgeOnCompletion = true;
+
+    /**
+     * Site ID of the currently cached data.
+     */
+    private String currentCacheSiteId;
 
     /**
      * Current cache begin time Unix timestamp.
@@ -118,42 +124,50 @@ public class RecommenderDataCache {
     /**
      * Check to see if cached data is still within its validity window of time.
      * 
+     * @param siteId
+     *
      * @param cacheSystemTime
-     * @return True if hold time has not elapsed; False otherwise or if cache is
-     *         empty.
+     * @return True if siteId matches and hold time has not elapsed; False
+     *         otherwise or if cache is empty.
      */
-    public boolean isCacheValid(long cacheSystemTime) {
-
-        if ((this.recommenderData != null)
-                && (this.currentCacheTime != Long.MIN_VALUE)
-                && (cacheSystemTime != 0L)) {
-            long low = this.currentCacheTime - holdTimeMils;
-            long high = this.currentCacheTime + holdTimeMils;
-            if ((cacheSystemTime >= low) || (cacheSystemTime <= high)) {
-                return (true);
+    public boolean isCacheValid(String siteId, long cacheSystemTime) {
+        if (this.recommenderData != null) {
+            if (this.currentCacheSiteId != null
+                    && this.currentCacheSiteId.equals(siteId)) {
+                if (this.currentCacheTime != Long.MIN_VALUE) {
+                    if (cacheSystemTime != 0L) {
+                        long low = this.currentCacheTime - holdTimeMils;
+                        long high = this.currentCacheTime + holdTimeMils;
+                        if ((cacheSystemTime >= low)
+                                || (cacheSystemTime <= high)) {
+                            return (true);
+                        }
+                    }
+                }
             }
         }
         return (false);
     }
 
-    public RecommenderData getCachedData(long cacheSystemTime,
+    public RecommenderData getCachedData(String siteId, long cacheSystemTime,
             boolean overrideCacheValid) {
 
         if ((overrideCacheValid == true)
-                || (isCacheValid(cacheSystemTime) == true)) {
+                || (isCacheValid(siteId, cacheSystemTime) == true)) {
             return (this.recommenderData);
         } else {
             return (null);
         }
     }
 
-    public RecommenderData getCachedData(long cacheSystemTime) {
+    public RecommenderData getCachedData(String siteId, long cacheSystemTime) {
 
-        return getCachedData(cacheSystemTime, false);
+        return getCachedData(siteId, cacheSystemTime, false);
     }
 
-    public void putCachedData(long cacheSystemTime,
+    public void putCachedData(String siteId, long cacheSystemTime,
             RecommenderData recommenderData) {
+        this.currentCacheSiteId = siteId;
         this.currentCacheTime = cacheSystemTime;
         this.recommenderData = recommenderData;
 
@@ -193,6 +207,7 @@ public class RecommenderDataCache {
     public void purgeCachedData() {
         statusHandler.info("Purging RecommenderDataCache");
 
+        this.currentCacheSiteId = null;
         this.currentCacheTime = Long.MIN_VALUE;
         this.recommenderData = null;
 

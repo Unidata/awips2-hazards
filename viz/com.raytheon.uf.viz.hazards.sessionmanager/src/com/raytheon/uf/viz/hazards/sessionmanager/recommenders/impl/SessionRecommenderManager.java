@@ -10,8 +10,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA;
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -24,8 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import net.engio.mbassy.listener.Handler;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -63,6 +59,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Description: Manager of recommenders and their execution.
@@ -124,6 +124,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug 15, 2016   18376    Chris.Golden Added code to make garbage collection of the
  *                                      messenger instance passed in (which is the
  *                                      app builder) more likely.
+ * Sep 26, 2016   21758    Chris.Golden Changed call to removeEvents() to provide new
+ *                                      parameter.
+ * Nov 17, 2016   22119    Kevin.Bisanz Set hazard siteID in handleRecommenderResult()
  * Feb 01, 2017   15556    Chris.Golden Minor cleanup.
  * Feb 21, 2017   29138    Chris.Golden Added use of session manager's runnable
  *                                      asynchronous scheduler.
@@ -136,7 +139,12 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      Also added support for executing recommenders
  *                                      due to hazard event selection changes.
  * Aug 15, 2017   37426    Chris.Golden Added ability for fine-grained control of
- *                                      setOrigin (per hazard event in result event set).
+ *                                      setOrigin (per hazard event in result event
+ *                                      set).
+ * Aug 15, 2017   22757    Chris.Golden Added ability for recommenders to specify
+ *                                      either a message to display, or a dialog to
+ *                                      display, with their results (that is, within
+ *                                      the returned event set).
  * </pre>
  * 
  * @author Chris.Golden
@@ -250,8 +258,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         this.sessionManager = sessionManager;
         this.messenger = messenger;
         recommenderEngine = CAVERecommenderEngine.getInstance();
-        recommenderEngine.setSite(sessionManager.getConfigurationManager()
-                .getSiteID());
+        recommenderEngine
+                .setSite(sessionManager.getConfigurationManager().getSiteID());
         eventBus.subscribe(recommenderEngine);
     }
 
@@ -265,8 +273,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      */
     @Handler(priority = 1)
     public void siteChanged(SiteChanged change) {
-        recommenderEngine.setSite(sessionManager.getConfigurationManager()
-                .getSiteID());
+        recommenderEngine
+                .setSite(sessionManager.getConfigurationManager().getSiteID());
     }
 
     @Override
@@ -299,13 +307,15 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * is taken by putting up a dialog and waiting for the user to proceed.
          * Otherwise, just run the recommender.
          */
-        VisualFeaturesList visualFeatures = recommenderEngine.getSpatialInfo(
-                recommenderIdentifier, eventSet);
+        VisualFeaturesList visualFeatures = recommenderEngine
+                .getSpatialInfo(recommenderIdentifier, eventSet);
         Map<String, Serializable> dialogDescription = recommenderEngine
                 .getDialogInfo(recommenderIdentifier, eventSet);
         if (((visualFeatures != null) && (visualFeatures.isEmpty() == false))
-                || ((dialogDescription != null) && (dialogDescription.isEmpty() == false))) {
-            if ((visualFeatures != null) && (visualFeatures.isEmpty() == false)) {
+                || ((dialogDescription != null)
+                        && (dialogDescription.isEmpty() == false))) {
+            if ((visualFeatures != null)
+                    && (visualFeatures.isEmpty() == false)) {
                 messenger.getToolParameterGatherer().getToolSpatialInput(
                         recommenderIdentifier, ToolType.RECOMMENDER, context,
                         visualFeatures);
@@ -328,8 +338,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     public void runRecommenders(List<String> recommenderIdentifiers,
             RecommenderExecutionContext context) {
         if (recommenderIdentifiers.size() > 1) {
-            sequentialRecommendersForExecutionContextIdentifiers.put(
-                    context.getIdentifier(), recommenderIdentifiers);
+            sequentialRecommendersForExecutionContextIdentifiers
+                    .put(context.getIdentifier(), recommenderIdentifiers);
         }
         runRecommender(recommenderIdentifiers.get(0), context);
     }
@@ -347,14 +357,14 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          */
         Map<String, Serializable> metadata = recommenderEngine
                 .getScriptMetadata(recommenderIdentifier);
-        Boolean onlyIncludeTriggerEvent = (Boolean) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS);
+        Boolean onlyIncludeTriggerEvent = (Boolean) metadata.get(
+                HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS);
         List<String> includeEventTypesList = (List<String>) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES);
-        Set<String> includeEventTypes = (includeEventTypesList != null ? new HashSet<>(
-                includeEventTypesList) : null);
-        Boolean includeDataLayerTimes = (Boolean) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES);
+        Set<String> includeEventTypes = (includeEventTypesList != null
+                ? new HashSet<>(includeEventTypesList) : null);
+        Boolean includeDataLayerTimes = (Boolean) metadata.get(
+                HazardConstants.RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES);
         Boolean includeCwaGeometry = (Boolean) metadata
                 .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_CWA_GEOMETRY);
 
@@ -364,10 +374,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * of each such event to the set.
          */
         EventSet<IEvent> eventSet = new EventSet<>();
-        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent)
-                && ((context.getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE)
-                        || (context.getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION) || (context
-                        .getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
+        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((context
+                .getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE)
+                || (context.getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
+                || (context.getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
             for (String eventIdentifier : context.getEventIdentifiers()) {
                 eventSet.add(createBaseHazardEvent(sessionManager
                         .getEventManager().getEventById(eventIdentifier)));
@@ -417,26 +427,23 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             List<Long> dataLayerTimes = sessionManager
                     .getDisplayResourceContextProvider()
                     .getTimeMatchBasisDataLayerTimes();
-            Serializable times = (dataLayerTimes == null ? Lists
-                    .newArrayList(currentTime)
-                    : (dataLayerTimes instanceof Serializable ? (Serializable) dataLayerTimes
+            Serializable times = (dataLayerTimes == null
+                    ? Lists.newArrayList(currentTime)
+                    : (dataLayerTimes instanceof Serializable
+                            ? (Serializable) dataLayerTimes
                             : new ArrayList<>(dataLayerTimes)));
             eventSet.addAttribute(HazardConstants.DATA_TIMES, times);
         }
         if (Boolean.TRUE.equals(includeCwaGeometry)) {
-            eventSet.addAttribute(HazardConstants.CWA_GEOMETRY, sessionManager
-                    .getEventManager().getCwaGeometry());
+            eventSet.addAttribute(HazardConstants.CWA_GEOMETRY,
+                    sessionManager.getEventManager().getCwaGeometry());
         }
 
         /*
          * Get the engine to initiate the execution of the recommender.
          */
-        Boolean background = (Boolean) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_BACKGROUND);
-        final boolean notify = ((Boolean.TRUE.equals(background) == false) && ((context
-                .getTrigger() == Trigger.NONE) || (context.getTrigger() == Trigger.HAZARD_TYPE_FIRST)));
-        recommenderEngine.runExecuteRecommender(recommenderIdentifier,
-                eventSet, visualFeatures, dialogInfo,
+        recommenderEngine.runExecuteRecommender(recommenderIdentifier, eventSet,
+                visualFeatures, dialogInfo,
                 new IPythonJobListener<EventSet<IEvent>>() {
 
                     @Override
@@ -449,70 +456,99 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         sessionManager.getRunnableAsynchronousScheduler()
                                 .schedule(new Runnable() {
 
-                                    @Override
-                                    public void run() {
+                            @SuppressWarnings("unused")
+                            @Override
+                            public void run() {
 
-                                        /*
-                                         * If no events were recommended and
-                                         * notification of such should occur,
-                                         * then notify the user.
-                                         */
-                                        if (notify && result.isEmpty()) {
-                                            messenger
-                                                    .getWarner()
-                                                    .warnUser(
-                                                            toolName,
-                                                            toolName
-                                                                    + " completed. "
-                                                                    + "No recommendations "
-                                                                    + "were generated.");
-                                        }
+                                /*
+                                 * If a results message was supplied, display
+                                 * the message for the user. Otherwise, if a
+                                 * results dialog description was provided, show
+                                 * the dialog. In the latter case, note that
+                                 * this is occurring, so that the next
+                                 * recommender to be run in the sequence (if
+                                 * any) will not be run a few lines down -- the
+                                 * results dialog must be closed by the user
+                                 * before the next one is run.
+                                 */
+                                boolean showingResultsDialog = false;
+                                String resultMessage = (String) result
+                                        .getAttribute(
+                                                HazardConstants.RECOMMENDER_RESULT_MESSAGE);
+                                Map<String, Serializable> resultDialogDescription = (Map<String, Serializable>) result
+                                        .getAttribute(
+                                                HazardConstants.RECOMMENDER_RESULT_DIALOG);
+                                if (resultMessage != null) {
+                                    messenger.getWarner().warnUser(toolName,
+                                            resultMessage);
+                                } else if (resultDialogDescription != null) {
+                                    showingResultsDialog = true;
+                                    resultDialogDescription.put(
+                                            HazardConstants.FILE_PATH_KEY,
+                                            recommenderEngine
+                                                    .getInventory(
+                                                            recommenderIdentifier)
+                                                    .getFile().getFile()
+                                                    .getPath());
+                                    messenger.getToolParameterGatherer()
+                                            .showToolResults(
+                                                    recommenderIdentifier,
+                                                    ToolType.RECOMMENDER,
+                                                    context,
+                                                    resultDialogDescription);
+                                }
 
-                                        /*
-                                         * Handle the resulting changes to the
-                                         * session.
-                                         */
-                                        handleRecommenderResult(
-                                                recommenderIdentifier, result);
+                                /*
+                                 * Handle the resulting changes to the session.
+                                 */
+                                handleRecommenderResult(recommenderIdentifier,
+                                        result);
 
-                                        /*
-                                         * If this recommender is being run as
-                                         * part of a list of recommenders to be
-                                         * run sequentially, then run the next
-                                         * one, and if the next one is the last
-                                         * one in the sequence, remove the list
-                                         * from the sequential-recommenders map
-                                         * since it will no longer be
-                                         * referenced.
-                                         */
-                                        long contextIdentifier = context
-                                                .getIdentifier();
-                                        List<String> sequentialRecommenders = sequentialRecommendersForExecutionContextIdentifiers
-                                                .get(contextIdentifier);
-                                        if (sequentialRecommenders != null) {
-                                            int nextIndex = sequentialRecommenders
-                                                    .indexOf(recommenderIdentifier) + 1;
-                                            String nextRecommenderIdentifier = sequentialRecommenders
-                                                    .get(nextIndex);
-                                            if (nextIndex == sequentialRecommenders
-                                                    .size() - 1) {
-                                                sequentialRecommendersForExecutionContextIdentifiers
-                                                        .remove(contextIdentifier);
-                                            }
-                                            runRecommender(
-                                                    nextRecommenderIdentifier,
-                                                    context);
-                                        }
-                                    }
-                                });
+                                /*
+                                 * If no results are being displayed, run the
+                                 * next recommender in the sequence of
+                                 * recommenders, if any.
+                                 */
+                                if (showingResultsDialog == false) {
+                                    handleResultsDisplayComplete(
+                                            recommenderIdentifier, context);
+                                }
+                            }
+                        });
                     }
 
                     @Override
                     public void jobFailed(Throwable e) {
-                        statusHandler.error("Recommender " + toolName
-                                + " failed.", e);
+                        statusHandler.error(
+                                "Recommender " + toolName + " failed.", e);
                     }
                 });
+    }
+
+    @Override
+    public void handleResultsDisplayComplete(String recommenderIdentifier,
+            RecommenderExecutionContext context) {
+
+        /*
+         * If this recommender is being run as part of a list of recommenders to
+         * be run sequentially, then run the next one, and if the next one is
+         * the last one in the sequence, remove the list from the
+         * sequential-recommenders map since it will no longer be referenced.
+         */
+        long contextIdentifier = context.getIdentifier();
+        List<String> sequentialRecommenders = sequentialRecommendersForExecutionContextIdentifiers
+                .get(contextIdentifier);
+        if (sequentialRecommenders != null) {
+            int nextIndex = sequentialRecommenders
+                    .indexOf(recommenderIdentifier) + 1;
+            String nextRecommenderIdentifier = sequentialRecommenders
+                    .get(nextIndex);
+            if (nextIndex == sequentialRecommenders.size() - 1) {
+                sequentialRecommendersForExecutionContextIdentifiers
+                        .remove(contextIdentifier);
+            }
+            runRecommender(nextRecommenderIdentifier, context);
+        }
     }
 
     @Override
@@ -549,12 +585,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      */
     private void addContextAsEventSetAttributes(
             RecommenderExecutionContext context, EventSet<IEvent> eventSet) {
-        eventSet.addAttribute(HazardConstants.SITE_ID, sessionManager
-                .getConfigurationManager().getSiteID());
+        eventSet.addAttribute(HazardConstants.SITE_ID,
+                sessionManager.getConfigurationManager().getSiteID());
         eventSet.addAttribute(HazardConstants.LOCALIZED_SITE_ID,
                 LocalizationManager.getInstance().getSite());
-        eventSet.addAttribute(HazardConstants.HAZARD_MODE, CAVEMode.getMode()
-                .toString());
+        eventSet.addAttribute(HazardConstants.HAZARD_MODE,
+                CAVEMode.getMode().toString());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_EXECUTION_TRIGGER,
                 context.getTrigger().toString());
         eventSet.addAttribute(HazardConstants.RECOMMENDER_EVENT_TYPE,
@@ -649,6 +685,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * the events and respond to any attributes included within the set.
          */
         if (events != null) {
+            ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
+                    .getConfigurationManager();
             ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
                     .getEventManager();
 
@@ -661,22 +699,21 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * them should be saved. Do the same for the treating of events that
              * are to be saved either way as issuances.
              */
-            Serializable addToHistoryAttribute = events
-                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_HISTORY);
-            Serializable addToDatabaseAttribute = events
-                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SAVE_TO_DATABASE);
+            Serializable addToHistoryAttribute = events.getAttribute(
+                    HazardConstants.RECOMMENDER_RESULT_SAVE_TO_HISTORY);
+            Serializable addToDatabaseAttribute = events.getAttribute(
+                    HazardConstants.RECOMMENDER_RESULT_SAVE_TO_DATABASE);
             boolean addToHistory = Boolean.TRUE.equals(addToHistoryAttribute);
-            boolean addToDatabase = ((addToHistory == false) && Boolean.TRUE
-                    .equals(addToDatabaseAttribute));
+            boolean addToDatabase = ((addToHistory == false)
+                    && Boolean.TRUE.equals(addToDatabaseAttribute));
 
             /*
              * Determine whether or not the events that are to be saved to the
              * history list and/or to the latest version set are to be treated
              * as issuances.
              */
-            boolean treatAsIssuance = Boolean.TRUE
-                    .equals(events
-                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
+            boolean treatAsIssuance = Boolean.TRUE.equals(events.getAttribute(
+                    HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
 
             /*
              * Determine whether or not the events should have their user name,
@@ -717,11 +754,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * (i.e., just created by the recommender) should be saved to either
              * the history list or the database.
              */
-            boolean saveAllNewToHistory = isListContainingNullElement(addToHistoryAttribute);
-            boolean saveAllNewToDatabase = ((saveAllNewToHistory == false) && isListContainingNullElement(addToDatabaseAttribute));
+            boolean saveAllNewToHistory = isListContainingNullElement(
+                    addToHistoryAttribute);
+            boolean saveAllNewToDatabase = ((saveAllNewToHistory == false)
+                    && isListContainingNullElement(addToDatabaseAttribute));
             List<IHazardEvent> addedNewEvents = (saveAllNewToHistory
                     || saveAllNewToDatabase ? new ArrayList<IHazardEvent>()
-                    : null);
+                            : null);
 
             /*
              * Create a list to hold the events to be saved if all events are
@@ -730,11 +769,14 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * that will be used to pair the identifiers of events that are
              * created with the events themselves.
              */
-            List<IHazardEvent> addedEvents = (addToHistory || addToDatabase ? new ArrayList<IHazardEvent>(
-                    events.size()) : null);
+            List<IHazardEvent> addedEvents = (addToHistory || addToDatabase
+                    ? new ArrayList<IHazardEvent>(events.size()) : null);
             Map<String, IHazardEvent> addedEventsForIdentifiers = ((addedEvents == null)
-                    && ((addToHistoryAttribute instanceof List) || (addToDatabaseAttribute instanceof List)) ? new HashMap<String, IHazardEvent>(
-                    events.size(), 1.0f) : null);
+                    && ((addToHistoryAttribute instanceof List)
+                            || (addToDatabaseAttribute instanceof List))
+                                    ? new HashMap<String, IHazardEvent>(
+                                            events.size(), 1.0f)
+                                    : null);
 
             /*
              * If a list of event identifiers for which the events are to be
@@ -742,19 +784,17 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * that are for events that are found to exist and to never have
              * been issued.
              */
-            Object toBeDeleted = events
-                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS);
+            Object toBeDeleted = events.getAttribute(
+                    HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS);
             Set<String> identifiersOfEventsToBeDeleted = null;
             IOriginator originator = new RecommenderOriginator(
                     recommenderIdentifier);
             if (toBeDeleted != null) {
                 if (toBeDeleted instanceof Collection == false) {
-                    statusHandler
-                            .warn("Ignoring "
-                                    + recommenderIdentifier
-                                    + " result event set attribute \""
-                                    + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
-                                    + "\" because it is not a list of event identifiers.");
+                    statusHandler.warn("Ignoring " + recommenderIdentifier
+                            + " result event set attribute \""
+                            + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
+                            + "\" because it is not a list of event identifiers.");
                 } else {
 
                     /*
@@ -772,23 +812,21 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                             ObservedHazardEvent event = eventManager
                                     .getEventById((String) element);
                             if ((event != null)
-                                    && (HazardStatus.hasEverBeenIssued(event
-                                            .getStatus()) == false)) {
-                                identifiersOfEventsToBeDeleted.add(event
-                                        .getEventID());
+                                    && (HazardStatus.hasEverBeenIssued(
+                                            event.getStatus()) == false)) {
+                                identifiersOfEventsToBeDeleted
+                                        .add(event.getEventID());
                                 eventsToBeDeleted.add(event);
                                 success = true;
                             }
                         }
                         if (success == false) {
-                            statusHandler
-                                    .warn("Ignoring "
-                                            + recommenderIdentifier
-                                            + " result event set attribute \""
-                                            + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
-                                            + "\" list element \""
-                                            + element
-                                            + "\" because it is not an existing, never-issued event identifier.");
+                            statusHandler.warn("Ignoring "
+                                    + recommenderIdentifier
+                                    + " result event set attribute \""
+                                    + HazardConstants.RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS
+                                    + "\" list element \"" + element
+                                    + "\" because it is not an existing, never-issued event identifier.");
                         }
                     }
 
@@ -797,8 +835,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                      * them now.
                      */
                     if (eventsToBeDeleted.isEmpty() == false) {
-                        eventManager
-                                .removeEvents(eventsToBeDeleted, originator);
+                        eventManager.removeEvents(eventsToBeDeleted, false,
+                                originator);
                     }
                 }
             } else {
@@ -829,20 +867,24 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     boolean isNew = (hazardEvent.getEventID() == null);
                     if ((isNew == false)
                             && (identifiersOfEventsRemovedSinceLastRecommenderRun
-                                    .contains(hazardEvent.getEventID()) || identifiersOfEventsToBeDeleted
-                                    .contains(hazardEvent.getEventID()))) {
+                                    .contains(hazardEvent.getEventID())
+                                    || identifiersOfEventsToBeDeleted.contains(
+                                            hazardEvent.getEventID()))) {
                         continue;
                     }
 
                     /*
-                     * Add the hazard area for the event, and if the recommender
-                     * wants the origin set for this particular hazard event, do
-                     * so now.
+                     * Add the hazard area for the event, and the site
+                     * identifier if it not already set, and if the recommender
+                     * wants the origin set, do so now.
                      */
                     Map<String, String> ugcHatchingAlgorithms = eventManager
                             .buildInitialHazardAreas(hazardEvent);
                     hazardEvent.addHazardAttribute(HAZARD_AREA,
                             (Serializable) ugcHatchingAlgorithms);
+                    if (hazardEvent.getSiteID() == null) {
+                        hazardEvent.setSiteID(configManager.getSiteID());
+                    }
                     if (isNew
                             || eventIdentifiersNeedingOriginSet
                                     .contains(hazardEvent.getEventID())) {
@@ -856,15 +898,15 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                      * Add the event (or modify an existing event by merging the
                      * new version into it).
                      */
-                    hazardEvent
-                            .removeHazardAttribute(HazardConstants.HAZARD_EVENT_SELECTED);
+                    hazardEvent.removeHazardAttribute(
+                            HazardConstants.HAZARD_EVENT_SELECTED);
                     ObservedHazardEvent addedEvent = null;
                     try {
                         addedEvent = eventManager.addEvent(hazardEvent,
                                 originator);
                     } catch (HazardEventServiceException e) {
-                        statusHandler.error(
-                                "Could not add hazard event generated by "
+                        statusHandler
+                                .error("Could not add hazard event generated by "
                                         + recommenderIdentifier + ".", e);
                         continue;
                     }
@@ -916,8 +958,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     eventManager.saveEvents(
                             getEventsFromIdentifiers(
                                     (List<?>) addToHistoryAttribute,
-                                    addedEventsForIdentifiers), true,
-                            treatAsIssuance);
+                                    addedEventsForIdentifiers),
+                            true, treatAsIssuance);
                 } else if (addToDatabaseAttribute instanceof List) {
 
                     /*
@@ -928,8 +970,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                      */
                     List<?> addToDatabaseList = null;
                     if (addToHistoryAttribute instanceof List) {
-                        Set<?> pruned = Sets.difference(new HashSet<>(
-                                (List<?>) addToDatabaseAttribute),
+                        Set<?> pruned = Sets.difference(
+                                new HashSet<>((List<?>) addToDatabaseAttribute),
                                 new HashSet<>((List<?>) addToHistoryAttribute));
                         addToDatabaseList = new ArrayList<>(pruned);
                     } else {
@@ -937,8 +979,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     }
                     eventManager.saveEvents(
                             getEventsFromIdentifiers(addToDatabaseList,
-                                    addedEventsForIdentifiers), false,
-                            treatAsIssuance);
+                                    addedEventsForIdentifiers),
+                            false, treatAsIssuance);
                 }
             }
 
@@ -946,8 +988,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * Make sure the updated hazard type is a part of the visible types
              * in the current setting. If not, add it.
              */
-            ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
-                    .getConfigurationManager();
             Set<String> visibleTypes = configManager.getSettings()
                     .getVisibleTypes();
             int startSize = visibleTypes.size();
@@ -968,9 +1008,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 SelectedTime selectedTime = null;
                 if (newSelectedTime instanceof List) {
                     List<?> list = (List<?>) newSelectedTime;
-                    selectedTime = (list.size() > 1 ? new SelectedTime(
-                            ((Number) list.get(0)).longValue(),
-                            ((Number) list.get(1)).longValue())
+                    selectedTime = (list.size() > 1
+                            ? new SelectedTime(
+                                    ((Number) list.get(0)).longValue(),
+                                    ((Number) list.get(1)).longValue())
                             : new SelectedTime(
                                     ((Number) list.get(0)).longValue()));
                 } else {

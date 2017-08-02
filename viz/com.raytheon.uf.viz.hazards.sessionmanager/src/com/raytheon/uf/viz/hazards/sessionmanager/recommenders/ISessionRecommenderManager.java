@@ -9,13 +9,13 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.recommenders;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.common.recommenders.EventRecommender;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * Description: Interface describing the methods that must be implemented in
@@ -35,6 +35,10 @@ import com.raytheon.uf.common.recommenders.EventRecommender;
  *                                      info collection.
  * May 31, 2017   34684    Chris.Golden Moved recommender-specific methods to the
  *                                      session recommender manager where they belong.
+ * Aug 15, 2017   22757    Chris.Golden Added ability for recommenders to specify either
+ *                                      a message to display, or a dialog to display,
+ *                                      with their results (that is, within the returned
+ *                                      event set).
  * </pre>
  * 
  * @author Chris.Golden
@@ -71,7 +75,7 @@ public interface ISessionRecommenderManager {
      * simply run the recommender.
      * 
      * @param recommenderIdentifier
-     *            The identifier of the recommender to be run.
+     *            Identifier of the recommender to be run.
      * @param context
      *            Execution context in which to run the recommender.
      */
@@ -85,7 +89,7 @@ public interface ISessionRecommenderManager {
      * so. If not, it will simply run the recommender.
      * 
      * @param recommenderIdentifiers
-     *            The identifiers of the recommenders to be run, in the order in
+     *            Identifiers of the recommenders to be run, in the order in
      *            which they should be run.
      * @param context
      *            Execution context in which to run the recommenders.
@@ -98,7 +102,7 @@ public interface ISessionRecommenderManager {
      * specified user-provided dialog parameters.
      * 
      * @param recommenderIdentifier
-     *            The identifier of the recommender to be run.
+     *            Identifier of the recommender to be run.
      * @param context
      *            Execution context in which to run the recommender.
      * @param visualFeatures
@@ -111,6 +115,17 @@ public interface ISessionRecommenderManager {
             RecommenderExecutionContext context,
             VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo);
+
+    /**
+     * Handle the completion of the viewing of recommender results.
+     * 
+     * @param recommenderIdentifier
+     *            Identifier of the recommender that was run.
+     * @param context
+     *            Execution context in which the recommender was run.
+     */
+    public void handleResultsDisplayComplete(String recommenderIdentifier,
+            RecommenderExecutionContext context);
 
     /**
      * Shut down the recommenders.

@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * ------------ ---------- ----------- --------------------------
  * Apr 11, 2014            jsanchez    Initial creation
  * Jul 30, 2015 9681       Robert.Blum Added new ProductRequestType.
+ * Nov 10, 2016 22119      Kevin.Bisanz Add path attribute.
  * 
  * </pre>
  * 
@@ -55,8 +56,14 @@ public class ProductDataRequest implements IServerRequest {
     @DynamicSerializeElement
     private Date currentTime;
 
+    /**
+     * Path to export to or import from.
+     */
+    @DynamicSerializeElement
+    private String path;
+
     public static enum ProductRequestType {
-        CREATE, DELETE, UPDATE, RETRIEVE, SAVE_OR_UPDATE, RETRIEVE_CORRECTABLE, RETRIEVE_VIEWABLE;
+        CREATE, DELETE, UPDATE, RETRIEVE, SAVE_OR_UPDATE, RETRIEVE_CORRECTABLE, RETRIEVE_VIEWABLE, EXPORT, IMPORT;
     }
 
     /**
@@ -73,6 +80,14 @@ public class ProductDataRequest implements IServerRequest {
         this.productData = data;
         this.type = type;
         this.currentTime = currentTime;
+    }
+
+    public ProductDataRequest(ProductData data, ProductRequestType type,
+            Date currentTime, String filePath) {
+        this.productData = data;
+        this.type = type;
+        this.currentTime = currentTime;
+        this.path = filePath;
     }
 
     /**
@@ -111,6 +126,21 @@ public class ProductDataRequest implements IServerRequest {
 
     public void setCurrentTime(Date currentTime) {
         this.currentTime = currentTime;
+    }
+
+    /**
+     * * @return the path for export or import
+     */
+    public String getPath() {
+        return path;
+    }
+
+    /**
+     * @param path
+     *            the path to set for export or import
+     */
+    public void setPath(String path) {
+        this.path = path;
     }
 
 }

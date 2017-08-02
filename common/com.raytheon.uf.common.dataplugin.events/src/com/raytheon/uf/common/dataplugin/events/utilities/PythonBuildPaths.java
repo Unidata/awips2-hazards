@@ -55,6 +55,7 @@ import com.raytheon.uf.common.util.FileUtil;
  * Feb 26, 2015 6306      mduff        Get available localization levels only.
  * Nov 17, 2015 3473      Robert.Blum  Moved all python files under HazardServices localization dir.
  * Apr 25, 2015 17611     Robert.Blum  Updated so ConfigLoader can utilize.
+ * Sep 20, 2016 21609     Kevin.Bisanz Add geoSpatialPath to includePath.
  * </pre>
  * 
  * @author jsanchez
@@ -79,10 +80,10 @@ public class PythonBuildPaths {
         LocalizationLevel[] levels = pathMgr.getAvailableLevels();
         for (int i = levels.length - 1; i >= 0; i--) {
             LocalizationLevel level = levels[i];
-            LocalizationContext lc = pathMgr.getContext(
-                    LocalizationType.COMMON_STATIC, level);
-            if (site != null
-                    && (level == LocalizationLevel.SITE || level == LocalizationLevel.CONFIGURED)) {
+            LocalizationContext lc = pathMgr
+                    .getContext(LocalizationType.COMMON_STATIC, level);
+            if (site != null && (level == LocalizationLevel.SITE
+                    || level == LocalizationLevel.CONFIGURED)) {
                 lc.setContextName(site);
             }
             pathList.add(pathMgr.getLocalizationFile(lc, fileLoc).getFile()
@@ -117,7 +118,8 @@ public class PythonBuildPaths {
         return pythonInterfacePath;
     }
 
-    public static LocalizationFile buildLocalizationDirectory(String directory) {
+    public static LocalizationFile buildLocalizationDirectory(
+            String directory) {
         IPathManager manager = PathManagerFactory.getPathManager();
         LocalizationContext baseContext = manager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
@@ -140,61 +142,53 @@ public class PythonBuildPaths {
         LocalizationContext baseContext = manager.getContext(
                 LocalizationType.COMMON_STATIC, LocalizationLevel.BASE);
 
-        String pythonPath = manager.getFile(baseContext,
-                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
+        String pythonPath = manager
+                .getFile(baseContext,
+                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
                 .getPath();
         String hazardServicesPythonPath = manager
-                .getFile(
-                        baseContext,
+                .getFile(baseContext,
                         HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR)
                 .getPath();
-        String dataAccessPath = FileUtil
-                .join(pythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
+        String dataAccessPath = FileUtil.join(pythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_ACCESS_DIR);
         String localizationGfePath = FileUtil.join(pythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_GFE_DIR);
         String dataTimePath = FileUtil.join(pythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_TIME_DIR);
-        String localizationUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR);
-        String vtecUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
-        String logUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
+        String localizationUtilitiesPath = FileUtil.join(
+                hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_UTILITIES_DIR);
+        String vtecUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_VTEC_UTILITIES_DIR);
+        String logUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_LOG_UTILITIES_DIR);
         String eventsPath = FileUtil.join(hazardServicesPythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR);
         String eventsUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
                 HazardsConfigurationConstants.PYTHON_UTILITIES_DIR);
-        String geoUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
-        String shapeUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
-        String textUtilitiesPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
-        String dataStoragePath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
+        String geoUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
+        String shapeUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
+        String textUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_TEXT_UTILITIES_DIR);
+        String dataStoragePath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_DATA_STORAGE_DIR);
         String bridgePath = FileUtil.join(hazardServicesPythonPath,
                 HazardsConfigurationConstants.PYTHON_LOCALIZATION_BRIDGE_DIR);
-        String productTextUtilPath = FileUtil
-                .join(hazardServicesPythonPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR);
+        String productTextUtilPath = FileUtil.join(hazardServicesPythonPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTS_DIR);
 
-        String productGenPath = FileUtil
-                .join(eventsPath,
-                        HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
+        String productGenPath = FileUtil.join(eventsPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR);
+        String geoSpatialPath = FileUtil.join(productGenPath,
+                HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEOSPATIAL_DIR);
         String metadataPath = manager
-                .getFile(
-                        baseContext,
+                .getFile(baseContext,
                         HazardsConfigurationConstants.HAZARD_SERVICES_PYTHON_LOCALIZATION_DIR
                                 + File.separator
                                 + HazardsConfigurationConstants.HAZARD_METADATA_DIR)
@@ -211,7 +205,7 @@ public class PythonBuildPaths {
                 metadataPath, productGenPath, bridgePath, dataStoragePath,
                 logUtilitiesPath, localizationUtilitiesPath,
                 productTextUtilPath, vtecUtilitiesPath, geoUtilitiesPath,
-                shapeUtilitiesPath, textUtilitiesPath);
+                shapeUtilitiesPath, textUtilitiesPath, geoSpatialPath);
         if (directoryPaths.equals("")) {
             return PyUtil.buildJepIncludePath(includePath);
         }

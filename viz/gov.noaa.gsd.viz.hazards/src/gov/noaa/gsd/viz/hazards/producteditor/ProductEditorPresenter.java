@@ -7,24 +7,29 @@
  */
 package gov.noaa.gsd.viz.hazards.producteditor;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
-import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-
 import java.util.EnumSet;
 import java.util.List;
 
-import net.engio.mbassy.listener.Handler;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.MessageBox;
 
+import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.viz.ui.VizWorkbenchManager;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
+import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Description: Product Editor presenter, used to mediate between the model and
@@ -69,6 +74,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Dec 04, 2015    12981   Roger.Ferrel      Checks to prevent issuing unwanted
  *                                           expiration product.
  * Mar 30, 2016     8837   Robert.Blum       Added siteChanged() for service backup.
+ * Sep 20, 2016    21622   Ben.Phillippe     Prevent preview of other site's hazards
  * Feb 02, 2017    15556   Chris.Golden      Minor changes to support console refactor.
  * Apr 27, 2017    11853   Chris.Golden      Added public method to close product editor.
  * </pre>
@@ -76,8 +82,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * @author Bryon.Lawrence
  * @version 1.0
  */
-public class ProductEditorPresenter extends
-        HazardServicesPresenter<IProductEditorView<?, ?>> {
+public class ProductEditorPresenter
+        extends HazardServicesPresenter<IProductEditorView<?, ?>> {
 
     // Public Constructors
 
@@ -123,6 +129,28 @@ public class ProductEditorPresenter extends
                 showProductEditor = false;
             }
         }
+
+        /*
+         * Verify we are attempting to preview products from our own site
+         */
+        for (int i = 0; i < generatedProductsList.size()
+                && showProductEditor; i++) {
+            for (IEvent event : generatedProductsList.get(i).getEventSet()) {
+                IHazardEvent hazardEvent = (IHazardEvent) event;
+                if (!siteId.equals(hazardEvent.getSiteID())) {
+                    showProductEditor = false;
+                    MessageBox mb1 = new MessageBox(VizWorkbenchManager
+                            .getInstance().getCurrentWindow().getShell(),
+                            SWT.ICON_ERROR | SWT.OK);
+                    mb1.setText("Cannot Preview");
+                    mb1.setMessage(
+                            "Must be in Service Backup to modify Hazard Events from "
+                                    + hazardEvent.getSiteID() + ".");
+                    mb1.open();
+                    break;
+                }
+            }
+        }
         if (showProductEditor) {
             this.getView().showProductEditor(generatedProductsList, siteId,
                     getModel().getConfigurationManager().getHazardTypes());
@@ -148,7 +176,7 @@ public class ProductEditorPresenter extends
      */
     @Handler
     public void siteChanged(SiteChanged change) {
-        getView().changeSite(getModel().getConfigurationManager().getSiteID());
+        getView().changeSite(change.getSiteIdentifier());
     }
 
     // Protected Methods
@@ -186,17 +214,17 @@ public class ProductEditorPresenter extends
                     @Override
                     public void commandInvoked(String identifier) {
                         ProductEditorAction action = null;
-                        if (identifier != null
-                                && identifier
-                                        .equalsIgnoreCase(HazardConstants.CORRECTION_FLAG)) {
+                        if (identifier != null && identifier.equalsIgnoreCase(
+                                HazardConstants.CORRECTION_FLAG)) {
                             action = new ProductEditorAction(
                                     HazardAction.CORRECT);
                         } else {
-                            action = new ProductEditorAction(HazardAction.ISSUE);
+                            action = new ProductEditorAction(
+                                    HazardAction.ISSUE);
                         }
 
-                        action.setGeneratedProductsList(getView()
-                                .getGeneratedProductsList());
+                        action.setGeneratedProductsList(
+                                getView().getGeneratedProductsList());
                         getModel().setIssueOngoing(true);
                         ProductEditorPresenter.this.publish(action);
                     }
@@ -208,9 +236,8 @@ public class ProductEditorPresenter extends
                     @Override
                     public void commandInvoked(String identifier) {
                         closeProductEditor();
-                        if (identifier != null
-                                && identifier
-                                        .equalsIgnoreCase(HazardConstants.REGENERATE_FLAG)) {
+                        if (identifier != null && identifier.equalsIgnoreCase(
+                                HazardConstants.REGENERATE_FLAG)) {
                             ProductAction action = new ProductAction(
                                     ProductAction.ActionType.PREVIEW);
                             ProductEditorPresenter.this.publish(action);

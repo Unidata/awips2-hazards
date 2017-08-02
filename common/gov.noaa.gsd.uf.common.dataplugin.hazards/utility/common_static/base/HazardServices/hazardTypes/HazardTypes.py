@@ -115,7 +115,12 @@
 #                            such information pointlessly stored in the database. 
 #             timeResolution The time resolution for this type. May be either "minutes" or
 #                            "seconds"; if not provided, it defaults to "minutes".   
-
+#             accurateCities If True, cities are based on the hazard polygon. CityLocations.py
+#                            from GFE is used to get the lat/lon of each configued city. The
+#                            lat/lon is then tested to see if it is contained within the hazard
+#                            polygon. If False, the full list from AreaDictionary is included.
+#                            This flag applies to GFE hazards only. The default value is False.
+#
 HOURS = 3600000
 MINUTES = 60000
 OVERRIDE_LOCK =  ['headline', 'combinableSegments', 'includeAll', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True]
@@ -479,13 +484,14 @@ HazardTypes = {
               'ugcLabel': 'name',
               'hazardClipArea' : 'cwa',
               'inclusionFractionTest': True,
-              'inclusionFraction': 0,
+              'inclusionFraction': 0.1,
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 0,
               'replacedBy': ['FA.W', 'FA.Y'],
               'defaultDuration': 8 * HOURS,
               'durationIncrement': 60,
               'sessionAttributes': SESSION_ATTRS,
+              'accurateCities' : False,
               },
     'FA.W' : {'headline': 'AREAL FLOOD WARNING',
               '_override_lock_': OVERRIDE_LOCK,
@@ -550,7 +556,7 @@ HazardTypes = {
               'ugcLabel': 'name',
               'hazardClipArea' : 'cwa',
               'inclusionFractionTest': True,
-              'inclusionFraction': 0,
+              'inclusionFraction': 0.1,
               'inclusionAreaTest' : True,
               'inclusionAreaInSqKm' : 0,
               'replacedBy': ['FF.W.Convective', 'FF.W.NonConvective'],
@@ -558,6 +564,7 @@ HazardTypes = {
               'durationIncrement': 60,
               'hazardTypeFirstRecommender':'StormTrackTool',
               'sessionAttributes': SESSION_ATTRS,
+              'accurateCities' : False,
               },
     'FF.W.BurnScar' : {
               'headline': 'FLASH FLOOD WARNING',

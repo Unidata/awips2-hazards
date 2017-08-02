@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.edex.productgen;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 
 import org.hibernate.Criteria;
@@ -28,6 +33,8 @@ import com.raytheon.uf.common.hazards.productgen.editable.CustomTextId;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductText;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextRequest;
 import com.raytheon.uf.common.hazards.productgen.editable.ProductTextResponse;
+import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -44,6 +51,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
+ * Nov 10, 2016 22119      Kevin.Bisanz Changes to export product text by officeID
  * 
  * </pre>
  * 
@@ -53,7 +61,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
 
 public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
 
-    private static final IUFStatusHandler handler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductTextHandler.class);
 
     /**
@@ -73,8 +81,9 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
     public Object handleRequest(ProductTextRequest request) throws Exception {
         CoreDao dao = new CoreDao(DaoConfig.DEFAULT);
         ProductTextResponse response = new ProductTextResponse();
-        handler.info(request.getType().name() + " : "
-                + prettyPrintKey(request.getProductText()));
+        statusHandler.info(request.getType().name() + " : "
+                + prettyPrintKey(request.getProductText()) + " : "
+                + request.getPath());
         switch (request.getType()) {
         case CREATE:
             try {
@@ -105,31 +114,109 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
             }
             break;
         case RETRIEVE:
-            ProductText pText = request.getProductText();
-            Criteria criteria = dao.getSessionFactory().openSession()
-                    .createCriteria(ProductText.class);
-            criteria.add(Restrictions.eq("id.key", pText.getKey()));
-            if (pText.getProductCategory() != null) {
-                criteria.add(Restrictions.eq("id.productCategory",
-                        pText.getProductCategory()));
-            }
-            if (pText.getProductID() != null) {
-                criteria.add(Restrictions.eq("id.productID",
-                        pText.getProductID()));
-            }
-            if (pText.getSegment() != null) {
-                criteria.add(Restrictions.eq("id.segment", pText.getSegment()));
-            }
-            if (pText.getEventIDs() != null) {
-                criteria.add(Restrictions.eq("id.eventIDs", pText.getEventIDs()));
-            }
-
-            List<ProductText> text = criteria.list();
+            List<ProductText> text = retrieve(request, dao);
             response = new ProductTextResponse();
             response.setText(text);
             break;
+        case EXPORT:
+            exportRecords(request, dao, response);
+            break;
+        case IMPORT:
+            importRecords(request, dao, response);
+            break;
         }
         return response;
+    }
+
+    /**
+     * Export records
+     *
+     * @param request
+     *            Request containing the criteria of records to be exported
+     * @param dao
+     * @param response
+     */
+    private void exportRecords(ProductTextRequest request, CoreDao dao,
+            ProductTextResponse response) {
+        String filePath = request.getPath();
+        if (filePath == null) {
+            response.setExceptions(
+                    new IllegalStateException("filePath is null"));
+            return;
+        }
+
+        List<ProductText> text = retrieve(request, dao);
+
+        try (OutputStream os = new FileOutputStream(filePath)) {
+            SerializationUtil.transformToThriftUsingStream(text, os);
+        } catch (IOException | SerializationException e) {
+            statusHandler.error(e.getLocalizedMessage(), e);
+            response.setExceptions(e);
+        }
+    }
+
+    /**
+     * Import records
+     *
+     * @param request
+     *            Request containing the file path of DynamicSerialized records
+     *            to be imported.
+     * @param dao
+     * @param response
+     */
+    private void importRecords(ProductTextRequest request, CoreDao dao,
+            ProductTextResponse response) {
+        String filePath = request.getPath();
+        if (filePath == null) {
+            response.setExceptions(
+                    new IllegalStateException("filePath is null"));
+            return;
+        }
+
+        List<ProductText> records = null;
+        try (InputStream is = new FileInputStream(filePath)) {
+            records = SerializationUtil.transformFromThrift(List.class, is);
+            dao.persistAll(records);
+        } catch (IOException | SerializationException e) {
+            statusHandler.error(e.getLocalizedMessage(), e);
+            response.setExceptions(e);
+        }
+    }
+
+    /**
+     * Retrieve records
+     *
+     * @param pData
+     *            Request containing criteria for retrieval
+     * @return
+     */
+    private List<ProductText> retrieve(ProductTextRequest request,
+            CoreDao dao) {
+        ProductText pText = request.getProductText();
+        Criteria criteria = dao.getSessionFactory().openSession()
+                .createCriteria(ProductText.class);
+        if (pText.getKey() != null) {
+            criteria.add(Restrictions.eq("id.key", pText.getKey()));
+        }
+        if (pText.getProductCategory() != null) {
+            criteria.add(Restrictions.eq("id.productCategory",
+                    pText.getProductCategory()));
+        }
+        if (pText.getProductID() != null) {
+            criteria.add(Restrictions.eq("id.productID", pText.getProductID()));
+        }
+        if (pText.getSegment() != null) {
+            criteria.add(Restrictions.eq("id.segment", pText.getSegment()));
+        }
+        if (pText.getEventIDs() != null) {
+            criteria.add(Restrictions.eq("id.eventIDs", pText.getEventIDs()));
+        }
+        if (pText.getOfficeID() != null) {
+            criteria.add(Restrictions.eq("id.officeID", pText.getOfficeID()));
+        }
+
+        List<ProductText> text = criteria.list();
+        return text;
     }
 
     private String prettyPrintKey(ProductText text) {
@@ -138,6 +225,8 @@ public class ProductTextHandler implements IRequestHandler<ProductTextRequest> {
         builder.append(textId.getKey());
         builder.append("/");
         builder.append(textId.getEventIDs());
+        builder.append("/");
+        builder.append(textId.getOfficeID());
         builder.append("/");
         builder.append(textId.getProductCategory());
         builder.append("/");

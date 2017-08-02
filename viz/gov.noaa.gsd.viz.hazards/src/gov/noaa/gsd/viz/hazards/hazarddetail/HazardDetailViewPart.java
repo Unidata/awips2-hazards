@@ -9,6 +9,47 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import java.io.Serializable;
+import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StackLayout;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Resource;
+import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Group;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
+import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.viz.core.icon.IconUtil;
+import com.raytheon.viz.ui.dialogs.ModeListener;
+
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.Utils;
@@ -56,47 +97,6 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 import gov.noaa.gsd.viz.widgets.CustomizableTabFolder;
 import gov.noaa.gsd.viz.widgets.CustomizableTabFolderRenderer;
 import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
-
-import java.io.Serializable;
-import java.text.DateFormat;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.StackLayout;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.FontData;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Resource;
-import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.RowLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Group;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Range;
-import com.google.common.collect.Sets;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.common.util.Pair;
-import com.raytheon.uf.viz.core.icon.IconUtil;
-import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
  * This class represents an instance of the Hazard Detail view part, which is
@@ -251,6 +251,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  *                                           has its interdependency script reinitialize
  *                                           if unchanged, so that when a hazard event is
  *                                           selected, it triggers the reinitialization.
+ * Oct 05, 2016   22300    Kevin.Bisanz      initialize() returns earlier if called
+ *                                           multiple times.
  * Oct 19, 2016  21873     Chris.Golden      Added time resolution tracking tied to events.
  *                                           This means having four different time-tracking
  *                                           megawidgets, for the four possible cases:
@@ -266,8 +268,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * @author Chris.Golden
  * @version 1.0
  */
-public class HazardDetailViewPart extends DockTrackingViewPart implements
-        IHazardDetailView {
+public class HazardDetailViewPart extends DockTrackingViewPart
+        implements IHazardDetailView {
 
     // Public Static Constants
 
@@ -436,6 +438,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Specifier parameters for the category combo box megawidget.
      */
     private static final ImmutableMap<String, Object> CATEGORY_SPECIFIER_PARAMETERS;
+
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(ISpecifier.MEGAWIDGET_IDENTIFIER, CATEGORY_IDENTIFIER);
@@ -451,6 +454,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Specifier parameters for the type combo box megawidget.
      */
     private static final ImmutableMap<String, Object> TYPE_SPECIFIER_PARAMETERS;
+
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(ISpecifier.MEGAWIDGET_IDENTIFIER, TYPE_IDENTIFIER);
@@ -466,12 +470,14 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * Specifier for the until-further-notice checkbox megawidget.
      */
     private static final ImmutableList<ImmutableMap<String, Object>> UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS;
+
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(MegawidgetSpecifier.MEGAWIDGET_TYPE, CHECKBOX_MEGAWIDGET_TYPE);
         map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
-        map.put(MegawidgetSpecifier.MEGAWIDGET_LABEL, UNTIL_FURTHER_NOTICE_TEXT);
+        map.put(MegawidgetSpecifier.MEGAWIDGET_LABEL,
+                UNTIL_FURTHER_NOTICE_TEXT);
         List<ImmutableMap<String, Object>> list = new ArrayList<>();
         list.add(ImmutableMap.copyOf(map));
         UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS = ImmutableList
@@ -483,6 +489,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * own row as a detail field.
      */
     private static final ImmutableList<ImmutableMap<String, Object>> UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS;
+
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(MegawidgetSpecifier.MEGAWIDGET_TYPE, COMPOSITE_MEGAWIDGET_TYPE);
@@ -502,6 +509,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * time scale megawidget.
      */
     private static final ImmutableMap<TimeResolution, ImmutableMap<String, Object>> TIME_SCALE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS;
+
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
@@ -551,6 +559,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * time range megawidget.
      */
     private static final ImmutableMap<TimeResolution, ImmutableMap<String, Object>> TIME_RANGE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS;
+
     static {
         Map<String, Object> map = new HashMap<>();
         map.put(MegawidgetSpecifier.MEGAWIDGET_IDENTIFIER,
@@ -730,7 +739,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * end times. There are two of each; each pair has one that has a time
      * resolution of minutes, and another with a time resolution of seconds.
      */
-    private final List<MultiTimeMegawidget> timeMegawidgets = new ArrayList<>(4);
+    private final List<MultiTimeMegawidget> timeMegawidgets = new ArrayList<>(
+            4);
 
     /**
      * Map of time resolutions to event time range megawidgets, one of which is
@@ -905,7 +915,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private final IStateChanger<Pair<String, Integer>, Map<String, IDisplaySettings>> megawidgetdisplaySettingsChanger = new IStateChanger<Pair<String, Integer>, Map<String, IDisplaySettings>>() {
 
         @Override
-        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+        public void setEnabled(Pair<String, Integer> identifier,
+                boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot enable/disable scroll origin");
         }
@@ -1060,7 +1071,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> categoryChanger = new IChoiceStateChanger<Pair<String, Integer>, String, String, String>() {
 
         @Override
-        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+        public void setEnabled(Pair<String, Integer> identifier,
+                boolean enable) {
             if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 categoryMegawidget.setEnabled(enable);
             }
@@ -1124,7 +1136,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> typeChanger = new IChoiceStateChanger<Pair<String, Integer>, String, String, String>() {
 
         @Override
-        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+        public void setEnabled(Pair<String, Integer> identifier,
+                boolean enable) {
             if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 typeMegawidget.setEnabled(enable);
             }
@@ -1187,7 +1200,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private final IStateChanger<Pair<String, Integer>, TimeRange> timeRangeChanger = new IStateChanger<Pair<String, Integer>, TimeRange>() {
 
         @Override
-        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+        public void setEnabled(Pair<String, Integer> identifier,
+                boolean enable) {
             if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
                 for (MultiTimeMegawidget megawidget : timeMegawidgets) {
                     megawidget.setEnabled(enable);
@@ -1212,7 +1226,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setState(Pair<String, Integer> identifier, TimeRange value) {
+        public void setState(Pair<String, Integer> identifier,
+                TimeRange value) {
             if (identifier.equals(visibleEventVersionIdentifier)) {
                 setTimeRange(value);
             }
@@ -1312,7 +1327,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setStates(Map<String, TimeResolution> valuesForIdentifiers) {
+        public void setStates(
+                Map<String, TimeResolution> valuesForIdentifiers) {
             throw new UnsupportedOperationException(
                     "cannot change multiple states for time resolution");
         }
@@ -1332,7 +1348,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private final IChoiceStateChanger<Pair<String, Integer>, String, String, String> durationChanger = new IChoiceStateChanger<Pair<String, Integer>, String, String, String>() {
 
         @Override
-        public void setEnabled(Pair<String, Integer> identifier, boolean enable) {
+        public void setEnabled(Pair<String, Integer> identifier,
+                boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot enable or disable duration");
         }
@@ -1413,8 +1430,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         }
 
         @Override
-        public void setState(Pair<String, Integer> qualifier,
-                String identifier, Serializable value) {
+        public void setState(Pair<String, Integer> qualifier, String identifier,
+                Serializable value) {
             setMetadataValue(qualifier, identifier, value);
         }
 
@@ -1535,8 +1552,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             (Long) (identifier.equals(END_TIME_STATE) ? state
                                     : megawidget.getState(END_TIME_STATE)));
                 } catch (Exception e) {
-                    statusHandler.error(
-                            "unexpected problem fetching time range "
+                    statusHandler
+                            .error("unexpected problem fetching time range "
                                     + "values from megawidget", e);
                     return;
                 }
@@ -1544,11 +1561,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     setTimeRange(multiTimeMegawidget, range);
                 }
                 if (timeRangeChangeHandler != null) {
-                    timeRangeChangeHandler.stateChanged(
-                            visibleEventVersionIdentifier, range);
+                    timeRangeChangeHandler
+                            .stateChanged(visibleEventVersionIdentifier, range);
                 }
-            } else if (identifier
-                    .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+            } else if (identifier.equals(
+                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
                 boolean untilFurtherNotice = Boolean.TRUE.equals(state);
                 for (CheckBoxMegawidget checkBoxMegawidget : getOtherMegawidgets(
                         megawidget, untilFurtherNoticeToggleMegawidgets)) {
@@ -1579,8 +1596,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                             (Long) statesForIdentifiers.get(START_TIME_STATE),
                             (Long) statesForIdentifiers.get(END_TIME_STATE));
                 } catch (Exception e) {
-                    statusHandler.error(
-                            "unexpected problem fetching time range "
+                    statusHandler
+                            .error("unexpected problem fetching time range "
                                     + "values from megawidget", e);
                     return;
                 }
@@ -1588,8 +1605,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     setTimeRange(multiTimeMegawidget, range);
                 }
                 if (timeRangeChangeHandler != null) {
-                    timeRangeChangeHandler.stateChanged(
-                            visibleEventVersionIdentifier, range);
+                    timeRangeChangeHandler
+                            .stateChanged(visibleEventVersionIdentifier, range);
                 }
             } else {
                 throw new IllegalArgumentException(
@@ -1607,8 +1624,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private final IVisibleTimeRangeListener basicVisibleTimeRangeListener = new IVisibleTimeRangeListener() {
 
         @Override
-        public void visibleTimeRangeChanged(
-                IVisibleTimeRangeChanger megawidget, long lower, long upper) {
+        public void visibleTimeRangeChanged(IVisibleTimeRangeChanger megawidget,
+                long lower, long upper) {
             setVisibleTimeRange(lower, upper);
         }
     };
@@ -1616,14 +1633,19 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     // Public Methods
 
     @Override
-    public void initialize(
-            long minVisibleTime,
-            long maxVisibleTime,
+    public void initialize(long minVisibleTime, long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
-            boolean showStartEndTimeScale,
-            boolean buildForWideViewing,
+            boolean showStartEndTimeScale, boolean buildForWideViewing,
             boolean includeIssueButton,
             Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers) {
+
+        /*
+         * No need to synchronize the read/set of the initialized flag because
+         * this GUI related code should all be executed on the UI thread.
+         */
+        if (initialized) {
+            return;
+        }
         initialized = true;
 
         /*
@@ -1710,8 +1732,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * different tab selection.
          */
         eventTabFolder = new CustomizableTabFolder(tabTop, SWT.TOP);
-        eventTabFolder.setRenderer(new CustomizableTabFolderRenderer(
-                eventTabFolder));
+        eventTabFolder
+                .setRenderer(new CustomizableTabFolderRenderer(eventTabFolder));
         FontData fontData = eventTabFolder.getFont().getFontData()[0];
         italicTabFont = new Font(eventTabFolder.getDisplay(), new FontData(
                 fontData.getName(), fontData.getHeight(), SWT.ITALIC));
@@ -1791,15 +1813,15 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         try {
             categoryMegawidget = new ComboBoxSpecifier(
                     CATEGORY_SPECIFIER_PARAMETERS).createMegawidget(typeGroup,
-                    ComboBoxMegawidget.class, megawidgetCreationParams);
+                            ComboBoxMegawidget.class, megawidgetCreationParams);
             megawidgetsToAlign.add(categoryMegawidget);
             typeMegawidget = new ComboBoxSpecifier(TYPE_SPECIFIER_PARAMETERS)
                     .createMegawidget(typeGroup, ComboBoxMegawidget.class,
                             megawidgetCreationParams);
             megawidgetsToAlign.add(typeMegawidget);
         } catch (Exception e) {
-            statusHandler.error(
-                    "unexpected problem creating category and type combo box "
+            statusHandler
+                    .error("unexpected problem creating category and type combo box "
                             + "megawidgets", e);
         }
 
@@ -2067,46 +2089,47 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             MultiTimeMegawidget timeMegawidget = null;
             CheckBoxMegawidget checkBoxMegawidget = null;
             Map<String, Object> timeMegawidgetParameters = new HashMap<>(
-                    (creatingTimeScales ? TIME_SCALE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS
+                    (creatingTimeScales
+                            ? TIME_SCALE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS
                             : TIME_RANGE_SPECIFIER_PARAMETERS_FOR_TIME_RESOLUTIONS)
-                            .get(timeResolution));
+                                    .get(timeResolution));
             timeMegawidgetParameters.put(
                     MultiTimeMegawidgetSpecifier.MEGAWIDGET_SHOW_SCALE,
                     showStartEndTimeScale);
             Map<String, Object> map = new HashMap<>();
-            map.put(END_TIME_STATE,
-                    (buildForWideViewing ? UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS
-                            : UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS));
-            timeMegawidgetParameters.put(
-                    TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS, map);
+            map.put(END_TIME_STATE, (buildForWideViewing
+                    ? UNTIL_FURTHER_NOTICE_DETAIL_FIELD_PARAMETERS
+                    : UNTIL_FURTHER_NOTICE_DETAIL_FIELD_WRAPPED_PARAMETERS));
+            timeMegawidgetParameters
+                    .put(TimeScaleSpecifier.MEGAWIDGET_DETAIL_FIELDS, map);
             if (creatingTimeScales) {
                 try {
                     timeMegawidget = new TimeScaleSpecifier(
                             timeMegawidgetParameters).createMegawidget(
-                            timeSubPanel, TimeScaleMegawidget.class,
-                            megawidgetCreationParams);
+                                    timeSubPanel, TimeScaleMegawidget.class,
+                                    megawidgetCreationParams);
                 } catch (Exception e) {
-                    statusHandler.error(
-                            "unexpected problem creating time scale and checkbox "
+                    statusHandler
+                            .error("unexpected problem creating time scale and checkbox "
                                     + "megawidgets", e);
                 }
             } else {
                 try {
                     TimeRangeMegawidget timeRangeMegawidget = new TimeRangeSpecifier(
                             timeMegawidgetParameters).createMegawidget(
-                            timeSubPanel, TimeRangeMegawidget.class,
-                            megawidgetCreationParams);
+                                    timeSubPanel, TimeRangeMegawidget.class,
+                                    megawidgetCreationParams);
                     timeRangeMegawidgetsForTimeResolutions.put(timeResolution,
                             timeRangeMegawidget);
                     timeMegawidget = timeRangeMegawidget;
                 } catch (Exception e) {
-                    statusHandler.error(
-                            "unexpected problem creating time range and checkbox "
+                    statusHandler
+                            .error("unexpected problem creating time range and checkbox "
                                     + "megawidgets", e);
                 }
             }
-            checkBoxMegawidget = (CheckBoxMegawidget) (buildForWideViewing ? timeMegawidget
-                    .getChildren().get(0)
+            checkBoxMegawidget = (CheckBoxMegawidget) (buildForWideViewing
+                    ? timeMegawidget.getChildren().get(0)
                     : ((CompositeMegawidget) timeMegawidget.getChildren()
                             .get(0)).getChildren().get(0));
             megawidgetsToAlign.add(timeMegawidget);
@@ -2242,8 +2265,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         } else {
             for (int j = 0; j < choiceDisplayables.size(); j++) {
                 if (j < tabItems.length) {
-                    tabItems[j].setText(choiceDisplayables.get(j)
-                            .getDescription());
+                    tabItems[j].setText(
+                            choiceDisplayables.get(j).getDescription());
                 }
             }
         }
@@ -2266,10 +2289,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     tabItems[j].setFont(italicTabFont);
                     tabItems[j]
                             .setToolTipText(HISTORICAL_SNAPSHOT__PREFIX_TOOLTIP
-                                    + (timeResolution == TimeResolution.MINUTES ? minutesDateTimeFormatter
-                                            : secondsDateTimeFormatter)
-                                            .format(choiceDisplayables.get(j)
-                                                    .getPersistTimestamp()));
+                                    + (timeResolution == TimeResolution.MINUTES
+                                            ? minutesDateTimeFormatter
+                                            : secondsDateTimeFormatter).format(
+                                                    choiceDisplayables.get(j)
+                                                            .getPersistTimestamp()));
                 } else if (choiceDisplayables.get(j).isConflicting()) {
                     conflictExists = true;
                     tabItems[j].setImage(CONFLICT_TAB_ICON);
@@ -2369,14 +2393,17 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Identifier of the state the combo box holds.
      */
     private void setComboBoxChoices(ComboBoxMegawidget comboBox,
-            List<String> choices, List<String> descriptions, String identifier) {
+            List<String> choices, List<String> descriptions,
+            String identifier) {
         if (isAlive() && (comboBox != null) && (choices != null)) {
             List<?> choicesList;
             if (descriptions != null) {
-                List<Map<String, Object>> list = new ArrayList<>(choices.size());
+                List<Map<String, Object>> list = new ArrayList<>(
+                        choices.size());
                 for (int j = 0; j < choices.size(); j++) {
                     Map<String, Object> map = new HashMap<>(2);
-                    map.put(ComboBoxSpecifier.CHOICE_IDENTIFIER, choices.get(j));
+                    map.put(ComboBoxSpecifier.CHOICE_IDENTIFIER,
+                            choices.get(j));
                     map.put(ComboBoxSpecifier.CHOICE_NAME, descriptions.get(j));
                     list.add(map);
                 }
@@ -2457,8 +2484,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                  * the duration is to be frozen but the user moves the start
                  * time, which displaces the end time.
                  */
-                if (timeRangeMegawidgetsForTimeResolutions.values().contains(
-                        megawidget) == false) {
+                if (timeRangeMegawidgetsForTimeResolutions.values()
+                        .contains(megawidget) == false) {
                     long newEndTime = range.getEnd().getTime();
                     Map<String, Long> minimumAllowableTimes = megawidget
                             .getMinimumAllowableTimes();
@@ -2469,7 +2496,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     long maximumEndTime = maximumAllowableTimes
                             .get(END_TIME_STATE);
                     if ((minimumEndTime == maximumEndTime)
-                            && ((newEndTime < minimumEndTime) || (newEndTime > maximumEndTime))) {
+                            && ((newEndTime < minimumEndTime)
+                                    || (newEndTime > maximumEndTime))) {
                         minimumAllowableTimes.put(END_TIME_STATE, newEndTime);
                         maximumAllowableTimes.put(END_TIME_STATE, newEndTime);
                         megawidget.setAllowableRanges(minimumAllowableTimes,
@@ -2480,14 +2508,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 /*
                  * Give the megawidget the new values it should hold.
                  */
-                megawidget.setUncommittedState(START_TIME_STATE, range
-                        .getStart().getTime());
-                megawidget.setUncommittedState(END_TIME_STATE, range.getEnd()
-                        .getTime());
+                megawidget.setUncommittedState(START_TIME_STATE,
+                        range.getStart().getTime());
+                megawidget.setUncommittedState(END_TIME_STATE,
+                        range.getEnd().getTime());
                 megawidget.commitStateChanges();
             } catch (Exception e) {
-                statusHandler.error("unexpected error while setting "
-                        + TIME_RANGE_IDENTIFIER + " megawidget values", e);
+                statusHandler.error(
+                        "unexpected error while setting "
+                                + TIME_RANGE_IDENTIFIER + " megawidget values",
+                        e);
             }
         }
     }
@@ -2533,10 +2563,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
              * Determine whether or not the start and end times should be
              * editable; if they have zero-length ranges, they should not be.
              */
-            boolean startTimeEditable = (startTimeRange.lowerEndpoint().equals(
-                    startTimeRange.upperEndpoint()) == false);
-            boolean endTimeEditable = (endTimeRange.lowerEndpoint().equals(
-                    endTimeRange.upperEndpoint()) == false);
+            boolean startTimeEditable = (startTimeRange.lowerEndpoint()
+                    .equals(startTimeRange.upperEndpoint()) == false);
+            boolean endTimeEditable = (endTimeRange.lowerEndpoint()
+                    .equals(endTimeRange.upperEndpoint()) == false);
 
             /*
              * Get the duration of the event as it stands.
@@ -2548,8 +2578,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 duration = (Long) timeRangeMegawidget.getState(END_TIME_STATE)
                         - (Long) timeRangeMegawidget.getState(START_TIME_STATE);
             } catch (Exception e) {
-                statusHandler.error("unexpected error while getting "
-                        + TIME_RANGE_IDENTIFIER + " megawidget values", e);
+                statusHandler.error(
+                        "unexpected error while getting "
+                                + TIME_RANGE_IDENTIFIER + " megawidget values",
+                        e);
                 return;
             }
 
@@ -2560,8 +2592,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                 try {
                     megawidget.setStateEditable(START_TIME_STATE,
                             startTimeEditable);
-                    megawidget
-                            .setStateEditable(END_TIME_STATE, endTimeEditable);
+                    megawidget.setStateEditable(END_TIME_STATE,
+                            endTimeEditable);
                     megawidget.setAllowableRanges(minimumValues, maximumValues);
                 } catch (Exception e) {
                     statusHandler.error("unexpected error while setting "
@@ -2578,11 +2610,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             try {
                 long startTime = (Long) timeRangeMegawidget
                         .getState(START_TIME_STATE);
-                setTimeRange(timeRangeMegawidget, new TimeRange(startTime,
-                        startTime + duration));
+                setTimeRange(timeRangeMegawidget,
+                        new TimeRange(startTime, startTime + duration));
             } catch (Exception e) {
-                statusHandler.error("unexpected error while setting "
-                        + TIME_RANGE_IDENTIFIER + " megawidget values", e);
+                statusHandler.error(
+                        "unexpected error while setting "
+                                + TIME_RANGE_IDENTIFIER + " megawidget values",
+                        e);
             }
         }
     }
@@ -2595,7 +2629,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      *            Choices to be used.
      */
     private void setDurationChoices(List<String> choices) {
-        timeContentLayout.topControl = (choices.isEmpty() ? timeScalePanelsForTimeResolutions
+        timeContentLayout.topControl = (choices.isEmpty()
+                ? timeScalePanelsForTimeResolutions
                 : timeRangePanelsForTimeResolutions).get(timeResolution);
         timeGroup.layout();
         if (choices.isEmpty() == false) {
@@ -2628,15 +2663,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             Object untilFurtherNotice) {
         if (isAlive()) {
             try {
-                megawidget
-                        .setState(
-                                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                                untilFurtherNotice);
+                megawidget.setState(
+                        HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                        untilFurtherNotice);
             } catch (Exception e) {
-                statusHandler
-                        .error("unexpected error while setting "
-                                + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
-                                + " megawidget value", e);
+                statusHandler.error("unexpected error while setting "
+                        + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
+                        + " megawidget value", e);
             }
         }
     }
@@ -2671,10 +2704,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             try {
                 megawidget.setEnabled(enable);
             } catch (Exception e) {
-                statusHandler
-                        .error("unexpected error while setting "
-                                + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
-                                + " megawidget enabled state", e);
+                statusHandler.error("unexpected error while setting "
+                        + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
+                        + " megawidget enabled state", e);
             }
         }
     }
@@ -2709,10 +2741,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             try {
                 megawidget.setEditable(editable);
             } catch (Exception e) {
-                statusHandler
-                        .error("unexpected error while setting "
-                                + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
-                                + " megawidget editability state", e);
+                statusHandler.error("unexpected error while setting "
+                        + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
+                        + " megawidget editability state", e);
             }
         }
     }
@@ -2838,11 +2869,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                                     if (editable
                                             && (notifierInvocationHandler != null)) {
                                         notifierInvocationHandler
-                                                .commandInvoked(new EventScriptInfo(
-                                                        visibleEventVersionIdentifier
-                                                                .getFirst(),
-                                                        identifier,
-                                                        manager.getMutableProperties()));
+                                                .commandInvoked(
+                                                        new EventScriptInfo(
+                                                                visibleEventVersionIdentifier
+                                                                        .getFirst(),
+                                                                identifier,
+                                                                manager.getMutableProperties()));
                                     }
                                 }
 
@@ -2913,10 +2945,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                         megawidgetManager.setEditable(false);
                     }
                 } catch (Exception e) {
-                    statusHandler.error(
-                            "Could not create hazard metadata megawidgets "
-                                    + "for event ID = "
-                                    + eventVersionIdentifier + ": " + e, e);
+                    statusHandler
+                            .error("Could not create hazard metadata megawidgets "
+                                    + "for event ID = " + eventVersionIdentifier
+                                    + ": " + e, e);
                     panel.dispose();
                     panel = null;
                 }
@@ -2934,8 +2966,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
                     if (displaySettings != null) {
                         megawidgetManager.setDisplaySettings(displaySettings);
                     }
-                    megawidgetManagersForEventVersionIdentifiers.put(
-                            eventVersionIdentifier, megawidgetManager);
+                    megawidgetManagersForEventVersionIdentifiers
+                            .put(eventVersionIdentifier, megawidgetManager);
                 }
             }
         } else if (megawidgetManager != null) {
@@ -2960,8 +2992,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
          * layout, and turn redraw back on.
          */
         if (eventVersionIdentifier.equals(visibleEventVersionIdentifier)) {
-            setEndTimeUntilFurtherNotice(metadataStates
-                    .get(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
+            setEndTimeUntilFurtherNotice(metadataStates.get(
+                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
             layoutMetadataPanel(panel);
             metadataPanel.setRedraw(true);
         }
@@ -2989,8 +3021,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             try {
                 manager.setMutableProperties(mutableProperties);
             } catch (Exception e) {
-                statusHandler.error(
-                        "Error while trying to set metadata mutable properties: "
+                statusHandler
+                        .error("Error while trying to set metadata mutable properties: "
                                 + e, e);
             }
         }
@@ -3026,8 +3058,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
         maximumVisibleTime = upper;
         visibleTimeRangeChanged();
         if (visibleTimeRangeChangeHandler != null) {
-            visibleTimeRangeChangeHandler.stateChanged(null, new TimeRange(
-                    lower, upper));
+            visibleTimeRangeChangeHandler.stateChanged(null,
+                    new TimeRange(lower, upper));
         }
     }
 
@@ -3047,11 +3079,11 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
             MegawidgetManager megawidgetManager) {
         Map<String, IDisplaySettings> displaySettings = megawidgetManager
                 .getDisplaySettings();
-        megawidgetDisplaySettingsForEventVersionIdentifiers.put(
-                eventVersionIdentifier, displaySettings);
+        megawidgetDisplaySettingsForEventVersionIdentifiers
+                .put(eventVersionIdentifier, displaySettings);
         if (megawidgetDisplaySettingsChangeHandler != null) {
-            megawidgetDisplaySettingsChangeHandler.stateChanged(
-                    eventVersionIdentifier, displaySettings);
+            megawidgetDisplaySettingsChangeHandler
+                    .stateChanged(eventVersionIdentifier, displaySettings);
         }
         Map<String, Map<String, Object>> extraData = megawidgetManager
                 .getExtraData();
@@ -3073,21 +3105,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private Serializable getMetadataValue(
             Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier) {
-        if (eventVersionIdentifier.equals(visibleEventVersionIdentifier) == false) {
+        if (eventVersionIdentifier
+                .equals(visibleEventVersionIdentifier) == false) {
             return null;
         }
-        if (metadataIdentifier
-                .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+        if (metadataIdentifier.equals(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             try {
-                return (Boolean) untilFurtherNoticeToggleMegawidgets
-                        .get(0)
+                return (Boolean) untilFurtherNoticeToggleMegawidgets.get(0)
                         .getState(
                                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
             } catch (Exception e) {
-                statusHandler
-                        .error("Error while getting "
-                                + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
-                                + " megawidget value", e);
+                statusHandler.error("Error while getting "
+                        + HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE
+                        + " megawidget value", e);
             }
         } else if (visibleEventVersionIdentifier != null) {
             MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers
@@ -3119,13 +3150,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void setMetadataEnabledState(
             Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier, boolean enable) {
-        if ((isAlive() == false)
-                || (eventVersionIdentifier
-                        .equals(visibleEventVersionIdentifier) == false)) {
+        if ((isAlive() == false) || (eventVersionIdentifier
+                .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
-        if (metadataIdentifier
-                .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+        if (metadataIdentifier.equals(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNoticeEnabledState(enable);
         } else {
 
@@ -3152,13 +3182,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
     private void setMetadataEditabilityState(
             Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier, boolean editable) {
-        if ((isAlive() == false)
-                || (eventVersionIdentifier
-                        .equals(visibleEventVersionIdentifier) == false)) {
+        if ((isAlive() == false) || (eventVersionIdentifier
+                .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
-        if (metadataIdentifier
-                .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+        if (metadataIdentifier.equals(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNoticeEditableState(editable);
         } else {
 
@@ -3183,13 +3212,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      */
     private void setMetadataValue(Pair<String, Integer> eventVersionIdentifier,
             String metadataIdentifier, Serializable value) {
-        if ((isAlive() == false)
-                || (eventVersionIdentifier
-                        .equals(visibleEventVersionIdentifier) == false)) {
+        if ((isAlive() == false) || (eventVersionIdentifier
+                .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
-        if (metadataIdentifier
-                .equals(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+        if (metadataIdentifier.equals(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNotice(value);
         } else if (visibleEventVersionIdentifier != null) {
             MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers
@@ -3216,20 +3244,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart implements
      * @param valuesForIdentifiers
      *            Map of metadata element identifiers to their new values.
      */
-    private void setMetadataValues(
-            Pair<String, Integer> eventVersionIdentifier,
+    private void setMetadataValues(Pair<String, Integer> eventVersionIdentifier,
             Map<String, Serializable> valuesForIdentifiers) {
-        if ((isAlive() == false)
-                || (eventVersionIdentifier
-                        .equals(visibleEventVersionIdentifier) == false)) {
+        if ((isAlive() == false) || (eventVersionIdentifier
+                .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
         int numElements = valuesForIdentifiers.size();
-        if (valuesForIdentifiers
-                .containsKey(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+        if (valuesForIdentifiers.containsKey(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             numElements--;
-            setEndTimeUntilFurtherNotice(valuesForIdentifiers
-                    .get(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
+            setEndTimeUntilFurtherNotice(valuesForIdentifiers.get(
+                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE));
         }
         if ((numElements > 0) && (visibleEventVersionIdentifier != null)) {
             MegawidgetManager manager = megawidgetManagersForEventVersionIdentifiers

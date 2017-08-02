@@ -46,6 +46,7 @@ import jep.JepException;
  *                                      localization dir.
  * Mar 01, 2016   15676    Chris.Golden Added visual feature handler functionality to
  *                                      to the include path.
+ * Sep 20, 2016   21609    Kevin.Bisanz Add geoSpatial to the include path.
  * Jun 06, 2017   15561    Chris.Golden Added path to general utilities.
  * </pre>
  * 
@@ -170,6 +171,10 @@ public class ConfigScriptFactory
                     HazardsConfigurationConstants.PYTHON_UTILITIES_DIR);
             String geoUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
                     HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEO_UTILITIES_DIR);
+            String geoSpatialPath = FileUtil.join(hazardServicesPythonPath,
+                    HazardsConfigurationConstants.PYTHON_LOCALIZATION_EVENTS_DIR,
+                    HazardsConfigurationConstants.PYTHON_LOCALIZATION_PRODUCTGEN_DIR,
+                    HazardsConfigurationConstants.PYTHON_LOCALIZATION_GEOSPATIAL_DIR);
             String shapeUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
                     HazardsConfigurationConstants.PYTHON_LOCALIZATION_SHAPE_UTILITIES_DIR);
             String textUtilitiesPath = FileUtil.join(hazardServicesPythonPath,
@@ -213,7 +218,7 @@ public class ConfigScriptFactory
                     generalUtilitiesPath, dataStoragePath, eventsPath,
                     eventsUtilitiesPath, bridgePath, hazardServicesPath,
                     hazardTypesPath, productTextUtilPath, hazardCategoriesPath,
-                    gfePythonPath);
+                    geoSpatialPath, gfePythonPath);
             ClassLoader classLoader = this.getClass().getClassLoader();
             ContextSwitchingPythonEval result = new ContextSwitchingPythonEval(
                     includePath, classLoader, PYTHON_PRE_EVALS);

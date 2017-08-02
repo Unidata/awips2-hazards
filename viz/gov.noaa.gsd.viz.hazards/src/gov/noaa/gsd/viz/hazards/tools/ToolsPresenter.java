@@ -9,13 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-
 import java.util.EnumSet;
 import java.util.List;
-
-import net.engio.mbassy.listener.Handler;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -25,6 +20,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
@@ -52,6 +51,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                           manager.
  * Feb 01, 2017   15556    Chris.Golden      Changed to take advantage of new
  *                                           finer-grained settings change messages.
+ * Aug 15, 2017   22757    Chris.Golden      Added ability for recommenders to specify
+ *                                           either a message to display, or a dialog to
+ *                                           display, with their results (that is, within
+ *                                           the returned event set).
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,8 +90,8 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      */
     @Override
     protected void initialize(IToolsView<?, ?> view) {
-        List<Tool> toolList = getModel().getConfigurationManager()
-                .getSettings().getToolbarTools();
+        List<Tool> toolList = getModel().getConfigurationManager().getSettings()
+                .getToolbarTools();
         view.initialize(this, toolList);
     }
 
@@ -134,6 +137,27 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
     public void showToolParameterGatherer(String tool, ToolType type,
             RecommenderExecutionContext context, String jsonParams) {
         getView().showToolParameterGatherer(tool, type, context, jsonParams);
+    }
+
+    /**
+     * Show a tool subview that is used to display results for a tool that was
+     * executed.
+     * 
+     * @param tool
+     *            Identifier for the tool for which results are to be shown.
+     * @param type
+     *            Type of the tool.
+     * @param context
+     *            Execution context for the tool that was run.
+     * @param jsonParams
+     *            JSON string giving the parameters for this subview. Within the
+     *            set of all fields that are defined by these parameters, all
+     *            the fields (megawidget specifiers) must have unique
+     *            identifiers.
+     */
+    public void showToolResults(String tool, ToolType type,
+            RecommenderExecutionContext context, String jsonParams) {
+        getView().showToolResults(tool, type, context, jsonParams);
     }
 
     @Override

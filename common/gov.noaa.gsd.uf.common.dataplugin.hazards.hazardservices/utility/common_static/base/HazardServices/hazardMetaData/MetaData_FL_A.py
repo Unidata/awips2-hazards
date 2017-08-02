@@ -27,8 +27,6 @@ class MetaData(CommonMetaData.MetaData):
                             self.getInclude(),
                             ]
             pointDetails.extend(self.getRiseCrestFall())
-         
-            crests = [self.getCrestsOrImpacts("crests")]
              
             impacts = [self.getCrestsOrImpacts("impacts")]
             
@@ -46,10 +44,6 @@ class MetaData(CommonMetaData.MetaData):
                                   {
                                     "pageName": "Point Details",
                                     "pageFields": pointDetails
-                                   },
-                                  {
-                                    "pageName": "Crest Comparison",
-                                    "pageFields": crests
                                    },
                                   {
                                     "pageName": "Impacts Statement",

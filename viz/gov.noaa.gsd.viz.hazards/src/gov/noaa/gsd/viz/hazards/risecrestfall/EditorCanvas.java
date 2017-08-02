@@ -19,9 +19,6 @@
  **/
 package gov.noaa.gsd.viz.hazards.risecrestfall;
 
-import gov.noaa.gsd.common.hazards.utilities.hazardservices.StageDischargeUtils;
-import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
-
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
@@ -65,6 +62,9 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.core.RGBColors;
 
+import gov.noaa.gsd.common.hazards.utilities.hazardservices.StageDischargeUtils;
+import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
+
 /**
  * Drawing canvas for the rise/crest/fall editor.
  * 
@@ -78,6 +78,7 @@ import com.raytheon.uf.viz.core.RGBColors;
  * Mar 13, 2015    6922    Chris.Cody Changes for dragging vertical graph lines
  * Mar 17, 2015    6974    mpduff      FAT fixes.
  * Mar 26, 2015    7205    Robert.Blum Added discharge to graph.
+ * Nov 29, 2016   26594    mpduff      Handle missing PEDTS values.
  * </pre>
  * 
  * @author mpduff
@@ -314,7 +315,8 @@ public class EditorCanvas extends Canvas {
             }
         });
 
-        this.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK));
+        this.setBackground(
+                Display.getCurrent().getSystemColor(SWT.COLOR_BLACK));
 
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -465,11 +467,11 @@ public class EditorCanvas extends Canvas {
         int fontAveWidth = gc.getFontMetrics().getAverageCharWidth();
 
         // Draw graph border
-        gc.setForeground(parentComp.getDisplay()
-                .getSystemColor(SWT.COLOR_WHITE));
-        gc.drawRectangle(GRAPHBORDER_LEFT, GRAPHBORDER_TOP, canvasWidth
-                - GRAPHBORDER_LEFT - GRAPHBORDER_RIGHT, canvasHeight
-                - GRAPHBORDER_TOP - GRAPHBORDER_BOTTOM);
+        gc.setForeground(
+                parentComp.getDisplay().getSystemColor(SWT.COLOR_WHITE));
+        gc.drawRectangle(GRAPHBORDER_LEFT, GRAPHBORDER_TOP,
+                canvasWidth - GRAPHBORDER_LEFT - GRAPHBORDER_RIGHT,
+                canvasHeight - GRAPHBORDER_TOP - GRAPHBORDER_BOTTOM);
 
         if (graphData != null) {
             // Draw the title text
@@ -481,10 +483,14 @@ public class EditorCanvas extends Canvas {
 
             // PE line
             StringBuilder sb = new StringBuilder("PE/DUR/TS: ");
-            sb.append(graphData.getPe()).append(graphData.getDur())
-                    .append(graphData.getObservedTs()).append("   ");
-            sb.append(graphData.getPe()).append(graphData.getDur())
-                    .append(graphData.getForecastTs()).append("   ");
+            sb.append(getValue(graphData.getPe()));
+            sb.append(getValue(graphData.getDur()));
+            sb.append(getValue(graphData.getObservedTs()));
+            sb.append("   ");
+            sb.append(getValue(graphData.getPe()));
+            sb.append(getValue(graphData.getDur()));
+            sb.append(getValue(graphData.getForecastTs()));
+            sb.append("   ");
 
             x = (canvasWidth / 2) - HORIZONTAL_SPACING
                     - ((sb.length() * fontAveWidth) / 2);
@@ -504,8 +510,8 @@ public class EditorCanvas extends Canvas {
         int curTimeLoc = GRAPHBORDER_LEFT + x2pixel(cal.getTimeInMillis());
         int[] curTimeLine = { curTimeLoc, GRAPHBORDER_TOP, curTimeLoc,
                 GRAPHBORDER_TOP + graphAreaHeight };
-        gc.setForeground(parentComp.getDisplay()
-                .getSystemColor(SWT.COLOR_WHITE));
+        gc.setForeground(
+                parentComp.getDisplay().getSystemColor(SWT.COLOR_WHITE));
         gc.setLineWidth(3);
         gc.drawPolyline(curTimeLine);
         gc.setLineStyle(SWT.LINE_SOLID);
@@ -514,10 +520,10 @@ public class EditorCanvas extends Canvas {
         drawEventLines(gc);
 
         gc.setLineWidth(2);
-        gc.setForeground(parentComp.getDisplay().getSystemColor(
-                SWT.COLOR_YELLOW));
-        gc.setBackground(parentComp.getDisplay().getSystemColor(
-                SWT.COLOR_YELLOW));
+        gc.setForeground(
+                parentComp.getDisplay().getSystemColor(SWT.COLOR_YELLOW));
+        gc.setBackground(
+                parentComp.getDisplay().getSystemColor(SWT.COLOR_YELLOW));
 
         // Draw data
         List<GraphPoint> observedPoints = graphData.getObservedPointList();
@@ -536,10 +542,10 @@ public class EditorCanvas extends Canvas {
 
         gc.drawPolyline(observedPointArray);
 
-        gc.setForeground(parentComp.getDisplay()
-                .getSystemColor(SWT.COLOR_GREEN));
-        gc.setBackground(parentComp.getDisplay()
-                .getSystemColor(SWT.COLOR_GREEN));
+        gc.setForeground(
+                parentComp.getDisplay().getSystemColor(SWT.COLOR_GREEN));
+        gc.setBackground(
+                parentComp.getDisplay().getSystemColor(SWT.COLOR_GREEN));
 
         List<GraphPoint> forecastPoints = graphData.getForecastPointList();
         int[] forecastPointArray = new int[forecastPoints.size() * 2];
@@ -557,19 +563,27 @@ public class EditorCanvas extends Canvas {
 
         gc.drawPolyline(forecastPointArray);
 
-        gc.setBackground(parentComp.getDisplay()
-                .getSystemColor(SWT.COLOR_BLACK));
+        gc.setBackground(
+                parentComp.getDisplay().getSystemColor(SWT.COLOR_BLACK));
 
         if (this.showGraphPointData == true) {
             if ((this.graphPointDataX > 0) && (this.graphPointDataY > 0)) {
                 Font f = new Font(this.getDisplay(), "Monospace", 14, SWT.BOLD);
-                gc.setForeground(this.getDisplay().getSystemColor(
-                        SWT.COLOR_WHITE));
+                gc.setForeground(
+                        this.getDisplay().getSystemColor(SWT.COLOR_WHITE));
                 gc.drawText(this.graphPointDataText, this.graphPointDataX,
                         this.graphPointDataY, false);
                 f.dispose();
             }
         }
+    }
+
+    private String getValue(String value) {
+        if (value != null) {
+            return value;
+        }
+
+        return "-";
     }
 
     private void drawYAxis(GC gc) {
@@ -612,14 +626,15 @@ public class EditorCanvas extends Canvas {
             y = y2pixel(tickVal);
             if (i > 0 && i < numberTicks - 1) {
                 int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
-                        GRAPHBORDER_RIGHT + graphAreaWidth, GRAPHBORDER_TOP + y };
-                gc.setForeground(parentComp.getDisplay().getSystemColor(
-                        SWT.COLOR_DARK_GRAY));
+                        GRAPHBORDER_RIGHT + graphAreaWidth,
+                        GRAPHBORDER_TOP + y };
+                gc.setForeground(parentComp.getDisplay()
+                        .getSystemColor(SWT.COLOR_DARK_GRAY));
                 gc.setLineStyle(SWT.LINE_DOT);
                 gc.drawPolyline(gridLine);
                 gc.setLineStyle(SWT.LINE_SOLID);
-                gc.setForeground(parentComp.getDisplay().getSystemColor(
-                        SWT.COLOR_WHITE));
+                gc.setForeground(parentComp.getDisplay()
+                        .getSystemColor(SWT.COLOR_WHITE));
             }
 
             double dischargeValue = 0.0;
@@ -643,8 +658,8 @@ public class EditorCanvas extends Canvas {
                 dischargeValue = tickVal;
                 maxDischarge = scaleMgr.getMaxScaleValue();
                 if (ratingCurveExist) {
-                    double value = StageDischargeUtils.discharge2stage(
-                            graphData.getLid(), tickVal);
+                    double value = StageDischargeUtils
+                            .discharge2stage(graphData.getLid(), tickVal);
                     if (value != RiverHydroConstants.MISSING_VALUE) {
                         stageValue = value;
                     } else {
@@ -666,7 +681,9 @@ public class EditorCanvas extends Canvas {
                 gc.drawText("" + formatter.format(stageValue), labelX, labelY);
             }
 
-            /* Draw the tick marks and right axis values if rating curve exists */
+            /*
+             * Draw the tick marks and right axis values if rating curve exists
+             */
             if (ratingCurveExist) {
                 int[] tick2 = { GRAPHBORDER_LEFT + graphAreaWidth,
                         GRAPHBORDER_TOP + y,
@@ -739,39 +756,38 @@ public class EditorCanvas extends Canvas {
                     // only draw date text on 00Z
                     gc.drawText(
                             c.get(Calendar.MONTH) + 1 + "/"
-                                    + c.get(Calendar.DAY_OF_MONTH), x
-                                    + GRAPHBORDER_LEFT - 8, graphAreaHeight
-                                    + GRAPHBORDER_TOP + 30);
+                                    + c.get(Calendar.DAY_OF_MONTH),
+                            x + GRAPHBORDER_LEFT - 8,
+                            graphAreaHeight + GRAPHBORDER_TOP + 30);
                 }
                 // Draw larger tick for 0Z
                 int[] tickArray = { x + GRAPHBORDER_LEFT,
-                        GRAPHBORDER_TOP + graphAreaHeight,
-                        x + GRAPHBORDER_LEFT,
+                        GRAPHBORDER_TOP + graphAreaHeight, x + GRAPHBORDER_LEFT,
                         graphAreaHeight + GRAPHBORDER_TOP + dy };
                 gc.drawPolyline(tickArray);
             } else {
                 // Draw ticks
                 int[] tickArray = { x + GRAPHBORDER_LEFT,
-                        GRAPHBORDER_TOP + graphAreaHeight,
-                        x + GRAPHBORDER_LEFT,
+                        GRAPHBORDER_TOP + graphAreaHeight, x + GRAPHBORDER_LEFT,
                         graphAreaHeight + GRAPHBORDER_TOP + dy };
                 gc.drawPolyline(tickArray);
             }
 
             if (hour % 6 == 0) {
                 // Draw grid lines
-                gc.setForeground(parentComp.getDisplay().getSystemColor(
-                        SWT.COLOR_DARK_GRAY));
+                gc.setForeground(parentComp.getDisplay()
+                        .getSystemColor(SWT.COLOR_DARK_GRAY));
                 gc.setLineStyle(SWT.LINE_DOT);
-                gc.drawLine(x + GRAPHBORDER_LEFT, GRAPHBORDER_TOP, x
-                        + GRAPHBORDER_LEFT, GRAPHBORDER_TOP + graphAreaHeight);
+                gc.drawLine(x + GRAPHBORDER_LEFT, GRAPHBORDER_TOP,
+                        x + GRAPHBORDER_LEFT,
+                        GRAPHBORDER_TOP + graphAreaHeight);
                 gc.setLineStyle(SWT.LINE_SOLID);
                 String hr = String.valueOf(hour);
                 if (hour < 9) {
                     hr = "0" + hour;
                 }
-                gc.setForeground(parentComp.getDisplay().getSystemColor(
-                        SWT.COLOR_WHITE));
+                gc.setForeground(parentComp.getDisplay()
+                        .getSystemColor(SWT.COLOR_WHITE));
                 gc.drawText(hr + "Z", x + GRAPHBORDER_LEFT - dx,
                         graphAreaHeight + GRAPHBORDER_TOP + 15);
             }
@@ -789,7 +805,8 @@ public class EditorCanvas extends Canvas {
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(yellow);
                 int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
-                        GRAPHBORDER_RIGHT + graphAreaWidth, GRAPHBORDER_TOP + y };
+                        GRAPHBORDER_RIGHT + graphAreaWidth,
+                        GRAPHBORDER_TOP + y };
                 gc.drawPolyline(gridLine);
             }
         }
@@ -800,7 +817,8 @@ public class EditorCanvas extends Canvas {
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(orange);
                 int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
-                        GRAPHBORDER_RIGHT + graphAreaWidth, GRAPHBORDER_TOP + y };
+                        GRAPHBORDER_RIGHT + graphAreaWidth,
+                        GRAPHBORDER_TOP + y };
                 gc.drawPolyline(gridLine);
             }
         }
@@ -811,7 +829,8 @@ public class EditorCanvas extends Canvas {
             if (y > GRAPHBORDER_TOP) {
                 gc.setForeground(red);
                 int[] gridLine = { GRAPHBORDER_LEFT, GRAPHBORDER_TOP + y,
-                        GRAPHBORDER_RIGHT + graphAreaWidth, GRAPHBORDER_TOP + y };
+                        GRAPHBORDER_RIGHT + graphAreaWidth,
+                        GRAPHBORDER_TOP + y };
                 gc.drawPolyline(gridLine);
             }
         }
@@ -899,8 +918,8 @@ public class EditorCanvas extends Canvas {
         if (r == null) {
             r = new Region();
         }
-        if (endDate != null
-                && endDate.getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+        if (endDate != null && endDate
+                .getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
             x = x2pixel(endDate.getTime());
             r.add(x + GRAPHBORDER_LEFT - (regionWidth / 2), top, regionWidth,
                     graphAreaHeight);
@@ -1029,8 +1048,8 @@ public class EditorCanvas extends Canvas {
                     // Only discharge data available
                     labelText += "\nDischarge: " + yVal;
                 } else {
-                    double stageVal = StageDischargeUtils.discharge2stage(
-                            graphData.getLid(), yValDbl);
+                    double stageVal = StageDischargeUtils
+                            .discharge2stage(graphData.getLid(), yValDbl);
                     labelText += "\nStage: " + formatter.format(stageVal);
                     labelText += "\nDischarge: " + yVal;
                 }
@@ -1039,8 +1058,8 @@ public class EditorCanvas extends Canvas {
                     // Only Stage data available
                     labelText += "\nStage: " + yVal;
                 } else {
-                    double dischargeVal = StageDischargeUtils.stage2discharge(
-                            graphData.getLid(), yValDbl);
+                    double dischargeVal = StageDischargeUtils
+                            .stage2discharge(graphData.getLid(), yValDbl);
                     if ((dischargeVal < 0.0)) {
                         dischargeVal = 0.0;
                     } else if (dischargeVal >= 10000.0) {

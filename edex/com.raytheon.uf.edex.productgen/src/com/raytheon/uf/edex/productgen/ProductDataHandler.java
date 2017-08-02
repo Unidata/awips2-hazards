@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.edex.productgen;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -29,9 +34,12 @@ import org.hibernate.Criteria;
 import org.hibernate.criterion.Restrictions;
 
 import com.raytheon.uf.common.dataquery.db.QueryParam.QueryOperand;
+import com.raytheon.uf.common.hazards.productgen.data.CustomDataId;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataRequest;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataResponse;
+import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IRequestHandler;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -66,6 +74,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Jul 19, 2016 19207      Robert.Blum  Changes to view products for specific events.
  * Aug 26, 2016 19223      Kevin.Bisanz Changes to get correctable products for
  *                                      specific events.
+ * Nov 10, 2016 22119      Kevin.Bisanz Changes to export/import the ProductData table.
  * 
  * </pre>
  * 
@@ -75,7 +84,7 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
 
 public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
 
-    private static final IUFStatusHandler handler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductDataHandler.class);
 
     private static final String ISSUE_TIME_COLUMN = "id.issueTime";
@@ -102,13 +111,10 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
         Criteria criteria = null;
         List<ProductData> data = null;
         List<ProductData> filteredData = null;
-        if (handler.isPriorityEnabled(Priority.INFO)) {
+        if (statusHandler.isPriorityEnabled(Priority.INFO)) {
 
-            List<String> eventIDs = pData.getEventIDs();
-            handler.info("ProductGeneratorName: "
-                    + pData.getProductGeneratorName() + ", mode: "
-                    + pData.getMode() + ", type: " + request.getType()
-                    + ", eventIDs: " + (eventIDs == null ? "ALL" : eventIDs));
+            statusHandler.info(request.getType().name() + " : "
+                    + prettyPrintKey(pData) + " : " + request.getPath());
         }
 
         switch (request.getType()) {
@@ -141,8 +147,8 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
                             QueryOperand.EQUALS);
                 }
                 if (pData.getIssueTime() != null) {
-                    query.addQueryParam(ISSUE_TIME_COLUMN,
-                            pData.getIssueTime(), QueryOperand.EQUALS);
+                    query.addQueryParam(ISSUE_TIME_COLUMN, pData.getIssueTime(),
+                            QueryOperand.EQUALS);
                 }
 
                 dao.deleteByCriteria(query);
@@ -158,16 +164,7 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             }
             break;
         case RETRIEVE:
-            criteria = dao.getSessionFactory().openSession()
-                    .createCriteria(ProductData.class);
-            criteria.add(Restrictions.eq("id.mode", pData.getMode()));
-            criteria.add(Restrictions.eq("id.productGeneratorName",
-                    pData.getProductGeneratorName()));
-            criteria.add(Restrictions.eq("id.eventIDs", pData.getEventIDs()));
-            criteria.add(Restrictions.eq(ISSUE_TIME_COLUMN,
-                    pData.getIssueTime()));
-
-            data = criteria.list();
+            data = retrieve(pData);
             response = new ProductDataResponse();
             response.setData(data);
             break;
@@ -183,7 +180,8 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(request.getCurrentTime());
             calendar.add(Calendar.MINUTE, -VALID_CORRECTION_DELTA);
-            criteria.add(Restrictions.ge(ISSUE_TIME_COLUMN, calendar.getTime()));
+            criteria.add(
+                    Restrictions.ge(ISSUE_TIME_COLUMN, calendar.getTime()));
 
             /*
              * Filter out products that should not be able to be corrected (RVS,
@@ -200,8 +198,8 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
              * corrected, but can not be filtered by generator name (HY.S).
              */
             for (ProductData productData : new ArrayList<>(data)) {
-                if (productData.getProductGeneratorName().equals(
-                        FLW_FLS_GENERATOR_NAME)) {
+                if (productData.getProductGeneratorName()
+                        .equals(FLW_FLS_GENERATOR_NAME)) {
                     boolean remove = checkForHYS(productData);
                     if (remove) {
                         data.remove(productData);
@@ -227,8 +225,99 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             filteredData = filterPDataForEventIDs(data, pData.getEventIDs());
             response.setData(filteredData);
             break;
+        case EXPORT:
+            exportRecords(request, response);
+            break;
+        case IMPORT:
+            importRecords(request, response);
+            break;
         }
         return response;
+    }
+
+    /**
+     * Export records
+     *
+     * @param request
+     *            Request containing the criteria of records to be exported
+     * @param response
+     */
+    private void exportRecords(ProductDataRequest request,
+            ProductDataResponse response) {
+        String filePath = request.getPath();
+        if (filePath == null) {
+            response.setExceptions(
+                    new IllegalStateException("filePath is null"));
+            return;
+        }
+
+        List<ProductData> text = retrieve(request.getProductData());
+        try (OutputStream os = new FileOutputStream(filePath)) {
+            SerializationUtil.transformToThriftUsingStream(text, os);
+        } catch (IOException | SerializationException e) {
+            statusHandler.error(e.getLocalizedMessage(), e);
+            response.setExceptions(e);
+        }
+    }
+
+    /**
+     * Import records
+     *
+     * @param request
+     *            Request containing the file path of DynamicSerialized records
+     *            to be imported.
+     * @param response
+     */
+    private void importRecords(ProductDataRequest request,
+            ProductDataResponse response) {
+        String filePath = request.getPath();
+        if (filePath == null) {
+            response.setExceptions(
+                    new IllegalStateException("filePath is null"));
+            return;
+        }
+
+        List<ProductData> records = null;
+        try (InputStream is = new FileInputStream(filePath)) {
+            records = SerializationUtil.transformFromThrift(List.class, is);
+            dao.persistAll(records);
+        } catch (IOException | SerializationException e) {
+            statusHandler.error(e.getLocalizedMessage(), e);
+            response.setExceptions(e);
+        }
+    }
+
+    /**
+     * Retrieve records
+     *
+     * @param pData
+     *            ProductData containing criteria for retrieval
+     * @return
+     */
+    private List<ProductData> retrieve(ProductData pData) {
+        Criteria criteria;
+        List<ProductData> data;
+        criteria = dao.getSessionFactory().openSession()
+                .createCriteria(ProductData.class);
+        if (pData.getMode() != null) {
+            criteria.add(Restrictions.eq("id.mode", pData.getMode()));
+        }
+        if (pData.getProductGeneratorName() != null) {
+            criteria.add(Restrictions.eq("id.productGeneratorName",
+                    pData.getProductGeneratorName()));
+        }
+        if (pData.getEventIDs() != null) {
+            criteria.add(Restrictions.eq("id.eventIDs", pData.getEventIDs()));
+        }
+        if (pData.getIssueTime() != null) {
+            criteria.add(
+                    Restrictions.eq(ISSUE_TIME_COLUMN, pData.getIssueTime()));
+        }
+        if (pData.getOfficeID() != null) {
+            criteria.add(Restrictions.eq("id.officeID", pData.getOfficeID()));
+        }
+        data = criteria.list();
+        return data;
     }
 
     /*
@@ -332,7 +421,8 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
                         if (vtecRecords instanceof List) {
                             List<Map<String, Serializable>> vtecRecordsList = (List<Map<String, Serializable>>) vtecRecords;
                             for (Map<String, Serializable> vtecRecordDictionary : vtecRecordsList) {
-                                if (vtecRecordDictionary.containsKey("phensig")) {
+                                if (vtecRecordDictionary
+                                        .containsKey("phensig")) {
                                     if (vtecRecordDictionary.get("phensig")
                                             .equals("HY.S") == false) {
                                         // Not a HY.S - do not remove
@@ -350,5 +440,22 @@ public class ProductDataHandler implements IRequestHandler<ProductDataRequest> {
             }
         }
         return removeProductData;
+    }
+
+    private String prettyPrintKey(ProductData data) {
+        StringBuilder builder = new StringBuilder();
+
+        CustomDataId id = data.getId();
+        builder.append(id.getMode());
+        builder.append("/");
+        builder.append(id.getOfficeID());
+        builder.append("/");
+        builder.append(id.getIssueTime());
+        builder.append("/");
+        builder.append(id.getProductGeneratorName());
+        builder.append("/");
+        builder.append(id.getEventIDs());
+
+        return builder.toString();
     }
 }

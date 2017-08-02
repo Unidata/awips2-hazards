@@ -213,7 +213,10 @@ class ProbUtils(object):
         ### Add 1 to duration to get "inclusive" 
         probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
         
-        print '\t[PU]: probTrendTimeIntervals', probTrendTimeIntervals
+        # This print statement had to be commented out as it was causing problems after restarting
+        # H.S. within the same CAVE session; the fact that numpy doesn't play well with multiple
+        # interpreters was causing some strange errors.
+        # print '\t[PU]: probTrendTimeIntervals', probTrendTimeIntervals
         
         oneMinuteTimeIntervals = np.arange(0, probTrendTimeIntervals[-1]+1, 1)
 

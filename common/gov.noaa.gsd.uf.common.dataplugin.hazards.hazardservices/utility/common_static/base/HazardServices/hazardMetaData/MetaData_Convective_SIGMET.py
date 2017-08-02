@@ -20,7 +20,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.AAWUinitialize(hazardEvent, metaDict)
-        sys.stderr.writelines(['Calling SIGMET.Convective', '\n'])
+        CommonMetaData.writelines(sys.stderr, ['Calling SIGMET.Convective', '\n'])
         
         hazardEvent.setVisualFeatures(VisualFeatures([]))
         

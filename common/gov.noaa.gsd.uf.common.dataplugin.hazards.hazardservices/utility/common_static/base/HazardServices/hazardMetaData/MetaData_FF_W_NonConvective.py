@@ -10,64 +10,64 @@ class MetaData(CommonMetaData.MetaData):
 
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        
-        hydrologicCause = None
+        self.addDamList = [
+              self.hydrologicCauseDam()["identifier"],
+              self.hydrologicCauseSiteImminent()["identifier"],
+              self.hydrologicCauseSiteFailed()["identifier"],
+              self.hydrologicCauseLevee()["identifier"],
+              self.hydrologicCauseFloodGate()["identifier"]
+              ]
+
+        self.addVolcanoList = [
+                  self.hydrologicCauseVolcano()["identifier"],
+                  self.hydrologicCauseVolcanoLahar()["identifier"]
+                  ]
+
+        self.hydrologicCause = None
+        self.damOrLeveeName = None
         if hazardEvent is not None:
             # The dictionary default mirrors the default in getHydrologicCause()
-            hydrologicCause = hazardEvent.get("hydrologicCause", self.HYDROLOGIC_CAUSE_DEFAULT)
-            damOrLeveeName = hazardEvent.get('damOrLeveeName')
+            self.hydrologicCause = hazardEvent.get("hydrologicCause", self.HYDROLOGIC_CAUSE_DEFAULT)
+            self.damOrLeveeName = hazardEvent.get('damOrLeveeName')
 
-        metaData = self.buildMetaDataList(self.hazardStatus, hydrologicCause, damOrLeveeName)
+        metaData = self.buildMetaDataList()
         
         return {
                 METADATA_KEY: metaData
                 }    
        
-    def buildMetaDataList(self, status, hydrologicCause, damOrLeveeName):
-        addDam = [
-                  self.hydrologicCauseDam()["identifier"],
-                  self.hydrologicCauseSiteImminent()["identifier"],
-                  self.hydrologicCauseSiteFailed()["identifier"],
-                  self.hydrologicCauseLevee()["identifier"],
-                  self.hydrologicCauseFloodGate()["identifier"]
-                  ]
-        
-        addVolcano = [
-                      self.hydrologicCauseVolcano()["identifier"],
-                      self.hydrologicCauseVolcanoLahar()["identifier"]
-                      ]
-                
-        if status == 'pending' or status == 'proposed':
+    def buildMetaDataList(self):
+        if self.hazardStatus == 'pending' or self.hazardStatus == 'proposed':
             metaData = [
                      self.getPreviousEditedText(),
                      self.getInclude(),
                      self.getFloodSeverity(),
                      self.getHydrologicCause(),
-                     self.getSource(hydrologicCause),
+                     self.getSource(),
                      self.getAdditionalInfo(),
                      self.getScenario(),
-                     self.getRiver(),
+                     self.getRiver(self.damOrLeveeName),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
-                     self.getLocationsAffected(self.hazardEvent),
+                     self.getLocationsAffected(),
                      self.getCTAs(), 
                         ]
-        elif status == "issued":
+        elif self.hazardStatus == "issued":
             metaData = [
                      self.getPreviousEditedText(),
                      self.getInclude(),
                      self.getFloodSeverity(),
                      self.getHydrologicCause(editable=False),
-                     self.getSource(hydrologicCause),
+                     self.getSource(),
                      self.getAdditionalInfo(),
                      self.getScenario(),
-                     self.getRiver(),
+                     self.getRiver(self.damOrLeveeName),
                      self.getFloodLocation(),
                      self.getUpstreamLocation(),
                      self.getDownstreamLocation(),
                      # TODO this should only be on the HID for EXT and not CON
-                     self.getLocationsAffected(self.hazardEvent),
+                     self.getLocationsAffected(),
                      self.getCTAs(), 
                      # Preserving CAP defaults for future reference.
 #                      self.getCAP_Fields([
@@ -85,19 +85,19 @@ class MetaData(CommonMetaData.MetaData):
             return metaData
 
         if self.hazardEvent is not None:
-            if self.hazardEvent.get('cause') == 'Dam Failure' and damOrLeveeName:
+            if self.hazardEvent.get('cause') == 'Dam Failure' and self.damOrLeveeName:
                 # Ran recommender so already have the Dam/Levee name
-                metaData.insert(6,self.setDamNameLabel(damOrLeveeName))
-            elif hydrologicCause in addDam or hydrologicCause == None:
+                metaData.insert(6,self.setDamNameLabel(self.damOrLeveeName))
+            elif self.hydrologicCause in self.addDamList or self.hydrologicCause == None:
                 # Add the combo box to select the name
-                metaData.insert(6, self.getDamOrLevee(damOrLeveeName))
+                metaData.insert(6, self.getDamOrLevee(self.damOrLeveeName))
 
-        if hydrologicCause in addVolcano:
+        if self.hydrologicCause in self.addVolcanoList:
             metaData.insert(len(metaData)-2,self.getVolcano())
         return metaData
 
-    def getSource(self, hydrologicCause):
-        choices = self.sourceChoices(hydrologicCause)
+    def getSource(self):
+        choices = self.sourceChoices()
         
         return {
             "fieldName": "source",
@@ -284,21 +284,7 @@ class MetaData(CommonMetaData.MetaData):
     # <bullet bulletName="cascadeVoc" bulletText="Cascades Volcano Observatory" bulletGroup="source" parseString="CASCADES VOLCANO OBSERVATORY "/>
     # <!--   GP end  -->
     #    
-    def sourceChoices(self, hydrologicCause):
-        
-        addDam = [
-                  self.hydrologicCauseDam()["identifier"],
-                  self.hydrologicCauseSiteImminent()["identifier"],
-                  self.hydrologicCauseSiteFailed()["identifier"],
-                  self.hydrologicCauseLevee()["identifier"],
-                  self.hydrologicCauseFloodGate()["identifier"]
-                  ]
-        
-        addVolcano = [
-                      self.hydrologicCauseVolcano()["identifier"],
-                      self.hydrologicCauseVolcanoLahar()["identifier"]
-                      ]
-        
+    def sourceChoices(self):
         choices = [  
             self.countyDispatchSource(),
             self.localLawEnforcementSource(),
@@ -308,14 +294,14 @@ class MetaData(CommonMetaData.MetaData):
             self.gaugesSource(),
             self.civilAirPatrolSource(),
             ] 
-                    
-        if hydrologicCause in addDam:
+
+        if self.hydrologicCause in self.addDamList:
             choices.insert(4, self.damOperatorSource())
-                
-        if hydrologicCause in addVolcano:
+
+        if self.hydrologicCause in self.addVolcanoList:
             choices.append(self.alaskaVolcanoObservatorySource())
             choices.append(self.cascadesVolcanoObservatorySource())
-                
+
         return choices
 
     def getAdditionalInfo(self):
@@ -412,7 +398,7 @@ class MetaData(CommonMetaData.MetaData):
 
     def getCTA_Choices(self):
         return [
-            self.ctaFlashFloodWarningMeans(),
+            self.ctaFFWEmergency(),
             self.ctaTurnAround(),
             self.ctaActQuickly(),
             self.ctaChildSafety(),
@@ -425,6 +411,7 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaBurnAreas(),
             self.ctaCamperSafety(),
             self.ctaReportFlooding(),
+            self.ctaFlashFloodWarningMeans(),
             ]
          
     def cancellationStatement(self):
@@ -453,10 +440,38 @@ class MetaData(CommonMetaData.MetaData):
             self.riverFlooding(),
             ]
 
+    def getLocationsAffected(self):
+        widgetDict = super(MetaData, self).getLocationsAffected()
+        if self.hydrologicCause in self.addDamList:
+            widgetDict['choices'].insert(0, self.damInfo())
+            widgetDict['values'] = self.damInfo().get("identifier")
+        return widgetDict
+
     def validate(self,hazardEvent):
         message = self.validateLocation(hazardEvent)
         return message
+    
+    def damInfo(self):
+        return {"identifier": "damInfo",
+                "displayString": "Dam Information from Above",
+                }
 
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     propertyChanges = CommonMetaData.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    
+    if triggerIdentifiers:
+        if "damOrLeveeName" in triggerIdentifiers:
+            damOrLeveeName = mutableProperties["damOrLeveeName"]["values"]
+            if damOrLeveeName:
+                # Attempt to populate the riverName from the dam metadata if available
+                from MapsDatabaseAccessor import MapsDatabaseAccessor
+                mapsAccessor = MapsDatabaseAccessor()
+                damMetaData = mapsAccessor.getDamInundationMetadata(damOrLeveeName)
+                if damMetaData:
+                    riverName = damMetaData.get("riverName", "")
+                    if not propertyChanges:
+                        propertyChanges = {}
+                    propertyChanges["riverName"] = {
+                                                    "values":riverName
+                                                    }
     return propertyChanges

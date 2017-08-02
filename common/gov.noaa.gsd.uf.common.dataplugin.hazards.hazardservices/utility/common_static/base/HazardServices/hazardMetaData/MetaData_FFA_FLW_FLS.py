@@ -28,7 +28,10 @@ class MetaData(CommonMetaData.MetaData):
         for field in ['overviewSynopsis', 'callsToAction_productLevel']:
             exec field +'_value = ""'
             for eventID in eventIDs:
-                textObjects =  ProductTextUtil.retrieveProductText(field+suffix, '', '', '', [eventID]) 
+                # NOTE:  Providing '' will look for '' in the database, but
+                # providing None as a value will prevent that parameter from
+                # being used in the query.
+                textObjects =  ProductTextUtil.retrieveProductText(field+suffix, '', '', '', [eventID])
                 if textObjects: 
                     value = self.as_str(json.loads(textObjects[0].getValue()))
                     exec field +'_value = value'

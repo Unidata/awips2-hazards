@@ -11,7 +11,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.AAWUinitialize(hazardEvent, metaDict)
-        sys.stderr.writelines(['Calling SIGMET.W', '\n'])
+        CommonMetaData.writelines(sys.stderr, ['Calling SIGMET.W', '\n'])
 
         sigmetTypes = ["Thunderstorm", "Severe Turbulence", "Severe Icing", "Widespread Duststorm",
                        "Widespread Sandstorm", "Tropical Cyclone"]
@@ -47,7 +47,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     AMChanges = MetaData_AIRMET_SIGMET.applyInterdependencies(triggerIdentifiers, mutableProperties)
     
     import sys
-    sys.stderr.writelines( ['Hello World [SIGMET] !\n'])
+    CommonMetaData.writelines(sys.stderr, ['Hello World [SIGMET] !\n'])
 
 
     subHaz = None
@@ -61,7 +61,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                    "Severe Icing": ["Not Applicable", "with Freezing Rain"]
                    }
                 sel = hazType.get(ht)
-                sys.stderr.writelines(['HT: ', str(ht), ' -- SEL: ', str(sel), '\n'])
+                CommonMetaData.writelines(sys.stderr, ['HT: ', str(ht), ' -- SEL: ', str(sel), '\n'])
                 if sel is None:
                     choices = ['Not Applicable']
                     enable = False
@@ -78,7 +78,7 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 AMChanges['AAWUMaxCbTops'] = subHaz['AAWUMaxCbTops']
                 
             
-        sys.stderr.writelines(['SubHaz:', str(subHaz), '\n'])
+        CommonMetaData.writelines(sys.stderr, ['SubHaz:', str(subHaz), '\n'])
                     
-    sys.stderr.writelines(['AMChanges: ', str(AMChanges), '\n'])
+    CommonMetaData.writelines(sys.stderr, ['AMChanges: ', str(AMChanges), '\n'])
     return AMChanges

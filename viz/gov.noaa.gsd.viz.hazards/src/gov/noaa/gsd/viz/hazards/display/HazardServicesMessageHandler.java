@@ -8,13 +8,6 @@
 package gov.noaa.gsd.viz.hazards.display;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.NATIONAL;
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
-import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
-import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
-import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -24,15 +17,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.engio.mbassy.listener.Handler;
-
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.StringUtil;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -55,6 +48,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
+import gov.noaa.gsd.viz.hazards.display.action.ProductEditorAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Description: Handles messages delegated from the message listener object.
@@ -201,6 +203,7 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            this class down.
  * Aug 15, 2016 18376      Chris.Golden       Removed unsubscribing from the event bus when H.S.
  *                                            closes, as this is already being done in dispose().
+ * Oct 20, 2016 23137      mduff              Check for errors before opening the Product Editor.
  * Feb 01, 2017 15556      Chris.Golden       Removed obsolete code that was refactored out of
  *                                            relevance in the ongoing quest to shrink this class
  *                                            down to nothing. Also moved some code into the
@@ -212,6 +215,10 @@ import com.raytheon.viz.ui.perspectives.VizPerspectiveListener;
  *                                            latter's presenter.
  * Jun 08, 2017 16373      Chris.Golden       Corrected RUN_RECOMMENDER constant spelling.
  * Jun 30, 2017 19223      Chris.Golden       Changed to use new HazardConstants constant.
+ * Aug 15, 2017 22757      Chris.Golden       Added ability for recommenders to specify either a
+ *                                            message to display, or a dialog to display, with
+ *                                            their results (that is, within the returned event
+ *                                            set).
  * </pre>
  * 
  * @author bryon.lawrence
@@ -270,16 +277,17 @@ public final class HazardServicesMessageHandler {
         if (sessionConfigurationManager.getStartUpConfig().isNational()) {
             sessionConfigurationManager.setSiteID(NATIONAL, Originator.OTHER);
         } else {
-            sessionConfigurationManager.setSiteID(LocalizationManager
-                    .getInstance().getCurrentSite(), Originator.OTHER);
+            sessionConfigurationManager.setSiteID(
+                    LocalizationManager.getInstance().getCurrentSite(),
+                    Originator.OTHER);
         }
 
         /*
          * Use the settings that was passed in if one was provided, otherwise
          * use the one that is the default for this perspective.
          */
-        String staticSettingID = (settings == null ? getSettingForCurrentPerspective()
-                : settings.getSettingsID());
+        String staticSettingID = (settings == null
+                ? getSettingForCurrentPerspective() : settings.getSettingsID());
 
         sessionConfigurationManager.changeSettings(staticSettingID,
                 Originator.OTHER);
@@ -293,22 +301,43 @@ public final class HazardServicesMessageHandler {
         if (productGenerationComplete.isIssued() == false) {
 
             /*
-             * Check to see if the Product(s) should be displayed in the editor
-             * or the viewer.
+             * Check for errors in generation from the formatters. Then check to
+             * see if the Product(s) should be displayed in the editor or the
+             * viewer.
              */
             boolean viewOnly = false;
             List<GeneratedProductList> list = productGenerationComplete
                     .getGeneratedProducts();
-            if (list.isEmpty() == false) {
+            List<String> errorList = new ArrayList<>();
+            if (!list.isEmpty()) {
+                for (GeneratedProductList gpl : list) {
+                    for (IGeneratedProduct prod : gpl) {
+                        if (prod.getErrors() != null
+                                && !prod.getErrors().isEmpty()) {
+                            errorList.add(prod.getErrors());
+                        }
+                    }
+                }
                 GeneratedProductList productList = list.get(0);
                 viewOnly = productList.isViewOnly();
+
             }
-            if (viewOnly) {
-                appBuilder.showProductViewer(productGenerationComplete
-                        .getGeneratedProducts());
+
+            if (!errorList.isEmpty()) {
+                StringBuilder buffer = new StringBuilder();
+                for (String e : errorList) {
+                    buffer.append(e).append(StringUtil.NEWLINE);
+                }
+                appBuilder.getWarner().warnUser("Error Generating Product",
+                        buffer.toString());
+                sessionManager.setIssueOngoing(false);
+                sessionManager.setPreviewOngoing(false);
             } else {
-                appBuilder.showProductEditorView(productGenerationComplete
-                        .getGeneratedProducts());
+                if (viewOnly) {
+                    appBuilder.showProductViewer(list);
+                } else {
+                    appBuilder.showProductEditorView(list);
+                }
             }
         }
     }
@@ -344,9 +373,9 @@ public final class HazardServicesMessageHandler {
 
         sessionConfigurationManager.changeSettings(settingID, originator);
 
-        appBuilder.notifyModelChanged(EnumSet.of(
-                HazardConstants.Element.SETTINGS,
-                HazardConstants.Element.CURRENT_SETTINGS));
+        appBuilder
+                .notifyModelChanged(EnumSet.of(HazardConstants.Element.SETTINGS,
+                        HazardConstants.Element.CURRENT_SETTINGS));
 
     }
 
@@ -380,8 +409,8 @@ public final class HazardServicesMessageHandler {
      */
     void changeCurrentSettings(ISettings settings, IOriginator originator) {
         sessionConfigurationManager.getSettings().apply(settings, originator);
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.CURRENT_SETTINGS));
+        appBuilder.notifyModelChanged(
+                EnumSet.of(HazardConstants.Element.CURRENT_SETTINGS));
     }
 
     /**
@@ -404,8 +433,8 @@ public final class HazardServicesMessageHandler {
                 boolean nonHazardGeneratorType = false;
                 for (GeneratedProductList genProdList : action
                         .getGeneratedProductsList()) {
-                    ProductGeneratorEntry pgEntry = pgTable.get(genProdList
-                            .getProductInfo());
+                    ProductGeneratorEntry pgEntry = pgTable
+                            .get(genProdList.getProductInfo());
                     ToolType generatorType = pgEntry.getGeneratorType();
                     if (generatorType == ToolType.NON_HAZARD_PRODUCT_GENERATOR) {
                         nonHazardGeneratorType = true;
@@ -429,22 +458,22 @@ public final class HazardServicesMessageHandler {
             for (GeneratedProductList products : action
                     .getGeneratedProductsList()) {
                 ProductGeneratorInformation productGeneratorInformation = new ProductGeneratorInformation();
-                productGeneratorInformation.setProductGeneratorName(products
-                        .getProductInfo());
+                productGeneratorInformation
+                        .setProductGeneratorName(products.getProductInfo());
                 ProductFormats productFormats = sessionConfigurationManager
-                        .getProductGeneratorTable().getProductFormats(
-                                productGeneratorInformation
-                                        .getProductGeneratorName());
+                        .getProductGeneratorTable()
+                        .getProductFormats(productGeneratorInformation
+                                .getProductGeneratorName());
                 productGeneratorInformation.setProductFormats(productFormats);
                 productGeneratorInformation.setGeneratedProducts(products);
-                Set<IHazardEvent> events = new HashSet<IHazardEvent>(products
-                        .getEventSet().size());
+                Set<IHazardEvent> events = new HashSet<IHazardEvent>(
+                        products.getEventSet().size());
                 for (IEvent event : products.getEventSet()) {
                     events.add((IHazardEvent) event);
                 }
                 productGeneratorInformation.setProductEvents(events);
-                sessionManager.getProductManager().issueCorrection(
-                        productGeneratorInformation);
+                sessionManager.getProductManager()
+                        .issueCorrection(productGeneratorInformation);
             }
 
             break;
@@ -477,8 +506,8 @@ public final class HazardServicesMessageHandler {
         /*
          * Notify of model changed the obsolete way.
          */
-        appBuilder.notifyModelChanged(EnumSet
-                .of(HazardConstants.Element.CURRENT_SETTINGS));
+        appBuilder.notifyModelChanged(
+                EnumSet.of(HazardConstants.Element.CURRENT_SETTINGS));
     }
 
     /**
@@ -545,8 +574,8 @@ public final class HazardServicesMessageHandler {
             break;
 
         default:
-            throw new IllegalArgumentException("Unsupported actionType "
-                    + productAction.getActionType());
+            throw new IllegalArgumentException(
+                    "Unsupported actionType " + productAction.getActionType());
         }
 
     }
@@ -576,7 +605,8 @@ public final class HazardServicesMessageHandler {
      *            Notification received.
      */
     @Handler
-    public void productStagingRequired(final ProductStagingRequired notification) {
+    public void productStagingRequired(
+            final ProductStagingRequired notification) {
         appBuilder.showProductStagingView(notification.isIssue());
     }
 
@@ -602,7 +632,8 @@ public final class HazardServicesMessageHandler {
      *            Action received.
      */
     @Handler
-    public void settingsActionOccurred(final StaticSettingsAction settingsAction) {
+    public void settingsActionOccurred(
+            final StaticSettingsAction settingsAction) {
         switch (settingsAction.getActionType()) {
 
         case SETTINGS_MODIFIED:
@@ -651,8 +682,13 @@ public final class HazardServicesMessageHandler {
 
             case RUN_RECOMMENDER_WITH_PARAMETERS:
                 sessionRecommenderManager.runRecommender(
-                        toolAction.getToolName(), toolAction.getContext(),
-                        null, toolAction.getAuxiliaryDetails());
+                        toolAction.getToolName(), toolAction.getContext(), null,
+                        toolAction.getAuxiliaryDetails());
+                break;
+
+            case RECOMMENDER_RESULTS_DISPLAY_COMPLETE:
+                sessionRecommenderManager.handleResultsDisplayComplete(
+                        toolAction.getToolName(), toolAction.getContext());
                 break;
 
             case ENABLE_EVENT_DRIVEN_TOOLS:
@@ -672,13 +708,13 @@ public final class HazardServicesMessageHandler {
             break;
 
         case NON_HAZARD_PRODUCT_GENERATOR:
-            sessionProductManager.generateNonHazardProducts(toolAction
-                    .getToolName());
+            sessionProductManager
+                    .generateNonHazardProducts(toolAction.getToolName());
             break;
 
         default:
-            statusHandler.debug("Unrecognized tool type :"
-                    + toolAction.getToolType());
+            statusHandler.debug(
+                    "Unrecognized tool type :" + toolAction.getToolType());
             break;
         }
 

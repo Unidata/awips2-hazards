@@ -11,6 +11,7 @@ from ProbUtils import ProbUtils
 import logging, UFStatusHandler
 import matplotlib.pyplot as plt
 import LogUtils
+from HazardConstants import SAVE_TO_DATABASE_KEY, SET_ORIGIN_KEY, SELECTED_TIME_KEY
 
 import math, time
 from math import *
@@ -151,13 +152,6 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['onlyIncludeTriggerEvents'] = True
         metadata['includeDataLayerTimes'] = True
         
-        # This tells Hazard Services to not notify the user when the recommender
-        # creates no hazard events. Since this recommender is to be run in response
-        # to hazard event changes, etc. it would be extremely annoying for the user
-        # to be constantly dismissing the warning message dialog if no hazard events
-        # were being created. 
-        metadata['background'] = True
-        
         return metadata
 
     def defineDialog(self, eventSet):
@@ -191,7 +185,7 @@ class Recommender(RecommenderTemplate.Recommender):
         trigger = eventSetAttrs.get('trigger')
         origin = eventSetAttrs.get('origin')
         self.currentTime = long(eventSetAttrs.get("currentTime")) 
-        self.selectedTime = None if eventSetAttrs.get('selectedTime') is None else long(eventSetAttrs.get('selectedTime'))
+        self.selectedTime = None if eventSetAttrs.get(SELECTED_TIME_KEY) is None else long(eventSetAttrs.get(SELECTED_TIME_KEY))
         self.setDataLayerTimes(eventSetAttrs)                
         self.attributeIdentifiers = eventSetAttrs.get('attributeIdentifiers', [])
 
@@ -202,7 +196,7 @@ class Recommender(RecommenderTemplate.Recommender):
 
         resultEventSet = EventSetFactory.createEventSet(None)
         self.setOriginDict = {}
-        resultEventSet.addAttribute('setOrigin', self.setOriginDict)
+        resultEventSet.addAttribute(SET_ORIGIN_KEY, self.setOriginDict)
         self.saveToDatabase = True
         
         
@@ -278,7 +272,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     self.handleAdditionalEventModifications(event, resultEventSet)
                     continue
                 if 'modifyButton' in self.attributeIdentifiers or (self.editableHazard and self.movedStartTime): 
-                    resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
+                    resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)
                     self.lastSelectedTime = self.eventSt_ms
                     print "SR Setting selected time to eventSt"
                     self.flush()
@@ -286,7 +280,7 @@ class Recommender(RecommenderTemplate.Recommender):
             elif trigger == 'hazardEventVisualFeatureChange':
                 if not self.adjustForVisualFeatureChange(event, eventSetAttrs):
                     continue
-                resultEventSet.addAttribute('selectedTime', self.dataLayerTimeToLeft)
+                resultEventSet.addAttribute(SELECTED_TIME_KEY, self.dataLayerTimeToLeft)
                 print "SR Setting selected time to dataLayerTimeToLeft"
                 self.lastSelectedTime =  self.dataLayerTimeToLeft
                 self.flush()
@@ -315,7 +309,7 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.add(event)
             
         if self.saveToDatabase:
-            resultEventSet.addAttribute("saveToDatabase", True)
+            resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
 
         self.printEventSet("*****\nFinishing SwathRecommender", eventSet, eventLevel=1)
         return resultEventSet      
@@ -525,16 +519,16 @@ class Recommender(RecommenderTemplate.Recommender):
     def processDataLayerUpdate(self, event, eventSetAttrs, resultEventSet):
         if not self.editableObjects:
             if self.latestDataLayerTime <= self.selectedTime:
-                resultEventSet.addAttribute('selectedTime', self.latestDataLayerTime)
+                resultEventSet.addAttribute(SELECTED_TIME_KEY, self.latestDataLayerTime)
                 print "SR Setting selected time to latestDataLayer due to time interval update", self.editableHazard, self.editableObjects
                 self.flush()
         elif self.editableHazard:
             self.visualCueForDataLayerUpdate(event)
             resultEventSet.add(event)
-            #resultEventSet.addAttribute('selectedTime', self.eventSt_ms)
+            #resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)
             
             if event.get('lastSelectedTime') is not None:
-                 resultEventSet.addAttribute('selectedTime', event.get('lastSelectedTime'))
+                 resultEventSet.addAttribute(SELECTED_TIME_KEY, event.get('lastSelectedTime'))
 
     def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
         print '\n---SR: Entering adjustForEventModification...'
@@ -1463,7 +1457,7 @@ class Recommender(RecommenderTemplate.Recommender):
             print "origin: ", eventSetAttrs.get("origin")
             print "attributeIdentifiers: ", eventSetAttrs.get("attributeIdentifiers")
             if self.selectedTime is not None:
-                print "selectedTime", self.probUtils.displayMsTime(self.selectedTime)
+                print SELECTED_TIME_KEY, self.probUtils.displayMsTime(self.selectedTime)
         if eventLevel:
             print "Events:", len(eventSet.getEvents())
             for event in eventSet:

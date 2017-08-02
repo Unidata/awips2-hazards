@@ -66,6 +66,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      info.
  * Mar 31, 2016  8837      Robert.Blum  Changes for Service Backup.
  * Jun 23, 2016 19537      Chris.Golden Changed to use visual features for spatial info.
+ * Oct 20, 2016 22519      Kevin.Bisanz Set coordinator to null in shutdownEngine().
  * </pre>
  * 
  * @author mnash
@@ -252,7 +253,7 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
         }
     }
 
-    public PythonJobCoordinator<P> getCoordinator() {
+    public synchronized PythonJobCoordinator<P> getCoordinator() {
         if (coordinator == null) {
             coordinator = createCoordinator();
         }
@@ -266,9 +267,10 @@ public abstract class AbstractRecommenderEngine<P extends AbstractRecommenderScr
      * allocated. This should be called once we are done using the recommender
      * engine (not each time, but when the application that uses it has ended).
      */
-    public void shutdownEngine() {
+    public synchronized void shutdownEngine() {
         if (coordinator != null) {
             coordinator.shutdown();
+            coordinator = null;
         }
     }
 

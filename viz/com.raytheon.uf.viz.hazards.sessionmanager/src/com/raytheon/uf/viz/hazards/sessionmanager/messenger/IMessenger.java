@@ -9,8 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.messenger;
 
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +17,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * Description: Provides access to tools for alerting the user and retrieving
@@ -48,6 +48,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  *                                      concerning use of the provided
  *                                      interfaces' methods that return
  *                                      something from outside the UI thread.
+ * Aug 15, 2017  22757     Chris.Golden Added method to display tool execution
+ *                                      results.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -170,6 +172,23 @@ public interface IMessenger {
         public void getToolSpatialInput(String tool, ToolType type,
                 RecommenderExecutionContext context,
                 VisualFeaturesList visualFeatures);
+
+        /**
+         * Show the results for for the specified tool.
+         * 
+         * @param tool
+         *            Identifier of the tool for which to show results.
+         * @param type
+         *            Type of the tool.
+         * @param context
+         *            Context in which the tool was run.
+         * @param dialogResults
+         *            Map holding the parameters governing the contents of the
+         *            dialog to be created to show the results.
+         */
+        public void showToolResults(String tool, ToolType type,
+                RecommenderExecutionContext context,
+                Map<String, Serializable> dialogResults);
     }
 
     /**

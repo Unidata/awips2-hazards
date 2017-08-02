@@ -5,10 +5,13 @@ Dam Break Flood Recommender
 @author: GSD Hazard Services Team
 """
 import datetime
+import logging
 import RecommenderTemplate
 import numpy
 import GeometryFactory
 import HazardDataAccess
+
+import UFStatusHandler
 
 from MapsDatabaseAccessor import MapsDatabaseAccessor
 
@@ -20,6 +23,20 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def __init__(self):
         self.DEFAULT_FFW_DURATION_IN_MS = 10800000
+        
+        self.NO_MAP_DATA_ERROR_MSG = '''No mapdata found for DAM BREAK inundation.
+See the alertviz log for more information.
+(Please verify your maps database contains the table mapdata.{})
+
+Please click CANCEL and manually draw an inundation area. 
+ '''.format(DAMINUNDATION_TABLE)
+        
+        self.logger = logging.getLogger('DamBreakFloodRecommender')
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
+        self.logger.addHandler(UFStatusHandler.UFStatusHandler(
+            'gov.noaa.gsd.common.utilities', 'DamBreakFloodRecommender', level=logging.INFO))
+        self.logger.setLevel(logging.INFO)
 
         
     def defineScriptMetadata(self):
@@ -50,16 +67,14 @@ class Recommender(RecommenderTemplate.Recommender):
         damFieldDict["autocomplete"] = True
         
         self.damPolygonDict = {}
-        self.mapsAccessor = MapsDatabaseAccessor()
         try:
+            self.mapsAccessor = MapsDatabaseAccessor()
             self.damPolygonDict = self.mapsAccessor.getPolygonDict(DAMINUNDATION_TABLE, eventSet.getAttribute("localizedSiteID"))
         except:
-            pass
+            self.logger.exception("Could not retrieve dam inundation data.")
 
         if not self.damPolygonDict:
-            damFieldDict["values"] = '''No shapefiles found for DAM BREAK inundation.  
-Please click CANCEL and manually draw an inundation area. 
-(Please verify your maps database for mapdata. '''+ DAMINUNDATION_TABLE + ''')'''
+            damFieldDict["values"] = self.NO_MAP_DATA_ERROR_MSG
             damFieldDict["fieldType"] = "Label"
             valueDict = {"damOrLeveeName": None}
             dialogDict["fields"] = damFieldDict
@@ -136,7 +151,7 @@ Please click CANCEL and manually draw an inundation area.
         # test, basically whatever does not require Jep. It is up to the test
         # to inject a pure python version of the hazard event.
         hazardEvent = self.updateEventAttributes(hazardEvent, eventSet.getAttributes(), \
-                                      dialogInputMap, visualFeatures)
+                                      dialogInputMap)
 
         newEventSet.add(hazardEvent)
         return newEventSet

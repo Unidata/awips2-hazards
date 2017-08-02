@@ -25,9 +25,10 @@
                                         note on issue 19098 (related to this
                                         ticket).
     Aug 08, 2016 21056    Robert.Blum   Added configs for pathcast.
+    Oct 17, 2016 21699    Robert.Blum   Updates for incremental overrides.
     
 '''
-SpatialQueries = {
+SpatialQueryConfigs = {
                   'LocationsAffected': {
                                         'tableName': 'warngenloc',
                                         'returnFields':['name'],

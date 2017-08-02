@@ -50,14 +50,6 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["description"] = "Set Hazard Services wide configuration information for PHI Processing"
         metaDict["eventState"] = "Pending"
         
-                
-        # This tells Hazard Services to not notify the user when the recommender
-        # creates no hazard events. Since this recommender is to be run in response
-        # to hazard event changes, etc. it would be extremely annoying for the user
-        # to be constantly dismissing the warning message dialog if no hazard events
-        # were being created. 
-        metaDict['background'] = True
-        
         return metaDict
 
     def defineDialog(self, eventSet):

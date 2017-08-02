@@ -21,6 +21,10 @@
     Feb 22, 2016    15017   Robert.Blum          Add CREST_STAGE constant.
     Mar 31, 2016     8837   Robert.Blum          Added SITE constant.
     Sep 02, 2016    15934   Chris.Golden         Added linear unit constants.
+    Oct 12, 2016    22069   Benjamin.Phillippe   Removed HIRES_RIVERINUNDATION_TABLE constant
+    Nov 03, 2016    22965   Robert.Blum          Added MISSING_VALUE_STR.
+    Aug 17, 2017    22757   Chris.Golden         Added recommender related constants.
+    Sep 05, 2017    22965   Chris.Golden         Fixed SITE_CFG_ROOT path.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -83,6 +87,7 @@ CREST_STAGE = "crestStage"
 
 # Missing value magic number.
 MISSING_VALUE = -9999
+MISSING_VALUE_STR = str(MISSING_VALUE)
 
 FORECAST_POINT = "forecastPoint"
 ID = "id"
@@ -164,6 +169,14 @@ INTERDEPENDENCIES_SCRIPT_KEY = "interdependencies"
 METADICT_KEY = "metaDict"
 FILENAME_KEY = "fileName"
 
+SAVE_TO_HISTORY_KEY = "saveToHistory"
+SAVE_TO_DATABASE_KEY = "saveToDatabase"
+TREAT_AS_ISSUANCE_KEY = "treatAsIssuance"
+SET_ORIGIN_KEY = "setOrigin"
+DELETE_EVENT_IDENTIFIERS_KEY = "deleteEventIdentifiers"
+SELECTED_TIME_KEY = "selectedTime"
+RESULTS_MESSAGE_KEY = "resultsMessage"
+RESULTS_DIALOG_KEY = "resultsDialog"
 
 #################################
 # VTEC Record Keys
@@ -191,7 +204,6 @@ SEGMENT = 'seg'
 # 'Maps' database tables
 DAMINUNDATION_TABLE = "daminundation"
 BURNSCARAREA_TABLE = "burnscararea"
-HIRES_RIVERINUNDATION_TABLE = "riverpointinundation"
 
 
 
@@ -207,7 +219,7 @@ kmPerDegLat = R_EARTH*PI/180.0
 #################################
 # Localization Relative Paths
 TEXT_UTILITY_ROOT = "gfe/userPython/textUtilities/regular/"
-SITE_CFG_ROOT = "python/gfe/"
+SITE_CFG_ROOT = "gfe/python/"
 
 #################################
 # Product Generation

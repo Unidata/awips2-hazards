@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.hazards.hydro;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,9 +41,14 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * 
  * <pre>
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 08, 2015 6562       Chris.Cody  Initial creation: Restructure River Forecast Points/Recommender
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 08, 2015 6562       Chris.Cody   Initial creation: Restructure River Forecast Points/Recommender
+ * Oct 13, 2016 22519      mduff        Use the HSA passed into the recommender, not the local site's HSA.
+ *                                      The system could be in service backup mode.
+ * Oct 13, 2016 20374      Mark.Fegan   Corrected logic used to determine if a forecast
+ *                                      point is included in the recommendation.
+ * Nov 18, 2016 26439      Kevin.Bisanz Add siteId argument to data cache methods.
  * Jun 01, 2017 15561      Chris.Golden Changed to no longer use "type" attribute,
  *                                      so that the latter's existence is not relied
  *                                      upon; hazard type is already provided for each
@@ -92,30 +98,34 @@ public class RecommenderManager {
      * It also processes the queried data and recommends river flood hazards
      * based on all of the river forecast point information.
      * 
-     * @param currentSystemTime
-     *            Current system time for Observation and Forecast queries. This
-     *            is also used for a set time for the RecommenderDataCache.
+     * @param cacheSystemTime
+     *            The time of the last cache
+     * @param siteId
+     *            The site/HSA id
      * 
      * @return RecommenderData data object containing queried and computed River
      *         Flood Recommender data.
      */
-    public RecommenderData getRiverFloodRecommenderData(long cacheSystemTime) {
+    public RecommenderData getRiverFloodRecommenderData(long cacheSystemTime,
+            String siteId) {
 
         RecommenderData recommenderData = null;
         RecommenderDataCache recommenderDataCache = RecommenderDataCache
                 .getInstance();
 
-        if (recommenderDataCache.isCacheValid(cacheSystemTime) == true) {
-            recommenderData = recommenderDataCache
-                    .getCachedData(cacheSystemTime);
+        if (recommenderDataCache.isCacheValid(siteId,
+                cacheSystemTime) == true) {
+            recommenderData = recommenderDataCache.getCachedData(siteId,
+                    cacheSystemTime);
         } else {
             recommenderDataCache.purgeCachedData();
         }
 
         if (recommenderData == null) {
-            recommenderData = queryAndComputeRecommenderData(cacheSystemTime);
+            recommenderData = queryAndComputeRecommenderData(cacheSystemTime,
+                    siteId);
             if (recommenderData != null) {
-                recommenderDataCache.putCachedData(cacheSystemTime,
+                recommenderDataCache.putCachedData(siteId, cacheSystemTime,
                         recommenderData);
             }
         }
@@ -132,13 +142,17 @@ public class RecommenderManager {
      * @param currentSystemTime
      *            Current system time for Observation and Forecast queries. This
      *            is also used for a set time for the RecommenderDataCache.
+     * @param siteId
+     *            The site/HSA id to recommend for.
      * 
      * @return RecommenderData data object containing queried and computed River
      *         Flood Recommender data.
      */
-    public RecommenderData queryAndComputeRecommenderData(long currentSystemTime) {
+    public RecommenderData queryAndComputeRecommenderData(
+            long currentSystemTime, String siteId) {
 
-        RecommenderData recommenderData = buildRecommenderRiverForecastData(currentSystemTime);
+        RecommenderData recommenderData = buildRecommenderRiverForecastData(
+                currentSystemTime, siteId);
 
         processHydroEventRecommendationData(currentSystemTime, recommenderData);
 
@@ -153,20 +167,22 @@ public class RecommenderManager {
      * @param currentSystemTime
      *            Current system time for Observation and Forecast queries. This
      *            is also used for a set time for the RecommenderDataCache.
+     * @param hsaId
+     *            The site/HSA id to recommend for.
      * @return RecommenderData data object containing queried and computed River
      *         Flood Recommender data.
      */
     protected RecommenderData buildRecommenderRiverForecastData(
-            long cacheSystemTime) {
+            long cacheSystemTime, String hsaId) {
 
         if (cacheSystemTime == 0) {
             cacheSystemTime = TimeUtil.currentTimeMillis();
         }
-        String hsaId = this.riverForecastManager.getHydrologicServiceAreaId();
+        List<RiverForecastGroup> recAllRiverForecastGroupList = queryAllHsaRiverForecastData(
+                hsaId);
 
-        List<RiverForecastGroup> recAllRiverForecastGroupList = queryAllHsaRiverForecastData(hsaId);
-
-        List<RiverForecastPoint> recAllRiverForecastPointList = buildAllRiverForecastList(recAllRiverForecastGroupList);
+        List<RiverForecastPoint> recAllRiverForecastPointList = buildAllRiverForecastList(
+                recAllRiverForecastGroupList);
 
         Map<String, Object> previousEventMap = Maps.newHashMap();
 
@@ -176,7 +192,8 @@ public class RecommenderManager {
          * "phen" and significance under "sig".
          */
         List<HydroEvent> recAllHydroEventList = constructHydroEventList(hsaId,
-                recAllRiverForecastPointList, previousEventMap, cacheSystemTime);
+                recAllRiverForecastPointList, previousEventMap,
+                cacheSystemTime);
 
         // Now all data has been assembled. Process and set recommendations
         RecommenderData recommenderData = buildRecommenderData(hsaId,
@@ -192,11 +209,14 @@ public class RecommenderManager {
      * Query all RiverForecastGroup objects within the currently configured
      * Hydrologic Service Area (HSA).
      * 
+     * @param hsaId
+     *            The site/HSA id to recommend for.
      * @return a DEEP QUERY with COMPUTED values for all RiverForecastGroup
      *         objects and their lists RiverForecastPoint objects (Also DEEP
      *         QUERY with COMPUTED values).
      */
-    private List<RiverForecastGroup> queryAllHsaRiverForecastData(String hsaId) {
+    private List<RiverForecastGroup> queryAllHsaRiverForecastData(
+            String hsaId) {
 
         List<RiverForecastGroup> recAllRiverForecastGroupList = riverForecastManager
                 .getHsaRiverForecastGroupList(hsaId, true);
@@ -318,8 +338,10 @@ public class RecommenderManager {
         riverForecastPoint.setRiseOrFall(HydroGraphTrend.UNCHANGED);
 
         if (riverForecastPoint.getPreviousProductAvailable() == true) {
-            if ((riverForecastPoint.getCurrentObservation().getValue() != RiverHydroConstants.MISSING_VALUE)
-                    && (riverForecastPoint.getPreviousCurObsValue() != RiverHydroConstants.MISSING_VALUE)) {
+            if ((riverForecastPoint.getCurrentObservation()
+                    .getValue() != RiverHydroConstants.MISSING_VALUE)
+                    && (riverForecastPoint
+                            .getPreviousCurObsValue() != RiverHydroConstants.MISSING_VALUE)) {
                 /*
                  * if data are available and if the category for the current
                  * stage is greater than the category for the previous product,
@@ -330,10 +352,12 @@ public class RecommenderManager {
                         .computeFloodStageCategory(riverForecastPoint,
                                 riverForecastPoint.getPreviousCurObsValue());
 
-                if (riverForecastPoint.getCurrentObservationCategory() > categoryValue) {
+                if (riverForecastPoint
+                        .getCurrentObservationCategory() > categoryValue) {
                     riverForecastPoint
                             .setObservedRiseOrFall(HydroGraphTrend.RISE);
-                } else if (riverForecastPoint.getCurrentObservationCategory() == categoryValue) {
+                } else if (riverForecastPoint
+                        .getCurrentObservationCategory() == categoryValue) {
                     riverForecastPoint
                             .setObservedRiseOrFall(HydroGraphTrend.UNCHANGED);
                 } else {
@@ -342,8 +366,10 @@ public class RecommenderManager {
                 }
             }
 
-            if ((riverForecastPoint.getMaximumSHEFForecast().getValue() != RiverHydroConstants.MISSING_VALUE)
-                    && (riverForecastPoint.getPreviousMaxFcstValue() != RiverHydroConstants.MISSING_VALUE)) {
+            if ((riverForecastPoint.getMaximumSHEFForecast()
+                    .getValue() != RiverHydroConstants.MISSING_VALUE)
+                    && (riverForecastPoint
+                            .getPreviousMaxFcstValue() != RiverHydroConstants.MISSING_VALUE)) {
                 /*
                  * if data are available and if the category for the stage is
                  * greater than the category for the previous product, then a
@@ -354,10 +380,12 @@ public class RecommenderManager {
                         .computeFloodStageCategory(riverForecastPoint,
                                 riverForecastPoint.getPreviousMaxFcstValue());
 
-                if (riverForecastPoint.getMaximumForecastCategory() > categoryValue) {
+                if (riverForecastPoint
+                        .getMaximumForecastCategory() > categoryValue) {
                     riverForecastPoint
                             .setForecastRiseOrFall(HydroGraphTrend.RISE);
-                } else if (riverForecastPoint.getMaximumForecastCategory() == categoryValue) {
+                } else if (riverForecastPoint
+                        .getMaximumForecastCategory() == categoryValue) {
                     riverForecastPoint
                             .setForecastRiseOrFall(HydroGraphTrend.UNCHANGED);
                 } else {
@@ -370,17 +398,19 @@ public class RecommenderManager {
              * get the previous obs and max fcst category if previous data
              * available for CAT threshold
              */
-            if ((riverForecastPoint.getMaximumObservedForecastCategory() > HydroFloodCategories.NULL_CATEGORY
-                    .getRank())
+            if ((riverForecastPoint
+                    .getMaximumObservedForecastCategory() > HydroFloodCategories.NULL_CATEGORY
+                            .getRank())
                     && (riverForecastPoint
                             .getPreviousMaxObservedForecastCategory() > HydroFloodCategories.NULL_CATEGORY
-                            .getRank())) {
-                if (riverForecastPoint.getMaximumObservedForecastCategory() > riverForecastPoint
-                        .getPreviousMaxObservedForecastCategory()) {
+                                    .getRank())) {
+                if (riverForecastPoint
+                        .getMaximumObservedForecastCategory() > riverForecastPoint
+                                .getPreviousMaxObservedForecastCategory()) {
                     riverForecastPoint.setRiseOrFall(HydroGraphTrend.RISE);
                 } else if (riverForecastPoint
                         .getMaximumObservedForecastCategory() == riverForecastPoint
-                        .getPreviousMaxObservedForecastCategory()) {
+                                .getPreviousMaxObservedForecastCategory()) {
                     riverForecastPoint.setRiseOrFall(HydroGraphTrend.UNCHANGED);
                 } else {
                     riverForecastPoint.setRiseOrFall(HydroGraphTrend.FALL);
@@ -441,7 +471,8 @@ public class RecommenderManager {
              */
             Date beginTime = new Date(forecastPoint.getRiseAboveTime());
 
-            if (hydroEvent.getPreviousFLW().getVtecInfo().getBegintime() == null) {
+            if (hydroEvent.getPreviousFLW().getVtecInfo()
+                    .getBegintime() == null) {
                 beginTime = null;
             }
 
@@ -461,10 +492,11 @@ public class RecommenderManager {
                  * some data situation; anyway if the max level is below flood,
                  * then it is certain that the endtime is below flood level.
                  */
-                if (forecastPoint.getMaximumObservedForecastCategory() == HydroFloodCategories.NO_FLOOD_CATEGORY
-                        .getRank()) {
-                    hydroEvent
-                            .setRecommendedAction(HazardConstants.CANCEL_ACTION);
+                if (forecastPoint
+                        .getMaximumObservedForecastCategory() == HydroFloodCategories.NO_FLOOD_CATEGORY
+                                .getRank()) {
+                    hydroEvent.setRecommendedAction(
+                            HazardConstants.CANCEL_ACTION);
 
                     /*
                      * In general, if the proposed begin or endtime is not the
@@ -478,17 +510,18 @@ public class RecommenderManager {
                             .getVtecInfo().getBegintime();
 
                     if ((beginTime != null && previousBeginTime != null)
-                            && (beginTime != previousBeginTime && previousBeginTime
-                                    .getTime() > currentSystemTime)) {
-                        hydroEvent
-                                .setRecommendedAction(HazardConstants.EXTEND_IN_TIME_ACTION);
+                            && (beginTime != previousBeginTime
+                                    && previousBeginTime
+                                            .getTime() > currentSystemTime)) {
+                        hydroEvent.setRecommendedAction(
+                                HazardConstants.EXTEND_IN_TIME_ACTION);
                     } else if (endTime != hydroEvent.getPreviousFLW()
                             .getVtecInfo().getEndtime()) {
-                        hydroEvent
-                                .setRecommendedAction(HazardConstants.EXTEND_IN_TIME_ACTION);
+                        hydroEvent.setRecommendedAction(
+                                HazardConstants.EXTEND_IN_TIME_ACTION);
                     } else {
-                        hydroEvent
-                                .setRecommendedAction(HazardConstants.CONTINUE_ACTION);
+                        hydroEvent.setRecommendedAction(
+                                HazardConstants.CONTINUE_ACTION);
                     }
                 }
 
@@ -501,25 +534,26 @@ public class RecommenderManager {
 
                 if (forecastPoint.getRiseOrFall() == HydroGraphTrend.RISE) {
 
-                    hydroEvent
-                            .setRecommendationReason(HydroEventReason.FLW_INCREASED_FLOODING);
+                    hydroEvent.setRecommendationReason(
+                            HydroEventReason.FLW_INCREASED_FLOODING);
                     hydroEvent.setRecommendationIndex(HydroEvent.FLW);
                 } else {
                     /*
                      * if no rise occurred for an active event, then either
                      * flooding is continuing or has ended
                      */
-                    if (forecastPoint.getMaximumObservedForecastCategory() > HydroFloodCategories.NO_FLOOD_CATEGORY
-                            .getRank()
+                    if (forecastPoint
+                            .getMaximumObservedForecastCategory() > HydroFloodCategories.NO_FLOOD_CATEGORY
+                                    .getRank()
                             || forecastPoint
                                     .getMaximumObservedForecastCategory() == HydroFloodCategories.NULL_CATEGORY
-                                    .getRank()) {
-                        hydroEvent
-                                .setRecommendationReason(HydroEventReason.FLS_CONTINUED_FLOODING);
+                                            .getRank()) {
+                        hydroEvent.setRecommendationReason(
+                                HydroEventReason.FLS_CONTINUED_FLOODING);
                         hydroEvent.setRecommendationIndex(HydroEvent.FLS);
                     } else {
-                        hydroEvent
-                                .setRecommendationReason(HydroEventReason.FLS_ENDED_FLOODING);
+                        hydroEvent.setRecommendationReason(
+                                HydroEventReason.FLS_ENDED_FLOODING);
                         hydroEvent.setRecommendationIndex(HydroEvent.FLS);
                     }
 
@@ -527,14 +561,16 @@ public class RecommenderManager {
             } else {
                 /* if the forecast point is not an active event... */
                 /* if flooding is occurring then recommend FLW NEW. */
-                if (forecastPoint.getMaximumObservedForecastCategory() > HydroFloodCategories.NO_FLOOD_CATEGORY
-                        .getRank()) {
-                    hydroEvent
-                            .setRecommendationReason(HydroEventReason.FLW_NEW_FLOODING);
+                if (forecastPoint
+                        .getMaximumObservedForecastCategory() > HydroFloodCategories.NO_FLOOD_CATEGORY
+                                .getRank()) {
+                    hydroEvent.setRecommendationReason(
+                            HydroEventReason.FLW_NEW_FLOODING);
                     hydroEvent.setRecommendationIndex(HydroEvent.FLW);
                     hydroEvent.setRecommendedAction(HazardConstants.NEW_ACTION);
-                } else if (forecastPoint.getMaximumObservedForecastCategory() == HydroFloodCategories.NO_FLOOD_CATEGORY
-                        .getRank()) {
+                } else if (forecastPoint
+                        .getMaximumObservedForecastCategory() == HydroFloodCategories.NO_FLOOD_CATEGORY
+                                .getRank()) {
                     /*
                      * if no flooding, recommend an EXP if event recently ended.
                      * otherwise recommend an RVS
@@ -546,26 +582,27 @@ public class RecommenderManager {
                             .getVtecInfo().getVtecaction();
 
                     if ((previousEndTime != null)
-                            && (previousEndTime.getTime() > (systemTime
-                                    .getTime() - HydroEvent.END_TIME_WITHIN))
-                            && (!vtecaction.getAction().equals(
-                                    HazardConstants.CANCEL_ACTION))
-                            && (!vtecaction.getAction().equals(
-                                    HazardConstants.EXPIRE_ACTION))) {
-                        hydroEvent
-                                .setRecommendationReason(HydroEventReason.FLS_EXPIRED_FLOODING);
+                            && (previousEndTime
+                                    .getTime() > (systemTime.getTime()
+                                            - HydroEvent.END_TIME_WITHIN))
+                            && (!vtecaction.getAction()
+                                    .equals(HazardConstants.CANCEL_ACTION))
+                            && (!vtecaction.getAction()
+                                    .equals(HazardConstants.EXPIRE_ACTION))) {
+                        hydroEvent.setRecommendationReason(
+                                HydroEventReason.FLS_EXPIRED_FLOODING);
                         hydroEvent.setRecommendationIndex(HydroEvent.FLS);
-                        hydroEvent
-                                .setRecommendedAction(HazardConstants.EXPIRE_ACTION);
+                        hydroEvent.setRecommendedAction(
+                                HazardConstants.EXPIRE_ACTION);
                     } else {
-                        hydroEvent
-                                .setRecommendationReason(HydroEventReason.RVS_NO_FLOODING);
+                        hydroEvent.setRecommendationReason(
+                                HydroEventReason.RVS_NO_FLOODING);
                         hydroEvent.setRecommendationIndex(HydroEvent.RVS);
                         hydroEvent.setRecommendedAction(HydroEvent.NO_ACTION);
                     }
                 } else {
-                    hydroEvent
-                            .setRecommendationReason(HydroEventReason.RVS_NO_DATA);
+                    hydroEvent.setRecommendationReason(
+                            HydroEventReason.RVS_NO_DATA);
                     hydroEvent.setRecommendationIndex(HydroEvent.RVS);
                     hydroEvent.setRecommendedAction(HydroEvent.NO_ACTION);
                 }
@@ -573,15 +610,39 @@ public class RecommenderManager {
         }
 
         /*
-         * Loop on on all forecast points and find the most severe recommended
-         * product.
+         * First initialize a map of severe values using the product list to
+         * ensure that the map is initially complete. This ensures that every
+         * River Forecast Group referenced by a product will have an entry in
+         * the Most Severe map.
          */
-        int mostSevereProduct = HydroEvent.OTHER_PROD;
-
+        Map<String, Integer> mostSevereMap = new HashMap<>();
         for (HydroEvent hydroEvent : recAllHydroEventList) {
-            if (hydroEvent.getRecommendationIndex() > mostSevereProduct) {
-                mostSevereProduct = hydroEvent.getRecommendationIndex();
+            String riverGroupID = hydroEvent.getForecastPoint().getGroupId();
+            if (riverGroupID != null) {
+                mostSevereMap.put(riverGroupID, HydroEvent.OTHER_PROD);
             }
+        }
+        /*
+         * Loop on through the river forecast groups and find the most severe
+         * recommended product for each group. At the end of this loop, every
+         * River Forecast Group will have an entry in the Most Severe map. The
+         * Most Severe map is used below to determine points to include in the
+         * recommendation on a river group basis.
+         */
+        for (RiverForecastGroup riverForecastGroup : recAllRiverForecastGroupList) {
+            String riverGroupID = riverForecastGroup.getGroupId();
+            Integer mostSevere = HydroEvent.OTHER_PROD;
+            for (HydroEvent hydroEvent : recAllHydroEventList) {
+                Integer recommendation = hydroEvent.getRecommendationIndex();
+                String pointGroupID = hydroEvent.getForecastPoint()
+                        .getGroupId();
+                if (riverGroupID != null && pointGroupID != null
+                        && pointGroupID.equals(riverGroupID)
+                        && recommendation > mostSevere) {
+                    mostSevere = recommendation;
+                }
+            }
+            mostSevereMap.put(riverGroupID, mostSevere);
         }
 
         Map<String, HydroEvent> pointIdToHydroEventMap = Maps
@@ -592,9 +653,21 @@ public class RecommenderManager {
 
             pointIdToHydroEventMap.put(forecastPoint.getLid(), hydroEvent);
 
-            if ((hydroEvent.getRecommendationIndex() == mostSevereProduct)
-                    || (mostSevereProduct <= HydroEvent.RVS)) {
-                forecastPoint.setIncludedInRecommendation(true);
+            /*
+             * Access the cached severity level for the river forecast group and
+             * use this value to determine if the forecast event associated with
+             * the event is included in the recommendation.
+             */
+            String pointGroupID = hydroEvent.getForecastPoint().getGroupId();
+            if (pointGroupID != null) {
+                Integer groupMostSevere = mostSevereMap.get(pointGroupID);
+                Integer eventSeverity = hydroEvent.getRecommendationIndex();
+                if (eventSeverity == groupMostSevere
+                        || groupMostSevere <= HydroEvent.RVS) {
+                    forecastPoint.setIncludedInRecommendation(true);
+                } else {
+                    forecastPoint.setIncludedInRecommendation(false);
+                }
             } else {
                 forecastPoint.setIncludedInRecommendation(false);
             }
@@ -606,34 +679,49 @@ public class RecommenderManager {
          * then if at least one point in group is included, include all points
          * with data in the group that do not have an event recommended. the
          * latter check is needed to ensure that actions associated with an FLW
-         * are not placed in an FLS product.
+         * are not placed in an FLS product. As in the previous loop, the
+         * highest severity level for the river forecast group is used to
+         * determine inclusion. Note that since we loop on the River Forecast
+         * Group List, groupMostSevere will be non-null.
          */
         for (RiverForecastGroup riverGroup : recAllRiverForecastGroupList) {
+            String riverGroupID = riverGroup.getGroupId();
+            Integer groupMostSevere = mostSevereMap.get(riverGroupID);
             if ((riverGroup.isRecommendAllPointsInGroup() == true)
-                    && (mostSevereProduct > HydroEvent.RVS)) {
+                    && (groupMostSevere > HydroEvent.RVS)) {
 
                 List<RiverForecastPoint> groupForecastPointList = riverGroup
                         .getForecastPointList();
                 int groupForecastPointListSize = groupForecastPointList.size();
                 boolean isPointInGroupFound = false;
                 RiverForecastPoint riverForecastPoint = null;
-                for (int i = 0; ((isPointInGroupFound == false) && (i < groupForecastPointListSize)); i++) {
+                for (int i = 0; ((isPointInGroupFound == false)
+                        && (i < groupForecastPointListSize)); i++) {
                     riverForecastPoint = groupForecastPointList.get(i);
                     if (riverForecastPoint.isIncludedInRecommendation()) {
                         processAllPointsInGroup(groupForecastPointList,
-                                pointIdToHydroEventMap, mostSevereProduct);
+                                pointIdToHydroEventMap, groupMostSevere);
                         isPointInGroupFound = true;
                     }
                 }
             }
         }
 
-        /* filter out any points that do not have data for non-FLS/FLW products */
-        if (mostSevereProduct <= HydroEvent.RVS) {
-            for (RiverForecastPoint riverForecastPoint : recAllRiverForecastPointList) {
-                if (riverForecastPoint.getMaximumObservedForecastCategory() == HydroFloodCategories.NULL_CATEGORY
-                        .getRank()) {
-                    riverForecastPoint.setIncludedInRecommendation(false);
+        /*
+         * filter out any points that do not have data for non-FLS/FLW products.
+         * As previously, this step is performed based on the river forecast
+         * group containing the forecast point.
+         */
+        for (RiverForecastPoint riverForecastPoint : recAllRiverForecastPointList) {
+            String pointGroupID = riverForecastPoint.getGroupId();
+            if (pointGroupID != null) {
+                Integer groupMostSevere = mostSevereMap.get(pointGroupID);
+                if (groupMostSevere <= HydroEvent.RVS) {
+                    if (riverForecastPoint
+                            .getMaximumObservedForecastCategory() == HydroFloodCategories.NULL_CATEGORY
+                                    .getRank()) {
+                        riverForecastPoint.setIncludedInRecommendation(false);
+                    }
                 }
             }
         }
@@ -708,15 +796,16 @@ public class RecommenderManager {
             HydroEvent hydroEvent = pointIdToHydroEventMap.get(lid);
 
             if (hydroEvent.getRecommendedAction().equals(HydroEvent.NO_ACTION)
-                    && hydroEvent.getRecommendationReason() != HydroEventReason.RVS_NO_DATA) {
+                    && hydroEvent
+                            .getRecommendationReason() != HydroEventReason.RVS_NO_DATA) {
                 riverForecastPoint.setIncludedInRecommendation(true);
 
                 if (mostSevereProduct == HydroEvent.FLS) {
-                    hydroEvent
-                            .setRecommendationReason(HydroEventReason.FLS_GROUP_IN_FLS);
+                    hydroEvent.setRecommendationReason(
+                            HydroEventReason.FLS_GROUP_IN_FLS);
                 } else {
-                    hydroEvent
-                            .setRecommendationReason(HydroEventReason.FLW_GROUP_IN_FLW);
+                    hydroEvent.setRecommendationReason(
+                            HydroEventReason.FLW_GROUP_IN_FLW);
                 }
 
                 hydroEvent.setRecommendationIndex(mostSevereProduct);

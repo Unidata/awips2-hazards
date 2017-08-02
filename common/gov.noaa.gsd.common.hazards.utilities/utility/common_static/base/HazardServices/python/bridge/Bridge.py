@@ -28,14 +28,18 @@
                                       set from product generators
  August 20 2013   1360   blawrenc     Removed eventDictsToHazardEvents().
                                       This is not used.
- January 29 2013  2882   bkowal      Eliminated Python Script Adapter
- February 14, 2014 2979  bkowal      Created, separate named methods with
-                                     specific parameters for retrieving 
-                                     different types of hazard information.
- Oct 29, 2014    5070    mpduff      Fix SiteCFG.py that was moved 
- Feb 19, 2015    5071    Robert.Blum converting unicode strings from json to prevent errors.
- Mar 31, 2016    8837    Robert.Blum Changes for Service Backup.
- Apr 25, 2016    17611   Robert.Blum Changes for incremental overrides.
+ January 29 2013  2882   bkowal       Eliminated Python Script Adapter
+ February 14, 2014 2979  bkowal       Created, separate named methods with
+                                      specific parameters for retrieving 
+                                      different types of hazard information.
+ Oct 29, 2014    5070    mpduff       Fix SiteCFG.py that was moved 
+ Feb 19, 2015    5071    Robert.Blum  converting unicode strings from json to prevent errors.
+ Mar 31, 2016    8837    Robert.Blum  Changes for Service Backup.
+ Apr 25, 2016    17611   Robert.Blum  Changes for incremental overrides.
+ Sep 21, 2016    21609   Kevin.Bisanz Add getDuplicateUGCs(..).
+ Oct 07, 2016    21777   Robert.Blum  Fixed duplicate logger handlers.
+ Oct 17, 2016    21699   Robert.Blum  Added additional methods to handle incremental overrides.
+ Nov 16, 2016    22971   Robert.Blum  More methods for incremental overrides.
 ''' 
 
 import ast, types, time, traceback, os
@@ -82,11 +86,17 @@ class Bridge:
     #
     # Localization path to HazardTypes.py
     hazardTypesPath = 'HazardServices/hazardTypes/HazardTypes.py'
-    
+    geoSpatialPath = 'HazardServices/python/events/productgen/geoSpatial'
+    textUtilitiesPath = 'HazardServices/python/textUtilities'
+
+    unusedArgument = "unusedArgument"
+
     def __init__(self):                       
         self.DatabaseStorage = DatabaseStorage.DatabaseStorage()
         
         self.logger = logging.getLogger('Bridge')
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'Bridge', level=logging.INFO))
         self.logger.setLevel(logging.INFO)         
@@ -267,14 +277,14 @@ class Bridge:
             return siteInfo
         
         siteInfo = self._getLocalizationData('SiteCFG.py', self.siteCfgRoot, 'COMMON_STATIC')
-
-        if NATIONAL not in siteInfo.SiteInfo:
-           siteInfo.SiteInfo[NATIONAL] =  natl
            
         if siteInfo is None:
             msg = 'No data at all for type: SiteInfo'
             self.logger.error(msg)
             return None        
+
+        if NATIONAL not in siteInfo.SiteInfo:
+           siteInfo.SiteInfo[NATIONAL] =  natl
            
         self.caveEdexRepo['SiteInfo'] = siteInfo.SiteInfo
         return siteInfo.SiteInfo
@@ -400,6 +410,42 @@ class Bridge:
             if endT is not None and (endT + purgeTimeWindow) < currentTime:
                 del records[key]   #delete the record
         return records
+
+    def getDuplicateUGCs(self):
+        name='DuplicateUGCs'
+        criteria = {'filter':{'name':name}}
+        hazardServicesConfig = HazardServicesConfig(configType=self.unusedArgument, configDir=self.geoSpatialPath)
+        rawOut = hazardServicesConfig.getConfigData(criteria) or {}
+        return rawOut
+
+
+    def getSpatialQueries(self, filter=None):
+        name = 'SpatialQueryConfigs'
+        criteria = {'filter':{'name':name}}
+        hazardServicesConfig = HazardServicesConfig(configType=self.unusedArgument, configDir=self.geoSpatialPath)
+        rawOut = hazardServicesConfig.getConfigData(criteria) or {}
+        return rawOut
+
+    def getPathCastConfig(self, filter=None):
+        name = 'PathcastConfig'
+        criteria = {'filter':{'name':name}}
+        hazardServicesConfig = HazardServicesConfig(configType=self.unusedArgument, configDir=self.geoSpatialPath)
+        rawOut = hazardServicesConfig.getConfigData(criteria) or {}
+        return rawOut
+
+    def getDamMetaData(self, filter=None):
+        name = 'DamMetaData'
+        criteria = {'filter':{'name':name}}
+        hazardServicesConfig = HazardServicesConfig(configType=self.unusedArgument, configDir=self.textUtilitiesPath)
+        rawOut = hazardServicesConfig.getConfigData(criteria) or {}
+        return rawOut
+
+    def getBurnScarMetaData(self, filter=None):
+        name = 'BurnScarMetaData'
+        criteria = {'filter':{'name':name}}
+        hazardServicesConfig = HazardServicesConfig(configType=self.unusedArgument, configDir=self.textUtilitiesPath)
+        rawOut = hazardServicesConfig.getConfigData(criteria) or {}
+        return rawOut
 
     def getHazardTypes(self, hazardType=None):
         '''

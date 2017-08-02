@@ -2,9 +2,9 @@ from com.raytheon.uf.common.serialization.comm import RequestRouter
 from com.raytheon.uf.common.hazards.productgen.request import SpatialQueryRequest
 from GeometryHandler import jtsToShapely, shapelyToJTS
 import JUtil
+from Bridge import Bridge
 JUtil.registerJavaToPython(jtsToShapely)
 JUtil.registerPythonToJava(shapelyToJTS)
-from spatialQueryConfig import SpatialQueries
 from com.vividsolutions.jts.io import WKBReader
 
 
@@ -22,12 +22,14 @@ from com.vividsolutions.jts.io import WKBReader
     Mar 02, 2016    14032 Ben.Phillippe Reworked class to use a request object to allow more complex
                                         PostGIS geometric functions to be utilized
     Aug 08, 2016    21056   Robert.Blum Added retrievePathcastLocations.
-    
+    Oct 17, 2016    21699   Robert.Blum Updates for incremental overrides.
     @version 1.0
 '''
 
 def executeConfiguredQuery(geometryCollection,siteID,queryName):
-    query = SpatialQueries[queryName]
+    bridge = Bridge()
+    spatialQueries = bridge.getSpatialQueries()
+    query = spatialQueries[queryName]
     if query is None:
          raise Exception("No spatial query with name ", queryName," is configured")
 

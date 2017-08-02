@@ -25,7 +25,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.H
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_AREA_NONE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,9 +66,12 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.geom.PrecisionModel;
 import com.vividsolutions.jts.geom.TopologyException;
 import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 /**
  * Misc functionality for building the UGC information associated with a hazard
@@ -131,6 +133,10 @@ import com.vividsolutions.jts.precision.GeometryPrecisionReducer;
  *                                      hatching polygons within the spatial presenter.
  * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries now used
  *                                      by hazard events.
+ * Oct 04, 2016 22573      Robert.Blum  Added clearCWAGeometry().
+ * Nov 16, 2016 22119      Kevin.Bisanz Get CWA siteID from hazard instead of settings when
+ *                                      hazard is available as method argument to fix
+ *                                      service backup hatchingarea issues.
  * Nov 17, 2016 26313      Chris.Golden Changed to support multiple UGC types per hazard
  *                                      type, and to work with revamped GeoMapUtilities,
  *                                      moving some code that was previously in the
@@ -186,6 +192,7 @@ public class GeoMapUtilities {
      * need to be retrieved from them to support UGC mapping.
      */
     private static final Map<String, String[]> ATTRIBUTES_FOR_TABLE_NAMES;
+
     static {
         Map<String, String[]> tempMap = new HashMap<>();
 
@@ -208,6 +215,7 @@ public class GeoMapUtilities {
      * correspond to them.
      */
     private static final Map<String, IugcToMapGeometryDataBuilder> UGC_BUILDERS_FOR_TABLE_NAMES;
+
     static {
         Map<String, IugcToMapGeometryDataBuilder> tempMap = new HashMap<>();
 
@@ -268,12 +276,13 @@ public class GeoMapUtilities {
     public Map<String, IGeometryData> getIntersectingMapGeometriesForUgcs(
             IHazardEvent hazardEvent) {
         Map<String, IGeometryData> geometriesForUgcs = new HashMap<>();
-        for (String mapDatabaseTableName : getMapDatabaseTableNames(hazardEvent)) {
+        for (String mapDatabaseTableName : getMapDatabaseTableNames(
+                hazardEvent)) {
             Set<IGeometryData> hazardArea = getIntersectingMapGeometries(true,
                     hazardEvent, mapDatabaseTableName);
-            addMappingsWarningIfDuplicateKeys(
-                    geometriesForUgcs,
-                    getUgcsGeometryDataMapping(mapDatabaseTableName, hazardArea));
+            addMappingsWarningIfDuplicateKeys(geometriesForUgcs,
+                    getUgcsGeometryDataMapping(mapDatabaseTableName,
+                            hazardArea));
         }
         return geometriesForUgcs;
     }
@@ -301,7 +310,8 @@ public class GeoMapUtilities {
                     .getHazardAttribute(HAZARD_AREA);
             hazardAreas = new HashMap<>(hazardAreas);
 
-            Set<String> mapDatabaseTableNames = getMapDatabaseTableNames(hazardEvent);
+            Set<String> mapDatabaseTableNames = getMapDatabaseTableNames(
+                    hazardEvent);
             Geometry locationAsGeometry = geometryFactory.createPoint(location);
             Geometry hazardEventBaseGeometry = hazardEvent
                     .getFlattenedGeometry();
@@ -325,8 +335,7 @@ public class GeoMapUtilities {
                         getUgcsGeometryDataMapping(mapDatabaseTableName,
                                 mapGeometryDataContainingLocation));
 
-                addMappingsWarningIfDuplicateKeys(
-                        allUgcs,
+                addMappingsWarningIfDuplicateKeys(allUgcs,
                         getUgcsGeometryDataMapping(mapDatabaseTableName,
                                 mapGeometryData));
             }
@@ -354,13 +363,15 @@ public class GeoMapUtilities {
                     addRemoveWarngenHatching(hazardAreas, locationAsGeometry,
                             modifiedHazardBaseGeometry, enclosingUgc,
                             hazardArea);
-                    if ((hazardAreas.values().contains(HAZARD_AREA_ALL) == false)
+                    if ((hazardAreas.values()
+                            .contains(HAZARD_AREA_ALL) == false)
                             && (hazardAreas.values().contains(
                                     HAZARD_AREA_INTERSECTION) == false)) {
                         statusHandler.warn(EMPTY_GEOMETRY_ERROR);
                         return null;
                     }
-                    if (hazardAreas.get(enclosingUgc) == HazardConstants.HAZARD_AREA_NONE) {
+                    if (hazardAreas.get(
+                            enclosingUgc) == HazardConstants.HAZARD_AREA_NONE) {
                         modifiedHazardBaseGeometry = modifiedHazardBaseGeometry
                                 .difference(enclosingUgcGeometry);
                     } else {
@@ -385,9 +396,8 @@ public class GeoMapUtilities {
              * Return the result, including the modified geometry if the hazard
              * event does not use point-based hatching.
              */
-            return new Pair<>(hazardAreas,
-                    (isPointBasedHatching(hazardEvent) ? null
-                            : modifiedHazardBaseGeometry));
+            return new Pair<>(hazardAreas, (isPointBasedHatching(hazardEvent)
+                    ? null : modifiedHazardBaseGeometry));
         } catch (TopologyException e) {
 
             /*
@@ -409,13 +419,25 @@ public class GeoMapUtilities {
      */
     public Map<String, IGeometryData> buildHazardAreaForEvent(
             IHazardEvent hazardEvent) {
-        Set<String> mapDatabaseTableNames = getMapDatabaseTableNames(hazardEvent);
+        Set<String> mapDatabaseTableNames = getMapDatabaseTableNames(
+                hazardEvent);
         String mapLabelParameter = getMapLabelParameter(hazardEvent);
-        String cwa = configManager.getSiteID();
+        String cwa = hazardEvent.getSiteID();
+        if (cwa == null) {
+
+            /*
+             * We should always get the siteID from the hazard so that service
+             * backup works correctly. Getting it from the configuration is a
+             * safety net. If this error condition occurs, we should properly
+             * set the siteID on the hazard.
+             */
+            cwa = configManager.getSiteID();
+            statusHandler.error("Hazard " + hazardEvent.getEventID()
+                    + ": siteID not set, defaulting to configured siteID.");
+        }
         Map<String, IGeometryData> geometriesForUgcs = new HashMap<>();
         for (String mapDatabaseTableName : mapDatabaseTableNames) {
-            addMappingsWarningIfDuplicateKeys(
-                    geometriesForUgcs,
+            addMappingsWarningIfDuplicateKeys(geometriesForUgcs,
                     buildHazardAreaForEvent(mapDatabaseTableName,
                             mapLabelParameter, cwa, hazardEvent));
         }
@@ -468,8 +490,8 @@ public class GeoMapUtilities {
             result = geometryFactory.createGeometryCollection(null);
         } else {
             result = geometryFactory
-                    .createGeometryCollection(intersectedGeometries
-                            .toArray(new Geometry[intersectedGeometries.size()]));
+                    .createGeometryCollection(intersectedGeometries.toArray(
+                            new Geometry[intersectedGeometries.size()]));
             result = result.union();
         }
 
@@ -544,8 +566,8 @@ public class GeoMapUtilities {
      */
     public boolean isNonHatching(IHazardEvent hazardEvent) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
-        return ((hazardTypeEntry != null) && (hazardTypeEntry
-                .getHatchingStyle() == HatchingStyle.NONE));
+        return ((hazardTypeEntry != null)
+                && (hazardTypeEntry.getHatchingStyle() == HatchingStyle.NONE));
     }
 
     /**
@@ -781,8 +803,21 @@ public class GeoMapUtilities {
      */
     private Set<IGeometryData> getMapGeometries(IHazardEvent hazardEvent,
             String mapDatabaseTableName) {
+        String cwa = hazardEvent.getSiteID();
+        if (cwa == null) {
+
+            /*
+             * We should always get the siteID from the hazard so that service
+             * backup works correctly. Getting it from the configuration is a
+             * safety net. If this error condition occurs, we should properly
+             * set the siteID on the hazard.
+             */
+            cwa = configManager.getSiteID();
+            statusHandler.error("Hazard " + hazardEvent.getEventID()
+                    + ": siteID not set, defaulting to configured siteID.");
+        }
         return getMapGeometries(mapDatabaseTableName,
-                getMapLabelParameter(hazardEvent), configManager.getSiteID());
+                getMapLabelParameter(hazardEvent), cwa);
     }
 
     /**
@@ -821,8 +856,8 @@ public class GeoMapUtilities {
         mapDataRequest.addIdentifier(HazardConstants.GEOMETRY_FIELD_IDENTIFIER,
                 "the_geom");
         if (!cwa.equals(HazardConstants.NATIONAL)) {
-            mapDataRequest.addIdentifier(
-                    HazardConstants.IN_LOCATION_IDENTIFIER, "true");
+            mapDataRequest.addIdentifier(HazardConstants.IN_LOCATION_IDENTIFIER,
+                    "true");
             mapDataRequest.addIdentifier(
                     HazardConstants.LOCATION_FIELD_IDENTIFIER,
                     HazardConstants.CWA_IDENTIFIER);
@@ -841,13 +876,13 @@ public class GeoMapUtilities {
         }
 
         if (ATTRIBUTES_FOR_TABLE_NAMES.containsKey(mapDatabaseTableName)) {
-            parameterList.addAll(Lists.newArrayList(ATTRIBUTES_FOR_TABLE_NAMES
-                    .get(mapDatabaseTableName)));
+            parameterList.addAll(Lists.newArrayList(
+                    ATTRIBUTES_FOR_TABLE_NAMES.get(mapDatabaseTableName)));
         }
 
         if (parameterList.size() > 0) {
-            mapDataRequest.setParameters(parameterList
-                    .toArray(new String[parameterList.size()]));
+            mapDataRequest.setParameters(
+                    parameterList.toArray(new String[parameterList.size()]));
         }
 
         IGeometryData[] geometryData = DataAccessLayer
@@ -919,13 +954,14 @@ public class GeoMapUtilities {
                 IGeometryData mappingData = mapping.get(ugc);
                 if (hazardArea.get(ugc).equals(HAZARD_AREA_ALL)) {
                     result.put(ugc, mappingData);
-                } else if (hazardArea.get(ugc).equals(HAZARD_AREA_INTERSECTION)) {
+                } else if (hazardArea.get(ugc)
+                        .equals(HAZARD_AREA_INTERSECTION)) {
                     Geometry mappingGeometry = mappingData.getGeometry();
                     GeometryCollection asCollection = (GeometryCollection) (HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE
                             .equals(hazardEvent
-                                    .getHazardAttribute(VISIBLE_GEOMETRY)) ? hazardEvent
-                            .getFlattenedGeometry() : hazardEvent
-                            .getProductGeometry());
+                                    .getHazardAttribute(VISIBLE_GEOMETRY))
+                                            ? hazardEvent.getFlattenedGeometry()
+                                            : hazardEvent.getProductGeometry());
                     for (int geometryIndex = 0; geometryIndex < asCollection
                             .getNumGeometries(); geometryIndex++) {
                         Geometry geometry = asCollection
@@ -964,8 +1000,8 @@ public class GeoMapUtilities {
      */
     private Map<String, IGeometryData> getUgcsGeometryDataMapping(
             String mapDatabaseTableName, Set<IGeometryData> mapGeometryData) {
-        return getUgcBuilder(mapDatabaseTableName).ugcsToMapGeometryData(
-                mapGeometryData);
+        return getUgcBuilder(mapDatabaseTableName)
+                .ugcsToMapGeometryData(mapGeometryData);
     }
 
     /**
@@ -995,8 +1031,8 @@ public class GeoMapUtilities {
      * @return Hazard type entry.
      */
     private HazardTypeEntry getHazardTypeEntry(IHazardEvent hazardEvent) {
-        return configManager.getHazardTypes().get(
-                HazardEventUtilities.getHazardType(hazardEvent));
+        return configManager.getHazardTypes()
+                .get(HazardEventUtilities.getHazardType(hazardEvent));
     }
 
     /**
@@ -1054,8 +1090,8 @@ public class GeoMapUtilities {
             Geometry mappingGeometry = mapGeometryData.getGeometry();
             geometries.add(mappingGeometry.union());
         }
-        Geometry result = geometryFactory.createGeometryCollection(geometries
-                .toArray(new Geometry[geometries.size()]));
+        Geometry result = geometryFactory.createGeometryCollection(
+                geometries.toArray(new Geometry[geometries.size()]));
         result = GeometryPrecisionReducer.reduce(result, precisionModel);
         return result;
     }
@@ -1097,17 +1133,17 @@ public class GeoMapUtilities {
         /*
          * Check for small polygons by making inclusions 0.0.
          */
-        double myInclusionFraction = applyIntersectionThreshold ? inclusionFraction
-                : 0.0;
-        double myInclusionAreaInSqKm = applyIntersectionThreshold ? inclusionAreaInSqKm
-                : 0.0;
+        double myInclusionFraction = applyIntersectionThreshold
+                ? inclusionFraction : 0.0;
+        double myInclusionAreaInSqKm = applyIntersectionThreshold
+                ? inclusionAreaInSqKm : 0.0;
 
         /*
          * Get the flattened hazard geometry, and reduce it.
          */
         Geometry hazardGeometry = hazardEvent.getFlattenedGeometry();
-        Geometry reducedHazardGeometry = GeometryPrecisionReducer.reduce(
-                hazardGeometry, precisionModel);
+        Geometry reducedHazardGeometry = GeometryPrecisionReducer
+                .reduce(hazardGeometry, precisionModel);
 
         /*
          * Iterate through the map geometries, adding each in turn that
@@ -1126,8 +1162,8 @@ public class GeoMapUtilities {
             for (int j = 0; j < hazardGeometry.getNumGeometries(); j++) {
                 Geometry hazardSubGeometry = hazardGeometry.getGeometryN(j);
                 for (int k = 0; k < mapGeometry.getNumGeometries(); k++) {
-                    if (hazardSubGeometry.intersects(mapGeometry
-                            .getGeometryN(k))) {
+                    if (hazardSubGeometry
+                            .intersects(mapGeometry.getGeometryN(k))) {
                         intersection = true;
                         break;
                     }
@@ -1143,8 +1179,8 @@ public class GeoMapUtilities {
             /*
              * Reduce the map geometry.
              */
-            Geometry reducedMapGeometry = GeometryPrecisionReducer.reduce(
-                    mapGeometry, precisionModel);
+            Geometry reducedMapGeometry = GeometryPrecisionReducer
+                    .reduce(mapGeometry, precisionModel);
 
             /*
              * The default rule is to include the geometry.
@@ -1316,10 +1352,32 @@ public class GeoMapUtilities {
      * @return <code>true</code> if the map geometry should be included,
      *         <code>false</code> otherwise.
      */
-    private boolean testInclusion(Geometry mapGeometry,
-            Geometry hazardGeometry, boolean inclusionFractionTest,
-            double inclusionFraction, boolean inclusionAreaTest,
-            double inclusionAreaInSqKm) {
+    private boolean testInclusion(Geometry mapGeometry, Geometry hazardGeometry,
+            boolean inclusionFractionTest, double inclusionFraction,
+            boolean inclusionAreaTest, double inclusionAreaInSqKm) {
+
+        /*
+         * Iterate through the leaf geometries of the provided hazard geometry,
+         * looking for at least one that is polygonal. If none of them are
+         * polygonal, then assume that inclusion is true, since areal-based
+         * inclusion testing will always fail if one of the geometries for which
+         * to compute the intersection is non-polygonal.
+         * 
+         * TODO: Is there anything else that should be done to determine whether
+         * a linear or puntal hazard geometry should include an areal map
+         * geometry? This may be too liberal an approach.
+         */
+        boolean polygonal = false;
+        for (Geometry hazardLeafGeometry : AdvancedGeometryUtilities
+                .getFlattenedGeometryList(hazardGeometry)) {
+            if (hazardLeafGeometry instanceof Polygonal) {
+                polygonal = true;
+                break;
+            }
+        }
+        if (polygonal == false) {
+            return true;
+        }
         try {
             Geometry intersection = hazardGeometry.intersection(mapGeometry);
             double intersectionAreaInSquareDegrees = intersection.getArea();
@@ -1340,8 +1398,8 @@ public class GeoMapUtilities {
                 boolean includedByArea = false;
                 if (inclusionAreaTest) {
                     Point centroid = intersection.getCentroid();
-                    double cosLat = Math.cos(Math.toRadians(centroid
-                            .getCoordinate().y));
+                    double cosLat = Math
+                            .cos(Math.toRadians(centroid.getCoordinate().y));
                     double inclusionAreaInSquareDegrees = inclusionAreaInSqKm
                             / (KM_PER_DEGREE_AT_EQUATOR
                                     * KM_PER_DEGREE_AT_EQUATOR * cosLat);
@@ -1371,9 +1429,8 @@ public class GeoMapUtilities {
             /*
              * TODO Use GeometryPrecisionReducer?
              */
-            statusHandler.warn(
-                    "Encountered topology exception when attempting "
-                            + "to test for inclusion: ", e.getMessage());
+            statusHandler.warn("Encountered topology exception when attempting "
+                    + "to test for inclusion: ", e.getMessage());
             return false;
         }
     }
@@ -1388,5 +1445,9 @@ public class GeoMapUtilities {
             cwaGeometry = buildCwaGeometry();
         }
         return cwaGeometry;
+    }
+
+    public void clearCWAGeometry() {
+        cwaGeometry = null;
     }
 }

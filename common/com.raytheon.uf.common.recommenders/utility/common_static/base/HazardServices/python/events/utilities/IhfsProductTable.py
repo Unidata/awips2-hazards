@@ -106,15 +106,16 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    Aug 14 2015     9988          Chris.Cody     Initial version
+#    Sep 12, 2016    19147         Robert.Blum    Removed use of pytz and mktime().
 #
 #
 
 import JUtil
 import datetime
 import time
-import pytz
+import dateutil.tz
 from operator import itemgetter
-
+import TimeUtils
 import numpy
 
 from com.raytheon.uf.common.time import SimulatedTime
@@ -132,9 +133,9 @@ class IhfsProductTable(object):
     IHFS_SORT_BY_RIVER_MILE = 'SORT_BY_RIVER_NAME'
     # Input Setting: Boolean: Display LID Value (True) or Stream (False)
     IHFS_USE_LID_VALUE = 'USE_LID_VALUE'
-    # Input Setting: String: pytz recognized Database time zone (Default: GMT)
+    # Input Setting: String: Database time zone (Default: GMT)
     IHFS_DATABASE_TIME_ZONE = 'DATABASE_TIME_ZONE'
-    # Input Setting: String: pytz recognized Report time zone (Default: CST6CDT)
+    # Input Setting: String: Report time zone (Default: CST6CDT)
     IHFS_REPORT_TIME_ZONE = 'REPORT_TIME_ZONE'
     # Input Setting: Integer: Number of HOURS for Observed Lookback (Most recent value is used)
     IHFS_OBSERVED_LOOKBACK_HOURS = 'OBSERVED_LOOKBACK_HOURS'
@@ -641,7 +642,7 @@ class IhfsProductTable(object):
     def retrieveIhfsForecastBasisTime(self, forecastTableName):
         
         databaseTimeZoneString = self._inputSettingsDict[self.IHFS_DATABASE_TIME_ZONE]
-        databaseTimeZone = pytz.timezone(databaseTimeZoneString)
+        databaseTimeZone = dateutil.tz.gettz(databaseTimeZoneString)
         
         forecastBasisTimeString = self._forecastBasisTimeDict.get(forecastTableName, None)
         if forecastBasisTimeString == None:
@@ -671,7 +672,7 @@ class IhfsProductTable(object):
     # 
     def computeForecastEndTime(self, forecastStartTime, forecastNumDays):
         databaseTimeZoneString = self._inputSettingsDict[self.IHFS_DATABASE_TIME_ZONE]
-        databaseTimeZone = pytz.timezone(databaseTimeZoneString)
+        databaseTimeZone = dateutil.tz.gettz(databaseTimeZoneString)
         forecastStartTimestampInSecs = self.convertDateStringToTimestamp(forecastStartTime)
         forecastEndTimestampInSecs = forecastStartTimestampInSecs + (forecastNumDays * self.SECS_PER_DAY)
         forecastEndTime = datetime.datetime.fromtimestamp(forecastEndTimestampInSecs, databaseTimeZone) 
@@ -699,7 +700,7 @@ class IhfsProductTable(object):
     # Convert a timestamp (in Seconds OR in Milliseconds) to a (database) date time string (YYYY-mm-dd HH:MM:SS) 
     #
     # @param timestampInMilsOrSecs Timestamp in Seconds or Milliseconds
-    # @param timeZoneString  Time Zone String identifier recognized by pytz
+    # @param timeZoneString  Time Zone String identifier
     # @return dateTimeString Input Date Time String (YYYY-mm-dd HH:MM:SS)
     # 
     def convertTimeStampToDateString(self, timestampInMilsOrSecs, timeZoneString=None):
@@ -716,7 +717,7 @@ class IhfsProductTable(object):
             timestampInSecs = timestampInMilsOrSecs
         
         
-        timeZone = pytz.timezone(timeZoneString)
+        timeZone = dateutil.tz.gettz(timeZoneString)
         theDate = datetime.datetime.fromtimestamp(timestampInSecs, timeZone) 
         return self.DATABASE_DATE_FORMAT.format(theDate.year, theDate.month, theDate.day, 
                                                 theDate.hour, theDate.minute, theDate.second)
@@ -991,7 +992,7 @@ class IhfsProductTable(object):
             return None
         
         databaseTimeZoneString = self._inputSettingsDict[self.IHFS_DATABASE_TIME_ZONE]
-        databaseTimeZone = pytz.timezone(databaseTimeZoneString)
+        databaseTimeZone = dateutil.tz.gettz(databaseTimeZoneString)
         
         forecastStartDateTime = datetime.datetime.strptime(forecastStartTime, "%Y-%m-%d %H:%M:%S")
         intHour = int (forecastHour)
@@ -1061,9 +1062,9 @@ class IhfsProductTable(object):
     def getForecastHourString(self, forecastHour):
 
         databaseTimeZoneString = self._inputSettingsDict[self.IHFS_DATABASE_TIME_ZONE]
-        databaseTimeZone = pytz.timezone(databaseTimeZoneString)
+        databaseTimeZone = dateutil.tz.gettz(databaseTimeZoneString)
         reportTimeZoneString = self._inputSettingsDict[self.IHFS_REPORT_TIME_ZONE]
-        reportTimeZone = pytz.timezone(reportTimeZoneString)
+        reportTimeZone = dateutil.tz.gettz(reportTimeZoneString)
 
         intHour = int( forecastHour)
         dateTimeGmtNow = datetime.datetime.now(databaseTimeZone)
@@ -1097,7 +1098,7 @@ class IhfsProductTable(object):
             obsDateTime = obsDateTime // 1000
 
         databaseTimeZoneString = self._inputSettingsDict[self.IHFS_DATABASE_TIME_ZONE]
-        databaseTimeZone = pytz.timezone(databaseTimeZoneString)
+        databaseTimeZone = dateutil.tz.gettz(databaseTimeZoneString)
         
         observedDate =  datetime.datetime.fromtimestamp(obsDateTime, databaseTimeZone)
         numberWeekDay = observedDate.weekday()

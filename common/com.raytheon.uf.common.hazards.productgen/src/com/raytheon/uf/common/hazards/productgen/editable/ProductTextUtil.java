@@ -40,6 +40,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Aug 26, 2013            mnash     Initial creation
  * Apr  7, 2014 2917       jsanchez  Changed the methods to accept eventIDs as a List<Integer>
  * Aug 03, 2015 8836       Chris.Cody Changes for a configurable Event Id
+ * Nov 10, 2016 22119      Kevin.Bisanz Changes to export/import product text by officeID.
  * 
  * </pre>
  * 
@@ -49,27 +50,30 @@ import com.raytheon.uf.common.status.UFStatus;
 
 public class ProductTextUtil {
 
-    private static final IUFStatusHandler handler = UFStatus
+    private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(ProductTextUtil.class);
 
     /**
      * Sends a request to EDEX to store the text based on the key in the map,
-     * the product category, the product id, the segment, and the event id
+     * the product category, the product id, the segment, the event id, and the
+     * office id.
      * 
      * @param key
      * @param productCategory
      * @param productID
      * @param segment
      * @param eventIDs
+     * @param officeID
      * @param value
      */
     public static ProductTextResponse createProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<String> eventIDs, Serializable value) {
+            ArrayList<String> eventIDs, String officeID, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventIDs, value, ProductRequestType.CREATE);
+                productID, segment, eventIDs, officeID, value,
+                ProductRequestType.CREATE);
         if (response.getExceptions() != null) {
-            handler.error(
+            statusHandler.error(
                     "Unable to store product text, most likely the database already contains an entry",
                     response.getExceptions());
         }
@@ -84,15 +88,17 @@ public class ProductTextUtil {
      * @param productID
      * @param segment
      * @param eventIDs
+     * @param officeID
      * @param value
      */
     public static ProductTextResponse updateProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<String> eventIDs, Serializable value) {
+            ArrayList<String> eventIDs, String officeID, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventIDs, value, ProductRequestType.UPDATE);
+                productID, segment, eventIDs, officeID, value,
+                ProductRequestType.UPDATE);
         if (response.getExceptions() != null) {
-            handler.error(
+            statusHandler.error(
                     "Unable to update product text, most likely the database does not contain a matching entry",
                     response.getExceptions());
         }
@@ -101,22 +107,24 @@ public class ProductTextUtil {
 
     /**
      * Sends a request to EDEX to delete the text based on the key in the map,
-     * the product category, the product id, the segment, and the event id
+     * the product category, the product id, the segment, the event id, and the
+     * office id.
      * 
      * @param key
      * @param productCategory
      * @param productID
      * @param segment
      * @param eventIDs
-     * @param value
+     * @param officeID
      */
     public static ProductTextResponse deleteProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<String> eventIDs) {
+            ArrayList<String> eventIDs, String officeID) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventIDs, null, ProductRequestType.DELETE);
+                productID, segment, eventIDs, officeID, null,
+                ProductRequestType.DELETE);
         if (response.getExceptions() != null) {
-            handler.error(
+            statusHandler.error(
                     "Unable to update product text, most likely the database does not contain a matching entry",
                     response.getExceptions());
         }
@@ -125,21 +133,23 @@ public class ProductTextUtil {
 
     /**
      * Sends a request to EDEX that retrieves text based on the user, the key in
-     * the map, the product category, the product id, the segment, and the event
-     * id
+     * the map, the product category, the product id, the segment, the event id,
+     * and the office id.
      * 
      * @param key
      * @param productCategory
-     * @param product
+     * @param productID
      * @param segment
      * @param eventIDs
+     * @param officeID
      * @return
      */
     public static List<ProductText> retrieveProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<String> eventIDs) {
+            ArrayList<String> eventIDs, String officeID) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventIDs, null, ProductRequestType.RETRIEVE);
+                productID, segment, eventIDs, officeID, null,
+                ProductRequestType.RETRIEVE);
         if (response != null && response.getText() != null) {
             return response.getText();
         }
@@ -154,19 +164,66 @@ public class ProductTextUtil {
      * @param productID
      * @param segment
      * @param eventIDs
+     * @param officeID
      * @param value
      * @return
      */
     public static ProductTextResponse createOrUpdateProductText(String key,
             String productCategory, String productID, String segment,
-            ArrayList<String> eventIDs, Serializable value) {
+            ArrayList<String> eventIDs, String officeID, Serializable value) {
         ProductTextResponse response = sendRequest(key, productCategory,
-                productID, segment, eventIDs, value,
+                productID, segment, eventIDs, officeID, value,
                 ProductRequestType.SAVE_OR_UPDATE);
         if (response.getExceptions() != null) {
-            handler.error("Unable to store product text",
+            statusHandler.error("Unable to store product text",
                     response.getExceptions());
         }
+        return response;
+    }
+
+    /**
+     * Sends a request to EDEX that retrieves text based on the user, the key in
+     * the map, the product category, the product id, the segment, the event id,
+     * and the office id. The resulting items are then exported to the provided
+     * filename.
+     *
+     * @param key
+     * @param productCategory
+     * @param productID
+     * @param segment
+     * @param eventIDs
+     * @param officeID
+     * @param filePath
+     * @return
+     */
+    public static ProductTextResponse exportProductText(String key,
+            String productCategory, String productID, String segment,
+            ArrayList<String> eventIDs, String officeID, String filePath) {
+        ProductTextResponse response = sendRequest(key, productCategory,
+                productID, segment, eventIDs, officeID, null,
+                ProductRequestType.EXPORT, filePath);
+        if (response.getExceptions() != null) {
+            statusHandler.error("Unable to export product text to " + filePath,
+                    response.getExceptions());
+        }
+
+        return response;
+    }
+
+    /**
+     * Sends a request to EDEX to import items from the provided file path.
+     *
+     * @param filePath
+     * @return
+     */
+    public static ProductTextResponse importProductText(String filePath) {
+        ProductTextResponse response = sendRequest(null, null, null, null, null,
+                null, null, ProductRequestType.IMPORT, filePath);
+        if (response.getExceptions() != null) {
+            statusHandler.error("Unable to import product text to " + filePath,
+                    response.getExceptions());
+        }
+
         return response;
     }
 
@@ -178,22 +235,47 @@ public class ProductTextUtil {
      * @param productID
      * @param segment
      * @param eventIDs
+     * @param officeID
      * @param value
      * @param type
+     * @param filePath
      * @return
      */
     private static ProductTextResponse sendRequest(String key,
             String productCategory, String productID, String segment,
-            ArrayList<String> eventIDs, Serializable value,
+            ArrayList<String> eventIDs, String officeID, Serializable value,
             ProductRequestType type) {
+        return sendRequest(key, productCategory, productID, segment, eventIDs,
+                officeID, value, type, null);
+    }
+
+    /**
+     * Helper method for sending the request through.
+     *
+     * @param key
+     * @param productCategory
+     * @param productID
+     * @param segment
+     * @param eventIDs
+     * @param officeID
+     * @param value
+     * @param type
+     * @param filePath
+     * @return
+     */
+    private static ProductTextResponse sendRequest(String key,
+            String productCategory, String productID, String segment,
+            ArrayList<String> eventIDs, String officeID, Serializable value,
+            ProductRequestType type, String filePath) {
         ProductText text = new ProductText(key, productCategory, productID,
-                segment, eventIDs, value);
-        ProductTextRequest request = new ProductTextRequest(text, type);
+                segment, eventIDs, officeID, value);
+        ProductTextRequest request = new ProductTextRequest(text, type,
+                filePath);
         ProductTextResponse response = null;
         try {
             response = (ProductTextResponse) RequestRouter.route(request);
         } catch (Exception e) {
-            handler.error("Unable to send request to server", e);
+            statusHandler.error("Unable to send request to server", e);
         }
         return response;
     }

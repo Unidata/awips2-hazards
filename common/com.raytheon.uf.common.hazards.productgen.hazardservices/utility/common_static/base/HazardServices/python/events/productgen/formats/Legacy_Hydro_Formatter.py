@@ -52,6 +52,8 @@
                                          to stage; instead use values which
                                          have been based on primary PE.
     May 26, 2016    16043   Robert.Blum  Rounding values in the flood point table.
+    Oct 12, 2016    21647   Sara.Stewart Modified RS text
+    Nov 03, 2016    22965   Robert.Blum  Fixed issue with MISSING_VALUE constant.
 '''
 import datetime
 import collections
@@ -63,7 +65,7 @@ from ForecastStageText import ForecastStageText
 from TableText import Table
 from TableText import Column
 
-from HazardConstants import MISSING_VALUE
+from HazardConstants import MISSING_VALUE, MISSING_VALUE_STR
 
 class Format(Legacy_Base_Formatter.Format):
     # String to be displayed in the flood point table if
@@ -71,7 +73,6 @@ class Format(Legacy_Base_Formatter.Format):
     FLOOD_POINT_TABLE_MISSING_VALUE_STRING = 'MSG'
 
     def initialize(self, editableEntries) :
-        self.MISSING_VALUE = MISSING_VALUE
         self._riverForecastUtils = RiverForecastUtils()
         super(Format, self).initialize(editableEntries)
 
@@ -151,7 +152,7 @@ class Format(Legacy_Base_Formatter.Format):
             else:
                 floodStageFlow = hazard.get('floodFlow')
 
-            if floodStageFlow != self.MISSING_VALUE:
+            if floodStageFlow != MISSING_VALUE:
                 (stageFlowName, stageFlowValue, stageFlowUnits, combinedValuesUnits) = self._stageFlowValuesUnits(hazard, floodStageFlow)
                 bulletContent = 'Flood {0} is {1}.'.format(stageFlowName, combinedValuesUnits)
                 
@@ -335,9 +336,9 @@ class Format(Legacy_Base_Formatter.Format):
             if text is None:
                 columns = []
                 # Create the columns
-                columns.append(Column('location', width=16, align='<', labelLine1='___________', labelAlign1='<',  labelLine2='Location', labelAlign2='<'))
+                columns.append(Column('location', width=16, align='<', labelLine1='', labelAlign1='<',  labelLine2='Location', labelAlign2='<'))
                 columns.append(Column('floodStage', width=6, align='<', labelLine1='Fld', labelAlign1='<', labelLine2='Stg', labelAlign2='<'))
-                columns.append(Column('observedStage', width=20, align='<',labelLine1='Observed', labelAlign1='^', labelLine2='Stg    Day  Time', labelAlign2='<'))
+                columns.append(Column('observedStage', width=16, align='<',labelLine1='Observed', labelAlign1='<', labelLine2='Stg   Day/Time', labelAlign2='<'))
 
                 hazardEventDict = HazardEventDicts[0]
                 observedTime_ms = hazardEventDict.get('observedTime_ms')
@@ -347,7 +348,7 @@ class Format(Legacy_Base_Formatter.Format):
                 headerLabel = day1Label + '   '+day2Label+ '   '+day3Label
 
                 timeStr = self.formatTime(observedTime_ms, format='%I %p', timeZones=self.timezones)
-                columns.append(Column('forecastStage_next3days', width=20, align='<', labelLine1='Forecast ' + timeStr, labelAlign1='<', labelLine2=headerLabel, labelAlign2='<'))
+                columns.append(Column('forecastStage_next3days', width=18, align='<', labelLine1='Forecasts (' + timeStr + ")", labelAlign1='<', labelLine2=headerLabel, labelAlign2='<'))
      
                 # Got the column headings now make the required data structure for the table
                 tableValuesDict = self.createDataDictForFloodPointTable(HazardEventDicts)
@@ -408,23 +409,29 @@ class Format(Legacy_Base_Formatter.Format):
                 valueDictionary = {}
                 # Info needed to create column values
                 observedTime = hazard.get('observedTime_ms')
-                timeStr = self.formatTime(observedTime, '%a    %I %p', timeZones=self.timezones)
+                timeStr = self.formatTime(observedTime, format='%a %I %p', timeZones=self.timezones)
                 # Round - result is a string
                 os = hazard.get('observedStage')
-                if os != self.MISSING_VALUE :
+                if os != MISSING_VALUE :
                     observedStage = self._tpc.roundFloat(os, returnString=True)
                 else:
                     observedStage = self.FLOOD_POINT_TABLE_MISSING_VALUE_STRING
                 floodStage = self._tpc.roundFloat(hazard.get('floodStage'), returnString=True)
-                day1 = self._tpc.roundFloat(hazard.get('day1'))
-                day2 = self._tpc.roundFloat(hazard.get('day2'))
-                day3 = self._tpc.roundFloat(hazard.get('day3'))
-                next3DaysValue = self.format(day1, 6) + self.format(day2, 6) + self.format(day3, 6)
+                day1 = hazard.get('day1')
+                if day1 != MISSING_VALUE_STR:
+                    day1 = self._tpc.roundFloat(day1)
+                day2 = hazard.get('day2')
+                if day2 != MISSING_VALUE_STR:
+                    day2 = self._tpc.roundFloat(day2)
+                day3 = hazard.get('day3')
+                if day3 != MISSING_VALUE_STR:
+                    day3= self._tpc.roundFloat(day3)
+                next3DaysValue = self.format(day1, width=6) + self.format(day2, width=6) + self.format(day3, width=6)
 
                 # Add all the column values to the dictionary
                 valueDictionary['location'] = hazard.get('riverPointName')
-                valueDictionary['floodStage'] = floodStage
-                valueDictionary['observedStage'] = observedStage + '   ' + timeStr
+                valueDictionary['floodStage'] = self.format(floodStage, width=6)
+                valueDictionary['observedStage'] = self.format(observedStage, width=6) + self.format(timeStr, width=10)
                 valueDictionary['forecastStage_next3days'] = next3DaysValue
 
                 # Add the dictionary to the list
@@ -434,19 +441,18 @@ class Format(Legacy_Base_Formatter.Format):
 
     def format(self, value, width=None, align='<'):
         value = str(value)
-        if value == str(self.MISSING_VALUE):
+        if value == MISSING_VALUE_STR:
             value = self.FLOOD_POINT_TABLE_MISSING_VALUE_STRING
         if width is None:
             width = len(value)
         formatStr = '{:'+align+str(width)+'}'
         return formatStr.format(value)
 
-
     def formatTime(self, time_ms, format='%a    %I %p', timeZones=[]): 
         timeStr = self._tpc.getFormattedTime(time_ms, format, timeZones=timeZones)
         timeStr = timeStr.replace("AM", 'am')
         timeStr = timeStr.replace("PM", 'pm')
-        timeStr = timeStr.replace(' 0', '  ')
+        timeStr = timeStr.replace(' 0', ' ')
         return timeStr
 
     def typeOfFloodingMapping(self, immediateCuase):
@@ -455,7 +461,7 @@ class Format(Legacy_Base_Formatter.Format):
             'DR' : 'A dam floodgate release',
             'GO' : 'A glacier-dammed lake outburst',
             'IJ' : 'An ice jam',
-            'RS' : 'Extremely rapid snowmelt',
+            'RS' : '', #Blanked out to match GFE products
             'SM' : 'Snowmelt'
             }
         if mapping.has_key(immediateCuase):

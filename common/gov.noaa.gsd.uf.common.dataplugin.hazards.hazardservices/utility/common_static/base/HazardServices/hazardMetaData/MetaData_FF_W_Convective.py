@@ -24,7 +24,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getRainAmt(),
                     self.getAdditionalInfo(),
                     self.getFloodLocation(),
-                    self.getLocationsAffected(self.hazardEvent),
+                    self.getLocationsAffected(),
                     self.getCTAs(),
                     # Preserving CAP defaults for future reference.                 
 #                     self.getCAP_Fields([
@@ -46,7 +46,7 @@ class MetaData(CommonMetaData.MetaData):
                     self.getAdditionalInfo(),
                     self.getFloodLocation(),
                     # TODO this should only be on the HID for EXT and not CON
-                    self.getLocationsAffected(self.hazardEvent),
+                    self.getLocationsAffected(),
                     self.getCTAs(),
             ]
         return {
@@ -132,7 +132,7 @@ class MetaData(CommonMetaData.MetaData):
 
     def getCTA_Choices(self):
         return [
-            self.ctaFlashFloodWarningMeans(),
+            self.ctaFFWEmergency(),
             self.ctaTurnAround(),
             self.ctaActQuickly(),
             self.ctaChildSafety(),
@@ -145,6 +145,7 @@ class MetaData(CommonMetaData.MetaData):
             self.ctaBurnAreas(),
             self.ctaCamperSafety(),
             self.ctaReportFlooding(),
+            self.ctaFlashFloodWarningMeans(),
             ]
 
     def CAP_WEA_Values(self):

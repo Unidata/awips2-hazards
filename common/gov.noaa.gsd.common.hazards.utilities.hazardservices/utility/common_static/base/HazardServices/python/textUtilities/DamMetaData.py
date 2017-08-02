@@ -1,25 +1,11 @@
 """
 This class holds the metadata for DamBreaks, such as scenarios and rules of thumb
 
- @since: February 2015
- @author: GSD Hazard Services Team
- 
- History:
- Date         Ticket#    Engineer    Description
- ------------ ---------- ----------- --------------------------
- Feb 24, 2015            kmanross     Initial development
- Sep 15, 2015    8687    Robert.Blum Fixed dictionary keys and moved to textUtilities.
-
-
-"""
-
-
-"""
     Expects dictionary structure like: where
     DAM NAME comes from 'maps' database table 'mapdata.daminundation'
     'riverName', 'cityInfo', 'scenarios', and 'ruleofthumb' come from
-    warngen templates, or your local agency that can supply such information 
-    
+    warngen templates, or your local agency that can supply such information
+
     '[DAM NAME]' : {
         'riverName': 'TBD_RIVER',
         'cityInfo': 'TBD_CITY',
@@ -31,8 +17,8 @@ This class holds the metadata for DamBreaks, such as scenarios and rules of thum
                       },
             'ruleofthumb': '''TBD_ROT''',
     }
-        
-    Eg.                 
+
+    Eg.
     'Papio Dam Site 13 (Lawerence Youngman Lake)': {
         'riverName': 'Phil River',
         'cityInfo': 'Evan...located about 3 miles',
@@ -47,5 +33,5 @@ This class holds the metadata for DamBreaks, such as scenarios and rules of thum
                             ''',
         },
 """
-damInundationMetadata = {
+DamMetaData = {
 }

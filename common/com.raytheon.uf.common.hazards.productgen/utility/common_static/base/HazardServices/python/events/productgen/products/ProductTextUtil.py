@@ -37,48 +37,50 @@ from com.raytheon.uf.common.hazards.productgen.editable import ProductTextUtil
 #    01/22/13                      mnash       Initial Creation.
 #    12/15/14        3846          hansen      bug fix -- added "value" argument to 
 #                                                createOrUpdateProductText
+#    11/04/16        22119         Kevin.Bisanz Added officeID parameter to assist
+#                                              in site export.
 # 
 #
 
-def createProductText(key, productCategory, productID, segment, eventID, value):
+def createProductText(key, productCategory, productID, segment, eventID, officeID, value):
     '''
     Stores an entry in the database.  The value must be able to be converted by JUtil
     to a Java Serializable object.
     '''
     val = JUtil.pyValToJavaObj(value)
     eventID = JUtil.pyValToJavaObj(eventID)
-    ProductTextUtil.createProductText(key, productCategory, productID, segment, eventID, val)
+    ProductTextUtil.createProductText(key, productCategory, productID, segment, eventID, officeID, val)
 
-def updateProductText(key, productCategory, productID, segment, eventID, value):
+def updateProductText(key, productCategory, productID, segment, eventID, officeID, value):
     '''
     Updates an entry in the database.  The value must be able to be converted by JUtil
     to a Java Serializable object.
     '''
     val = JUtil.pyValToJavaObj(value)
     eventID = JUtil.pyValToJavaObj(eventID)
-    ProductTextUtil.updateProductText(key, productCategory, productID, segment, eventID, val)
+    ProductTextUtil.updateProductText(key, productCategory, productID, segment, eventID, officeID, val)
     
-def deleteProductText(key, productCategory, productID, segment, eventID):
+def deleteProductText(key, productCategory, productID, segment, eventID, officeID):
     '''
     Deletes an entry from the database.
     '''
     eventID = JUtil.pyValToJavaObj(eventID)
-    ProductTextUtil.deleteProductText(key, productCategory, productID, segment, eventID)
+    ProductTextUtil.deleteProductText(key, productCategory, productID, segment, eventID, officeID)
 
-def createOrUpdateProductText(key, productCategory, productID, segment, eventID, value):
+def createOrUpdateProductText(key, productCategory, productID, segment, eventID, officeID, value):
     '''
     Saves or updates to the database.
     '''
     eventID = JUtil.pyValToJavaObj(eventID)
-    ProductTextUtil.createOrUpdateProductText(key, productCategory, productID, segment, eventID, value)
+    ProductTextUtil.createOrUpdateProductText(key, productCategory, productID, segment, eventID, officeID, value)
 
-def retrieveProductText(key, productCategory, productID, segment, eventID):
+def retrieveProductText(key, productCategory, productID, segment, eventID, officeID=None):
     '''
     Returns a list of ProductText objects.  Retrieves from the database based on the keys passed in.
     If the user wants to match anything in that column, they should pass in None for that column.
     '''
     eventID = JUtil.pyValToJavaObj(eventID)    
-    productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventID)
+    productTextList = ProductTextUtil.retrieveProductText(key, productCategory, productID, segment, eventID, officeID)
     
     if productTextList is None:
         return []

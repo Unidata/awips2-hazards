@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
-import gov.noaa.gsd.viz.mvp.IView;
-
 import java.util.List;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+
+import gov.noaa.gsd.viz.mvp.IView;
 
 /**
  * Interface describing the methods required for implementing a tools view, used
@@ -31,7 +31,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Jan 30, 2015    3626    Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
  * Nov 10, 2015   12762    Chris.Golden      Added support for use of new recommender manager.
- * 
+ * Aug 15, 2017   22757    Chris.Golden      Added ability for recommenders to specify either
+ *                                           a message to display, or a dialog to display,
+ *                                           with their results (that is, within the returned
+ *                                           event set).
  * </pre>
  * 
  * @author Chris.Golden
@@ -74,6 +77,30 @@ public interface IToolsView<C, E extends Enum<E>> extends IView<C, E> {
      *            identifiers.
      */
     public void showToolParameterGatherer(String tool, ToolType type,
+            RecommenderExecutionContext context, String jsonParams);
+
+    /**
+     * Show a tool subview that is used to display results for a tool that was
+     * executed.
+     * <p>
+     * TODO: Consider renaming this whole package and its classes from "ToolXXX"
+     * to "RecommenderXXX", since everything here is used for recommenders only.
+     * It doesn't make sense that a {@link RecommenderExecutionContext} is being
+     * passed in if it's for tools, not specifically recommenders.
+     * 
+     * @param tool
+     *            Identifier for the tool for which results are to be shown.
+     * @param type
+     *            Type of the tool.
+     * @param context
+     *            Execution context in which this tool was run.
+     * @param jsonParams
+     *            JSON string giving the parameters for this subview. Within the
+     *            set of all fields that are defined by these parameters, all
+     *            the fields (megawidget specifiers) must have unique
+     *            identifiers.
+     */
+    public void showToolResults(String tool, ToolType type,
             RecommenderExecutionContext context, String jsonParams);
 
     /**

@@ -14,6 +14,7 @@
     Jun 08, 2016   9620      Robert.Blum Changed self._purgeHours to a float since purge hours can
                                          include minutes (15min intervals).
     Jul 06, 2016  18257      Kevin.Bisanz Added eventSet parameter to executeFrom(..)
+    Oct 21, 2016  22489      Robert.Blum  Removed unused flags.
                                          
     
     @author Chris.Cody
@@ -45,8 +46,6 @@ class Product(HydroGenerator.Product):
         self._productCategory = "FFA" #This is necessary to generate the PIL value
         self._productName = 'Flood Watch'
         self._purgeHours = 8.0
-        self._includeAreaNames = True
-        self._includeCityNames = True
         # Not Polygon-based, so locations listed will not be limited to within the polygon, 
         # but rather than UGC area e.g. county or zone
         self._polygonBased = False

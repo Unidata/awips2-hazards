@@ -29,9 +29,6 @@ import java.util.Map.Entry;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.xml.bind.JAXBException;
 
-import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
-import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
-
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.vtec.HazardEventVtec;
@@ -41,6 +38,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardQueryParam
 import com.raytheon.uf.common.serialization.JAXBManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+
+import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
+import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
 
 /**
  * Utility used by the Hazard Services web services
@@ -58,6 +58,10 @@ import com.raytheon.uf.common.status.UFStatus;
  * May 03, 2016 18193     Ben.Phillippe Replication of Hazard VTEC Records
  *                                      services.
  * May 06, 2016 18202     Robert.Blum   Changes for operational mode.
+ * Dec 08, 2016 26663     Kevin.Bisanz  Fix to createAttributeQuery(boolean,
+ *                                      Class<?>, List<HazardQueryParameter>)
+ *                                      from Richard Peter to improve query
+ *                                      performance.
  * Feb 16, 2017 29138     Chris.Golden  Changed to work with new hazard event
  * </pre>
  * 
@@ -73,8 +77,13 @@ public class HazardEventServicesUtil {
     /** The base part of the slot query */
     private static final String QUERY_BASE = "select obj from RegistryObjectType obj ";
 
+    protected static final String SLOT_CRITERIA_CLAUSE = "obj.id in (select slot%1$s.parent_id from SlotType slot%1$s inner join slot%1$s.slotValue value%1$s where slot%1$s.name = '%2$s' and (";
+
+    protected static final String VALUE_CLAUSE = "value%1$s.%2$s %3$s %4$s";
+
     /** Jaxb Manager for marshalling the response */
     private static JAXBManager responseJaxb;
+
     static {
         try {
             responseJaxb = new JAXBManager(HazardEvent.class,
@@ -136,52 +145,38 @@ public class HazardEventServicesUtil {
         StringBuilder selectFrom = new StringBuilder(QUERY_BASE);
         StringBuilder whereClause = new StringBuilder(" where ");
 
-        int mapSize = queryParameters.size();
         int i = 0;
         for (HazardQueryParameter parameter : queryParameters) {
             if (parameter.getOperand().trim().equalsIgnoreCase("in")) {
                 parameter.setOperand("=");
             }
 
-            // Create joins
-            selectFrom.append(" inner join obj.slot as slot");
-            selectFrom.append(i);
-            selectFrom.append(" inner join slot");
-            selectFrom.append(i);
-            selectFrom.append(".slotValue as value");
-            selectFrom.append(i);
-
-            // Create where clause
-            whereClause.append("(slot");
-            whereClause.append(i);
-            whereClause.append(".name='");
-            whereClause.append(parameter.getKey());
-            whereClause.append("' and ");
-
-            whereClause.append("(");
-            for (int j = 0; j < parameter.getValues().length; j++) {
-                String column = getColumnName(parameter.getValues()[j]);
-                whereClause.append("value");
-                whereClause.append(i);
-                whereClause.append(".");
-                whereClause.append(column);
-                whereClause.append(parameter.getOperand());
-                if (column.equals("stringValue")) {
-                    whereClause.append("'");
-                }
-                whereClause.append(parameter.getValues()[j]);
-                if (column.equals("stringValue")) {
-                    whereClause.append("'");
-                }
-                if (j != parameter.getValues().length - 1) {
-                    whereClause.append(" or ");
-                }
-            }
-            whereClause.append("))");
-
-            if (i != mapSize - 1) {
+            if (i != 0) {
                 whereClause.append(" and ");
             }
+
+            // add to where clause
+            whereClause.append(
+                    String.format(SLOT_CRITERIA_CLAUSE, i, parameter.getKey()));
+            boolean addOr = false;
+            for (Object val : parameter.getValues()) {
+                if (addOr) {
+                    whereClause.append(" or ");
+                } else {
+                    addOr = true;
+                }
+
+                String column = getColumnName(val);
+                if (column.equals("stringValue")) {
+                    val = "'" + val + "'";
+                }
+
+                whereClause.append(String.format(VALUE_CLAUSE, i, column,
+                        parameter.getOperand(), val));
+            }
+
+            whereClause.append("))");
+
             i++;
         }
 
@@ -227,16 +222,15 @@ public class HazardEventServicesUtil {
     @SuppressWarnings("unchecked")
     public static <T extends Object> List<T> getContentObjects(
             Collection<RegistryObjectType> result, Class<T> clazz)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         List<T> objs = new ArrayList<T>(result.size());
         if (!result.isEmpty()) {
             for (RegistryObjectType obj : result) {
                 T contentObj;
                 try {
-                    contentObj = (T) responseJaxb
-                            .unmarshalFromXml(((StringValueType) obj
-                                    .getSlotByName("content").getSlotValue())
-                                    .getStringValue());
+                    contentObj = (T) responseJaxb.unmarshalFromXml(
+                            ((StringValueType) obj.getSlotByName("content")
+                                    .getSlotValue()).getStringValue());
                 } catch (JAXBException e) {
                     throw new HazardEventServiceException(
                             "Error unmarshalling content slot", e);
@@ -274,7 +268,8 @@ public class HazardEventServicesUtil {
      *             If JAXB errors occur
      */
     public static String getRegistryObjectResponse(
-            List<RegistryObjectType> result) throws HazardEventServiceException {
+            List<RegistryObjectType> result)
+                    throws HazardEventServiceException {
         HazardEventResponse response = HazardEventResponse.create();
         response.setRegistryObjects(result);
         return marshal(response);
@@ -326,7 +321,8 @@ public class HazardEventServicesUtil {
      */
     @SuppressWarnings("unchecked")
     public static <T extends HazardEventResponse> T checkResponse(
-            String operation, String details, final HazardEventResponse response) {
+            String operation, String details,
+            final HazardEventResponse response) {
         StringBuilder builder = new StringBuilder();
         if (response.success()) {
             builder.append("Successfully executed [");

@@ -19,9 +19,6 @@
  **/
 package com.raytheon.uf.viz.productgen.dialog;
 
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
@@ -67,6 +64,9 @@ import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.impl.ProductValidationUtil;
 import com.raytheon.viz.core.mode.CAVEMode;
 
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+
 /**
  * 
  * The dialog that allows the user to modify editable fields in data produced by
@@ -110,6 +110,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      starting the Jep instances when the latter use numpy is
  *                                      dangerous.
  * Jun 06, 2016 9620       Robert.Blum  Removed isCorrectable restriction when updating the editor tab.
+ * Nov 07, 2016 22119      Kevin.Bisanz Add siteId so that saved/issued changes can be tagged with it.
  * </pre>
  * 
  * @author jsanchez
@@ -159,7 +160,9 @@ public class ProductEditor extends AbstractProductDialog {
      */
     private final boolean isCorrectable;
 
-    /** The progress bar to display that the formatting is being done currently. */
+    /**
+     * The progress bar to display that the formatting is being done currently.
+     */
     private ProgressBar progressBar;
 
     /** The Issue All button */
@@ -174,6 +177,9 @@ public class ProductEditor extends AbstractProductDialog {
     /** The total number of products that are able to be issued */
     protected int issuableProducts;
 
+    /** The site ID */
+    private String siteId;
+
     /**
      * Creates a new ProductEditor on the given shell with the provided
      * generated product lists
@@ -184,6 +190,8 @@ public class ProductEditor extends AbstractProductDialog {
      *            The generated products to be displayed on this product editor
      * @param hazardTypes
      *            Hazard types configuration information.
+     * @param siteId
+     *            Current site ID
      */
     public ProductEditor(Shell parentShell,
             List<GeneratedProductList> generatedProductListStorage,
@@ -191,6 +199,7 @@ public class ProductEditor extends AbstractProductDialog {
         super(parentShell, SWT.RESIZE | SWT.APPLICATION_MODAL,
                 generatedProductListStorage, hazardTypes);
         this.productGeneration = ProductGeneration.getInstance(siteId);
+        this.siteId = siteId;
 
         /*
          * If these products are editable, save a copy for future use
@@ -242,7 +251,8 @@ public class ProductEditor extends AbstractProductDialog {
          * format contained in the product
          */
         for (GeneratedProductList products : generatedProductListStorage) {
-            for (int folderIndex = 0; folderIndex < products.size(); folderIndex++) {
+            for (int folderIndex = 0; folderIndex < products
+                    .size(); folderIndex++) {
 
                 IGeneratedProduct product = products.get(folderIndex);
 
@@ -268,7 +278,7 @@ public class ProductEditor extends AbstractProductDialog {
                  * product
                  */
                 editorManager.addProductDataEditor(product,
-                        new ProductDataEditor(this, productTab, product,
+                        new ProductDataEditor(siteId, this, productTab, product,
                                 editorAndFormatsTabFolder, SWT.VERTICAL,
                                 hazardTypes));
                 /*
@@ -418,18 +428,22 @@ public class ProductEditor extends AbstractProductDialog {
 
                         // When VTEC act is EXP ok to issue.
                         if (act == null) {
-                            handler.warn("No ACT data element for generated product "
-                                    + de.product.getProductID()
-                                    + " can be found; skipping validation of expiration times.");
+                            handler.warn(
+                                    "No ACT data element for generated product "
+                                            + de.product.getProductID()
+                                            + " can be found; skipping validation of expiration times.");
                         } else if (!"EXP".equals(act)) {
-                            Object hzKey = ProductUtils.getDataElement(
-                                    de.product, new String[] { "segments",
-                                            "sections", "vtecRecord", "key" });
+                            Object hzKey = ProductUtils
+                                    .getDataElement(de.product,
+                                            new String[] { "segments",
+                                                    "sections", "vtecRecord",
+                                                    "key" });
                             HazardTypeEntry hte = hazardTypes.get(hzKey);
                             int[] expTimes = hte.getExpirationTime();
                             long curTimeWin = SimulatedTime.getSystemTime()
                                     .getMillis()
-                                    - (expTimes[0] * TimeUtil.MILLIS_PER_MINUTE);
+                                    - (expTimes[0]
+                                            * TimeUtil.MILLIS_PER_MINUTE);
                             long expTime = getProductExpirationTime(de.product,
                                     expTimes[0]);
                             if (expTime <= curTimeWin) {
@@ -464,8 +478,8 @@ public class ProductEditor extends AbstractProductDialog {
      */
     private long getProductExpirationTime(IGeneratedProduct product,
             int expWinMin) {
-        Object o = ProductUtils.getDataElement(product, new String[] {
-                "segments", "expirationTime" });
+        Object o = ProductUtils.getDataElement(product,
+                new String[] { "segments", "expirationTime" });
         if (o instanceof Date) {
             Date expDate = (Date) o;
             return expDate.getTime();
@@ -498,8 +512,8 @@ public class ProductEditor extends AbstractProductDialog {
                 for (Entry<KeyInfo, EditableKeyInfo> entry : keys
                         .getEditableKeyEntries()) {
                     List<String> framedText = ProductValidationUtil
-                            .checkForFramedText((String) entry.getValue()
-                                    .getValue());
+                            .checkForFramedText(
+                                    (String) entry.getValue().getValue());
                     if (framedText.isEmpty() == false) {
                         passValidation = false;
                         productErrors.addAll(framedText);
@@ -530,8 +544,9 @@ public class ProductEditor extends AbstractProductDialog {
             MessageBox msgBox = new MessageBox(shell, SWT.ICON_ERROR);
             msgBox.setText("Validation Error");
             sb.append("No products were issued.");
-            msgBox.setMessage("Product(s) did not validate, you must modify the following regions to issue the product:\n\n"
-                    + sb.toString());
+            msgBox.setMessage(
+                    "Product(s) did not validate, you must modify the following regions to issue the product:\n\n"
+                            + sb.toString());
             msgBox.open();
         }
         return passValidation;
@@ -619,8 +634,8 @@ public class ProductEditor extends AbstractProductDialog {
 
         progressBar.setVisible(true);
         for (GeneratedProductList products : generatedProductListStorage) {
-            List<String> formats = new ArrayList<String>(products.get(0)
-                    .getEntries().keySet());
+            List<String> formats = new ArrayList<String>(
+                    products.get(0).getEntries().keySet());
 
             if (isCorrectable) {
                 productGeneration.generateFrom(products.getProductInfo(),
@@ -648,33 +663,37 @@ public class ProductEditor extends AbstractProductDialog {
                 public void run() {
                     try {
                         for (GeneratedProductList products : generatedProductListStorage) {
-                            if (products.getProductInfo().equals(
-                                    productList.getProductInfo())) {
-                                for (int index = 0; index < productList.size(); index++) {
+                            if (products.getProductInfo()
+                                    .equals(productList.getProductInfo())) {
+                                for (int index = 0; index < productList
+                                        .size(); index++) {
                                     IGeneratedProduct updatedProduct = productList
                                             .get(index);
                                     IGeneratedProduct product = products
                                             .get(index);
 
-                                    product.setEntries(updatedProduct
-                                            .getEntries());
+                                    product.setEntries(
+                                            updatedProduct.getEntries());
                                     product.setEditableEntries(updatedProduct
                                             .getEditableEntries());
                                     product.setData(updatedProduct.getData());
                                     if (isDisposed() == false) {
 
-                                        editorManager.getProductDataEditor(
-                                                product).updateValues(product);
+                                        editorManager
+                                                .getProductDataEditor(product)
+                                                .updateValues(product);
 
                                         editorManager
-                                                .updateFormattedTextViewers(product);
+                                                .updateFormattedTextViewers(
+                                                        product);
                                     }
                                 }
                             }
                         }
 
                         if (isCorrectable) {
-                            setPrevGeneratedProductListStorage(prevGeneratedProductListStorage);
+                            setPrevGeneratedProductListStorage(
+                                    prevGeneratedProductListStorage);
 
                             /*
                              * Update the state of the issueAll button

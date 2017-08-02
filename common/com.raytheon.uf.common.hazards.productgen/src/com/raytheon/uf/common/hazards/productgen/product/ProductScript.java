@@ -76,6 +76,7 @@ import jep.JepException;
  * Mar 02, 2016 14032     Ben.Phillippe Added geoSpatial directory to python path
  * Mar 21, 2016 15640     Robert.Blum   Fixed custom edits not getting put in final product.
  * Mar 30, 2016  8837     Robert.Blum   Passed the current site to the ProductInterface.
+ * Oct 07, 2016 21777     Robert.Blum   Fixed double instantiation of python modules.
  * </pre>
  * 
  * @author jsanchez
@@ -606,7 +607,13 @@ public class ProductScript extends PythonScriptController {
         Map<String, Serializable> results = null;
         try {
             reloadModule(modName);
-            instantiatePythonScript(modName);
+            /*
+             * Need to check if the module was instantiated or not by
+             * reloadModule().
+             */
+            if (isInstantiated(modName) == false) {
+                instantiatePythonScript(modName);
+            }
             Map<String, Object> args = getStarterMap(modName);
             results = (Map<String, Serializable>) execute(GET_SCRIPT_METADATA,
                     INTERFACE, args);

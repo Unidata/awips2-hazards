@@ -1,18 +1,6 @@
-"""                                                                                                                 
-This class holds the metadata for burn scars, such as impacts and CTAs                                              
-
- @since: April 2016
- @author: GSD Hazard Services Team
-                                  
- History:
- Date         Ticket#   Engineer       Description
- ----------   -------   -----------    --------------------------
- 20 Apr 16    15523     J. Wakefield   based on DamMetaData.py
-
 """
+This class holds the metadata for burn scars, such as impacts and CTAs
 
-
-"""
     Expects dictionary structure like:
 
     '[BURN NAME]' : {
@@ -58,5 +46,5 @@ This class holds the metadata for burn scars, such as impacts and CTAs
 Only one of the impact groups may be present, or there may be simply a 'name'
 group with ctaSelected, burnScar, etc.
 """
-burnScarAreaMetadata = {
+BurnScarMetaData = {
 }

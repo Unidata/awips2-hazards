@@ -13,7 +13,7 @@ class MetaData(CommonMetaData.MetaData):
     def AAWUinitialize(self, hazardEvent, metaDict):
         self.initialize(hazardEvent, metaDict)
         
-        sys.stderr.writelines(['Calling AIRMET_SIGMET', '\n'])
+        CommonMetaData.writelines(sys.stderr, ['Calling AIRMET_SIGMET', '\n'])
         
         self._flightLevels = [ "N/A", "SFC", "FL010", "FL020", "FL030", "FL040", "FL050",
                                     "FL060", "FL070", "FL080", "FL090", "FL100", "FL110",
@@ -2024,289 +2024,290 @@ class MetaData(CommonMetaData.MetaData):
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     
     import sys
-    sys.stderr.writelines( ['Hello World!\n'])
+    CommonMetaData.writelines(sys.stderr, ['Hello World!\n'])
     
-    for triggerIdentifier in triggerIdentifiers:
-        sys.stderr.write('triggerIdentifiers:' + triggerIdentifier + '\n')
+    if triggerIdentifiers is not None:
+        for triggerIdentifier in triggerIdentifiers:
+            sys.stderr.write('triggerIdentifiers:' + triggerIdentifier + '\n')
         
-    ###CONVECTIVE SIGMET RELATED DEPENDENCIES###
-    if "convectiveSigmetOutlookSpinner" in triggerIdentifiers:
-        if mutableProperties["convectiveSigmetOutlookSpinner"]["values"] == 1:
-            return {"convectiveSigmetOutlookLayer1": {"enable": True},
-                    "convectiveSigmetOutlookLayer2": {"enable": False},
-                    "convectiveSigmetOutlookLayer3": {"enable": False}
-                    }
-        elif mutableProperties["convectiveSigmetOutlookSpinner"]["values"] == 2:
-            return {"convectiveSigmetOutlookLayer1": {"enable": True},
-                    "convectiveSigmetOutlookLayer2": {"enable": True},
-                    "convectiveSigmetOutlookLayer3": {"enable": False}
-                    }
-        else:
-            return {"convectiveSigmetOutlookLayer1": {"enable": True},
-                    "convectiveSigmetOutlookLayer2": {"enable": True},
-                    "convectiveSigmetOutlookLayer3": {"enable": True}
-                    }
-                                    
-    ###CONTROLLING SERIES NAMES FOR INTERNATIONAL SIGMET BASED ON ORIGINATING OFFICE(MWO)###
-    if "internationalSigmetOffice" in triggerIdentifiers:
-    #if (triggerIdentifiers is None) or ("internationalSigmetOffice" in triggerIdentifiers):
-        if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
-            return {
-                  "internationalSigmetSequence": {
-                            "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
-                  },
-                  "internationalSigmetFIR": {
-                            "choices": ['KZWY','KZMA','KZHU','TZJS','KZAK']                                
-                  }                             
-            }
-        elif "PAWU" in mutableProperties["internationalSigmetOffice"]["values"]:
-            return {
-                  "internationalSigmetSequence": {
-                            "choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]                                
-                  },
-                  "internationalSigmetFIR": {
-                            "choices": ['PAZA'],
-                            "enable": False,                                
-                  }                              
-            }
-        elif "PHFO" in mutableProperties["internationalSigmetOffice"]["values"]:
-            return {
-                  "internationalSigmetSequence": {
-                            "choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]                                
-                  },
-                  "internationalSigmetFIR": {
-                            "choices": ['KZAK'],
-                            "enable": False,                                
-                  }                            
-            } 
-            
-    ###DISABLE EVERYTHING IF CHOOSING TO CANCEL INTERNATIONAL SIGMET###
-    if "internationalSigmetCancellation" in triggerIdentifiers:
-    #if triggerIdentifiers is None or "internationalSigmetCancellation" in triggerIdentifiers:
-        if mutableProperties["internationalSigmetCancellation"]["values"] == True:
-            return {
-                    "internationalSigmetPhenomenonGroup": {
-                            "enable": False,                                      
-                    }
-            }
-        else:
-            return {
-                    "internationalSigmetPhenomenonGroup": {
-                            "enable": True,                                      
-                    }
-            }            
-  
-    ###CONTROLLING LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
-    if "internationalSigmetVALayersSpinner" in triggerIdentifiers:
-    #if triggerIdentifiers is None or "internationalSigmetVALayersSpinner" in triggerIdentifiers:
-        if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
-            return {
-                    "internationalSigmetVALayer3": {
-                          "enable": False
-                    },
-                    "internationalSigmetVALayer2": {
-                          "enable": False
-                    },
-                    "internationalSigmetVALayer1": {
-                          "enable": True
-                    },    
-            }                      
-        elif mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 2:
-            return {
-                    "internationalSigmetVALayer3": {
-                              "enable": False                                
-                    },
-                    "internationalSigmetVALayer2": {
-                              "enable": True                                
-                    },
-                    "internationalSigmetVALayer1": {
-                              "enable": True                                
-                    },
-            }
-        else:
-            return {
-                    "internationalSigmetVALayer3": {
-                              "enable": True                                
-                    },
-                    "internationalSigmetVALayer2": {
-                              "enable": True                                
-                    },
-                    "internationalSigmetVALayer1": {
-                              "enable": True                                
-                    },                                                    
-            }                   
-                
-    ###CONTROLLING LAYER SELECTIONS FOR ICING
-    if triggerIdentifiers is None or "icingComboBox" in triggerIdentifiers:
-        if triggerIdentifiers is None:
-            return None
-        else:
-            if "between" in mutableProperties["icingComboBox"]["values"]:
-                return {
-                      "icingBottom": {
-                                "enable": True,                               
-                      },
-                      "icingTop": {
-                                "enable": True,                               
-                      },                                                 
-                }            
-            elif "below" in mutableProperties["icingComboBox"]["values"]:
-                return {
-                      "icingBottom": {
-                                "enable": False,                               
-                      },
-                      "icingTop": {
-                                "enable": True,                               
-                      },                            
-                }            
-            elif "above" in mutableProperties["icingComboBox"]["values"]:
-                return {
-                      "icingBottom": {
-                                "enable": True,                               
-                      },
-                      "icingTop": {
-                                "enable": False,                               
-                      },                             
-                }
-                
-    ###CONTROLLING ZONES FOR AIRMET HAZARDS BASED ON ORIGINATING OFFICE(MWO)###
-    if triggerIdentifiers is None or "llwsOffice" in triggerIdentifiers:
-        if "KKCI" in mutableProperties["llwsOffice"]["values"]:
-            return {
-                  "llwsZone": {
-                            "choices": ['SFO','SLC','DFW','CHI','MIA','BOS'],
-                            "enable": True,
-                            "values": 'SFO',                                
-                  },
-                  "llwsHour": {
-                            "choices": ['0255', '0855', '1455', '2055'],
-                            "values": '0255',
-                  },                             
-            }
-        elif "PAWU" in mutableProperties["llwsOffice"]["values"]:
-            return {
-                  "llwsZone": {
-                            "choices": ['JNU','ANC','FAI'],
-                            "enable": True,
-                            "values": 'JNU',                               
-                  },
-                  "llwsHour": {
-                            "choices": ['0145/0245', '0745/0845', '1345/1445', '1945/2045'],
-                            "values": '0145/0245',
-                  },                                                   
-            }
-        else:
-            return {
-                  "llwsZone": {
-                            "choices": ['HNL'],
-                            "enable": False,
-                            "values": 'HNL',                                
-                  },
-                  "llwsHour": {
-                            "choices": ['0400', '1000', '1600', '2200'],
-                            "values": '0400',
-                  },                                                 
-            }     
-    
-    ###DISABLE TIME IF CHOOSING OCCASIONAL FOR LLWS
-    if triggerIdentifiers is None or "llwsTimeConstraint" in triggerIdentifiers:
-        if triggerIdentifiers is None:
-            return None
-        else:
-            if mutableProperties["llwsTimeConstraint"]["values"] == "Occasional":
-                return {
-                        "llwsTime": {
-                            "enable": False,         
-                            }
+        ###CONVECTIVE SIGMET RELATED DEPENDENCIES###
+        if "convectiveSigmetOutlookSpinner" in triggerIdentifiers:
+            if mutableProperties["convectiveSigmetOutlookSpinner"]["values"] == 1:
+                return {"convectiveSigmetOutlookLayer1": {"enable": True},
+                        "convectiveSigmetOutlookLayer2": {"enable": False},
+                        "convectiveSigmetOutlookLayer3": {"enable": False}
+                        }
+            elif mutableProperties["convectiveSigmetOutlookSpinner"]["values"] == 2:
+                return {"convectiveSigmetOutlookLayer1": {"enable": True},
+                        "convectiveSigmetOutlookLayer2": {"enable": True},
+                        "convectiveSigmetOutlookLayer3": {"enable": False}
                         }
             else:
+                return {"convectiveSigmetOutlookLayer1": {"enable": True},
+                        "convectiveSigmetOutlookLayer2": {"enable": True},
+                        "convectiveSigmetOutlookLayer3": {"enable": True}
+                        }
+                                        
+        ###CONTROLLING SERIES NAMES FOR INTERNATIONAL SIGMET BASED ON ORIGINATING OFFICE(MWO)###
+        if "internationalSigmetOffice" in triggerIdentifiers:
+        #if (triggerIdentifiers is None) or ("internationalSigmetOffice" in triggerIdentifiers):
+            if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
                 return {
-                        "llwsTime": {
-                            "enable": True,         
-                            }
-                        }            
+                      "internationalSigmetSequence": {
+                                "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
+                      },
+                      "internationalSigmetFIR": {
+                                "choices": ['KZWY','KZMA','KZHU','TZJS','KZAK']                                
+                      }                             
+                }
+            elif "PAWU" in mutableProperties["internationalSigmetOffice"]["values"]:
+                return {
+                      "internationalSigmetSequence": {
+                                "choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]                                
+                      },
+                      "internationalSigmetFIR": {
+                                "choices": ['PAZA'],
+                                "enable": False,                                
+                      }                              
+                }
+            elif "PHFO" in mutableProperties["internationalSigmetOffice"]["values"]:
+                return {
+                      "internationalSigmetSequence": {
+                                "choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]                                
+                      },
+                      "internationalSigmetFIR": {
+                                "choices": ['KZAK'],
+                                "enable": False,                                
+                      }                            
+                } 
                 
-    
-    ###FOR CONVECTIVE SIGMET MUST HAVE HAIL/WIND IF SEVERE IS CHECKED###
-    if triggerIdentifiers is None or "convectiveSigmetEmbeddedSvr" in triggerIdentifiers:
-        if triggerIdentifiers is None:
-            return None
-        else:
-            if "Severe" in mutableProperties["convectiveSigmetEmbeddedSvr"]["values"]:
+        ###DISABLE EVERYTHING IF CHOOSING TO CANCEL INTERNATIONAL SIGMET###
+        if "internationalSigmetCancellation" in triggerIdentifiers:
+        #if triggerIdentifiers is None or "internationalSigmetCancellation" in triggerIdentifiers:
+            if mutableProperties["internationalSigmetCancellation"]["values"] == True:
                 return {
-                      "convectiveSigmetAdditionalHazards": {
-                                "enable": True,
-                                "values": ["hailCheckBox", "windCheckBox"]
-                      }
+                        "internationalSigmetPhenomenonGroup": {
+                                "enable": False,                                      
+                        }
                 }
             else:
                 return {
-                      "convectiveSigmetAdditionalHazards": {
-                                "enable": False,
-                                "values": []
-                      }
+                        "internationalSigmetPhenomenonGroup": {
+                                "enable": True,                                      
+                        }
+                }            
+      
+        ###CONTROLLING LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
+        if "internationalSigmetVALayersSpinner" in triggerIdentifiers:
+        #if triggerIdentifiers is None or "internationalSigmetVALayersSpinner" in triggerIdentifiers:
+            if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
+                return {
+                        "internationalSigmetVALayer3": {
+                              "enable": False
+                        },
+                        "internationalSigmetVALayer2": {
+                              "enable": False
+                        },
+                        "internationalSigmetVALayer1": {
+                              "enable": True
+                        },    
+                }                      
+            elif mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 2:
+                return {
+                        "internationalSigmetVALayer3": {
+                                  "enable": False                                
+                        },
+                        "internationalSigmetVALayer2": {
+                                  "enable": True                                
+                        },
+                        "internationalSigmetVALayer1": {
+                                  "enable": True                                
+                        },
                 }
-    else:
-        return None
-            
-    ###AIRMET INTERDEPENDECIES###
-    if triggerIdentifiers is None or "airmetOffice" in triggerIdentifiers:
-        if "KKCI" in mutableProperties["airmetOffice"]["values"]:
-            return {
-                  "airmetZone": {
-                            "choices": ['SFO','SLC','DFW','CHI','BOS','MIA']                                
-                  }                             
-            }
-        elif "PAWU" in mutableProperties["airmetOffice"]["values"]:
-            return {
-                  "airmetZone": {
-                            "choices": ['01 Arctic Coast Coastal',
-                                        '02 North Slopes of Brooks Range',
-                                        '03 Upper Yukon Valley',
-                                        '04 Koyukuk and Upper Kobuk Valley',
-                                        '05 Northern Seward Peninsula - Lower Kobuk Valley',
-                                        '06 Southern Seward Peninsula - Eastern Norton Sound',
-                                        '07 Tanana Valley',
-                                        '08 Lower Yukon Valley',
-                                        '09 Kuskokwim Valley',
-                                        '10 Yukon-Kuskokwim Delta',
-                                        '11 Bristol Bay',
-                                        '12 Lynn Canal and Glacier Bay',
-                                        '13 Central Southeast Alaska',
-                                        '14 Southern Southeast Alaska',
-                                        '15 Coastal Southeast Alaska',
-                                        '16 Eastern Gulf Coast',
-                                        '17 Copper River Basin',
-                                        '18 Cook Inlet-Susitna Valley',
-                                        '19 Central Gulf Coast',
-                                        '20 Kodiak Island',
-                                        '21 Alaska Peninsula - Port Heiden to Unimak Pass',
-                                        '22 Unimak Pass to Adak',
-                                        '23 St.Lawrence Island-Bering Sea Coast',
-                                        '24 Adak to Attu',
-                                        '25 Pribilof Islands and Southeast Bering Sea'],
-                            "enable": True,                                
-                  }                              
-            }
+            else:
+                return {
+                        "internationalSigmetVALayer3": {
+                                  "enable": True                                
+                        },
+                        "internationalSigmetVALayer2": {
+                                  "enable": True                                
+                        },
+                        "internationalSigmetVALayer1": {
+                                  "enable": True                                
+                        },                                                    
+                }                   
+                    
+        ###CONTROLLING LAYER SELECTIONS FOR ICING
+        if triggerIdentifiers is None or "icingComboBox" in triggerIdentifiers:
+            if triggerIdentifiers is None:
+                return None
+            else:
+                if "between" in mutableProperties["icingComboBox"]["values"]:
+                    return {
+                          "icingBottom": {
+                                    "enable": True,                               
+                          },
+                          "icingTop": {
+                                    "enable": True,                               
+                          },                                                 
+                    }            
+                elif "below" in mutableProperties["icingComboBox"]["values"]:
+                    return {
+                          "icingBottom": {
+                                    "enable": False,                               
+                          },
+                          "icingTop": {
+                                    "enable": True,                               
+                          },                            
+                    }            
+                elif "above" in mutableProperties["icingComboBox"]["values"]:
+                    return {
+                          "icingBottom": {
+                                    "enable": True,                               
+                          },
+                          "icingTop": {
+                                    "enable": False,                               
+                          },                             
+                    }
+                    
+        ###CONTROLLING ZONES FOR AIRMET HAZARDS BASED ON ORIGINATING OFFICE(MWO)###
+        if triggerIdentifiers is None or "llwsOffice" in triggerIdentifiers:
+            if "KKCI" in mutableProperties["llwsOffice"]["values"]:
+                return {
+                      "llwsZone": {
+                                "choices": ['SFO','SLC','DFW','CHI','MIA','BOS'],
+                                "enable": True,
+                                "values": 'SFO',                                
+                      },
+                      "llwsHour": {
+                                "choices": ['0255', '0855', '1455', '2055'],
+                                "values": '0255',
+                      },                             
+                }
+            elif "PAWU" in mutableProperties["llwsOffice"]["values"]:
+                return {
+                      "llwsZone": {
+                                "choices": ['JNU','ANC','FAI'],
+                                "enable": True,
+                                "values": 'JNU',                               
+                      },
+                      "llwsHour": {
+                                "choices": ['0145/0245', '0745/0845', '1345/1445', '1945/2045'],
+                                "values": '0145/0245',
+                      },                                                   
+                }
+            else:
+                return {
+                      "llwsZone": {
+                                "choices": ['HNL'],
+                                "enable": False,
+                                "values": 'HNL',                                
+                      },
+                      "llwsHour": {
+                                "choices": ['0400', '1000', '1600', '2200'],
+                                "values": '0400',
+                      },                                                 
+                }     
+        
+        ###DISABLE TIME IF CHOOSING OCCASIONAL FOR LLWS
+        if triggerIdentifiers is None or "llwsTimeConstraint" in triggerIdentifiers:
+            if triggerIdentifiers is None:
+                return None
+            else:
+                if mutableProperties["llwsTimeConstraint"]["values"] == "Occasional":
+                    return {
+                            "llwsTime": {
+                                "enable": False,         
+                                }
+                            }
+                else:
+                    return {
+                            "llwsTime": {
+                                "enable": True,         
+                                }
+                            }            
+                    
+        
+        ###FOR CONVECTIVE SIGMET MUST HAVE HAIL/WIND IF SEVERE IS CHECKED###
+        if triggerIdentifiers is None or "convectiveSigmetEmbeddedSvr" in triggerIdentifiers:
+            if triggerIdentifiers is None:
+                return None
+            else:
+                if "Severe" in mutableProperties["convectiveSigmetEmbeddedSvr"]["values"]:
+                    return {
+                          "convectiveSigmetAdditionalHazards": {
+                                    "enable": True,
+                                    "values": ["hailCheckBox", "windCheckBox"]
+                          }
+                    }
+                else:
+                    return {
+                          "convectiveSigmetAdditionalHazards": {
+                                    "enable": False,
+                                    "values": []
+                          }
+                    }
         else:
-            return {
-                  "airmetZone": {
-                            "choices": ['From Kauai to Maui', 'Immediately south through west of mountains'],
-                            "enable": True,                                
-                  }                            
-            }              
+            return None
+                
+        ###AIRMET INTERDEPENDECIES###
+        if triggerIdentifiers is None or "airmetOffice" in triggerIdentifiers:
+            if "KKCI" in mutableProperties["airmetOffice"]["values"]:
+                return {
+                      "airmetZone": {
+                                "choices": ['SFO','SLC','DFW','CHI','BOS','MIA']                                
+                      }                             
+                }
+            elif "PAWU" in mutableProperties["airmetOffice"]["values"]:
+                return {
+                      "airmetZone": {
+                                "choices": ['01 Arctic Coast Coastal',
+                                            '02 North Slopes of Brooks Range',
+                                            '03 Upper Yukon Valley',
+                                            '04 Koyukuk and Upper Kobuk Valley',
+                                            '05 Northern Seward Peninsula - Lower Kobuk Valley',
+                                            '06 Southern Seward Peninsula - Eastern Norton Sound',
+                                            '07 Tanana Valley',
+                                            '08 Lower Yukon Valley',
+                                            '09 Kuskokwim Valley',
+                                            '10 Yukon-Kuskokwim Delta',
+                                            '11 Bristol Bay',
+                                            '12 Lynn Canal and Glacier Bay',
+                                            '13 Central Southeast Alaska',
+                                            '14 Southern Southeast Alaska',
+                                            '15 Coastal Southeast Alaska',
+                                            '16 Eastern Gulf Coast',
+                                            '17 Copper River Basin',
+                                            '18 Cook Inlet-Susitna Valley',
+                                            '19 Central Gulf Coast',
+                                            '20 Kodiak Island',
+                                            '21 Alaska Peninsula - Port Heiden to Unimak Pass',
+                                            '22 Unimak Pass to Adak',
+                                            '23 St.Lawrence Island-Bering Sea Coast',
+                                            '24 Adak to Attu',
+                                            '25 Pribilof Islands and Southeast Bering Sea'],
+                                "enable": True,                                
+                      }                              
+                }
+            else:
+                return {
+                      "airmetZone": {
+                                "choices": ['From Kauai to Maui', 'Immediately south through west of mountains'],
+                                "enable": True,                                
+                      }                            
+                }              
         
     
     seriesOverride = None
     if triggerIdentifiers:
         seriesOverride = {}
-        sys.stderr.writelines( [str(triggerIdentifiers),'\n=====\n'])
+        CommonMetaData.writelines(sys.stderr, [str(triggerIdentifiers),'\n=====\n'])
         for ti in triggerIdentifiers:
             if ti.find('AAWUSeriesOverride') >= 0:
-                sys.stderr.writelines( [str(mutableProperties.get('AAWUSeriesOverride')),'\n'])
+                CommonMetaData.writelines(sys.stderr, [str(mutableProperties.get('AAWUSeriesOverride')),'\n'])
                 val = mutableProperties.get('AAWUSeriesOverride')['values']
                 seriesOverride['AAWUAdvisorySeries'] = {"enable":val}
                 seriesOverride['AAWUAdvisoryNumber'] = {"enable":val}            
         
-    sys.stderr.writelines(['Override:', str(seriesOverride), '\n\n'])
+    CommonMetaData.writelines(sys.stderr, ['Override:', str(seriesOverride), '\n\n'])
     return seriesOverride

@@ -28,6 +28,7 @@
 # ------------ ---------- ----------- --------------------------
 # Sep 14, 2015 3473       Chris.Cody  Initial version
 # Nov 23, 2015 3473       Robert.Blum Changes to properties files.
+# Nov 03, 2016 22119      Kevin.Bisanz Improve error handling, add PID to lock file.
 ##
 if [ ${#AWIPS_HOME} = 0 ]
 then
@@ -51,7 +52,7 @@ function configureLogging()
     else
         local log_dir=${HAZARD_SERVICES_LOG}/`date +%Y%m%d`
     fi
-    local log_basename=${program_name}_`date +%H%M`
+    local log_basename=${program_name}_`date +%H%M%S`
     local log_file=${log_dir}/${log_basename}
     
     ensurePathExists "${log_dir}"
@@ -65,6 +66,13 @@ function ensurePathExists()
     then
         local path="$1"
         [ ! -d ${path} ] && (umask 000;mkdir -p ${path})
+
+        # Ensure the directory was actually created.
+        if [ ! -d ${path} ]
+        then
+            echo "Error creating directory: $path" >&2
+            return 1
+        fi
     fi
 }
 
@@ -89,13 +97,34 @@ function isOperationInProgress()
     local retval=false
     if [[ -f ${site_lock_path} ]]
     then
-        local status=`cat ${site_lock_path} | head -n 1`
+        local status=`cat ${site_lock_path} | head -n 1 | awk '{print $1}'`
         if [[ "${status}" = "IN_PROGRESS" ]]
         then
             retval=true
         fi
     fi        
     
+    echo "${retval}"
+}
+
+function isOperationInProgressByMe()
+{
+    local lockname="$1"
+    local siteid=`echo ${2} | tr [a-z] [A-Z]`
+
+    local site_lock_path=$(getLockFile ${lockname} ${siteid})
+
+    local retval=false
+    if [[ -f ${site_lock_path} ]]
+    then
+        local status=`cat ${site_lock_path} | head -n 1 | awk '{print $1}'`
+        local pid=`cat ${site_lock_path} | head -n 1 | awk '{print $3}'`
+        if [[ "${status}" = "IN_PROGRESS" ]] && [[ "$pid" = $$ ]]
+        then
+            retval=true
+        fi
+    fi
+
     echo "${retval}"
 }
 
@@ -145,5 +174,5 @@ function markTaskFailed()
 function markTaskInProgress()
 {
     local lock_file="$1"
-    markTask ${lock_file} "IN_PROGRESS"
+    markTask ${lock_file} "IN_PROGRESS by $$"
 }

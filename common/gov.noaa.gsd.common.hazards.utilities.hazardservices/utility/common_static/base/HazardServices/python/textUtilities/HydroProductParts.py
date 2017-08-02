@@ -32,6 +32,7 @@
     06/27/2016   18277      Robert.Blum    Removed additionalComments for FFS CAN and EXP products.
     08/09/2016   18277      mduff          moved additionalComment line into if block.
     08/31/2016   21636      Sara.Stewart   updated _productParts_FFS
+    09/29/2016   25575      Sara.Stewart   Removed Flood History bullet for FL.A hazards
 '''
 import types, collections
 
@@ -408,7 +409,7 @@ class HydroProductParts(object):
             partsList = [
                     'setUp_section',
                     'attribution',
-                    'basisAndImpactsStatement',
+                    'basisBullet',
                     ]
         # Otherwise (FLS)
         else:
@@ -515,6 +516,7 @@ class HydroProductParts(object):
         action = vtecRecord['act']
         phen = vtecRecord['phen']
         sig = vtecRecord['sig']
+        phensig = phen + '.' + sig
 
         partsList = ['setUp_section']
         
@@ -543,12 +545,13 @@ class HydroProductParts(object):
                 'pointImpactsBullet',
             ] 
 
-        # RM 7748 The below if statement is being removed to allow the Flood History
-        # bullet for all FL.* hazards. This was requested by the IWT and also matches
-        # the capability of RiverPro.
-        # if not pil == 'FFA' and not (pil == 'FLS' and phen == 'FL' and sig == 'Y'):
-             # NOT for FFA, FLS FL.Y
-        partsList.append('floodHistoryBullet')
+        # According to the Directives (NWSI 10-922, Section 4), 
+        # the "Flood History" bullet is not allowed for FL.A. 
+        # Rather than check for FL.A, however, Mark Armstrong
+        # in an email on 9/29/2016 has requested the below
+        # logic
+        if phensig in ['FL.W'] and action not in ['CAN', 'EXP']:
+            partsList.append('floodHistoryBullet')
         return partsList
 
     ######################################################

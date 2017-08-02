@@ -35,7 +35,7 @@ import datetime, collections
 import types, re, sys
 from com.raytheon.uf.common.hazards.productgen import ProductUtils
 import Legacy_Hydro_Formatter
-import FFAAttributionFirstBulletText
+import AttributionFirstBulletText_FFA
 
 class Format(Legacy_Hydro_Formatter.Format):
 
@@ -108,8 +108,8 @@ class Format(Legacy_Hydro_Formatter.Format):
 
     ################# Section Level
 
-    def _setUp_section(self, sectionDict):
-        self.attributionFirstBullet = FFAAttributionFirstBulletText.AttributionFirstBulletText(
+    def _setUp_section(self, sectionDict):        
+        self.attributionFirstBullet = AttributionFirstBulletText_FFA.AttributionFirstBulletText(
             sectionDict, self._productID, self._issueTime, self._testMode, self._wfoCity, self._tpc, self.timezones)
         return ''
 

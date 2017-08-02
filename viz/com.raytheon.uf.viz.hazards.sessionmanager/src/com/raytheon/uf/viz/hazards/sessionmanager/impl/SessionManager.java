@@ -29,6 +29,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEven
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.ClearPracticeHazardVtecTableRequest;
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest;
+import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataResponse;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
 import com.raytheon.uf.common.localization.IPathManager;
 import com.raytheon.uf.common.localization.LocalizationContext;
@@ -137,6 +138,11 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
  * Aug 15, 2016 18376      Chris.Golden Added code to unsubscribe session sub-managers from the
  *                                      event bus to aide in garbage collection.
+ * Sep 26, 2016 21758      Chris.Golden Changed call to removeEvent() to provide new parameter.
+ * Nov 03, 2016 22119      Kevin.Bisanz Improve error handling during site data export.
+ * Nov 14, 2016 22119      Kevin.Bisanz Prompt before exporting site data.
+ * Dec 14, 2016 22119      Kevin.Bisanz Add flags to export config, ProductText, and ProductData
+ *                                      individually.
  * Feb 01, 2017 15556      Chris.Golden Changed construction of time manager to take this object.
  *                                      Also added use of new session selection manager.
  * Feb 16, 2017 29138      Chris.Golden Changed to allow recommenders to specify that they want
@@ -427,7 +433,7 @@ public class SessionManager
     public void reset() {
 
         for (ObservedHazardEvent event : eventManager.getEvents()) {
-            eventManager.removeEvent(event, Originator.OTHER);
+            eventManager.removeEvent(event, false, Originator.OTHER);
         }
 
         hazardManager.removeAllEvents();
@@ -634,20 +640,56 @@ public class SessionManager
      * 
      * @param siteId
      *            Hazard Services Site to archive (Local Site)
+     * @param exportConfig
+     *            Flag to export config info
+     * @param exportProductText
+     *            Flag to export ProductText info
+     * @param exportProductData
+     *            Flag to export ProductData info
      */
     @Override
-    public void exportApplicationSiteData(String siteId) {
+    public void exportApplicationSiteData(String siteId, boolean exportConfig,
+            boolean exportProductText, boolean exportProductData) {
+
+        String message = "Do you want to export site data for " + siteId
+                + " to all backup sites?";
+        if (messenger.getContinueCanceller()
+                .getUserAnswerToQuestion("Confirm Export", message) == false) {
+            return;
+        }
 
         boolean isPractice = (CAVEMode.getMode() == CAVEMode.PRACTICE);
 
+        Exception exception = null;
+        String errorMessage = null;
+
         try {
             HazardSiteDataRequest hazardSiteDataReq = new HazardSiteDataRequest(
-                    siteId, isPractice);
+                    siteId, isPractice, exportConfig, exportProductText,
+                    exportProductData);
 
-            RequestRouter.route(hazardSiteDataReq);
+            HazardSiteDataResponse response = (HazardSiteDataResponse) RequestRouter
+                    .route(hazardSiteDataReq);
+            errorMessage = response.getErrorMessage();
         } catch (Exception e) {
-            statusHandler.error(
-                    "Error Exporting Hazard Services Site Data files.", e);
+            exception = e;
+        }
+
+        if (errorMessage != null || exception != null) {
+            message = "Error Exporting Hazard Services Site Data files.";
+            if (errorMessage != null) {
+                message += " " + errorMessage;
+            }
+
+            if (exception != null) {
+                statusHandler.error(message, exception);
+            } else {
+                statusHandler.error(message);
+
+            }
+        } else {
+            statusHandler.info(
+                    "Successfully exported Hazard Services Site Data files.");
         }
     }
 

@@ -50,6 +50,8 @@ import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrde
  *                                      with NaN in coordinates.
  * Feb 01, 2017   15556    Chris.Golden Improved generic parameter usage.
  * Feb 13, 2017   28892    Chris.Golden Changed to implement IBinarySerializable.
+ * Sep 05, 2017   15561    Chris.Golden Fixed getCentroid() to avoid JTS errors
+ *                                      with unions.
  * </pre>
  * 
  * @author Chris.Golden
@@ -240,14 +242,16 @@ public class AdvancedGeometryCollection implements IAdvancedGeometry {
          * the centroid of the result.
          */
         Geometry geometry = null;
-        for (IAdvancedGeometry child : children) {
-            Geometry childGeometry = child.asGeometry(geometryFactory, flatness,
+        if (children.size() == 1) {
+            geometry = children.get(0).asGeometry(geometryFactory, flatness,
                     limit);
-            if (geometry == null) {
-                geometry = childGeometry;
-            } else {
-                geometry.union(childGeometry);
+        } else {
+            List<Geometry> childGeometries = new ArrayList<>(children.size());
+            for (IAdvancedGeometry child : children) {
+                childGeometries.add(
+                        child.asGeometry(geometryFactory, flatness, limit));
             }
+            geometry = geometryFactory.buildGeometry(childGeometries);
         }
         return geometry.getCentroid().getCoordinate();
     }

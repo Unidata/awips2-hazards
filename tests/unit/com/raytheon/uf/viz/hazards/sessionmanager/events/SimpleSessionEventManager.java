@@ -21,9 +21,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,6 +40,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManage
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 /**
  * Simplified event manager that just stores all events.
@@ -78,8 +79,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * @version 1.0
  */
 
-public class SimpleSessionEventManager implements
-        ISessionEventManager<ObservedHazardEvent> {
+public class SimpleSessionEventManager
+        implements ISessionEventManager<ObservedHazardEvent> {
 
     private final boolean canChangeType;
 
@@ -135,7 +136,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void removeEvent(ObservedHazardEvent event, IOriginator originator) {
+    public void removeEvent(ObservedHazardEvent event, boolean confirm,
+            IOriginator originator) {
         events.remove(event);
     }
 
@@ -178,8 +180,8 @@ public class SimpleSessionEventManager implements
 
     @Override
     public Map<IHazardEvent, Collection<String>> getConflictingEvents(
-            IHazardEvent event, Date startTime, Date endTime,
-            Geometry geometry, String phenSigSubtype) {
+            IHazardEvent event, Date startTime, Date endTime, Geometry geometry,
+            String phenSigSubtype) {
         throw new UnsupportedOperationException();
     }
 
@@ -209,7 +211,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void proposeEvent(ObservedHazardEvent event, IOriginator originator) {
+    public void proposeEvent(ObservedHazardEvent event,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -252,7 +255,7 @@ public class SimpleSessionEventManager implements
 
     @Override
     public void removeEvents(Collection<ObservedHazardEvent> events,
-            IOriginator originator) {
+            boolean confirm, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -306,7 +309,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent) {
+    public Map<String, String> buildInitialHazardAreas(
+            IHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 
@@ -368,7 +372,8 @@ public class SimpleSessionEventManager implements
     }
 
     @Override
-    public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected) {
+    public void setAddCreatedEventsToSelected(
+            boolean addCreatedEventsToSelected) {
         throw new UnsupportedOperationException();
     }
 
@@ -403,6 +408,11 @@ public class SimpleSessionEventManager implements
 
     @Override
     public Geometry getCwaGeometry() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clearCwaGeometry() {
         throw new UnsupportedOperationException();
     }
 

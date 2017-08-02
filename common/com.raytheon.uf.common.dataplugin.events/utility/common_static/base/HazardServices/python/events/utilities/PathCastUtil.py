@@ -30,6 +30,7 @@
 #    Aug 08, 2016    21056         Robert.Blum    Initial Creation
 #    Aug 16, 2016    21056         Robert.Blum    Change to use WFO Center.
 #    Aug 18, 2016    21056         Robert.Blum    Fixed incomplete line of code.
+#    Oct 17, 2016    21699         Robert.Blum    Fix for incremental overrides.
 #
 # 
 #
@@ -37,8 +38,8 @@
 import datetime, time
 import GeometryFactory
 import SpatialQuery
-from PathcastConfig import PathcastConfig
 import JUtil
+from Bridge import Bridge
 from dateutil import tz
 from com.raytheon.uf.common.geospatial import MapUtil
 from com.raytheon.uf.viz.points import PointsDataManager
@@ -50,22 +51,25 @@ def preparePathCastData(hazardEvent):
 
      @return the Pathcast
     '''
+    bridge = Bridge()
+    pathcastConfig = bridge.getPathCastConfig()
+
     # Area configuration
-    areaSource = PathcastConfig.get("areaSource")
-    areaField = PathcastConfig.get("areaField")
-    parentAreaField = PathcastConfig.get("parentAreaField")
+    areaSource = pathcastConfig.get("areaSource")
+    areaField = pathcastConfig.get("areaField")
+    parentAreaField = pathcastConfig.get("parentAreaField")
 
     # Point configuration
-    pointSource = PathcastConfig.get("pointSource")
-    pointField = PathcastConfig.get("pointField")
+    pointSource = pathcastConfig.get("pointSource")
+    pointField = pathcastConfig.get("pointField")
 
     # Basic configuration
-    maxCount = PathcastConfig.get("maxCount")
-    maxGroup = PathcastConfig.get("maxGroup")
-    withInPolygon = PathcastConfig.get("withInPolygon")
+    maxCount = pathcastConfig.get("maxCount")
+    maxGroup = pathcastConfig.get("maxGroup")
+    withInPolygon = pathcastConfig.get("withInPolygon")
 
     # convert the threshold to Meters
-    thresholdInMeters = PathcastConfig.get("thresholdInMiles") * 1609.344
+    thresholdInMeters = pathcastConfig.get("thresholdInMiles") * 1609.344
 
     stormMotion = hazardEvent.get("stormMotion")
     if stormMotion:

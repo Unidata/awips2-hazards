@@ -91,6 +91,8 @@ import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
  * May 10, 2016   16869    mduff       Remove checks for starttime before current time if the product 
  *                                     has already been issued.
  * Aug 16, 2016   15017    Robert.Blum Updates for setting the crest value/time correctly.
+ * Oct 05, 2016   22586    mduff       Added getDoubleValue so when values are set as Float by Python we don't 
+ *                                     get ClassCastExceptions.
  * </pre>
  * 
  * @author mpduff
@@ -378,15 +380,20 @@ public class GraphicalEditor extends CaveSWTDialog
             }
         }
 
-        double forecastCrest = (Double) event
-                .getHazardAttribute(HazardConstants.CREST_STAGE_FORECAST);
+        /*
+         * When Python sets the values in the recommender the values are floats.
+         * Need to make sure we handle both instances, Float and Double.
+         */
+        double forecastCrest = getDoubleValue(
+                event.getHazardAttribute(HazardConstants.CREST_STAGE_FORECAST));
 
-        double maxForecastStage = (Double) event
-                .getHazardAttribute(HazardConstants.MAX_FORECAST_STAGE);
+        double maxForecastStage = getDoubleValue(
+                event.getHazardAttribute(HazardConstants.MAX_FORECAST_STAGE));
         graphData.setCrestValueMaxForecastValue(
                 maxForecastStage == forecastCrest);
-        double observedCrest = (Double) event
-                .getHazardAttribute(HazardConstants.CREST_STAGE_OBSERVED);
+
+        double observedCrest = getDoubleValue(
+                event.getHazardAttribute(HazardConstants.CREST_STAGE_OBSERVED));
         graphData.setCrestValue(Math.max(observedCrest, forecastCrest));
     }
 
@@ -907,8 +914,8 @@ public class GraphicalEditor extends CaveSWTDialog
         if (crestTime > SimulatedTime.getSystemTime().getMillis()) {
             newAttributes.put(HazardConstants.CREST_STAGE_FORECAST, crestValue);
             newAttributes.put(HazardConstants.CREST_STAGE,
-                    Math.max(crestValue, (Double) attributes
-                            .get(HazardConstants.CREST_STAGE_OBSERVED)));
+                    Math.max(crestValue, getDoubleValue(attributes
+                            .get(HazardConstants.CREST_STAGE_OBSERVED))));
             if (graphData.isCrestValueMaxForecastValue()) {
                 newAttributes.put(HazardConstants.MAX_FORECAST_STAGE,
                         crestValue);
@@ -918,8 +925,8 @@ public class GraphicalEditor extends CaveSWTDialog
         } else {
             newAttributes.put(HazardConstants.CREST_STAGE_OBSERVED, crestValue);
             newAttributes.put(HazardConstants.CREST_STAGE,
-                    Math.max(crestValue, (Double) attributes
-                            .get(HazardConstants.CREST_STAGE_FORECAST)));
+                    Math.max(crestValue, getDoubleValue(attributes
+                            .get(HazardConstants.CREST_STAGE_FORECAST))));
         }
 
         this.event.setHazardAttributes(newAttributes);
@@ -1105,5 +1112,23 @@ public class GraphicalEditor extends CaveSWTDialog
         return (time != HazardConstants.MIN_TIME)
                 && (time != HazardConstants.MISSING_VALUE)
                 && (time != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+    }
+
+    /**
+     * Convert the {@link Serializable} value to a Double.
+     * 
+     * @param value
+     *            Serializable value to convert.
+     * @return The Double value
+     */
+    private double getDoubleValue(Serializable value) {
+        double returnValue = HazardConstants.MISSING_VALUE;
+        if (value instanceof Double) {
+            returnValue = (Double) value;
+        } else if (value instanceof Float) {
+            returnValue = (Float) value;
+        }
+
+        return returnValue;
     }
 }

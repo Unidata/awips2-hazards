@@ -38,7 +38,7 @@ Hydrology_River = {
         "FL.Y", 
         "FL.A", 
         "FL.W",
-        "HY.O",
+        #"HY.O",
         "HY.S"
     ], 
     "hazardCategoriesAndTypes": [
@@ -55,7 +55,7 @@ Hydrology_River = {
         "FL.Y", 
         "FL.A", 
         "FL.W",
-        "HY.O",
+        #"HY.O",
         "HY.S"
         ]
         }

@@ -9,11 +9,11 @@
  */
 package gov.noaa.gsd.viz.mvp;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 /**
  * Superclass from which to derive presenters for specific types of views. Its
@@ -52,6 +52,7 @@ import java.util.Set;
  *                                        class's instances are disposed of, and also
  *                                        added new abstract doDispose() method that
  *                                        is called by dispose(), which is now final.
+ * Dec 16, 2016   26573    Kevin.Bisanz   Unsubscribe from eventBus in dispose().
  * </pre>
  * 
  * @author Chris.Golden
@@ -161,12 +162,11 @@ public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> 
     public abstract void modelChanged(EnumSet<E> changed);
 
     /**
-     * Dispose of the presenter. If overridden, This may be implemented, for
-     * example, to unregister for notifications for which the presenter was
-     * listening.
+     * Dispose of the presenter.
      */
     public final void dispose() {
         doDispose();
+        eventBus.unsubscribe(this);
         model = null;
     }
 

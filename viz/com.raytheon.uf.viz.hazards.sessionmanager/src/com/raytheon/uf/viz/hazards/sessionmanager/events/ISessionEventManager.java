@@ -19,10 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
@@ -39,6 +35,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 /**
  * Manages all events in a session.
@@ -116,6 +116,10 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 18, 2016 19537      Chris.Golden Added originator to sortEvents() method.
  * Sep 12, 2016 15934      Chris.Golden Changed to work with advanced geometries now used by
  *                                      hazard events.
+ * Sep 26, 2016 21758      Chris.Golden Changed removeEvent() and removeEvents() to include a
+ *                                      boolean parameter indicating whether confirmation should
+ *                                      be done or not.
+ * Oct 04, 2016 22573      Chris.Golden Added method to clear CWA geometry.
  * Oct 19, 2016 21873      Chris.Golden Added time resolution tracking for individual events.
  * Feb 01, 2017 15556      Chris.Golden Added methods to get the history count and visible history
  *                                      count for a hazard event. Also moved selection methods to
@@ -269,8 +273,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         in the creation of a new event with the new type, and the
      *         original event has not had its type changed.
      */
-    public boolean setEventType(E event, String phenomenon,
-            String significance, String subType, IOriginator originator);
+    public boolean setEventType(E event, String phenomenon, String significance,
+            String subType, IOriginator originator);
 
     /**
      * Set the specified event's time range.
@@ -319,7 +323,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *         megawidgets as well as any side effects applier to be used with
      *         the megawidgets.
      */
-    public MegawidgetSpecifierManager getMegawidgetSpecifiers(IHazardEvent event);
+    public MegawidgetSpecifierManager getMegawidgetSpecifiers(
+            IHazardEvent event);
 
     /**
      * Get the duration selector choices that are available for the specified
@@ -371,17 +376,24 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * Remove an event from the session.
      * 
      * @param event
+     * @param confirm
+     *            Flag indicating whether or not confirmation should be received
+     *            from the user as necessary.
      * @param originator
      */
-    public void removeEvent(E event, IOriginator originator);
+    public void removeEvent(E event, boolean confirm, IOriginator originator);
 
     /**
      * Remove events from the session.
      * 
      * @param events
+     * @param confirm
+     *            Flag indicating whether or not confirmation should be received
+     *            from the user as necessary.
      * @param originator
      */
-    public void removeEvents(Collection<E> events, IOriginator originator);
+    public void removeEvents(Collection<E> events, boolean confirm,
+            IOriginator originator);
 
     /**
      * Get all events that are currently being managed by this session. This may
@@ -475,9 +487,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      *             hazard events.
      */
     public Map<IHazardEvent, Collection<String>> getConflictingEvents(
-            IHazardEvent event, Date startTime, Date endTime,
-            Geometry geometry, String phenSigSubtype)
-            throws HazardEventServiceException;
+            IHazardEvent event, Date startTime, Date endTime, Geometry geometry,
+            String phenSigSubtype) throws HazardEventServiceException;
 
     /**
      * Get a map of selected event identifiers to any events with which they
@@ -758,7 +769,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param hazardEvent
      * @return the initial hazardAreas for the given hazardEvent
      */
-    public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent);
+    public Map<String, String> buildInitialHazardAreas(
+            IHazardEvent hazardEvent);
 
     /**
      * Update the hazard areas.
@@ -808,7 +820,8 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @param addCreatedEventsToSelected
      *            New value.
      */
-    public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected);
+    public void setAddCreatedEventsToSelected(
+            boolean addCreatedEventsToSelected);
 
     /**
      * Returns the geometry representing the current CWA.
@@ -816,6 +829,11 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      * @return County Warning Area geometry.
      */
     public Geometry getCwaGeometry();
+
+    /**
+     * Clears the geometry representing the current CWA.
+     */
+    public void clearCwaGeometry();
 
     /**
      * Determine whether or not this manager is shut down.

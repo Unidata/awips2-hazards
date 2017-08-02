@@ -64,9 +64,12 @@ recommender framework
     Aug 22, 2016   15017     Robert.Blum         Updating additional attributes when recommender runs.
     Aug 26, 2016   21435     Sara.Stewart        Crests MaxFcst and CurObs values added
     Sep 02, 2016   21612     Mark.Fegan          Adjust Observed and Forecast Flood Severity for FL.W per NWSI 10-1703.
-    Sep 08, 2016   17514    Robert.Blum          Changed logic so that any hazard with a pre-existing
+    Sep 08, 2016   17514     Robert.Blum         Changed logic so that any hazard with a pre-existing
                                                  pointID is automatically included in the output, disregarding
                                                  the filter selection.
+    Oct 12, 2016   22069     Ben.Phillippe       Removed usage of riverinundation table due to geometry conflicts with RiverPro
+    Aug 15, 2017   22757     Chris.Golden        Added code to display recommender results, changed logic appropriately
+                                                 as per Robert Blum's changes under this same ticket in 18-Hazard_Services.
 
 @since: November 2012
 @author: GSD Hazard Services Team
@@ -107,6 +110,18 @@ MISSING_VALUE = -9999
 # values related to adjusting FL.W severity
 NULL_CATEGORY = "N"
 NO_FLOOD_CATEGORY = "0"
+
+SIGNIFICANCES = [("Warning", "W"), ("Watch", "A"), ("Advisory", "Y"), ("Statement", "S")]
+
+# Map used to compare flood category values
+FLOOD_CATEGORY_MAP = {
+                      "U": (0, ""),
+                      "N": (0, ""),
+                      "0": (0, ""),
+                      "1": (1, "minor"),
+                      "2": (2, "moderate"),
+                      "3": (3, "major"),
+                      }
 
 class Recommender(RecommenderTemplate.Recommender):
 
@@ -217,7 +232,47 @@ class Recommender(RecommenderTemplate.Recommender):
         toBeDeleted, mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventSet, selectedPointIdList)
         filteredEventSet = self.filterHazards(mergedEventSet, currentEvents, dialogInputMap)
         self.addFloodPolygons(filteredEventSet)
-        filteredEventSet.addAttribute('deleteEventIdentifiers', toBeDeleted)
+        toBeDeletedIdentifiers = [toBeDeletedEvent.getEventID() for toBeDeletedEvent in toBeDeleted]
+        filteredEventSet.addAttribute(DELETE_EVENT_IDENTIFIERS_KEY, toBeDeletedIdentifiers)
+
+        # If no events are being added, modified, or deleted by the recommender,
+        # notify the user of this; otherwise, give the user a list of the various
+        # statuses of the changed events, other details as appropriate, etc. 
+        if len(filteredEventSet.getEvents()) == 0 and len(toBeDeleted) == 0:
+            filteredEventSet.addAttribute(RESULTS_MESSAGE_KEY, "Recommender completed. No recommended hazards.")
+        else:
+            critResultString, normResultString = self.createResultsOutput(filteredEventSet, toBeDeleted, toBeDeletedIdentifiers)
+            fields = []
+            if critResultString:
+                critWidget = {
+                              "fieldType": "Text",
+                              "fieldName": "critTextResults",
+                              "label": "Critical Results:",
+                              "editable": False,
+                              "expandHorizontally": True,
+                              "expandVertically": True,
+                              "values": critResultString,
+                              "lines": 4,
+                              }
+                fields.append(critWidget)
+            if normResultString:
+                widget = {
+                          "fieldType": "Text",
+                          "fieldName": "textResults",
+                          "label": "Results:",
+                          "editable": False,
+                          "expandHorizontally": True,
+                          "expandVertically": True,
+                          "values": normResultString,
+                          "lines": 15,
+                       }
+                fields.append(widget)
+            filteredEventSet.addAttribute(RESULTS_DIALOG_KEY, {
+                                                               "title": "Flood Recommender",
+                                                               "minInitialWidth": 450,
+                                                               "fields": fields
+                                                               })
+
         return filteredEventSet
     
     def toString(self):
@@ -265,7 +320,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def mergeHazardEvents(self, currentEvents, recommendedEventSet, selectedPointIdList):        
         mergedEvents = EventSet(None)
-        deleteEventIdentifiers = set()
+        deleteEvents = set()
         
         # Remove non-issued FL.* hazards from the currentEvents
         # that do not match a pointID in the recommendedEvents
@@ -280,7 +335,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 if currentEvent.getPhenomenon() == "FL":
                     if currentEvent.getStatus() in ['POTENTIAL', 'PENDING']:
                         # Not in recommended events and pending - remove it
-                        deleteEventIdentifiers.add(currentEvent.getEventID())
+                        deleteEvents.add(currentEvent)
                     else:
                         # Not in recommended events and issued - set to ending
                         currentEvent.setStatus('ending')
@@ -306,20 +361,11 @@ class Recommender(RecommenderTemplate.Recommender):
                     # If ended, then simply add the new recommended one
                     if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
                         continue 
-                    elif currentEvent.getStatus() in ['POTENTIAL', 'PENDING'] \
-                     and currentEvent.getHazardType() == recommendedEvent.getHazardType() \
-                     and currentEvent.getSignificance() in ['W', 'Y']:
-                        # Already have a pending event for point do not add a second one.
-                        deleteEventIdentifiers.add(recommendedEvent.getEventID())
-                        pendingCurrentEvent = None
-                        haveWarning = True
-                        found = True
-                        continue
                     elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
                         # Handle transitions to new hazard type
                         if currentEvent.getStatus() in ['POTENTIAL', 'PENDING']:
                             # Never issued - delete it
-                            deleteEventIdentifiers.add(currentEvent.getEventID())
+                            deleteEvents.add(currentEvent)
                         elif currentEvent.getStatus() == 'ENDING':
                             # Issued - set it to ending
                             currentEvent.setStatus('ending')
@@ -327,9 +373,7 @@ class Recommender(RecommenderTemplate.Recommender):
                         elif currentEvent.getStatus() == 'ISSUED':
                             if currentEvent.getSignificance() == 'W':
                                 if recommendedEvent.getHazardType() == 'FL.Y':
-                                    if self.recommendFallingLimbAdvisoryForWarning(riverForecastPoint) == False:
-                                        deleteEventIdentifiers.add(recommendedEvent.getEventID())
-                                    else:
+                                    if self.recommendFallingLimbAdvisoryForWarning(riverForecastPoint):
                                         mergedEvents.add(recommendedEvent)
                                     if self.endWarningIfAdvisoryRecommended():
                                         currentEvent.setStatus('ending')
@@ -345,7 +389,7 @@ class Recommender(RecommenderTemplate.Recommender):
                                     if haveWarning == False:
                                         pendingCurrentEvent = currentEvent
                                 else:
-                                    deleteEventIdentifiers.add(recommendedEvent.getEventID())
+                                    deleteEvents.add(recommendedEvent)
                                 continue
                             elif currentEvent.getSignificance() == 'Y':
                                 # Advisory can be upgraded to Watch or Warning
@@ -353,27 +397,22 @@ class Recommender(RecommenderTemplate.Recommender):
                                 mergedEvents.add(recommendedEvent)
                                 mergedEvents.add(currentEvent)
                                 continue   
-                            
                         else:
                             # PROPOSED - leave as is?
                             # Will result in 2 pending hazards for same point ID
                             mergedEvents.add(currentEvent)
                         mergedEvents.add(recommendedEvent)
                     else:
-                        #  Update current event with recommended rise / crest /fall                        
-                        for attribute in ['riseAbove', 'crest', 'fallBelow', 'currentStage', 'currentStageTime',
-                                          'crestStage', 'floodRecord', 'floodSeverityObserved', 'floodSeverityForecast'
-                                          ,'impactsCurObsField','impactsMaxFcstField', 'crestsMaxFcstField', 
-                                          'crestsCurObsField', 'obsCrestStage', 'forecastCrestStage', 'observedCrestTime', 
-                                          'forecastCrestTime', 'maxForecastStage', 'maxForecastTime']:
-                            currentEvent.set(attribute, recommendedEvent.get(attribute, MISSING_VALUE))
-                        currentEndTime = currentEvent.getEndTime()
-                        newEndTime = recommendedEvent.getEndTime()
-                        if currentEndTime < newEndTime and currentEvent.getStatus() == 'ENDING':
-                            # endTime changed - move back to issued
-                            currentEvent.setStatus('issued')
-                        currentEvent.setEndTime(newEndTime)
+                        # Update the current event
+                        currentEvent = self.updateEventFromRecommendedEvent(currentEvent, recommendedEvent)
                         mergedEvents.add(currentEvent)
+                        if currentEvent.getStatus() in ['POTENTIAL', 'PENDING'] \
+                                and currentEvent.getSignificance() in ['W', 'Y']:
+                            mergedEvents.add(currentEvent)
+                            pendingCurrentEvent = None
+                            haveWarning = True
+                            found = True
+                            continue
                     found = True
             if pendingCurrentEvent and haveWarning == False:
                 bridge = Bridge()
@@ -387,7 +426,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if not found:
                 mergedEvents.add(recommendedEvent)
                 
-        return list(deleteEventIdentifiers), mergedEvents
+        return list(deleteEvents), mergedEvents
                             
     def setHazardType(self, hazardEvent):        
         pointID = hazardEvent.get(POINT_ID)
@@ -650,3 +689,155 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         # Default to recommending the advisory
         return True
+
+    def updateEventFromRecommendedEvent(self, currentEvent, recommendedEvent):
+        '''
+            Updates a pre-existing event with data from a recommended event.
+            This method assumes that the two events are for the same pointID and
+            all the data from the recommended event applies to the current event.
+        '''
+        # Attributes to be updated
+        attributes = ['riseAbove', 'crest', 'fallBelow', 'currentStage', 'currentStageTime',
+                      'crestStage', 'floodRecord', 'floodSeverityObserved', 'floodSeverityForecast',
+                      'impactsCurObsField','impactsMaxFcstField', 'crestsMaxFcstField', 
+                      'crestsCurObsField', 'obsCrestStage', 'forecastCrestStage', 'observedCrestTime', 
+                      'forecastCrestTime', 'maxForecastStage', 'maxForecastTime']
+
+        for attribute in attributes:
+            # Save off the previous severities so we can notify the user when they change
+            # via the results dialog
+            if attribute in ['floodSeverityObserved', 'floodSeverityForecast']:
+                prevKey = "prevF" + attribute[1:]
+                currentEvent.set(prevKey, currentEvent.get(attribute))
+            currentEvent.set(attribute, recommendedEvent.get(attribute, MISSING_VALUE))
+        currentEndTime = currentEvent.getEndTime()
+        newEndTime = recommendedEvent.getEndTime()
+        if currentEndTime < newEndTime and currentEvent.getStatus() == 'ENDING':
+            # endTime changed - move back to issued
+            currentEvent.setStatus('issued')
+        currentEvent.setEndTime(newEndTime)
+        return currentEvent
+
+    def createResultsOutput(self, eventSet, deletedEvents, deletedIdentifiers):
+        '''
+            Returns 2 formatted strings to be displayed in the results dialog.
+            One for critical updates and another containing the remaining updates.
+        '''
+        # Return Strings
+        critReturnString = ""
+        normReturnString = ""
+
+        eventResultsList = []
+        for event in eventSet:
+            eventResultsList.append(self.getHazardEventResultsOutput(event, False))
+        for event in deletedEvents:
+            eventResultsList.append(self.getHazardEventResultsOutput(event, True))
+
+        for label, sig in SIGNIFICANCES:
+            # Get all the hazard tuples for this sig
+            eventTuples = []
+            for eventResults in eventResultsList:
+                if eventResults[0].getSignificance() == sig:
+                    eventTuples.append(eventResults)
+            if eventTuples:
+                critResult, result = self.createResultsOutputForSig(eventTuples, deletedIdentifiers)
+                if critResult:
+                    critReturnString += critResult
+                if result:
+                    header = label + " Hazards:\n"
+                    normReturnString += header + result
+        return critReturnString, normReturnString
+
+    def createResultsOutputForSig(self, eventTuples, deletedIdentifiers):
+        '''
+            Returns 2 formatted strings for a specific Hazard Significance.
+            One for critical updates and another containing the remaining updates.
+        '''
+        output = ""
+        critOutput = ""
+        if eventTuples:
+            # Sort the hazard tuples by status
+            sortedTuples = self.sortTuplesByStatus(eventTuples, deletedIdentifiers)
+            for tupleList, statusLabel in sortedTuples:
+                if tupleList:
+                    # Add status header
+                    output += "   " + statusLabel + ":\n"
+                for eventTuple in tupleList:
+                    hazardID = eventTuple[2]
+                    critString = eventTuple[1]
+                    output += "      " + hazardID
+                    if critString:
+                        critOutput += hazardID + critString
+            output += "\n"
+        return critOutput, output
+
+    def sortTuplesByStatus(self, eventTuples, deletedIdentifiers):
+        potentialHazards = []
+        pendingHazards = []
+        issuedHazards = []
+        endingHazards = []
+        deletedHazards = []
+
+        for eventTuple in eventTuples:
+            status = eventTuple[0].getStatus()
+            if status == "POTENTIAL":
+                potentialHazards.append(eventTuple)
+            elif status == "PENDING":
+                pendingHazards.append(eventTuple)
+            elif status == "ISSUED":
+                issuedHazards.append(eventTuple)
+            elif status == "ENDING":
+                endingHazards.append(eventTuple)
+            elif eventTuple[0].getEventID() in deletedIdentifiers:
+                deletedHazards.append(eventTuple)
+
+        return [(potentialHazards, "Potential"), (pendingHazards, "Pending"), (issuedHazards, "Issued"),\
+                (endingHazards, "Ending"), (deletedHazards, "Deleted")]
+
+    def getHazardEventResultsOutput(self, event, deleted):
+        '''
+            Returns a tuple that contains text strings that can be used in the recommenders
+            results dialog. Currently there are 2 types of results displayed critical and 
+            normal that is just a hazard id consisting of pointID, eventID, and hazard type.
+            Note not all hazard will have critical results that need to be reported.
+        '''
+        # For all events display the pointID, eventID, and hazardType
+        pointID = event.get("pointID", "")
+        eventID = event.getEventID()
+        hazardType = event.getHazardType()
+
+        # Construct the output string
+        hazardID = pointID + "-" + eventID + "-" + hazardType + "\n"
+
+        # Display additional information for issued hazards that were updated.
+        # For example whether or not the flood category increased.
+        criticalString = ""
+        if deleted:
+            status = "DELETED"
+        else:
+            status = event.getStatus()
+            if status == "ISSUED":
+                prevObsCat = event.get("prevFloodSeverityObserved", "N")
+                prevfcstCat = event.get("prevFloodSeverityForecast", "N")
+                obsCat = event.get("floodSeverityObserved", "N")
+                fcstCat = event.get("floodSeverityForecast", "N")
+    
+                if self.compareFloodCategories(prevObsCat, obsCat) == -1:
+                    # obs category increased
+                    criticalString += "   *Observed flood category increased to " + FLOOD_CATEGORY_MAP.get(obsCat)[1] + "\n"
+                if self.compareFloodCategories(prevfcstCat, fcstCat) == -1:
+                    # fcst category increased
+                    criticalString += "   *Forecast flood category increased to " + FLOOD_CATEGORY_MAP.get(fcstCat)[1] + "\n"
+
+        # return the tuple output
+        return (event, criticalString, hazardID)
+
+    def compareFloodCategories(self, cat1, cat2):
+        value1 = FLOOD_CATEGORY_MAP.get(cat1)[0]
+        value2 = FLOOD_CATEGORY_MAP.get(cat2)[0]
+        if value1 == value2:
+            return 0
+        elif value1 < value2:
+            return -1
+        else:
+            return 1

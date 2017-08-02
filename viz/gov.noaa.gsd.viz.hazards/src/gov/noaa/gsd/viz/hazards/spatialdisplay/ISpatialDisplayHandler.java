@@ -9,6 +9,8 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
+
 /**
  * Description: Interface describing the methods that must be implemented by
  * classes that are to act as spatial display handlers, dealing with
@@ -20,12 +22,13 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 08, 2016   15937    Chris.Golden Initial creation.
+ * Nov 03, 2016   22960    bkowal       Notify the user if a gage is not selected.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface ISpatialDisplayHandler {
+public interface ISpatialDisplayHandler extends IMessenger {
 
     /**
      * Handle notification that the spatial display was disposed of.

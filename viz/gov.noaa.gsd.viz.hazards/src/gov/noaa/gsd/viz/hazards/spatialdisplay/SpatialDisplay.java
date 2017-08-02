@@ -7,28 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.SpatialEntity;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.VertexManipulationPoint;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.input.BaseInputHandler;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.input.InputHandlerFactory;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
-import gov.noaa.nws.ncep.ui.pgen.display.LinePatternManager;
-import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -97,6 +75,28 @@ import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.VertexManipulationPoint;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.input.BaseInputHandler;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.input.InputHandlerFactory;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.nws.ncep.ui.pgen.display.LinePatternManager;
+import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
+import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 
 /**
  * CAVE viz resource used for the display of hazards and associated visuals.
@@ -227,12 +227,16 @@ import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
  *                                        drawable manager.
  * Jun 30, 2017 21638      Chris.Golden   Only allow gage action menu item to be enabled if there is a
  *                                        recommender configured as the gage-point-first recommender.
+ * Sep 08, 2017 15561      Chris.Golden   Fixed bug that caused geometry modifications performed upon
+ *                                        a multi-geometry event to potentially strip away all the
+ *                                        geometries making up said event except the one that was
+ *                                        modified.
  * </pre>
  * 
  * @author Xiangbao Jing
  */
-public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
-        IContextMenuContributor, IResourceDataChanged {
+public class SpatialDisplay extends AbstractMovableToolLayer<Object>
+        implements IContextMenuContributor, IResourceDataChanged {
 
     // Public Static Constants
 
@@ -251,12 +255,17 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
         MOVE_SHAPE_CURSOR(SWT.CURSOR_SIZEALL), MOVE_VERTEX_CURSOR(
                 SWT.CURSOR_HAND), ROTATE_CURSOR(SWT.CURSOR_CROSS), ARROW_CURSOR(
-                SWT.CURSOR_ARROW), DRAW_CURSOR(SWT.CURSOR_CROSS), WAIT_CURSOR(
-                SWT.CURSOR_WAIT), SCALE_DOWN_AND_RIGHT(SWT.CURSOR_SIZESE), SCALE_RIGHT(
-                SWT.CURSOR_SIZEE), SCALE_UP_AND_RIGHT(SWT.CURSOR_SIZENE), SCALE_UP(
-                SWT.CURSOR_SIZEN), SCALE_UP_AND_LEFT(SWT.CURSOR_SIZENW), SCALE_LEFT(
-                SWT.CURSOR_SIZEW), SCALE_DOWN_AND_LEFT(SWT.CURSOR_SIZESW), SCALE_DOWN(
-                SWT.CURSOR_SIZES);
+                        SWT.CURSOR_ARROW), DRAW_CURSOR(
+                                SWT.CURSOR_CROSS), WAIT_CURSOR(
+                                        SWT.CURSOR_WAIT), SCALE_DOWN_AND_RIGHT(
+                                                SWT.CURSOR_SIZESE), SCALE_RIGHT(
+                                                        SWT.CURSOR_SIZEE), SCALE_UP_AND_RIGHT(
+                                                                SWT.CURSOR_SIZENE), SCALE_UP(
+                                                                        SWT.CURSOR_SIZEN), SCALE_UP_AND_LEFT(
+                                                                                SWT.CURSOR_SIZENW), SCALE_LEFT(
+                                                                                        SWT.CURSOR_SIZEW), SCALE_DOWN_AND_LEFT(
+                                                                                                SWT.CURSOR_SIZESW), SCALE_DOWN(
+                                                                                                        SWT.CURSOR_SIZES);
 
         // Private Variables
 
@@ -313,9 +322,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                     .getPerspective();
             if (perspectiveDescriptor != null) {
                 String perspectiveId = perspectiveDescriptor.getId();
-                if ((perspectiveId != null)
-                        && (perspectiveId
-                                .equals(HydroPerspectiveManager.HYDRO_PERSPECTIVE))) {
+                if ((perspectiveId != null) && (perspectiveId
+                        .equals(HydroPerspectiveManager.HYDRO_PERSPECTIVE))) {
                     return false;
                 }
             }
@@ -324,8 +332,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
         @Override
         public void run() {
-            spatialView
-                    .handleUserInvocationOfGageAction(getSelectedGageIdentifier());
+            spatialView.handleUserInvocationOfGageAction(
+                    getSelectedGageIdentifier());
         }
 
         // Private Methods
@@ -423,7 +431,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         }
 
         @Override
-        public void setEditable(SpatialEntityType identifier, boolean editable) {
+        public void setEditable(SpatialEntityType identifier,
+                boolean editable) {
             throw new UnsupportedOperationException(
                     "cannot change editable state of spatial entity lists");
         }
@@ -454,13 +463,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.removeDrawablesForSpatialEntities(identifier,
                     removedEntities)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
         @Override
-        public void set(
-                SpatialEntityType identifier,
+        public void set(SpatialEntityType identifier,
                 List<? extends SpatialEntity<? extends IEntityIdentifier>> elements) {
 
             /*
@@ -482,7 +491,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.replaceDrawablesForSpatialEntities(identifier,
                     removedEntities, elements)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
@@ -502,13 +512,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.addDrawablesForSpatialEntity(identifier,
                     element)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
         @Override
-        public void addElements(
-                SpatialEntityType identifier,
+        public void addElements(SpatialEntityType identifier,
                 List<? extends SpatialEntity<? extends IEntityIdentifier>> elements) {
 
             /*
@@ -523,7 +533,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.addDrawablesForSpatialEntities(identifier,
                     elements)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
@@ -543,14 +554,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.addDrawablesForSpatialEntity(identifier,
                     element)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
         @Override
-        public void insertElements(
-                SpatialEntityType identifier,
-                int index,
+        public void insertElements(SpatialEntityType identifier, int index,
                 List<? extends SpatialEntity<? extends IEntityIdentifier>> elements) {
 
             /*
@@ -565,7 +575,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.addDrawablesForSpatialEntities(identifier,
                     elements)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
@@ -588,14 +599,13 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.replaceDrawablesForSpatialEntity(identifier,
                     removedEntity, element)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
         @Override
-        public void replaceElements(
-                SpatialEntityType identifier,
-                int index,
+        public void replaceElements(SpatialEntityType identifier, int index,
                 int count,
                 List<? extends SpatialEntity<? extends IEntityIdentifier>> elements) {
 
@@ -617,7 +627,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.replaceDrawablesForSpatialEntities(identifier,
                     removedEntities, elements)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
@@ -637,7 +648,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.removeDrawablesForSpatialEntity(identifier,
                     removedEntity)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
@@ -661,7 +673,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (drawableManager.removeDrawablesForSpatialEntities(identifier,
                     removedEntities)) {
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         }
 
@@ -802,26 +815,22 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
             LoadProperties loadProperties) {
 
         super(resourceData, loadProperties);
-        spatialEntitiesForTypes
-                .put(SpatialEntityType.HATCHING,
-                        new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
-                                SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
-                                        .get(SpatialEntityType.HATCHING)));
-        spatialEntitiesForTypes
-                .put(SpatialEntityType.UNSELECTED,
-                        new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
-                                SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
-                                        .get(SpatialEntityType.UNSELECTED)));
-        spatialEntitiesForTypes
-                .put(SpatialEntityType.SELECTED,
-                        new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
-                                SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
-                                        .get(SpatialEntityType.SELECTED)));
-        spatialEntitiesForTypes
-                .put(SpatialEntityType.TOOL,
-                        new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
-                                SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
-                                        .get(SpatialEntityType.TOOL)));
+        spatialEntitiesForTypes.put(SpatialEntityType.HATCHING,
+                new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
+                        SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                                .get(SpatialEntityType.HATCHING)));
+        spatialEntitiesForTypes.put(SpatialEntityType.UNSELECTED,
+                new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
+                        SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                                .get(SpatialEntityType.UNSELECTED)));
+        spatialEntitiesForTypes.put(SpatialEntityType.SELECTED,
+                new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
+                        SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                                .get(SpatialEntityType.SELECTED)));
+        spatialEntitiesForTypes.put(SpatialEntityType.TOOL,
+                new ArrayList<SpatialEntity<? extends IEntityIdentifier>>(
+                        SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                                .get(SpatialEntityType.TOOL)));
         for (Map.Entry<SpatialEntityType, List<SpatialEntity<? extends IEntityIdentifier>>> entry : spatialEntitiesForTypes
                 .entrySet()) {
             readOnlySpatialEntitiesForTypes.put(entry.getKey(),
@@ -837,8 +846,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         if (useCannedTime != null && useCannedTime.equalsIgnoreCase("true")) {
             Date date = new Date();
             date.setTime(Long.parseLong(HazardServicesAppBuilder.CANNED_TIME));
-            Calendar simulatedDate = TimeUtil.newCalendar(TimeZone
-                    .getTimeZone("UTC"));
+            Calendar simulatedDate = TimeUtil
+                    .newCalendar(TimeZone.getTimeZone("UTC"));
             simulatedDate.setTime(date);
             // SimulatedTime.getSystemTime().setFrozen(true);
             SimulatedTime.getSystemTime().setFrozen(false);
@@ -890,7 +899,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 /*
                  * Set the default input handler.
                  */
-                setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
             }
         };
         if (Display.getDefault().getThread() == Thread.currentThread()) {
@@ -951,15 +961,15 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              * be identical to the first point, so they need four points at a
              * minimum). If there are, then add the delete vertex menu item.
              */
-            if (info.getDrawable().getPoints().size() > (isPolygon(info
-                    .getDrawable()) ? 4 : 2)) {
-                actions.add(new Action(
-                        HazardConstants.CONTEXT_MENU_DELETE_VERTEX) {
-                    @Override
-                    public void run() {
-                        deleteVertex(contextMenuX, contextMenuY);
-                    }
-                });
+            if (info.getDrawable().getPoints()
+                    .size() > (isPolygon(info.getDrawable()) ? 4 : 2)) {
+                actions.add(
+                        new Action(HazardConstants.CONTEXT_MENU_DELETE_VERTEX) {
+                            @Override
+                            public void run() {
+                                deleteVertex(contextMenuX, contextMenuY);
+                            }
+                        });
             }
         } else if (info.getEdgeIndex() > -1) {
             actions.add(new Action(HazardConstants.CONTEXT_MENU_ADD_VERTEX) {
@@ -1098,9 +1108,9 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
 
                 frameCount = descriptor.getNumberOfFrames();
 
-                DataTime earliestTime = (dataTimes.isEmpty() ? new DataTime(
-                        SimulatedTime.getSystemTime().getTime()) : dataTimes
-                        .get(0));
+                DataTime earliestTime = (dataTimes.isEmpty()
+                        ? new DataTime(SimulatedTime.getSystemTime().getTime())
+                        : dataTimes.get(0));
                 fillDataTimeArray(earliestTime, variance);
             } else if (descriptor.getNumberOfFrames() < frameCount) {
                 frameCount = descriptor.getNumberOfFrames();
@@ -1115,8 +1125,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
              */
             if (prevTimeMatchBasis == false && timeMatchBasis == true) {
                 dataTimes.clear();
-                currentTime = new DataTime(SimulatedTime.getSystemTime()
-                        .getTime());
+                currentTime = new DataTime(
+                        SimulatedTime.getSystemTime().getTime());
 
                 dataTimes.add(currentTime);
                 fillDataTimeArray(currentTime,
@@ -1142,8 +1152,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 if (dataTimes.size() > 0) {
                     currentTime = dataTimes.get(dataTimes.size() - 1);
                 } else {
-                    currentTime = new DataTime(SimulatedTime.getSystemTime()
-                            .getTime());
+                    currentTime = new DataTime(
+                            SimulatedTime.getSystemTime().getTime());
                 }
 
                 dataTimes.add(currentTime);
@@ -1633,7 +1643,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         AbstractEditor editor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
         AbstractDrawableComponent selectedDrawable = getHighlitDrawable();
-        if ((selectedDrawable != null) && isDrawableEditable(selectedDrawable)) {
+        if ((selectedDrawable != null)
+                && isDrawableEditable(selectedDrawable)) {
 
             /*
              * Get the index of the edge of the drawable that is close to or
@@ -1728,7 +1739,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                  */
                 Coordinate newCoordinate = editor.translateClick(
                         colinearCoordinate.x, colinearCoordinate.y);
-                Coordinate[] newCoordinates = new Coordinate[coordinates.length + 1];
+                Coordinate[] newCoordinates = new Coordinate[coordinates.length
+                        + 1];
 
                 /*
                  * If the new coordinate is being added at the end of the array
@@ -1744,8 +1756,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                     for (int j = 0; j < coordinates.length - 1; j++) {
                         newCoordinates[j + 1] = coordinates[j];
                     }
-                    newCoordinates[newCoordinates.length - 1] = (Coordinate) newCoordinate
-                            .clone();
+                    newCoordinates[newCoordinates.length
+                            - 1] = (Coordinate) newCoordinate.clone();
                     minPosition = 0;
                 } else {
                     int j = 0;
@@ -1803,8 +1815,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * vertex.
          */
         MutableDrawableInfo info = getMutableDrawableInfoUnderPoint(x, y, true);
-        if ((info.getDrawable() != null)
-                && (info.getManipulationPoint() instanceof VertexManipulationPoint)) {
+        if ((info.getDrawable() != null) && (info
+                .getManipulationPoint() instanceof VertexManipulationPoint)) {
 
             /*
              * Get the coordinates of the part of the geometry of the drawable
@@ -1817,8 +1829,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                     .getGeometry();
             List<Coordinate[]> overallCoordinates = AdvancedGeometryUtilities
                     .getCoordinates(geometry);
-            Coordinate[] coordinates = overallCoordinates.get(info
-                    .getEdgeIndex());
+            Coordinate[] coordinates = overallCoordinates
+                    .get(info.getEdgeIndex());
 
             /*
              * Ensure there are at least three points left for paths, or five
@@ -1842,11 +1854,12 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 VertexManipulationPoint vertex = (VertexManipulationPoint) info
                         .getManipulationPoint();
                 int vertexIndex = vertex.getVertexIndex();
-                Coordinate[] newCoordinates = new Coordinate[coordinates.length - 1];
-                if (isPolygon
-                        && ((vertexIndex == 0) || (vertexIndex == coordinates.length - 1))) {
-                    newCoordinates[0] = (Coordinate) coordinates[coordinates.length - 2]
-                            .clone();
+                Coordinate[] newCoordinates = new Coordinate[coordinates.length
+                        - 1];
+                if (isPolygon && ((vertexIndex == 0)
+                        || (vertexIndex == coordinates.length - 1))) {
+                    newCoordinates[0] = (Coordinate) coordinates[coordinates.length
+                            - 2].clone();
                     for (int j = 1; j < coordinates.length - 1; j++) {
                         newCoordinates[j] = coordinates[j];
                     }
@@ -1909,7 +1922,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
          * its index.
          */
         SpatialEntity<? extends IEntityIdentifier> spatialEntity = drawableManager
-                .getAssociatedSpatialEntity((AbstractDrawableComponent) drawable);
+                .getAssociatedSpatialEntity(
+                        (AbstractDrawableComponent) drawable);
         IAdvancedGeometry originalGeometry = spatialEntity.getGeometry();
         int newIndex = drawable.getGeometryIndex();
         if ((newIndex == -1)
@@ -1918,11 +1932,11 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         }
         if (newIndex != -1) {
             AdvancedGeometryCollection collection = (AdvancedGeometryCollection) originalGeometry;
-            List<IAdvancedGeometry> newGeometries = new ArrayList<>(collection
-                    .getChildren().size());
+            List<IAdvancedGeometry> newGeometries = new ArrayList<>(
+                    collection.getChildren().size());
             for (int j = 0; j < collection.getChildren().size(); j++) {
-                newGeometries.add(j == newIndex ? geometry : collection
-                        .getChildren().get(j));
+                newGeometries.add(j == newIndex ? geometry
+                        : collection.getChildren().get(j));
             }
             geometry = AdvancedGeometryUtilities
                     .createCollection(newGeometries);
@@ -2019,7 +2033,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
     @Override
     protected void paint(IGraphicsTarget target, PaintProperties paintProps,
             Object object, AbstractMovableToolLayer.SelectionStatus status)
-            throws VizException {
+                    throws VizException {
 
         /*
          * No action; this class does not rely upon the superclass to do its
@@ -2193,9 +2207,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      * @param spatialEntities
      *            Spatial entities to be inserted.
      */
-    private void insertSpatialEntities(
-            SpatialEntityType type,
-            int index,
+    private void insertSpatialEntities(SpatialEntityType type, int index,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> spatialEntities) {
         spatialEntitiesForTypes.get(type).addAll(index, spatialEntities);
     }
@@ -2268,8 +2280,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      *         <code>false</code> otherwise.
      */
     private boolean isPolygon(IDrawable<?> drawable) {
-        return ((drawable instanceof PathDrawable) && ((PathDrawable) drawable)
-                .isClosedLine());
+        return ((drawable instanceof PathDrawable)
+                && ((PathDrawable) drawable).isClosedLine());
     }
 
     /**
@@ -2295,8 +2307,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         if (isPolygon(drawable)) {
             LinearRing exteriorRing = geometryFactory
                     .createLinearRing(coordinates.get(0));
-            LinearRing[] interiorRings = (coordinates.size() > 1 ? new LinearRing[coordinates
-                    .size() - 1] : null);
+            LinearRing[] interiorRings = (coordinates.size() > 1
+                    ? new LinearRing[coordinates.size() - 1] : null);
             if (interiorRings != null) {
                 for (int j = 0; j < coordinates.size() - 1; j++) {
                     interiorRings[j] = geometryFactory
@@ -2307,8 +2319,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         } else if (drawable.getClass() == PathDrawable.class) {
             result = geometryFactory.createLineString(coordinates.get(0));
         } else {
-            throw new IllegalArgumentException("Unexpected geometry "
-                    + drawable.getClass());
+            throw new IllegalArgumentException(
+                    "Unexpected geometry " + drawable.getClass());
         }
         return AdvancedGeometryUtilities.createGeometryWrapper(result, 0);
     }
@@ -2342,14 +2354,14 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 .getGeometryFactory();
         if (shapeType == GeometryType.POLYGON) {
             AdvancedGeometryUtilities.addDuplicateLastCoordinate(points);
-            LinearRing linearRing = geometryFactory.createLinearRing(points
-                    .toArray(new Coordinate[points.size()]));
+            LinearRing linearRing = geometryFactory.createLinearRing(
+                    points.toArray(new Coordinate[points.size()]));
             Geometry polygon = geometryFactory.createPolygon(linearRing, null);
             newGeometry = TopologyPreservingSimplifier.simplify(polygon,
                     SIMPLIFIER_DISTANCE_TOLERANCE);
         } else {
-            LineString lineString = geometryFactory.createLineString(points
-                    .toArray(new Coordinate[points.size()]));
+            LineString lineString = geometryFactory.createLineString(
+                    points.toArray(new Coordinate[points.size()]));
             newGeometry = TopologyPreservingSimplifier.simplify(lineString,
                     SIMPLIFIER_DISTANCE_TOLERANCE);
         }
@@ -2454,7 +2466,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 for (int i = 0; i < points.size(); i++) {
                     newCoordinates.add(points.get(i));
                 }
-                for (int i = indexOfLastPointToRemove + 1; i < indexOfFirstPointToRemove; i++) {
+                for (int i = indexOfLastPointToRemove
+                        + 1; i < indexOfFirstPointToRemove; i++) {
                     newCoordinates.add(origCoordinates.get(i));
                 }
             }
@@ -2468,13 +2481,17 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
                 GeometryFactory geometryFactory = AdvancedGeometryUtilities
                         .getGeometryFactory();
                 IAdvancedGeometry newGeometry = AdvancedGeometryUtilities
-                        .createGeometryWrapper(geometryFactory.createPolygon(
-                                geometryFactory.createLinearRing(newCoordinates
-                                        .toArray(new Coordinate[newCoordinates
-                                                .size()])), null), 0);
+                        .createGeometryWrapper(
+                                geometryFactory.createPolygon(
+                                        geometryFactory.createLinearRing(
+                                                newCoordinates.toArray(
+                                                        new Coordinate[newCoordinates
+                                                                .size()])),
+                                null), 0);
                 if (checkGeometryValidity(newGeometry)) {
                     handleUserModificationOfDrawable(selectedPolygon,
-                            newGeometry);
+                            buildModifiedGeometryForSpatialEntity(
+                                    selectedPolygon, newGeometry));
                 }
             }
         }
@@ -2537,7 +2554,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
      * @param numberOfDataTimes
      *            The number of data times to initialize behind the start time.
      */
-    private void fillDataTimeArray(DataTime startDataTime, int numberOfDataTimes) {
+    private void fillDataTimeArray(DataTime startDataTime,
+            int numberOfDataTimes) {
         long time = startDataTime.getRefTime().getTime();
         DataTime currentDataTime = null;
 
@@ -2608,8 +2626,8 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object> implements
         if (scaleChange == true) {
             float curZoomLevel = paintProperties.getZoomLevel();
             if (zoomLevel == curZoomLevel) {
-                paintProperties.setZoomLevel(curZoomLevel
-                        + IOTA_ZOOM_LEVEL_FACTOR_DELTA);
+                paintProperties.setZoomLevel(
+                        curZoomLevel + IOTA_ZOOM_LEVEL_FACTOR_DELTA);
             }
         }
         return scaleChange;

@@ -31,6 +31,7 @@
     Jun 21, 2016    9620    Robert.Blum  Removed unused code.
     Jun 23, 2016   19537    Chris.Golden Changed to use UTC when converting epoch time to datetime.
     Aug 16, 2016   15017    Robert.blum  Removed fields that are now set by the recommender.
+    Oct 07, 2016   21777    Robert.Blum  Removed logger setup as the base generator handles it.
 
 '''
 from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
@@ -43,7 +44,6 @@ from RiverForecastUtils import TIME
 from HydroProductParts import HydroProductParts
 from com.raytheon.uf.common.time import SimulatedTime
 from HazardConstants import MISSING_VALUE
-import logging, UFStatusHandler
 import datetime
 import Legacy_Base_Generator
 import HazardConstants
@@ -58,10 +58,6 @@ class Product(Legacy_Base_Generator.Product):
 
     def _initialize(self):
         super(Product, self)._initialize()
-        self.logger = logging.getLogger('HydroGenerator')
-        self.logger.addHandler(UFStatusHandler.UFStatusHandler(
-            'com.raytheon.uf.common.hazards.productgen', 'HydroGenerator', level=logging.INFO))
-        self.logger.setLevel(logging.INFO)  
 
     #### Utility methods
 
@@ -171,7 +167,6 @@ class Product(Legacy_Base_Generator.Product):
         hazardEventDict['day3'] = self._riverForecastManager.getPhysicalElementValue(pointID, primaryPE, 0, forecastTypeSource, 'Z', timeArgs[2], False, 
                                                 millis) 
 
-
         time = self._tpc.getFormattedTime(millis, '%H%M')
         hazardEventDict['HT0FFXNext'] = self._riverForecastManager.getPhysicalElementValue(
                 pointID, "HT", 0, "FF", 'X', '0|' + time + '|1', False, millis)
@@ -192,7 +187,6 @@ class Product(Legacy_Base_Generator.Product):
                 pointID, "QR", 0, "FF", 'X', '0|' + time + '|1', False, millis)
         hazardEventDict['QR0FFXNextTime'] = self._riverForecastManager.getPhysicalElementValue(
                 pointID, "QR", 0, "FF", 'X', '0|' + time + '|1', True, millis)
-        
         
     def _preparePointImpacts(self, hazardEvent):
         # Pull out the list of chosen impact text fields

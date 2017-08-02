@@ -7,17 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.common.utilities.Sort;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
-import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
-import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +22,17 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.raytheon.viz.ui.dialogs.ModeListener;
+
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.Sort;
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
+import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 /**
  * Console view part, used to display the main control widgets for Hazard
@@ -82,13 +82,14 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Jun 30, 2017   19223    Chris.Golden      Added ability to change the text and
  *                                           enabled state of a row menu's menu item
  *                                           after it is displayed.
+ * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ConsoleViewPart extends DockTrackingViewPart implements
-        IConsoleTree {
+public class ConsoleViewPart extends DockTrackingViewPart
+        implements IConsoleTree {
 
     // Public Static Constants
 
@@ -170,11 +171,13 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
             Date currentTime, long visibleTimeRange,
             TimeResolution timeResolution,
             ImmutableList<Map<String, Object>> filterSpecifiers,
-            String currentSite, boolean temporalControlsInToolBar) {
+            String localizedSite, String currentSite,
+            boolean temporalControlsInToolBar) {
         this.view = view;
         this.currentSite = currentSite;
         body.initialize(selectedTime, currentTime, visibleTimeRange,
-                timeResolution, filterSpecifiers, temporalControlsInToolBar);
+                localizedSite, currentSite, timeResolution, filterSpecifiers,
+                temporalControlsInToolBar);
     }
 
     @Override
@@ -341,6 +344,7 @@ public class ConsoleViewPart extends DockTrackingViewPart implements
      */
     void siteChanged(String siteIdentifier) {
         this.currentSite = siteIdentifier;
+        body.siteChanged(currentSite);
         setTitleText();
     }
 

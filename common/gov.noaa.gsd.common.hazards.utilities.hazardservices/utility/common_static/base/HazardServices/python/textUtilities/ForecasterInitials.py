@@ -3,14 +3,15 @@
    name/initials/forecasterID that they want display in products that have
    the initials productPart.
    
-   Note: If there is no entry for the current user, the user name obtained from
-   os.getlogin() will be used.
-   
+   Note: If there is no entry for the current user, the user name of the user 
+   running CAVE will be used.
 '''
+
 import os
+import pwd
 
 def getForecasterIdentification():
-    currentUser = os.getlogin()
+    currentUser = pwd.getpwuid(os.getuid()).pw_name
 
     forecasterInitials = {
 #                      Examples

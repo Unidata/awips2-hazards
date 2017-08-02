@@ -423,7 +423,7 @@ class MetaData(CommonMetaData.MetaData):
 ## # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, megawidgetDict):    
     import sys
-    sys.stderr.writelines( ['VAA Interdependency Script Triggered\n'])
+    CommonMetaData.writelines(sys.stderr, ['VAA Interdependency Script Triggered\n'])
     
     nextAdvisoryTime = megawidgetDict["volcanoNextAdvisory"]["values"]      
                 

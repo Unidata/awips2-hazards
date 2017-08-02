@@ -24,6 +24,8 @@
     Dec 21, 2015       14042    Robert.Blum            Fixed grammer issue with rain so far.
     Mar 15, 2016       11892    Robert.Blum            Complete rework to add optional flooding flag.
     Aug 25, 2016       21458    Robert.Blum            Replacing hashTags with correct framing.
+    Oct 13, 2016       22495    Sara.Stewart           Removed extraneous Dam & River words
+    Oct 13, 2016       22510    Robert.Blum            Fixed siteImminent and siteFailed cases for FF.W.NonConvective.
     @author Daniel.S.Schaffer@noaa.gov
 '''
 import os
@@ -36,8 +38,8 @@ class BasisText(object):
                          "dopplerGaugesSource" : "Doppler radar and automated rain gauges indicated ",
                          "trainedSpottersSource" : "trained weather spotters reported ",
                          "publicSource" : "the public reported ",
-                         "localLawEnforcementSource" : "local law enforcement officials reported ",
-                         "emergencyManagementSource" : "emergency management officials reported ",
+                         "localLawEnforcementSource" : "local law enforcement reported ",
+                         "emergencyManagementSource" : "emergency management reported ",
                          "satelliteSource" : "satellite estimates indicate ",
                          "satelliteGaugesSource" : "satellite estimates and rain gauge data indicate ",
                          "gaugesSource" : "gauge reports indicated ",
@@ -138,13 +140,13 @@ class BasisText(object):
     def get_FF_W_NonConvectiveBulletText(self):
         reportType = ''
         if self.hydrologicClause == "levee":
-            reportType = "a levee on the |* riverName *| River at |* floodLocation *| failed causing flash flooding of immediately surrounding areas"
+            reportType = "a levee on the |* riverName *| at |* floodLocation *| failed causing flash flooding of immediately surrounding areas"
         elif self.hydrologicClause == "floodgate":
-            reportType = "the floodgates on the |* damOrLeveeName *| Dam were opened causing flash flooding downstream on the |* riverName *| River"
+            reportType = "the floodgates on the |* damOrLeveeName *| were opened causing flash flooding downstream on the |* riverName *|"
         elif self.hydrologicClause == "glacier":
             reportType = "a glacier-dammed lake at |* floodLocation *| is rapidly releasing large quantities of impounded water resulting in flash flooding |* downstreamLocation *|"
         elif self.hydrologicClause == "icejam":
-            reportType = "an ice jam on the |* riverName *| River at |* floodLocation *| broke causing flash flooding downstream"
+            reportType = "an ice jam on the |* riverName *| at |* floodLocation *| broke causing flash flooding downstream"
         elif self.hydrologicClause == "rain":
             reportType = "rain falling on existing snowpack was generating flash flooding from excessive runoff"
         elif self.hydrologicClause == "snowMelt":
@@ -154,11 +156,11 @@ class BasisText(object):
         elif self.hydrologicClause == "volcanoLahar":
             reportType = "activity of the |* volcanoName *| volcano was causing rapid melting of snow and ice on the mountain. This will result in a torrent of mud...ash...rock and hot water to flow down the mountain through |*downstreamLocation *| and generate flash flooding"
         elif self.hydrologicClause == "dam":
-            reportType = "the |* damOrLeveeName *| Dam failed causing flash flooding downstream on the |* riverName *| River"
-        elif self.hydrologicClause == "siteimminent":
-            reportType = "the imminent failure of |* damOrLeveeName *| Dam"
-        elif self.hydrologicClause == "sitefailed":
-            reportType = "the failure of |* damOrLeveeName *| Dam"
+            reportType = "the |* damOrLeveeName *| failed causing flash flooding downstream on the |* riverName *|"
+        elif self.hydrologicClause == "siteImminent":
+            reportType = "the imminent failure of |* damOrLeveeName *|"
+        elif self.hydrologicClause == "siteFailed":
+            reportType = "the failure of |* damOrLeveeName *| causing flash flooding downstream on the |* riverName *|"
         else:
             reportType = "excessive rain causing flash flooding was occurring over the warned area"
 

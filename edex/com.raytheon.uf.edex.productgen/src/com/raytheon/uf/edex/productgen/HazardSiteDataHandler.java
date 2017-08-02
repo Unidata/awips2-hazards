@@ -36,8 +36,10 @@ import com.raytheon.uf.edex.hazards.servicebackup.HazardSiteDataProcessor;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 14, 2015 3743       Chris.Cody  Initial creation
- * Nov 23, 2015 3743       Robert.Blum Only handles exports.
+ * Sep 14, 2015  3743      Chris.Cody  Initial creation
+ * Nov 23, 2015  3743      Robert.Blum Only handles exports.
+ * Dec 14, 2016 22119      Kevin.Bisanz Pass through options for service backup
+ *                                     export script.
  * 
  * </pre>
  * 
@@ -45,8 +47,8 @@ import com.raytheon.uf.edex.hazards.servicebackup.HazardSiteDataProcessor;
  * @version 1.0
  */
 
-public class HazardSiteDataHandler implements
-        IRequestHandler<HazardSiteDataRequest> {
+public class HazardSiteDataHandler
+        implements IRequestHandler<HazardSiteDataRequest> {
 
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(HazardSiteDataHandler.class);
@@ -73,11 +75,14 @@ public class HazardSiteDataHandler implements
         String resultString = null;
 
         String siteId = request.getSiteId();
-        statusHandler
-                .info("HazardSiteDataHandler: EXPORT Hazard Services configuration for: "
-                        + siteId);
-        resultString = hazardSiteDataProcessor
-                .exportApplicationSiteData(siteId);
+        boolean exportConfig = request.isExportConfig();
+        boolean exportProductText = request.isExportProductText();
+        boolean exportProductData = request.isExportProductData();
+        statusHandler.info(String.format(
+                "HazardSiteDataHandler: EXPORT Hazard Services configuration for siteId=%s, exportConfig=%b, exportProductText=%b, exportProductData=%b",
+                siteId, exportConfig, exportProductText, exportProductData));
+        resultString = hazardSiteDataProcessor.exportApplicationSiteData(siteId,
+                exportConfig, exportProductText, exportProductData);
 
         HazardSiteDataResponse hazardSiteDataResponse = new HazardSiteDataResponse();
         if ((resultString != null) && (resultString.isEmpty() == false)) {

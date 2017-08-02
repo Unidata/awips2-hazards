@@ -45,8 +45,6 @@ class Product(HydroGenerator.Product):
         # If -1, use the end time of the hazard
         self._purgeHours = 8.0
         self._ESF_ProductName = 'Hydrologic Outlook'
-        self._includeAreaNames = False
-        self._includeCityNames = False
         self._vtecProduct = False
         # Polygon-based, so locations listed will be limited to within the polygon rather than county area
         self._polygonBased = True

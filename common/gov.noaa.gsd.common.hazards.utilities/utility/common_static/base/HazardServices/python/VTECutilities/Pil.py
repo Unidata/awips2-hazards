@@ -4,23 +4,31 @@
 # This object determines the product pil given a Product Generator 
 # Category e.g. "FFA", "FLW_FLS", "FFW_FFS" and a VTEC action code.
 #------------------------------------------------------------------
-from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
-from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
 
 from HazardConstants import *
 # For the VTEC tests to work, we need to be able to bypass the RiverForecastPoints module
-
-import Logger as LogStream
      
-class Pil:
+class Pil(object):
 
     def __init__(self, productCategory, vtecRecord, hazardEvent):
         self._productCategory = productCategory
         self._vtecRecord = vtecRecord
         self._hazardEvent = hazardEvent
         self._action = self._vtecRecord.get('act')
-        self._riverForecastManager = RiverForecastManager()
-        
+        self._FLOOD_CATEGORY_MAPPING = { 
+                     None: 0,  # Lowest flood severity
+                     'N':  1,
+                     'U':  2,
+                     '0':  3,
+                      0 :  3,
+                     '1':  4,
+                      1 :  4,
+                     '2':  5,
+                      2 :  5,
+                     '3':  6,
+                      3:   6,  # Highest flood severity
+                }
+
     def getPil(self):  
         pil = None      
         if self._productCategory == "FFA":
@@ -61,22 +69,13 @@ class Pil:
                 
                 else:
                     # actions CON, EXT
-                    pointID = self._hazardEvent.get('pointID')
-                    fcstCategory = 1
-                    prevCategory = 1
-                    if pointID:
-                        try:
-                            from com.raytheon.uf.common.hazards.hydro import RiverForecastManager
-                            from com.raytheon.uf.common.hazards.hydro import RiverForecastPoint
-                            riverForecastPoint = self._riverForecastManager.getRiverForecastPoint(pointID, True)
-                            fcstCategory = riverForecastPoint.getMaximumForecastCategory()
-                            prevCategory = self._hazardEvent.get('previousForecastCategory')
-                        except Exception, e:
-                            LogStream.logProblem('Could not get category information' + str(e))
-                    if fcstCategory > prevCategory:
-                         pil = "FLW"
+                    prevSeverity = self._hazardEvent.get('previousFloodSeverity')                        
+                    newSeverity = self._vtecRecord.get('hvtec', {}).get('floodSeverity')
+                    if self._getComparableSeverity(newSeverity) > self._getComparableSeverity(prevSeverity):
+                        pil = "FLW"
                     else:
-                         pil = "FLS"
+                        pil = "FLS"
         return pil
-            
-       
+
+    def _getComparableSeverity(self, category):
+        return self._FLOOD_CATEGORY_MAPPING[category]

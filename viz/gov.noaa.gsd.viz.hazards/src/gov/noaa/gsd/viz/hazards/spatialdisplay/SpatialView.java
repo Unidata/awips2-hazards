@@ -7,31 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.SpatialEntity;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Toggle;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
-import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
-import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
-import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
-import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
-import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
-import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
-import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -67,7 +42,6 @@ import com.raytheon.uf.viz.core.drawables.IDescriptor;
 import com.raytheon.uf.viz.core.drawables.IRenderableDisplay;
 import com.raytheon.uf.viz.core.drawables.ResourcePair;
 import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.core.map.IMapDescriptor;
 import com.raytheon.uf.viz.core.maps.rsc.DbMapResource;
 import com.raytheon.uf.viz.core.maps.rsc.DbMapResourceData;
@@ -81,6 +55,31 @@ import com.raytheon.viz.ui.EditorUtil;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Toggle;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
+import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
+import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
+import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
+import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
+import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
+import gov.noaa.gsd.viz.hazards.ui.StateChangerDelegate;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
 
 /**
  * Spatial display view, which manages the spatial display.
@@ -145,6 +144,9 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                           when an edit is completed.
  * Oct 11, 2016 21873      Chris.Golden      Fixed bug that caused null pointer exceptions
  *                                           in some cases when switching perspectives.
+ * Dec 14, 2016 26813      bkowal            Use the active Hazard Services site when
+ *                                           determining which counties to render for
+ *                                           "Select by Area".
  * Feb 01, 2017 15556      Chris.Golden      Fixed bug that caused deselection of visual
  *                                           feature spatial entity representing a hazard
  *                                           event to do nothing to deselect the hazard
@@ -227,13 +229,18 @@ public class SpatialView implements
      * Input modes.
      */
     private enum InputMode {
-        SELECT_OR_MODIFY("Select event", "arrow.png"), DRAW_POINT(
-                "Draw points", "drawPoint.png"), DRAW_LINE("Draw path",
-                "drawPath.png"), DRAW_POLYGON("Draw polygon", "drawPolygon.png"), DRAW_FREEHAND_POLYGON(
-                "Draw freehand polygon", "drawFreehandPolygon.png"), DRAW_ELLIPSE(
-                "Draw ellipse", "drawEllipse.png"), EDIT_POLYGON(
-                "Edit polygon", "editPolygon.png"), EDIT_FREEHAND_POLYGON(
-                "Edit polygon freehand", "editPolygonFreeHand.png");
+        SELECT_OR_MODIFY("Select event", "arrow.png"), DRAW_POINT("Draw points",
+                "drawPoint.png"), DRAW_LINE("Draw path",
+                        "drawPath.png"), DRAW_POLYGON("Draw polygon",
+                                "drawPolygon.png"), DRAW_FREEHAND_POLYGON(
+                                        "Draw freehand polygon",
+                                        "drawFreehandPolygon.png"), DRAW_ELLIPSE(
+                                                "Draw ellipse",
+                                                "drawEllipse.png"), EDIT_POLYGON(
+                                                        "Edit polygon",
+                                                        "editPolygon.png"), EDIT_FREEHAND_POLYGON(
+                                                                "Edit polygon freehand",
+                                                                "editPolygonFreeHand.png");
 
         // Private Variables
 
@@ -309,8 +316,8 @@ public class SpatialView implements
          *            Input mode.
          */
         public InputModeAction(InputMode inputMode) {
-            super("", inputMode.getIconFile(), Action.AS_CHECK_BOX, inputMode
-                    .getDescription());
+            super("", inputMode.getIconFile(), Action.AS_CHECK_BOX,
+                    inputMode.getDescription());
             this.inputMode = inputMode;
         }
 
@@ -364,8 +371,8 @@ public class SpatialView implements
              */
             switch (inputMode) {
             case SELECT_OR_MODIFY:
-                spatialDisplay
-                        .setCurrentInputHandlerToNonDrawing(InputHandlerType.SINGLE_SELECTION);
+                spatialDisplay.setCurrentInputHandlerToNonDrawing(
+                        InputHandlerType.SINGLE_SELECTION);
                 break;
             case DRAW_POINT:
                 spatialDisplay.setCurrentInputHandlerToDrawing(
@@ -380,10 +387,9 @@ public class SpatialView implements
                         InputHandlerType.VERTEX_DRAWING, GeometryType.POLYGON);
                 break;
             case DRAW_FREEHAND_POLYGON:
-                spatialDisplay
-                        .setCurrentInputHandlerToDrawing(
-                                InputHandlerType.FREEHAND_DRAWING,
-                                GeometryType.POLYGON);
+                spatialDisplay.setCurrentInputHandlerToDrawing(
+                        InputHandlerType.FREEHAND_DRAWING,
+                        GeometryType.POLYGON);
                 break;
             case DRAW_ELLIPSE:
                 spatialDisplay.setCurrentInputHandlerToDrawing(
@@ -452,13 +458,12 @@ public class SpatialView implements
             @Override
             public void widgetSelected(SelectionEvent event) {
                 MenuItem item = (MenuItem) event.widget;
-                loadSelectByAreaVizResourceAndInputHandler(new SelectByAreaContext(
-                        null,
-                        null,
-                        (String) item
-                                .getData(HazardConstants.GEOMETRY_REFERENCE_KEY),
-                        (String) item
-                                .getData(HazardConstants.GEOMETRY_MAP_NAME_KEY)));
+                loadSelectByAreaVizResourceAndInputHandler(
+                        new SelectByAreaContext(null, null,
+                                (String) item.getData(
+                                        HazardConstants.GEOMETRY_REFERENCE_KEY),
+                                (String) item.getData(
+                                        HazardConstants.GEOMETRY_MAP_NAME_KEY)));
             }
         };
 
@@ -467,7 +472,8 @@ public class SpatialView implements
          */
         private SelectByAreaMapsPulldownAction() {
             super("");
-            setImageDescriptor(getImageDescriptorForFile("mapsForSelectByArea.png"));
+            setImageDescriptor(
+                    getImageDescriptorForFile("mapsForSelectByArea.png"));
             setToolTipText("Maps for select by area");
 
             /*
@@ -512,7 +518,8 @@ public class SpatialView implements
              * map resources. For each of these that is visible, add a menu
              * item.
              */
-            if ((descriptor != null) && (descriptor instanceof IMapDescriptor)) {
+            if ((descriptor != null)
+                    && (descriptor instanceof IMapDescriptor)) {
                 IMapDescriptor mapDescriptor = (IMapDescriptor) descriptor;
                 ResourceList resourceList = mapDescriptor.getResourceList();
                 for (ResourcePair pair : resourceList) {
@@ -533,6 +540,17 @@ public class SpatialView implements
                          * if it is, create a menu item for it.
                          */
                         if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
+
+                            /*
+                             * Determine if the menu item is being created for
+                             * the localized site or an alternate (backup) site.
+                             */
+                            if ((localizedSiteIdentifier != null)
+                                    && (localizedSiteIdentifier.equals(
+                                            currentSiteIdentifier) == false)) {
+                                mapName = "County Boundaries "
+                                        + currentSiteIdentifier;
+                            }
 
                             /*
                              * Create the menu item, giving it a corresponding
@@ -581,8 +599,8 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                        .getDisplayPanes())) {
+                for (IDisplayPane displayPane : Arrays
+                        .asList(abstractEditor.getDisplayPanes())) {
                     descriptor = displayPane.getDescriptor();
                     if ((descriptor != null)
                             && (descriptor instanceof IMapDescriptor)) {
@@ -597,13 +615,14 @@ public class SpatialView implements
                                  */
                                 String tableName = ((DbMapResource) pair
                                         .getResource()).getResourceData()
-                                        .getTable();
+                                                .getTable();
 
                                 /*
                                  * Make sure that this is an acceptable overlay
                                  * table.
                                  */
-                                if (ACCEPTABLE_MAP_OVERLAYS.contains(tableName)) {
+                                if (ACCEPTABLE_MAP_OVERLAYS
+                                        .contains(tableName)) {
                                     enable = true;
                                     break;
                                 }
@@ -708,8 +727,8 @@ public class SpatialView implements
              * since this invocation indicates that the selected ones have
              * changed.
              */
-            spatialDisplay
-                    .repopulateActiveSpatialEntityIdentifiers(SpatialEntityType.TOOL);
+            spatialDisplay.repopulateActiveSpatialEntityIdentifiers(
+                    SpatialEntityType.TOOL);
         }
 
         @Override
@@ -1069,6 +1088,16 @@ public class SpatialView implements
      */
     private volatile Date selectedTime;
 
+    /**
+     * Localized site identifier.
+     */
+    private String localizedSiteIdentifier;
+
+    /**
+     * Current site identifier.
+     */
+    private String currentSiteIdentifier;
+
     // Public Constructors
 
     /**
@@ -1090,8 +1119,11 @@ public class SpatialView implements
 
     @Override
     public final void initialize(SpatialPresenter presenter,
+            String localizedSite, String currentSite,
             Set<IEntityIdentifier> selectedSpatialEntityIdentifiers) {
         this.presenter = presenter;
+        this.localizedSiteIdentifier = localizedSite;
+        this.currentSiteIdentifier = currentSite;
         this.selectedSpatialEntityIdentifiers = selectedSpatialEntityIdentifiers;
 
         /*
@@ -1107,8 +1139,8 @@ public class SpatialView implements
         AbstractEditor abstractEditor = EditorUtil
                 .getActiveEditorAs(AbstractEditor.class);
         if (abstractEditor != null) {
-            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                    .getDisplayPanes())) {
+            for (IDisplayPane displayPane : Arrays
+                    .asList(abstractEditor.getDisplayPanes())) {
                 IDescriptor descriptor = displayPane.getDescriptor();
                 if ((descriptor != null)
                         && (descriptor instanceof IMapDescriptor)) {
@@ -1215,7 +1247,8 @@ public class SpatialView implements
                      */
                     String perspectiveID = getCurrentPerspectiveDescriptor()
                             .getId();
-                    double[] centerAsArray = new double[] { center.x, center.y };
+                    double[] centerAsArray = new double[] { center.x,
+                            center.y };
                     AbstractEditor abstractEditor = EditorUtil
                             .getActiveEditorAs(AbstractEditor.class);
                     if ((abstractEditor != null)
@@ -1292,10 +1325,10 @@ public class SpatialView implements
                             }
                         } catch (VizException e) {
                             loadInputHandler = false;
-                            statusHandler
-                                    .error("SpatialView.requestSelectByAreaInputHandler(): "
+                            statusHandler.error(
+                                    "SpatialView.requestSelectByAreaInputHandler(): "
                                             + "Error loading select-by-area input handler: ",
-                                            e);
+                                    e);
                             handleUserResetOfInputMode();
                         }
 
@@ -1303,11 +1336,10 @@ public class SpatialView implements
                          * Load the input handler if appropriate.
                          */
                         if (loadInputHandler) {
-                            spatialDisplay
-                                    .setCurrentInputHandlerToSelectByArea(
-                                            selectByAreaVizResource,
-                                            context.getSelectedGeometries(),
-                                            context.getIdentifier());
+                            spatialDisplay.setCurrentInputHandlerToSelectByArea(
+                                    selectByAreaVizResource,
+                                    context.getSelectedGeometries(),
+                                    context.getIdentifier());
                         }
                     }
                 });
@@ -1318,6 +1350,11 @@ public class SpatialView implements
     @Override
     public void setSelectedTime(final Date selectedTime) {
         this.selectedTime = selectedTime;
+    }
+
+    @Override
+    public void setCurrentSite(String currentSite) {
+        this.currentSiteIdentifier = currentSite;
     }
 
     @Override
@@ -1410,11 +1447,10 @@ public class SpatialView implements
                         @Override
                         public void run() {
                             if (toggleChangeHandler != null) {
-                                toggleChangeHandler
-                                        .stateChanged(
-                                                Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT,
-                                                addNewGeometryToSelectedEventToggleAction
-                                                        .isChecked());
+                                toggleChangeHandler.stateChanged(
+                                        Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT,
+                                        addNewGeometryToSelectedEventToggleAction
+                                                .isChecked());
                             }
                         }
                     });
@@ -1517,9 +1553,10 @@ public class SpatialView implements
                             new Predicate<IEntityIdentifier>() {
                                 @Override
                                 public boolean apply(IEntityIdentifier input) {
-                                    return ((input instanceof IHazardEventEntityIdentifier == false) || (((IHazardEventEntityIdentifier) input)
-                                            .getEventIdentifier().equals(
-                                                    eventIdentifier) == false));
+                                    return ((input instanceof IHazardEventEntityIdentifier == false)
+                                            || (((IHazardEventEntityIdentifier) input)
+                                                    .getEventIdentifier()
+                                                    .equals(eventIdentifier) == false));
                                 }
                             });
                 } else {
@@ -1560,9 +1597,9 @@ public class SpatialView implements
     void handleUserModificationOfSpatialEntity(IEntityIdentifier identifier,
             IAdvancedGeometry geometry) {
         if (modifyGeometryInvocationHandler != null) {
-            modifyGeometryInvocationHandler
-                    .commandInvoked(new EntityGeometryModificationContext(
-                            identifier, geometry, selectedTime));
+            modifyGeometryInvocationHandler.commandInvoked(
+                    new EntityGeometryModificationContext(identifier, geometry,
+                            selectedTime));
         }
     }
 
@@ -1744,19 +1781,20 @@ public class SpatialView implements
             AbstractEditor abstractEditor = EditorUtil
                     .getActiveEditorAs(AbstractEditor.class);
             if (abstractEditor != null) {
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                        .getDisplayPanes())) {
+                for (IDisplayPane displayPane : Arrays
+                        .asList(abstractEditor.getDisplayPanes())) {
                     IDescriptor idesc = displayPane.getDescriptor();
                     IMapDescriptor desc = null;
                     if (idesc instanceof IMapDescriptor) {
                         desc = (IMapDescriptor) idesc;
 
                         try {
-                            desc.getResourceList().removeRsc(
-                                    selectByAreaVizResource);
+                            desc.getResourceList()
+                                    .removeRsc(selectByAreaVizResource);
                         } catch (Exception e) {
-                            statusHandler.error("Failure while unloading "
-                                    + "select-by-area map database resource.",
+                            statusHandler.error(
+                                    "Failure while unloading "
+                                            + "select-by-area map database resource.",
                                     e);
                         }
                     }
@@ -1777,8 +1815,8 @@ public class SpatialView implements
                 .getActiveEditorAs(AbstractEditor.class);
         if (abstractEditor != null) {
 
-            for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                    .getDisplayPanes())) {
+            for (IDisplayPane displayPane : Arrays
+                    .asList(abstractEditor.getDisplayPanes())) {
 
                 IDescriptor idesc = displayPane.getDescriptor();
                 if (idesc instanceof IMapDescriptor) {
@@ -1820,8 +1858,8 @@ public class SpatialView implements
         IExtent extent = display.getExtent();
         IDescriptor descriptor = display.getDescriptor();
         for (Coordinate coordinate : hull) {
-            double[] asPixel = descriptor.worldToPixel(new double[] {
-                    coordinate.x, coordinate.y });
+            double[] asPixel = descriptor
+                    .worldToPixel(new double[] { coordinate.x, coordinate.y });
             if (!extent.contains(asPixel)) {
                 return false;
             }
@@ -1953,8 +1991,8 @@ public class SpatialView implements
          * TODO: This should be fetched dynamically, as some overlays do not
          * have a CWA field.
          */
-        String siteID = LocalizationManager.getInstance().getCurrentSite();
-        resourceData.setConstraints(new String[] { "cwa = '" + siteID + "'" });
+        resourceData.setConstraints(
+                new String[] { "cwa = '" + currentSiteIdentifier + "'" });
 
         /*
          * Create the viz resource to display in CAVE.
@@ -1980,8 +2018,8 @@ public class SpatialView implements
             if (abstractEditor != null) {
                 IDescriptor idesc = null;
                 IMapDescriptor desc = null;
-                for (IDisplayPane displayPane : Arrays.asList(abstractEditor
-                        .getDisplayPanes())) {
+                for (IDisplayPane displayPane : Arrays
+                        .asList(abstractEditor.getDisplayPanes())) {
                     idesc = displayPane.getDescriptor();
 
                     if (idesc instanceof IMapDescriptor) {

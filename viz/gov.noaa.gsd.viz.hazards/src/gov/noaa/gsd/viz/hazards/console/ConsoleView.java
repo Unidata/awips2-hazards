@@ -137,6 +137,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           to fix missing view menu.
  * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to
  *                                           settings.
+ * Dec 14, 2016   22119    Kevin.Bisanz      Add Export Product Edits menu.
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
  *                                           design concerns, untangle spaghetti, and
  *                                           add history list viewing.
@@ -147,6 +148,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Jun 30, 2017   19223    Chris.Golden      Added ability to change the text and
  *                                           enabled state of a row menu's menu item
  *                                           after it is displayed.
+ * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
  * </pre>
  * 
  * @author Chris.Golden
@@ -314,9 +316,14 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     private static final String CHECK_HAZARD_CONFLICTS_MENU_TEXT = "Check Hazard Conflicts";
 
     /**
-     * Export site configuration data command menu item text.
+     * Export Site Configuration Data menu text.
      */
-    private static final String EXPORT_HAZARD_SITE_MENU_TEXT = "Export Hazard Site";
+    public static final String EXPORT_HAZARD_SITE_CONFIG_MENU_TEXT = "Export Hazard Site Config";
+
+    /**
+     * Export Product Edits menu text.
+     */
+    public static final String EXPORT_HAZARD_SITE_PRODUCT_EDITS_MENU_TEXT = "Export Hazard Site Product Edits";
 
     /**
      * Change VTEC mode menu header text.
@@ -1216,7 +1223,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             final Date selectedTime, final Date currentTime,
             final long visibleTimeRange, final TimeResolution timeResolution,
             final ImmutableList<Map<String, Object>> filterSpecifiers,
-            final String currentSite, final ImmutableList<String> backupSites,
+            final String localizedSite, final String currentSite,
+            final ImmutableList<String> backupSites,
             final boolean temporalControlsInToolBar) {
         this.presenter = presenter;
         this.temporalControlsInToolBar = temporalControlsInToolBar;
@@ -1230,7 +1238,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             public void run() {
                 getViewPart().initialize(ConsoleView.this, selectedTime,
                         currentTime, visibleTimeRange, timeResolution,
-                        filterSpecifiers, currentSite,
+                        filterSpecifiers, localizedSite, currentSite,
                         temporalControlsInToolBar);
             }
         });
@@ -1316,6 +1324,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                  * actions properly.
                  */
                 Display.getDefault().asyncExec(new Runnable() {
+                    @Override
                     public void run() {
                         // contributionManager.update(true);
                         actionBars.updateActionBars();
@@ -1374,8 +1383,12 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             changeSiteAction = new ChangeSiteAction();
 
             CommandConsoleAction exportHazardConfigAction = new CommandConsoleAction(
-                    EXPORT_HAZARD_SITE_MENU_TEXT, null, null,
+                    EXPORT_HAZARD_SITE_CONFIG_MENU_TEXT, null, null,
                     Command.EXPORT_SITE_CONFIG);
+
+            CommandConsoleAction exportHazardProductEditsAction = new CommandConsoleAction(
+                    EXPORT_HAZARD_SITE_PRODUCT_EDITS_MENU_TEXT, null, null,
+                    Command.EXPORT_SITE_PRODUCT_EDITS);
 
             CommandConsoleAction checkHazardConflictsAction = new CommandConsoleAction(
                     CHECK_HAZARD_CONFLICTS_MENU_TEXT, null, null,
@@ -1397,7 +1410,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                     Toggle.SHOW_HISTORY_LISTS);
 
             List<Action> actions = Lists.newArrayList(changeSiteAction,
-                    exportHazardConfigAction, sep, checkHazardConflictsAction,
+                    exportHazardConfigAction, exportHazardProductEditsAction,
+                    sep, checkHazardConflictsAction,
                     autoCheckHazardConflictsAction, showHatchedAreaAction, sep,
                     changeVtecFormatAction, sep, showHistoryListsAction, sep);
 

@@ -37,15 +37,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.R
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_SITES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
-import gov.noaa.gsd.viz.megawidgets.ISpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
-import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValidatorHelper;
 
 import java.io.File;
 import java.io.Serializable;
@@ -59,6 +50,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -66,10 +58,9 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import net.engio.mbassy.listener.Handler;
-
 import org.apache.commons.lang.time.DateUtils;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
@@ -158,6 +149,18 @@ import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ISpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValidatorHelper;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Implementation of ISessionEventManager
@@ -443,6 +446,13 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      Also removed code that was redundant from addEvent() that added
  *                                      a geometry to an existing event, since this is not the job of the
  *                                      session manager and was already being done by the spatial presenter.
+ * Sep 26, 2016   21758    Chris.Golden Changed removeEvent() and removeEvents() to include a boolean
+ *                                      parameter indicating whether confirmation should be done or not.
+ *                                      If the parameter is true, then any proposed-status events to be
+ *                                      removed must be confirmed by the user.
+ * Oct 04, 2016   21777    mduff        Optimized the hazard conflict query by not checking ended, elapsed,
+ *                                      or proposed hazards.
+ * Oct 04, 2016   22573    Chris.Golden Added method to clear CWA geometry.
  * Oct 06, 2016   22894    Chris.Golden Changed persist-event methods to remove any session attributes for
  *                                      a hazard's type from that hazard event prior to persisting it.
  * Oct 12, 2016   21873    Chris.Golden Added code to track the time resolutions of all managed hazard
@@ -464,13 +474,24 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  *                                      from non-null to some value (so that when the attribute is
  *                                      initialized during metadata generation, it does not trigger a
  *                                      pointless reload of the metadata).
+ * Nov 04, 2016   20626    bkowal       Exclude ended events when searching for conflicts to better
+ *                                      match what had been originally implemented.
+ * Nov 09, 2016   23086    Chris.Golden Prevent geometry edits of point-identifier-requiring hazard
+ *                                      events if the edits would cause the point to no longer fall
+ *                                      within at least one polygon.
  * Nov 14, 2016   21675    Chris.Golden Fixed bug introduced in previous commit that caused hazard
  *                                      attribute changes that may trigger a metadata reload, but
  *                                      (correctly) do not end up doing so, to not be checked to see if
  *                                      they may instead trigger a recommender execution.
+ * Nov 15, 2016   22592    Kevin.Bisanz Prevent modifying geometry of event from other site unless in
+ *                                      service backup mode.
  * Nov 17, 2016   26313    Chris.Golden Changed to support multiple UGC types per hazard type, and to
  *                                      work with revamped GeoMapUtilities, moving some code that was
  *                                      previously here into that class as it was poorly placed.
+ * Nov 23, 2016   26433    Robert.Blum  Removed Add/Remove shapes menu from hazards created by
+ *                                      replacements.
+ * Dec 16, 2016   27006    bkowal       Set the replaced hazard type attribute on events that are
+ *                                      replacing other hazard events.
  * Feb 01, 2017   15556    Chris.Golden Added methods to get the history count and visible history
  *                                      count for a hazard event. Also moved selection methods to
  *                                      new selection manager, while removing use of the old
@@ -565,8 +586,8 @@ import com.vividsolutions.jts.geom.GeometryFactory;
  * @author bsteffen
  * @version 1.0
  */
-public class SessionEventManager implements
-        ISessionEventManager<ObservedHazardEvent> {
+public class SessionEventManager
+        implements ISessionEventManager<ObservedHazardEvent> {
 
     // Private Static Constants
 
@@ -738,7 +759,8 @@ public class SessionEventManager implements
             ISessionTimeManager timeManager,
             ISessionConfigurationManager<ObservedSettings> configManager,
             IHazardEventManager dbManager,
-            ISessionNotificationSender notificationSender, IMessenger messenger) {
+            ISessionNotificationSender notificationSender,
+            IMessenger messenger) {
         this.sessionManager = sessionManager;
         this.configManager = configManager;
         this.timeManager = timeManager;
@@ -746,8 +768,8 @@ public class SessionEventManager implements
         this.notificationSender = notificationSender;
         new SessionHazardNotificationListener(this,
                 sessionManager.getRunnableAsynchronousScheduler());
-        SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
-                createTimeListener());
+        SimulatedTime.getSystemTime()
+                .addSimulatedTimeChangeListener(createTimeListener());
         this.messenger = messenger;
         geometryFactory = new GeometryFactory();
         this.geoMapUtilities = new GeoMapUtilities(this.configManager);
@@ -818,16 +840,17 @@ public class SessionEventManager implements
      * @return True if equivalent, false otherwise.
      */
     private boolean areEquivalent(String string1, String string2) {
-        return ((((string1 == null) || string1.isEmpty()) && ((string2 == null) || string2
-                .isEmpty())) || ((string1 != null) && string1.equals(string2)));
+        return ((((string1 == null) || string1.isEmpty())
+                && ((string2 == null) || string2.isEmpty()))
+                || ((string1 != null) && string1.equals(string2)));
     }
 
     private boolean userConfirmationAsNecessary(ObservedHazardEvent event) {
-        if (event.getHazardAttribute(VISIBLE_GEOMETRY).equals(
-                LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
+        if (event.getHazardAttribute(VISIBLE_GEOMETRY)
+                .equals(LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
             IQuestionAnswerer answerer = messenger.getQuestionAnswerer();
-            return answerer
-                    .getUserAnswerToQuestion("Are you sure you want to overwrite the high resolution geometry?");
+            return answerer.getUserAnswerToQuestion(
+                    "Are you sure you want to overwrite the high resolution geometry?");
         }
         return true;
     }
@@ -843,8 +866,8 @@ public class SessionEventManager implements
     public void setEventCategory(ObservedHazardEvent event, String category,
             IOriginator originator) {
         if (!canChangeType(event)) {
-            throw new IllegalStateException("cannot change type of event "
-                    + event.getEventID());
+            throw new IllegalStateException(
+                    "cannot change type of event " + event.getEventID());
         }
         event.addHazardAttribute(ATTR_HAZARD_CATEGORY, category, originator);
         event.setHazardType(null, null, null, Originator.OTHER);
@@ -878,6 +901,8 @@ public class SessionEventManager implements
             baseEvent.setStatus(HazardStatus.PENDING);
             baseEvent.addHazardAttribute(HazardConstants.REPLACES,
                     configManager.getHeadline(oldEvent));
+            baseEvent.addHazardAttribute(HazardConstants.REPLACED_HAZARD_TYPE,
+                    oldEvent.getHazardType());
 
             /*
              * Remove any type-specific session attributes from the copy.
@@ -898,6 +923,12 @@ public class SessionEventManager implements
             baseEvent.removeHazardAttribute(REPLACED_BY);
 
             /*
+             * Need to remove the add/remove shapes context menu for the new
+             * event.
+             */
+            removeAddRemoveShapesContextMenuOption(baseEvent);
+
+            /*
              * The originator should be the session manager, since the addition
              * of a new event is occurring.
              */
@@ -915,8 +946,8 @@ public class SessionEventManager implements
                                 + "not change type.", e);
                 return false;
             }
-            sessionManager.getSelectionManager().addEventToSelectedEvents(
-                    event.getEventID(), originator);
+            sessionManager.getSelectionManager()
+                    .addEventToSelectedEvents(event.getEventID(), originator);
         }
 
         /*
@@ -978,17 +1009,21 @@ public class SessionEventManager implements
          * it is not from a recommender, change the end time to be offset from
          * the start time by the default duration.
          */
-        boolean timeResolutionReduced = ((oldTimeResolution == TimeResolution.SECONDS) && (newTimeResolution == TimeResolution.MINUTES));
+        boolean timeResolutionReduced = ((oldTimeResolution == TimeResolution.SECONDS)
+                && (newTimeResolution == TimeResolution.MINUTES));
         Date oldStartTime = event.getStartTime();
-        Date newStartTime = (timeResolutionReduced ? roundDateDownToNearestMinute(oldStartTime)
-                : oldStartTime);
+        Date newStartTime = (timeResolutionReduced
+                ? roundDateDownToNearestMinute(oldStartTime) : oldStartTime);
         Date oldEndTime = event.getEndTime();
         Date newEndTime = ((oldEvent == null)
-                && (event.getSource() != IHazardEvent.Source.RECOMMENDER) ? new Date(
-                newStartTime.getTime()
-                        + configManager.getDefaultDuration(event))
-                : (oldEndTime.getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS ? roundDateDownToNearestMinute(oldEndTime)
-                        : oldEndTime));
+                && (event.getSource() != IHazardEvent.Source.RECOMMENDER)
+                        ? new Date(newStartTime.getTime()
+                                + configManager.getDefaultDuration(event))
+                        : (oldEndTime
+                                .getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS
+                                        ? roundDateDownToNearestMinute(
+                                                oldEndTime)
+                                        : oldEndTime));
 
         /*
          * If this event is changing type (as opposed to a new event created
@@ -1000,8 +1035,10 @@ public class SessionEventManager implements
          */
         if ((oldEvent == null)
                 && (event.getSource() != IHazardEvent.Source.RECOMMENDER)) {
-            event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
-            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+            event.removeHazardAttribute(
+                    HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+            event.removeHazardAttribute(
+                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
         }
 
         /*
@@ -1030,17 +1067,19 @@ public class SessionEventManager implements
             Range<Long> newEndTimeBoundaries = oldEndTimeBoundaries;
             if (timeResolutionReduced) {
                 newStartTimeBoundaries = Range.closed(
-                        roundTimeDownToNearestMinute(oldStartTimeBoundaries
-                                .lowerEndpoint()),
-                        roundTimeDownToNearestMinute(oldStartTimeBoundaries
-                                .upperEndpoint()));
-                newEndTimeBoundaries = (newEndTime.getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS ? Range
-                        .singleton(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
-                        : Range.closed(
-                                roundTimeDownToNearestMinute(oldEndTimeBoundaries
-                                        .lowerEndpoint()),
-                                roundTimeDownToNearestMinute(oldEndTimeBoundaries
-                                        .upperEndpoint())));
+                        roundTimeDownToNearestMinute(
+                                oldStartTimeBoundaries.lowerEndpoint()),
+                        roundTimeDownToNearestMinute(
+                                oldStartTimeBoundaries.upperEndpoint()));
+                newEndTimeBoundaries = (newEndTime
+                        .getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS
+                                ? Range.singleton(
+                                        HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
+                                : Range.closed(roundTimeDownToNearestMinute(
+                                        oldEndTimeBoundaries.lowerEndpoint()),
+                                        roundTimeDownToNearestMinute(
+                                                oldEndTimeBoundaries
+                                                        .upperEndpoint())));
             }
             startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
                     newStartTimeBoundaries);
@@ -1071,9 +1110,11 @@ public class SessionEventManager implements
          * recent minute boundary if the time resolution for this event is
          * minute-level.
          */
-        if (timeResolutionsForEventIdentifiers.get(event.getEventID()) == TimeResolution.MINUTES) {
+        if (timeResolutionsForEventIdentifiers
+                .get(event.getEventID()) == TimeResolution.MINUTES) {
             startTime = roundDateDownToNearestMinute(startTime);
-            if (endTime.getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
+            if (endTime
+                    .getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
                 endTime = roundDateDownToNearestMinute(endTime);
             }
         }
@@ -1135,6 +1176,13 @@ public class SessionEventManager implements
             IAdvancedGeometry geometry, IOriginator originator) {
 
         /*
+         * If the geometry is unchanged, do nothing.
+         */
+        if (event.getGeometry().equals(geometry)) {
+            return true;
+        }
+
+        /*
          * If the geometry change is valid and the user confirms (if necessary),
          * change the geometry and update the hazard areas. Otherwise, reject
          * the change.
@@ -1147,6 +1195,23 @@ public class SessionEventManager implements
             return true;
         }
         return false;
+    }
+
+    /**
+     * Remove the add/remove shapes context menu option from the attributes of
+     * the specified event, if said menu option is found there.
+     * 
+     * @param event
+     *            Event from which to remove the option.
+     */
+    private void removeAddRemoveShapesContextMenuOption(IHazardEvent event) {
+        Serializable attribute = event.getHazardAttribute(
+                HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+        if ((attribute != null) && attribute instanceof List<?>) {
+            List<?> contextMenuList = (List<?>) attribute;
+            contextMenuList
+                    .remove(HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES);
+        }
     }
 
     /**
@@ -1173,8 +1238,9 @@ public class SessionEventManager implements
             long endTime = event.getEndTime().getTime();
             try {
                 deltasForDurations = durationChoiceValidator
-                        .convertToAvailableMapForProperty(durationChoicesForEventIdentifiers
-                                .get(event.getEventID()));
+                        .convertToAvailableMapForProperty(
+                                durationChoicesForEventIdentifiers
+                                        .get(event.getEventID()));
             } catch (MegawidgetPropertyException e) {
                 statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(),
                         e);
@@ -1183,8 +1249,8 @@ public class SessionEventManager implements
                  * If a problem occurred, use the default duration to avoid
                  * leaving the hazard event in an invalid state.
                  */
-                event.setTimeRange(new Date(startTime), new Date(startTime
-                        + configManager.getDefaultDuration(event)));
+                event.setTimeRange(new Date(startTime), new Date(
+                        startTime + configManager.getDefaultDuration(event)));
                 return;
             }
 
@@ -1211,8 +1277,8 @@ public class SessionEventManager implements
              * Set the end time to match the duration choice that yields an end
              * time closest to the original.
              */
-            event.setTimeRange(new Date(startTime), new Date(startTime
-                    + minDifferenceTimeDelta));
+            event.setTimeRange(new Date(startTime),
+                    new Date(startTime + minDifferenceTimeDelta));
         }
     }
 
@@ -1237,8 +1303,8 @@ public class SessionEventManager implements
         ISettings currentSettings = sessionManager.getConfigurationManager()
                 .getSettings();
         String eventIdDisplayTypeString = sessionManager
-                .getConfigurationManager().getSettingsValue(
-                        EVENT_ID_DISPLAY_TYPE, currentSettings);
+                .getConfigurationManager()
+                .getSettingsValue(EVENT_ID_DISPLAY_TYPE, currentSettings);
 
         if ((eventIdDisplayTypeString != null)
                 && (eventIdDisplayTypeString.isEmpty() == false)) {
@@ -1259,7 +1325,8 @@ public class SessionEventManager implements
      */
     @Handler(priority = 1)
     public void hazardAdded(SessionEventAdded change) {
-        ensureEventEndTimeUntilFurtherNoticeAppropriate(change.getEvent(), true);
+        ensureEventEndTimeUntilFurtherNoticeAppropriate(change.getEvent(),
+                true);
         updateTimeBoundariesForEvents(change.getEvent(), false);
         updateDurationChoicesForEvent(change.getEvent(), false);
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
@@ -1277,8 +1344,8 @@ public class SessionEventManager implements
      */
     @Handler(priority = 1)
     public void hazardRemoved(SessionEventRemoved change) {
-        timeResolutionsForEventIdentifiers.remove(change.getEvent()
-                .getEventID());
+        timeResolutionsForEventIdentifiers
+                .remove(change.getEvent().getEventID());
         updateSavedTimesForEventIfIssued(change.getEvent(), true);
         updateTimeBoundariesForEvents(change.getEvent(), true);
         updateDurationChoicesForEvent(change.getEvent(), true);
@@ -1368,8 +1435,8 @@ public class SessionEventManager implements
                             eventSet.size(), 1.0f);
                     for (IEvent event : eventSet) {
                         IHazardEvent hazardEvent = (IHazardEvent) event;
-                        ObservedHazardEvent oEvent = getEventById(hazardEvent
-                                .getEventID());
+                        ObservedHazardEvent oEvent = getEventById(
+                                hazardEvent.getEventID());
 
                         /*
                          * If the hazard is pending or proposed, make it issued;
@@ -1395,12 +1462,11 @@ public class SessionEventManager implements
                          * just select or deselect them based upon the current
                          * setting (Redmine issue #18515).
                          */
-                        if ((wasPreIssued || wasReissued)
-                                && Boolean.TRUE.equals(configManager
-                                        .getSettings()
+                        if ((wasPreIssued || wasReissued) && Boolean.TRUE
+                                .equals(configManager.getSettings()
                                         .getDeselectAfterIssuing())) {
-                            newlyDeselectedEventIdentifiers.add(oEvent
-                                    .getEventID());
+                            newlyDeselectedEventIdentifiers
+                                    .add(oEvent.getEventID());
                         }
 
                         /*
@@ -1423,10 +1489,10 @@ public class SessionEventManager implements
                             updateSavedTimesForEventIfIssued(oEvent, false);
 
                             /*
-                             * TODO Fix this later. (Tracy) For some reason the
-                             * Hazard Event for PHI does not have it's issue
-                             * time set at this juncture, and results in an
-                             * exception.
+                             * TODO Uncomment this as part of Redmine issue
+                             * #18386. (Tracy: For some reason the Hazard Event
+                             * for PHI does not have it's issue time set at this
+                             * juncture, and results in an exception.)
                              */
                             // updateTimeRangeBoundariesOfJustIssuedEvent(
                             // oEvent,
@@ -1493,21 +1559,24 @@ public class SessionEventManager implements
         String recommenderIdentifier = configManager
                 .getRecommenderTriggeredByChange(event, attribute);
         if ((recommenderIdentifier != null)
-                && ((originator instanceof RecommenderOriginator == false) || (recommenderIdentifier
-                        .equals(((RecommenderOriginator) originator).getName()) == false))) {
-            sessionManager
-                    .getRecommenderManager()
-                    .runRecommender(
-                            recommenderIdentifier,
-                            RecommenderExecutionContext.getHazardEventModificationContext(
+                && ((originator instanceof RecommenderOriginator == false)
+                        || (recommenderIdentifier
+                                .equals(((RecommenderOriginator) originator)
+                                        .getName()) == false))) {
+            sessionManager.getRecommenderManager().runRecommender(
+                    recommenderIdentifier,
+                    RecommenderExecutionContext
+                            .getHazardEventModificationContext(
                                     event.getEventID(),
                                     Sets.newHashSet(attribute.toString()),
                                     ((originator instanceof RecommenderOriginator)
                                             || originator
-                                                    .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
-                                            : (originator
-                                                    .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
-                                                    : RecommenderTriggerOrigin.USER))));
+                                                    .equals(Originator.OTHER)
+                                                            ? RecommenderTriggerOrigin.OTHER
+                                                            : (originator
+                                                                    .equals(Originator.DATABASE)
+                                                                            ? RecommenderTriggerOrigin.DATABASE
+                                                                            : RecommenderTriggerOrigin.USER))));
         }
     }
 
@@ -1536,7 +1605,8 @@ public class SessionEventManager implements
     }
 
     @Override
-    public MegawidgetSpecifierManager getMegawidgetSpecifiers(IHazardEvent event) {
+    public MegawidgetSpecifierManager getMegawidgetSpecifiers(
+            IHazardEvent event) {
 
         /*
          * If the specified event is an observed hazard event, then it is an
@@ -1555,8 +1625,8 @@ public class SessionEventManager implements
                 return manager;
             }
             updateEventMetadata((ObservedHazardEvent) event);
-            return megawidgetSpecifiersForEventIdentifiers.get(event
-                    .getEventID());
+            return megawidgetSpecifiersForEventIdentifiers
+                    .get(event.getEventID());
         } else {
             return configManager.getMetadataForHazardEvent(event)
                     .getMegawidgetSpecifierManager();
@@ -1634,8 +1704,8 @@ public class SessionEventManager implements
             deltasForDurations = durationChoiceValidator
                     .convertToAvailableMapForProperty(durationChoices);
         } catch (MegawidgetPropertyException e) {
-            statusHandler.error(
-                    "invalid list of duration choices for event of type "
+            statusHandler
+                    .error("invalid list of duration choices for event of type "
                             + HazardEventUtilities.getHazardType(event), e);
             return null;
         }
@@ -1656,17 +1726,17 @@ public class SessionEventManager implements
         String eventId = event.getEventID();
         if (metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .containsKey(eventId)
-                && metadataReloadTriggeringIdentifiersForEventIdentifiers.get(
-                        eventId).contains(identifier)) {
+                && metadataReloadTriggeringIdentifiersForEventIdentifiers
+                        .get(eventId).contains(identifier)) {
             updateEventMetadata(event);
             return;
         } else if (recommendersForTriggerIdentifiersForEventIdentifiers
                 .containsKey(eventId)
-                && recommendersForTriggerIdentifiersForEventIdentifiers.get(
-                        eventId).containsKey(identifier)) {
+                && recommendersForTriggerIdentifiersForEventIdentifiers
+                        .get(eventId).containsKey(identifier)) {
             sessionManager.getRecommenderManager().runRecommender(
-                    recommendersForTriggerIdentifiersForEventIdentifiers.get(
-                            eventId).get(identifier),
+                    recommendersForTriggerIdentifiersForEventIdentifiers
+                            .get(eventId).get(identifier),
                     RecommenderExecutionContext
                             .getHazardEventModificationContext(eventId,
                                     Sets.newHashSet(identifier),
@@ -1706,16 +1776,16 @@ public class SessionEventManager implements
      *            attributes have changed. If <code>null</code>, no changes were
      *            made.
      */
-    private void eventModifyingScriptExecutionComplete(ModifiedHazardEvent event) {
+    private void eventModifyingScriptExecutionComplete(
+            ModifiedHazardEvent event) {
         IHazardEvent hazardEvent = event.getHazardEvent();
-        ObservedHazardEvent originalEvent = getEventById(hazardEvent
-                .getEventID());
+        ObservedHazardEvent originalEvent = getEventById(
+                hazardEvent.getEventID());
         if (originalEvent != null) {
             if (event.getMutableProperties() != null) {
-                notificationSender
-                        .postNotificationAsync(new SessionEventScriptExtraDataAvailable(
-                                this, originalEvent, event
-                                        .getMutableProperties(),
+                notificationSender.postNotificationAsync(
+                        new SessionEventScriptExtraDataAvailable(this,
+                                originalEvent, event.getMutableProperties(),
                                 Originator.OTHER));
             }
             originalEvent
@@ -1747,11 +1817,11 @@ public class SessionEventManager implements
         assert (event.getStartTime() != null);
         assert (event.getEndTime() != null);
 
-        megawidgetSpecifiersForEventIdentifiers
-                .put(event.getEventID(), manager);
-        metadataReloadTriggeringIdentifiersForEventIdentifiers
-                .put(event.getEventID(),
-                        metadata.getRefreshTriggeringMetadataKeys());
+        megawidgetSpecifiersForEventIdentifiers.put(event.getEventID(),
+                manager);
+        metadataReloadTriggeringIdentifiersForEventIdentifiers.put(
+                event.getEventID(),
+                metadata.getRefreshTriggeringMetadataKeys());
         metadataIdentifiersAffectingModifyFlagsForEventIdentifiers.put(
                 event.getEventID(),
                 metadata.getAffectingModifyFlagMetadataKeys());
@@ -1776,9 +1846,9 @@ public class SessionEventManager implements
          * not be if it has not yet been added).
          */
         if (events.contains(event)) {
-            notificationSender
-                    .postNotificationAsync(new SessionEventMetadataModified(
-                            this, event, Originator.OTHER));
+            notificationSender.postNotificationAsync(
+                    new SessionEventMetadataModified(this, event,
+                            Originator.OTHER));
         }
 
         /*
@@ -1811,11 +1881,11 @@ public class SessionEventManager implements
         Map<String, Serializable> attributes = event.getHazardAttributes();
         Map<String, Object> newAttributes = new HashMap<String, Object>(
                 attributes);
-        newAttributes.keySet().removeAll(
-                metadata.getOverrideOldValuesMetadataKeys());
+        newAttributes.keySet()
+                .removeAll(metadata.getOverrideOldValuesMetadataKeys());
         populateTimeAttributesStartingStates(manager.getSpecifiers(),
-                newAttributes, event.getStartTime().getTime(), event
-                        .getEndTime().getTime());
+                newAttributes, event.getStartTime().getTime(),
+                event.getEndTime().getTime());
         manager.populateWithStartingStates(newAttributes);
         attributes = new HashMap<>(newAttributes.size());
         for (String name : newAttributes.keySet()) {
@@ -1889,9 +1959,8 @@ public class SessionEventManager implements
                 boolean populate = false;
                 for (String identifier : identifiers) {
                     Number valueObj = (Number) attributes.get(identifier);
-                    if ((valueObj == null)
-                            || ((lastValue != -1L) && (lastValue >= valueObj
-                                    .longValue()))) {
+                    if ((valueObj == null) || ((lastValue != -1L)
+                            && (lastValue >= valueObj.longValue()))) {
                         populate = true;
                         break;
                     }
@@ -1908,9 +1977,10 @@ public class SessionEventManager implements
                     long interval = (identifiers.size() == 1 ? 0L
                             : (maximumTime - minimumTime)
                                     / (identifiers.size() - 1L));
-                    long defaultValue = (identifiers.size() == 1 ? (minimumTime + maximumTime) / 2L
-                            : minimumTime);
-                    for (int j = 0; j < identifiers.size(); j++, defaultValue += interval) {
+                    long defaultValue = (identifiers.size() == 1
+                            ? (minimumTime + maximumTime) / 2L : minimumTime);
+                    for (int j = 0; j < identifiers
+                            .size(); j++, defaultValue += interval) {
                         String identifier = identifiers.get(j);
                         attributes.put(identifier, defaultValue);
                     }
@@ -1947,20 +2017,13 @@ public class SessionEventManager implements
          * If the end time "until further notice" flag has changed value but was
          * not removed, change the end time in a corresponding manner.
          */
-        if (change
-                .containsAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)
-                && change
-                        .getEvent()
-                        .getHazardAttributes()
-                        .containsKey(
-                                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
-            setEventEndTimeForUntilFurtherNotice(
-                    change.getEvent(),
-                    Boolean.TRUE
-                            .equals(change
-                                    .getEvent()
-                                    .getHazardAttribute(
-                                            HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
+        if (change.containsAttribute(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)
+                && change.getEvent().getHazardAttributes().containsKey(
+                        HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
+            setEventEndTimeForUntilFurtherNotice(change.getEvent(),
+                    Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
+                            HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
         }
 
         /*
@@ -2057,29 +2120,30 @@ public class SessionEventManager implements
              */
             for (Map.Entry<String, Set<String>> entry : triggerSetsForRecommenders
                     .entrySet()) {
-                sessionManager
-                        .getRecommenderManager()
-                        .runRecommender(
-                                entry.getKey(),
-                                RecommenderExecutionContext
-                                        .getHazardEventModificationContext(
-                                                change.getEvent().getEventID(),
-                                                entry.getValue(),
-                                                ((originator instanceof RecommenderOriginator)
-                                                        || originator
-                                                                .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
-                                                        : (originator
-                                                                .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
-                                                                : RecommenderTriggerOrigin.USER))));
+                sessionManager.getRecommenderManager().runRecommender(
+                        entry.getKey(),
+                        RecommenderExecutionContext
+                                .getHazardEventModificationContext(
+                                        change.getEvent().getEventID(),
+                                        entry.getValue(),
+                                        ((originator instanceof RecommenderOriginator)
+                                                || originator
+                                                        .equals(Originator.OTHER)
+                                                                ? RecommenderTriggerOrigin.OTHER
+                                                                : (originator
+                                                                        .equals(Originator.DATABASE)
+                                                                                ? RecommenderTriggerOrigin.DATABASE
+                                                                                : RecommenderTriggerOrigin.USER))));
             }
             if (triggerSetsForRecommenders.isEmpty() == false) {
                 triggeredReloadOrRecommender = true;
             }
         }
         if ((triggeredReloadOrRecommender == false)
-                && (editRiseCrestFallTriggeringIdentifiers != null)
-                && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
-                        change.getAttributeKeys()).isEmpty() == false)) {
+                && (editRiseCrestFallTriggeringIdentifiers != null) && (Sets
+                        .intersection(editRiseCrestFallTriggeringIdentifiers,
+                                change.getAttributeKeys())
+                        .isEmpty() == false)) {
             startRiseCrestFallEdit(change.getEvent());
         }
     }
@@ -2112,7 +2176,8 @@ public class SessionEventManager implements
         updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
                 false);
         triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
-                HazardEventFirstClassAttribute.GEOMETRY, change.getOriginator());
+                HazardEventFirstClassAttribute.GEOMETRY,
+                change.getOriginator());
     }
 
     @Handler(priority = 1)
@@ -2129,22 +2194,24 @@ public class SessionEventManager implements
                         HazardEventFirstClassAttribute.VISUAL_FEATURE);
         IOriginator originator = change.getOriginator();
         if ((recommenderIdentifier != null)
-                && ((originator instanceof RecommenderOriginator == false) || (recommenderIdentifier
-                        .equals(((RecommenderOriginator) originator).getName()) == false))) {
-            sessionManager
-                    .getRecommenderManager()
-                    .runRecommender(
-                            recommenderIdentifier,
-                            RecommenderExecutionContext
-                                    .getHazardEventVisualFeatureChangeContext(
-                                            change.getEvent().getEventID(),
-                                            change.getVisualFeatureIdentifiers(),
-                                            ((originator instanceof RecommenderOriginator)
-                                                    || originator
-                                                            .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
-                                                    : (originator
-                                                            .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
-                                                            : RecommenderTriggerOrigin.USER))));
+                && ((originator instanceof RecommenderOriginator == false)
+                        || (recommenderIdentifier
+                                .equals(((RecommenderOriginator) originator)
+                                        .getName()) == false))) {
+            sessionManager.getRecommenderManager().runRecommender(
+                    recommenderIdentifier,
+                    RecommenderExecutionContext
+                            .getHazardEventVisualFeatureChangeContext(
+                                    change.getEvent().getEventID(),
+                                    change.getVisualFeatureIdentifiers(),
+                                    ((originator instanceof RecommenderOriginator)
+                                            || originator
+                                                    .equals(Originator.OTHER)
+                                                            ? RecommenderTriggerOrigin.OTHER
+                                                            : (originator
+                                                                    .equals(Originator.DATABASE)
+                                                                            ? RecommenderTriggerOrigin.DATABASE
+                                                                            : RecommenderTriggerOrigin.USER))));
         }
     }
 
@@ -2177,8 +2244,8 @@ public class SessionEventManager implements
                         .get(recommenderIdentifier);
                 if (eventIdentifiers == null) {
                     eventIdentifiers = Sets.newHashSet(eventIdentifier);
-                    eventIdentifiersForRecommenderIdentifiers.put(
-                            recommenderIdentifier, eventIdentifiers);
+                    eventIdentifiersForRecommenderIdentifiers
+                            .put(recommenderIdentifier, eventIdentifiers);
                 } else {
                     eventIdentifiers.add(eventIdentifier);
                 }
@@ -2193,21 +2260,22 @@ public class SessionEventManager implements
         IOriginator originator = change.getOriginator();
         for (Map.Entry<String, Set<String>> entry : eventIdentifiersForRecommenderIdentifiers
                 .entrySet()) {
-            if ((originator instanceof RecommenderOriginator == false)
-                    || (entry.getKey().equals(
-                            ((RecommenderOriginator) originator).getName()) == false)) {
-                sessionManager
-                        .getRecommenderManager()
-                        .runRecommender(
-                                entry.getKey(),
-                                RecommenderExecutionContext.getHazardEventSelectionChangeContext(
+            if ((originator instanceof RecommenderOriginator == false) || (entry
+                    .getKey().equals(((RecommenderOriginator) originator)
+                            .getName()) == false)) {
+                sessionManager.getRecommenderManager().runRecommender(
+                        entry.getKey(),
+                        RecommenderExecutionContext
+                                .getHazardEventSelectionChangeContext(
                                         entry.getValue(),
                                         ((originator instanceof RecommenderOriginator)
                                                 || originator
-                                                        .equals(Originator.OTHER) ? RecommenderTriggerOrigin.OTHER
-                                                : (originator
-                                                        .equals(Originator.DATABASE) ? RecommenderTriggerOrigin.DATABASE
-                                                        : RecommenderTriggerOrigin.USER))));
+                                                        .equals(Originator.OTHER)
+                                                                ? RecommenderTriggerOrigin.OTHER
+                                                                : (originator
+                                                                        .equals(Originator.DATABASE)
+                                                                                ? RecommenderTriggerOrigin.DATABASE
+                                                                                : RecommenderTriggerOrigin.USER))));
             }
         }
     }
@@ -2263,22 +2331,23 @@ public class SessionEventManager implements
             event.addHazardAttribute(
                     HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
                     interval);
-            updateEndTimeBoundariesForSingleEvent(event, event.getStartTime()
-                    .getTime(),
+            updateEndTimeBoundariesForSingleEvent(event,
+                    event.getStartTime().getTime(),
                     HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
             event.setEndTime(new Date(
                     HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
-        } else if ((event.getEndTime() != null)
-                && (event.getEndTime().getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
-            Long interval = (Long) event
-                    .getHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
-            event.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+        } else if ((event.getEndTime() != null) && (event.getEndTime()
+                .getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
+            Long interval = (Long) event.getHazardAttribute(
+                    HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+            event.removeHazardAttribute(
+                    HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
             if (interval == null) {
                 interval = configManager.getDefaultDuration(event);
             }
             long startTime = event.getStartTime().getTime();
-            updateEndTimeBoundariesForSingleEvent(event, startTime, startTime
-                    + interval);
+            updateEndTimeBoundariesForSingleEvent(event, startTime,
+                    startTime + interval);
             event.setEndTime(new Date(startTime + interval));
         }
     }
@@ -2304,9 +2373,10 @@ public class SessionEventManager implements
          */
         boolean allowsUntilFurtherNotice = false;
         if (removed == false) {
-            HazardTypeEntry hazardType = configManager.getHazardTypes().get(
-                    HazardEventUtilities.getHazardType(event));
-            if ((hazardType != null) && hazardType.isAllowUntilFurtherNotice()) {
+            HazardTypeEntry hazardType = configManager.getHazardTypes()
+                    .get(HazardEventUtilities.getHazardType(event));
+            if ((hazardType != null)
+                    && hazardType.isAllowUntilFurtherNotice()) {
                 allowsUntilFurtherNotice = true;
             }
         }
@@ -2317,16 +2387,16 @@ public class SessionEventManager implements
          */
         boolean changed;
         if (allowsUntilFurtherNotice) {
-            changed = identifiersOfEventsAllowingUntilFurtherNotice.add(event
-                    .getEventID());
+            changed = identifiersOfEventsAllowingUntilFurtherNotice
+                    .add(event.getEventID());
         } else {
             changed = identifiersOfEventsAllowingUntilFurtherNotice
                     .remove(event.getEventID());
         }
         if (changed && events.contains(event)) {
-            notificationSender
-                    .postNotificationAsync(new SessionEventAllowUntilFurtherNoticeModified(
-                            this, event, Originator.OTHER));
+            notificationSender.postNotificationAsync(
+                    new SessionEventAllowUntilFurtherNoticeModified(this, event,
+                            Originator.OTHER));
         }
     }
 
@@ -2344,37 +2414,37 @@ public class SessionEventManager implements
          * If this event cannot have "until further notice", ensure it is not
          * one of its attributes.
          */
-        if (identifiersOfEventsAllowingUntilFurtherNotice.contains(event
-                .getEventID()) == false) {
+        if (identifiersOfEventsAllowingUntilFurtherNotice
+                .contains(event.getEventID()) == false) {
 
             /*
              * If the attributes contains the flag, remove it. If it was set to
              * true, then reset the end time to an appropriate non-"until
              * further notice" value.
              */
-            Boolean untilFurtherNotice = (Boolean) event
-                    .getHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+            Boolean untilFurtherNotice = (Boolean) event.getHazardAttribute(
+                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
             if (untilFurtherNotice != null) {
-                event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+                event.removeHazardAttribute(
+                        HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
                 if (untilFurtherNotice.equals(Boolean.TRUE)) {
                     setEventEndTimeForUntilFurtherNotice(event, false);
                     if (logErrors) {
-                        statusHandler
-                                .error("event "
-                                        + event.getEventID()
-                                        + " found to have \"until further notice\" set, "
-                                        + "which is illegal for events of type "
-                                        + event.getHazardType());
+                        statusHandler.error("event " + event.getEventID()
+                                + " found to have \"until further notice\" set, "
+                                + "which is illegal for events of type "
+                                + event.getHazardType());
                     }
                 }
             }
         }
     }
 
-    private void filterEventsForConfig(Collection<? extends IHazardEvent> events) {
+    private void filterEventsForConfig(
+            Collection<? extends IHazardEvent> events) {
         ISettings settings = configManager.getSettings();
-        Set<String> siteIDs = configManager.getSettingsValue(
-                SETTING_HAZARD_SITES, settings);
+        Set<String> siteIDs = configManager
+                .getSettingsValue(SETTING_HAZARD_SITES, settings);
         Set<String> phenSigs = settings.getVisibleTypes();
         Set<HazardStatus> statuses = EnumSet.noneOf(HazardStatus.class);
         for (String state : settings.getVisibleStatuses()) {
@@ -2420,8 +2490,8 @@ public class SessionEventManager implements
          * currently configured site to the list of visible sites, and include
          * visible sites as part of the query filter.
          */
-        Set<String> visibleSites = configManager.getSettingsValue(
-                SETTING_HAZARD_SITES, settings);
+        Set<String> visibleSites = configManager
+                .getSettingsValue(SETTING_HAZARD_SITES, settings);
         if (visibleSites == null) {
             visibleSites = Collections.emptySet();
         }
@@ -2450,15 +2520,15 @@ public class SessionEventManager implements
          * Instead, those with invisible statuses are weeded out in the
          * iteration through the returned events that follows.
          */
-        queryRequest.and(HazardConstants.SITE_ID, visibleSites).and(
-                HazardConstants.PHEN_SIG, visibleTypes);
+        queryRequest.and(HazardConstants.SITE_ID, visibleSites)
+                .and(HazardConstants.PHEN_SIG, visibleTypes);
         Map<String, HazardHistoryList> eventsMap = null;
         try {
             eventsMap = dbManager.queryHistory(queryRequest);
         } catch (HazardEventServiceException e) {
-            statusHandler
-                    .error("Could not query hazard events with appropriate site IDs and types.",
-                            e);
+            statusHandler.error(
+                    "Could not query hazard events with appropriate site IDs and types.",
+                    e);
             return;
         }
 
@@ -2536,17 +2606,17 @@ public class SessionEventManager implements
                 IHazardEvent addedEvent = addEvent(event, false,
                         Originator.DATABASE);
                 for (IHazardEvent historicalEvent : historyList) {
-                    if (HazardStatus.issuedButNotEndedOrElapsed(historicalEvent
-                            .getStatus())) {
+                    if (HazardStatus.issuedButNotEndedOrElapsed(
+                            historicalEvent.getStatus())) {
                         addedEvent.addHazardAttribute(ATTR_ISSUED, true);
                         break;
                     }
                 }
             } catch (HazardEventServiceException e) {
-                statusHandler
-                        .error("Should never occur since hazard event did not need "
+                statusHandler.error(
+                        "Should never occur since hazard event did not need "
                                 + "new identifier: could not add hazard event.",
-                                e);
+                        e);
             }
 
             /*
@@ -2559,8 +2629,8 @@ public class SessionEventManager implements
             if (event.isLatestVersion()) {
                 historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
                         historyList.size() - 1);
-                latestVersionsFromDatabaseForEventIdentifiers.put(
-                        eventIdentifier, event);
+                latestVersionsFromDatabaseForEventIdentifiers
+                        .put(eventIdentifier, event);
             } else {
                 historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
                         historyList.size());
@@ -2710,9 +2780,11 @@ public class SessionEventManager implements
             long d = configManager.getDefaultDuration(oevent);
             oevent.setEndTime(new Date(s + d), false, originator);
         } else {
-            oevent.setEndTime(oevent.getEndTime().getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS ? roundDateDownToNearestMinuteIfAppropriate(
-                    oevent.getEndTime(), eventTimeResolution) : oevent
-                    .getEndTime());
+            oevent.setEndTime(oevent.getEndTime()
+                    .getTime() != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS
+                            ? roundDateDownToNearestMinuteIfAppropriate(
+                                    oevent.getEndTime(), eventTimeResolution)
+                            : oevent.getEndTime());
         }
 
         /*
@@ -2762,8 +2834,8 @@ public class SessionEventManager implements
         /*
          * Notify listeners that the event has been added.
          */
-        notificationSender.postNotificationAsync(new SessionEventAdded(this,
-                oevent, originator));
+        notificationSender.postNotificationAsync(
+                new SessionEventAdded(this, oevent, originator));
 
         /*
          * Set the issued flag as appropriate.
@@ -2777,8 +2849,8 @@ public class SessionEventManager implements
          * the current selection, as appropriate.
          */
         if (select) {
-            if ((addCreatedEventsToSelected == false)
-                    && (Boolean.TRUE.equals(settings.getAddToSelected()) == false)) {
+            if ((addCreatedEventsToSelected == false) && (Boolean.TRUE
+                    .equals(settings.getAddToSelected()) == false)) {
                 sessionManager.getSelectionManager()
                         .setSelectedEventIdentifiers(
                                 Sets.newHashSet(oevent.getEventID()),
@@ -2858,9 +2930,10 @@ public class SessionEventManager implements
          * the new event's visual feature list.
          */
         if ((keepVisualFeatures == false)
-                || ((newEvent.getVisualFeatures() != null) && (newEvent
-                        .getVisualFeatures().isEmpty() == false))) {
-            oldEvent.setVisualFeatures(newEvent.getVisualFeatures(), originator);
+                || ((newEvent.getVisualFeatures() != null)
+                        && (newEvent.getVisualFeatures().isEmpty() == false))) {
+            oldEvent.setVisualFeatures(newEvent.getVisualFeatures(),
+                    originator);
         }
 
         oldEvent.setHazardMode(newEvent.getHazardMode(), originator);
@@ -2879,7 +2952,8 @@ public class SessionEventManager implements
         newAttr = (newAttr != null ? new HashMap<>(newAttr)
                 : new HashMap<String, Serializable>());
         for (String key : ATTRIBUTES_TO_RETAIN_ON_MERGE) {
-            if ((newAttr.containsKey(key) == false) && oldAttr.containsKey(key)) {
+            if ((newAttr.containsKey(key) == false)
+                    && oldAttr.containsKey(key)) {
                 newAttr.put(key, oldAttr.get(key));
             }
         }
@@ -2891,8 +2965,8 @@ public class SessionEventManager implements
          * as the previous status. If the status of the old event is changed,
          * update its saved end time/duration if it is issued.
          */
-        if ((isEnded(oldEvent) == false)
-                && (oldEvent.getStatus().equals(newEvent.getStatus()) == false)) {
+        if ((isEnded(oldEvent) == false) && (oldEvent.getStatus()
+                .equals(newEvent.getStatus()) == false)) {
             oldEvent.setStatus(newEvent.getStatus(), true,
                     persistOnStatusChange, Originator.OTHER);
             updateSavedTimesForEventIfIssued(oldEvent, false);
@@ -2929,8 +3003,8 @@ public class SessionEventManager implements
         Date currTime = SimulatedTime.getSystemTime().getTime();
         HazardStatus status = event.getStatus();
         if ((status == HazardStatus.ELAPSED)
-                || (HazardStatus.issuedButNotEndedOrElapsed(status) && (event
-                        .getEndTime().before(currTime)))) {
+                || (HazardStatus.issuedButNotEndedOrElapsed(status)
+                        && (event.getEndTime().before(currTime)))) {
             return true;
         }
         return false;
@@ -2941,7 +3015,8 @@ public class SessionEventManager implements
 
         Long expirationTimeLong = (Long) event
                 .getHazardAttribute(HazardConstants.EXPIRATION_TIME);
-        if ((expirationTimeLong != null) && (expirationTimeLong < currTimeLong)) {
+        if ((expirationTimeLong != null)
+                && (expirationTimeLong < currTimeLong)) {
             long expirationTime = expirationTimeLong.longValue();
             if (expirationTime < currTimeLong) {
                 return true;
@@ -2962,8 +3037,8 @@ public class SessionEventManager implements
         /*
          * TODO: Remove once the HISTORICAL attribute is no longer being used.
          */
-        boolean historical = Boolean.TRUE.equals(event
-                .getHazardAttribute(HazardEventManager.HISTORICAL));
+        boolean historical = Boolean.TRUE.equals(
+                event.getHazardAttribute(HazardEventManager.HISTORICAL));
         event.removeHazardAttribute(HazardEventManager.HISTORICAL);
 
         /*
@@ -2978,19 +3053,19 @@ public class SessionEventManager implements
             mergeHazardEvents(event, oldEvent, true, true, false, true,
                     Originator.DATABASE);
             if (event.isLatestVersion() == false) {
-                notificationSender
-                        .postNotificationAsync(new SessionEventHistoryModified(
-                                this, getEventById(event.getEventID()),
+                notificationSender.postNotificationAsync(
+                        new SessionEventHistoryModified(this,
+                                getEventById(event.getEventID()),
                                 Originator.DATABASE));
             }
         } else {
             try {
                 addEvent(event, Originator.DATABASE);
             } catch (HazardEventServiceException e) {
-                statusHandler
-                        .error("Should never occur since hazard event did not need "
+                statusHandler.error(
+                        "Should never occur since hazard event did not need "
                                 + "new identifier: could not add hazard event.",
-                                e);
+                        e);
             }
         }
 
@@ -3024,8 +3099,8 @@ public class SessionEventManager implements
         /*
          * TODO: Remove once the HISTORICAL attribute is no longer being used.
          */
-        boolean historical = Boolean.TRUE.equals(event
-                .getHazardAttribute(HazardEventManager.HISTORICAL));
+        boolean historical = Boolean.TRUE.equals(
+                event.getHazardAttribute(HazardEventManager.HISTORICAL));
         event.removeHazardAttribute(HazardEventManager.HISTORICAL);
 
         /*
@@ -3038,8 +3113,8 @@ public class SessionEventManager implements
          */
         if (historical == false) {
             // if (event.isLatestVersion()) {
-            latestVersionsFromDatabaseForEventIdentifiers.remove(event
-                    .getEventID());
+            latestVersionsFromDatabaseForEventIdentifiers
+                    .remove(event.getEventID());
             return;
         }
 
@@ -3079,21 +3154,63 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void removeEvent(ObservedHazardEvent event, IOriginator originator) {
-        removeEvent(event, true, originator);
+    public void removeEvent(ObservedHazardEvent event, boolean confirm,
+            IOriginator originator) {
+        if ((confirm == false)
+                || (getEventsToBeDeleted(Lists.newArrayList(event))
+                        .isEmpty() == false)) {
+            deleteEvent(event, true, originator);
+        }
     }
 
     @Override
     public void removeEvents(Collection<ObservedHazardEvent> events,
-            IOriginator originator) {
+            boolean confirm, IOriginator originator) {
+
         /*
          * Avoid concurrent modification since events is backed by this.events
          */
-        List<ObservedHazardEvent> eventsToRemove = new ArrayList<ObservedHazardEvent>(
-                events);
-        for (int i = 0; i < events.size(); i++) {
-            removeEvent(eventsToRemove.get(i), true, originator);
+        Collection<ObservedHazardEvent> eventsToRemove = (confirm
+                ? getEventsToBeDeleted(events)
+                : new ArrayList<ObservedHazardEvent>(events));
+        for (ObservedHazardEvent event : eventsToRemove) {
+            deleteEvent(event, true, originator);
         }
+    }
+
+    /**
+     * Confirm deletion of the specified hazard events, if necessary.
+     * 
+     * @param events
+     *            Events for which to confirm deletion if necessary.
+     * @return Hazard events to be deleted.
+     */
+    private Collection<ObservedHazardEvent> getEventsToBeDeleted(
+            Collection<ObservedHazardEvent> events) {
+        Map<ObservedHazardEvent, String> identifiersForEventsRequiringConfirmation = new HashMap<>(
+                events.size(), 1.0f);
+        Collection<ObservedHazardEvent> eventsToDelete = new LinkedHashSet<>(
+                events.size(), 1.0f);
+        for (ObservedHazardEvent event : events) {
+            if (event.getStatus().equals(HazardStatus.PROPOSED)) {
+                identifiersForEventsRequiringConfirmation.put(event,
+                        event.getDisplayEventID());
+            } else if ((event.getStatus().equals(HazardStatus.POTENTIAL))
+                    || (event.getStatus().equals(HazardStatus.PENDING))) {
+                eventsToDelete.add(event);
+            }
+        }
+        if ((identifiersForEventsRequiringConfirmation.isEmpty() == false)
+                && messenger.getContinueCanceller().getUserAnswerToQuestion(
+                        "Delete Proposed Event Confirmation",
+                        "Are you sure you want to delete the following proposed event(s)?\n\n"
+                                + Joiner.on(", ")
+                                        .join(identifiersForEventsRequiringConfirmation
+                                                .values()))) {
+            eventsToDelete
+                    .addAll(identifiersForEventsRequiringConfirmation.keySet());
+        }
+        return eventsToDelete;
     }
 
     /**
@@ -3105,10 +3222,10 @@ public class SessionEventManager implements
      * method's implementation as necessary if said logic must be run whenever
      * an event is removed.
      */
-    private void removeEvent(IHazardEvent event, boolean delete,
+    private void deleteEvent(IHazardEvent event, boolean delete,
             IOriginator originator) {
-        sessionManager.getRecommenderManager().rememberRemovedEventIdentifier(
-                event.getEventID());
+        sessionManager.getRecommenderManager()
+                .rememberRemovedEventIdentifier(event.getEventID());
         if (events.contains(event)) {
 
             /*
@@ -3144,8 +3261,8 @@ public class SessionEventManager implements
                     .remove(eventIdentifier);
             scriptFilesForEventIdentifiers.remove(eventIdentifier);
             eventModifyingScriptsForEventIdentifiers.remove(eventIdentifier);
-            notificationSender.postNotificationAsync(new SessionEventRemoved(
-                    this, event, originator));
+            notificationSender.postNotificationAsync(
+                    new SessionEventRemoved(this, event, originator));
         }
 
         /*
@@ -3161,9 +3278,8 @@ public class SessionEventManager implements
     public void sortEvents(Comparator<ObservedHazardEvent> comparator,
             IOriginator originator) {
         Collections.sort(events, comparator);
-        notificationSender
-                .postNotificationAsync(new SessionEventsOrderingModified(this,
-                        originator));
+        notificationSender.postNotificationAsync(
+                new SessionEventsOrderingModified(this, originator));
     }
 
     @Override
@@ -3205,9 +3321,9 @@ public class SessionEventManager implements
      */
     protected void hazardEventModifiedFlagChanged(ObservedHazardEvent event) {
         if (events.contains(event)) {
-            notificationSender
-                    .postNotificationAsync(new SessionEventUnsavedChangesModified(
-                            this, event, Originator.OTHER));
+            notificationSender.postNotificationAsync(
+                    new SessionEventUnsavedChangesModified(this, event,
+                            Originator.OTHER));
             if (event.isModified()
                     && (event.getStatus() == HazardStatus.POTENTIAL)) {
                 event.setStatus(HazardStatus.PENDING, false, Originator.OTHER);
@@ -3279,7 +3395,8 @@ public class SessionEventManager implements
      */
     @SuppressWarnings("unchecked")
     private void persistAndDeselectEventDueToStatusChange(
-            ObservedHazardEvent event, boolean persist, IOriginator originator) {
+            ObservedHazardEvent event, boolean persist,
+            IOriginator originator) {
 
         /*
          * Determine whether or not the event should be persisted, and deselect
@@ -3338,9 +3455,8 @@ public class SessionEventManager implements
          * status not available for filtering out), delete the first part of the
          * conditional below so that pending status is not checked for.
          */
-        if ((newStatus == HazardStatus.PENDING)
-                || configManager.getSettings().getVisibleStatuses()
-                        .contains(newStatus.getValue())) {
+        if ((newStatus == HazardStatus.PENDING) || configManager.getSettings()
+                .getVisibleStatuses().contains(newStatus.getValue())) {
             sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
                     event.getEventID(), originator);
         } else if (removedFromSelection == false) {
@@ -3603,11 +3719,11 @@ public class SessionEventManager implements
          * times, as appropriate given the event's type's ability to be shrunk
          * or expanded after issuance.
          */
-        return Range
-                .closed((configManager.isAllowTimeShrink(event) ? HazardConstants.MIN_TIME
-                        : endTime),
-                        (configManager.isAllowTimeExpand(event) ? HazardConstants.MAX_TIME
-                                : endTime));
+        return Range.closed(
+                (configManager.isAllowTimeShrink(event)
+                        ? HazardConstants.MIN_TIME : endTime),
+                (configManager.isAllowTimeExpand(event)
+                        ? HazardConstants.MAX_TIME : endTime));
     }
 
     /**
@@ -3643,8 +3759,8 @@ public class SessionEventManager implements
              * Determine the end time of the event when it was last issued, and
              * use that as a potential end time boundary.
              */
-            endTime = endTimesOrDurationsForIssuedEventIdentifiers.get(event
-                    .getEventID());
+            endTime = endTimesOrDurationsForIssuedEventIdentifiers
+                    .get(event.getEventID());
         } else {
 
             /*
@@ -3657,9 +3773,8 @@ public class SessionEventManager implements
              * them, the end time boundaries must be adjusted relative to the
              * start time.
              */
-            endTime = startTime
-                    + endTimesOrDurationsForIssuedEventIdentifiers.get(event
-                            .getEventID());
+            endTime = startTime + endTimesOrDurationsForIssuedEventIdentifiers
+                    .get(event.getEventID());
         }
 
         /*
@@ -3712,14 +3827,14 @@ public class SessionEventManager implements
         case ENDED:
             endTimeRange = getEndTimeRangeForEndingEvent(newEndTime);
         }
-        if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers.get(event
-                .getEventID())) == false) {
+        if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers
+                .get(event.getEventID())) == false) {
             endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
                     endTimeRange);
             if (events.contains(event)) {
-                notificationSender
-                        .postNotificationAsync(new SessionEventsTimeRangeBoundariesModified(
-                                this, Sets.newHashSet(event.getEventID()),
+                notificationSender.postNotificationAsync(
+                        new SessionEventsTimeRangeBoundariesModified(this,
+                                Sets.newHashSet(event.getEventID()),
                                 Originator.OTHER));
             }
         }
@@ -3741,13 +3856,13 @@ public class SessionEventManager implements
             Range<Long> startTimeRange, Range<Long> endTimeRange) {
         boolean changed = false;
         String eventID = event.getEventID();
-        if (startTimeRange.equals(startTimeBoundariesForEventIdentifiers
-                .get(eventID)) == false) {
+        if (startTimeRange.equals(
+                startTimeBoundariesForEventIdentifiers.get(eventID)) == false) {
             startTimeBoundariesForEventIdentifiers.put(eventID, startTimeRange);
             changed = true;
         }
-        if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers
-                .get(eventID)) == false) {
+        if (endTimeRange.equals(
+                endTimeBoundariesForEventIdentifiers.get(eventID)) == false) {
             endTimeBoundariesForEventIdentifiers.put(eventID, endTimeRange);
             changed = true;
         }
@@ -3785,18 +3900,19 @@ public class SessionEventManager implements
         case POTENTIAL:
         case PENDING:
         case PROPOSED:
-            startTimeRange = Range.closed((configManager
-                    .isAllowAnyStartTime(event) ? HazardConstants.MIN_TIME
-                    : currentTime), (configManager
-                    .isStartTimeIsCurrentTime(event) ? currentTime
-                    : HazardConstants.MAX_TIME));
+            startTimeRange = Range.closed(
+                    (configManager.isAllowAnyStartTime(event)
+                            ? HazardConstants.MIN_TIME : currentTime),
+                    (configManager.isStartTimeIsCurrentTime(event) ? currentTime
+                            : HazardConstants.MAX_TIME));
             endTimeRange = getEndTimeRangeForPreIssuedEvent(endTime);
             break;
         case ISSUED:
             boolean startTimeIsCurrentTime = configManager
                     .isStartTimeIsCurrentTime(event);
-            startTimeRange = Range.closed((startTimeIsCurrentTime ? startTime
-                    : HazardConstants.MIN_TIME),
+            startTimeRange = Range.closed(
+                    (startTimeIsCurrentTime ? startTime
+                            : HazardConstants.MIN_TIME),
                     (startTimeIsCurrentTime ? startTime
                             : HazardConstants.MAX_TIME));
             endTimeRange = getEndTimeRangeForIssuedEvent(event, startTime,
@@ -3824,9 +3940,9 @@ public class SessionEventManager implements
      */
     private void postTimeRangeBoundariesModifiedNotification(
             Set<String> eventIdentifiers) {
-        notificationSender
-                .postNotificationAsync(new SessionEventsTimeRangeBoundariesModified(
-                        this, eventIdentifiers, Originator.OTHER));
+        notificationSender.postNotificationAsync(
+                new SessionEventsTimeRangeBoundariesModified(this,
+                        eventIdentifiers, Originator.OTHER));
     }
 
     /**
@@ -3878,7 +3994,8 @@ public class SessionEventManager implements
         long endTime = event.getEndTime().getTime();
         if (endTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
             if (configManager.getDurationChoices(event).isEmpty()) {
-                if (endTime - startTime < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
+                if (endTime
+                        - startTime < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
                     endTime = startTime
                             + HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
                 }
@@ -3898,8 +4015,8 @@ public class SessionEventManager implements
          * post a notification to that effect.
          */
         if (setEventTimeRangeBoundaries(event, startTimeRange, endTimeRange)) {
-            postTimeRangeBoundariesModifiedNotification(Sets.newHashSet(event
-                    .getEventID()));
+            postTimeRangeBoundariesModifiedNotification(
+                    Sets.newHashSet(event.getEventID()));
         }
 
         /*
@@ -3952,8 +4069,9 @@ public class SessionEventManager implements
                  * event has minute-level time resolution.
                  */
                 long eventCurrentTime = (timeResolutionsForEventIdentifiers
-                        .get(thisEvent.getEventID()) == TimeResolution.MINUTES ? roundTimeDownToNearestMinute(currentTime)
-                        : currentTime);
+                        .get(thisEvent.getEventID()) == TimeResolution.MINUTES
+                                ? roundTimeDownToNearestMinute(currentTime)
+                                : currentTime);
                 if (updateTimeBoundariesForSingleEvent(thisEvent,
                         eventCurrentTime)) {
                     identifiersWithChangedBoundaries
@@ -3974,7 +4092,8 @@ public class SessionEventManager implements
                         .removeEventsFromSelectedEvents(
                                 identifiersWithExpiredTimes, Originator.OTHER);
                 if (identifiersWithChangedBoundaries.isEmpty()) {
-                    postTimeRangeBoundariesModifiedNotification(identifiersWithExpiredTimes);
+                    postTimeRangeBoundariesModifiedNotification(
+                            identifiersWithExpiredTimes);
                 }
             }
         } else {
@@ -3986,15 +4105,15 @@ public class SessionEventManager implements
              * resolution.
              */
             if (removed) {
-                startTimeBoundariesForEventIdentifiers.remove(singleEvent
-                        .getEventID());
-                endTimeBoundariesForEventIdentifiers.remove(singleEvent
-                        .getEventID());
-            } else if (updateTimeBoundariesForSingleEvent(
-                    singleEvent,
-                    (timeResolutionsForEventIdentifiers.get(singleEvent
-                            .getEventID()) == TimeResolution.MINUTES ? roundTimeDownToNearestMinute(currentTime)
-                            : currentTime))) {
+                startTimeBoundariesForEventIdentifiers
+                        .remove(singleEvent.getEventID());
+                endTimeBoundariesForEventIdentifiers
+                        .remove(singleEvent.getEventID());
+            } else if (updateTimeBoundariesForSingleEvent(singleEvent,
+                    (timeResolutionsForEventIdentifiers.get(
+                            singleEvent.getEventID()) == TimeResolution.MINUTES
+                                    ? roundTimeDownToNearestMinute(currentTime)
+                                    : currentTime))) {
                 identifiersWithChangedBoundaries.add(singleEvent.getEventID());
             }
         }
@@ -4005,7 +4124,8 @@ public class SessionEventManager implements
          * and end times falling within the new boundaries.
          */
         if (identifiersWithChangedBoundaries.isEmpty() == false) {
-            postTimeRangeBoundariesModifiedNotification(identifiersWithChangedBoundaries);
+            postTimeRangeBoundariesModifiedNotification(
+                    identifiersWithChangedBoundaries);
             for (String identifier : identifiersWithChangedBoundaries) {
                 ObservedHazardEvent thisEvent = getEventById(identifier);
                 long startTime = thisEvent.getStartTime().getTime();
@@ -4040,7 +4160,8 @@ public class SessionEventManager implements
                      * the new start time as the old one was from the old start
                      * time. Otherwise, boundary-check the end time.
                      */
-                    if (configManager.getDurationChoices(thisEvent).isEmpty() == false) {
+                    if (configManager.getDurationChoices(thisEvent)
+                            .isEmpty() == false) {
                         if (changed) {
                             endTime = startTime + duration;
                         }
@@ -4050,7 +4171,8 @@ public class SessionEventManager implements
                          * Ensure that the end time is at least the minimum
                          * interval away from the start time.
                          */
-                        if (endTime - startTime < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
+                        if (endTime
+                                - startTime < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
                             changed = true;
                             endTime = startTime
                                     + HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
@@ -4085,8 +4207,8 @@ public class SessionEventManager implements
                     if (modifiedNotAllowedToChange == false) {
                         thisEvent.setModifiedNotAllowedToChange(true);
                     }
-                    thisEvent.setTimeRange(new Date(startTime), new Date(
-                            endTime), Originator.OTHER);
+                    thisEvent.setTimeRange(new Date(startTime),
+                            new Date(endTime), Originator.OTHER);
                     if (modifiedNotAllowedToChange == false) {
                         thisEvent.setModifiedNotAllowedToChange(false);
                     }
@@ -4112,12 +4234,12 @@ public class SessionEventManager implements
             endTimesOrDurationsForIssuedEventIdentifiers.remove(eventId);
         } else if (event.getStatus() == HazardStatus.ISSUED) {
             if (configManager.getDurationChoices(event).isEmpty()) {
-                endTimesOrDurationsForIssuedEventIdentifiers.put(eventId, event
-                        .getEndTime().getTime());
+                endTimesOrDurationsForIssuedEventIdentifiers.put(eventId,
+                        event.getEndTime().getTime());
             } else {
-                endTimesOrDurationsForIssuedEventIdentifiers.put(eventId, event
-                        .getEndTime().getTime()
-                        - event.getStartTime().getTime());
+                endTimesOrDurationsForIssuedEventIdentifiers.put(eventId,
+                        event.getEndTime().getTime()
+                                - event.getStartTime().getTime());
             }
         }
     }
@@ -4243,16 +4365,17 @@ public class SessionEventManager implements
                 continue;
             }
             if (conflictingHazards.isEmpty() == false) {
-                conflictingEventsForSelectedEventIdentifiers.put(eventToCheck
-                        .getEventID(), Collections
-                        .unmodifiableSet(conflictingHazards.keySet()));
+                conflictingEventsForSelectedEventIdentifiers
+                        .put(eventToCheck.getEventID(), Collections
+                                .unmodifiableSet(conflictingHazards.keySet()));
             }
         }
 
-        if (oldMap.equals(conflictingEventsForSelectedEventIdentifiers) == false) {
-            notificationSender
-                    .postNotificationAsync(new SessionSelectedEventConflictsModified(
-                            this, Originator.OTHER));
+        if (oldMap.equals(
+                conflictingEventsForSelectedEventIdentifiers) == false) {
+            notificationSender.postNotificationAsync(
+                    new SessionSelectedEventConflictsModified(this,
+                            Originator.OTHER));
         }
 
     }
@@ -4292,7 +4415,7 @@ public class SessionEventManager implements
     public Map<IHazardEvent, Collection<String>> getConflictingEvents(
             final IHazardEvent eventToCompare, final Date startTime,
             final Date endTime, final Geometry geometry, String phenSigSubtype)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
 
         Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
@@ -4318,24 +4441,25 @@ public class SessionEventManager implements
                     String ugcLabel = hazardTypeEntry.getUgcLabel();
 
                     List<IGeometryData> hatchedAreasForEvent = new ArrayList<>(
-                            geoMapUtilities.buildHazardAreaForEvent(
-                                    eventToCompare).values());
+                            geoMapUtilities
+                                    .buildHazardAreaForEvent(eventToCompare)
+                                    .values());
 
                     /*
                      * Retrieve matching events from the Hazard Event Manager
                      * Also, include those from the session state.
                      */
                     HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
-                            (CAVEMode.getMode().equals(CAVEMode.OPERATIONAL) == false),
+                            (CAVEMode.getMode()
+                                    .equals(CAVEMode.OPERATIONAL) == false),
                             HazardConstants.HAZARD_EVENT_START_TIME, ">",
-                            eventToCompare.getStartTime()).and(
-                            HazardConstants.HAZARD_EVENT_END_TIME, "<",
-                            eventToCompare.getEndTime()).and(
-                            HazardConstants.PHEN_SIG, hazardConflictList);
-                    Set<HazardStatus> allowableStatuses = EnumSet.of(
-                            HazardStatus.ISSUED, HazardStatus.ELAPSED,
-                            HazardStatus.ENDING, HazardStatus.ENDED,
-                            HazardStatus.PROPOSED);
+                            eventToCompare.getStartTime())
+                                    .and(HazardConstants.HAZARD_EVENT_END_TIME,
+                                            "<", eventToCompare.getEndTime())
+                                    .and(HazardConstants.PHEN_SIG,
+                                            hazardConflictList);
+                    Set<HazardStatus> allowableStatuses = EnumSet
+                            .of(HazardStatus.ISSUED, HazardStatus.ENDING);
 
                     List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
                             queryRequest, allowableStatuses);
@@ -4360,8 +4484,8 @@ public class SessionEventManager implements
 
                         if (modifiedEventTimeRange
                                 .overlaps(eventToCheckTimeRange)) {
-                            if (!eventToCheck.getEventID().equals(
-                                    eventToCompare.getEventID())) {
+                            if (!eventToCheck.getEventID()
+                                    .equals(eventToCompare.getEventID())) {
 
                                 String otherEventPhenSigSubtype = HazardEventUtilities
                                         .getHazardType(eventToCheck);
@@ -4381,13 +4505,13 @@ public class SessionEventManager implements
                                                                 eventToCheck)
                                                         .values());
 
-                                        conflictingHazardsMap
-                                                .putAll(buildConflictMap(
-                                                        eventToCompare,
+                                        conflictingHazardsMap.putAll(
+                                                buildConflictMap(eventToCompare,
                                                         eventToCheck,
                                                         hatchedAreasForEvent,
                                                         hatchedAreasEventToCheck,
-                                                        ugcLabel, otherUgcLabel));
+                                                        ugcLabel,
+                                                        otherUgcLabel));
                                     } else {
                                         statusHandler
                                                 .warn("No entry defined in HazardTypes.py for hazard type "
@@ -4436,12 +4560,12 @@ public class SessionEventManager implements
     private List<IHazardEvent> getEventsToCheckForConflicts(
             final HazardEventQueryRequest queryRequest,
             Set<HazardStatus> allowableStatuses)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
 
         /*
          * Iterate through all the events being managed in this session,
-         * compiling a list of those that have not ended, as well as set of all
-         * these non-ended event's identifiers.
+         * compiling a list of those that have not ended or elapsed, as well as
+         * set of all these non-ended/elapsed event's identifiers.
          */
         List<IHazardEvent> eventsToCheck = new ArrayList<IHazardEvent>(
                 getEvents());
@@ -4450,7 +4574,8 @@ public class SessionEventManager implements
 
         for (IHazardEvent sessionEvent : new ArrayList<IHazardEvent>(
                 eventsToCheck)) {
-            if (sessionEvent.getStatus() != HazardStatus.ENDED) {
+            if ((sessionEvent.getStatus() != HazardStatus.ENDED)
+                    && (sessionEvent.getStatus() != HazardStatus.ELAPSED)) {
                 eventIdentifiersToBeChecked.add(sessionEvent.getEventID());
             } else {
                 eventsToCheck.remove(sessionEvent);
@@ -4459,9 +4584,9 @@ public class SessionEventManager implements
 
         /*
          * Retrieve the latest versions of matching events from the database
-         * manager, and for any that are not ended, with allowable statuses, and
-         * with identifiers that are not already in session, add them to the
-         * list of events to be checked.
+         * manager, and for any that are not ended or elapsed, with allowable
+         * statuses, and with identifiers that are not already in session, add
+         * them to the list of events to be checked.
          */
         queryRequest
                 .setInclude(Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS);
@@ -4470,7 +4595,9 @@ public class SessionEventManager implements
             if ((eventIdentifiersToBeChecked.contains(entry.getKey()) == false)
                     && (entry.getValue() != null)
                     && (entry.getValue().getStatus() != HazardStatus.ENDED)
-                    && allowableStatuses.contains(entry.getValue().getStatus())) {
+                    && (entry.getValue().getStatus() != HazardStatus.ELAPSED)
+                    && allowableStatuses
+                            .contains(entry.getValue().getStatus())) {
                 eventsToCheck.add(entry.getValue());
             }
         }
@@ -4488,8 +4615,8 @@ public class SessionEventManager implements
          */
         // eventExpirationTimer.cancel();
         // eventExpirationTimer = null;
-        SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
-                timeListener);
+        SimulatedTime.getSystemTime()
+                .removeSimulatedTimeChangeListener(timeListener);
         messenger = null;
         shutDown = true;
     }
@@ -4567,8 +4694,8 @@ public class SessionEventManager implements
             for (IGeometryData hatchedArea : hatchedAreasFirstEvent) {
                 for (IGeometryData hatchedAreaToCheck : hatchedAreasSecondEvent) {
 
-                    if (hatchedArea.getGeometry().intersects(
-                            hatchedAreaToCheck.getGeometry())) {
+                    if (hatchedArea.getGeometry()
+                            .intersects(hatchedAreaToCheck.getGeometry())) {
 
                         conflictFound = true;
 
@@ -4626,7 +4753,8 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void proposeEvent(ObservedHazardEvent event, IOriginator originator) {
+    public void proposeEvent(ObservedHazardEvent event,
+            IOriginator originator) {
 
         /*
          * Propose the event if allowed to do so. If it was already proposed,
@@ -4636,7 +4764,8 @@ public class SessionEventManager implements
          */
         HazardStatus status = event.getStatus();
         if (isProposedStateAllowed(event, status)) {
-            if (event.setStatus(HazardStatus.PROPOSED, true, true, originator) == false) {
+            if (event.setStatus(HazardStatus.PROPOSED, true, true,
+                    originator) == false) {
                 persistAndDeselectEventDueToStatusChange(event, true,
                         originator);
             }
@@ -4653,8 +4782,8 @@ public class SessionEventManager implements
 
     private boolean isProposedStateAllowed(ObservedHazardEvent event,
             HazardStatus status) {
-        return ((HazardStatus.hasEverBeenIssued(status) == false) && HazardEventUtilities
-                .isHazardTypeValid(event));
+        return ((HazardStatus.hasEverBeenIssued(status) == false)
+                && HazardEventUtilities.isHazardTypeValid(event));
     }
 
     @Override
@@ -4681,7 +4810,8 @@ public class SessionEventManager implements
                 .getSelectionManager().getSelectedEvents()) {
             Geometry lowResolutionGeometry;
             try {
-                lowResolutionGeometry = buildLowResolutionEventGeometry(selectedEvent);
+                lowResolutionGeometry = buildLowResolutionEventGeometry(
+                        selectedEvent);
             } catch (HazardGeometryOutsideCWAException e) {
                 warnUserOfGeometryOutsideCWA(selectedEvent);
                 return false;
@@ -4699,12 +4829,14 @@ public class SessionEventManager implements
         ObservedHazardEvent hazardEvent = getCurrentEvent();
         Geometry lowResolutionGeometry;
         try {
-            lowResolutionGeometry = buildLowResolutionEventGeometry(hazardEvent);
+            lowResolutionGeometry = buildLowResolutionEventGeometry(
+                    hazardEvent);
         } catch (HazardGeometryOutsideCWAException e) {
             warnUserOfGeometryOutsideCWA(hazardEvent);
             return false;
         }
-        setLowResolutionGeometry(hazardEvent, lowResolutionGeometry, originator);
+        setLowResolutionGeometry(hazardEvent, lowResolutionGeometry,
+                originator);
         return true;
     }
 
@@ -4719,7 +4851,8 @@ public class SessionEventManager implements
     @Override
     public void updateHazardAreas(IHazardEvent event) {
         if (event.getHazardType() != null) {
-            Map<String, String> ugcHatchingAlgorithms = buildInitialHazardAreas(event);
+            Map<String, String> ugcHatchingAlgorithms = buildInitialHazardAreas(
+                    event);
             event.addHazardAttribute(HAZARD_AREA,
                     (Serializable) ugcHatchingAlgorithms);
         }
@@ -4727,8 +4860,8 @@ public class SessionEventManager implements
 
     @Override
     public boolean canEventAreaBeChanged(ObservedHazardEvent hazardEvent) {
-        return ((hazardEvent.getStatus() != HazardStatus.ELAPSED) && (hazardEvent
-                .getStatus() != HazardStatus.ENDED));
+        return ((hazardEvent.getStatus() != HazardStatus.ELAPSED)
+                && (hazardEvent.getStatus() != HazardStatus.ENDED));
     }
 
     @Override
@@ -4772,10 +4905,9 @@ public class SessionEventManager implements
             } else {
                 checkedEventIdentifiers.remove(eventIdentifier);
             }
-            notificationSender
-                    .postNotificationAsync(new SessionEventCheckedStateModified(
-                            this, getEventById(eventIdentifier),
-                            Originator.OTHER));
+            notificationSender.postNotificationAsync(
+                    new SessionEventCheckedStateModified(this,
+                            getEventById(eventIdentifier), Originator.OTHER));
         }
     }
 
@@ -4807,6 +4939,53 @@ public class SessionEventManager implements
                     + geometry.getValidityProblemDescription()
                     + "; geometry modification undone.");
             return false;
+        } else if (isEventForThisSite(hazardEvent) == false) {
+            statusHandler.warn("Event " + hazardEvent.getEventID()
+                    + " is not for the active site and cannot be modified.");
+            return false;
+        }
+
+        /*
+         * If the event requires a point identifier, ensure that the new
+         * geometry contains a single point, and that said point is contained by
+         * at least one of its non-point geometries.
+         */
+        if (configManager
+                .isPointIdentifierRequired(hazardEvent.getHazardType())) {
+            List<Geometry> jtsGeometries = AdvancedGeometryUtilities
+                    .getJtsGeometryList(geometry);
+            Point point = null;
+            Collection<Geometry> nonPoints = new HashSet<>(
+                    jtsGeometries.size() - 1, 1.0f);
+            for (Geometry jtsGeometry : jtsGeometries) {
+                if (jtsGeometry instanceof Point) {
+                    if (point != null) {
+                        statusHandler.warn("Event " + hazardEvent.getEventID()
+                                + " has more than one point geometry; geometry modification undone.");
+                        return false;
+                    }
+                    point = (Point) jtsGeometry;
+                } else {
+                    nonPoints.add(jtsGeometry);
+                }
+            }
+            if (point == null) {
+                statusHandler.warn("Event " + hazardEvent.getEventID()
+                        + " has no point geometry; geometry modification undone.");
+                return false;
+            }
+            boolean pointContained = false;
+            for (Geometry nonPoint : nonPoints) {
+                if (nonPoint.contains(point)) {
+                    pointContained = true;
+                }
+            }
+            if (pointContained == false) {
+                statusHandler.warn("Event " + hazardEvent.getEventID()
+                        + " must have at least "
+                        + "one areal geometry containing its point; geometry modification undone.");
+                return false;
+            }
         }
 
         /*
@@ -4820,8 +4999,8 @@ public class SessionEventManager implements
                     && (hazardTypeEntry.isAllowAreaChange() == false)) {
                 Geometry issuedGeometry = AdvancedGeometryUtilities
                         .getUnionOfPolygonalElements(
-                                hazardEvent.getFlattenedGeometry()).buffer(
-                                GEOMETRY_BUFFER_DISTANCE);
+                                hazardEvent.getFlattenedGeometry())
+                        .buffer(GEOMETRY_BUFFER_DISTANCE);
                 Geometry currentGeometry = AdvancedGeometryUtilities
                         .getUnionOfPolygonalElements(AdvancedGeometryUtilities
                                 .getJtsGeometry(geometry));
@@ -4837,7 +5016,8 @@ public class SessionEventManager implements
     }
 
     @Override
-    public Map<String, String> buildInitialHazardAreas(IHazardEvent hazardEvent) {
+    public Map<String, String> buildInitialHazardAreas(
+            IHazardEvent hazardEvent) {
         if (geoMapUtilities.isNonHatching(hazardEvent)) {
             return Collections.emptyMap();
         }
@@ -4869,41 +5049,42 @@ public class SessionEventManager implements
              * the user has two or more selected events, not when there are no
              * events selected. Would that be better from a UX perspective?
              */
-            messenger
-                    .getWarner()
-                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                            "Cannot add or remove UGCs unless exactly one hazard event is selected.");
+            messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
+                    "Cannot add or remove UGCs unless exactly one hazard event is selected.");
             return;
         }
         ObservedHazardEvent hazardEvent = selectedEvents.get(0);
         String hazardType = hazardEvent.getHazardType();
         if (hazardType == null) {
-            messenger
-                    .getWarner()
-                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                            "Cannot add or remove UGCs for a hazard with an undefined type.");
+            messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
+                    "Cannot add or remove UGCs for a hazard with an undefined type.");
             return;
         }
         if (HazardStatus.endingEndedOrElapsed(hazardEvent.getStatus())) {
-            messenger
-                    .getWarner()
-                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                            "Cannot add or remove UGCs for an ending, ended, or elapsed hazard.");
+            messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
+                    "Cannot add or remove UGCs for an ending, ended, or elapsed hazard.");
             return;
         }
 
         if ((hazardEvent.getStatus().equals(HazardStatus.PENDING) == false)
                 && geoMapUtilities.isPointBasedHatching(hazardEvent)) {
-            messenger
-                    .getWarner()
-                    .warnUser(GEOMETRY_MODIFICATION_ERROR,
-                            "Can only add or remove UGCs for point hazards when they are pending.");
+            messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
+                    "Can only add or remove UGCs for point hazards when they are pending.");
             return;
         }
         if (userConfirmationAsNecessary(hazardEvent) == false) {
             return;
         }
         makeHighResolutionVisible(hazardEvent, originator);
+
+        /*
+         * Ensure that the event is for this site.
+         */
+        if (isEventForThisSite(hazardEvent) == false) {
+            statusHandler.error("Event " + hazardEvent.getEventID()
+                    + " is not for the active site and cannot be modified.");
+            return;
+        }
 
         /*
          * Get the modified hazard areas and geometry resulting from adding or
@@ -4922,9 +5103,9 @@ public class SessionEventManager implements
          */
         Geometry modifiedGeometry = newHazardAreasAndGeometry.getSecond();
         if (modifiedGeometry != null) {
-            if (isValidGeometryChange(
-                    AdvancedGeometryUtilities.createGeometryWrapper(
-                            modifiedGeometry, 0), hazardEvent, true) == false) {
+            if (isValidGeometryChange(AdvancedGeometryUtilities
+                    .createGeometryWrapper(modifiedGeometry, 0), hazardEvent,
+                    true) == false) {
                 return;
             }
             hazardEvent.setGeometry(AdvancedGeometryUtilities
@@ -4952,8 +5133,8 @@ public class SessionEventManager implements
          * Get the hazard type.
          */
         HazardTypes hazardTypes = configManager.getHazardTypes();
-        HazardTypeEntry hazardType = hazardTypes.get(selectedEvent
-                .getHazardType());
+        HazardTypeEntry hazardType = hazardTypes
+                .get(selectedEvent.getHazardType());
 
         /*
          * By default, just set the low-resolution geometry to the be the
@@ -4966,7 +5147,8 @@ public class SessionEventManager implements
          * National and for non-hatching.
          */
         if ((hazardType != null)
-                && (configManager.getSiteID().equals(HazardConstants.NATIONAL) == false)
+                && (configManager.getSiteID()
+                        .equals(HazardConstants.NATIONAL) == false)
                 && (geoMapUtilities.isNonHatching(selectedEvent) == false)) {
 
             /*
@@ -4975,7 +5157,8 @@ public class SessionEventManager implements
             if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
                 result = geoMapUtilities.applyWarngenClipping(selectedEvent,
                         hazardType);
-            } else if (geoMapUtilities.isPointBasedHatching(selectedEvent) == false) {
+            } else if (geoMapUtilities
+                    .isPointBasedHatching(selectedEvent) == false) {
                 result = geoMapUtilities.applyGfeClipping(selectedEvent);
             }
             result = (Geometry) result.clone();
@@ -5013,7 +5196,8 @@ public class SessionEventManager implements
         return result;
     }
 
-    private void warnUserOfGeometryOutsideCWA(ObservedHazardEvent selectedEvent) {
+    private void warnUserOfGeometryOutsideCWA(
+            ObservedHazardEvent selectedEvent) {
         StringBuffer warningMessage = new StringBuffer();
         warningMessage.append("Event ").append(selectedEvent.getEventID())
                 .append(" ");
@@ -5088,8 +5272,8 @@ public class SessionEventManager implements
              * if UGC types contains "zone"? What if UGC types includes both
              * "zone" and non-"zone" types?
              */
-            Set<String> ugcTypes = hazardTypes.get(
-                    HazardEventUtilities.getHazardType(hazardEvent))
+            Set<String> ugcTypes = hazardTypes
+                    .get(HazardEventUtilities.getHazardType(hazardEvent))
                     .getUgcTypes();
             if (ugcTypes.contains(HazardConstants.UGC_ZONE)) {
                 List<RiverPointZoneInfo> riverPointZoneInfoList = riverForecastManager
@@ -5104,7 +5288,8 @@ public class SessionEventManager implements
                 }
             } else {
                 List<CountyStateData> countyDataList = riverForecastManager
-                        .getRiverForecastPointCountyStateList(hazardEventPointID);
+                        .getRiverForecastPointCountyStateList(
+                                hazardEventPointID);
 
                 // There could be multiple counties/ugcs
                 for (CountyStateData data : countyDataList) {
@@ -5119,7 +5304,8 @@ public class SessionEventManager implements
         return result;
     }
 
-    private List<String> buildIntersectionStrategyUGCs(IHazardEvent hazardEvent) {
+    private List<String> buildIntersectionStrategyUGCs(
+            IHazardEvent hazardEvent) {
         return new ArrayList<>(geoMapUtilities
                 .getIntersectingMapGeometriesForUgcs(hazardEvent).keySet());
     }
@@ -5130,8 +5316,8 @@ public class SessionEventManager implements
             return productGeometry;
         }
         GeometryCollection asMultiPolygon = (GeometryCollection) productGeometry;
-        Geometry[] geometries = new Geometry[2 * asMultiPolygon
-                .getNumGeometries() - 1];
+        Geometry[] geometries = new Geometry[2
+                * asMultiPolygon.getNumGeometries() - 1];
 
         int n = 0;
         for (int i = 0; i < asMultiPolygon.getNumGeometries(); i++) {
@@ -5287,8 +5473,8 @@ public class SessionEventManager implements
             newEvent.setSignificance(null);
             newEvent.setSubType(null);
             newEvent.setVisualFeatures(null);
-            newEvent.setUserName(LocalizationManager.getInstance()
-                    .getCurrentUser());
+            newEvent.setUserName(
+                    LocalizationManager.getInstance().getCurrentUser());
             newEvent.setWorkStation(VizApp.getHostName());
 
             /*
@@ -5309,12 +5495,16 @@ public class SessionEventManager implements
             newEvent.removeHazardAttribute(HazardConstants.PILS);
             newEvent.removeHazardAttribute(HazardConstants.REPLACED_BY);
             newEvent.removeHazardAttribute(HazardConstants.REPLACES);
-            newEvent.removeHazardAttribute(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
-            newEvent.removeHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+            newEvent.removeHazardAttribute(
+                    HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
+            newEvent.removeHazardAttribute(
+                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
+
+            removeAddRemoveShapesContextMenuOption(newEvent);
+
             try {
-                eventIdentifiers
-                        .add(addEvent(newEvent, false, Originator.OTHER)
-                                .getEventID());
+                eventIdentifiers.add(addEvent(newEvent, false, Originator.OTHER)
+                        .getEventID());
             } catch (HazardEventServiceException e) {
                 statusHandler.error("Error attempting to copy hazard event "
                         + event.getEventID() + ".", e);
@@ -5366,8 +5556,8 @@ public class SessionEventManager implements
         /*
          * Strip out attributes as per this hazard type's configuration.
          */
-        for (String sessionAttribute : configManager.getSessionAttributes(event
-                .getHazardType())) {
+        for (String sessionAttribute : configManager
+                .getSessionAttributes(event.getHazardType())) {
             dbEvent.removeHazardAttribute(sessionAttribute);
         }
 
@@ -5412,13 +5602,19 @@ public class SessionEventManager implements
     }
 
     @Override
-    public void setAddCreatedEventsToSelected(boolean addCreatedEventsToSelected) {
+    public void setAddCreatedEventsToSelected(
+            boolean addCreatedEventsToSelected) {
         this.addCreatedEventsToSelected = addCreatedEventsToSelected;
     }
 
     @Override
     public Geometry getCwaGeometry() {
         return geoMapUtilities.getCwaGeometry();
+    }
+
+    @Override
+    public void clearCwaGeometry() {
+        geoMapUtilities.clearCWAGeometry();
     }
 
     /*
@@ -5429,5 +5625,15 @@ public class SessionEventManager implements
     @Deprecated
     public boolean isShutDown() {
         return shutDown;
+    }
+
+    /**
+     *
+     * @param event
+     * @return True if the event's site ID matches the session's current site
+     *         ID, false otherwise
+     */
+    private boolean isEventForThisSite(IHazardEvent event) {
+        return event.getSiteID().equals(configManager.getSiteID());
     }
 }

@@ -57,6 +57,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 09, 2016   17067    Robert.Blum  Changes to work with RVS products.
  * Aug 29, 2016   19223    Kevin.Bisanz Add comment regarding use of concrete
  *                                      classes with serialization.
+ * Nov 04, 2016   22119    Kevin.Bisanz Changes to export product data by officeID
  * Feb 01, 2017   15556    Chris.Golden Added copy constructor.
  * </pre>
  * 
@@ -67,8 +68,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @Entity
 @Table(name = "productdata")
 @DynamicSerialize
-public class ProductData extends PersistableDataObject<String> implements
-        Serializable {
+public class ProductData extends PersistableDataObject<CustomDataId>
+        implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -114,15 +115,17 @@ public class ProductData extends PersistableDataObject<String> implements
      * @param mode
      * @param productGeneratorName
      * @param eventIDs
+     * @param officeID
      * @param issueTime
      * @param data
      * @param editableEntries
      */
     public ProductData(String mode, String productGeneratorName,
-            ArrayList<String> eventIDs, Date issueTime,
+            ArrayList<String> eventIDs, String officeID, Date issueTime,
             HashMap<String, Serializable> data,
             ArrayList<EditableEntryMap> editableEntries) {
-        id = new CustomDataId(mode, productGeneratorName, eventIDs, issueTime);
+        id = new CustomDataId(mode, productGeneratorName, eventIDs, officeID,
+                issueTime);
         this.data = data;
         this.editableEntries = editableEntries;
     }
@@ -159,6 +162,10 @@ public class ProductData extends PersistableDataObject<String> implements
         return id.getEventIDs();
     }
 
+    public String getOfficeID() {
+        return id.getOfficeID();
+    }
+
     public String getMode() {
         return id.getMode();
     }
@@ -191,7 +198,8 @@ public class ProductData extends PersistableDataObject<String> implements
         return editableEntries;
     }
 
-    public void setEditableEntries(ArrayList<EditableEntryMap> editableEntries) {
+    public void setEditableEntries(
+            ArrayList<EditableEntryMap> editableEntries) {
         this.editableEntries = editableEntries;
     }
 

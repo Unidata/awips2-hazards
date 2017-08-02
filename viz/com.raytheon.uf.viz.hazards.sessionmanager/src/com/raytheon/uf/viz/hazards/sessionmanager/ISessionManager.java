@@ -66,9 +66,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  * Mar 04, 2016 15933      Chris.Golden Added ability to run multiple recommenders in
  *                                      sequence in response to a time interval trigger,
  *                                      instead of just one recommender.
- * Apr 06, 2015  8837      Robert.Blum  Added setupEventIdDisplay().
+ * Apr 06, 2016  8837      Robert.Blum  Added setupEventIdDisplay().
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
+ * Dec 14, 2016 22119      Kevin.Bisanz Add flags to export config, ProductText, and
+ *                                      ProductData individually.
  * Feb 01, 2017 15556      Chris.Golden Added selection manager.
  * Feb 21, 2017 29138      Chris.Golden Added method to get runnable asynchronous
  *                                      scheduler.
@@ -280,9 +282,17 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * 
      * Push the Hazard Services Configuration Files for this Site
      * 
-     * @siteId Site Identifier to Export
+     * @param siteId
+     *            Site Identifier to Export
+     * @param exportConfig
+     *            Flag to export config info
+     * @param exportProductText
+     *            Flag to export ProductText info
+     * @param exportProductData
+     *            Flag to export ProductData info
      */
-    public void exportApplicationSiteData(String siteId);
+    public void exportApplicationSiteData(String siteId, boolean exportConfig,
+            boolean exportProductText, boolean exportProductData);
 
     /**
      * Configure the session to update to use the current site identifier.

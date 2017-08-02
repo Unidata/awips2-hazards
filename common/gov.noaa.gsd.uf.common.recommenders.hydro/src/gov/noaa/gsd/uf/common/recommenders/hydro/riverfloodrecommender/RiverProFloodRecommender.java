@@ -75,6 +75,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Aug 16, 2016 15017      Robert.Blum       Added observed crest, forecast crest, and max forecast attributes
  *                                           to the hazard event.
  * Aug 26, 2016 21435      Sara.Stewart      Added Crests MaxFcst and CurObs attributes
+ * Oct 13, 2016 22519      mduff             Use the HSA passed into the recommender, not the local site's HSA.
+ *                                           The system could be in service backup mode.
+ *
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -117,16 +120,16 @@ public class RiverProFloodRecommender {
             Map<String, Object> sessionAttributeMap,
             Map<String, Object> dialogInputMap) {
 
-        return createHazards(dialogInputMap);
+        return createHazards(dialogInputMap, sessionAttributeMap);
 
     }
 
-    private RecommenderData getRecommenderData() {
+    private RecommenderData getRecommenderData(String siteId) {
         RecommenderManager recommenderManager = RecommenderManager
                 .getInstance();
         long currentSystemTime = SimulatedTime.getSystemTime().getMillis();
         this.recommenderData = recommenderManager
-                .getRiverFloodRecommenderData(currentSystemTime);
+                .getRiverFloodRecommenderData(currentSystemTime, siteId);
         return (this.recommenderData);
     }
 
@@ -135,16 +138,19 @@ public class RiverProFloodRecommender {
      * 
      * @param dialogInputMap
      *            A map containing information from the tool dialog.
+     * @param sessionAttributeMap
      * @return A set of recommended potential river flood hazards
      */
     private EventSet<IHazardEvent> createHazards(
-            Map<String, Object> dialogInputMap) {
+            Map<String, Object> dialogInputMap,
+            Map<String, Object> sessionAttributeMap) {
 
-        boolean includeNonFloodPoints = Boolean.TRUE.equals(dialogInputMap
-                .get(INCLUDE_NONFLOOD_POINTS));
-
+        boolean includeNonFloodPoints = Boolean.TRUE
+                .equals(dialogInputMap.get(INCLUDE_NONFLOOD_POINTS));
+        String siteId = (String) sessionAttributeMap
+                .get(HazardConstants.LOCALIZED_SITE_ID);
         EventSet<IHazardEvent> potentialHazardEventSet = getPotentialRiverHazards(
-                includeNonFloodPoints, dialogInputMap);
+                includeNonFloodPoints, dialogInputMap, siteId);
 
         return potentialHazardEventSet;
     }
@@ -243,16 +249,19 @@ public class RiverProFloodRecommender {
      *            points.
      * @param dialogInputMap
      *            - used for single point selection workflow.
+     * @param siteId
+     *            - The siteID/HSA to recommend for
      * @return A set of recommended hazards.
      */
     private EventSet<IHazardEvent> getPotentialRiverHazards(
-            boolean includeNonFloodPoints, Map<String, Object> dialogInputMap) {
+            boolean includeNonFloodPoints, Map<String, Object> dialogInputMap,
+            String siteId) {
         EventSet<IHazardEvent> potentialRiverEventSet = new EventSet<>();
 
         String pointID = (String) dialogInputMap
                 .get(HazardConstants.SELECTED_POINT_ID);
 
-        RecommenderData recommenderData = getRecommenderData();
+        RecommenderData recommenderData = getRecommenderData(siteId);
 
         if (pointID != null) {
             RiverForecastPoint riverForecastPoint = getRiverForecastPoint(
@@ -347,7 +356,8 @@ public class RiverProFloodRecommender {
 
         long riseAbove = riverForecastPoint.getRiseAboveTime();
 
-        if ((riseAbove != RiverHydroConstants.MISSING_VALUE) && (riseAbove > 0)) {
+        if ((riseAbove != RiverHydroConstants.MISSING_VALUE)
+                && (riseAbove > 0)) {
             hazardAttributes.put(HazardConstants.RISE_ABOVE, riseAbove);
             riverHazardEvent.setStartTime(new Date(riseAbove));
         } else {
@@ -372,8 +382,8 @@ public class RiverProFloodRecommender {
 
         hazardAttributes.put(HazardConstants.CRESTS_MAX_FCST, crestsMaxFcst);
 
-        hazardAttributes
-                .put(HazardConstants.CRESTS_CUR_OBS, crestsCurrentStage);
+        hazardAttributes.put(HazardConstants.CRESTS_CUR_OBS,
+                crestsCurrentStage);
 
         double observedCrest = riverForecastPoint.getObservedCrestValue();
         long observedCrestTime = riverForecastPoint.getObservedCrestTime();
@@ -399,7 +409,8 @@ public class RiverProFloodRecommender {
 
         long fallBelow = riverForecastPoint.getFallBelowTime();
 
-        if ((fallBelow != RiverHydroConstants.MISSING_VALUE) && (fallBelow > 0)) {
+        if ((fallBelow != RiverHydroConstants.MISSING_VALUE)
+                && (fallBelow > 0)) {
             hazardAttributes.put(HazardConstants.FALL_BELOW, fallBelow);
 
             /*
@@ -416,18 +427,19 @@ public class RiverProFloodRecommender {
                     RiverHydroConstants.MISSING_VALUE);
 
             if (ffbasTime > 0) {
-                hazardAttributes
-                        .put(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                                false);
+                hazardAttributes.put(
+                        HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                        false);
                 Calendar ffbasCal = Calendar.getInstance();
                 ffbasCal.setTimeInMillis(ffbasTime);
                 riverHazardEvent.setEndTime(ffbasCal.getTime());
             } else {
-                hazardAttributes
-                        .put(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                                true);
+                hazardAttributes.put(
+                        HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                        true);
                 Calendar ufnCal = Calendar.getInstance();
-                ufnCal.setTimeInMillis(HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+                ufnCal.setTimeInMillis(
+                        HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
                 riverHazardEvent.setEndTime(ufnCal.getTime());
             }
 
@@ -448,9 +460,9 @@ public class RiverProFloodRecommender {
 
                     // Only save a valid interval
                     if (interval > 0) {
-                        hazardAttributes
-                                .put(HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
-                                        interval);
+                        hazardAttributes.put(
+                                HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
+                                interval);
                     }
                 }
             }
@@ -533,10 +545,9 @@ public class RiverProFloodRecommender {
         hazardAttributes.put(HazardConstants.IMMEDIATE_CAUSE,
                 FloodRecommenderConstants.ImmediateCause.UNKNOWN.getValue());
 
-        hazardAttributes
-                .put(HazardConstants.FLOOD_RECORD,
-                        FloodRecommenderConstants.FloodRecordStatus.AREAL_POINT_FLASH_FLOOD
-                                .getValue());
+        hazardAttributes.put(HazardConstants.FLOOD_RECORD,
+                FloodRecommenderConstants.FloodRecordStatus.AREAL_POINT_FLASH_FLOOD
+                        .getValue());
 
         hazardAttributes.put(HazardConstants.FLOOD_SEVERITY_CATEGORY,
                 FloodRecommenderConstants.FloodSeverity.NONE.getValue());
@@ -561,8 +572,9 @@ public class RiverProFloodRecommender {
 
         String pe = forecastPoint.getPhysicalElement();
         double crestValue = forecastPoint.getMaximumObservedForecastValue();
-        double recordValue = forecastPoint.getFloodCategory()[HydroFloodCategories.RECORD_FLOOD_CATEGORY
-                .getRank()];
+        double recordValue = forecastPoint
+                .getFloodCategory()[HydroFloodCategories.RECORD_FLOOD_CATEGORY
+                        .getRank()];
         double threshold;
         String recordString = null;
 

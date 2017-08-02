@@ -19,18 +19,12 @@
  **/
 package com.raytheon.uf.viz.productgen.dialog;
 
-import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
-
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +47,9 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
@@ -75,6 +71,11 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
+
+import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 /**
  * If there are any editable keys in the data dictionary returned by the product
@@ -118,6 +119,11 @@ import com.raytheon.uf.viz.core.VizApp;
  * 06/09/2016   9620       Robert.Blum  Fixed issue with rapidly changing the product purge hours.
  * 06/21/2016   9620       Robert.Blum  Accounting for arrow keys with expiration spinner.
  * 06/22/2016  19925      Thomas.Gurney Make "Toggle Labels" always checked by default
+ * 09/29/2016  22602       Roger.Ferrel Disable mouse wheel on expires spinner.
+ * 10/18/2016  22412       Roger.Ferrel When overview changes update the staging value entries.
+ *                                      Set the overview synopsis to the value in product.
+ * 11/08/2016  22509       bkowal       Required fields should always be indicated.
+ * 11/10/2016  22119       Kevin.Bisanz Add siteId so that saved/issued changes can be tagged with it.
  * 12/06/2016  26855       Chris.Golden Removed explicit use of scrollable composite, since the
  *                                      megawidgets can be wrapped within a scrollable Composite
  *                                      megawidget instead, which will handle Label-wrapping behavior
@@ -142,6 +148,9 @@ public class ProductDataEditor extends AbstractDataEditor {
 
     /** Label for the Undo button on the editor tab */
     private static final String UNDO_BUTTON_LABEL = "Undo";
+
+    /* Prefix for key info overview synopsis names. */
+    private static final String OVERVIEW_KEY_PREFIX = "overviewSynopsis_";
 
     /** Label for the Undo button on the editor tab */
     private static final String TOGGLE_LABELS_BUTTON_LABEL = "Toggle Labels";
@@ -195,11 +204,16 @@ public class ProductDataEditor extends AbstractDataEditor {
     /**
      * The history of modifications made to editable data.
      */
-    private final LinkedList<Pair<KeyInfo, EditableKeyInfo>> modificationHistory = new LinkedList<Pair<KeyInfo, EditableKeyInfo>>();
+    private final LinkedList<Pair<KeyInfo, EditableKeyInfo>> modificationHistory = new LinkedList<>();
+
+    /** The current site ID */
+    private String siteId;
 
     /**
      * Creates a new ProductDataEditor
      * 
+     * @param siteId
+     *            The site ID
      * @param productDialog
      *            The parent product dialog creating this
      * @param product
@@ -211,17 +225,19 @@ public class ProductDataEditor extends AbstractDataEditor {
      * @param hazardTypes
      *            Hazard types configuration information.
      */
-    protected ProductDataEditor(AbstractProductDialog productDialog,
-            CTabItem productTab, IGeneratedProduct product, CTabFolder parent,
-            int style, HazardTypes hazardTypes) {
+    protected ProductDataEditor(String siteId,
+            AbstractProductDialog productDialog, CTabItem productTab,
+            IGeneratedProduct product, CTabFolder parent, int style,
+            HazardTypes hazardTypes) {
         super(productDialog, productTab, product, parent, style);
+        this.siteId = siteId;
         displayExpirationControls = true;
         for (IEvent event : product.getEventSet()) {
             IHazardEvent hazard = (IHazardEvent) event;
             HazardTypeEntry hazardTypeEntry = hazardTypes
                     .get(HazardEventUtilities.getHazardType(hazard));
-            if ((hazardTypeEntry != null)
-                    && (hazardTypeEntry.getHatchingStyle() == HatchingStyle.WARNGEN)) {
+            if ((hazardTypeEntry != null) && (hazardTypeEntry
+                    .getHatchingStyle() == HatchingStyle.WARNGEN)) {
                 displayExpirationControls = false;
                 break;
             }
@@ -244,7 +260,8 @@ public class ProductDataEditor extends AbstractDataEditor {
         setText(TAB_LABEL);
 
         if (isDataEditable() == false) {
-            handler.info("There are no editable fields. The data editor cannot be created.");
+            handler.info(
+                    "There are no editable fields. The data editor cannot be created.");
             return;
         }
 
@@ -283,7 +300,13 @@ public class ProductDataEditor extends AbstractDataEditor {
         Map<KeyInfo, Object> valuesForKeyInfos = new HashMap<>();
         for (KeyInfo key : editableKeys.getKeyInfos()) {
             keyInfos.add(key);
-            valuesForKeyInfos.put(key, editableKeys.getValue(key));
+            if (key.getName().startsWith(OVERVIEW_KEY_PREFIX)
+                    && product.getData().containsKey(key.getName())) {
+                valuesForKeyInfos.put(key,
+                        product.getData().get(key.getName()));
+            } else {
+                valuesForKeyInfos.put(key, editableKeys.getValue(key));
+            }
         }
 
         try {
@@ -292,8 +315,8 @@ public class ProductDataEditor extends AbstractDataEditor {
              */
             ProductParametersEditorFactory factory = new ProductParametersEditorFactory();
             manager = factory.buildParametersEditor(parentComposite, keyInfos,
-                    valuesForKeyInfos, System.currentTimeMillis()
-                            - TimeUnit.DAYS.toMillis(1L),
+                    valuesForKeyInfos,
+                    System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1L),
                     System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L),
                     ProductEditorUtil.currentTimeProvider,
                     new IProductParametersEditorListener() {
@@ -303,9 +326,9 @@ public class ProductDataEditor extends AbstractDataEditor {
                             EditableKeyInfo editableKeyInfo = editableKeys
                                     .getEditableKeyInfo(keyInfo);
                             // Add a new entry in the undo queue
-                            modificationHistory
-                                    .add(new Pair<KeyInfo, EditableKeyInfo>(
-                                            keyInfo, editableKeyInfo));
+                            modificationHistory.add(
+                                    new Pair<KeyInfo, EditableKeyInfo>(keyInfo,
+                                            editableKeyInfo));
 
                             Serializable newValue = (Serializable) value;
 
@@ -466,6 +489,19 @@ public class ProductDataEditor extends AbstractDataEditor {
 
             });
 
+            /*
+             * DR#22602 - Disable the mouse wheel on hoursSpnr.
+             */
+            getDisplay().addFilter(SWT.MouseWheel, new Listener() {
+
+                @Override
+                public void handleEvent(Event event) {
+                    if (event.widget.equals(hoursSpnr)) {
+                        event.doit = false;
+                    }
+                }
+            });
+
             Label atLbl = new Label(expirationComp, SWT.NONE);
             atLbl.setText(" At:");
 
@@ -502,8 +538,8 @@ public class ProductDataEditor extends AbstractDataEditor {
                 if (requiredFieldsCompleted() == false) {
                     displayMB = true;
                     List<String> incompleteFields = getIncompleteRequiredFields();
-                    messageSB
-                            .append("\n\nThe following required fields are incomplete:\n");
+                    messageSB.append(
+                            "\n\nThe following required fields are incomplete:\n");
                     for (String field : incompleteFields) {
                         messageSB.append(field);
                         messageSB.append("\n");
@@ -513,8 +549,8 @@ public class ProductDataEditor extends AbstractDataEditor {
                 // Display the messageBox is needed
                 if (displayMB) {
                     Shell shell = getDisplay().getActiveShell();
-                    MessageBox messageBox = new MessageBox(shell, SWT.OK
-                            | SWT.ON_TOP | SWT.ICON_INFORMATION);
+                    MessageBox messageBox = new MessageBox(shell,
+                            SWT.OK | SWT.ON_TOP | SWT.ICON_INFORMATION);
                     messageBox.setText("Save Status");
                     messageBox.setMessage(messageSB.toString());
                     messageBox.open();
@@ -618,7 +654,8 @@ public class ProductDataEditor extends AbstractDataEditor {
     }
 
     @SuppressWarnings("unchecked")
-    private void updateSegmentExpirationTimes(Date expireDate, double purgeHours) {
+    private void updateSegmentExpirationTimes(Date expireDate,
+            double purgeHours) {
         Map<String, Serializable> data = product.getData();
         List<Map<String, Serializable>> segments = (List<Map<String, Serializable>>) data
                 .get(HazardConstants.SEGMENTS);
@@ -636,16 +673,14 @@ public class ProductDataEditor extends AbstractDataEditor {
          * Set the displayLabel flag on each KeyInfo object according to the
          * button state.
          */
-        Map<KeyInfo, KeyInfo> keyInfoMap = new LinkedHashMap<KeyInfo, KeyInfo>();
-        for (KeyInfo oldKey : editableKeys.getKeyInfos()) {
-            KeyInfo newKey = oldKey;
-            newKey.setDisplayLabel(toggleLabelsButton.getSelection());
-            keyInfoMap.put(oldKey, newKey);
-        }
-
-        /* update the keys in the editableKeys map */
-        for (KeyInfo oldKey : keyInfoMap.keySet()) {
-            editableKeys.replaceKey(keyInfoMap.get(oldKey), oldKey);
+        for (KeyInfo key : editableKeys.getKeyInfos()) {
+            key.setDisplayLabel(toggleLabelsButton.getSelection());
+            if (key.isRequired()) {
+                /*
+                 * Required labels should always be displayed.
+                 */
+                key.setDisplayLabel(true);
+            }
         }
 
         // re-create the megawidgets with or without the labels
@@ -686,8 +721,9 @@ public class ProductDataEditor extends AbstractDataEditor {
         try {
             manager.setState(state);
         } catch (MegawidgetStateException exception) {
-            handler.error("Error trying to reset megawidget state: "
-                    + exception, exception);
+            handler.error(
+                    "Error trying to reset megawidget state: " + exception,
+                    exception);
         }
     }
 
@@ -711,8 +747,9 @@ public class ProductDataEditor extends AbstractDataEditor {
         try {
             manager.setState(state);
         } catch (MegawidgetStateException exception) {
-            handler.error("Error trying to reset megawidget state: "
-                    + exception, exception);
+            handler.error(
+                    "Error trying to reset megawidget state: " + exception,
+                    exception);
         }
     }
 
@@ -721,8 +758,8 @@ public class ProductDataEditor extends AbstractDataEditor {
         if (modificationHistory.isEmpty()) {
             String undoText = "No modifications to undo.";
             Shell shell = this.getDisplay().getActiveShell();
-            MessageBox messageBox = new MessageBox(shell, SWT.OK
-                    | SWT.ICON_INFORMATION);
+            MessageBox messageBox = new MessageBox(shell,
+                    SWT.OK | SWT.ICON_INFORMATION);
             messageBox.setText("Unable to undo");
             messageBox.setMessage(undoText);
             messageBox.open();
@@ -758,8 +795,9 @@ public class ProductDataEditor extends AbstractDataEditor {
             try {
                 manager.setState(state);
             } catch (MegawidgetStateException exception) {
-                handler.error("Error trying to reset megawidget state: "
-                        + exception, exception);
+                handler.error(
+                        "Error trying to reset megawidget state: " + exception,
+                        exception);
             }
         }
     }
@@ -793,8 +831,8 @@ public class ProductDataEditor extends AbstractDataEditor {
     public boolean requiredFieldsCompleted() {
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
             Serializable value = editableKeys.getValue(keyInfo);
-            if (keyInfo.isRequired()
-                    && (value == null || String.valueOf(value).trim().length() == 0)) {
+            if (keyInfo.isRequired() && (value == null
+                    || String.valueOf(value).trim().length() == 0)) {
                 return false;
             }
         }
@@ -811,10 +849,26 @@ public class ProductDataEditor extends AbstractDataEditor {
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
             Serializable value = editableKeys.getModifiedValue(keyInfo, true);
             if (value != null) {
-                ProductTextUtil.createOrUpdateProductText(keyInfo.getName(),
+                String key = keyInfo.getName();
+
+                ProductTextUtil.createOrUpdateProductText(key,
                         keyInfo.getProductCategory(), keyInfo.getProductID(),
                         keyInfo.getSegment(),
-                        new ArrayList<String>(keyInfo.getEventIDs()), value);
+                        new ArrayList<>(keyInfo.getEventIDs()), siteId, value);
+                if (key.startsWith(OVERVIEW_KEY_PREFIX)) {
+                    /*
+                     * Update the overview for staging values for each eventID.
+                     * Staging dialog expects a quoted string.
+                     */
+                    String stagingValue = "\"" + value + "\"";
+                    for (String eventId : keyInfo.getEventIDs()) {
+                        ArrayList<String> list = new ArrayList<>(1);
+                        list.add(eventId);
+
+                        ProductTextUtil.createOrUpdateProductText(key, "", "",
+                                "", list, siteId, stagingValue);
+                    }
+                }
             }
         }
         editableKeys.clearModifiedValues();
@@ -855,8 +909,8 @@ public class ProductDataEditor extends AbstractDataEditor {
     protected void updateButtonState() {
         // Update the undo button with how many undo actions are available
         if (undosRemaining()) {
-            undoButton.setText(UNDO_BUTTON_LABEL + "(" + getUndosRemaining()
-                    + ")");
+            undoButton.setText(
+                    UNDO_BUTTON_LABEL + "(" + getUndosRemaining() + ")");
         } else {
             undoButton.setText(UNDO_BUTTON_LABEL);
         }
@@ -868,8 +922,8 @@ public class ProductDataEditor extends AbstractDataEditor {
      * List.
      */
     private List<String> getIncompleteRequiredFields() {
-        List<String> incompleteFields = new ArrayList<String>(editableKeys
-                .getKeyInfos().size());
+        List<String> incompleteFields = new ArrayList<>(
+                editableKeys.getKeyInfos().size());
         for (KeyInfo keyInfo : editableKeys.getKeyInfos()) {
             String value = String.valueOf(editableKeys.getValue(keyInfo));
             if (keyInfo.isRequired()

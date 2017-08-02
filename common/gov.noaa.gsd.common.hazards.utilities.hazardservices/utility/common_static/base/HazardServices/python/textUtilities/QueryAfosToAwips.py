@@ -1,24 +1,7 @@
 """
 Description: Provides an interface to the contents of the
-afos_to_awips table in the fxatext database.
+afos_to_awips.txt.
 
-SOFTWARE HISTORY
-Date         Ticket#    Engineer    Description
------------- ---------- ----------- --------------------------
-April 29, 2013            James Ramer      Initial creation
-May 6, 2013               Bryon Lawrence   Removed test for 
-                                           less than 9 character
-                                           product id. Sometimes
-                                           these can be 8.
-May 21, 2013              Bryon Lawrence   Refactored to use
-                                           Python Thrift Client
-                                           and GetPartialAfosIdRequest
-                                           dstype      
-
-May 22, 2013              Bryon Lawrence   Refactored to use
-                                           RequestRouter instead
-                                           of ThriftClient.
-Feb 26, 2015       6599   Robert.Blum      Changed to new style class
 @author James.E.Ramer@noaa.gov
 @version 1.0
 """
@@ -31,8 +14,7 @@ class QueryAfosToAwips(object):
         """
         Builds an instance of QueryAfosToAwips
         using the provided product id and site
-        id. Makes a query to the afos_to_awips
-        table in the fxatext db using 
+        id. Makes a query to the afos_to_awips.txt using 
         request router.  Processes and stores the
         results in member variables.
         
@@ -40,7 +22,7 @@ class QueryAfosToAwips(object):
         @param siteID:  The 3-letter site id, e.g. OAX
         
         @raise Exception: An error was encountered reading
-                          from the afos_to_awips table for
+                          from the afos_to_awips.txt for
                           the given productID and siteID. 
                           This is a fatal circumstance. 
                           A product should not be 
@@ -62,23 +44,22 @@ class QueryAfosToAwips(object):
             
             if idList.size() > 0 :
                 afosToAwips = idList.get(0)
-                id = afosToAwips.getId()
-                cccnnnxxx = id.getAfosid()
+                cccnnnxxx = afosToAwips.getAfosid()
                 self.ccc = cccnnnxxx[:3]
                 self.xxx = cccnnnxxx[6:]
                 self.nnn = cccnnnxxx[3:6]
-                self.wmoProd = id.getWmottaaii()
-                self.wmoSite = id.getWmocccc()
+                self.wmoProd = afosToAwips.getWmottaaii()
+                self.wmoSite = afosToAwips.getWmocccc()
                 self.pil = cccnnnxxx[3:]
                 self.awipsWANPil = self.wmoSite + self.pil
                 self.textdbPil = cccnnnxxx
             else:
-                raise Exception("QueryAfosToAwips: Could not read record from afos_to_awips for product ", \
-                                  productID, ", site ", siteID)
+                msg = "QueryAfosToAwips: No matching data in afos_to_awips.txt for product {}, site: {}".format(productID, siteID)
+                raise Exception(msg)
                  
-        except:
-            raise Exception("QueryAfosToAwips: Could not read record from afos_to_awips for product ", \
-                              productID, ", site ", siteID)
+        except Exception as err:
+            msg = "QueryAfosToAwips: Product: {}, site: {}".format(productID, siteID)
+            raise Exception(msg, err)
 
     def getWMOsite(self) :
         """

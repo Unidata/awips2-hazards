@@ -33,8 +33,10 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 14, 2015 3473       Chris.Cody  Initial creation
- * Nov 23, 2015 3473       Robert.Blum Changed to only be used for exports.
+ * Sep 14, 2015  3473      Chris.Cody  Initial creation
+ * Nov 23, 2015  3473      Robert.Blum Changed to only be used for exports.
+ * Dec 15, 2016 22119      Kevin.Bisanz Added flags to export config, ProductText,
+ *                                     and ProductData individually.
  * 
  * </pre>
  * 
@@ -51,6 +53,15 @@ public class HazardSiteDataRequest implements IServerRequest {
     @DynamicSerializeElement
     private Boolean practice;
 
+    @DynamicSerializeElement
+    private boolean exportConfig;
+
+    @DynamicSerializeElement
+    private boolean exportProductText;
+
+    @DynamicSerializeElement
+    private boolean exportProductData;
+
     /**
      * Default constructor.
      */
@@ -62,10 +73,46 @@ public class HazardSiteDataRequest implements IServerRequest {
      * 
      * @param siteId
      *            Site to Export to Central Registry Server
+     * @param practice
+     * @param exportConfig
+     *            Flag to export config info
+     * @param exportProductText
+     *            Flag to export ProductText info
+     * @param exportProductData
+     *            Flag to export ProductData info
      */
-    public HazardSiteDataRequest(String siteId, Boolean practice) {
+    public HazardSiteDataRequest(String siteId, Boolean practice,
+            boolean exportConfig, boolean exportProductText,
+            boolean exportProductData) {
         this.siteId = siteId;
         this.setPractice(practice);
+        this.exportConfig = exportConfig;
+        this.exportProductText = exportProductText;
+        this.exportProductData = exportProductData;
+    }
+
+    public void setExportConfig(boolean exportConfig) {
+        this.exportConfig = exportConfig;
+    }
+
+    public boolean isExportConfig() {
+        return exportConfig;
+    }
+
+    public void setExportProductText(boolean exportProductText) {
+        this.exportProductText = exportProductText;
+    }
+
+    public boolean isExportProductText() {
+        return exportProductText;
+    }
+
+    public void setExportProductData(boolean exportProductData) {
+        this.exportProductData = exportProductData;
+    }
+
+    public boolean isExportProductData() {
+        return exportProductData;
     }
 
     /**

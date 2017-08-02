@@ -7,6 +7,12 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+
+import com.vividsolutions.jts.geom.Coordinate;
+
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
@@ -20,12 +26,6 @@ import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
-
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Interface describing the methods that must be implemented by a class that
@@ -69,6 +69,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                           compliance continues.
  * Aug 23, 2016 19537      Chris.Golden      Continued spatial display refactor.
  * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
+ * Dec 14, 2016 26813      bkowal            Use the active Hazard Services site when
+ *                                           determining which counties to render for
+ *                                           "Select by Area".
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,11 +90,16 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      * 
      * @param presenter
      *            Presenter managing this view.
+     * @param localizedSite
+     *            Identifier of the site to which this CAVE is localized.
+     * @param currentSite
+     *            Identifier of the current site.
      * @param selectedSpatialEntityIdentifiers
      *            Unmodifiable view of the selected spatial entity identifiers.
      *            This will be kept up to date by the presenter.
      */
-    public void initialize(SpatialPresenter presenter,
+    public void initialize(SpatialPresenter presenter, String localizedSite,
+            String currentSite,
             Set<IEntityIdentifier> selectedSpatialEntityIdentifiers);
 
     /**
@@ -180,6 +188,14 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
      *            New selected time.
      */
     public void setSelectedTime(Date selectedTime);
+
+    /**
+     * Set the current site identifier to that specified.
+     * 
+     * @param currentSite
+     *            New current site identifier.
+     */
+    public void setCurrentSite(String currentSite);
 
     /**
      * Load the specified select-by-area viz resource and associated input

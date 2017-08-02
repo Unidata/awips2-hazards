@@ -18,20 +18,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_DATE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_NUMBER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_COLUMN_TYPE_STRING;
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.common.utilities.JsonConverter;
-import gov.noaa.gsd.common.utilities.Sort;
-import gov.noaa.gsd.common.utilities.Sort.SortDirection;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
-import gov.noaa.gsd.viz.hazards.console.ConsoleColumns.ColumnDefinition;
-import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
-import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.IContributionItemUpdater;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,8 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.engio.mbassy.listener.Handler;
-
 import org.eclipse.jface.action.IContributionItem;
 
 import com.google.common.collect.ImmutableList;
@@ -59,13 +43,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
-import com.raytheon.uf.common.localization.LocalizationContext.LocalizationLevel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.Pair;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationConsoleTimer;
@@ -100,6 +82,22 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
 import com.raytheon.viz.core.mode.CAVEMode;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.common.utilities.JsonConverter;
+import gov.noaa.gsd.common.utilities.Sort;
+import gov.noaa.gsd.common.utilities.Sort.SortDirection;
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.hazards.console.ConsoleColumns.ColumnDefinition;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.IContributionItemUpdater;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Console presenter, used to manage the console view.
@@ -162,8 +160,13 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                           object).
  * Sep 12, 2016   15934    Chris.Golden      Changed to work with new version of
  *                                           JsonConverter.
+ * Oct 04, 2016   22573    Robert.Blum       Clearing CWA geometry when site changes.
+ * Oct 11, 2016   21824    Robert.Blum       Fixed site in console title when switching
+ *                                           perspectives.
  * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to
  *                                           settings.
+ * Oct 27, 2016   22956    Ben.Phillippe     Update console on site ID change
+ * Dec 14, 2016   22119    Kevin.Bisanz      Add Export Product Edits menu.
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
  *                                           design concerns, untangle spaghetti, and
  *                                           add history list viewing.
@@ -182,13 +185,14 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jun 30, 2017   19223    Chris.Golden      Added ability to change the text and
  *                                           enabled state of a row menu's menu item
  *                                           after it is displayed.
+ * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ConsolePresenter extends
-        HazardServicesPresenter<IConsoleView<?, ?>> {
+public class ConsolePresenter
+        extends HazardServicesPresenter<IConsoleView<?, ?>> {
 
     // Public Enumerated Types
 
@@ -204,7 +208,7 @@ public class ConsolePresenter extends
      * Commands.
      */
     public enum Command {
-        RESET, CLOSE, EXPORT_SITE_CONFIG, CHECK_FOR_CONFLICTS
+        RESET, CLOSE, EXPORT_SITE_CONFIG, EXPORT_SITE_PRODUCT_EDITS, CHECK_FOR_CONFLICTS
     }
 
     /**
@@ -222,9 +226,10 @@ public class ConsolePresenter extends
         // Values
         NORMAL_NO_VTEC("Normal: NoVTEC", null, false), NORMAL_O_VTEC(
                 "Normal: O-Vtec", "O", false), NORMAL_E_VTEC("Normal: E-Vtec",
-                "E", false), NORMAL_X_VTEC("Normal: X-Vtec", "X", false), TEST_NO_VTEC(
-                "Test: NoVTEC", null, true), TEST_T_VTEC("Test: T-Vtec", "T",
-                true);
+                        "E", false), NORMAL_X_VTEC("Normal: X-Vtec", "X",
+                                false), TEST_NO_VTEC("Test: NoVTEC", null,
+                                        true), TEST_T_VTEC("Test: T-Vtec", "T",
+                                                true);
 
         // Private Variables
 
@@ -331,14 +336,10 @@ public class ConsolePresenter extends
         public int hashCode() {
             final int prime = 31;
             int result = 1;
-            result = prime
-                    * result
-                    + ((eventIdentifiers == null) ? 0 : eventIdentifiers
-                            .hashCode());
-            result = prime
-                    * result
-                    + ((productGeneratorName == null) ? 0
-                            : productGeneratorName.hashCode());
+            result = prime * result + ((eventIdentifiers == null) ? 0
+                    : eventIdentifiers.hashCode());
+            result = prime * result + ((productGeneratorName == null) ? 0
+                    : productGeneratorName.hashCode());
             return result;
         }
 
@@ -358,14 +359,16 @@ public class ConsolePresenter extends
                 if (other.eventIdentifiers != null) {
                     return false;
                 }
-            } else if (eventIdentifiers.equals(other.eventIdentifiers) == false) {
+            } else if (eventIdentifiers
+                    .equals(other.eventIdentifiers) == false) {
                 return false;
             }
             if (productGeneratorName == null) {
                 if (other.productGeneratorName != null) {
                     return false;
                 }
-            } else if (productGeneratorName.equals(other.productGeneratorName) == false) {
+            } else if (productGeneratorName
+                    .equals(other.productGeneratorName) == false) {
                 return false;
             }
             return true;
@@ -410,13 +413,17 @@ public class ConsolePresenter extends
         @Override
         public void stateChanged(TimeRangeType identifier, Range<Long> value) {
             if (identifier == TimeRangeType.VISIBLE) {
-                getModel().getTimeManager().setVisibleTimeRange(
-                        new TimeRange(value.lowerEndpoint(),
-                                value.upperEndpoint()), UIOriginator.CONSOLE);
+                getModel().getTimeManager()
+                        .setVisibleTimeRange(
+                                new TimeRange(value.lowerEndpoint(),
+                                        value.upperEndpoint()),
+                                UIOriginator.CONSOLE);
             } else {
-                getModel().getTimeManager().setSelectedTime(
-                        new SelectedTime(value.lowerEndpoint(),
-                                value.upperEndpoint()), UIOriginator.CONSOLE);
+                getModel().getTimeManager()
+                        .setSelectedTime(
+                                new SelectedTime(value.lowerEndpoint(),
+                                        value.upperEndpoint()),
+                                UIOriginator.CONSOLE);
             }
         }
 
@@ -436,8 +443,9 @@ public class ConsolePresenter extends
         public void stateChanged(String identifier, ConsoleColumns value) {
             ObservedSettings currentSettings = getModel()
                     .getConfigurationManager().getSettings();
-            currentSettings.setColumns(value
-                    .getModifiedColumnsForNames(currentSettings.getColumns()),
+            currentSettings.setColumns(
+                    value.getModifiedColumnsForNames(
+                            currentSettings.getColumns()),
                     UIOriginator.CONSOLE);
             currentSettings.setVisibleColumns(value.getVisibleColumnNames(),
                     UIOriginator.CONSOLE);
@@ -461,29 +469,34 @@ public class ConsolePresenter extends
         public void stateChanged(String identifier, Object value) {
             ObservedSettings currentSettings = getModel()
                     .getConfigurationManager().getSettings();
-            if (identifier
-                    .equals(HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
+            if (identifier.equals(
+                    HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES)) {
                 HazardCategoriesAndTypes hazardCategoriesAndTypes = null;
                 try {
                     hazardCategoriesAndTypes = JsonConverter.fromJson(
                             JsonConverter.toJson(value),
                             HazardCategoriesAndTypes.class);
                 } catch (IOException e) {
-                    statusHandler.error(
-                            "Unexpected error when converting List<Map<String, Object>> "
+                    statusHandler
+                            .error("Unexpected error when converting List<Map<String, Object>> "
                                     + "to List<HazardCategoryAndTypes>", e);
                 }
                 currentSettings
                         .setHazardCategoriesAndTypes(
-                                hazardCategoriesAndTypes
-                                        .toArray(new HazardCategoryAndTypes[hazardCategoriesAndTypes
-                                                .size()]), UIOriginator.CONSOLE);
-            } else if (identifier.equals(HazardConstants.SETTING_HAZARD_STATES)) {
-                currentSettings.setVisibleStatuses(new HashSet<String>(
-                        (Collection<String>) value), UIOriginator.CONSOLE);
-            } else if (identifier.equals(HazardConstants.SETTING_HAZARD_SITES)) {
-                currentSettings.setVisibleSites(new HashSet<String>(
-                        (Collection<String>) value), UIOriginator.CONSOLE);
+                                hazardCategoriesAndTypes.toArray(
+                                        new HazardCategoryAndTypes[hazardCategoriesAndTypes
+                                                .size()]),
+                        UIOriginator.CONSOLE);
+            } else if (identifier
+                    .equals(HazardConstants.SETTING_HAZARD_STATES)) {
+                currentSettings.setVisibleStatuses(
+                        new HashSet<String>((Collection<String>) value),
+                        UIOriginator.CONSOLE);
+            } else if (identifier
+                    .equals(HazardConstants.SETTING_HAZARD_SITES)) {
+                currentSettings.setVisibleSites(
+                        new HashSet<String>((Collection<String>) value),
+                        UIOriginator.CONSOLE);
             } else {
                 statusHandler.error(
                         "Unexpected state change with identifier \""
@@ -522,6 +535,8 @@ public class ConsolePresenter extends
                 handleConsoleClosed();
             } else if (identifier == Command.EXPORT_SITE_CONFIG) {
                 exportApplicationBackupSiteData();
+            } else if (identifier == Command.EXPORT_SITE_PRODUCT_EDITS) {
+                exportApplicationBackupSiteProductEdits();
             } else if (identifier == Command.CHECK_FOR_CONFLICTS) {
                 checkForConflicts();
             }
@@ -589,9 +604,10 @@ public class ConsolePresenter extends
             currentSetting.setVisibleSites(visibleSites, UIOriginator.CONSOLE);
 
             /*
-             * Set the site to be the current one.
+             * Set the site to be the current one, and clear the CWA.
              */
             configManager.setSiteID(value, UIOriginator.CONSOLE);
+            getModel().getEventManager().clearCwaGeometry();
         }
 
         @Override
@@ -667,8 +683,7 @@ public class ConsolePresenter extends
         if (change.getOriginator() != UIOriginator.CONSOLE) {
             SelectedTime selectedTime = getModel().getTimeManager()
                     .getSelectedTime();
-            getView().getTimeRangeChanger().setState(
-                    TimeRangeType.SELECTED,
+            getView().getTimeRangeChanger().setState(TimeRangeType.SELECTED,
                     Range.closed(selectedTime.getLowerBound(),
                             selectedTime.getUpperBound()));
         }
@@ -685,10 +700,9 @@ public class ConsolePresenter extends
         if (change.getOriginator() != UIOriginator.CONSOLE) {
             TimeRange visibleTime = getModel().getTimeManager()
                     .getVisibleTimeRange();
-            getView().getTimeRangeChanger().setState(
-                    TimeRangeType.VISIBLE,
-                    Range.closed(visibleTime.getStart().getTime(), visibleTime
-                            .getEnd().getTime()));
+            getView().getTimeRangeChanger().setState(TimeRangeType.VISIBLE,
+                    Range.closed(visibleTime.getStart().getTime(),
+                            visibleTime.getEnd().getTime()));
         }
     }
 
@@ -767,7 +781,8 @@ public class ConsolePresenter extends
                     } else if (sortByType.equals(SETTING_COLUMN_TYPE_BOOLEAN)) {
                         comparator = Ordering.<Boolean> natural();
                         type = Boolean.class;
-                    } else if (sortByType.equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
+                    } else if (sortByType
+                            .equals(SETTING_COLUMN_TYPE_COUNTDOWN)) {
 
                         /*
                          * No action; comparator should be null.
@@ -778,12 +793,12 @@ public class ConsolePresenter extends
                                         + sortByType
                                         + "\" for event sorting purposes.");
                     }
-                    comparatorsForSortIdentifiers.put(entry.getValue()
-                            .getIdentifier(),
+                    comparatorsForSortIdentifiers.put(
+                            entry.getValue().getIdentifier(),
                             (comparator != null ? comparator.nullsFirst()
                                     : null));
-                    typesForSortIdentifiers.put(entry.getValue()
-                            .getIdentifier(), type);
+                    typesForSortIdentifiers
+                            .put(entry.getValue().getIdentifier(), type);
                 }
 
                 /*
@@ -814,11 +829,11 @@ public class ConsolePresenter extends
                 List<Map<String, Object>> hazardCategoriesAndTypes = null;
                 try {
                     hazardCategoriesAndTypes = JsonConverter
-                            .fromJson(JsonConverter.toJson(settings
-                                    .getHazardCategoriesAndTypes()));
+                            .fromJson(JsonConverter.toJson(
+                                    settings.getHazardCategoriesAndTypes()));
                 } catch (IOException e) {
-                    statusHandler.error(
-                            "Unexpected error when converting List<HazardCategoryAndTypes> "
+                    statusHandler
+                            .error("Unexpected error when converting List<HazardCategoryAndTypes> "
                                     + "to List<Map<String, Object>>", e);
                 }
                 valuesForIdentifiers.put(
@@ -832,8 +847,8 @@ public class ConsolePresenter extends
                 valuesForIdentifiers.put(HazardConstants.SETTING_HAZARD_SITES,
                         new ArrayList<>(visibleSites));
 
-                getView().getColumnFiltersChanger().setStates(
-                        valuesForIdentifiers);
+                getView().getColumnFiltersChanger()
+                        .setStates(valuesForIdentifiers);
             }
         }
 
@@ -857,6 +872,7 @@ public class ConsolePresenter extends
     @Handler
     public void siteChanged(SiteChanged change) {
         getView().getSiteChanger().setState(null, change.getSiteIdentifier());
+        tabularEntityManager.recreateAllEntities();
     }
 
     /**
@@ -904,8 +920,8 @@ public class ConsolePresenter extends
                         .get(identifier.getFirst());
                 if (indices == null) {
                     indices = new HashSet<>();
-                    historicalIndicesForEventIdentifiers.put(
-                            identifier.getFirst(), indices);
+                    historicalIndicesForEventIdentifiers
+                            .put(identifier.getFirst(), indices);
                 }
                 if (identifier.getSecond() != null) {
                     indices.add(identifier.getSecond());
@@ -998,8 +1014,8 @@ public class ConsolePresenter extends
     public void sessionEventTimeRangeBoundariesModified(
             SessionEventsTimeRangeBoundariesModified change) {
         for (String eventIdentifier : change.getChangedEvents()) {
-            tabularEntityManager.replaceRootEntityForEvent(getModel()
-                    .getEventManager().getEventById(eventIdentifier));
+            tabularEntityManager.replaceRootEntityForEvent(
+                    getModel().getEventManager().getEventById(eventIdentifier));
         }
     }
 
@@ -1047,7 +1063,8 @@ public class ConsolePresenter extends
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventHistoryModified(SessionEventHistoryModified change) {
+    public void sessionEventHistoryModified(
+            SessionEventHistoryModified change) {
         tabularEntityManager.updateChildEntityListForEvent(change.getEvent());
     }
 
@@ -1080,8 +1097,8 @@ public class ConsolePresenter extends
             if (console != null) {
                 String timeLineNavigation = console.getTimeLineNavigation();
                 if (timeLineNavigation != null) {
-                    temporalControlsInToolBar = !(timeLineNavigation
-                            .equals(HazardConstants.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW));
+                    temporalControlsInToolBar = !(timeLineNavigation.equals(
+                            HazardConstants.START_UP_CONFIG_CONSOLE_TIMELINE_NAVIGATION_BELOW));
                 }
             }
         }
@@ -1096,29 +1113,29 @@ public class ConsolePresenter extends
                 filterFields.length);
         try {
             for (Field field : filterFields) {
-                Map<String, Object> map = JsonConverter.fromJson(JsonConverter
-                        .toJson(field));
+                Map<String, Object> map = JsonConverter
+                        .fromJson(JsonConverter.toJson(field));
                 filterSpecifiers.add(map);
             }
         } catch (IOException e) {
             statusHandler.error(
                     "Could not serialize filter configuration to JSON.", e);
         }
-        view.initialize(
-                this,
+        view.initialize(this,
                 new Date(timeManager.getSelectedTime().getLowerBound()),
                 timeManager.getCurrentTime(),
                 getModel().getConfigurationManager().getSettings()
                         .getDefaultTimeDisplayDuration(),
                 (TimeResolution) getModel().getConfigurationManager()
-                        .getSettingsValue(
-                                HazardConstants.TIME_RESOLUTION,
+                        .getSettingsValue(HazardConstants.TIME_RESOLUTION,
                                 getModel().getConfigurationManager()
-                                        .getSettings()), ImmutableList
-                        .copyOf(filterSpecifiers), LocalizationManager
-                        .getContextName(LocalizationLevel.SITE), ImmutableList
-                        .copyOf(getModel().getConfigurationManager()
-                                .getBackupSites()), temporalControlsInToolBar);
+                                        .getSettings()),
+                ImmutableList.copyOf(filterSpecifiers),
+                getModel().getConfigurationManager().getSiteID(),
+                getModel().getConfigurationManager().getSiteID(),
+                ImmutableList.copyOf(
+                        getModel().getConfigurationManager().getBackupSites()),
+                temporalControlsInToolBar);
 
         /*
          * Register the various handlers with the view.
@@ -1126,8 +1143,8 @@ public class ConsolePresenter extends
         view.getTreeContentsChanger().setListStateChangeHandler(
                 tabularEntityManager.getTreeContentsChangeHandler());
         view.getColumnsChanger().setStateChangeHandler(columnsChangeHandler);
-        view.getColumnFiltersChanger().setStateChangeHandler(
-                columnFiltersChangeHandler);
+        view.getColumnFiltersChanger()
+                .setStateChangeHandler(columnFiltersChangeHandler);
         view.getTimeRangeChanger()
                 .setStateChangeHandler(timeRangeChangeHandler);
         view.getSortInvoker()
@@ -1221,7 +1238,8 @@ public class ConsolePresenter extends
 
                     @Override
                     public void handleContributionItemUpdate(
-                            IContributionItem item, String text, boolean enabled) {
+                            IContributionItem item, String text,
+                            boolean enabled) {
                         getView().handleContributionItemUpdate(item, text,
                                 enabled);
                     }
@@ -1273,8 +1291,7 @@ public class ConsolePresenter extends
          */
         Map<ReviewKey, List<ProductData>> map = new HashMap<>();
         for (ProductData productData : correctableProductData) {
-            ReviewKey key = new ReviewKey(
-                    productData.getProductGeneratorName(),
+            ReviewKey key = new ReviewKey(productData.getProductGeneratorName(),
                     productData.getEventIDs());
             List<ProductData> list = map.get(key);
             if (list == null) {
@@ -1305,13 +1322,11 @@ public class ConsolePresenter extends
                 continue;
             }
             HazardEventExpirationConsoleTimer consoleAlert = (HazardEventExpirationConsoleTimer) alert;
-            countdownTimersForEventIdentifiers
-                    .put(consoleAlert.getEventID(),
-                            new CountdownTimer(consoleAlert
-                                    .getHazardExpiration(), consoleAlert
-                                    .getColor(), consoleAlert.isBold(),
-                                    consoleAlert.isItalic(), consoleAlert
-                                            .isBlinking()));
+            countdownTimersForEventIdentifiers.put(consoleAlert.getEventID(),
+                    new CountdownTimer(consoleAlert.getHazardExpiration(),
+                            consoleAlert.getColor(), consoleAlert.isBold(),
+                            consoleAlert.isItalic(),
+                            consoleAlert.isBlinking()));
         }
         return ImmutableMap.copyOf(countdownTimersForEventIdentifiers);
     }
@@ -1332,11 +1347,12 @@ public class ConsolePresenter extends
             int priority = column.getSortPriority();
             String sortDirection = column.getSortDir();
             if ((priority > 0) && (sortDirection != null)) {
-                sorts.add(new Sort(
-                        column.getFieldName(),
+                sorts.add(new Sort(column.getFieldName(),
                         (sortDirection
-                                .equals(SETTING_COLUMN_SORT_DIRECTION_ASCENDING) ? SortDirection.ASCENDING
-                                : SortDirection.DESCENDING), priority));
+                                .equals(SETTING_COLUMN_SORT_DIRECTION_ASCENDING)
+                                        ? SortDirection.ASCENDING
+                                        : SortDirection.DESCENDING),
+                        priority));
             }
         }
 
@@ -1413,11 +1429,13 @@ public class ConsolePresenter extends
             }
 
             for (Sort sort : sorts) {
-                Column column = columnsForIdentifiers.get(sort
-                        .getAttributeIdentifier());
+                Column column = columnsForIdentifiers
+                        .get(sort.getAttributeIdentifier());
                 column.setSortPriority(sort.getPriority());
-                column.setSortDir(sort.getSortDirection() == SortDirection.ASCENDING ? SETTING_COLUMN_SORT_DIRECTION_ASCENDING
-                        : SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
+                column.setSortDir(
+                        sort.getSortDirection() == SortDirection.ASCENDING
+                                ? SETTING_COLUMN_SORT_DIRECTION_ASCENDING
+                                : SETTING_COLUMN_SORT_DIRECTION_DESCENDING);
             }
 
             settings.setColumns(newColumnsForNames, UIOriginator.CONSOLE);
@@ -1441,7 +1459,17 @@ public class ConsolePresenter extends
      */
     private void exportApplicationBackupSiteData() {
         getModel().exportApplicationSiteData(
-                getModel().getConfigurationManager().getSiteID());
+                getModel().getConfigurationManager().getSiteID(), true, false,
+                false);
+    }
+
+    /**
+     * Export Hazard Services product edits for the current site identifier.
+     */
+    private void exportApplicationBackupSiteProductEdits() {
+        getModel().exportApplicationSiteData(
+                getModel().getConfigurationManager().getSiteID(), false, true,
+                true);
     }
 
     /**

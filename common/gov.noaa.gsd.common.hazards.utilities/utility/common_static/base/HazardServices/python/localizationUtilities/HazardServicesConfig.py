@@ -18,28 +18,23 @@ class HazardServicesConfig :
     @author: Bryon Lawrence
     @since: 12/17/2012
     """
-    
-    configDataDict = {}
-    configFileDict = {}
-    
+
     def __init__(self, configType, host="", configDir=None) :
         """
         @param configType: "alerts", "settings", "hazardTypes", 
                            "hazardCategories", "productGeneratorTable",
                            "hazardMetaData", "startUpConfig"
-        @param host: host identifier of localization server                    
+        @param host: host identifier of localization server
         """
         if isinstance(configType, unicode):
             configType = configType.encode()
-            
-        self.__configType = configType
         if configDir == None:
             self.__configDir = "HazardServices/"+configType
         else:
             self.__configDir = configDir
         self.__myLI = LocalizationInterface.LocalizationInterface(host)
         self.__extension = ".py"
-     
+
     def getConfigFileList(self) :
         """
         Retrieve a list of configuration files for the 
@@ -47,19 +42,14 @@ class HazardServicesConfig :
         @return: A list of localization files for the
                  configuration type
         """
-        baseConfigNameList = self.checkConfigFileDict()
-        
-        if baseConfigNameList is None:
-            fileList = self.__myLI.listLocFiles(\
-                           self.__configDir, "COMMON", "", "", "", self.__extension) or []
-            baseConfigNameList = []
-        
-            for configFileName in fileList:
-                baseName = os.path.splitext(configFileName)[0]
-                baseConfigNameList.append(baseName)
-                
-            self.addToConfigFileList(baseConfigNameList)
-            
+        fileList = self.__myLI.listLocFiles(\
+                       self.__configDir, "COMMON", "", "", "", self.__extension) or []
+        baseConfigNameList = []
+    
+        for configFileName in fileList:
+            baseName = os.path.splitext(configFileName)[0]
+            baseConfigNameList.append(baseName)
+
         return baseConfigNameList
 
     def filterConfigData(self, allData, fields) :
@@ -96,17 +86,14 @@ class HazardServicesConfig :
         """
         if not isinstance(baseConfigFileName, str) and not isinstance(baseConfigFileName, unicode):
             return None
-        configData = self.checkConfigDataDict(baseConfigFileName)
-        #['metaData']
-        if configData is None:
-            locPath = self.__configDir+"/"+baseConfigFileName+self.__extension
-            configData = self.__myLI.getLocData(locPath, "COMMON", 
-                                                incrementalOverride=incrementalOverride,
-                                                incrementalOverrideImports=incrementalOverrideImports)
-            if configData is None :
-                return configData
-            self.addToConfigDataDict(baseConfigFileName, configData)
-            
+
+        locPath = self.__configDir+"/"+baseConfigFileName+self.__extension
+        configData = self.__myLI.getLocData(locPath, "COMMON", 
+                                            incrementalOverride=incrementalOverride,
+                                            incrementalOverrideImports=incrementalOverrideImports)
+        if configData is None :
+            return configData
+
         return self.filterConfigData(configData, fields)
     
     def getConfigDataList(self, fileName=None, incrementalOverride=True, 
@@ -232,84 +219,12 @@ class HazardServicesConfig :
         @return:  True or False based on success of writing to localization file system.
         """
         status = False
-        
+
         if fileName is not None and configData is not None:
-            
             if isinstance(fileName, unicode):
                 fileName = fileName.encode()
-                
+
             locPath = self.__configDir + "/" + fileName + self.__extension
             level = "Site" if forSite else "User"
             status = self.__myLI.putLocFile(configData, locPath, "COMMON", level, "")
-            
-            if status:
-                self.addToConfigDataDict(fileName, configData)
-
-                baseName = os.path.splitext(fileName)[0]                
-                baseFileNameList = self.checkConfigFileDict()
-                
-                if  baseName not in baseFileNameList:
-                    baseFileNameList.append(baseName)
-
         return status
-    
-    def checkConfigDataDict(self, configID):
-        """
-        Checks if the configuration data for this
-        data type and config file have already been loaded.
-        This saves trips through the localization manager.
-        However, we need to make sure we get user updates to
-        the config files.
-        @param configID:  The configuration file to load.
-        @return: The configuration file data or None 
-        """
-        configData = None
-        
-        if self.__configType in self.configDataDict:
-            configDict = self.configDataDict[self.__configType]
-            if configID in configDict :
-                configData = configDict[configID]
-                
-        return configData
-    
-    def addToConfigDataDict(self, configID, configData):
-        """
-        Adds config data to the config data dict for
-        future retrieval.
-        @param configID:   Config file identifier
-        @param configData: Config Data to store in memory for future
-                           retrieval
-        """
-        if self.__configType in self.configDataDict:
-            dataDict = self.configDataDict[self.__configType]
-            dataDict[configID] = configData
-        else:
-            dataDict = {configID : configData}
-            self.configDataDict[self.__configType] = dataDict
-
-    def checkConfigFileDict(self):
-        """
-        Checks if the list of configuration files for this
-        config type have already been loaded.
-        This saves trips through the localization manager.
-        However, we need to make sure we get user updates to
-        the available config files.
-        @return: List of available configuration files or None 
-        """
-        configFileList = None
-        
-        if self.__configType in self.configFileDict:
-            configFileList = self.configFileDict[self.__configType]
-                
-        return configFileList
-
-    def addToConfigFileList(self, configFileList):
-        """
-        Adds the list of available config files for the
-        config type represented by this object to the cache
-        of available config files.
-
-        @param configFileList: A list of available configuration files for
-                               the config type represented by this object. 
-        """
-        self.configFileDict[self.__configType] = configFileList

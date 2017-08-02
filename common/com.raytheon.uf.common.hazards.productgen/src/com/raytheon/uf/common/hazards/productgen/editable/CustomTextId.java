@@ -44,6 +44,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 26, 2013            mnash     Initial creation
  * Apr 23, 2014 3519       jsanchez  Changed eventID to ArrayList
  * Aug 03, 2015 8836       Chris.Cody  Changes for a configurable Event Id
+ * Sep 23, 2016 21734      mark.fegan Change segment type to "text"
+ * Nov 04, 2016 22119      Kevin.Bisanz Add officeID.
  * 
  * </pre>
  * 
@@ -67,13 +69,17 @@ public class CustomTextId implements ISerializableObject, Serializable {
     @DynamicSerializeElement
     private String productID;
 
-    @Column
+    @Column(columnDefinition = "text")
     @DynamicSerializeElement
     private String segment;
 
     @Column
     @DynamicSerializeElement
     private ArrayList<String> eventIDs;
+
+    @Column
+    @DynamicSerializeElement
+    private String officeID;
 
     /**
      * Default constructor for serialization
@@ -82,12 +88,13 @@ public class CustomTextId implements ISerializableObject, Serializable {
     }
 
     public CustomTextId(String key, String productCategory, String productID,
-            String segment, ArrayList<String> eventIDs) {
+            String segment, ArrayList<String> eventIDs, String officeID) {
         this.key = key;
         this.productCategory = productCategory;
         this.productID = productID;
         this.segment = segment;
         this.eventIDs = eventIDs;
+        this.officeID = officeID;
     }
 
     /**
@@ -158,18 +165,28 @@ public class CustomTextId implements ISerializableObject, Serializable {
     }
 
     /**
-     * @param eventID
-     *            the eventID to set
+     * @param eventIDs
+     *            the eventIDs to set
      */
     public void setEventIDs(ArrayList<String> eventIDs) {
         this.eventIDs = eventIDs;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#hashCode()
+    /**
+     * @return the officeID
      */
+    public String getOfficeID() {
+        return officeID;
+    }
+
+    /**
+     * @param officeID
+     *            the officeID to set
+     */
+    public void setOfficeID(String officeID) {
+        this.officeID = officeID;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -182,14 +199,11 @@ public class CustomTextId implements ISerializableObject, Serializable {
         result = prime * result
                 + ((productID == null) ? 0 : productID.hashCode());
         result = prime * result + ((segment == null) ? 0 : segment.hashCode());
+        result = prime * result
+                + ((officeID == null) ? 0 : officeID.hashCode());
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -223,6 +237,11 @@ public class CustomTextId implements ISerializableObject, Serializable {
             if (other.segment != null)
                 return false;
         } else if (!segment.equals(other.segment))
+            return false;
+        if (officeID == null) {
+            if (other.officeID != null)
+                return false;
+        } else if (!officeID.equals(other.officeID))
             return false;
         return true;
     }

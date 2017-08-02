@@ -33,6 +33,7 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
+ * Nov 10, 2016 22119      Kevin.Bisanz Add path attribute.
  * 
  * </pre>
  * 
@@ -49,8 +50,14 @@ public class ProductTextRequest implements IServerRequest {
     @DynamicSerializeElement
     private ProductRequestType type;
 
+    /**
+     * Path to export to or import from.
+     */
+    @DynamicSerializeElement
+    private String path;
+
     public static enum ProductRequestType {
-        CREATE, DELETE, UPDATE, RETRIEVE, SAVE_OR_UPDATE;
+        CREATE, DELETE, UPDATE, RETRIEVE, SAVE_OR_UPDATE, EXPORT, IMPORT;
     }
 
     /**
@@ -65,6 +72,13 @@ public class ProductTextRequest implements IServerRequest {
     public ProductTextRequest(ProductText text, ProductRequestType type) {
         this.productText = text;
         this.type = type;
+    }
+
+    public ProductTextRequest(ProductText text, ProductRequestType type,
+            String path) {
+        this.productText = text;
+        this.type = type;
+        this.path = path;
     }
 
     /**
@@ -95,5 +109,20 @@ public class ProductTextRequest implements IServerRequest {
      */
     public void setType(ProductRequestType type) {
         this.type = type;
+    }
+
+    /**
+     * * @return the path for export or import
+     */
+    public String getPath() {
+        return path;
+    }
+
+    /**
+     * @param path
+     *            the path to set for export or import
+     */
+    public void setPath(String path) {
+        this.path = path;
     }
 }

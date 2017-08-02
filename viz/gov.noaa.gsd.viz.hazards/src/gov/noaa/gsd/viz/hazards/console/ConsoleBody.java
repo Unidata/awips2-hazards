@@ -9,19 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.common.utilities.Sort;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
-import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
-import gov.noaa.gsd.viz.hazards.console.ConsoleView.ITemporallyAware;
-import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
-import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-import gov.noaa.gsd.viz.widgets.WidgetUtilities;
-
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,6 +24,8 @@ import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.layout.FormAttachment;
@@ -57,6 +46,19 @@ import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.icon.IconUtil;
 
+import gov.noaa.gsd.common.utilities.Sort;
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
+import gov.noaa.gsd.viz.hazards.console.ConsoleView.ITemporallyAware;
+import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
+import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
+import gov.noaa.gsd.viz.widgets.WidgetUtilities;
+
 /**
  * Description: Body of the console view part.
  * 
@@ -74,6 +76,7 @@ import com.raytheon.uf.viz.core.icon.IconUtil;
  * Jun 30, 2017   19223    Chris.Golden Added ability to change the text and
  *                                      enabled state of a row menu's menu item
  *                                      after it is displayed.
+ * Aug 08, 2017   22583    Chris.Golden Add service backup banner.
  * </pre>
  * 
  * @author Chris.Golden
@@ -103,6 +106,27 @@ class ConsoleBody implements IConsoleTree {
      */
     private static final int BUTTON_PANEL_HEIGHT = 40;
 
+    /**
+     * Prefix text for the service backup banner that is shown when the current
+     * site does not match the localized site.
+     */
+    private static final String SERVICE_BACKUP_TEXT = "You are in Service Backup Mode, backing up: ";
+
+    /**
+     * Separator vertical padding.
+     */
+    private static final int SEPARATOR_HEIGHT = 5;
+
+    /**
+     * Font size multiplier for the service backup banner.
+     */
+    private static final double SERVICE_BACKUP_FONT_MULTIPLIER = 1.6;
+
+    /**
+     * Vertical padding multiplier for the service backup banner.
+     */
+    private static final double SERVICE_BACKUP_VERTICAL_PADDING_MULTIPLIER = 1.2;
+
     // Private Variables
 
     /**
@@ -114,22 +138,21 @@ class ConsoleBody implements IConsoleTree {
         public void timeLineRulerSizeChanged(int xStart, int xEnd) {
             if ((comboBoxPanel.isDisposed() == false)
                     && comboBoxPanel.isVisible()) {
-                FormData buttonPanelFormData = new FormData();
-                buttonPanelFormData.left = new FormAttachment(0, xStart
-                        + FORM_MARGIN_WIDTH);
-                buttonPanelFormData.right = new FormAttachment(100, -1 * xEnd);
-                buttonPanelFormData.top = new FormAttachment(comboBoxPanel, 0,
+                buttonLayoutData.left = new FormAttachment(0,
+                        xStart + FORM_MARGIN_WIDTH);
+                buttonLayoutData.right = new FormAttachment(100, -1 * xEnd);
+                buttonLayoutData.top = new FormAttachment(comboBoxPanel, 0,
                         SWT.TOP);
-                buttonPanelFormData.bottom = new FormAttachment(comboBoxPanel,
-                        0, SWT.BOTTOM);
-                buttonsPanel.setLayoutData(buttonPanelFormData);
+                buttonLayoutData.bottom = new FormAttachment(comboBoxPanel, 0,
+                        SWT.BOTTOM);
                 bodyPanel.layout(true);
             }
         }
 
         @Override
         public void timeLineRulerVisibleRangeChanged(long lowerVisibleValue,
-                long upperVisibleValue, long zoomedOutRange, long zoomedInRange) {
+                long upperVisibleValue, long zoomedOutRange,
+                long zoomedInRange) {
             updateRulerButtonsState(lowerVisibleValue, upperVisibleValue,
                     zoomedOutRange, zoomedInRange);
         }
@@ -175,14 +198,44 @@ class ConsoleBody implements IConsoleTree {
     private Label separator;
 
     /**
+     * The panel which contains the selected time mode combo box.
+     */
+    private Composite comboBoxPanel;
+
+    /**
+     * Layout data for the time mode combo box panel.
+     */
+    private FormData comboLayoutData;
+
+    /**
      * Panel which contains the time control buttons.
      */
     private Composite buttonsPanel;
 
     /**
-     * The panel which contains the selected time mode combo button.
+     * Layout data for the time control buttons panel.
      */
-    private Composite comboBoxPanel;
+    private FormData buttonLayoutData;
+
+    /**
+     * Service backup banner label, shown if service backup is in effect.
+     */
+    private Label serviceBackupLabel;
+
+    /**
+     * Service backup banner panel, holding the service backup label.
+     */
+    private Composite serviceBackupPanel;
+
+    /**
+     * Layout data for the service backup panel when it is hidden.
+     */
+    private final FormData serviceBackupHiddenLayoutData = new FormData();
+
+    /**
+     * Layout data for the service backup panel when it is shown.
+     */
+    private final FormData serviceBackupVisibleLayoutData = new FormData();
 
     /**
      * Map of button identifiers to the associated navigation buttons.
@@ -204,6 +257,16 @@ class ConsoleBody implements IConsoleTree {
      * object if appropriate.
      */
     private ComboAction selectedTimeModeAction = null;
+
+    /**
+     * Localized site.
+     */
+    private String localizedSite;
+
+    /**
+     * Current site.
+     */
+    private String currentSite;
 
     /**
      * Set of basic resources created for use in this window, to be disposed of
@@ -231,8 +294,8 @@ class ConsoleBody implements IConsoleTree {
         this.viewPart = viewPart;
         consoleTreeLayoutData.left = new FormAttachment(0, 0);
         consoleTreeLayoutData.top = new FormAttachment(0, 0);
-        consoleTreeLayoutData.bottom = new FormAttachment(100, -1
-                * BUTTON_PANEL_HEIGHT);
+        consoleTreeLayoutData.bottom = new FormAttachment(100,
+                -1 * BUTTON_PANEL_HEIGHT);
         consoleTreeLayoutData.right = new FormAttachment(100, 0);
     }
 
@@ -306,6 +369,10 @@ class ConsoleBody implements IConsoleTree {
      * @param visibleTimeRange
      *            Amount of time visible at once in the time line as an epoch
      *            time range in milliseconds.
+     * @param localizedSiteIdentifier
+     *            Localized site.
+     * @param currentSiteIdentifier
+     *            Current site.
      * @param timeResolution
      *            Time resolution.
      * @param filterMegawidgets
@@ -317,13 +384,16 @@ class ConsoleBody implements IConsoleTree {
      *            provided at the bottom of this composite instead.
      */
     void initialize(Date selectedTime, Date currentTime, long visibleTimeRange,
+            String localizedSiteIdentifier, String currentSiteIdentifier,
             TimeResolution timeResolution,
             ImmutableList<Map<String, Object>> filterMegawidgets,
             boolean showControlsInToolBar) {
 
         /*
-         * Initialize the console tree.
+         * Initialize the site trackers and the console tree.
          */
+        this.localizedSite = localizedSiteIdentifier;
+        this.currentSite = currentSiteIdentifier;
         consoleTree.initialize(filterMegawidgets, currentTime, selectedTime,
                 visibleTimeRange, timeResolution);
 
@@ -341,15 +411,8 @@ class ConsoleBody implements IConsoleTree {
                 comboBoxPanel.dispose();
                 buttonsPanel.dispose();
             }
-
-            /*
-             * Tell the tree to fill the space that was taken up by the bottom
-             * row of controls, and lay out the temporal display again.
-             */
-            consoleTreeLayoutData.bottom = new FormAttachment(100, 0);
-            if (bodyPanel != null) {
-                bodyPanel.layout(true);
-            }
+            comboLayoutData = buttonLayoutData = null;
+            updateServiceBackupBanner();
         }
     }
 
@@ -374,8 +437,8 @@ class ConsoleBody implements IConsoleTree {
         this.selectedTimeModeAction = selectedTimeModeAction;
         ((ConsoleView.ITemporallyAware) this.selectedTimeModeAction)
                 .setTemporalDisplay(temporalDisplay);
-        this.selectedTimeModeAction.setSelectedChoice(temporalDisplay
-                .getSelectedTimeMode().getName());
+        this.selectedTimeModeAction.setSelectedChoice(
+                temporalDisplay.getSelectedTimeMode().getName());
     }
 
     /**
@@ -410,19 +473,22 @@ class ConsoleBody implements IConsoleTree {
         bodyPanel.setLayout(formLayout);
 
         /*
-         * Create the tree and button panel components.
+         * Create the tree and button panel components, and the service backup
+         * label if appropriate.
          */
         Control tree = consoleTree.createWidgets(bodyPanel,
                 consoleTreeLayoutData);
         createComboBox(bodyPanel, tree);
         createButtonsPanel(bodyPanel);
+        createServiceBackupBanner(bodyPanel);
 
         /*
          * Ensure the buttons start off with the right state.
          */
         updateRulerButtonsState(consoleTree.getMinimumVisibleTime(),
                 consoleTree.getMaximumVisibleTime(),
-                consoleTree.getZoomedOutRange(), consoleTree.getZoomedInRange());
+                consoleTree.getZoomedOutRange(),
+                consoleTree.getZoomedInRange());
 
         /*
          * Return the overall composite holding the components.
@@ -443,6 +509,17 @@ class ConsoleBody implements IConsoleTree {
      */
     void setFocus() {
         consoleTree.setFocus();
+    }
+
+    /**
+     * Handle the site identifier changing.
+     * 
+     * @param siteIdentifier
+     *            New site identifier.
+     */
+    void siteChanged(String siteIdentifier) {
+        this.currentSite = siteIdentifier;
+        updateServiceBackupBanner();
     }
 
     // Private Methods
@@ -506,9 +583,9 @@ class ConsoleBody implements IConsoleTree {
         selectedTimeModeCombo.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                consoleTree.getTemporalDisplay().setSelectedTimeMode(
-                        SelectedTimeMode.valueOf(selectedTimeModeCombo
-                                .getText()));
+                consoleTree.getTemporalDisplay()
+                        .setSelectedTimeMode(SelectedTimeMode
+                                .valueOf(selectedTimeModeCombo.getText()));
             }
         });
 
@@ -516,22 +593,22 @@ class ConsoleBody implements IConsoleTree {
          * Create a visual separator between the combo box and anything else
          * next to it, and the control above.
          */
-        separator = new Label(parent, SWT.SEPARATOR | SWT.SHADOW_OUT
-                | SWT.HORIZONTAL);
+        separator = new Label(parent,
+                SWT.SEPARATOR | SWT.SHADOW_OUT | SWT.HORIZONTAL);
         FormData separatorFormData = new FormData();
         separatorFormData.left = new FormAttachment(0, 0);
         separatorFormData.top = new FormAttachment(above, 0);
-        separatorFormData.width = 10000;
-        separatorFormData.height = 5;
+        separatorFormData.width = Integer.MAX_VALUE;
+        separatorFormData.height = SEPARATOR_HEIGHT;
         separator.setLayoutData(separatorFormData);
 
         /*
          * Lay out the combo box.
          */
-        FormData comboTimeFormData = new FormData();
-        comboTimeFormData.left = new FormAttachment(0, 0);
-        comboTimeFormData.top = new FormAttachment(separator, 0);
-        comboBoxPanel.setLayoutData(comboTimeFormData);
+        comboLayoutData = new FormData();
+        comboLayoutData.left = new FormAttachment(0, 0);
+        comboLayoutData.top = new FormAttachment(separator, 0);
+        comboBoxPanel.setLayoutData(comboLayoutData);
     }
 
     /**
@@ -557,20 +634,20 @@ class ConsoleBody implements IConsoleTree {
             public void widgetSelected(SelectionEvent e) {
                 if (e.widget.getData().equals(ConsoleView.BUTTON_ZOOM_OUT)) {
                     consoleTree.getTemporalDisplay().zoomTimeOut();
-                } else if (e.widget.getData().equals(
-                        ConsoleView.BUTTON_PAGE_BACKWARD)) {
+                } else if (e.widget.getData()
+                        .equals(ConsoleView.BUTTON_PAGE_BACKWARD)) {
                     consoleTree.getTemporalDisplay().pageTimeBack();
-                } else if (e.widget.getData().equals(
-                        ConsoleView.BUTTON_PAN_BACKWARD)) {
+                } else if (e.widget.getData()
+                        .equals(ConsoleView.BUTTON_PAN_BACKWARD)) {
                     consoleTree.getTemporalDisplay().panTimeBack();
-                } else if (e.widget.getData().equals(
-                        ConsoleView.BUTTON_CURRENT_TIME)) {
+                } else if (e.widget.getData()
+                        .equals(ConsoleView.BUTTON_CURRENT_TIME)) {
                     consoleTree.getTemporalDisplay().showCurrentTime();
-                } else if (e.widget.getData().equals(
-                        ConsoleView.BUTTON_PAN_FORWARD)) {
+                } else if (e.widget.getData()
+                        .equals(ConsoleView.BUTTON_PAN_FORWARD)) {
                     consoleTree.getTemporalDisplay().panTimeForward();
-                } else if (e.widget.getData().equals(
-                        ConsoleView.BUTTON_PAGE_FORWARD)) {
+                } else if (e.widget.getData()
+                        .equals(ConsoleView.BUTTON_PAGE_FORWARD)) {
                     consoleTree.getTemporalDisplay().pageTimeForward();
                 } else if (e.widget.getData()
                         .equals(ConsoleView.BUTTON_ZOOM_IN)) {
@@ -579,20 +656,66 @@ class ConsoleBody implements IConsoleTree {
             }
         };
         for (int j = 0; j < ConsoleView.BUTTON_IDENTIFIERS.size(); j++) {
-            Image image = IconUtil.getImage(HazardServicesActivator
-                    .getDefault().getBundle(),
-                    ConsoleView.BUTTON_IDENTIFIERS.get(j)
-                            + PNG_FILE_NAME_SUFFIX, Display.getCurrent());
+            Image image = IconUtil
+                    .getImage(HazardServicesActivator.getDefault().getBundle(),
+                            ConsoleView.BUTTON_IDENTIFIERS.get(j)
+                                    + PNG_FILE_NAME_SUFFIX,
+                    Display.getCurrent());
             resources.add(image);
             createCommandButton(buttonsPanel,
                     ConsoleView.BUTTON_IDENTIFIERS.get(j), image,
                     ConsoleView.BUTTON_DESCRIPTIONS.get(j), buttonListener);
         }
-        FormData buttonFormData = new FormData();
-        buttonFormData.left = new FormAttachment(comboBoxPanel, 20);
-        buttonFormData.top = new FormAttachment(comboBoxPanel, 0, SWT.TOP);
-        buttonFormData.bottom = new FormAttachment(comboBoxPanel, 0, SWT.BOTTOM);
-        buttonsPanel.setLayoutData(buttonFormData);
+        buttonLayoutData = new FormData();
+        buttonLayoutData.left = new FormAttachment(comboBoxPanel, 20);
+        buttonLayoutData.top = new FormAttachment(comboBoxPanel, 0, SWT.TOP);
+        buttonLayoutData.bottom = new FormAttachment(comboBoxPanel, 0,
+                SWT.BOTTOM);
+        buttonsPanel.setLayoutData(buttonLayoutData);
+    }
+
+    /**
+     * Create the service backup banner.
+     * 
+     * @param parent
+     *            Composite which will contain the banner.
+     */
+    private void createServiceBackupBanner(Composite parent) {
+
+        /*
+         * Create the panel in which to place the label.
+         */
+        serviceBackupPanel = new Composite(parent, SWT.NONE);
+        serviceBackupPanel.setLayout(new GridLayout());
+
+        /*
+         * Create the label, giving it the appropriate font size.
+         */
+        serviceBackupLabel = new Label(serviceBackupPanel, SWT.CENTER);
+        FontData[] fontData = serviceBackupLabel.getFont().getFontData();
+        fontData[0].setHeight((int) ((((double) fontData[0].getHeight())
+                * SERVICE_BACKUP_FONT_MULTIPLIER) + 0.5));
+        fontData[0].setStyle(SWT.BOLD);
+        Font bannerFont = new Font(Display.getCurrent(), fontData[0]);
+        resources.add(bannerFont);
+        serviceBackupLabel.setFont(bannerFont);
+        serviceBackupLabel.setLayoutData(
+                new GridData(SWT.CENTER, SWT.CENTER, true, true));
+
+        /*
+         * Create the layout data to be used when the banner is hidden.
+         */
+        serviceBackupHiddenLayoutData.top = new FormAttachment(0);
+        serviceBackupHiddenLayoutData.bottom = new FormAttachment(0);
+        serviceBackupHiddenLayoutData.left = new FormAttachment(0);
+        serviceBackupHiddenLayoutData.right = new FormAttachment(0);
+
+        /*
+         * Create the layout data to be used when the banner is showing.
+         */
+        serviceBackupVisibleLayoutData.bottom = new FormAttachment(100, 0);
+        serviceBackupVisibleLayoutData.left = new FormAttachment(0, 0);
+        serviceBackupVisibleLayoutData.right = new FormAttachment(100, 0);
     }
 
     /**
@@ -618,11 +741,11 @@ class ConsoleBody implements IConsoleTree {
          * Update the buttons along the bottom of the view if they exist.
          */
         if (comboBoxPanel.isDisposed() == false) {
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_ZOOM_OUT).setEnabled(
-                    zoomedOutRange <= WidgetUtilities
+            buttonsForIdentifiers.get(ConsoleView.BUTTON_ZOOM_OUT)
+                    .setEnabled(zoomedOutRange <= WidgetUtilities
                             .getTimeLineRulerMaximumVisibleTimeRange());
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_ZOOM_IN).setEnabled(
-                    zoomedInRange >= WidgetUtilities
+            buttonsForIdentifiers.get(ConsoleView.BUTTON_ZOOM_IN)
+                    .setEnabled(zoomedInRange >= WidgetUtilities
                             .getTimeLineRulerMinimumVisibleTimeRange());
             buttonsForIdentifiers.get(ConsoleView.BUTTON_PAGE_BACKWARD)
                     .setEnabled(lowerVisibleValue > HazardConstants.MIN_TIME);
@@ -637,15 +760,14 @@ class ConsoleBody implements IConsoleTree {
         /*
          * Update the toolbar buttons if they exist.
          */
-        if (actionsForButtonIdentifiers.get(ConsoleView.BUTTON_ZOOM_OUT) != null) {
+        if (actionsForButtonIdentifiers
+                .get(ConsoleView.BUTTON_ZOOM_OUT) != null) {
             actionsForButtonIdentifiers.get(ConsoleView.BUTTON_ZOOM_OUT)
-                    .setEnabled(
-                            zoomedOutRange <= WidgetUtilities
-                                    .getTimeLineRulerMaximumVisibleTimeRange());
+                    .setEnabled(zoomedOutRange <= WidgetUtilities
+                            .getTimeLineRulerMaximumVisibleTimeRange());
             actionsForButtonIdentifiers.get(ConsoleView.BUTTON_ZOOM_IN)
-                    .setEnabled(
-                            zoomedInRange >= WidgetUtilities
-                                    .getTimeLineRulerMinimumVisibleTimeRange());
+                    .setEnabled(zoomedInRange >= WidgetUtilities
+                            .getTimeLineRulerMinimumVisibleTimeRange());
             actionsForButtonIdentifiers.get(ConsoleView.BUTTON_PAGE_BACKWARD)
                     .setEnabled(lowerVisibleValue > HazardConstants.MIN_TIME);
             actionsForButtonIdentifiers.get(ConsoleView.BUTTON_PAN_BACKWARD)
@@ -655,5 +777,41 @@ class ConsoleBody implements IConsoleTree {
             actionsForButtonIdentifiers.get(ConsoleView.BUTTON_PAGE_FORWARD)
                     .setEnabled(upperVisibleValue < HazardConstants.MAX_TIME);
         }
+    }
+
+    /**
+     * Update the visibility and contents of the service backup banner as
+     * appropriate.
+     */
+    private void updateServiceBackupBanner() {
+
+        /*
+         * Do nothing if disposed.
+         */
+        if (serviceBackupLabel.isDisposed()) {
+            return;
+        }
+
+        /*
+         * If the localized site is the same as the current site, or neither has
+         * been set yet, ensure the banner is not showing; otherwise, update its
+         * text and show it.
+         */
+        int buttonPanelRequiredHeight = (comboLayoutData != null
+                ? BUTTON_PANEL_HEIGHT : 0);
+        if ((localizedSite == null) || localizedSite.equals(currentSite)) {
+            serviceBackupPanel.setLayoutData(serviceBackupHiddenLayoutData);
+            consoleTreeLayoutData.bottom = new FormAttachment(100,
+                    -1 * buttonPanelRequiredHeight);
+        } else {
+            serviceBackupLabel.setText(SERVICE_BACKUP_TEXT + currentSite);
+            serviceBackupPanel.setLayoutData(serviceBackupVisibleLayoutData);
+            int bannerRequiredHeight = serviceBackupPanel
+                    .computeSize(SWT.DEFAULT, SWT.DEFAULT).y;
+            consoleTreeLayoutData.bottom = new FormAttachment(100,
+                    -1 * (buttonPanelRequiredHeight + bannerRequiredHeight
+                            + SEPARATOR_HEIGHT));
+        }
+        bodyPanel.layout(true);
     }
 }

@@ -14,6 +14,7 @@
     Jun 08, 2016    9620    Robert.Blum Changed self._purgeHours to a float since purge hours can
                                         include minutes (15min intervals).
     Jul 06, 2016   18257    Kevin.Bisanz Added eventSet parameter to executeFrom(..)
+    Oct 21, 2016   22489    Robert.Blum  Removed unused flags.
     
     @author Robert.Blum@noaa.gov
     @version 1.0
@@ -77,8 +78,6 @@ class Product(HydroGenerator.Product):
         self._FLW_ProductName = 'Flood Warning'
         self._FLS_ProductName = 'Flood Statement'
         self._FLS_ProductName_Advisory = 'Flood Advisory'
-        self._includeAreaNames = True
-        self._includeCityNames = False
         # Polygon-based, so locations listed will be limited to within the polygon rather than county area
         self._polygonBased = True
 

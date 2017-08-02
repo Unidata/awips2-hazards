@@ -44,6 +44,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 11, 2014            jsanchez     Initial creation.
  * Aug 13, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Sep 11, 2015 10203      Robert.Blum  Added issueTime to the productdata primary key.
+ * Nov 07, 2016 22119      Kevin.Bisanz Add officeID.
  * Feb 01, 2017 15556      Chris.Golden Added copy constructor.
  * </pre>
  * 
@@ -68,6 +69,10 @@ public class CustomDataId implements ISerializableObject, Serializable {
 
     @Column
     @DynamicSerializeElement
+    private String officeID;
+
+    @Column
+    @DynamicSerializeElement
     private Date issueTime;
 
     public CustomDataId() {
@@ -75,10 +80,11 @@ public class CustomDataId implements ISerializableObject, Serializable {
     }
 
     public CustomDataId(String mode, String productGeneratorName,
-            ArrayList<String> eventIDs, Date issueTime) {
+            ArrayList<String> eventIDs, String officeID, Date issueTime) {
         this.mode = mode;
         this.productGeneratorName = productGeneratorName;
         this.eventIDs = eventIDs;
+        this.officeID = officeID;
         this.issueTime = issueTime;
     }
 
@@ -87,6 +93,7 @@ public class CustomDataId implements ISerializableObject, Serializable {
         this.productGeneratorName = other.productGeneratorName;
         this.eventIDs = (other.eventIDs == null ? null : new ArrayList<>(
                 other.eventIDs));
+        this.officeID = other.officeID;
         this.issueTime = (other.issueTime == null ? null : new Date(
                 other.issueTime.getTime()));
     }
@@ -115,6 +122,14 @@ public class CustomDataId implements ISerializableObject, Serializable {
         this.eventIDs = eventIDs;
     }
 
+    public String getOfficeID() {
+        return this.officeID;
+    }
+
+    public void setOfficeID(String officeID) {
+        this.officeID = officeID;
+    }
+
     public Date getIssueTime() {
         return issueTime;
     }
@@ -129,11 +144,11 @@ public class CustomDataId implements ISerializableObject, Serializable {
         int result = 1;
         result = prime * result
                 + ((eventIDs == null) ? 0 : eventIDs.hashCode());
+        result = prime * result
+                + ((officeID == null) ? 0 : officeID.hashCode());
         result = prime * result + ((mode == null) ? 0 : mode.hashCode());
-        result = prime
-                * result
-                + ((productGeneratorName == null) ? 0 : productGeneratorName
-                        .hashCode());
+        result = prime * result + ((productGeneratorName == null) ? 0
+                : productGeneratorName.hashCode());
         result = prime * result
                 + ((issueTime == null) ? 0 : issueTime.hashCode());
         return result;
@@ -177,6 +192,12 @@ public class CustomDataId implements ISerializableObject, Serializable {
                 return false;
             }
         } else if (!issueTime.equals(other.issueTime)) {
+            return false;
+        }
+        if (officeID == null) {
+            if (other.officeID != null)
+                return false;
+        } else if (!officeID.equals(other.officeID)) {
             return false;
         }
         return true;

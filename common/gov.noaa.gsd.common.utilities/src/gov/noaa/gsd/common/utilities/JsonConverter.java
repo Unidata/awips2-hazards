@@ -229,7 +229,36 @@ public class JsonConverter extends ObjectMapper {
      */
     public static <T> T fromDictionary(Map<?, ?> dictionary,
             Class<T> objectType) {
-        return CONVERTER.convertValue(dictionary, objectType);
+
+        /*
+         * Save the current class loader for this thread so that it can be used
+         * again later, and install the specified class loader. Then attempt to
+         * deserialize the object from the node, and prior to returning it,
+         * reset the class loader to what it was before. The reason for this
+         * fussing with the thread-specific context class loader is explained
+         * here:
+         * 
+         * http://stackoverflow.com/questions/19694928/jackson-jersey-
+         * deserialize -exception-for-id-type-id-class-no-such-class
+         * 
+         * Essentially, the Jackson object mapper, if attempting to deserialize
+         * an instance of a (sub)class of a class or interface that uses the
+         * JsonTypeInfo annotation to ensure that the class name gets included
+         * in the JSON during encoding, attempts to get the class using the
+         * thread-specific context class loader, which, at least in some cases
+         * when attempting to look up a subclass of IAdvancedGeometry, fails
+         * miserably. Using this class's class loader instead allows the class
+         * to be found, and deserialization to succeed.
+         */
+        ClassLoader originalClassLoader = Thread.currentThread()
+                .getContextClassLoader();
+        Thread.currentThread()
+                .setContextClassLoader(JsonConverter.class.getClassLoader());
+        try {
+            return CONVERTER.convertValue(dictionary, objectType);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
     }
 
     /**

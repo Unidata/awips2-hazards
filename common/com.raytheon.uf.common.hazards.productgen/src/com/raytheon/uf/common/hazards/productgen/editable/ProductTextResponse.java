@@ -36,6 +36,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 26, 2013            mnash     Initial creation
+ * Nov 11, 2016 22119      Kevin.Bisanz Change type of this.exceptions from
+ *                                     Throwable to Exception
  * 
  * </pre>
  * 
@@ -49,7 +51,7 @@ public class ProductTextResponse implements ISerializableObject {
     private List<ProductText> text;
 
     @DynamicSerializeElement
-    private Throwable exceptions;
+    private Exception exceptions;
 
     /**
      * 
@@ -75,7 +77,7 @@ public class ProductTextResponse implements ISerializableObject {
     /**
      * @return the exceptions
      */
-    public Throwable getExceptions() {
+    public Exception getExceptions() {
         return exceptions;
     }
 
@@ -83,7 +85,7 @@ public class ProductTextResponse implements ISerializableObject {
      * @param exceptions
      *            the exceptions to set
      */
-    public void setExceptions(Throwable exceptions) {
+    public void setExceptions(Exception exceptions) {
         this.exceptions = exceptions;
     }
 }

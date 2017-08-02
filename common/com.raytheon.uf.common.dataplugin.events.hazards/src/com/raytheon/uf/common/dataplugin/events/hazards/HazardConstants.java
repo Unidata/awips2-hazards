@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.EnumMap;
@@ -30,6 +28,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
  * Constants to be used by both Java and Python code, Python will have a class
@@ -120,6 +120,7 @@ import com.google.common.collect.ImmutableMap;
  * Aug 31, 2016 15934     Chris.Golden  Added constant related to advanced geometries.
  * Oct 05, 2016 22870     Chris.Golden  Added frame change to triggers.
  * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
+ * Dec 16, 2016 27006     bkowal        Added {@link #REPLACED_HAZARD_TYPE}.
  * Feb 01, 2017 15556     Chris.Golden  Removed obsolete elements, and added constants for the
  *                                      console refactor.
  * Feb 16, 2017 29138     Chris.Golden  Removed unneeded visibility-in-history-list constant and
@@ -142,6 +143,8 @@ import com.google.common.collect.ImmutableMap;
  * Jun 01, 2017 23056     Chris.Golden  Added constant for metadata megawidgets that always use
  *                                      their default value instead of any existing old value.
  * Jun 30, 2017 19223     Chris.Golden  Added PRODUCT_DATA_PARAM.
+ * Aug 15, 2017 22757     Chris.Golden  Added new constants related to recommender result
+ *                                      display, and removed obsolete recommender-related constants.
  * </pre>
  * 
  * @author mnash
@@ -155,6 +158,7 @@ public final class HazardConstants {
      * rounding down a time to that particular resolution.
      */
     public static final Map<TimeResolution, Integer> TRUNCATION_UNITS_FOR_TIME_RESOLUTIONS;
+
     static {
         Map<TimeResolution, Integer> map = new EnumMap<>(TimeResolution.class);
         map.put(TimeResolution.SECONDS, Calendar.SECOND);
@@ -209,8 +213,6 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_METADATA_TOOL_NAME = "toolName";
 
-    public static final String RECOMMENDER_METADATA_BACKGROUND = "background";
-
     public static final String RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS = "onlyIncludeTriggerEvents";
 
     public static final String RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES = "includeEventTypes";
@@ -239,15 +241,22 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS = "deleteEventIdentifiers";
 
+    public static final String RECOMMENDER_RESULT_MESSAGE = "resultsMessage";
+
+    public static final String RECOMMENDER_RESULT_DIALOG = "resultsDialog";
+
     /**
      * Types of changes or events that may trigger a recommender execution.
      */
     public enum Trigger {
-        NONE("none"), HAZARD_TYPE_FIRST("hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
-                "hazardEventModification"), HAZARD_EVENT_VISUAL_FEATURE_CHANGE(
-                "hazardEventVisualFeatureChange"), TIME_INTERVAL("timeInterval"), FRAME_CHANGE(
-                "frameChange"), DATA_LAYER_UPDATE("dataLayerUpdate"), HAZARD_EVENT_SELECTION(
-                "hazardEventSelection");
+        NONE("none"), HAZARD_TYPE_FIRST(
+                "hazardTypeFirst"), HAZARD_EVENT_MODIFICATION(
+                        "hazardEventModification"), HAZARD_EVENT_VISUAL_FEATURE_CHANGE(
+                                "hazardEventVisualFeatureChange"), TIME_INTERVAL(
+                                        "timeInterval"), FRAME_CHANGE(
+                                                "frameChange"), DATA_LAYER_UPDATE(
+                                                        "dataLayerUpdate"), HAZARD_EVENT_SELECTION(
+                                                                "hazardEventSelection");
 
         // Private Variables
 
@@ -313,9 +322,11 @@ public final class HazardConstants {
      * First-class attributes of hazard events.
      */
     public enum HazardEventFirstClassAttribute {
-        TIME_RANGE(HAZARD_EVENT_TIME_RANGE), GEOMETRY(HazardConstants.GEOMETRY), STATUS(
-                HAZARD_EVENT_STATUS), VISUAL_FEATURE(
-                HAZARD_EVENT_VISUAL_FEATURE), SELECTION(HAZARD_EVENT_SELECTION);
+        TIME_RANGE(HAZARD_EVENT_TIME_RANGE), GEOMETRY(
+                HazardConstants.GEOMETRY), STATUS(
+                        HAZARD_EVENT_STATUS), VISUAL_FEATURE(
+                                HAZARD_EVENT_VISUAL_FEATURE), SELECTION(
+                                        HAZARD_EVENT_SELECTION);
 
         // Private Static Constants
 
@@ -323,6 +334,7 @@ public final class HazardConstants {
          * Map of identifiers to instances.
          */
         private static final Map<String, HazardEventFirstClassAttribute> INSTANCES_FOR_IDENTIFIERS;
+
         static {
             Map<String, HazardEventFirstClassAttribute> map = new HashMap<>();
             for (HazardEventFirstClassAttribute value : values()) {
@@ -375,8 +387,9 @@ public final class HazardConstants {
 
     // part of the hazard lifecycle that the user will see
     public enum HazardStatus {
-        PENDING("pending"), POTENTIAL("potential"), PROPOSED("proposed"), ISSUED(
-                "issued"), ELAPSED("elapsed"), ENDING("ending"), ENDED("ended");
+        PENDING("pending"), POTENTIAL("potential"), PROPOSED(
+                "proposed"), ISSUED("issued"), ELAPSED("elapsed"), ENDING(
+                        "ending"), ENDED("ended");
         private final String value;
 
         private HazardStatus(String value) {
@@ -437,8 +450,8 @@ public final class HazardConstants {
                 return clazz;
             }
         }
-        throw new IllegalArgumentException("No enum const "
-                + ProductClass.class.getName() + "." + value);
+        throw new IllegalArgumentException(
+                "No enum const " + ProductClass.class.getName() + "." + value);
     }
 
     public static ProductClass productClassFromName(String value) {
@@ -962,6 +975,8 @@ public final class HazardConstants {
 
     public static final String REPLACED_BY = "replacedBy";
 
+    public static final String REPLACED_HAZARD_TYPE = "replacedHazardType";
+
     public static final String GENERATED_PRODUCTS = "generatedProducts";
 
     public static final String HAZARD_EVENT_SETS = "hazardEventSets";
@@ -1014,14 +1029,14 @@ public final class HazardConstants {
     public static final String VALUES_DICTIONARY_KEY = "valueDict";
 
     /**
-     * Key for run tool triggers list in the recommender dialog.
-     */
-    public static final String RUN_TOOL_TRIGGERS_LIST_KEY = "runToolTriggers";
-
-    /**
      * Key for title text.
      */
     public static final String TITLE_KEY = "title";
+
+    /**
+     * Minimum initial width key.
+     */
+    public static final String MIN_INITIAL_WIDTH_KEY = "minInitialWidth";
 
     /**
      * Maximum initial width key.

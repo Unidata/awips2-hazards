@@ -155,6 +155,7 @@ import org.eclipse.swt.widgets.Composite;
  *                                           zooming occurs with the center
  *                                           of the zoom being at the point
  *                                           where the mouse cursor lies.
+ * Nov 18, 2016   26363    Robert.Blum       Fix widget disposed error.
  * </pre>
  * 
  * @author Chris.Golden
@@ -172,8 +173,8 @@ public abstract class MultiValueLinearControl extends Canvas {
     private static final ISnapValueCalculator DEFAULT_SNAP_VALUE_CALCULATOR = new ISnapValueCalculator() {
         @Override
         public long getSnapThumbValue(long value, long minimum, long maximum) {
-            return (value < minimum ? minimum : (value > maximum ? maximum
-                    : value));
+            return (value < minimum ? minimum
+                    : (value > maximum ? maximum : value));
         }
     };
 
@@ -311,7 +312,8 @@ public abstract class MultiValueLinearControl extends Canvas {
         @Override
         public boolean equals(Object other) {
             return ((other != null) && (other instanceof ThumbSpecifier)
-                    && (index == ((ThumbSpecifier) other).index) && (type == ((ThumbSpecifier) other).type));
+                    && (index == ((ThumbSpecifier) other).index)
+                    && (type == ((ThumbSpecifier) other).type));
         }
     }
 
@@ -751,7 +753,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      *         cannot because the interplay of it with the various boundaries
      *         results in an illegal state.
      */
-    public final boolean setSnapValueCalculator(ISnapValueCalculator calculator) {
+    public final boolean setSnapValueCalculator(
+            ISnapValueCalculator calculator) {
         ISnapValueCalculator oldSnapValueCalculator = snapValueCalculator;
         snapValueCalculator = (calculator != null ? calculator
                 : DEFAULT_SNAP_VALUE_CALCULATOR);
@@ -970,10 +973,11 @@ public abstract class MultiValueLinearControl extends Canvas {
          * thumbs to fit within the allowable value range.
          */
         if ((constrainedThumbValues.size() > 1)
-                && (minimumConstrainedThumbGap
-                        * (constrainedThumbValues.size() - 1) > getMaximumAllowableValue()
-                        + 1 - getMinimumAllowableValue())) {
-            minimumConstrainedThumbGap = (getMaximumAllowableValue() + 1 - getMinimumAllowableValue())
+                && (minimumConstrainedThumbGap * (constrainedThumbValues.size()
+                        - 1) > getMaximumAllowableValue() + 1
+                                - getMinimumAllowableValue())) {
+            minimumConstrainedThumbGap = (getMaximumAllowableValue() + 1
+                    - getMinimumAllowableValue())
                     / (constrainedThumbValues.size() - 1);
         }
 
@@ -1128,7 +1132,8 @@ public abstract class MultiValueLinearControl extends Canvas {
          * If the boundaries have not changed, do nothing more.
          */
         if ((allowableMinimumConstrainedThumbValues.get(index) == null)
-                && (allowableMaximumConstrainedThumbValues.get(index) == null)) {
+                && (allowableMaximumConstrainedThumbValues
+                        .get(index) == null)) {
             return;
         }
     }
@@ -1246,17 +1251,16 @@ public abstract class MultiValueLinearControl extends Canvas {
                     + minimumValue + " to " + maximumValue + ")");
         } else if (((minimumForThumb != null) && (value < minimumForThumb))
                 || ((maximumForThumb != null) && (value > maximumForThumb))) {
-            throw new IllegalArgumentException("value " + value
-                    + " for constrained thumb " + index + " out of range "
-                    + "designated for it (" + minimumForThumb + " to "
-                    + maximumForThumb + ")");
+            throw new IllegalArgumentException(
+                    "value " + value + " for constrained thumb " + index
+                            + " out of range " + "designated for it ("
+                            + minimumForThumb + " to " + maximumForThumb + ")");
         } else if ((value < minimumValue) || (value > maximumValue)) {
             throw new IllegalArgumentException("value " + value
                     + " for constrained thumb " + index + " out of range ("
                     + minimumValue + " to " + maximumValue + ")");
-        } else if ((index > 0)
-                && (value < constrainedThumbValues.get(index - 1)
-                        + minimumConstrainedThumbGap)) {
+        } else if ((index > 0) && (value < constrainedThumbValues.get(index - 1)
+                + minimumConstrainedThumbGap)) {
             return false;
         } else if ((index < constrainedThumbValues.size() - 1)
                 && (value > constrainedThumbValues.get(index + 1)
@@ -1302,12 +1306,13 @@ public abstract class MultiValueLinearControl extends Canvas {
          */
         for (int j = 0; j < values.length; j++) {
             if (((j > 0) && (values[j] < values[j - 1]))
-                    || ((j < values.length - 1) && (values[j] > values[j + 1]))) {
+                    || ((j < values.length - 1)
+                            && (values[j] > values[j + 1]))) {
                 throw new IllegalArgumentException(
                         "values for constrained thumbs must be "
                                 + "specified in increasing order");
-            } else if (((j > 0) && (values[j] < values[j - 1]
-                    + minimumConstrainedThumbGap))
+            } else if (((j > 0)
+                    && (values[j] < values[j - 1] + minimumConstrainedThumbGap))
                     || ((j < values.length - 1) && (values[j] > values[j + 1]
                             - minimumConstrainedThumbGap))) {
                 return false;
@@ -1317,12 +1322,13 @@ public abstract class MultiValueLinearControl extends Canvas {
             Long maximumForThumb = allowableMaximumConstrainedThumbValues
                     .get(j);
             if (((minimumForThumb != null) && (values[j] < minimumForThumb))
-                    || ((maximumForThumb != null) && (values[j] > maximumForThumb))) {
+                    || ((maximumForThumb != null)
+                            && (values[j] > maximumForThumb))) {
                 return false;
             }
         }
-        if ((values.length > 0)
-                && ((values[0] < minimumValue) || (values[values.length - 1] > maximumValue))) {
+        if ((values.length > 0) && ((values[0] < minimumValue)
+                || (values[values.length - 1] > maximumValue))) {
             throw new IllegalArgumentException(
                     "values for constrained thumbs out of range");
         }
@@ -1377,7 +1383,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      *         cannot because the interplay of it with the various boundaries
      *         results in an illegal state.
      */
-    public final boolean setConstrainedThumbEditable(int index, boolean editable) {
+    public final boolean setConstrainedThumbEditable(int index,
+            boolean editable) {
 
         /*
          * Remember the new flag value, or do nothing if the new value is the
@@ -1482,8 +1489,8 @@ public abstract class MultiValueLinearControl extends Canvas {
          */
         for (long value : values) {
             if ((value < minimumValue) || (value > maximumValue)) {
-                throw new IllegalArgumentException("values for free "
-                        + "thumbs out of range");
+                throw new IllegalArgumentException(
+                        "values for free " + "thumbs out of range");
             }
         }
 
@@ -1614,14 +1621,15 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final boolean setConstrainedMarkedValues(long... values) {
         for (int j = 0; j < values.length; j++) {
             if (((j > 0) && (values[j] < values[j - 1]))
-                    || ((j < values.length - 1) && (values[j] > values[j + 1]))) {
+                    || ((j < values.length - 1)
+                            && (values[j] > values[j + 1]))) {
                 throw new IllegalArgumentException(
                         "values for constrained marks must be "
                                 + "specified in increasing order");
             }
         }
-        if ((values.length > 0)
-                && ((values[0] < minimumValue) || (values[values.length - 1] > maximumValue))) {
+        if ((values.length > 0) && ((values[0] < minimumValue)
+                || (values[values.length - 1] > maximumValue))) {
             throw new IllegalArgumentException(
                     "values for constrained marks out of range");
         }
@@ -1690,8 +1698,8 @@ public abstract class MultiValueLinearControl extends Canvas {
     public final void setFreeMarkedValues(long... values) {
         for (long value : values) {
             if ((value < minimumValue) || (value > maximumValue)) {
-                throw new IllegalArgumentException("values for free "
-                        + "free marks out of range");
+                throw new IllegalArgumentException(
+                        "values for free " + "free marks out of range");
             }
         }
         freeMarkedValues.clear();
@@ -1728,8 +1736,9 @@ public abstract class MultiValueLinearControl extends Canvas {
         if (minimumDelta < 0L) {
             throw new IllegalArgumentException("minimum delta between "
                     + "constrained thumbs must be 0 or greater");
-        } else if (minimumDelta * (constrainedThumbValues.size() - 1) > maximumValue
-                + 1 - minimumValue) {
+        } else if (minimumDelta
+                * (constrainedThumbValues.size() - 1) > maximumValue + 1
+                        - minimumValue) {
             return false;
         } else {
 
@@ -2032,16 +2041,17 @@ public abstract class MultiValueLinearControl extends Canvas {
 
     @Override
     public final Rectangle computeTrim(int x, int y, int width, int height) {
-        return new Rectangle(x - leftInset, y - topInset, width + leftInset
-                + rightInset, height + topInset + bottomInset);
+        return new Rectangle(x - leftInset, y - topInset,
+                width + leftInset + rightInset,
+                height + topInset + bottomInset);
     }
 
     @Override
     public final Rectangle getClientArea() {
         Rectangle bounds = getBounds();
-        return new Rectangle(leftInset, topInset, bounds.width
-                - (leftInset + rightInset), bounds.height
-                - (topInset + bottomInset));
+        return new Rectangle(leftInset, topInset,
+                bounds.width - (leftInset + rightInset),
+                bounds.height - (topInset + bottomInset));
     }
 
     // Protected Methods
@@ -2227,7 +2237,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      * @throws IllegalArgumentException
      *             If the argument is <code>null</code>.
      */
-    protected final void ensureArgumentIsNotNull(String argName, Object argRef) {
+    protected final void ensureArgumentIsNotNull(String argName,
+            Object argRef) {
         if (argRef == null) {
             throw new IllegalArgumentException(argName + " must be non-null");
         }
@@ -2246,8 +2257,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      */
     protected final void ensureIndexIsWithinBounds(int index, int size) {
         if ((index < 0) || (index >= size)) {
-            throw new IndexOutOfBoundsException("Index: " + index + ", Size: "
-                    + size);
+            throw new IndexOutOfBoundsException(
+                    "Index: " + index + ", Size: " + size);
         }
     }
 
@@ -2411,7 +2422,8 @@ public abstract class MultiValueLinearControl extends Canvas {
          * Determine the value currently visible at the specified zoom center
          * point within the viewport.
          */
-        long center = ((long) (((getUpperVisibleValue() + 1L - getLowerVisibleValue()) * centerLocation) + 0.5))
+        long center = ((long) (((getUpperVisibleValue() + 1L
+                - getLowerVisibleValue()) * centerLocation) + 0.5))
                 + getLowerVisibleValue();
 
         /*
@@ -2469,8 +2481,7 @@ public abstract class MultiValueLinearControl extends Canvas {
         }
         return Math.round(((double) (x - leftInset))
                 * ((double) (upperVisibleValue - lowerVisibleValue))
-                / (lastWidth - 1.0))
-                + lowerVisibleValue;
+                / (lastWidth - 1.0)) + lowerVisibleValue;
     }
 
     /**
@@ -2565,10 +2576,10 @@ public abstract class MultiValueLinearControl extends Canvas {
 
         /*
          * If the requested determination is already scheduled or the widget is
-         * disabled or invisible, do nothing.
+         * disposed, disabled, or invisible, do nothing.
          */
-        if (determinationOfActiveThumbScheduled || (isVisible() == false)
-                || (isEnabled() == false)) {
+        if (isDisposed() || determinationOfActiveThumbScheduled
+                || (isVisible() == false) || (isEnabled() == false)) {
             return;
         }
 
@@ -2751,8 +2762,8 @@ public abstract class MultiValueLinearControl extends Canvas {
             /*
              * Get the value delta per pixel.
              */
-            double valueDeltaPerPixel = ((double) (upperVisibleValue + 1L - lowerVisibleValue))
-                    / (double) lastWidth;
+            double valueDeltaPerPixel = ((double) (upperVisibleValue + 1L
+                    - lowerVisibleValue)) / (double) lastWidth;
 
             /*
              * Determine how large the new viewport should be as a value delta.
@@ -2822,9 +2833,8 @@ public abstract class MultiValueLinearControl extends Canvas {
          * If a thumb has become active or inactive, redraw; otherwise, if
          * viewport dragging is allowed, start such a drag.
          */
-        if ((draggingThumb != newDraggingThumb)
-                && ((draggingThumb == null) || (draggingThumb
-                        .equals(newDraggingThumb) == false))) {
+        if ((draggingThumb != newDraggingThumb) && ((draggingThumb == null)
+                || (draggingThumb.equals(newDraggingThumb) == false))) {
             draggingThumb = newDraggingThumb;
             redraw();
         } else if (isViewportDraggable() && (newDraggingThumb == null)) {
@@ -2893,8 +2903,8 @@ public abstract class MultiValueLinearControl extends Canvas {
             return;
         }
         viewportWasActuallyDragged = true;
-        visibleValueRangeChanged(lowerVisibleValue + delta, upperVisibleValue
-                + delta,
+        visibleValueRangeChanged(lowerVisibleValue + delta,
+                upperVisibleValue + delta,
                 (dragEnded ? ChangeSource.USER_GUI_INTERACTION_COMPLETE
                         : ChangeSource.USER_GUI_INTERACTION_ONGOING));
     }
@@ -2960,8 +2970,8 @@ public abstract class MultiValueLinearControl extends Canvas {
         /*
          * If a thumb has become active or inactive, redraw.
          */
-        if ((activeThumb != newThumb)
-                && ((activeThumb == null) || (activeThumb.equals(newThumb) == false))) {
+        if ((activeThumb != newThumb) && ((activeThumb == null)
+                || (activeThumb.equals(newThumb) == false))) {
             activeThumb = newThumb;
             redraw();
         }
@@ -3013,10 +3023,10 @@ public abstract class MultiValueLinearControl extends Canvas {
                     setTooltipText(text);
                     Point widgetLocation = toDisplay(0, 0);
                     int thumbX = mapValueToPixel(value);
-                    tooltip.setLocation(
-                            widgetLocation.x + thumbX,
+                    tooltip.setLocation(widgetLocation.x + thumbX,
                             widgetLocation.y
-                                    + getThumbTooltipVerticalOffsetFromTop(thumb));
+                                    + getThumbTooltipVerticalOffsetFromTop(
+                                            thumb));
                     if (tooltip.isVisible() == false) {
                         tooltip.setVisible(true);
                     }
@@ -3102,10 +3112,10 @@ public abstract class MultiValueLinearControl extends Canvas {
      * Determine the thumb type drawing and hit test orders.
      */
     private void determineThumbTypeOrders() {
-        thumbTypeDrawingOrder[0] = (isConstrainedThumbDrawnAboveFree() ? ValueType.FREE
-                : ValueType.CONSTRAINED);
-        thumbTypeDrawingOrder[1] = (isConstrainedThumbDrawnAboveFree() ? ValueType.CONSTRAINED
-                : ValueType.FREE);
+        thumbTypeDrawingOrder[0] = (isConstrainedThumbDrawnAboveFree()
+                ? ValueType.FREE : ValueType.CONSTRAINED);
+        thumbTypeDrawingOrder[1] = (isConstrainedThumbDrawnAboveFree()
+                ? ValueType.CONSTRAINED : ValueType.FREE);
         thumbTypeHitTestOrder[0] = thumbTypeDrawingOrder[1];
         thumbTypeHitTestOrder[1] = thumbTypeDrawingOrder[0];
     }
@@ -3114,10 +3124,10 @@ public abstract class MultiValueLinearControl extends Canvas {
      * Determine the marked value type drawing order.
      */
     private void determineMarkTypeOrder() {
-        markTypeDrawingOrder[0] = (isConstrainedMarkedValueDrawnAboveFree() ? ValueType.FREE
-                : ValueType.CONSTRAINED);
-        markTypeDrawingOrder[1] = (isConstrainedMarkedValueDrawnAboveFree() ? ValueType.CONSTRAINED
-                : ValueType.FREE);
+        markTypeDrawingOrder[0] = (isConstrainedMarkedValueDrawnAboveFree()
+                ? ValueType.FREE : ValueType.CONSTRAINED);
+        markTypeDrawingOrder[1] = (isConstrainedMarkedValueDrawnAboveFree()
+                ? ValueType.CONSTRAINED : ValueType.FREE);
     }
 
     /**
@@ -3170,8 +3180,9 @@ public abstract class MultiValueLinearControl extends Canvas {
             if (constrainedThumbValuesEditable.get(j)) {
                 value = minimumValue;
                 if (j > 0) {
-                    long interval = (constrainedThumbIntervalLocked ? constrainedThumbValues
-                            .get(j) - constrainedThumbValues.get(j - 1)
+                    long interval = (constrainedThumbIntervalLocked
+                            ? constrainedThumbValues.get(j)
+                                    - constrainedThumbValues.get(j - 1)
                             : minimumConstrainedThumbGap);
                     value = minConstrainedThumbValues.get(j - 1) + interval;
                 }
@@ -3209,12 +3220,12 @@ public abstract class MultiValueLinearControl extends Canvas {
             if (constrainedThumbValuesEditable.get(j)) {
                 value = maximumValue;
                 if (j < constrainedThumbValues.size() - 1) {
-                    long interval = (constrainedThumbIntervalLocked ? constrainedThumbValues
-                            .get(j + 1) - constrainedThumbValues.get(j)
+                    long interval = (constrainedThumbIntervalLocked
+                            ? constrainedThumbValues.get(j + 1)
+                                    - constrainedThumbValues.get(j)
                             : minimumConstrainedThumbGap);
-                    value = maxConstrainedThumbValues
-                            .get(constrainedThumbValues.size() - (j + 2))
-                            - interval;
+                    value = maxConstrainedThumbValues.get(
+                            constrainedThumbValues.size() - (j + 2)) - interval;
                 }
                 value = snapValueCalculator.getSnapThumbValue(value,
                         minimumValue, value);
@@ -3314,18 +3325,21 @@ public abstract class MultiValueLinearControl extends Canvas {
                 if (targetValue > newValues[thumb.index]) {
                     newValues[thumb.index] = targetValue;
                     for (int j = thumb.index + 1; j < newValues.length; j++) {
-                        if (newValues[j - 1] + minimumConstrainedThumbGap <= newValues[j]) {
+                        if (newValues[j - 1]
+                                + minimumConstrainedThumbGap <= newValues[j]) {
                             break;
                         }
-                        newValues[j] = snapValueCalculator.getSnapThumbValue(
-                                newValues[j], newValues[j - 1]
-                                        + minimumConstrainedThumbGap,
-                                maxConstrainedThumbValues.get(j));
+                        newValues[j] = snapValueCalculator
+                                .getSnapThumbValue(newValues[j],
+                                        newValues[j - 1]
+                                                + minimumConstrainedThumbGap,
+                                        maxConstrainedThumbValues.get(j));
                     }
                 } else {
                     newValues[thumb.index] = targetValue;
                     for (int j = thumb.index - 1; j >= 0; j--) {
-                        if (newValues[j + 1] - minimumConstrainedThumbGap >= newValues[j]) {
+                        if (newValues[j + 1]
+                                - minimumConstrainedThumbGap >= newValues[j]) {
                             break;
                         }
                         newValues[j] = snapValueCalculator.getSnapThumbValue(
@@ -3413,14 +3427,14 @@ public abstract class MultiValueLinearControl extends Canvas {
          * maximum allowable value; if so, push them back the other way, still
          * maintaining proper spacing between them.
          */
-        if ((newValues.length > 0)
-                && (newValues[newValues.length - 1] > getMaximumAllowableValue())) {
+        if ((newValues.length > 0) && (newValues[newValues.length
+                - 1] > getMaximumAllowableValue())) {
             long delta = newValues[newValues.length - 1]
                     - getMaximumAllowableValue();
             for (int j = newValues.length - 1; (j >= 0) && (delta > 0L); j--) {
                 newValues[j] -= delta;
-                if ((j > 0)
-                        && (newValues[j] - newValues[j - 1] < minimumConstrainedThumbGap)) {
+                if ((j > 0) && (newValues[j]
+                        - newValues[j - 1] < minimumConstrainedThumbGap)) {
                     delta = minimumConstrainedThumbGap
                             - (newValues[j] - newValues[j - 1]);
                 }
@@ -3529,7 +3543,8 @@ public abstract class MultiValueLinearControl extends Canvas {
      * @param source
      *            Source of the change.
      */
-    private void setConstrainedThumbValues(long[] newValues, ChangeSource source) {
+    private void setConstrainedThumbValues(long[] newValues,
+            ChangeSource source) {
 
         /*
          * If the values have had to be adjusted, set the new values.

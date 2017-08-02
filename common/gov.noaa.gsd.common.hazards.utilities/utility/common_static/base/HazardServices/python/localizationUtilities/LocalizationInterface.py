@@ -2,17 +2,6 @@
 Description: Allows access to localization files in a way that automatically
              combines data from different localization levels in an intelligent
              manner. 
-
-SOFTWARE HISTORY
-Date         Ticket#    Engineer          Description
------------- ---------- -----------       --------------------------
-        2012            JRamer            Original version.
-Oct 30, 2013            JRamer            Add Desk level, consolidate argument 
-                                          checking logic for various access methods.
-Feb 14, 2013   2161     Chris.Golden      Fixed bug causing runtime error due to
-                                          incorrect import usage.
-Apr 11, 2014   3422     bkowal            Only retrieve localization files that actually
-                                          exist. Fix spelling errors.
 """
 import xml.etree.ElementTree as ET
 import sys
@@ -144,50 +133,15 @@ class LocalizationInterface():
                 self.__lfi = AppFileInstaller(caveEdexHost, caveEdexPort)
             return
 
-        # Read file localization.prefs out of ~/caveData to determine the
-        # edex server cave is using.  This logic should now be completely
-        # platform independent.
         caveEdexHost = ""
         caveEdexLoc = ""
-        #prefspath = os.path.join( "~", "caveData_Farnsworth", ".metadata", \
-        prefspath = os.path.join( "~", "caveData", ".metadata", \
-                      ".plugins", "org.eclipse.core.runtime", ".settings", \
-                      "localization.prefs" )
-        prefspath = os.path.expanduser(prefspath)
+
         try :
-            ffff = open(prefspath)
-            prefsData =  ffff.read().split("\n")
-            ffff.close()
-            for prefsLine in prefsData :
-                if len(prefsLine)<10 :
-                    continue
-                if prefsLine[:9]=="siteName=" :
-                    caveEdexLoc = prefsLine[9:].split()[0]
-                    if caveEdexHost!="" :
-                        break
-                    continue
-                if len(prefsLine)<20 :
-                    continue
-                if prefsLine[:18]!="httpServerAddress=" :
-                    continue
-                i = prefsLine.find("//")
-                if i<0 :
-                    break
-                j = i+3
-                while prefsLine[j]!="\\" and prefsLine[j]!=":" :
-                    j = j+1
-                caveEdexHost = prefsLine[i+2:j]
-                j = j + 1
-                if not prefsLine[j].isdigit() :
-                    j = j + 1
-                if not prefsLine[j].isdigit() :
-                    break
-                i = j
-                while prefsLine[j].isdigit() :
-                    j = j+1
-                caveEdexPort = prefsLine[i:j]
-                if caveEdexLoc!="" :
-                    break
+            from com.raytheon.uf.common.hazards.configuration import ServerConfigLookupProxy
+            if ServerConfigLookupProxy.getInstance() is not None:
+                caveEdexLoc = ServerConfigLookupProxy.getInstance().getServerConfigLookupWrapper().getSite()
+                caveEdexHost = ServerConfigLookupProxy.getInstance().getServerConfigLookupWrapper().getHost()
+                caveEdexPort = ServerConfigLookupProxy.getInstance().getServerConfigLookupWrapper().getPort()
         except :
             pass
 

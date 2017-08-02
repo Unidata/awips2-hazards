@@ -52,6 +52,7 @@ import com.raytheon.uf.common.hazards.productgen.data.ProductData;
  * Jun 02, 2015 7138       Robert.Blum  Changes for issuing RVS products.
  * Jul 30, 2015 9681       Robert.Blum  Changes for viewOnly products.
  * Feb 24, 2016 13929      Robert.Blum  Remove first part of staging dialog.
+ * Nov 23, 2016 26423      Robert.Blum  Removed dead code.
  * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
  * </pre>
  * 
@@ -72,15 +73,6 @@ public interface ISessionProductManager {
      * Execute any shutdown needed.
      */
     public void shutdown();
-
-    /**
-     * Get a list of hazard types which product generation currently does not
-     * support. The latter are hazard types for which product generation cannot
-     * generate products.
-     * 
-     * @return List of unsupported hazard types.
-     */
-    public List<String> getUnsupportedHazards();
 
     /**
      * Change the VTEC format generation parameters.
@@ -182,8 +174,7 @@ public interface ISessionProductManager {
      *         required to allow users to fill in product-specific information,
      *         false if product generation has commenced.
      */
-    public boolean createProductsFromPreliminaryProductStaging(
-            boolean issue,
+    public boolean createProductsFromPreliminaryProductStaging(boolean issue,
             Map<String, List<String>> selectedEventIdentifiersForProductGeneratorNames);
 
     /**
@@ -196,8 +187,7 @@ public interface ISessionProductManager {
      * @param metadataMapsForProductGeneratorNames
      *            Map of product generator names to associated metadata maps.
      */
-    public void createProductsFromFinalProductStaging(
-            boolean issue,
+    public void createProductsFromFinalProductStaging(boolean issue,
             Map<String, Map<String, Serializable>> metadataMapsForProductGeneratorNames);
 
     /**

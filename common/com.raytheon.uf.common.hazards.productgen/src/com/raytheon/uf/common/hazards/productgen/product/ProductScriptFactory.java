@@ -144,7 +144,7 @@ public class ProductScriptFactory
 
             String gfePath = manager
                     .getFile(baseContext,
-                            HazardsConfigurationConstants.PYTHON_LOCALIZATION_DIR)
+                            HazardsConfigurationConstants.GFE_LOCALIZATION_DIR)
                     .getPath();
             utilityPathList.add(gfePath);
             for (String utilityDir : GFE_UTILITY_SUBDIRECTORIES) {

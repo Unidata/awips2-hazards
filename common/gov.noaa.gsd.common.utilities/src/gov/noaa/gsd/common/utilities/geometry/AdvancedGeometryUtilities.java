@@ -43,7 +43,10 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                      lists of coordinates, getting coordinates
  *                                      of multi-ringed polygons, and getting the
  *                                      rotated bounding box of a geometry.
- * Nov 17, 2016 26313      Chris.Golden Moved method to union polygonal elements
+ * Nov 09, 2016   23086    Chris.Golden Added method to flatten advanced geometry
+ *                                      into a list of JTS non-collection
+ *                                      geometries.
+ * Nov 17, 2016   26313    Chris.Golden Moved method to union polygonal elements
  *                                      of a geometry into this class.
  * </pre>
  * 
@@ -118,9 +121,10 @@ public class AdvancedGeometryUtilities {
      *         provided.
      */
     public static Geometry getJtsGeometry(IAdvancedGeometry advancedGeometry) {
-        return (advancedGeometry == null ? null : advancedGeometry.asGeometry(
-                GEOMETRY_FACTORY.get(), LAT_LON_FLATTENING_MAXIMUM_DEVIATION,
-                LAT_LON_FLATTENING_RECURSION_LIMIT_FOR_GEOMETRY));
+        return (advancedGeometry == null ? null
+                : advancedGeometry.asGeometry(GEOMETRY_FACTORY.get(),
+                        LAT_LON_FLATTENING_MAXIMUM_DEVIATION,
+                        LAT_LON_FLATTENING_RECURSION_LIMIT_FOR_GEOMETRY));
     }
 
     /**
@@ -141,6 +145,57 @@ public class AdvancedGeometryUtilities {
     public static Geometry getJtsGeometryAsCollection(
             IAdvancedGeometry advancedGeometry) {
         return getJtsGeometryAsCollection(getJtsGeometry(advancedGeometry));
+    }
+
+    /**
+     * Get a list of non-collection JTS geometries from the specified advanced
+     * geometry.
+     * 
+     * @param advancedGeometry
+     *            Advanced geometry from which to generate the list of
+     *            non-collection geometries.
+     * @return List of JTS non-collection geometries, or <code>null</code> if no
+     *         advanced geometry was provided.
+     */
+    public static List<Geometry> getJtsGeometryList(
+            IAdvancedGeometry advancedGeometry) {
+        return getFlattenedGeometryList(getJtsGeometry(advancedGeometry));
+    }
+
+    /**
+     * Flatten the specified geometry if it is a collection, returning the list
+     * of "leaf" (that is, non-collection) geometries.
+     * 
+     * @param geometry
+     *            Geometry.
+     * @return List of leaf geometries.
+     */
+    public static List<Geometry> getFlattenedGeometryList(Geometry geometry) {
+
+        /*
+         * Collect the leaf geometries, that is, those that are not
+         * GeometryCollection instances, while traversing the tree of geometry
+         * collections.
+         */
+        List<Geometry> leafGeometries = new LinkedList<>();
+        if (geometry instanceof GeometryCollection) {
+            Deque<GeometryCollection> collections = new LinkedList<>();
+            collections.push((GeometryCollection) geometry);
+            while (collections.isEmpty() == false) {
+                GeometryCollection collection = collections.pop();
+                for (int j = 0; j < collection.getNumGeometries(); j++) {
+                    Geometry subGeometry = collection.getGeometryN(j);
+                    if (subGeometry instanceof GeometryCollection) {
+                        collections.push((GeometryCollection) subGeometry);
+                    } else {
+                        leafGeometries.add(subGeometry);
+                    }
+                }
+            }
+        } else {
+            leafGeometries.add(geometry);
+        }
+        return leafGeometries;
     }
 
     /**
@@ -189,8 +244,9 @@ public class AdvancedGeometryUtilities {
             double rotation = rotatableGeometry.getRotation();
             if (rotation != 0.0) {
                 Coordinate centerPoint = rotatableGeometry.getCenterPoint();
-                geometry = AffineTransformation.rotationInstance(
-                        rotation * -1.0, centerPoint.x, centerPoint.y)
+                geometry = AffineTransformation
+                        .rotationInstance(rotation * -1.0, centerPoint.x,
+                                centerPoint.y)
                         .transform(geometry);
                 rotationTransformation = AffineTransformation.rotationInstance(
                         rotation, centerPoint.x, centerPoint.y);
@@ -202,11 +258,11 @@ public class AdvancedGeometryUtilities {
          * order lower-right, upper-right, upper-left, and lower-left.
          */
         Envelope envelope = geometry.getEnvelopeInternal();
-        List<Coordinate> coordinates = Lists.newArrayList(new Coordinate(
-                envelope.getMaxX(), envelope.getMinY()), new Coordinate(
-                envelope.getMaxX(), envelope.getMaxY()), new Coordinate(
-                envelope.getMinX(), envelope.getMaxY()), new Coordinate(
-                envelope.getMinX(), envelope.getMinY()));
+        List<Coordinate> coordinates = Lists.newArrayList(
+                new Coordinate(envelope.getMaxX(), envelope.getMinY()),
+                new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
+                new Coordinate(envelope.getMinX(), envelope.getMaxY()),
+                new Coordinate(envelope.getMinX(), envelope.getMinY()));
 
         /*
          * If re-rotation must be done, rotate the calculated corner points back
@@ -265,10 +321,12 @@ public class AdvancedGeometryUtilities {
      * @param coordinates
      *            List of coordinates to be modified if necessary.
      */
-    public static void addDuplicateLastCoordinate(List<Coordinate> coordinates) {
+    public static void addDuplicateLastCoordinate(
+            List<Coordinate> coordinates) {
         if (coordinates.size() > 1) {
             Coordinate firstPoint = coordinates.get(0);
-            if (firstPoint.equals(coordinates.get(coordinates.size() - 1)) == false) {
+            if (firstPoint
+                    .equals(coordinates.get(coordinates.size() - 1)) == false) {
                 coordinates.add((Coordinate) firstPoint.clone());
             }
         }
@@ -283,9 +341,8 @@ public class AdvancedGeometryUtilities {
      */
     public static void removeDuplicateLastCoordinate(
             List<Coordinate> coordinates) {
-        if ((coordinates.size() > 1)
-                && (coordinates.get(0).equals(coordinates.get(coordinates
-                        .size() - 1)))) {
+        if ((coordinates.size() > 1) && (coordinates.get(0)
+                .equals(coordinates.get(coordinates.size() - 1)))) {
             coordinates.remove(coordinates.size() - 1);
         }
     }
@@ -330,8 +387,8 @@ public class AdvancedGeometryUtilities {
             return null;
         }
         if (geometry instanceof GeometryCollection == false) {
-            return GEOMETRY_FACTORY.get().createGeometryCollection(
-                    new Geometry[] { geometry });
+            return GEOMETRY_FACTORY.get()
+                    .createGeometryCollection(new Geometry[] { geometry });
         }
         return geometry;
     }
@@ -379,7 +436,7 @@ public class AdvancedGeometryUtilities {
          * If the geometry is a collection, flatten it if necessary.
          */
         if (geometry instanceof GeometryCollection) {
-            geometry = getFlattenedGeometryCollection((GeometryCollection) geometry);
+            geometry = getFlattenedGeometryCollection(geometry);
         }
 
         /*
@@ -391,8 +448,8 @@ public class AdvancedGeometryUtilities {
             List<IAdvancedGeometry> geometryWrappers = new ArrayList<>(
                     geometry.getNumGeometries());
             for (int j = 0; j < geometry.getNumGeometries(); j++) {
-                geometryWrappers.add(new GeometryWrapper(geometry
-                        .getGeometryN(j), rotation));
+                geometryWrappers.add(new GeometryWrapper(
+                        geometry.getGeometryN(j), rotation));
             }
             return createCollection(geometryWrappers);
         }
@@ -424,8 +481,8 @@ public class AdvancedGeometryUtilities {
                     leafGeometries = new ArrayList<>(
                             advancedGeometries.subList(0, j));
                 }
-                leafGeometries.addAll(((AdvancedGeometryCollection) geometry)
-                        .getChildren());
+                leafGeometries.addAll(
+                        ((AdvancedGeometryCollection) geometry).getChildren());
             } else if (leafGeometries != null) {
                 leafGeometries.add(geometry);
             }
@@ -451,10 +508,14 @@ public class AdvancedGeometryUtilities {
         return createCollection(Lists.newArrayList(advancedGeometries));
     }
 
+    /**
+     * Get a list of geometries f
+     */
+
     // Private Static Methods
 
     /**
-     * Flatten the specified geometry collection, returning a single
+     * Flatten the specified geometry if it is a collection, returning a single
      * non-collection geometry if the collection contains only one "leaf"
      * geometry, or a collection of leaf geometries gathered from any nested
      * collections.
@@ -464,41 +525,19 @@ public class AdvancedGeometryUtilities {
      * @return Flattened geometry collection, or single geometry if only one
      *         leaf geometry was found.
      */
-    private static Geometry getFlattenedGeometryCollection(
-            GeometryCollection geometry) {
+    private static Geometry getFlattenedGeometryCollection(Geometry geometry) {
 
         /*
-         * Collect the leaf geometries, that is, those that are not
-         * GeometryCollection instances, while traversing the tree of geometry
-         * collections.
+         * Flatten the geometry into a list.
          */
-        List<Geometry> leafGeometries = new LinkedList<>();
-        Deque<GeometryCollection> collections = new LinkedList<>();
-        collections.push(geometry);
-        boolean nestedCollection = false;
-        while (collections.isEmpty() == false) {
-            GeometryCollection collection = collections.pop();
-            for (int j = 0; j < collection.getNumGeometries(); j++) {
-                Geometry subGeometry = collection.getGeometryN(j);
-                if (subGeometry instanceof GeometryCollection) {
-                    nestedCollection = true;
-                    collections.push((GeometryCollection) subGeometry);
-                } else {
-                    leafGeometries.add(subGeometry);
-                }
-            }
-        }
+        List<Geometry> leafGeometries = getFlattenedGeometryList(geometry);
 
         /*
-         * If only one leaf geometry was found, return it; otherwise, if there
-         * were no nested collections found, return the original geometry;
-         * otherwise, return a new geometry collection holding the leaves.
+         * If only one leaf geometry was found, return it; otherwise, return a
+         * new geometry collection holding the leaves.
          */
         if (leafGeometries.size() == 1) {
             return leafGeometries.iterator().next();
-        }
-        if (nestedCollection == false) {
-            return geometry;
         }
         return GEOMETRY_FACTORY.get().createGeometryCollection(
                 leafGeometries.toArray(new Geometry[leafGeometries.size()]));

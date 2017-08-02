@@ -1,17 +1,18 @@
+#!/usr/bin/python
+
 import re, sys, os
 from collections import OrderedDict
 import json
 import argparse
 
 ###############################################################
-#  parseWarngenTemplate.py parses warngen .vm templates and
-#  expects files in the standard warngen .vm format.  This
-#  script is designed specifically to handle the standard
-#  burnScarInfo.vm and damInfo.vm files.  Run script without
-#  arguments or parseWarngenTemplate.py -h to see usage
-#
+#  parseWarngenTemplate.py parses WarnGen .vm templates and expects files in
+#  the standard WarnGen .vm format. This script is designed specifically to
+#  handle the standard burnScarInfo.vm and damInfo.vm files. For usage, type
+#  python parseWarngenTemplate.py -h
+
 #  The standard damInfo.vm is similar to:
-#
+
 #if(${list.contains(${bullets}, "BigRockDam")})
     #set($riverName = "PHIL RIVER")
     #set($damName = "BIG ROCK DAM")
@@ -37,10 +38,10 @@ import argparse
     #set($damName = "BRANCHED OAK DAM")
     #set($cityInfo = "DANGELO...LOCATED ABOUT 6 MILES")
 #end
-#
+
 # The standard burnScarInfo.vm is similar to
-#
-##if(${list.contains($bullets, "FourMileBurnArea")})
+
+#if(${list.contains($bullets, "FourMileBurnArea")})
     #set($burnScarName = "FOUR MILE BURN AREA")
     #set($burnScarEnd = " OVER THE FOUR MILE BURN AREA")
     #set($emergencyHeadline = "AREAS IN AND AROUND THE ${burnScarName}")
@@ -57,30 +58,30 @@ import argparse
   #set($burnDrainage = "SOME DRAINAGE BASINS IMPACTED INCLUDE BOULDER CREEK...FOURMILE CREEK...GOLD RUN...FOURMILE CANYON CREEK...AND WONDERLAND CREEK.")
   #set($burnCTA = "THIS IS A LIFE THREATENING SITUATION FOR PEOPLE ALONG BOULDER CREEK IN THE CITY OF BOULDER...IN THE FOURMILE BURN AREA...AND IN BOULDER CANYON.  HEAVY RAINFALL WILL CAUSE EXTENSIVE AND SEVERE FLASH FLOODING OF CREEKS AND STREAMS FROM THE FOURMILE BURN AREA DOWNSTREAM THROUGH THE CITY OF BOULDER.  SOME DRAINAGE BASINS IMPACTED INCLUDE BOULDER CREEK...FOURMILE CREEK...GOLD RUN...FOURMILE CANYON CREEK...AND WONDERLAND CREEK.  SEVERE DEBRIS FLOWS CAN ALSO BE ANTICIPATED ACROSS ROADS.  ROADWAYS AND BRIDGES MAY BE WASHED AWAY IN PLACES. IF YOU ENCOUNTER FLOOD WATERS...CLIMB TO SAFETY.")
 #end
-#
+
 #  25 Aug 2015 :: kevin.manross@noaa.gov (GSD)
+#   4 Oct 2016 :: joseph.s.wakefield@noaa.gov - corrected handling of example/
+#                 comments and changed from append to rewrite per user feedback
 ###############################################################
 
-
-parser = argparse.ArgumentParser(description='Convert Warngen templates [damInfo.vm, burnScarInfo.vm] into python dictionaries', usage='%(prog)s [--metaType (damInfo, burnScar)] SITE /path/to/warngen/file.vm')
+parser = argparse.ArgumentParser(description='Convert WarnGen template [damInfo.vm, burnScarInfo.vm] into python dictionary', usage='%(prog)s [--metaType {damInfo,burnScar}] SITE /path/to/warngen/file.vm')
 parser.add_argument('--metaType', default='damInfo', help='Choose whether parsing burnScar or damInfo vm file. (Default is \'damInfo\')', choices=['damInfo', 'burnScar'])
-parser.add_argument('localizedSite', metavar='SITE',  help='Enter localized site (I.e. BOU)')
-parser.add_argument('warngenVMFile', metavar='/path/to/warngen/file.vm',  help='Enter full path to warngen .vm file')
+parser.add_argument('localizedSite', metavar='SITE', help='Local site ID (e.g. BOU)')
+parser.add_argument('warngenVMFile', metavar='/path/to/warngen/file.vm', help='Full path to WarnGen .vm file')
 args = parser.parse_args()
 
 filename = args.warngenVMFile
 localSite = args.localizedSite
-metaType = args.metaType
 
-OUTPUTDIR = '/awips2/edex/data/utility/common_static/site/'+localSite+'/python/textUtilities/'
+OUTPUTDIR = '/awips2/edex/data/utility/common_static/site/'+localSite+'/HazardServices/python/textUtilities/'
 if not os.path.exists(OUTPUTDIR):
     os.makedirs(OUTPUTDIR)
 
 if args.metaType == 'damInfo':
-    metaType = 'damInundationMetadata'
+    metaType = 'DamMetaData'
     outputFile = 'DamMetaData.py'
 else:
-    metaType = 'burnScarAreaMetadata'
+    metaType = 'BurnScarMetaData'
     outputFile = 'BurnScarMetaData.py'
 
 FULLOUTPUTPATH = os.path.join(OUTPUTDIR, outputFile)
@@ -93,14 +94,13 @@ except:
 lines = fh.readlines()
 fh.close()
 
-### Have to make a few assumptions, such as: this will be run
-### for damInfo.vm or burnScarInfo.vm and is therefore the first 
-### labels they encounter will have a suffix of 'Dam' or 
-### 'BurnArea', respectively.
-### This method checks to see if the string is a potential
-### "header string" which is the start of a new set of metadata
-### for that particular dam or burn area. User can specify whether
-### they want the whole string returned or just the unique prefix
+### Have to make a few assumptions, such as: this will be run for damInfo.vm
+### or burnScarInfo.vm and therefore the first labels they encounter will have
+### a suffix of 'Dam' or 'BurnArea', respectively.
+### This method checks to see if the string is a potential "header string" which
+### is the start of a new set of metadata for that particular dam or burn area.
+### User can specify whether they want the whole string returned or just the
+### unique prefix.
 def checkHeader(str, returnPrefixOnly=False):
     headers = ['Dam', 'BurnArea']
     for h in headers:
@@ -109,11 +109,9 @@ def checkHeader(str, returnPrefixOnly=False):
             if returnPrefixOnly:
                 returnHeader = str.replace(h, '')
             return returnHeader
-
     return None
 
-### We can get some "empty" key, value pairs, so 
-### delete them.
+### We can get some "empty" key, value pairs, so delete them.
 ### for node in dict
 ###     if len(node) == 0, then del node
 def cleanUp(d):
@@ -124,7 +122,6 @@ def cleanUp(d):
       else:
         del d[k]
 
-
 quotePattern = r'"(.*)"'
 dollarPattern = r'\$\w+'
 equalsPattern = r'='
@@ -133,8 +130,26 @@ bigDict = OrderedDict()
 prevLine = ''
 header = None
 prevSubkey = None
+inComment = False
+commentStart = '#\*'
+commentEnd = '\*#'
+commentLine = '##'
 
 for line in lines:
+
+### Skip comment lines or comment blocks
+    if inComment:
+        if re.match(commentEnd, line):
+            inComment = False
+            continue
+        else:
+            continue
+    elif re.match(commentStart, line):
+        inComment = True
+        continue
+    elif re.match(commentLine, line):
+        continue
+
     equalsSearch = re.search(equalsPattern, line)
     quoteSearch = re.search(quotePattern, line)
     dollarSearch = re.search(dollarPattern, line)
@@ -154,8 +169,6 @@ for line in lines:
             if subkey != header:
                 bigDict[header][subkey] = OrderedDict()
 
-            
-
     if equalsSearch is not None and dollarSearch is not None and quoteSearch is not None:
         key = dollarSearch.group()[1:]
         value = quoteSearch.group().replace('"', '').strip()
@@ -167,8 +180,6 @@ for line in lines:
             rep = bigDict[header].get(v)
             if rep is not None:
                 value = value.replace('${'+v+'}', rep)
-
-
 
         ### Special for DamInfo case. Place all scenarios into subdict
         if 'cenario' in line and prevQuoteSearch is not None:
@@ -191,7 +202,6 @@ for line in lines:
             rotKey = prevQuoteSearch.group().replace('"', '').strip()
             bigDict[header][key] = value
 
-
         ### Handles other sub-dicts, including burnScarInfo
         elif len(bigDict[header].keys()):
 
@@ -206,38 +216,27 @@ for line in lines:
         else:
             bigDict[header].update({key : value})
 
-
-
-    if re.search('End of example', line):
-        break
-
     prevHeader = header
     prevLine = line
-
 
 cleanUp(bigDict)
 outputString = '\n\n' + metaType + ' = ' + json.dumps(bigDict, indent=4)
 
-
-
 try:
-    ### Append new dictionary to end of existing file.  
+    ### Write new dictionary to file.  
     ### Inform user to examine output file for accuracy when done.
-    outputFH = open(FULLOUTPUTPATH, 'a')
+    outputFH = open(FULLOUTPUTPATH, 'w')
     outputFH.write(outputString)
     outputFH.close()
 except:
-    print '\n\tCould not open ' + FULLOUTPUTPATH + ' for writing.  Exiting...\n'
+    print '\n\tCould not open ' + FULLOUTPUTPATH + ' for writing. Exiting...\n'
     sys.exit()
 
+print '''\nYou have successfully updated
+%s
+by writing a new dictionary to the file.
 
-print '''\n\nYou have successfully updated
-\n%s\n
-by APPENDING a new dictionary to the end of the file.
 Please examine
-\n%s\n
-and confirm your updates.
-This may require merging the new dictionaries in the file
-with existing dictionaries\n\n''' %(FULLOUTPUTPATH,FULLOUTPUTPATH)
-
+%s
+and confirm your updates.''' %(FULLOUTPUTPATH,FULLOUTPUTPATH)
 

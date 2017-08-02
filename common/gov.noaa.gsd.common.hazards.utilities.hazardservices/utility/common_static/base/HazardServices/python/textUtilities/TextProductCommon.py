@@ -1,9 +1,3 @@
-'''
-   Description: Provides classes and methods for Product Generation
-
-    @author Tracy.L.Hansen@noaa.gov
-'''
-
 import cPickle, os, types, string, copy
 import sys, gzip, time, re
 import logging, UFStatusHandler
@@ -44,11 +38,14 @@ class TextProductCommon(object):
     def __init__(self):
         self._partOfStateInfo = {}
         self.currentInfoUGC = None
+        self.gmtTZ = tz.gettz("GMT")
 
     def setUp(self, areaDict): 
         self._areaDictionary = areaDict
         self._root = None
         self.logger = logging.getLogger('TextProductCommon')
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'TextProductCommon', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
@@ -119,7 +116,7 @@ class TextProductCommon(object):
         if infoType == "entityName" :
             return self.currentUGCentry.get("ugcName", "")
         if infoType == "primaryLocations" :
-            return self.currentUGCentry.get("ugcCityString", "")
+            return self.currentUGCentry.get("ugcCities", [])
         if infoType == "fullStateName" :
             if ugc[:2] == "DC" :
                 return ""
@@ -474,19 +471,6 @@ class TextProductCommon(object):
         if alphabetize:
             nameList.sort()
         return self.formatNameString(nameList, separator) 
-        
-    # TODO -- Not Used?
-    def formatUGC_cities(self, ugcs, alphabetize=0):
-        cityList = []
-        for ugc in ugcs:
-            entry = self._areaDictionary.get(ugc)
-            cityList.append(entry.get('ugcCityString', ugc))
-        if alphabetize:
-            cityList.sort()
-        cityString = ''
-        for cityStr in cityList:
-            cityString += cityStr
-        return cityString
     
     # TODO -- Not Used?
     def makeUGCList(self, areaList):
@@ -1431,7 +1415,7 @@ class TextProductCommon(object):
             if replacement:
                 return ' is replacing the '
             else:
-                return ' is cancelling the '
+                return ' is canceling the '
         elif actionCode == 'EXT':
             return ' is extending the '
         elif actionCode == 'EXP':
@@ -1893,35 +1877,25 @@ class TextProductCommon(object):
     
     def hazardTimeZones(self, areaList):
         '''
-        Returns list of time zones for the starting time
-        and list of time zones for the ending time.  
-        
-        The areaList provides a complete list of areas for this headline. 
-        startT, endT are the hazard times.
+            Returns list of time zones for the given areas.
         '''
-        
-        # get this time zone
-        thisTimeZone = os.environ.get('TZ', 'GMT')
-
-        # check to see if we have any areas outside our time zone
+        # Get the hazard timeZones from the area dictionary
         zoneList = []
         for areaName in areaList:
             timeZoneData = self.getInformationForUGC(areaName, "timeZone")
             if timeZoneData == "" :
-                timeZoneData = [ thisTimeZone ]
+                timeZoneData = [ "GMT" ]
             elif type(timeZoneData) is not types.ListType:
                 timeZoneData = [ str(timeZoneData) ]
             for timeZone in timeZoneData:
                 if timeZone in zoneList:
                     continue
-                if timeZone == thisTimeZone :
-                    zoneList.insert(0, timeZone)
                 else :
                     zoneList.append(timeZone)
 
         # if the resulting zoneList is empty, put in our time zone
         if len(zoneList) == 0:
-            zoneList.append(thisTimeZone)
+            zoneList.append("GMT")
 
         return zoneList
     
@@ -1970,7 +1944,7 @@ class TextProductCommon(object):
             value = round(value, int(precision))
         return value
 
-    def timingWordTableEXPLICIT(self, issueTime, eventTime, timezone,
+    def timingWordTableEXPLICIT(self, issueTime, eventTime, timeZone,
       timeType='startTime'):
         # returns (timeValue, timeZone, descriptiveWord).  
         # eventTime is either the starting or ending time, based on 
@@ -1992,20 +1966,27 @@ class TextProductCommon(object):
           (0 * HR, 0 * HR + 1, '<dayOfWeek-1> Night'),  # midnght
           (0 * HR, 24 * HR, '<dayOfWeek>'), ]  # midnght-1159pm
 
+        # Convert UTC issueTime/eventTime to a UTC datetime objects
+        utcIssueTime = datetime.fromtimestamp(issueTime / 1000, self.gmtTZ)
+        utcEventTime = datetime.fromtimestamp(eventTime / 1000, self.gmtTZ)
 
-        # determine local time
-        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timezone  # set the new time zone
-        ltissue = time.localtime(issueTime / 1000)  # issuance local time
-        ltevent = time.localtime(eventTime / 1000)  # event local time
+        # Now Convert the datetimes to the correct timezone
+        localTimeZone = tz.gettz(timeZone)
+        localIssueTime = utcIssueTime.astimezone(localTimeZone)
+        localEventTime = utcEventTime.astimezone(localTimeZone)
+
+        # Get the time_Struct from the local datetime objects
+        ltissue = localIssueTime.timetuple()
+        ltevent = localEventTime.timetuple()
+
         # get the hour/min string (e.g., 800 PM)
-        dt = self.round(datetime.fromtimestamp(eventTime / 1000))
-        hourStr = time.strftime('%I%M %p', dt.timetuple())
+        hourStr = time.strftime('%I%M %p', ltevent)
         if hourStr[0] == '0':
             hourStr = hourStr[1:]  # eliminate leading zero
-
-        # get the time zone (e.g., MDT)
-        hourTZstr = time.strftime('%Z', ltevent)
+        # elimate minutes if they are zero
+        list = re.split("(\d{1,2})00(\s*)([AP]M)", hourStr)
+        if list:
+            hourStr = "".join(list)
 
         # determine the delta days from issuance to event
         diffDays = ltevent[7] - ltissue[7]  # julian day
@@ -2055,9 +2036,7 @@ class TextProductCommon(object):
         if hourStr == '12 AM':
             hourStr = 'Midnight'
 
-        os.environ['TZ'] = myTimeZone  # reset the defined time zone
-
-        return (hourStr, hourTZstr, description)
+        return (hourStr, localEventTime.tzname(), description)
 
 
     def timingWordTableFUZZY4(self, issueTime, eventTime, timeZone,
@@ -2088,13 +2067,18 @@ class TextProductCommon(object):
           (18 * HR, 24 * HR, '<dayOfWeek> evening')]  # 6pm-1159pm
 
 
-        # determine local time
-       
-        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timeZone  # set the new time zone        
-    
-        ltissue = time.localtime(issueTime / 1000)  # issuance local time
-        ltevent = time.localtime(eventTime / 1000)  # event local time
+        # Convert UTC issueTime/eventTime to a UTC datetime objects
+        utcIssueTime = datetime.fromtimestamp(issueTime / 1000, self.gmtTZ)
+        utcEventTime = datetime.fromtimestamp(eventTime / 1000, self.gmtTZ)
+
+        # Now Convert the datetimes to the correct timezone
+        localTimeZone = tz.gettz(timeZone)
+        localIssueTime = utcIssueTime.astimezone(localTimeZone)
+        localEventTime = utcEventTime.astimezone(localTimeZone)
+
+        # Get the time_Struct from the local datetime objects
+        ltissue = localIssueTime.timetuple()
+        ltevent = localEventTime.timetuple()
 
         # determine the delta days from issuance to event
         diffDays = ltevent[7] - ltissue[7]  # julian day
@@ -2135,12 +2119,7 @@ class TextProductCommon(object):
               self.asciiDayOfWeek(dow))  # day of week
             description = string.replace(description, '<dayOfWeek-1>',
               self.asciiDayOfWeek(dowMinusOne))  # day of week
-
-        os.environ['TZ'] = myTimeZone  # reset the defined time zone
-
-        hourStr = None
-        hourTZstr = None
-        return (hourStr, hourTZstr, description)
+        return (None, None, description)
 
 
     def timingWordTableFUZZY8(self, issueTime, eventTime, timeZone,
@@ -2188,12 +2167,18 @@ class TextProductCommon(object):
           (12 * HR, 18 * HR, '<dayOfWeek> afternoon'),  # 1200pm-559pm
           (18 * HR, 24 * HR, '<dayOfWeek> night')]  # 6pm-1159pm
 
+        # Convert UTC issueTime/eventTime to a UTC datetime objects
+        utcIssueTime = datetime.fromtimestamp(issueTime / 1000, self.gmtTZ)
+        utcEventTime = datetime.fromtimestamp(eventTime / 1000, self.gmtTZ)
 
-        # determine local time
-        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timeZone  # set the new time zone
-        ltissue = time.localtime(issueTime / 1000)  # issuance local time
-        ltevent = time.localtime(eventTime / 1000)  # event local time
+        # Now Convert the datetimes to the correct timezone
+        localTimeZone = tz.gettz(timeZone)
+        localIssueTime = utcIssueTime.astimezone(localTimeZone)
+        localEventTime = utcEventTime.astimezone(localTimeZone)
+
+        # Get the time_Struct from the local datetime objects
+        ltissue = localIssueTime.timetuple()
+        ltevent = localEventTime.timetuple()
 
         # determine the delta days from issuance to event
         diffDays = ltevent[7] - ltissue[7]  # julian day
@@ -2242,12 +2227,7 @@ class TextProductCommon(object):
           self.asciiDayOfWeek(dow))  # day of week
         description = string.replace(description, '<dayOfWeek-1>',
           self.asciiDayOfWeek(dowMinusOne))  # day of week
-
-        os.environ['TZ'] = myTimeZone  # reset the defined time zone
-
-        hourStr = None
-        hourTZstr = None
-        return (hourStr, hourTZstr, description)
+        return (None, None, description)
 
     def timingWordTableDAYNIGHT(self, issueTime, eventTime, timeZone,
       timeType='startTime'):
@@ -2271,11 +2251,18 @@ class TextProductCommon(object):
           (self.DAY() * HR, self.NIGHT() * HR, '<dayOfWeek>'),  # 600am-6pm
           (self.NIGHT() * HR, 24 * HR, '<dayOfWeek> night')]  # 6pm-midnight
 
-        # determine local time
-        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timeZone  # set the new time zone
-        ltissue = time.localtime(issueTime / 1000)  # issuance local time
-        ltevent = time.localtime(eventTime / 1000)  # event local time
+        # Convert UTC issueTime/eventTime to a UTC datetime objects
+        utcIssueTime = datetime.fromtimestamp(issueTime / 1000, self.gmtTZ)
+        utcEventTime = datetime.fromtimestamp(eventTime / 1000, self.gmtTZ)
+
+        # Now Convert the datetimes to the correct timezone
+        localTimeZone = tz.gettz(timeZone)
+        localIssueTime = utcIssueTime.astimezone(localTimeZone)
+        localEventTime = utcEventTime.astimezone(localTimeZone)
+
+        # Get the time_Struct from the local datetime objects
+        ltissue = localIssueTime.timetuple()
+        ltevent = localEventTime.timetuple()
 
         # determine the delta days from issuance to event
         diffDays = ltevent[7] - ltissue[7]  # julian day
@@ -2316,12 +2303,7 @@ class TextProductCommon(object):
               self.asciiDayOfWeek(dow))  # day of week
             description = string.replace(description, '<dayOfWeek-1>',
               self.asciiDayOfWeek(dowMinusOne))  # day of week
-
-        os.environ['TZ'] = myTimeZone  # reset the defined time zone
-
-        hourStr = None
-        hourTZstr = None
-        return (hourStr, hourTZstr, description)
+        return (None, None, description)
 
     def asciiDayOfWeek(self, number):
         # converts number (0-Monday) to day of week
@@ -2473,11 +2455,18 @@ class TextProductCommon(object):
           (18 * HR, 21 * HR, '<Weekday> evening'),
           (21 * HR, 24 * HR, '<Weekday> before midnight')]
 
-        # determine local time
-        myTimeZone = os.environ.get('TZ', 'GMT')  # save the defined time zone
-        os.environ['TZ'] = timeZone  # set the new time zone
-        ltissue = time.localtime(issueTime / 1000)  # issuance local time
-        ltevent = time.localtime(eventTime / 1000)  # event local time
+        # Convert UTC issueTime/eventTime to a UTC datetime objects
+        utcIssueTime = datetime.fromtimestamp(issueTime / 1000, self.gmtTZ)
+        utcEventTime = datetime.fromtimestamp(eventTime / 1000, self.gmtTZ)
+
+        # Now Convert the datetimes to the correct timezone
+        localTimeZone = tz.gettz(timeZone)
+        localIssueTime = utcIssueTime.astimezone(localTimeZone)
+        localEventTime = utcEventTime.astimezone(localTimeZone)
+
+        # Get the time_Struct from the local datetime objects
+        ltissue = localIssueTime.timetuple()
+        ltevent = localEventTime.timetuple()
 
         # determine the delta days from issuance to event
         diffDays = ltevent[7] - ltissue[7]  # julian day
@@ -2512,13 +2501,7 @@ class TextProductCommon(object):
         dow = ltevent[6]  # day of week
         description = string.replace(description, '<Weekday>',
           self.asciiDayOfWeek(dow))  # day of week
-        os.environ['TZ'] = myTimeZone  # reset the defined time zone
         return description
-
-    def getMillis(self, date):
-        epoch = datetime.utcfromtimestamp(0)
-        delta = date - epoch
-        return delta.total_seconds() * 1000.0
 
     # calculates the NONE/EXPLICIT timing phrase
     def ctp_NONE_EXPLICIT(self, stext, etext, startPrefix, endPrefix):
@@ -3013,6 +2996,26 @@ class TextProductCommon(object):
         return ''
         
 ################### From GFE StringUtils 
+    def replaceLast(self, str, str1, str2):
+        """ Replace the last occurrence of str1 in str with str2
+        """
+        
+        return str2.join(str.rsplit(str1,1))
+    
+    def punctuateList(self, items):
+        """ Joins a list of strings into a comma separated list using 
+            the Oxford comma if more than 3 items in the list
+        """
+
+        s = ", ".join(items)
+
+        if len(items) > 2:
+            s = self.replaceLast(s, ", ", ", and ")
+        elif len(items) == 2:
+            s = self.replaceLast(s, ", ", " and ")
+
+        return s
+
     def endline(self, phrase, linelength=66, breakStr=[" ", "..."]):
         "Insert endlines into phrase"
 
