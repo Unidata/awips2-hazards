@@ -167,7 +167,14 @@ class AviationUtils:
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): basePoly
             }
-        }                 
+        }
+        
+        visualFeatures = event.getVisualFeatures()
+        for feature in visualFeatures:
+            if 'base' in feature['identifier'] or 'hazardEvent' in feature['identifier']:
+                pass
+            else:
+                selectedFeatures.append(feature)                 
 
         selectedFeatures.append(basePoly)                      
         selectedFeatures.append(hazardEventPoly)            
@@ -419,49 +426,45 @@ class AviationUtils:
         
         return convectiveSigmetAreas        
         
-    def boundingStatement(self, hazardEvent, geomType, TABLEFILE, vertices, trigger):
+    def boundingStatement(self, hazardEvent, geomType, vertices, trigger):
+        lats, lons, names = self.loadSnapTbl()
+                    
+        self.phenomenon = hazardEvent.getPhenomenon()
+        if self.phenomenon == 'SIGMET':
+            boundingStatement = self.findClosestPoint(trigger,hazardEvent,lats,lons,names,geomType,vertices,7)
+            
+            if any(char.isdigit() for char in boundingStatement):
+                boundingStatement = self.findClosestPoint(trigger,hazardEvent,lats,lons,names,geomType,vertices,6)
+                
+        elif self.phenomenon in ['LLWS', 'Strong_Surface_Wind', 'Turbulence', 'Mountain_Obscuration',
+                                    'IFR', 'Icing', 'Multiple_Freezing_Levels']:
+            boundingStatement = self.findClosestPoint(trigger,hazardEvent,lats,lons,names,geomType,vertices,50)        
         
+        hazardEvent.set('boundingStatement', boundingStatement)
+        
+        return boundingStatement
+    
+    def loadSnapTbl(self):
+        TABLEFILE = self.snapTblFilePath()
+        #####################SAMPLE OF TABLEFILE########################################
+        #! SNAP.TBL
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #!STID    STNM   NAME                            ST CO   LAT    LON   ELV  PRI
+        #!(8)     (6)    (32)                            (2)(2)  (5)    (6)   (5)  (2)
+        #CPE00000      9 CPE                               -  -  1983  -9050     0  1
+        #CPE00000      9 20N_CPE                           -  -  2016  -9050     0  1
+        #CPE00000      9 30N_CPE                           -  -  2033  -9050     0  1
+        #################################################################################
         per_row = []
         with open(TABLEFILE, 'r') as fr:
             for line in fr:
                 if not line.startswith("!"):
                     per_row.append(line.split())
                     
-        self.phenomenon = hazardEvent.getPhenomenon()
-        if self.phenomenon == 'SIGMET':
-            boundingStatement = self.findClosestPoint(per_row,trigger,hazardEvent,geomType,vertices,7)
-            
-            if any(char.isdigit() for char in boundingStatement):
-                boundingStatement = self.findClosestPoint(per_row,trigger,hazardEvent,geomType,vertices,6)
-                
-        elif self.phenomenon in ['LLWS', 'Strong_Surface_Wind', 'Turbulence', 'Mountain_Obscuration',
-                                    'IFR', 'Icing', 'Multiple_Freezing_Levels']:
-            boundingStatement = self.findClosestPoint(per_row,trigger,hazardEvent,geomType,vertices,50)        
-        
-        hazardEvent.set('boundingStatement', boundingStatement)
-        
-        return boundingStatement
-    
-    def findClosestPoint(self,per_row,trigger,hazardEvent,geomType,vertices,numvertices):
-        if geomType is not 'Point':
-            boundingStatement = 'FROM '
-        else:
-            boundingStatement = ''
-                    
         lats = []
         lons = []
         names = []
         stid = []
-        
-        # ! SNAP.TBL SAMPLE FORMAT
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # !
-        # !STID    STNM   NAME                            ST CO   LAT    LON   ELV  PRI
-        # !(8)     (6)    (32)                            (2)(2)  (5)    (6)   (5)  (2)
-        # YSJ00000      9 YSJ                              -  -   4532  -6588     0  1
-        # YSJ00001      9 20N_YSJ                          -  -   4565  -6588     0  2
-        # YSJ00002      9 30N_YSJ                          -  -   4582  -6588     0  2
-        # YSJ00003      9 40N_YSJ                          -  -   4599  -6588     0  2
 
         for row in per_row:
             stid.append(row[0])
@@ -486,8 +489,11 @@ class AviationUtils:
                 lonNew.append(float(lon[:4] + '.' + lon[4:]))
             else:
                 lonNew.append(float(lon))    
-        lons = lonNew
+        lons = lonNew                                    
         
+        return lats, lons, names
+    
+    def findClosestPoint(self,trigger,hazardEvent,lats,lons,names,geomType,vertices,numvertices):
         vorLat = []
         vorLon = []        
         
@@ -500,8 +506,14 @@ class AviationUtils:
                 vertices = shapely.geometry.base.dump_coords(g)
                 
         if geomType == 'Polygon':
-            vertices = self._reducePolygon(hazardEvent,vertices, geomType, numvertices)
-            vertices = shapely.geometry.base.dump_coords(vertices)
+            if trigger != 'modification':
+                vertices = self._reducePolygon(hazardEvent,vertices, geomType, numvertices)
+                vertices = shapely.geometry.base.dump_coords(vertices)
+                
+        if geomType is not 'Point':
+            boundingStatement = 'FROM '
+        else:
+            boundingStatement = ''                
            
         for vertice in vertices:
             hazardLat = vertice[1]
@@ -548,7 +560,15 @@ class AviationUtils:
         return
     
     #########################################
-    ### OVERRIDES
-    
+    ### FILE CONSTANTS
     def volcanoFilePath(self):
-        return '/home/nathan.hardin/Desktop/volcanoes.csv'           
+        return '/scratch/volcanoes.csv' 
+    
+    def snapTblFilePath(self):
+        return '/scratch/snap.tbl'  
+    
+    def outputConvectiveSigmetFilePath(self):
+        return '/scratch/convectiveSigmetTesting'
+    
+    def outputVAAFilePath(self):
+        return '/scratch/VAA'        
