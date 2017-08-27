@@ -231,6 +231,8 @@ class Recommender(RecommenderTemplate.Recommender):
             if trigger == 'hazardEventSelection':
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
                 print 'SR: ***Selection state triggered execution of Swath Recommender not yet implemented.***'
+                self.probUtils.setActivation(event)
+                resultEventSet.addAttribute('setOrigin', False)
                 continue
                         
             # Begin Graph Draw
@@ -435,7 +437,7 @@ class Recommender(RecommenderTemplate.Recommender):
             # Set start time and set eventSt_ms
             # If automated, start time is ProbSevere time as set by ConvectiveRecommender
             # Otherwise, set to latestDataLayer time
-            if not event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
+            if not event.get('geometryAutomated'):  # old: event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
                 self.moveStartTime(event, self.dataLayerTimeToLeft)                
             # BUG ALERT?? Is this correct?  Should we only set this to True if not 'automated' or 'attributesAndGeometry'?
             event.set('settingMotionVector', True)
@@ -453,37 +455,37 @@ class Recommender(RecommenderTemplate.Recommender):
         print "SR event start, current", self.eventSt_ms, self.currentTime
         self.flush() 
 
-    def setAttributesAndGeometry(self, event):
-        event.set('automationLevel', 'attributesAndGeometry')
-        manualAttrs = event.get('manualAttributes', [])  
-        manualAttrs += ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']
-        event.set('manualAttributes', manualAttrs)
-        if event.get('objectID') and not event.get('objectID').startswith('M'):
-            event.set('objectID', 'M' + event.get('objectID'))
-        print "SR calling setActivation for setting attributesAndGeometry"
-        self.flush()
-        self.probUtils.setActivation(event)              
+#     def setAttributesAndGeometry(self, event):
+#         event.set('automationLevel', 'attributesAndGeometry')
+#         manualAttrs = event.get('manualAttributes', [])  
+#         manualAttrs += ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']
+#         event.set('manualAttributes', manualAttrs)
+#         if event.get('objectID') and not event.get('objectID').startswith('M'):
+#             event.set('objectID', 'M' + event.get('objectID'))
+#         print "SR calling setActivation for setting attributesAndGeometry"
+#         self.flush()
+#         self.probUtils.setActivation(event)              
 
-    def checkUserOwned(self, event): 
-        automationLevel = event.get('automationLevel')
-        if automationLevel in ['automated', 'attributesAndGeometry']:
-            return
-        manualAttrs = event.get('manualAttrs')
-        userOwned = True
-        for attr in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc',
-                      'duration', 'convectiveProbTrendGraph', 'convectiveWarningDecisionDiscussion']:
-             if attr not in manualAttrs:
-                userOwned = False
-                break
-        if not userOwned:
-             return   
-                    
-        event.set('automationLevel', 'userOwned')
-        if event.get('objectID') and not event.get('objectID').startswith('M'):
-             event.set('objectID', 'M' + event.get('objectID'))
-        print "SR calling setActivation for setting userOwned"
-        self.flush()
-        self.probUtils.setActivation(event)
+#     def checkUserOwned(self, event): 
+#         automationLevel = event.get('automationLevel')
+#         if automationLevel in ['automated', 'attributesAndGeometry']:
+#             return
+#         manualAttrs = event.get('manualAttrs')
+#         userOwned = True
+#         for attr in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc',
+#                       'duration', 'convectiveProbTrendGraph', 'convectiveWarningDecisionDiscussion']:
+#              if attr not in manualAttrs:
+#                 userOwned = False
+#                 break
+#         if not userOwned:
+#              return   
+#                     
+#         event.set('automationLevel', 'userOwned')
+#         if event.get('objectID') and not event.get('objectID').startswith('M'):
+#              event.set('objectID', 'M' + event.get('objectID'))
+#         print "SR calling setActivation for setting userOwned"
+#         self.flush()
+#         self.probUtils.setActivation(event)
             
     def adjustForFrameChange(self, event, eventSetAttrs, resultEventSet):
         # Assumption is that D2D frame change was used to get to the latest data layer
@@ -493,7 +495,7 @@ class Recommender(RecommenderTemplate.Recommender):
         #       Move start time, advance polys
         #       return True
         # return False
-        if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+        if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
             # BUG ALERT?? Is equality working here?
             if self.selectedTime == self.latestDataLayerTime:
                 if self.eventSt_ms < self.selectedTime:
@@ -554,14 +556,14 @@ class Recommender(RecommenderTemplate.Recommender):
              motionVectorTimes = [(st, et)]          
              event.set('motionVectorCentroids', motionVectorCentroids) 
              event.set('motionVectorTimes', motionVectorTimes) 
-             if event.get('automationLevel') == 'automated': 
-                 self.setAttributesAndGeometry(event)
+#              if event.get('automationLevel') == 'automated': 
+#                  self.setAttributesAndGeometry(event)
              return True        
         
         # Handle Modify Button
         if 'modifyButton' in self.attributeIdentifiers:  # User Hit modify button
             if event.getStatus() == 'ISSUED':         
-                if event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                if not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                     self.moveStartTime(event, self.latestDataLayerTime, moveEndTime=True)
                     self.advanceForecastPolys(event, eventSetAttrs)
                     graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
@@ -575,36 +577,38 @@ class Recommender(RecommenderTemplate.Recommender):
             return True
         
         # Handle Auto Shape
-        if 'autoShape' in self.attributeIdentifiers:
-            if not event.get('autoShape'):  # Taking over the geometry
-                if event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
-                    # Adjust automationLevel
-                    event.set('automationLevel', 'attributesOnly')
-                    print "SR calling setActivation for autoShape taking over geometry"
-                    self.flush()
-                    self.probUtils.setActivation(event)
-                    return True 
-            else:  # Returning to automation of geometry
-                if event.get('automationLevel') in ['attributesOnly', 'userOwned']:
-                    event.set('automationLevel', 'attributesAndGeometry') 
-                    print "SR calling setActivation for autoShape returning to automated"
-                    self.flush()
-                    self.probUtils.setActivation(event)
-                    return True
+        if 'geometryAutomated' in self.attributeIdentifiers:
+            self.probUtils.setActivation(event)
+            return True
+#             if not event.get('geometryAutomated'):  # Taking over the geometry
+#                 if event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
+#                     # Adjust automationLevel
+#                     event.set('automationLevel', 'attributesOnly')
+#                     print "SR calling setActivation for geometryAutomated taking over geometry"
+#                     self.flush()
+#                     self.probUtils.setActivation(event)
+#                     return True 
+#             else:  # Returning to automation of geometry
+#                 if event.get('automationLevel') in ['attributesOnly', 'userOwned']:
+#                     event.set('automationLevel', 'attributesAndGeometry') 
+#                     print "SR calling setActivation for geometryAutomated returning to automated"
+#                     self.flush()
+#                     self.probUtils.setActivation(event)
+#                     return True
                   
         # Handle Select Semaphore
-        if 'selectSemaphore' in self.attributeIdentifiers and len(self.attributeIdentifiers) == 1:
-            print "SR selectSemaphore", event.get('selectSemaphore')
-            self.flush()
-            if event.get('selectSemaphore') is True:
-                print "SR calling setActivation for selectSemaphore"
-                self.flush()
-                self.probUtils.setActivation(event)
-                event.set('selectSemaphore', False)
-                resultEventSet.addAttribute('setOrigin', False)
-                return True
-            else:
-                return False
+#         if 'selectSemaphore' in self.attributeIdentifiers and len(self.attributeIdentifiers) == 1:
+#             print "SR selectSemaphore", event.get('selectSemaphore')
+#             self.flush()
+#             if event.get('selectSemaphore') is True:
+#                 print "SR calling setActivation for selectSemaphore"
+#                 self.flush()
+#                 self.probUtils.setActivation(event)
+#                 event.set('selectSemaphore', False)
+#                 resultEventSet.addAttribute('setOrigin', False)
+#                 return True
+#             else:
+#                 return False
                 
         # Get Convective Attributes from the MetaData. 
         # These should supercede and update the ones stored in the event
@@ -619,7 +623,7 @@ class Recommender(RecommenderTemplate.Recommender):
         newTriggerAttrs['duration'] = self.probUtils.getDurationMinutes(event)
         
         changedAttrs = []
-        manualAttrs = event.get('manualAttributes', [])
+#        manualAttrs = event.get('manualAttributes', [])
         #print "SR manualAttrs", manualAttrs
         #self.flush()
         
@@ -634,20 +638,27 @@ class Recommender(RecommenderTemplate.Recommender):
             # Test to see if there is a change
             if prevVal != newVal:
                 changed = True
-                if t not in manualAttrs:
-                    if t in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-                      'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
-                         if event.get('automationLevel') in ['userOwned', 'attributesOnly', 'attributesAndGeometry']:
-                              changedAttrs.append(t)
-                              if t in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
-                                print "SR updateApplicationDict adjust for event modification", t
-                                self.flush()
-                                self.probUtils.updateApplicationDict({t:newVal})
+                if t in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+                    self.probUtils.updateApplicationDict({t:newVal})
 
-                    else:
-                         changedAttrs.append(t)
-                         #print "SR Adding to manualAttrs2", t
-                    #self.flush()
+                
+#                 if t not in manualAttrs:
+#                     if t in ['convectiveObjectDir', 'convectiveObjectSpdKts',
+#                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+#                         # IF not fully automated
+#                          if event.get('motionAutomated'):
+#                                  #event.get('automationLevel') in ['userOwned', 'attributesOnly', 'attributesAndGeometry']:
+#                               changedAttrs.append(t)
+#                               if t in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+#                                 print "SR updateApplicationDict adjust for event modification", t
+#                                 self.flush()
+#                                 self.probUtils.updateApplicationDict({t:newVal})
+# 
+#                     else:
+#                          changedAttrs.append(t)
+#                          #print "SR Adding to manualAttrs2", t
+#                     #self.flush()
                 if t == 'duration':
                     graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
                     # LogUtils.logMessage('[1]', graphProbs)
@@ -665,13 +676,13 @@ class Recommender(RecommenderTemplate.Recommender):
             if not event.get('convectiveProbTrendGraph'):
                 event.set('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
 
-            # Update manual attributes
-            if self.editableHazard and event.get('automationLevel') != 'userOwned':
-                manualAttrs = event.get('manualAttributes', [])  
-                manualAttrs += changedAttrs
-                event.set('manualAttributes', manualAttrs)
-                if event.get('automationLevel') == 'automated':
-                    self.setAttributesAndGeometry(event)                                
+#             # Update manual attributes
+#             if self.editableHazard and event.get('automationLevel') != 'userOwned':
+#                 manualAttrs = event.get('manualAttributes', [])  
+#                 manualAttrs += changedAttrs
+#                 event.set('manualAttributes', manualAttrs)
+#                 if event.get('automationLevel') == 'automated':
+#                     self.setAttributesAndGeometry(event)                                
             return True
         
         return False
@@ -819,9 +830,11 @@ class Recommender(RecommenderTemplate.Recommender):
             while i <= durationSecs:
                 timeIntervals.append(i)
                 # If object start time is Prob Severe time, put first forecast polygon on the dataLayerTime
-                if i == 0 and event.get('automationLevel') not in ['userOwned', 'attributesOnly', 'attributesAndGeometry'] \
-                   and self.latestDataLayerTime > self.eventSt_ms:
-                        i += int((self.latestDataLayerTime - self.eventSt_ms) / 1000)
+                if i == 0 and event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated') and self.latestDataLayerTime > self.eventSt_ms:
+                     # old: event.get('automationLevel') not in ['userOwned', 'attributesOnly', 'attributesAndGeometry'] \
+                     # NOTE:  We're assuming this meant:  event.get('automationLevel') == 'automated'
+                   #and self.latestDataLayerTime > self.eventSt_ms:
+                    i += int((self.latestDataLayerTime - self.eventSt_ms) / 1000)
                 else:
                     i += timeStep
         print "SR getIntervalPolys", timeDirection, timeIntervals
@@ -904,9 +917,9 @@ class Recommender(RecommenderTemplate.Recommender):
 #                             graphProbs = event.get("graphProbsAtIssuance")
 #                             # LogUtils.logMessage('[2]', graphProbs)
 #                             event.set('convectiveProbTrendGraph', graphProbs)
-                automationLevel = event.get('automationLevel')
-                if automationLevel == 'automated':
-                    self.setAttributesAndGeometry(event)               
+#                 automationLevel = event.get('automationLevel')
+#                 if automationLevel == 'automated':
+#                     self.setAttributesAndGeometry(event)               
         
         if len(motionVectorCentroids) <= 1:
             return True
@@ -1039,7 +1052,7 @@ class Recommender(RecommenderTemplate.Recommender):
         firstForecastSt_ms = self.eventSt_ms
 
         print "SR Forecast Visual Features  eventSt_ms", self.probUtils.displayMsTime(self.eventSt_ms), self.eventSt_ms
-        print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'], event.get('automationLevel')
+        #print "SR editable, automationLevel", self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly'], event.get('automationLevel')
         self.flush()
            
         for i in range(numIntervals):
@@ -1105,7 +1118,7 @@ class Recommender(RecommenderTemplate.Recommender):
             relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
                                                                    createRelocatedShape(geometry, centroid))    
             if polySt_ms == self.eventSt_ms:
-                if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+                if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                     dragCapability = 'all'
                     editable = True            
               
@@ -1125,7 +1138,7 @@ class Recommender(RecommenderTemplate.Recommender):
             }
             #print "SR Test I 34 -- dashed polys", featuresDisplay.get('dashedPolys'),  self.selectedHazard,  event.get('automationLevel') in ['userOwned', 'attributesOnly']
             #self.flush()
-            if featuresDisplay.get('dashedPolys') and self.selectedHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+            if featuresDisplay.get('dashedPolys') and self.selectedHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                 features.append(relocatedFeature)
             
 
@@ -1147,7 +1160,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if not startTimeShapeFound:
             print "****SR startTimeShape not found -- attempt to use geometry"
             self.flush()
-            if self.editableHazard and event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+            if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                 # print "SR forecast poly equal to start time -- setting editable"
                 self.flush()
                 dragCapability = 'all'
@@ -1514,7 +1527,8 @@ class Recommender(RecommenderTemplate.Recommender):
             if eventLevel >= 1:
                 print 'ID:', event.getEventID(), event.get('objectID')
                 print "start, end", event.getStartTime(), event.getEndTime()
-                print "automationLevel", event.get('automationLevel')
+                #print "automationLevel", event.get('automationLevel')
+                print 'automation -- geometry, motion, probTrend:', event.get('geometryAutomated'), event.get('motionAutomated'), event.get('probTrendAutomated'), 
                 print 'settingMotionVector', event.get('settingMotionVector')
                 print 'dataLayerStatus', event.get('dataLayerStatus')                
                 # print "visual Features"                            

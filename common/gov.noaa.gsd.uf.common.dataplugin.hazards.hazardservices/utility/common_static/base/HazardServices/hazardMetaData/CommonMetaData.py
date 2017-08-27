@@ -2099,8 +2099,12 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         if self.hazardEvent.get('objectID') is None:
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
-            self.hazardEvent.set('automationLevel', 'userOwned')
+            self.hazardEvent.set('geometryAutomated', False)
+            self.hazardEvent.set('motionAutomated', False)
+            self.hazardEvent.set('probTrendAutomated', False)
+            self.hazardEvent.set('manuallyCreated', True)
         print "CM calling setActivation"
+        print '\n\nCM - manuallyCreated?', self.hazardEvent.get('manuallyCreated'), ' <<<\n\n'
         self.flush()
         self.probUtils.setActivation(self.hazardEvent)
         activate = self.hazardEvent.get('activate', False)      
@@ -2125,61 +2129,106 @@ to pose a significant threat. Please continue to heed all road closures.'''}
              "values": status,
              "doesNotAffectModifyFlag": True,
              },
+#             {
+#              "fieldType": "HiddenField",
+#              "fieldName": "selectSemaphore",
+#              "values": False,
+#              "modifyRecommender": 'SwathRecommender',
+#              "doesNotAffectModifyFlag": True,
+#              },
+
             {
              "fieldType": "HiddenField",
-             "fieldName": "selectSemaphore",
-             "values": False,
-             "modifyRecommender": 'SwathRecommender',
-             "doesNotAffectModifyFlag": True,
+             "fieldName": "manuallyCreatedStatus",
+             "values": self.hazardEvent.get('manuallyCreated', True)
+             #"modifyRecommender": '',
+             #"doesNotAffectModifyFlag": True,
              },
 
         ]        
         return mwList
     
     def getConvectiveObjectInfo(self, activate, activateModify):        
+        
+        enableAutomated = self.getEnableAutomated(activate)
+        print "\nCM-ACTIVATE-getConvectiveObjectInfo:", activate, activateModify
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+        
+        
         grp = {
-            "fieldType": "Composite",
+            "fieldType": "Group",
             "fieldName": "convectiveObjectInfo",
-            "label": "",
+            "label": "Event Modification", ### BUG ALERT: rename?
             "numColumns":3,
             "fields": [
-                        self.getModifyButton(activateModify),
-                        self.getAutomationLevel(),
                         self.getAutoShape(activate),
+                        #self.getAutomationLevel(),
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "automateAllButton",
+                        "label": "Automate All",
+                        #"sendEveryChange": False,
+                        #"values": False,
+                        #"modifyRecommender": 'SwathRecommender',
+                        "enable": enableAutomated,
+                        },
+                        self.getModifyButton(activateModify),
                         self.getCancelButton(),
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "automateNoneButton",
+                        "label": "Automate None",
+                        #"sendEveryChange": False,
+                        #"values": False,
+                        #"modifyRecommender": 'SwathRecommender',
+                        "enable": enableAutomated,
+                        },
+                        
                        ]
         }        
         return grp
     
-    def getAutomationLevel(self):
-        automationLevelLabels = {
-                'userOwned': 'User Owned',
-                'automated': 'Automated',
-                'attributesAndGeometry': 'Attributes and Geometry',
-                'attributesOnly':'Attributes Only',
-                }
-        automationLabel = automationLevelLabels[self.hazardEvent.get('automationLevel', 'userOwned')]
-        return {
-             "fieldName": "automationLevel",
-             "fieldType": "Label",
-             "label": "AutomationLevel: " + automationLabel,
-             "refreshMetadata": True,
-            }
+    #===========================================================================
+    # def getAutomationLevel(self):
+    #     automationLevelLabels = {
+    #             'userOwned': 'User Owned',
+    #             'automated': 'Automated',
+    #             'attributesAndGeometry': 'Attributes and Geometry',
+    #             'attributesOnly':'Attributes Only',
+    #             }
+    #     automationLabel = automationLevelLabels[self.hazardEvent.get('automationLevel', 'userOwned')]
+    #     return {
+    #          "fieldName": "automationLevel",
+    #          "fieldType": "Label",
+    #          "label": "AutomationLevel: " + automationLabel,
+    #          "refreshMetadata": True,
+    #         }
+    #===========================================================================
 
     def getAutoShape(self, enable):
-        automationLevel = self.hazardEvent.get('automationLevel', 'automated')
-        if automationLevel in ['automated', 'attributesAndGeometry']:
-            autoShape = True
+#         automationLevel = self.hazardEvent.get('automationLevel', 'automated')
+#         if automationLevel in ['automated', 'attributesAndGeometry']:
+
+        enableAutomated = self.getEnableAutomated(enable)
+        print "\nCM-ACTIVATE-getAutoShape:", enable
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+        
+
+
+        if self.hazardEvent.get("geometryAutomated"):
+            geometryAutomated = True
         else:
-            autoShape = False
+            geometryAutomated = False
         return {
             "fieldType": "CheckBox",
-            "fieldName": "autoShape",
-            "label": "Automatic Shape",
+            "fieldName": "geometryAutomated",
+            "label": "Automate Shape",
             "sendEveryChange": False,
-            "values": autoShape,
+            "values": geometryAutomated,
             "modifyRecommender": 'SwathRecommender',
-            "enable": enable,
+            "enable": enableAutomated,
             }
     
     def getModifyButton(self, enable):               
@@ -2194,9 +2243,9 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return grp
     
     def getCancelButton(self): 
-        print "CM status, automationlevel", self.hazardStatus, self.hazardEvent.get('automationLevel')
-        self.flush()
-        if self.hazardStatus == 'issued' and self.hazardEvent.get('automationLevel') in ['userOwned', 'attributesOnly']:
+        #print "CM status, automationlevel", self.hazardStatus, self.hazardEvent.get('automationLevel')
+        #self.flush()
+        if self.hazardStatus == 'issued' and not self.hazardEvent.get('geometryAutomated'): # old: self.hazardEvent.get('automationLevel') in ['userOwned', 'attributesOnly']:
             enable = True
         else:
             enable = False              
@@ -2217,12 +2266,43 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
         
         
+        enableAutomated = self.getEnableAutomated(enable)
+        print "\nCM-ACTIVATE-getConvectiveMotionVector:", enable
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+        
+        
         grp = {
-            "fieldType": "Composite",
+            "fieldType": "Group",
             "fieldName": "convectiveMotionVectorGroup",
-            "label": "",
-            "numColumns":2,
+            "label": "Motion Vector",
+            "numColumns":3,
             "fields": [
+                        {
+                        "fieldType": "CheckBox",
+                        "fieldName": "motionAutomated",
+                        "label": "Automate Motion Vector",
+                        "values": False,
+                        "modifyRecommender": recommender,
+                        "enable": enableAutomated,
+                        },
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "showGrid",
+                        "label": "Preview Grid",
+                        "sendEveryChange": False,
+                        "showScale": False,
+                        "values": False,
+                        "modifyRecommender": recommender,
+                        },
+                        {
+                        "fieldType": "Button",
+                        "fieldName": "resetMotionVector",
+                        "label": "Reset Motion Vector",
+                        "values": False,
+                        "modifyRecommender": recommender,
+                        "enable": enable,
+                        },
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDir",
@@ -2243,6 +2323,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "sendEveryChange": False,
                         "minValue": 1,
                         "maxValue": 102,
+                        "width": 2,
                         "values": int(wspd),
                         "showScale": False,
                         "modifyRecommender": recommender,
@@ -2268,25 +2349,9 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "sendEveryChange": False,
                         "minValue": 4,
                         "maxValue": 20,
+                        "width": 2,
                         "values": self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectSpdKtsUnc'),
                         "showScale": False,
-                        "modifyRecommender": recommender,
-                        "enable": enable,
-                        },
-                       {
-                        "fieldType": "CheckBox",
-                        "fieldName": "showGrid",
-                        "label": "Preview Grid",
-                        "sendEveryChange": False,
-                        "showScale": False,
-                        "values": False,
-                        "modifyRecommender": recommender,
-                        },
-                        {
-                        "fieldType": "Button",
-                        "fieldName": "resetMotionVector",
-                        "label": "Reset Motion Vector",
-                        "values": False,
                         "modifyRecommender": recommender,
                         "enable": enable,
                         },
@@ -2298,7 +2363,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 #                         "modifyRecommender": recommender,
 #                         "enable": enable,
 #                         },
-                        self.getConvectiveSwathPresets(enable)
+#                        self.getConvectiveSwathPresets(enable)
                        ]
         }        
         return grp
@@ -2329,12 +2394,160 @@ to pose a significant threat. Please continue to heed all road closures.'''}
     def getConvectiveProbabilityTrend(self, enable):
         recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
 
-        trends = {
-            "fieldType": "Composite",
-            "fieldName": "convectiveTrendsGroup",
-            "label": "",
-            "numColumns":8,
+#===============================================================================
+#         trends = {
+#             "fieldType": "Composite",
+#             "fieldName": "convectiveTrendsGroup",
+#             "numColumns":9,
+#             "fields": [
+#                        {
+#                         "fieldType": "CheckBox",
+#                         "fieldName": "probTrendAutomated",
+#                         "label": "Automate Probability",
+#                         "values": True,
+#                         "modifyRecommender": recommender,
+#                         "enable": enable,
+#                         },
+#                         {
+#                         "fieldType": "Label",
+#                         "fieldName": "convectiveProbTrendLabel",
+#                         "label": "Trend Interpolation:"
+#                         },
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "convectiveProbTrendDraw",
+#                         "label": "Draw",
+#                         "enable": enable,
+#                         },
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "convectiveProbTrendLinear",
+#                         "label": "Linear",
+#                         "enable": enable,
+#                         },
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "convectiveProbTrendExp1",
+#                         "label": "Exp1",
+#                         "enable": enable,
+#                         },
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "convectiveProbTrendExp2",
+#                         "label": "Exp2",
+#                         "enable": enable,
+#                         },
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "convectiveProbTrendBell",
+#                         "label": "Bell",
+#                         "enable": enable,
+#                         },
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "convectiveProbTrendPlus5",
+#                         "label": "+5",
+#                         "enable": enable,
+#                         },
+#                         {
+#                         "fieldType": "Button",
+#                         "fieldName": "convectiveProbTrendMinus5",
+#                         "label": "-5",
+#                         "enable": enable,
+#                         },
+# 
+#                        ]
+#         }
+#===============================================================================
+        
+        probInc = 5
+        self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
+        graphProbs =  self.probUtils.getGraphProbs(self.hazardEvent)  
+        colors = [ self.getProbTrendColor(y) for y in range(0,100, 20)]
+        
+        #=======================================================================
+        # probs = {
+        #     "fieldType": "Composite",
+        #     "fieldName": "convectiveProbGroup",
+        #     "label": "",
+        #     "numColumns":3,
+        #     "fields": [
+        #                 {
+        #                  "fieldType": "HiddenField",
+        #                  "fieldName": "convectiveProbabilityTrendIncrement",
+        #                  "values": probInc
+        #                  },
+        #                 {
+        #                  "fieldType": "HiddenField",
+        #                  "fieldName": "convectiveProbabilityTrend",
+        #                  "values": [100, 80, 60, 40, 20, 10]
+        #                  },
+        #                 #=======================================================
+        #                 # {
+        #                 # "fieldType": "Button",
+        #                 # "fieldName": "convectiveProbTrendUndo",
+        #                 # "label": "Undo",
+        #                 # },
+        #                 # {
+        #                 # "fieldType": "HiddenField",
+        #                 # "fieldName": "convectiveProbTrendUndoValues",
+        #                 # "values": probVals
+        #                 # },
+        #                 # {
+        #                 # "fieldType": "Button",
+        #                 # "fieldName": "convectiveProbTrendRedo",
+        #                 # "label": "Redo",
+        #                 # },
+        #                 # {
+        #                 # "fieldType": "HiddenField",
+        #                 # "fieldName": "convectiveProbTrendRedoValues",
+        #                 # "values": probVals
+        #                 # },
+        #                 #=======================================================
+        #                 {
+        #                 "fieldType": "Graph",
+        #                 "fieldName": "convectiveProbTrendGraph",
+        #                 "yMinimum": 0,
+        #                 "yMaximum": 100,
+        #                 "xHatchInterval": 5,
+        #                 "yHatchInterval": 10,
+        #                 "xLabelInterval": 10,
+        #                 "yLabelInterval": 20,
+        #                 "heightMultiplier": 1.2,
+        #                 "yLabelSuffix": "%",
+        #                 "drawnPointsInterval": 5,
+        #                 "modifyRecommender": recommender,
+        #                 "sendEveryChange":False,
+        #                 "yColors": colors,
+        #                 "values": graphProbs,
+        #                 "enable": enable,
+        #                 }
+        #             ]
+        #     }
+        #=======================================================================
+        
+        enableAutomated = self.getEnableAutomated(enable)
+        print "\nCM-ACTIVATE-getProbTrend:", enable
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveProbabilityGroup",
+            "label": "Prob Trend",
+            "expandHorizontally": False,
+            "expandVertically": False,
+            "numColumns":9,
             "fields": [
+                       {
+                        "fieldType": "CheckBox",
+                        "fieldName": "probTrendAutomated",
+                        "label": "Automate Probability",
+                        "values": False,
+                        "modifyRecommender": recommender,
+                        "enable": enableAutomated,
+                        },
                         {
                         "fieldType": "Label",
                         "fieldName": "convectiveProbTrendLabel",
@@ -2382,53 +2595,6 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "label": "-5",
                         "enable": enable,
                         },
-
-                       ]
-        }
-        
-        probInc = 5
-        self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
-        graphProbs =  self.probUtils.getGraphProbs(self.hazardEvent)  
-        colors = [ self.getProbTrendColor(y) for y in range(0,100, 20)]
-        
-        probs = {
-            "fieldType": "Composite",
-            "fieldName": "convectiveProbGroup",
-            "label": "",
-            "numColumns":3,
-            "fields": [
-                        {
-                         "fieldType": "HiddenField",
-                         "fieldName": "convectiveProbabilityTrendIncrement",
-                         "values": probInc
-                         },
-                        {
-                         "fieldType": "HiddenField",
-                         "fieldName": "convectiveProbabilityTrend",
-                         "values": [100, 80, 60, 40, 20, 10]
-                         },
-                        #=======================================================
-                        # {
-                        # "fieldType": "Button",
-                        # "fieldName": "convectiveProbTrendUndo",
-                        # "label": "Undo",
-                        # },
-                        # {
-                        # "fieldType": "HiddenField",
-                        # "fieldName": "convectiveProbTrendUndoValues",
-                        # "values": probVals
-                        # },
-                        # {
-                        # "fieldType": "Button",
-                        # "fieldName": "convectiveProbTrendRedo",
-                        # "label": "Redo",
-                        # },
-                        # {
-                        # "fieldType": "HiddenField",
-                        # "fieldName": "convectiveProbTrendRedoValues",
-                        # "values": probVals
-                        # },
-                        #=======================================================
                         {
                         "fieldType": "Graph",
                         "fieldName": "convectiveProbTrendGraph",
@@ -2443,23 +2609,24 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "drawnPointsInterval": 5,
                         "modifyRecommender": recommender,
                         "sendEveryChange":False,
+                        "width": 9,
                         "yColors": colors,
                         "values": graphProbs,
                         "enable": enable,
-                        }
-                    ]
-            }
-        
-        grp = {
-            "fieldType": "Group",
-            "fieldName": "convectiveProbabilityGroup",
-            "label": "",
-            "expandHorizontally": False,
-            "expandVertically": False,
-            "numColumns":1,
-            "fields": [
-                       trends,
-                       probs,
+                        },
+
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convectiveProbabilityTrendIncrement",
+                         "values": probInc
+                         },
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convectiveProbabilityTrend",
+                         "values": [100, 80, 60, 40, 20, 10]
+                         },
+#                       trends,
+#                       probs,
                        ]
         }
 
@@ -2549,6 +2716,17 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "enable": enable,
         }        
         return chars        
+
+    def getEnableAutomated(self, secondBool=None):
+        print '\n\nHEEEEEEEEEEEEEEEEEEYYYYYYYYY!!!! - CALLING getEnableAutomated'
+        manuallyCreated = self.hazardEvent.get('manuallyCreated', True)
+        enableAutomated = False if manuallyCreated else True
+        if secondBool is not None:
+            enableAutomated = True if enableAutomated and secondBool else False
+            
+        print '\tRETURNING:', enableAutomated
+        self.flush()
+        return enableAutomated
 
 
         
@@ -2650,78 +2828,124 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             sys.stderr.write('New probs length does not match old probs length. No change')
 
         return convectiveProbTrendGraphVals
-        
+
     print "\n*****************\nCM applyConvective called"
     print 'triggerIdentifiers', triggerIdentifiers
     returnDict = {}
-    hazardSelected = not triggerIdentifiers
+    #hazardSelected = not triggerIdentifiers
+    #geometryAutomatedChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'geometryAutomated' in triggerIdentifiers
+    #print "hazardSelected, modifyButtonChosen, geometryAutomatedChosen", hazardSelected, modifyButtonChosen, geometryAutomatedChosen
     modifyButtonChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'modifyButton' in triggerIdentifiers 
-    autoShapeChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'autoShape' in triggerIdentifiers
-    print "hazardSelected, modifyButtonChosen, autoShapeChosen", hazardSelected, modifyButtonChosen, autoShapeChosen
+    print "modifyButtonChosen", modifyButtonChosen
     os.sys.__stdout__.flush()
-    if hazardSelected or modifyButtonChosen or autoShapeChosen: 
-        
-        if hazardSelected:
-            automationLevel = mutableProperties.get('automationLevel', {}).get('values')
-            status = mutableProperties.get('statusForHiddenField', {}).get('values') 
-            
-            activate = mutableProperties.get('activate', {}).get('values')
-            activateModify = mutableProperties.get('activateModify', {}).get('values')
-            
-            print "CM status, automationLevel", status, automationLevel
-            os.sys.__stdout__.flush()
-            if status == 'PENDING':
-                if automationLevel == 'userOwned' or automationLevel is None:
-                    activate = True
-                    activateModify = False
-                elif automationLevel == 'automated':
-                    activate = False
-                    activateModify = False
-                else:
-                    activate = False
-                    activateModify = True
-            elif status == 'ISSUED':
-                activate = False
-                activateModify = True
-            else: # status Ending, Ended, Elapsed
-                activate = False
-                activateModify = False   
-                
-            returnDict['selectSemaphore'] = {'values' : True}    
+    #if hazardSelected or modifyButtonChosen or geometryAutomatedChosen: 
+    if modifyButtonChosen: 
+#         if hazardSelected:
+#             #automationLevel = mutableProperties.get('automationLevel', {}).get('values')
+#             geometryAutomated = mutableProperties.get('geometryAutomated', {}).get('values')
+#             motionAutomated = mutableProperties.get('motionAutomated', {}).get('values')
+#             probTrendAutomated = mutableProperties.get('probTrendAutomated', {}).get('values')
+#             status = mutableProperties.get('statusForHiddenField', {}).get('values') 
+#             
+#             activate = mutableProperties.get('activate', {}).get('values')
+#             activateModify = mutableProperties.get('activateModify', {}).get('values')
+#             
+#             #print "CM status, automationLevel", status, automationLevel
+#             os.sys.__stdout__.flush()
+#             
+#             ### BUG ALERT!!!! Unclear why motionAutomated and probTrendAutomated need to be 
+#             ###               consulted to determine activate and activateModify status?  (KLM) 
+#             
+#             if status == 'PENDING':
+#                 if not geometryAutomated and not motionAutomated and not probTrendAutomated:
+#                     activate = True
+#                     activateModify = False 
+#                 elif geometryAutomated and motionAutomated and probTrendAutomated:
+#                     activate = False
+#                     activateModify = False
+# #                 if automationLevel == 'userOwned' or automationLevel is None:
+# #                     activate = True
+# #                     activateModify = False
+# #                 elif automationLevel == 'automated':
+# #                     activate = False
+# #                     activateModify = False
+#                 else:
+#                     activate = False
+#                     activateModify = True
+#             elif status == 'ISSUED':
+#                 activate = False
+#                 activateModify = True
+#             else: # status Ending, Ended, Elapsed
+#                 activate = False
+#                 activateModify = False   
+#                 
+# #             returnDict['selectSemaphore'] = {'values' : True}    
 
-        elif modifyButtonChosen:
-            activate = True
-            activateModify = False
+
+#        elif modifyButtonChosen:
+#        if modifyButtonChosen:
+        activate = True
+        activateModify = False
         
         #=======================================================================
-        # elif autoShapeChosen:
-        #     autoShape = mutableProperties.get('autoShape', {}).get('values')
+        # elif geometryAutomatedChosen:
+        #     geometryAutomated = mutableProperties.get('geometryAutomated', {}).get('values')
         #     for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
         #             "convectiveObjectSpdKtsUnc"]:
-        #         # Enable these if autoShape is off i.e. the user owns the mechanics
-        #         returnDict[key] = {'enable': not autoShape}
+        #         # Enable these if geometryAutomated is off i.e. the user owns the mechanics
+        #         returnDict[key] = {'enable': not geometryAutomated}
         #=======================================================================
         
-        if hazardSelected or modifyButtonChosen:        
-            for key in ['autoShape', "resetMotionVector", "convectiveSwathPresets", "convectiveProbTrendDraw",
+#        if hazardSelected or modifyButtonChosen:        
+        for key in ["resetMotionVector", "convectiveProbTrendDraw",
                 "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
                 "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
                 "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
+            returnDict[key] = {'enable' : activate}
+                
+        manuallyCreatedStatus = mutableProperties.get('manuallyCreatedStatus', {})
+        manuallyCreated = manuallyCreatedStatus.get('values') # Should always be present
+        print "CM-MANUALLY_CREATED:",manuallyCreatedStatus, manuallyCreated , '<<<'
+        if manuallyCreated == 0 or manuallyCreated == False:
+            for key in ['geometryAutomated', "motionAutomated", 'probTrendAutomated','automateAllButton', 'automateNoneButton']:
+                print "\nCM-Interdependency-set", activate, activateModify
+                sys.stdout.flush()
+
                 returnDict[key] = {'enable' : activate}
+                
             #===================================================================
-            # autoShape = mutableProperties.get('autoShape', {}).get('values')
-            # if not autoShape:
+            # geometryAutomated = mutableProperties.get('geometryAutomated', {}).get('values')
+            # if not geometryAutomated:
             #     for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
             #         "convectiveObjectSpdKtsUnc"]:
-            #         # Enable these if autoShape is off i.e. the user owns the mechanics
+            #         # Enable these if geometryAutomated is off i.e. the user owns the mechanics
             #         returnDict[key] = {'enable': activate}                
             #===================================================================
-            for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
+        for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
                 "convectiveObjectSpdKtsUnc"]:
-                # Enable these if autoShape is off i.e. the user owns the mechanics
-                returnDict[key] = {'enable': activate}                
+            # Enable these if geometryAutomated is off i.e. the user owns the mechanics
+            returnDict[key] = {'enable': activate}                
 
-            returnDict['modifyButton'] = {'enable' : activateModify}
+        returnDict['modifyButton'] = {'enable' : activateModify}
+        return returnDict
+
+    if 'automateAllButton' in triggerIdentifiers:
+        
+        returnDict['motionAutomated'] = {'values' : True}
+        returnDict['probTrendAutomated'] = {'values' : True}
+        returnDict['geometryAutomated'] = {'values' : True}
+        print "Setting to AUTOMATE"
+        print returnDict
+        sys.stdout.flush()
+        return returnDict
+
+    if 'automateNoneButton' in triggerIdentifiers:
+        returnDict['motionAutomated'] = {'values' : False}
+        returnDict['probTrendAutomated'] = {'values' : False}
+        returnDict['geometryAutomated'] = {'values' : False}
+        print "Setting to MANUAL"
+        sys.stdout.flush()
+        print returnDict
         return returnDict
 
     if triggerIdentifiers:
@@ -2851,5 +3075,4 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 
 def toBasis(eventType, eventTypeToBasis):   
     return eventTypeToBasis[eventType]
-
 

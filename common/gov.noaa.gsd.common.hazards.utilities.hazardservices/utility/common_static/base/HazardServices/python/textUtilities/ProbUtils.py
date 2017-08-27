@@ -442,7 +442,7 @@ class ProbUtils(object):
             zeroIndex = None
             for i in range(len(graphVals)):
                 if graphVals[i] < 1:
-                    endIndex = i
+                    zeroIndex = i
                     break
             if zeroIndex and zeroIndex != len(graphVals)-1:
                 endTime_minutes = TimeUtils.roundDatetime(startTime_minutes + zeroIndex * self.timeStep()/60)
@@ -547,7 +547,8 @@ class ProbUtils(object):
         ### Challenge is to get the graph to show the "rounded up" value, but we 
         ### don't want to muck with the duration, so still uncertain the best way
         newGraphVals = self.getGraphProbsBasedOnDuration(event)
-        if event.get('automationLevel') == 'automated':
+#         if event.get('automationLevel') == 'automated':
+        if event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated'):
             graphVals = newGraphVals
         else:
             graphVals = self.updateGraphValsDuration(graphVals, newGraphVals)
@@ -1091,17 +1092,24 @@ class ProbUtils(object):
         If selecting issued hazard: deactivated and Modify button activated
         If selecting Ending, Ended, Elapsed hazard: deactivated and Modify button deactivated.
         '''
-        automationLevel = event.get('automationLevel')
+        #automationLevel = event.get('automationLevel')
         status = event.getStatus()
-        print "PU setActivation", automationLevel, status
+#         print "PU setActivation", automationLevel, status
+        print "PU setActivation", event.get('geometryAutomated'), event.get('motionAutomated'), event.get('probTrendAutomated'), status
         self.flush()
         if status == 'PENDING':
-            if automationLevel == 'userOwned':
+            if not event.get('geometryAutomated') and not event.get('motionAutomated') and not event.get('probTrendAutomated'):
                 activate = True
-                activateModify = False
-            elif automationLevel == 'automated':
+                activateModify = False 
+            elif event.get('geometryAutomated') and event.get('motionAutomated') and event.get('probTrendAutomated'):
                 activate = False
                 activateModify = False
+#             if automationLevel == 'userOwned':
+#                 activate = True
+#                 activateModify = False
+#             elif automationLevel == 'automated':
+#                 activate = False
+#                 activateModify = False
             else:
                 activate = False
                 activateModify = True

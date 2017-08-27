@@ -423,7 +423,10 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.setStatus('ISSUED')
         hazardEvent.set('statusForHiddenField', 'ISSUED')
         
-        hazardEvent.set('automationLevel', 'automated')
+        hazardEvent.set('manuallyCreated', False)
+        hazardEvent.set('geometryAutomated', True)
+        hazardEvent.set('motionAutomated', True)
+        hazardEvent.set('probTrendAutomated', True)
         
         graphProbs = self.probUtils.getGraphProbs(hazardEvent, int(probSevereTime.strftime('%s'))*1000)
         hazardEvent.set('convectiveProbTrendGraph', graphProbs)
@@ -443,6 +446,30 @@ class Recommender(RecommenderTemplate.Recommender):
         event.setEndTime(endTime)
         
 
+    def updateEvent(self, event, recommended, dataLayerTimeMS):
+        
+        if event.get('motionAutomated', False):
+            event.set('convectiveObjectDir', recommended.get('wdir'))
+            event.set('convectiveObjectSpdKts', recommended.get('wspd'))
+            
+        if event.get('probTrendAutomated', False):
+            ### BUG ALERT: do we want DataLayerTime or ProbSevereTime?
+            graphProbs = self.probUtils.getGraphProbs(event, dataLayerTimeMS)
+            event.set('convectiveProbTrendGraph', graphProbs)
+            
+        if event.get('geometryAutomated', False):
+            self.updateEventGeometry(event, recommended)
+            
+        probSevereAttrs = event.get('probSeverAttrs')
+        for k,v in recommended.iteritems():
+            probSevereAttrs[k] = v
+        event.set('probSeverAttrs',probSevereAttrs)
+        
+        ### BUG ALERT: Do we want to set the 
+        event.setStartTime(self.latestDLTDT)
+        endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+        event.setEndTime(endTime)
+
 
     def updateEventGeometry(self, event, recommendedDict):
         try:
@@ -452,77 +479,79 @@ class Recommender(RecommenderTemplate.Recommender):
             print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommended.get('polygons')), recommended.get('polygons')
             sys.stdout.flush()
 
-    def updateUserOwned(self, event, recommended, dataLayerTimeMS):
-        pass
-
-
-    def updateAttributesAndGeometry(self, event, recommended, dataLayerTime):
-        print '\tGeom BEFORE:', event.getGeometry().asShapely()
-        self.updateEventGeometry(event, recommended)
-        print '\tGeom AFTER:', event.getGeometry().asShapely()
-        self.updateAttributesOnly(event, recommended, dataLayerTime)
-
-
-    def updateAttributesOnly(self, event, recommended, probSevereTime):
-        manualAttrs = event.get('manualAttributes', [])
-        ##################################################################
-        ##  Need to handle special cases in computing updatedAttrs
-        ##################################################################
-        updatedAttrs = {k:v for k,v in recommended.iteritems() if k not in manualAttrs}
-        probSevereAttrs = event.get('probSeverAttrs')
-        
-        #print '\n=================='
-        #print 'CR - ManualAttrs:', manualAttrs
-        #print 'CR - UpdatedAttrs:', updatedAttrs
-        #print 'CR - probSevereAttrs1:', probSevereAttrs
-        
-        for k,v in updatedAttrs.iteritems():
-                probSevereAttrs[k] = v
-
-        #print 'CR - probSevereAttrs2:', probSevereAttrs
-        #print '*******'
-        
-        event.set('probSeverAttrs',probSevereAttrs)
-                
-        ### Special Cases
-        if 'convectiveObjectDir' not in manualAttrs:
-            event.set('convectiveObjectDir', recommended.get('wdir'))
-            
-        if 'convectiveObjectSpdKts' not in manualAttrs:
-            event.set('convectiveObjectSpdKts', recommended.get('wspd'))
-            
-        if 'convectiveProbTrendGraph' not in manualAttrs:
-            graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
-            event.set('convectiveProbTrendGraph', graphProbs)
-            
-        automationLevel = event.get('automationLevel')
-        if automationLevel in ['automated', 'attributesAndGeometry']:
-            event.setStartTime(self.latestDLTDT)
-            endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-            event.setEndTime(endTime)
-
-    def updateAutomated(self, event, recommended, probSevereTime):
-        self.updateEventGeometry(event, recommended)
-            
-        event.set('convectiveObjectDir', recommended.get('wdir'))
-        event.set('convectiveObjectSpdKts', recommended.get('wspd'))
-        event.set('probSeverAttrs',recommended)
-        
-        if recommended.get('belowThreshold'):
-            event.setStatus('PROPOSED')
-            event.set('statusForHiddenField', 'PROPOSED')
-        else:
-            event.setStatus('ISSUED')
-            event.set('statusForHiddenField', 'ISSUED')
-        
-        graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
-        event.set('convectiveProbTrendGraph', graphProbs)
-        
-        ### Per request from Greg
-#        event.setStartTime(recommended.get('startTime', self.dataLayerTime))
-        event.setStartTime(self.latestDLTDT)
-        endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-        event.setEndTime(endTime)
+#===============================================================================
+#     def updateUserOwned(self, event, recommended, dataLayerTimeMS):
+#         pass
+# 
+# 
+#     def updateAttributesAndGeometry(self, event, recommended, dataLayerTime):
+#         print '\tGeom BEFORE:', event.getGeometry().asShapely()
+#         self.updateEventGeometry(event, recommended)
+#         print '\tGeom AFTER:', event.getGeometry().asShapely()
+#         self.updateAttributesOnly(event, recommended, dataLayerTime)
+# 
+# 
+#     def updateAttributesOnly(self, event, recommended, probSevereTime):
+#         manualAttrs = event.get('manualAttributes', [])
+#         ##################################################################
+#         ##  Need to handle special cases in computing updatedAttrs
+#         ##################################################################
+#         updatedAttrs = {k:v for k,v in recommended.iteritems() if k not in manualAttrs}
+#         probSevereAttrs = event.get('probSeverAttrs')
+#         
+#         #print '\n=================='
+#         #print 'CR - ManualAttrs:', manualAttrs
+#         #print 'CR - UpdatedAttrs:', updatedAttrs
+#         #print 'CR - probSevereAttrs1:', probSevereAttrs
+#         
+#         for k,v in updatedAttrs.iteritems():
+#                 probSevereAttrs[k] = v
+# 
+#         #print 'CR - probSevereAttrs2:', probSevereAttrs
+#         #print '*******'
+#         
+#         event.set('probSeverAttrs',probSevereAttrs)
+#                 
+#         ### Special Cases
+#         if 'convectiveObjectDir' not in manualAttrs:
+#             event.set('convectiveObjectDir', recommended.get('wdir'))
+#             
+#         if 'convectiveObjectSpdKts' not in manualAttrs:
+#             event.set('convectiveObjectSpdKts', recommended.get('wspd'))
+#             
+#         if 'convectiveProbTrendGraph' not in manualAttrs:
+#             graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
+#             event.set('convectiveProbTrendGraph', graphProbs)
+#             
+#         automationLevel = event.get('automationLevel')
+#         if automationLevel in ['automated', 'attributesAndGeometry']:
+#             event.setStartTime(self.latestDLTDT)
+#             endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+#             event.setEndTime(endTime)
+# 
+#     def updateAutomated(self, event, recommended, probSevereTime):
+#         self.updateEventGeometry(event, recommended)
+#             
+#         event.set('convectiveObjectDir', recommended.get('wdir'))
+#         event.set('convectiveObjectSpdKts', recommended.get('wspd'))
+#         event.set('probSeverAttrs',recommended)
+#         
+#         if recommended.get('belowThreshold'):
+#             event.setStatus('PROPOSED')
+#             event.set('statusForHiddenField', 'PROPOSED')
+#         else:
+#             event.setStatus('ISSUED')
+#             event.set('statusForHiddenField', 'ISSUED')
+#         
+#         graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
+#         event.set('convectiveProbTrendGraph', graphProbs)
+#         
+#         ### Per request from Greg
+# #        event.setStartTime(recommended.get('startTime', self.dataLayerTime))
+#         event.setStartTime(self.latestDLTDT)
+#         endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
+#         event.setEndTime(endTime)
+#===============================================================================
       
     ### Update the current events, and return a list of identifiers of
     ### events that are to be saved to the database.  
@@ -546,8 +575,9 @@ class Recommender(RecommenderTemplate.Recommender):
             ### but it appears to be consistent and something we can use to
             ### tell the Convective Recommedner to bypass THIS event
             ### if THIS event activateModify=0
+            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
             if currentEvent.get('activateModify') == 0:
-                #print '\tNot updating this hazard event in Convective Recommender...'
+                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
                 continue
             
             
@@ -566,25 +596,11 @@ class Recommender(RecommenderTemplate.Recommender):
 
             
             recommendedAttrs = vals['recommendedAttrs']
-            automationLevel = currentEvent.get('automationLevel')  ### TODO: determine default value
             
-            if automationLevel == 'attributesOnly':
-                self.updateAttributesOnly(currentEvent, recommendedAttrs, dataLayerTimeMS)
+            self.updateEvent(currentEvent, recommendedAttrs, dataLayerTimeMS)
             
-            if automationLevel == 'attributesAndGeometry':
-                print '\n\t!!!!!  CALLING attributesAndGeometry'
-                self.updateAttributesAndGeometry(currentEvent, recommendedAttrs, dataLayerTimeMS)
             
-            if automationLevel == 'automated':
-                
-                ### Update the automated event, and if its status changed,
-                ### add it to the list of events to be saved.
-                self.updateAutomated(currentEvent, recommendedAttrs, dataLayerTimeMS)
-                identifiersOfEventsToSaveToDatabase.append(currentEvent.getEventID())
-            
-            if automationLevel == 'userOwned':
-                self.updateUserOwned(currentEvent, recommendedAttrs, dataLayerTimeMS)
-                
+            identifiersOfEventsToSaveToDatabase.append(currentEvent.getEventID())
             mergedEvents.add(currentEvent)
             
         return identifiersOfEventsToSaveToDatabase
@@ -611,9 +627,15 @@ class Recommender(RecommenderTemplate.Recommender):
         identifiersOfEventsToSaveToDatabase = []
         
         for currentEvent in currentEventsList:
+            
+            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
+            if currentEvent.get('activateModify') == 0:
+                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
+                continue
 
-            if currentEvent.get('automationLevel') == 'userOwned':
-                #print 'Manual Event.  Storing and moving on...'
+            #if currentEvent.get('automationLevel') == 'userOwned':
+            if not currentEvent.get('geometryAutomated') and not currentEvent.get('motionAutomated') and not currentEvent.get('probTrendAutomated'):
+               #print 'Manual Event.  Storing and moving on...'
                 evtGeom = currentEvent.getGeometry().asShapely()
                 manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
                 continue
@@ -717,5 +739,4 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def defaultWindDir(self):
         return 270
-
 
