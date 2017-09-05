@@ -15,10 +15,6 @@ import AviationUtils
 from VisualFeatures import VisualFeatures
 from com.raytheon.uf.common.time import SimulatedTime
 
-OUTPUTDIR = '/scratch/convectiveSigmetTesting'
-######
-TABLEFILE = '/home/nathan.hardin/Desktop/snap.tbl'
-
 class Product(HydroGenerator.Product):
     
     def __init__(self):
@@ -111,7 +107,10 @@ class Product(HydroGenerator.Product):
             domain.setCount(0)
         
         parts = ['currentTime', 'startTime', 'endTime', 'specialTime', 'startDate', 'endDate', 'states',
-                 'boundingStatement', 'mode', 'modifier', 'embedded', 'motion', 'cloudTop', 'additionalHazards', 'geometry']
+                 'boundingStatement', 'mode', 'modifier', 'embedded', 'motion', 'cloudTop', 'additionalHazards', 'geometry',
+                 'outlookStartTime', 'outlookEndTime', 'outlookReferral', 'numOutlooks', 'outlook1BoundingStatement',
+                 'outlook1Likelihood', 'outlook2BoundingStatement', 'outlook2Likelihood', 'outlook3BoundingStatement',
+                 'outlook3Likelihood']
         
         productDict = {}
         productDict['productParts'] = parts
@@ -185,7 +184,7 @@ class Product(HydroGenerator.Product):
                     if any(isinstance(i, list) for i in vertices):
                         vertices = vertices[0]
                     convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(event, vertices, self._originalGeomType, 'modification')
-                    boundingStatement = AviationUtils.AviationUtils().boundingStatement(event, self._originalGeomType, TABLEFILE, vertices, 'modification')
+                    boundingStatement = AviationUtils.AviationUtils().boundingStatement(event, self._originalGeomType, vertices, 'modification')
                         
                     if self._originalGeomType != 'Polygon':
                         poly = AviationUtils.AviationUtils().createPolygon(vertices, self._width, self._originalGeomType)
@@ -210,13 +209,7 @@ class Product(HydroGenerator.Product):
     def _geometry(self, hazardEvent):      
         for g in hazardEvent.getFlattenedGeometry().geoms:
             geometry = shapely.geometry.base.dump_coords(g)
-#         if self._geomType != 'LineString':
-#             for g in hazardEvent.getFlattenedGeometry().geoms:
-#                 geometry = shapely.geometry.base.dump_coords(g)
-#         else:
-#             geometry = hazardEvent.get('polygon')
-#             geometry.pop()
-        
+            
         return geometry
     
     def _currentTime(self, hazardEvent):
@@ -515,6 +508,103 @@ class Product(HydroGenerator.Product):
                 additionalHazardsStr += "WIND GUSTS TO " + self._wind + " KTS POSS."
                     
         return additionalHazardsStr
+    
+    def _outlookStartTime(self, hazardEvent):
+        outlookStartTime = time.mktime(hazardEvent.getEndTime().timetuple())
+        outlookStartTime = time.strftime('%d%H%M', time.gmtime(outlookStartTime))        
+        return outlookStartTime
+    
+    def _outlookEndTime(self, hazardEvent):
+        outlookEndTime = hazardEvent.getEndTime() + datetime.timedelta(hours=4)
+        outlookEndTime = outlookEndTime.strftime('%d%H%M')             
+        return outlookEndTime
+    
+    def _outlookReferral(self, hazardEvent):
+        return "REFER TO MOST RECENT ACUS01 KWNS FROM STORM PREDICTION CENTER FOR SYNOPSIS AND METEOROLOGICAL DETAILS."
+    
+    def _numOutlooks(self, hazardEvent):
+        self.numOutlooks = hazardEvent.get("convectiveSigmetOutlookSpinner")    
+        return self.numOutlooks
+    
+    def _outlook1BoundingStatement(self, hazardEvent):
+        self.visualFeatureGeomDict = self._createVisualFeatureGeomDict(hazardEvent)
+        
+        for key in self.visualFeatureGeomDict:
+            if "Outlook1" in key:
+                vertices = self.visualFeatureGeomDict[key]
+                outlook1BoundingStatement = self._createOutlookBoundingStatement(vertices)        
+                return outlook1BoundingStatement
+
+        return 'None'
+    
+    def _outlook1Likelihood(self, hazardEvent):
+        self.likelihoodDict = {'Possible': 'WST ISSUANCES POSS.', 'Expected': 'WST ISSUANCES EXPD.'}
+        return self.likelihoodDict[hazardEvent.get('convectiveSigmetOutlookLayerLikelihood1')]
+    
+    def _outlook2BoundingStatement(self, hazardEvent):
+        for key in self.visualFeatureGeomDict:
+            if "Outlook2" in key:
+                vertices = self.visualFeatureGeomDict[key]
+                outlook2BoundingStatement = self._createOutlookBoundingStatement(vertices)        
+                return outlook2BoundingStatement
+
+        return 'None'
+    
+    def _outlook2Likelihood(self, hazardEvent):
+        return self.likelihoodDict[hazardEvent.get('convectiveSigmetOutlookLayerLikelihood2')]
+    
+    def _outlook3BoundingStatement(self, hazardEvent):
+        for key in self.visualFeatureGeomDict:
+            if "Outlook3" in key:
+                vertices = self.visualFeatureGeomDict[key]
+                outlook3BoundingStatement = self._createOutlookBoundingStatement(vertices)        
+                return outlook3BoundingStatement
+
+        return 'None'
+    
+    def _outlook3Likelihood(self, hazardEvent):
+        return self.likelihoodDict[hazardEvent.get('convectiveSigmetOutlookLayerLikelihood3')]
+    
+    def _createVisualFeatureGeomDict(self, hazardEvent):
+        visualFeatureGeomDict = {}
+        features = hazardEvent.getVisualFeatures()
+        if not features:
+            vertices = self.geometry(hazardEvent)
+            visualFeatureGeomDict = {'basePreview': vertices}
+            
+        for feature in features:
+            featureIdentifier = feature.get('identifier')
+            polyDict = feature['geometry']
+            for timeBounds, geometry in polyDict.iteritems():
+                featurePoly = geometry.asShapely()
+                vertices = shapely.geometry.base.dump_coords(featurePoly)
+                visualFeatureGeomDict[featureIdentifier] = vertices[0]
+            
+        return visualFeatureGeomDict
+    
+    def _createOutlookBoundingStatement(self, vertices):
+        lats, lons, names = AviationUtils.AviationUtils().loadSnapTbl()
+        
+        vorLat = []
+        vorLon = []
+        
+        outlookBoundingStatement = 'FROM '        
+           
+        for vertice in vertices:
+            hazardLat = vertice[1]
+            hazardLon = vertice[0]
+
+            diffList = []
+            for x in range(0, len(lats)):
+                diffList.append(abs(hazardLat - lats[x]) + abs(hazardLon - lons[x]))
+
+            index = diffList.index(min(diffList))
+            
+            outlookBoundingStatement += names[index] + '-'
+           
+        outlookBoundingStatement = outlookBoundingStatement[:-1]             
+        
+        return outlookBoundingStatement    
     
     def _narrativeForecastInformation(self, segmentDict, productSegmentGroup, productSegment):  
         default = '''

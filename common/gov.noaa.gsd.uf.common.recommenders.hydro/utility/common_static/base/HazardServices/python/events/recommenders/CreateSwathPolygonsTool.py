@@ -18,7 +18,7 @@ import json
 import AdvancedGeometry
 
 ######
-TABLEFILE = '/home/nathan.hardin/Desktop/snap.tbl'
+TABLEFILE = AviationUtils.AviationUtils().snapTblFilePath()
 
 class Recommender(RecommenderTemplate.Recommender):
     

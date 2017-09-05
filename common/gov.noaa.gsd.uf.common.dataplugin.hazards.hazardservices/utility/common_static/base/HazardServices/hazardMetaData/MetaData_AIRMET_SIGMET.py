@@ -349,17 +349,18 @@ class MetaData(CommonMetaData.MetaData):
         embeddedSvr = self.getConvectiveSigmetEmbeddedSevere(geomType,values,hazards)
         modifier = self.getConvectiveSigmetModifier(modifiers)
         motion = self.getConvectiveSigmetMotion()
-        tops = self.getConvectiveSigmetTops()           
+        tops = self.getConvectiveSigmetTops()
+        outlook = self.getConvectiveSigmetOutlook()           
         
         if geomType is 'Point':
             fields = [width, correction, domain, embeddedSvr,
-                      modifier, motion, tops]
+                      modifier, motion, tops, outlook]
         elif geomType is 'LineString':
             fields = [changeType, width, correction, domain, embeddedSvr,
-                      modifier, motion, tops]            
+                      modifier, motion, tops, outlook]            
         else:
             fields = [changeType, correction, domain,
-                      embeddedSvr, modifier, motion, tops]
+                      embeddedSvr, modifier, motion, tops, outlook]
         
         grp = {
             "fieldType": "Group",
@@ -372,6 +373,87 @@ class MetaData(CommonMetaData.MetaData):
             }
                                
         return grp
+    
+    def getConvectiveSigmetOutlook(self):
+        outlook = {
+           "fieldType": "Group",
+           "fieldName": "convectiveSigmetOutlookGroup",
+           "label": "Create Outlook",
+           "fields": [
+                      {
+                       "fieldType": "IntegerSpinner",
+                       "fieldName": "convectiveSigmetOutlookSpinner",
+                       "label": "Number of Outlooks:",
+                       "minValue": 1,
+                       "maxValue": 3,
+                       "values": 1,
+                       },
+                       {
+                        "fieldType": "Button",
+                        "fieldName": "convectiveSigmetCreateOutlook",
+                        "label": "Create Outlook Polygons",
+                        "modifyRecommender": "CreateOutlookPolygonsTool",
+                        },
+                         {
+                          "fieldType": "Group",
+                          "fieldName": "convectiveSigmetOutlookLayer1",
+                          "expandHorizontally": True,
+                          "numColumns": 2,
+                          "enable": True,
+                          "label": "Layer 1",
+                          "numColumns": 3,
+                          "fields": [
+                                     {
+                                      "fieldType": "ComboBox",
+                                      "fieldName": "convectiveSigmetOutlookLayerLikelihood1",
+                                      "expandHorizontally": False,
+                                      "label": "Likelihood: ",
+                                      "choices": ["Possible", "Expected"],
+                                      "values": "Possible",
+                                      },                                                                                            
+                                     ],
+                         },
+                         {
+                          "fieldType": "Group",
+                          "fieldName": "convectiveSigmetOutlookLayer2",
+                          "expandHorizontally": True,
+                          "enable": False,
+                          "numColumns": 2,
+                          "label": "Layer 2",
+                          "numColumns": 3,
+                          "fields": [
+                                     {
+                                      "fieldType": "ComboBox",
+                                      "fieldName": "convectiveSigmetOutlookLayerLikelihood2",
+                                      "expandHorizontally": False,
+                                      "label": "Likelihood: ",
+                                      "choices": ["Possible", "Expected"],
+                                      "values": "Possible",
+                                      },                                                                                                                                                                                                
+                                     ],
+                          },
+                         {
+                          "fieldType": "Group",
+                          "fieldName": "convectiveSigmetOutlookLayer3",
+                          "enable": False,
+                          "expandHorizontally": True,
+                          "numColumns": 2,
+                          "label": "Layer 3",
+                          "numColumns": 3,
+                          "fields": [
+                                     {
+                                      "fieldType": "ComboBox",
+                                      "fieldName": "convectiveSigmetOutlookLayerLikelihood3",
+                                      "expandHorizontally": False,
+                                      "label": "Likelihood: ",
+                                      "choices": ["Possible", "Expected"],
+                                      "values": "Possible",
+                                      },                                                                                                                                       
+                                     ],
+                          },                               
+            ]           
+        }
+        return outlook
     
     def changeType(self, geomType):
         if geomType == 'Polygon':
@@ -1943,6 +2025,116 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     
     import sys
     sys.stderr.writelines( ['Hello World!\n'])
+    
+    for triggerIdentifier in triggerIdentifiers:
+        sys.stderr.write('triggerIdentifiers:' + triggerIdentifier + '\n')
+        
+    ###CONVECTIVE SIGMET RELATED DEPENDENCIES###
+    if "convectiveSigmetOutlookSpinner" in triggerIdentifiers:
+        if mutableProperties["convectiveSigmetOutlookSpinner"]["values"] == 1:
+            return {"convectiveSigmetOutlookLayer1": {"enable": True},
+                    "convectiveSigmetOutlookLayer2": {"enable": False},
+                    "convectiveSigmetOutlookLayer3": {"enable": False}
+                    }
+        elif mutableProperties["convectiveSigmetOutlookSpinner"]["values"] == 2:
+            return {"convectiveSigmetOutlookLayer1": {"enable": True},
+                    "convectiveSigmetOutlookLayer2": {"enable": True},
+                    "convectiveSigmetOutlookLayer3": {"enable": False}
+                    }
+        else:
+            return {"convectiveSigmetOutlookLayer1": {"enable": True},
+                    "convectiveSigmetOutlookLayer2": {"enable": True},
+                    "convectiveSigmetOutlookLayer3": {"enable": True}
+                    }
+                                    
+    ###CONTROLLING SERIES NAMES FOR INTERNATIONAL SIGMET BASED ON ORIGINATING OFFICE(MWO)###
+    if "internationalSigmetOffice" in triggerIdentifiers:
+    #if (triggerIdentifiers is None) or ("internationalSigmetOffice" in triggerIdentifiers):
+        if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
+            return {
+                  "internationalSigmetSequence": {
+                            "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
+                  },
+                  "internationalSigmetFIR": {
+                            "choices": ['KZWY','KZMA','KZHU','TZJS','KZAK']                                
+                  }                             
+            }
+        elif "PAWU" in mutableProperties["internationalSigmetOffice"]["values"]:
+            return {
+                  "internationalSigmetSequence": {
+                            "choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]                                
+                  },
+                  "internationalSigmetFIR": {
+                            "choices": ['PAZA'],
+                            "enable": False,                                
+                  }                              
+            }
+        elif "PHFO" in mutableProperties["internationalSigmetOffice"]["values"]:
+            return {
+                  "internationalSigmetSequence": {
+                            "choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]                                
+                  },
+                  "internationalSigmetFIR": {
+                            "choices": ['KZAK'],
+                            "enable": False,                                
+                  }                            
+            } 
+            
+    ###DISABLE EVERYTHING IF CHOOSING TO CANCEL INTERNATIONAL SIGMET###
+    if "internationalSigmetCancellation" in triggerIdentifiers:
+    #if triggerIdentifiers is None or "internationalSigmetCancellation" in triggerIdentifiers:
+        if mutableProperties["internationalSigmetCancellation"]["values"] == True:
+            return {
+                    "internationalSigmetPhenomenonGroup": {
+                            "enable": False,                                      
+                    }
+            }
+        else:
+            return {
+                    "internationalSigmetPhenomenonGroup": {
+                            "enable": True,                                      
+                    }
+            }            
+  
+    ###CONTROLLING LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
+    if "internationalSigmetVALayersSpinner" in triggerIdentifiers:
+    #if triggerIdentifiers is None or "internationalSigmetVALayersSpinner" in triggerIdentifiers:
+        if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
+            return {
+                    "internationalSigmetVALayer3": {
+                          "enable": False
+                    },
+                    "internationalSigmetVALayer2": {
+                          "enable": False
+                    },
+                    "internationalSigmetVALayer1": {
+                          "enable": True
+                    },    
+            }                      
+        elif mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 2:
+            return {
+                    "internationalSigmetVALayer3": {
+                              "enable": False                                
+                    },
+                    "internationalSigmetVALayer2": {
+                              "enable": True                                
+                    },
+                    "internationalSigmetVALayer1": {
+                              "enable": True                                
+                    },
+            }
+        else:
+            return {
+                    "internationalSigmetVALayer3": {
+                              "enable": True                                
+                    },
+                    "internationalSigmetVALayer2": {
+                              "enable": True                                
+                    },
+                    "internationalSigmetVALayer1": {
+                              "enable": True                                
+                    },                                                    
+            }                   
                 
     ###CONTROLLING LAYER SELECTIONS FOR ICING
     if triggerIdentifiers is None or "icingComboBox" in triggerIdentifiers:
@@ -2056,92 +2248,6 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 }
     else:
         return None
-    
-    ###DISABLE EVERYTHING IF CHOOSING TO CANCEL INTERNATIONAL SIGMET###
-    if triggerIdentifiers is None or "internationalSigmetCancellation" in triggerIdentifiers:
-        if mutableProperties["internationalSigmetCancellation"]["values"] == True:
-            return {
-                    "internationalSigmetPhenomenonGroup": {
-                            "enable": False,                                      
-                    }
-            }
-        else:
-            return {
-                    "internationalSigmetPhenomenonGroup": {
-                            "enable": True,                                      
-                    }
-            }            
-
-    ###CONTROLLING SERIES NAMES FOR INTERNATIONAL SIGMET BASED ON ORIGINATING OFFICE(MWO)###
-    if triggerIdentifiers is None or "internationalSigmetOffice" in triggerIdentifiers:
-        if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
-            return {
-                  "internationalSigmetSequence": {
-                            "choices": ["ALFA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT", "GOLF", "HOTEL", "INDIA", "JULIETT", "KILO", "LIMA", "MIKE"]                                
-                  },
-                  "internationalSigmetFIR": {
-                            "choices": ['KZWY','KZMA','KZHU','TZJS','KZAK']                                
-                  }                             
-            }
-        elif "PAWU" in mutableProperties["internationalSigmetOffice"]["values"]:
-            return {
-                  "internationalSigmetSequence": {
-                            "choices": ["INDIA", "JULIETT", "KILO", "LIMA", "MIKE", "NOVEMBER", "OSCAR", "PAPA", "QUEBEC"]                                
-                  },
-                  "internationalSigmetFIR": {
-                            "choices": ['PAZA'],
-                            "enable": False,                                
-                  }                              
-            }
-        else:
-            return {
-                  "internationalSigmetSequence": {
-                            "choices": ["NOVEMBER", "OSCAR", "PAPA", "QUEBEC", "ROMEO", "SIERRA", "TANGO", "UNIFORM", "VICTOR", "WHISKEY", "XRAY", "YANKEE", "ZULU"]                                
-                  },
-                  "internationalSigmetFIR": {
-                            "choices": ['KZAK'],
-                            "enable": False,                                
-                  }                            
-            }  
-            
-    ###CONTROLLING LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
-    if triggerIdentifiers is None or "internationalSigmetVALayersSpinner" in triggerIdentifiers:
-        if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
-            return {
-                    "internationalSigmetVALayer3": {
-                          "enable": False
-                    },
-                    "internationalSigmetVALayer2": {
-                          "enable": False
-                    },
-                    "internationalSigmetVALayer1": {
-                          "enable": True
-                    },    
-            }                      
-        elif mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 2:
-            return {
-                    "internationalSigmetVALayer3": {
-                              "enable": False                                
-                    },
-                    "internationalSigmetVALayer2": {
-                              "enable": True                                
-                    },
-                    "internationalSigmetVALayer1": {
-                              "enable": True                                
-                    },
-            }
-        else:
-            return {
-                    "internationalSigmetVALayer3": {
-                              "enable": True                                
-                    },
-                    "internationalSigmetVALayer2": {
-                              "enable": True                                
-                    },
-                    "internationalSigmetVALayer1": {
-                              "enable": True                                
-                    },                                                    
-            }
             
     ###AIRMET INTERDEPENDECIES###
     if triggerIdentifiers is None or "airmetOffice" in triggerIdentifiers:

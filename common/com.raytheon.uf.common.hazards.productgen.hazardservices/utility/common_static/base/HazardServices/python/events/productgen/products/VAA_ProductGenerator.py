@@ -6,6 +6,7 @@ import math
 import HydroGenerator
 import shapely, time, datetime
 import AviationUtils
+import VolcanoMetaData
 
 
 class Product(HydroGenerator.Product):
@@ -104,11 +105,11 @@ class Product(HydroGenerator.Product):
         else:
             self._dialogInputMap = {}
         
-        parts = ['currentTime', 'startTime', 'endTime', 'forecastTime6',
-                 'forecastTime12', 'forecastTime18', 'forecastTime24',
-                 'dateStr', 'vaacOffice', 'productType', 'intensityTrend',
-                 'volcanoName', 'volcanoNumber', 'volcanoLatLon', 'volcanoSubregion',
-                 'volcanoElevation', 'advisoryNumber', 'informationSource',
+        parts = ['currentTime', 'startTime', 'endTime',
+                 'forecastTime6', 'forecastTime12', 'forecastTime18', 'forecastTime24',
+                 'dateStr', 'vaacOffice', 'productType', 'volcanoName',
+                 'volcanoHeader', 'volcanoHeaderNumber', 'volcanoNumber', 'volcanoLatLon',
+                 'volcanoSubregion', 'volcanoElevation', 'advisoryNumber', 'informationSource',
                  'volcanoStatus', 'eruptionDetails', 'numLayers', 'layer1Location',
                  'layer2Location', 'layer3Location', 'layer1Forecast6',
                  'layer1Forecast12', 'layer1Forecast18', 'layer1Forecast24',
@@ -143,7 +144,20 @@ class Product(HydroGenerator.Product):
         
         productDict['eventDicts'] = eventDicts
         productDict['productID'] = 'VAA'
-        productDict['productName'] = 'VAA' 
+        productDict['productName'] = 'VAA'
+        
+        resultDict = {
+                      'VAA': [
+                          {
+                           'text': 'This is my VAA',
+                           'label': 'Legacy VAA'
+                           },
+                          {
+                           'text': 'This is my XML',
+                           'label': 'XML'
+                           }                                     
+                      ]
+        } 
 
         return [productDict], self._inputHazardEvents
     
@@ -196,17 +210,21 @@ class Product(HydroGenerator.Product):
         return 'ANCHORAGE'
     
     def productType(self, hazardEvent):
-        return hazardEvent.get('volcanoAction')   
-    
-    def intensityTrend(self, hazardEvent):
-        intensityStrDict = {'No Change': None, 'Intensifying': ' INTSF.', 'Weakening': ' WKN.'}
-        
-        return intensityStrDict[hazardEvent.get('volcanoIntensity')]                
+        return hazardEvent.get('volcanoAction')                 
     
     def volcanoName(self, hazardEvent):
         volcanoName = hazardEvent.get('volcanoName')
         self._volcanoName = volcanoName
         return volcanoName
+    
+    def volcanoHeader(self, hazardEvent):
+        return hazardEvent.get('volcanoNewHeader')
+    
+    def volcanoHeaderNumber(self, hazardEvent):
+        if hazardEvent.get('volcanoNewHeader') is False:
+            return 'FVAK21'
+        else:
+            return hazardEvent.get('volcanoNewHeaderNumber')
     
     def volcanoNumber(self, hazardEvent):
         volcanoNumber = self._volcanoDict[self._volcanoName][0]
@@ -248,29 +266,31 @@ class Product(HydroGenerator.Product):
         import json
 
         currentYear = datetime.datetime.today().strftime('%Y')
-        
         vaaNumberDict = {}
         
-        #if file already exists
-        if os.path.isfile('/scratch/vaaNumber.txt'):
-            with open('/scratch/vaaNumber.txt') as openFile:
-                vaaNumberDict = json.load(openFile)  
-            year = vaaNumberDict['year']
-            #if not same year, reset and set number to one
-            if year != currentYear:
-                advisoryNumber = 1
-            #if same year
-            else:
-                #check to see if volcano is in dict
-                if self._volcanoName in vaaNumberDict:
-                    #if it's in dict iterate by one
-                    advisoryNumber = vaaNumberDict[self._volcanoName] + 1
-                #if it's not in dict set to one
-                else:
-                    advisoryNumber = 1
+        if hazardEvent.get("volcanoChangeAdvisoryNumber") is True:
+            advisoryNumber = hazardEvent.get('volcanoNewAdvisoryNumber')
         else:
-            advisoryNumber = 1
-        
+            #if file already exists
+            if os.path.isfile('/scratch/vaaNumber.txt'):
+                with open('/scratch/vaaNumber.txt') as openFile:
+                    vaaNumberDict = json.load(openFile)  
+                year = vaaNumberDict['year']
+                #if not same year, reset and set number to one
+                if year != currentYear:
+                    advisoryNumber = 1
+                #if same year
+                else:
+                    #check to see if volcano is in dict
+                    if self._volcanoName in vaaNumberDict:
+                        #if it's in dict iterate by one
+                        advisoryNumber = vaaNumberDict[self._volcanoName] + 1
+                    #if it's not in dict set to one
+                    else:
+                        advisoryNumber = 1
+            else:
+                advisoryNumber = 1            
+
         vaaNumberDict['year'] = currentYear    
         vaaNumberDict[self._volcanoName] = advisoryNumber
             
@@ -288,10 +308,7 @@ class Product(HydroGenerator.Product):
         return advisoryNumber
     
     def informationSource(self, hazardEvent):
-        informationSourceDict = {'mt-sat': 'MT-SAT', 'goes': 'GOES', 'poes': 'POES',
-                         'avo': 'AVO', 'kvert': 'KVERT', 'pilot': 'PILOT REPORT',
-                         'radar': 'RADAR', 'ship': 'SHIP REPORT', 'webcam': 'AVO WEBCAM'}
-        
+        informationSourceDict = VolcanoMetaData.VolcanoMetaData().volcanoIndicatorsDict()
         informationSourceList = hazardEvent.get('volcanoInfoSource')
         
         if not informationSourceList:
@@ -316,12 +333,12 @@ class Product(HydroGenerator.Product):
     def layer1Location(self, hazardEvent):
         layer1Location = ''
         
-        if hazardEvent.get("volcanoLayersSpinner") == 0:
+        if (hazardEvent.get("volcanoLayersSpinner") == 0) and (hazardEvent.get('volcanoAction') != 'Initial Eruption'):
             layer1Location = layer1Location + 'VA NOT IDENTIFIABLE FROM SATELLITE'
             self._visualFeatureGeomDict = None
         else:
             self._visualFeatureGeomDict = self.createVisualFeatureGeomDict(hazardEvent)
-            self._latLonStatementDict = self.createLatLonStatementDict(self._visualFeatureGeomDict)
+            self._latLonStatementDict = self.createLatLonStatementDict(self._visualFeatureGeomDict,hazardEvent)
             
             for key, value in self._visualFeatureGeomDict.iteritems():
                 if "basePreview" in key:
@@ -534,7 +551,10 @@ class Product(HydroGenerator.Product):
         return hazardEvent.get('volcanoConfidence')
     
     def remarks(self, hazardEvent):
-        return hazardEvent.get('volcanoRemarks')
+        if hazardEvent.get('volcanoRemarks') is None:
+            return ''
+        else:
+            return hazardEvent.get('volcanoRemarks')
     
     def nextAdvisory(self, hazardEvent):
         return hazardEvent.get('volcanoNextAdvisory')
@@ -543,16 +563,20 @@ class Product(HydroGenerator.Product):
         return hazardEvent.get('volcanoForecasterInitials')
 
 ######################HELPER METHODS ###################################
-    def createLatLonStatementDict(self, visualFeatureGeomDict):
+    def createLatLonStatementDict(self, visualFeatureGeomDict,hazardEvent):
         latLonStatementDict = {}
         
         for key, value in self._visualFeatureGeomDict.iteritems():
-            latLonStatement = self.createLatLonStatement(value)
+            latLonStatement = self.createLatLonStatement(value,hazardEvent)
             latLonStatementDict[key] = latLonStatement
         
         return latLonStatementDict
     
-    def createLatLonStatement(self, vertices):
+    def createLatLonStatement(self, vertices, hazardEvent):
+        if len(vertices) > 8:
+            newPoly = AviationUtils.AviationUtils()._reducePolygon(hazardEvent,vertices, None, 8)
+            vertices = shapely.geometry.base.dump_coords(newPoly)
+            
         newVerticesList = []
         locationList = []
         for vertex in vertices:

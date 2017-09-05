@@ -13,9 +13,7 @@ import GeometryFactory
 from VisualFeatures import VisualFeatures
 import AviationUtils
 import AdvancedGeometry
-
-######
-TABLEFILE = '/home/nathan.hardin/Desktop/snap.tbl'
+from VisualFeatures import VisualFeatures
 
 class MetaData(MetaData_AIRMET_SIGMET.MetaData):
     
@@ -24,11 +22,13 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         self.AAWUinitialize(hazardEvent, metaDict)
         sys.stderr.writelines(['Calling Strong Surface Wind', '\n'])
         
+        hazardEvent.setVisualFeatures(VisualFeatures([]))
+        
         self._geomType = AviationUtils.AviationUtils().getGeometryType(hazardEvent)
         hazardEvent.set('originalGeomType', self._geomType)
         
         trigger = 'generation'
-        boundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,self._geomType,TABLEFILE,[],trigger)        
+        boundingStatement = AviationUtils.AviationUtils().boundingStatement(hazardEvent,self._geomType,[],trigger)        
                          
         self.flush()
         
@@ -44,9 +44,6 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
     
 ## # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
-    
     AMChanges = MetaData_AIRMET_SIGMET.applyInterdependencies(triggerIdentifiers, mutableProperties)
-    sys.stderr.writelines( ['Hello World [Strong Surface Wind] !\n'])
-                    
-    sys.stderr.writelines(['AMChanges: ', str(AMChanges), '\n'])
+    
     return AMChanges                              

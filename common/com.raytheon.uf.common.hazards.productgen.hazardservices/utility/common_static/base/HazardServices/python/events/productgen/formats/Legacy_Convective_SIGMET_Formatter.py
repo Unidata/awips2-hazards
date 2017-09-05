@@ -6,49 +6,51 @@ from com.raytheon.uf.common.hazards.productgen import ProductUtils
 import Legacy_Hydro_Formatter
 from collections import OrderedDict
 import Domains
+import AviationUtils
 
-OUTPUTDIR = '/scratch/convectiveSigmetTesting'
+OUTPUTDIR = AviationUtils.AviationUtils().outputConvectiveSigmetFilePath()
 
-
-# ZCZC MKCSIGE ALL 261755
-# WSUS31 KKCI 261755
-# SIGE /n/x1eMKCE WST
-# MKCE WST 261755
-# CONVECTIVE SIGMET 1E
-# VALID UNTIL 1955Z
-# NC 
-# FROM 20SSE RDU
-# ISOL SEV D40 NM TS MOV FROM 11010KT. TOPS ABV FL450.
-# HAIL TO 1 IN...WIND GUSTS TO 50 KTS POSS.
-# 
-# NNNN
-# 
-# ZCZC MKCSIGC ALL 261755
-# WSUS32 KKCI 261755
-# SIGC /n/x1eMKCC WST
-# MKCC WST 261755
-# CONVECTIVE SIGMET 06C
-# VALID UNTIL 1955Z
-# SD ND 
-# FROM 50S MOT-40WSW DPR-40SSE ABR-60SE GFK-50S MOT
-# INTSF AREA EMBD TS MOV FROM 05010KT. TOPS TO FL420.
-# 
-# CONVECTIVE SIGMET 07C
-# VALID UNTIL 1955Z
-# KS OK 
-# FROM 40S SLN-20WSW OKC
-# LINE SEV 20 NM WIDE TS MOV FROM 35030KT. TOPS ABV FL450.
-# HAIL TO 1 IN...WIND GUSTS TO 50 KTS POSS.
-# 
-# NNNN
-# 
-# ZCZC MKCSIGW ALL 261755
-# WSUS33 KKCI 261755
-# SIGW /n/x1eMKCW WST
-# MKCW WST 261755
-# CONVECTIVE SIGMET...NONE
-# 
-# NNNN
+'''
+ZCZC MKCSIGE ALL 261755
+WSUS31 KKCI 261755
+SIGE /n/x1eMKCE WST
+MKCE WST 261755
+CONVECTIVE SIGMET 1E
+VALID UNTIL 1955Z
+NC 
+FROM 20SSE RDU
+ISOL SEV D40 NM TS MOV FROM 11010KT. TOPS ABV FL450.
+HAIL TO 1 IN...WIND GUSTS TO 50 KTS POSS.
+ 
+NNNN
+ 
+ZCZC MKCSIGC ALL 261755
+WSUS32 KKCI 261755
+SIGC /n/x1eMKCC WST
+MKCC WST 261755
+CONVECTIVE SIGMET 06C
+VALID UNTIL 1955Z
+SD ND 
+FROM 50S MOT-40WSW DPR-40SSE ABR-60SE GFK-50S MOT
+INTSF AREA EMBD TS MOV FROM 05010KT. TOPS TO FL420.
+ 
+CONVECTIVE SIGMET 07C
+VALID UNTIL 1955Z
+KS OK 
+FROM 40S SLN-20WSW OKC
+LINE SEV 20 NM WIDE TS MOV FROM 35030KT. TOPS ABV FL450.
+HAIL TO 1 IN...WIND GUSTS TO 50 KTS POSS.
+ 
+NNNN
+ 
+ZCZC MKCSIGW ALL 261755
+WSUS33 KKCI 261755
+SIGW /n/x1eMKCW WST
+MKCW WST 261755
+CONVECTIVE SIGMET...NONE
+ 
+NNNN
+'''
 
 class Format(Legacy_Hydro_Formatter.Format):
 
@@ -85,7 +87,7 @@ class Format(Legacy_Hydro_Formatter.Format):
             self._issueFlag = eventDict.get('issueFlag',False)
             self._status = eventDict.get('status',False)
             self._formatConvectiveSigmet(eventDict)
-            self._fcst = self._preProcessProduct('', domains)
+            self._fcst = self._preProcessProduct('', domains, eventDict)
             self._fcst = str.upper(self._fcst)
             self._fcstList[eventDict['sigmetNumber']+eventDict['domain']] = self._fcst
             self.flush()
@@ -251,7 +253,7 @@ class Format(Legacy_Hydro_Formatter.Format):
     
         return    
             
-    def _preProcessProduct(self,fcst,domains):
+    def _preProcessProduct(self,fcst,domains, eventDict):
         for domain in domains:
             if domain.domainName() == self._convectiveSigmetDomain:
                 self._convectiveSigmetDomainStr = domain.abbrev()
@@ -265,7 +267,27 @@ class Format(Legacy_Hydro_Formatter.Format):
         
         if len(self._convectiveSigmetAdditionalHazardsStr):
             fcst = '%s\n%s' % (fcst, self._convectiveSigmetAdditionalHazardsStr)
+            
+        fcst = self._createOutlook(fcst,eventDict)
         
         fcst = fcst.replace("_", " ")       
         
+        return fcst
+    
+    def _createOutlook(self,fcst,eventDict):
+        eventDictParts = eventDict.get('parts')
+        numOutlooks = eventDictParts.get('numOutlooks')
+        
+        fcst = fcst + '\n\n' + 'OUTLOOK VALID ' + eventDictParts.get('outlookStartTime') + '-' + eventDictParts.get('outlookEndTime') + '\n'
+        fcst = fcst + 'AREA 1' + '...' + eventDictParts.get('outlook1BoundingStatement') + '\n'
+        fcst = fcst + eventDictParts.get('outlook1Likelihood') + ' ' + eventDictParts.get('outlookReferral')
+        
+        if numOutlooks > 1:
+            fcst = fcst + '\n\n'
+            fcst = fcst + 'AREA 2' + '...' + eventDictParts.get('outlook2BoundingStatement') + '\n'
+            fcst = fcst + eventDictParts.get('outlook2Likelihood') + ' ' + eventDictParts.get('outlookReferral')
+            if numOutlooks == 3:
+                fcst = fcst + '\n\n'
+                fcst = fcst + 'AREA 3' + '...' + eventDictParts.get('outlook3BoundingStatement') + '\n'
+                fcst = fcst + eventDictParts.get('outlook3Likelihood') + ' ' + eventDictParts.get('outlookReferral')                            
         return fcst

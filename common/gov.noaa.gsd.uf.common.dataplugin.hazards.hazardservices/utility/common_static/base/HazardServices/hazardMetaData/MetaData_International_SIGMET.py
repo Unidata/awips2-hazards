@@ -12,10 +12,9 @@ from EventSet import EventSet
 import GeometryFactory
 from VisualFeatures import VisualFeatures
 import AviationUtils
+import VolcanoMetaData
 import AdvancedGeometry
-
-######
-TABLEFILE = '/home/nathan.hardin/Desktop/volcanoes.csv'
+from VisualFeatures import VisualFeatures
 
 class MetaData(MetaData_AIRMET_SIGMET.MetaData):
     
@@ -24,10 +23,12 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
         self.AAWUinitialize(hazardEvent, metaDict)
         sys.stderr.writelines(['Calling SIGMET.International', '\n'])
         
+        hazardEvent.setVisualFeatures(VisualFeatures([]))
+        
         self._geomType = AviationUtils.AviationUtils().getGeometryType(hazardEvent)
         hazardEvent.set('originalGeomType', self._geomType)
         
-        volcanoDict = AviationUtils.AviationUtils().createVolcanoDict()
+        volcanoDict = VolcanoMetaData.VolcanoMetaData().getVolcanoDict()
                          
         self.flush()
         
@@ -43,11 +44,6 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
     
 ## # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
-    
     AMChanges = MetaData_AIRMET_SIGMET.applyInterdependencies(triggerIdentifiers, mutableProperties)
-    
-    import sys
-    sys.stderr.writelines( ['Hello World [SIGMET] !\n'])
-                    
-    sys.stderr.writelines(['AMChanges: ', str(AMChanges), '\n'])
+
     return AMChanges                              

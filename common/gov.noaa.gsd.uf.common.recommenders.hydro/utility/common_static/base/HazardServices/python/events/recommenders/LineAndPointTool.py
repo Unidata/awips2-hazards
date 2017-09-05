@@ -16,9 +16,6 @@ import Domains
 import AviationUtils
 import AdvancedGeometry
 
-######
-TABLEFILE = '/home/nathan.hardin/Desktop/snap.tbl'
-
 class Recommender(RecommenderTemplate.Recommender):
     
     def __init__(self):
@@ -151,7 +148,7 @@ class Recommender(RecommenderTemplate.Recommender):
                         if any(isinstance(i, list) for i in vertices):
                             vertices = vertices[0]
                         convectiveSigmetDomain = AviationUtils.AviationUtils().selectDomain(event,vertices,self._originalGeomType,'modification')
-                        boundingStatement = AviationUtils.AviationUtils().boundingStatement(event,self._originalGeomType,TABLEFILE,vertices,'modification')
+                        boundingStatement = AviationUtils.AviationUtils().boundingStatement(event,self._originalGeomType,vertices,'modification')
                             
                         if self._originalGeomType != 'Polygon':
                             poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
