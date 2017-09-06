@@ -156,7 +156,7 @@ class Recommender(RecommenderTemplate.Recommender):
         LogUtils.logMessage('Finnished ', 'getCurrentEvent',' Took Seconds', time.time()-st)
         st = time.time()
             
-        self.currentTime = datetime.datetime.utcfromtimestamp(long(sessionAttributes["currentTime"])/1000)
+        self.currentTime = sessionAttributes["currentTime"]
         
         dlt = sessionAttributes.get("dataLayerTimes", [])
         
@@ -605,7 +605,16 @@ class Recommender(RecommenderTemplate.Recommender):
             
         return identifiersOfEventsToSaveToDatabase
             
-            
+    
+    def doubleCheckEnded(self, currentEventsList, recommendedEventsDict):
+        recoverAutomatedList = []
+        for evt in currentEventsList:
+            if evt.getStatus() in ['ENDED', 'ENDING', 'ELAPSED']:
+                objectID = evt.get('objectID')
+                if objectID in recommendedEventsDict.keys():
+                   recoverAutomatedList.append(int(objectID))
+        return recoverAutomatedList
+    
 
     # Create an event set of new hazard events to be merged, together with
     # existing events that are to be elapsed. Return a tuple of three elements,
@@ -620,7 +629,7 @@ class Recommender(RecommenderTemplate.Recommender):
         manualEventGeomsList = []
         mergedEvents = EventSet(None)
 
-        currentTimeMS = int(self.currentTime.strftime('%s'))*1000
+        currentTimeMS = self.currentTime
         mergedEvents.addAttribute('currentTime', currentTimeMS)
         mergedEvents.addAttribute('trigger', 'autoUpdate')
         
@@ -679,9 +688,13 @@ class Recommender(RecommenderTemplate.Recommender):
         # to the history list.
         identifiersOfEventsToSaveToHistory = []
         
+        recoverAutomatedList = self.doubleCheckEnded(currentEventsList, recommendedEventsDict)
+        makeNewObjectsIDList = recommendedObjectIDsList+recoverAutomatedList
+        
         ### Loop through remaining/unmatched recommendedEvents
         ### if recommended geometry overlaps an existing *manual* geometry
         ### ignore it. 
+#        for recID in makeNewObjectsIDList:
         for recID in recommendedObjectIDsList:
             recommendedValues = recommendedEventsDict[recID]
             recommendedEvent = None

@@ -135,6 +135,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                      session recommender manager where they belong.
  *                                      Also added support for executing recommenders
  *                                      due to hazard event selection changes.
+ * Aug 15, 2017   37426    Chris.Golden Added ability for fine-grained control of
+ *                                      setOrigin (per hazard event in result event set).
  * </pre>
  * 
  * @author Chris.Golden
@@ -678,11 +680,37 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
 
             /*
              * Determine whether or not the events should have their user name,
-             * workstation, and source set. This defaults to true.
+             * workstation, and source set. This defaults to true. A boolean may
+             * be provided, meaning that all events will have their origin set
+             * (or none), or a map of hazard event identifiers to booleans may
+             * be given instead, allowing a more fine-grained approach.
              */
-            boolean setOrigin = (Boolean.FALSE
-                    .equals(events
-                            .getAttribute(HazardConstants.RECOMMENDER_RESULT_SET_ORIGIN)) == false);
+            Set<String> eventIdentifiersNeedingOriginSet = new HashSet<>(
+                    events.size(), 1.0f);
+            Serializable setOriginObj = events
+                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SET_ORIGIN);
+            if (Boolean.FALSE.equals(setOriginObj) == false) {
+                for (IEvent event : events) {
+                    if (event instanceof IHazardEvent) {
+                        String eventIdentifier = ((IHazardEvent) event)
+                                .getEventID();
+                        if (eventIdentifier != null) {
+                            eventIdentifiersNeedingOriginSet
+                                    .add(((IHazardEvent) event).getEventID());
+                        }
+                    }
+                }
+                if (setOriginObj instanceof Map<?, ?>) {
+                    Map<?, ?> setOriginFlagsForEventIdentifiers = (Map<?, ?>) setOriginObj;
+                    for (Map.Entry<?, ?> entry : setOriginFlagsForEventIdentifiers
+                            .entrySet()) {
+                        if (Boolean.FALSE.equals(entry.getValue())) {
+                            eventIdentifiersNeedingOriginSet.remove(entry
+                                    .getKey());
+                        }
+                    }
+                }
+            }
 
             /*
              * Determine whether or not all hazard events that are brand new
@@ -808,13 +836,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
 
                     /*
                      * Add the hazard area for the event, and if the recommender
-                     * wants the origin set, do so now.
+                     * wants the origin set for this particular hazard event, do
+                     * so now.
                      */
                     Map<String, String> ugcHatchingAlgorithms = eventManager
                             .buildInitialHazardAreas(hazardEvent);
                     hazardEvent.addHazardAttribute(HAZARD_AREA,
                             (Serializable) ugcHatchingAlgorithms);
-                    if (setOrigin) {
+                    if (isNew
+                            || eventIdentifiersNeedingOriginSet
+                                    .contains(hazardEvent.getEventID())) {
                         hazardEvent.setUserName(LocalizationManager
                                 .getInstance().getCurrentUser());
                         hazardEvent.setWorkStation(VizApp.getHostName());

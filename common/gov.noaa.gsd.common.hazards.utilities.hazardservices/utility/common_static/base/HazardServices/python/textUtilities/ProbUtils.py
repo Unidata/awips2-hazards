@@ -205,9 +205,10 @@ class ProbUtils(object):
         probTrend = [entry.get('y') for entry in colorsList]
         print '\t[PU]: probTrend', probTrend
 
-        probTrendTimeInterval = event.get('convectiveProbabilityTrendIncrement', 5)
+        probTrendTimeInterval = int(event.get('convectiveProbabilityTrendIncrement', 5))
+        
 
-        print '\t[PU]: probTrendTimeInterval', probTrendTimeInterval
+        print '\t[PU]: probTrendTimeInterval', probTrendTimeInterval, event.get('convectiveProbabilityTrendIncrement'), type(event.get('convectiveProbabilityTrendIncrement'))
 
         ### Add 1 to duration to get "inclusive" 
         probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
@@ -694,6 +695,7 @@ class ProbUtils(object):
             
         spdStats = self.weightedAvgAndStdDevSPD(spdList)
         meanSpd = self.convertMsecToKts(spdStats.get('weightedAverage'))
+        print 'PU[1] - spdStats.get(\'weightedAverage\'), meanSpd', spdStats.get('weightedAverage'), meanSpd
         stdSpd = self.convertMsecToKts(spdStats.get('stdDev'))
         dirStats = self.weightedAvgAndStdDevDIR(dirList)
         meanDir = dirStats.get('weightedAverage')
@@ -743,6 +745,7 @@ class ProbUtils(object):
         spdList = np.array(xList)
         weights = range(1,len(spdList)+1)
         weightedAvg = np.average(spdList, weights=weights)
+        print 'PU[0] - spdList, weights, weightedAvg', spdList, weights, weightedAvg
         weightedStd = np.sqrt(np.average((spdList-weightedAvg)**2, weights=weights))
         return {'weightedAverage':weightedAvg, 'stdDev': weightedStd}
     
@@ -931,7 +934,7 @@ class ProbUtils(object):
             if i < len(timeIntervals)-1:
                 endSecs = timeIntervals[i+1] - secs
             else:
-                endSecs = self.timeStep()
+                endSecs = self.timeStep(101)
             et = self.convertFeatureTime(startTime_ms, secs+endSecs)
             intervalTimes.append((st, et))                    
                     
@@ -949,11 +952,16 @@ class ProbUtils(object):
         @param gglPoly: Shapely polygon version of the shape using Google coordinates. 
         @return Interval shape in advanced geometry form.
         '''
+        presetResults = {'dirVal':dirVal, 'speedVal': speedVal, 'spdUVal':spdUVal, 'dirUVal':dirUVal}
+        presetResultsOLD = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
+        
+        print 'PU[3] - presetResultsOLD, presetResults', presetResultsOLD, presetResults
+        
         if timeDirection == 'upstream':
-            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
+#            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
             dirValLast = dirVal
         else:
-            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)            
+#            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)            
             dirValLast = presetResults['dirVal']
             if self.prevDirVal:
                 dirValLast = self.prevDirVal
@@ -1003,7 +1011,7 @@ class ProbUtils(object):
         ### BugAlert: this 1.25x multiplier is an empirical value suggested by Greg
         ### after playing with the distance tool.  Need to find
         ### source of 80% slowdown of downstream polygons.
-        speedVal = float(speedVal) * 1.25
+        speedVal = float(speedVal) * 1.2136  # (calculated via testing)
 #        speedVal = float(speedVal)
         dirVal = float(dirVal)
         dis = secs * speedVal * 0.514444444
@@ -1012,6 +1020,9 @@ class ProbUtils(object):
         yDis = dis * math.sin(math.radians(270.0 - dirVal))
         xDis2 = secs * spdUVal * 0.514444444
         yDis2 = dis * math.tan(math.radians(dirUVal))
+        
+        print '\n\n PU[4] - dis, xDis, yDis', dis, xDis, yDis, '\n'
+        
         threat = sa.translate(threat,xDis,yDis)
         rot = dirValLast - dirVal
         threat = sa.rotate(threat,rot,origin='centroid')
@@ -1137,9 +1148,16 @@ class ProbUtils(object):
             'convectiveObjectSpdKtsUnc': int(2.16067*1.94384),
             }
 
-    def timeStep(self):
+    def timeStep(self, index = 0):
         # Time step for forecast polygons and track points
-        return 60 # secs
+        # input index is the index of minutes
+        # return the total of seconds...
+        if (index <= 60):
+            return 60
+        elif (index <= 120):
+            return 5*60
+        else:
+            return 10*60
     
     # TO DO:  The Recommender should access HazardTypes.py for this 
     #   information

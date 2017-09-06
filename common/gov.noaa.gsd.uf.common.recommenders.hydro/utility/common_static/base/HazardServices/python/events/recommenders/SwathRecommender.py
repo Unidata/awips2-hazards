@@ -201,7 +201,10 @@ class Recommender(RecommenderTemplate.Recommender):
             self.attributeIdentifiers = []
 
         resultEventSet = EventSetFactory.createEventSet(None)
+        self.setOriginDict = {}
+        resultEventSet.addAttribute('setOrigin', self.setOriginDict)
         self.saveToDatabase = True
+        
         
         # IF there are any editable objects, we do not want to set the selected time ahead for
         #   a timeInterval update
@@ -232,7 +235,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
                 print 'SR: ***Selection state triggered execution of Swath Recommender not yet implemented.***'
                 self.probUtils.setActivation(event)
-                resultEventSet.addAttribute('setOrigin', False)
+                self.setOriginDict[event.getEventID()] = False
                 continue
                         
             # Begin Graph Draw
@@ -251,7 +254,7 @@ class Recommender(RecommenderTemplate.Recommender):
             if origin == 'database':
                 self.setVisualFeatures(event)
                 resultEventSet.add(event)
-                resultEventSet.addAttribute("setOrigin", False)
+                self.setOriginDict[event.getEventID()] = False
                 self.saveToDatabase = False
                 continue
                        
@@ -580,35 +583,6 @@ class Recommender(RecommenderTemplate.Recommender):
         if 'geometryAutomated' in self.attributeIdentifiers:
             self.probUtils.setActivation(event)
             return True
-#             if not event.get('geometryAutomated'):  # Taking over the geometry
-#                 if event.get('automationLevel') in ['automated', 'attributesAndGeometry']:
-#                     # Adjust automationLevel
-#                     event.set('automationLevel', 'attributesOnly')
-#                     print "SR calling setActivation for geometryAutomated taking over geometry"
-#                     self.flush()
-#                     self.probUtils.setActivation(event)
-#                     return True 
-#             else:  # Returning to automation of geometry
-#                 if event.get('automationLevel') in ['attributesOnly', 'userOwned']:
-#                     event.set('automationLevel', 'attributesAndGeometry') 
-#                     print "SR calling setActivation for geometryAutomated returning to automated"
-#                     self.flush()
-#                     self.probUtils.setActivation(event)
-#                     return True
-                  
-        # Handle Select Semaphore
-#         if 'selectSemaphore' in self.attributeIdentifiers and len(self.attributeIdentifiers) == 1:
-#             print "SR selectSemaphore", event.get('selectSemaphore')
-#             self.flush()
-#             if event.get('selectSemaphore') is True:
-#                 print "SR calling setActivation for selectSemaphore"
-#                 self.flush()
-#                 self.probUtils.setActivation(event)
-#                 event.set('selectSemaphore', False)
-#                 resultEventSet.addAttribute('setOrigin', False)
-#                 return True
-#             else:
-#                 return False
                 
         # Get Convective Attributes from the MetaData. 
         # These should supercede and update the ones stored in the event
@@ -623,9 +597,6 @@ class Recommender(RecommenderTemplate.Recommender):
         newTriggerAttrs['duration'] = self.probUtils.getDurationMinutes(event)
         
         changedAttrs = []
-#        manualAttrs = event.get('manualAttributes', [])
-        #print "SR manualAttrs", manualAttrs
-        #self.flush()
         
         for t in triggerCheckList:
             newVal = newTriggerAttrs.get(t)
@@ -643,22 +614,6 @@ class Recommender(RecommenderTemplate.Recommender):
                     self.probUtils.updateApplicationDict({t:newVal})
 
                 
-#                 if t not in manualAttrs:
-#                     if t in ['convectiveObjectDir', 'convectiveObjectSpdKts',
-#                       'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
-#                         # IF not fully automated
-#                          if event.get('motionAutomated'):
-#                                  #event.get('automationLevel') in ['userOwned', 'attributesOnly', 'attributesAndGeometry']:
-#                               changedAttrs.append(t)
-#                               if t in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
-#                                 print "SR updateApplicationDict adjust for event modification", t
-#                                 self.flush()
-#                                 self.probUtils.updateApplicationDict({t:newVal})
-# 
-#                     else:
-#                          changedAttrs.append(t)
-#                          #print "SR Adding to manualAttrs2", t
-#                     #self.flush()
                 if t == 'duration':
                     graphProbs = self.probUtils.getGraphProbs(event, self.latestDataLayerTime)
                     # LogUtils.logMessage('[1]', graphProbs)
@@ -676,13 +631,6 @@ class Recommender(RecommenderTemplate.Recommender):
             if not event.get('convectiveProbTrendGraph'):
                 event.set('convectiveProbTrendGraph', event.get('preDraw_convectiveProbTrendGraph', []))
 
-#             # Update manual attributes
-#             if self.editableHazard and event.get('automationLevel') != 'userOwned':
-#                 manualAttrs = event.get('manualAttributes', [])  
-#                 manualAttrs += changedAttrs
-#                 event.set('manualAttributes', manualAttrs)
-#                 if event.get('automationLevel') == 'automated':
-#                     self.setAttributesAndGeometry(event)                                
             return True
         
         return False
@@ -837,6 +785,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     i += int((self.latestDataLayerTime - self.eventSt_ms) / 1000)
                 else:
                     i += timeStep
+                    timeStep = self.probUtils.timeStep(i/60)
         print "SR getIntervalPolys", timeDirection, timeIntervals
         self.flush()
         if timeIntervals:
@@ -1570,7 +1519,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
     def elapsedTimeLimit(self):
         # Number of milliseconds past the end time to elapse an object
-        return 60 * 60000  # 60 minutes
+        return 10 * 60000  # 60 minutes
 
     def maxPastPolygons(self):
         # Maximum number of past polygons to store

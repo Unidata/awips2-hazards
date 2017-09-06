@@ -58,8 +58,29 @@ Event-Driven Tools
          EventDrivenTools.append(cpEntry)  
 '''
 
-_CENTRAL_PROCESSOR = False 
+'''
+_CENTRAL_PROCESSOR = True 
+_RUNCR = False
 
 EventDrivenTools = []
 
+if _CENTRAL_PROCESSOR:
+    cpEntry =  { "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender"],
+                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
+    EventDrivenTools.append(cpEntry)
     
+    if _RUNCR:
+        cpEntryCR = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender"],
+                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
+        EventDrivenTools.append(cpEntryCR)
+else:
+#     cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+#                        "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
+     cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
+                        "triggerType": "DATA_LAYER_CHANGE"}
+     EventDrivenTools.append(cpEntry)
+'''
+
+_CENTRAL_PROCESSOR = False 
+
+EventDrivenTools = []    

@@ -1038,7 +1038,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                                 eventManager, this,
                                 SessionEventOriginModified.Element.USER_NAME,
                                 originator));
-                handleModification();
             }
             return true;
         }
@@ -1055,7 +1054,6 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                                 eventManager, this,
                                 SessionEventOriginModified.Element.WORKSTATION,
                                 originator));
-                handleModification();
             }
             return true;
         }
