@@ -9,10 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
-import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
-import gov.noaa.gsd.viz.widgets.MultiValueScale;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,6 +27,7 @@ import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.internal.gtk.OS;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
@@ -39,6 +36,10 @@ import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Widget;
 
 import com.google.common.collect.Range;
+
+import gov.noaa.gsd.viz.widgets.IMultiValueLinearControlListener;
+import gov.noaa.gsd.viz.widgets.MultiValueLinearControl;
+import gov.noaa.gsd.viz.widgets.MultiValueScale;
 
 /**
  * Description: Helper class for handling some of the grunt work of creating and
@@ -77,11 +78,16 @@ import com.google.common.collect.Range;
  *                                      one.
  * Feb 16, 2017  29138     Chris.Golden Fixed attempt to use component widget
  *                                      when the latter was disposed.
+ * Aug 25, 2017  37311     Chris.Golden Added code to fix problems with text
+ *                                      field typing in a spinner. The bugs
+ *                                      actually stem from SWT issues, not
+ *                                      the megawidget framework.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
+@SuppressWarnings("restriction")
 public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparable<T>> {
 
     // Protected Classes
@@ -200,7 +206,9 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
              * ongoing state changes occurred beforehand, notification should
              * occur.
              */
-            boolean notify = (!onlySendEndStateChanges || ((isLastForwardedStateRecorded() == false) && (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)));
+            boolean notify = (!onlySendEndStateChanges
+                    || ((isLastForwardedStateRecorded() == false)
+                            && (source == MultiValueLinearControl.ChangeSource.USER_GUI_INTERACTION_COMPLETE)));
 
             /*
              * Determine what state has changed and handle the updating of the
@@ -294,12 +302,12 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
     private final FocusListener spinnerFocusListener;
 
     /**
-     * Focus listener for all spinners.
+     * Key listener for all spinners.
      */
     private final KeyListener spinnerKeyListener;
 
     /**
-     * Focus listener for all spinners.
+     * Mouse listener for all spinners.
      */
     private final MouseListener spinnerMouseListener;
 
@@ -347,10 +355,12 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
         onlySendEndStateChanges = !specifier.isSendingEveryChange();
         if (onlySendEndStateChanges) {
             spinnerFocusListener = new FocusAdapter() {
+
                 @Override
                 public void focusLost(FocusEvent e) {
                     final Widget widget = e.widget;
                     Display.getCurrent().asyncExec(new Runnable() {
+
                         @Override
                         public void run() {
 
@@ -370,15 +380,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
                     });
                 }
             };
-            spinnerKeyListener = new KeyAdapter() {
-                @Override
-                public void keyReleased(KeyEvent e) {
-                    if (UiBuilder.isSpinnerValueChanger(e)) {
-                        changeEndingStatesUsingSpinnerValues();
-                    }
-                }
-            };
             spinnerMouseListener = new MouseAdapter() {
+
                 @Override
                 public void mouseUp(MouseEvent e) {
                     changeEndingStatesUsingSpinnerValues();
@@ -386,9 +389,66 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
             };
         } else {
             spinnerFocusListener = null;
-            spinnerKeyListener = null;
             spinnerMouseListener = null;
         }
+
+        /*
+         * Create a key listener that handles certain key presses differently to
+         * correct standard SWT spinner behavior, and that (if the megawidget is
+         * only sending end state change notifications) it treats up and down
+         * key releases as end state changes.
+         */
+        spinnerKeyListener = new KeyAdapter() {
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+
+                /*
+                 * If the spinner cannot hold negative values and does not
+                 * handle anything but integers, no preprocessing of the key
+                 * press is needed.
+                 */
+                Spinner spinner = (Spinner) e.widget;
+                if ((spinner.getMinimum() > -1) && (spinner.getDigits() == 0)) {
+                    return;
+                }
+
+                /*
+                 * Get the bounds of the selection with the text field within
+                 * the SWT spinner, and the text it is holding before any
+                 * character is inserted for this key press.
+                 */
+                int[] selectionStartIndex = new int[1];
+                int[] selectionEndIndex = new int[1];
+                OS.gtk_editable_get_selection_bounds(spinner.handle,
+                        selectionStartIndex, selectionEndIndex);
+                String text = spinner.getText();
+
+                /*
+                 * If the spinner handles fractional values, handle the key
+                 * press if it is a period (.), and if no handling is required,
+                 * then if the spinner handles negative values, handle the key
+                 * press if it is a hyphen (-).
+                 */
+                if (((spinner.getDigits() > 0) && handleKeyPressInSpinner(
+                        e.character, '.', spinner, text, selectionStartIndex[0],
+                        selectionEndIndex[0]))
+                        || ((spinner.getMinimum() < 0)
+                                && handleKeyPressInSpinner(e.character, '-',
+                                        spinner, text, selectionStartIndex[0],
+                                        selectionEndIndex[0]))) {
+                    e.doit = false;
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                if (onlySendEndStateChanges
+                        && UiBuilder.isSpinnerValueChanger(e)) {
+                    changeEndingStatesUsingSpinnerValues();
+                }
+            }
+        };
     }
 
     // Public Methods
@@ -484,9 +544,6 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
             digitWidthPixels = spinner.computeSize(SWT.DEFAULT, SWT.DEFAULT).x
                     - oneDigitSpinnerWidthPixels;
         }
-        int maxNumCharacters = Math.max(getDigitsForValue(minimumValue),
-                getDigitsForValue(maximumValue));
-        spinner.setTextLimit(maxNumCharacters);
         spinner.setMinimum(convertValueToSpinner(minimumValue));
         spinner.setMaximum(convertValueToSpinner(maximumValue));
         int incrementDelta = convertValueToSpinner(pageIncrementDelta);
@@ -499,8 +556,12 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
         /*
          * Place the spinner in the parent's grid.
          */
-        GridData gridData = new GridData((specifier.isHorizontalExpander()
-                || showScale ? SWT.FILL : SWT.LEFT), SWT.CENTER, true, false);
+        int maxNumCharacters = Math.max(getDigitsForValue(minimumValue),
+                getDigitsForValue(maximumValue));
+        GridData gridData = new GridData(
+                (specifier.isHorizontalExpander() || showScale ? SWT.FILL
+                        : SWT.LEFT),
+                SWT.CENTER, true, false);
         gridData.horizontalSpan = (labelsForStateIdentifiers
                 .get(stateIdentifier) == null ? 2 : 1);
         gridData.minimumWidth = oneDigitSpinnerWidthPixels
@@ -511,17 +572,16 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
          * If only ending state changes are to result in notifications, bind
          * spinner focus loss to trigger a notification if the value has changed
          * in such a way that the state change listener was not notified. Do the
-         * same for key up and mouse up events, so that when the user presses
-         * and holds a directional key (arrow up or down, etc.) to change the
-         * value, or presses and holds one of the spinner buttons with the
-         * mouse, the state change will result in a notification after the key
-         * or mouse is released.
+         * same for mouse up events, so that if the user presses and holds one
+         * of the spinner buttons with the mouse, the state change will result
+         * in a notification after the key or mouse is released. Regardless of
+         * the mode of the spinner, add the key listener.
          */
         if (onlySendEndStateChanges) {
             spinner.addFocusListener(spinnerFocusListener);
-            spinner.addKeyListener(spinnerKeyListener);
             spinner.addMouseListener(spinnerMouseListener);
         }
+        spinner.addKeyListener(spinnerKeyListener);
 
         /*
          * Bind the spinner selection event to trigger a change in the state,
@@ -589,7 +649,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
                 }
             }
             if (minimumInterval != null) {
-                scale.setMinimumDeltaBetweenConstrainedThumbs(convertValueToScale(minimumInterval));
+                scale.setMinimumDeltaBetweenConstrainedThumbs(
+                        convertValueToScale(minimumInterval));
             } else {
                 scale.setMinimumDeltaBetweenConstrainedThumbs(0L);
             }
@@ -637,8 +698,6 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
             T maxValue = holder.getMaximumValue(identifier);
             spinner.setMinimum(convertValueToSpinner(minValue));
             spinner.setMaximum(convertValueToSpinner(maxValue));
-            spinner.setTextLimit(Math.max(getDigitsForValue(minValue),
-                    getDigitsForValue(maxValue)));
             if (scale != null) {
                 scale.setAllowableConstrainedValueRange(j,
                         convertValueToScale(minValue),
@@ -651,8 +710,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
      * Synchronize component widgets to the current page increment delta.
      */
     public void synchronizeComponentWidgetsToPageIncrementDelta() {
-        int pageIncrementDelta = convertValueToSpinner(holder
-                .getPageIncrementDelta());
+        int pageIncrementDelta = convertValueToSpinner(
+                holder.getPageIncrementDelta());
         for (Spinner spinner : spinnersForStateIdentifiers.values()) {
             spinner.setPageIncrement(pageIncrementDelta);
         }
@@ -670,8 +729,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
         if (scale != null) {
             long[] scaleValues = new long[stateIdentifiers.size()];
             for (int j = 0; j < scaleValues.length; j++) {
-                scaleValues[j] = convertValueToScale(holder
-                        .getState(stateIdentifiers.get(j)));
+                scaleValues[j] = convertValueToScale(
+                        holder.getState(stateIdentifiers.get(j)));
             }
             scale.setConstrainedThumbValues(scaleValues);
         }
@@ -712,8 +771,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
             ControlComponentHelper helper) {
         panel.setEnabled(editable);
         for (Spinner spinner : spinnersForStateIdentifiers.values()) {
-            spinner.setBackground(helper.getBackgroundColor(editable, spinner,
-                    label));
+            spinner.setBackground(
+                    helper.getBackgroundColor(editable, spinner, label));
         }
     }
 
@@ -848,8 +907,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
         if (newValues.size() > 1) {
             boolean backwards = true;
             for (int j = 1; j < newValues.size(); j++) {
-                if (backwards
-                        && (newValues.get(j - 1).compareTo(newValues.get(j)) < 0)) {
+                if (backwards && (newValues.get(j - 1)
+                        .compareTo(newValues.get(j)) < 0)) {
                     backwards = false;
                     break;
                 }
@@ -925,8 +984,8 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
             List<String> identifiersOfChangedStates = new ArrayList<>(
                     stateIdentifiers.size());
             for (String identifier : stateIdentifiers) {
-                if (lastForwardedStatesForIdentifiers.get(identifier).equals(
-                        holder.getState(identifier)) == false) {
+                if (lastForwardedStatesForIdentifiers.get(identifier)
+                        .equals(holder.getState(identifier)) == false) {
                     identifiersOfChangedStates.add(identifier);
                 }
             }
@@ -935,5 +994,65 @@ public abstract class SpinnerAndScaleComponentHelper<T extends Number & Comparab
                 holder.notifyListener(identifiersOfChangedStates);
             }
         }
+    }
+
+    /**
+     * Handle the specified character key press within the specified spinner's
+     * text field, given the specified contents of said field, as well as the
+     * specified boundaries of any text selection.
+     * 
+     * @param character
+     *            Character entered by the key press.
+     * @param targetCharacter
+     *            Character being looked for; if not the same as
+     *            <code>character</code>, <code>false</code> will be returned.
+     * @param spinner
+     *            Spinner in which the key press occurred.
+     * @param text
+     *            Text string currently held by the spinner's text field.
+     * @param selectionStartIndex
+     *            Index of the start of any selection, or if the same as
+     *            <code>selectionEndIndex</code>, the position of the caret.
+     * @param selectionEndIndex
+     *            Index of the end of any selection.
+     * @return <code>true</code> if the key press has been handled and nothing
+     *         further should be done with it, <code>false</code> otherwise.
+     */
+    private boolean handleKeyPressInSpinner(char character,
+            char targetCharacter, Spinner spinner, String text,
+            int selectionStartIndex, int selectionEndIndex) {
+
+        /*
+         * Only attempt to handle the key press if it would generate the target
+         * character.
+         */
+        if (character == targetCharacter) {
+
+            /*
+             * Find the index of the existing target character, if one is
+             * already within the text. If not, no handling needs to be done.
+             */
+            int existingDecimalPlaceIndex = text.indexOf(targetCharacter);
+            if (existingDecimalPlaceIndex != -1) {
+
+                /*
+                 * If there is no selection, set the caret position to be just
+                 * after the existing character found above, and consider it
+                 * processed so that it is not inserted again. If there is a
+                 * selection and it does not contain the target character, also
+                 * consider it processed, as again no insertion is desired.
+                 */
+                if (selectionStartIndex == selectionEndIndex) {
+                    OS.gtk_editable_set_position(spinner.handle,
+                            existingDecimalPlaceIndex + 1);
+                    return true;
+                } else if (text
+                        .substring(selectionStartIndex, selectionEndIndex)
+                        .indexOf(targetCharacter) == -1) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
