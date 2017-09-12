@@ -215,19 +215,13 @@ class Recommender(RecommenderTemplate.Recommender):
             self.lastSelectedTime = self.selectedTime
                                     
             # Determine if we want to process this event or skip it
-            if not self.selectEventForProcessing(event, trigger, eventSetAttrs, resultEventSet):
+            if not self.selectEventForProcessing(event, trigger, origin, eventSetAttrs, resultEventSet):
                 continue
 
             # React to the change in selection state, if that is what
             # triggered this execution of the recommender.
-            #
-            # TODO: This should not continue; instead, selection
-            # state changes should set the activate, activateModify,
-            # etc. flags as appropriate.
-            #
             if trigger == 'hazardEventSelection':
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
-                print 'SR: ***Selection state triggered execution of Swath Recommender not yet implemented.***'
                 self.probUtils.setActivation(event)
                 self.setOriginDict[event.getEventID()] = False
                 continue
@@ -241,17 +235,6 @@ class Recommender(RecommenderTemplate.Recommender):
             self.initializeEvent(event)
             self.eventBookkeeping(event, origin)
             
-            
-            # Origin Database
-            #  From another machine: create Visual Features, do not save
-            # to database or set the origin.
-            if origin == 'database':
-                self.setVisualFeatures(event)
-                resultEventSet.add(event)
-                self.setOriginDict[event.getEventID()] = False
-                self.saveToDatabase = False
-                continue
-                       
             # Adjust Hazard Event Attributes
             
             if trigger == 'frameChange':
@@ -347,7 +330,7 @@ class Recommender(RecommenderTemplate.Recommender):
         print 'framesInfo', eventSetAttrs.get('framesInfo')
         self.flush()
                 
-    def selectEventForProcessing(self, event, trigger, eventSetAttrs, resultEventSet):
+    def selectEventForProcessing(self, event, trigger, origin, eventSetAttrs, resultEventSet):
         ''' 
         Return True if the event needs to be processed
         Otherwise return False
@@ -356,6 +339,11 @@ class Recommender(RecommenderTemplate.Recommender):
         # Make sure that already elapsed events are never processed.
         if event.getStatus() == "ELAPSED":
             return False  
+        
+        # Make sure that triggers resulting from database changes are never
+        # processed.
+        if origin == 'database':
+            return False
 
         # For event modification, visual feature change, or selection change, 
         #   we only want to process the events identified in the eventSetAttrs,

@@ -581,6 +581,12 @@ import net.engio.mbassy.listener.Handler;
  *                                      so that addition of an event, or changing its time range
  *                                      due to a time boundary change, does not cause the event to
  *                                      be marked as modified.
+ * Sep 11, 2017   29138    Chris.Golden Removed temporary code that prevented hazard events from
+ *                                      having their visual features saved to and restored from
+ *                                      the registry (because the serialization/deserialization
+ *                                      process would choke on the visual features until now;
+ *                                      changes made in 18-Hazard_Services that were merged into
+ *                                      this repo now allow visual features to be saved properly.)
  * </pre>
  * 
  * @author bsteffen
@@ -2879,14 +2885,6 @@ public class SessionEventManager
          */
         updateEventMetadata(oevent);
 
-        /*
-         * If this event was loaded from the database, it will not have any
-         * visual features; this may need to trigger a recommender.
-         */
-        if (originator == Originator.DATABASE) {
-            hazardVisualFeatureChanged(new SessionEventVisualFeaturesModified(
-                    this, oevent, Collections.<String> emptySet(), originator));
-        }
         oevent.setModifiedNotAllowedToChange(false);
         return oevent;
     }
@@ -5544,14 +5542,6 @@ public class SessionEventManager
     private HazardEvent createEventCopyToBePersisted(IHazardEvent event,
             boolean addToHistory, boolean justIssued) {
         HazardEvent dbEvent = dbManager.createEvent(event);
-
-        /*
-         * TODO: Visual features should not need to be removed, but they cause
-         * thus-far-impossible-to-diagnose SOAP errors if there are too many of
-         * them of too great a size and they are persisted. So for now, they are
-         * being stripped out.
-         */
-        dbEvent.setVisualFeatures(null);
 
         /*
          * Strip out attributes as per this hazard type's configuration.
