@@ -21,61 +21,89 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import java.util.List;
 
+import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
- * Notification that is sent when the generation of all products
- * for a particular request have been completed.
+ * Notification that is sent when the generation of all products for a
+ * particular request have been completed.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Feb 10, 2014 2890       bkowal     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Feb 10, 2014    2890    bkowal       Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method and
+ *                                      removed superfluous implementation
+ *                                      of interface.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
+public class ProductGenerationComplete implements ISessionNotification {
 
-public class ProductGenerationComplete implements IProductGenerationComplete {
-    private boolean issued;
-
-    private List<GeneratedProductList> generatedProducts;
+    // Private Variables
 
     /**
+     * Flag indicating whether or not the generation was in response to an
+     * issuance.
+     */
+    private boolean issued;
+
+    /**
+     * Generated products.
+     */
+    private List<GeneratedProductList> generatedProducts;
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
      * 
+     * @param issued
+     *            Flag indicating whether or not the generation was in response
+     *            to an issuance.
+     * @param generatedProducts
+     *            Generated products.
      */
     public ProductGenerationComplete(boolean issued,
             List<GeneratedProductList> generatedProducts) {
         this.issued = issued;
-        this.generatedProducts = generatedProducts;
+        this.generatedProducts = ImmutableList.copyOf(generatedProducts);
     }
 
-    /*
-     * (non-Javadoc)
+    // Public Methods
+
+    /**
+     * Determine whether or not the generation was in response to an issuance.
      * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete
-     * #isIssued()
+     * @return <code>true</code> if the generation was in response to an
+     *         issuance, <code>false</code> otherwise.
      */
-    @Override
     public boolean isIssued() {
-        return this.issued;
+        return issued;
     }
 
-    /*
-     * (non-Javadoc)
+    /**
+     * Get the generated products. Note that the returned list is not
+     * modifiable.
      * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete
-     * #getGeneratedProducts()
+     * @return Generated products.
      */
-    @Override
     public List<GeneratedProductList> getGeneratedProducts() {
         return this.generatedProducts;
+    }
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return IMergeable.getFailureResult();
     }
 }

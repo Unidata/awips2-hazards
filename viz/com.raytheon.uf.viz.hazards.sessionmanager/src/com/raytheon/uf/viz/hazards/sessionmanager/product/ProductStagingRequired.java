@@ -11,6 +11,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
  * Description: Notification indicating that product staging is required.
  * 
@@ -22,6 +25,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * ------------ ---------- ------------ --------------------------
  * Oct 08, 2014    4042    Chris.Golden Initial creation.
  * Feb 24, 2016   13929    Robert.Blum  Remove first part of staging dialog.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -63,5 +67,12 @@ public class ProductStagingRequired implements ISessionNotification {
      */
     public boolean isIssue() {
         return issue;
+    }
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification originalNotification,
+            ISessionNotification modifiedNotification) {
+        return IMergeable.getFailureResult();
     }
 }

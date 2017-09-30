@@ -50,6 +50,8 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["description"] = "Set Hazard Services wide configuration information for PHI Processing"
         metaDict["eventState"] = "Pending"
         
+        metaDict["getSpatialInfoNeeded"] = False
+        
         return metaDict
 
     def defineDialog(self, eventSet):

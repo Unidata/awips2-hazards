@@ -121,7 +121,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.TriggerType;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -304,6 +303,12 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Jun 01, 2017 23056      Chris.Golden Added code to find metadata megawidgets that
  *                                      always use their default values instead of
  *                                      any existing old values.
+ * Sep 27, 2017 38072      Chris.Golden Changed to use HazardConstants constant instead
+ *                                      of one defined elsewhere. Also changed the
+ *                                      metadata fetching process to ensure that a
+ *                                      hazard attribute change does not for exammple
+ *                                      trigger a metadata refresh and a recommender
+ *                                      run; it should do only one of the two.
  * </pre>
  * 
  * @author bsteffen
@@ -1049,8 +1054,6 @@ public class SessionConfigurationManager
         specifiersList = MegawidgetSpecifierManager.makeRawSpecifiersScrollable(
                 specifiersList, METADATA_GROUP_SPECIFIER_PARAMETERS);
 
-        Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
-                specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
         Set<String> overrideOldValuesMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_OVERRIDE_OLD_VALUES);
         Set<String> allMetadataKeys = getMegawidgetIdentifiers(specifiersList);
@@ -1060,10 +1063,25 @@ public class SessionConfigurationManager
         Set<String> affectingModifyFlagMetadataKeys = new HashSet<>(
                 Sets.difference(allMetadataKeys,
                         notAffectingModifyFlagMetadataKeys));
+
+        /*
+         * Get the refresh metadata triggering keys, the recommenders triggered
+         * for keys, and the edit rise crest fall triggering keys. Each of them
+         * are filtered to remove any metadata keys from the previous ones, so
+         * that for example an attribute change does not cause a metadata reload
+         * and also a recommender execution.
+         */
+        Set<String> refreshTriggeringMetadataKeys = getMegawidgetIdentifiersWithParameter(
+                specifiersList, HazardConstants.METADATA_RELOAD_TRIGGER);
         Map<String, String> recommendersTriggeredForMetadataKeys = getValuesForMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.RECOMMENDER_RUN_TRIGGER);
+        recommendersTriggeredForMetadataKeys.keySet()
+                .removeAll(refreshTriggeringMetadataKeys);
         Set<String> editRiseCrestFallMetadataKeys = getMegawidgetIdentifiersWithParameter(
                 specifiersList, HazardConstants.METADATA_EDIT_RISE_CREST_FALL);
+        editRiseCrestFallMetadataKeys.removeAll(refreshTriggeringMetadataKeys);
+        editRiseCrestFallMetadataKeys
+                .removeAll(recommendersTriggeredForMetadataKeys.keySet());
 
         try {
             return new HazardEventMetadata(
@@ -1820,8 +1838,8 @@ public class SessionConfigurationManager
     @Override
     public String getHazardCategory(IHazardEvent event) {
         if (HazardEventUtilities.isHazardTypeValid(event) == false) {
-            return (String) event.getHazardAttribute(
-                    ISessionEventManager.ATTR_HAZARD_CATEGORY);
+            return (String) event
+                    .getHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY);
         }
         for (Entry<String, String[][]> entry : hazardCategories.getConfig()
                 .entrySet()) {
@@ -1853,7 +1871,7 @@ public class SessionConfigurationManager
             }
         }
         return (String) event
-                .getHazardAttribute(ISessionEventManager.ATTR_HAZARD_CATEGORY);
+                .getHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY);
     }
 
     protected void settingsChanged(SettingsModified notification) {

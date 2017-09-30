@@ -11,26 +11,9 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.BorderStyle;
-import gov.noaa.gsd.common.visuals.DragCapability;
-import gov.noaa.gsd.common.visuals.FillStyle;
-import gov.noaa.gsd.common.visuals.SpatialEntity;
-import gov.noaa.gsd.common.visuals.SymbolShape;
-import gov.noaa.gsd.common.visuals.VisualFeature;
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventHatchingEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventVisualFeatureEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityIdentifier;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
@@ -66,6 +49,25 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.Polygonal;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.BorderStyle;
+import gov.noaa.gsd.common.visuals.DragCapability;
+import gov.noaa.gsd.common.visuals.FillStyle;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
+import gov.noaa.gsd.common.visuals.SymbolShape;
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventHatchingEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.HazardEventVisualFeatureEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityIdentifier;
 
 /**
  * Description: Manager for {@link SpatialEntity} instances within the
@@ -110,6 +112,9 @@ import com.vividsolutions.jts.geom.Polygonal;
  *                                      tracked by the event manager.
  * Jun 22, 2017   15561    Chris.Golden Added flag to force recreation of
  *                                      spatial displayables when necessary.
+ * Sep 27, 2017   38072    Chris.Golden Changed to work with multiple
+ *                                      event additions, and with the new
+ *                                      recommender manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -469,8 +474,8 @@ class SpatialEntityManager {
                 unselectedSpatialEntities);
         spatialEntitiesForTypes.put(SpatialEntityType.SELECTED,
                 selectedSpatialEntities);
-        spatialEntitiesForTypes
-                .put(SpatialEntityType.TOOL, toolSpatialEntities);
+        spatialEntitiesForTypes.put(SpatialEntityType.TOOL,
+                toolSpatialEntities);
         indicesForEventsForTypes.put(SpatialEntityType.HATCHING,
                 new HashMap<String, Integer>());
         indicesForEventsForTypes.put(SpatialEntityType.UNSELECTED,
@@ -509,58 +514,74 @@ class SpatialEntityManager {
     }
 
     /**
-     * Add spatial entities for the specified event.
+     * Add spatial entities for the specified events.
      * 
-     * @param event
-     *            Event for which to add spatial entities.
+     * @param events
+     *            Events for which to add spatial entities.
      */
-    void addEntitiesForEvent(IHazardEvent event) {
+    void addEntitiesForEvents(Collection<? extends IHazardEvent> events) {
 
         /*
-         * Find the event within the list of events that may be visible in the
-         * spatial display. If it is not found to be visible, do nothing more
-         * with it.
+         * Iterate through the events for which to add entities, adding ones for
+         * each in turn as appropriate.
          */
-        List<ObservedHazardEvent> events = sessionManager.getEventManager()
-                .getCheckedEvents();
-        int eventIndex = events.indexOf(event);
-        if (eventIndex != -1) {
+        boolean changed = false;
+        for (IHazardEvent event : events) {
 
             /*
-             * Create the spatial entities for the event, if any.
+             * Find the event within the list of events that may be visible in
+             * the spatial display. If it is not found to be visible, do nothing
+             * more with it.
+             * 
+             * TODO: When refactoring the session event manager to make it more
+             * efficient in terms of keeping lists of events updated, instead of
+             * having to regenerate them each time they're asked for, get the
+             * list of checked events once outside the loop, assuming that at
+             * that time getCheckedEvents() returns an unmodifiable view that
+             * remains updated.
              */
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingEntities = new ArrayList<>();
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedEntities = new ArrayList<>();
-            List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedEntities = new ArrayList<>();
-            SelectedTime selectedRange = sessionManager.getTimeManager()
-                    .getSelectedTime();
-            Date selectedTime = getSelectedTimeForVisualFeatures();
-            if (createSpatialEntitiesForEvent((ObservedHazardEvent) event,
-                    hatchingEntities, unselectedEntities, selectedEntities,
-                    selectedRange, selectedTime, sessionManager
-                            .getConfigurationManager().getHazardTypes(),
-                    sessionManager.areHatchedAreasDisplayed()).spatialEntitiesCreatedOrReused == false) {
-                return;
+            List<ObservedHazardEvent> checkedEvents = sessionManager
+                    .getEventManager().getCheckedEvents();
+            int eventIndex = checkedEvents.indexOf(event);
+            if (eventIndex != -1) {
+
+                /*
+                 * Create the spatial entities for the event, if any.
+                 */
+                List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingEntities = new ArrayList<>();
+                List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedEntities = new ArrayList<>();
+                List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedEntities = new ArrayList<>();
+                SelectedTime selectedRange = sessionManager.getTimeManager()
+                        .getSelectedTime();
+                Date selectedTime = getSelectedTimeForVisualFeatures();
+                if (createSpatialEntitiesForEvent((ObservedHazardEvent) event,
+                        hatchingEntities, unselectedEntities, selectedEntities,
+                        selectedRange, selectedTime,
+                        sessionManager.getConfigurationManager()
+                                .getHazardTypes(),
+                        sessionManager
+                                .areHatchedAreasDisplayed()).spatialEntitiesCreatedOrReused == false) {
+                    continue;
+                }
+
+                /*
+                 * Add each list of generated spatial entities to the list of
+                 * the appropriate type of spatial entities for all events.
+                 */
+                changed |= addEventSpatialEntities(SpatialEntityType.HATCHING,
+                        hatchingEntities, checkedEvents, eventIndex);
+                changed |= addEventSpatialEntities(SpatialEntityType.UNSELECTED,
+                        unselectedEntities, checkedEvents, eventIndex);
+                changed |= addEventSpatialEntities(SpatialEntityType.SELECTED,
+                        selectedEntities, checkedEvents, eventIndex);
             }
+        }
 
-            /*
-             * Add each list of generated spatial entities to the list of the
-             * appropriate type of spatial entities for all events.
-             */
-            boolean changed = addEventSpatialEntities(
-                    SpatialEntityType.HATCHING, hatchingEntities, events,
-                    eventIndex);
-            changed |= addEventSpatialEntities(SpatialEntityType.UNSELECTED,
-                    unselectedEntities, events, eventIndex);
-            changed |= addEventSpatialEntities(SpatialEntityType.SELECTED,
-                    selectedEntities, events, eventIndex);
-
-            /*
-             * Tell the view about the change.
-             */
-            if (changed) {
-                view.refresh();
-            }
+        /*
+         * Tell the view about the change, if any.
+         */
+        if (changed) {
+            view.refresh();
         }
     }
 
@@ -610,8 +631,8 @@ class SpatialEntityManager {
             creationResult = createSpatialEntitiesForEvent(
                     (ObservedHazardEvent) event, hatchingEntities,
                     unselectedEntities, selectedEntities, selectedRange,
-                    selectedTime, sessionManager.getConfigurationManager()
-                            .getHazardTypes(),
+                    selectedTime,
+                    sessionManager.getConfigurationManager().getHazardTypes(),
                     sessionManager.areHatchedAreasDisplayed());
         }
 
@@ -632,20 +653,20 @@ class SpatialEntityManager {
             replaceEventSpatialEntities(SpatialEntityType.HATCHING,
                     hatchingEntities, events, eventIndex, eventIdentifier,
                     indexMayHaveChanged,
-                    ((forceReplacement == false) && Boolean.TRUE
-                            .equals(creationResult.reusedForTypes
+                    ((forceReplacement == false)
+                            && Boolean.TRUE.equals(creationResult.reusedForTypes
                                     .get(SpatialEntityType.HATCHING))));
             replaceEventSpatialEntities(SpatialEntityType.UNSELECTED,
                     unselectedEntities, events, eventIndex, eventIdentifier,
                     indexMayHaveChanged,
-                    ((forceReplacement == false) && Boolean.TRUE
-                            .equals(creationResult.reusedForTypes
+                    ((forceReplacement == false)
+                            && Boolean.TRUE.equals(creationResult.reusedForTypes
                                     .get(SpatialEntityType.UNSELECTED))));
             replaceEventSpatialEntities(SpatialEntityType.SELECTED,
                     selectedEntities, events, eventIndex, eventIdentifier,
                     indexMayHaveChanged,
-                    ((forceReplacement == false) && Boolean.TRUE
-                            .equals(creationResult.reusedForTypes
+                    ((forceReplacement == false)
+                            && Boolean.TRUE.equals(creationResult.reusedForTypes
                                     .get(SpatialEntityType.SELECTED))));
             view.refresh();
         } else {
@@ -665,8 +686,8 @@ class SpatialEntityManager {
          * Remove any spatial entities associated with the event.
          */
         String eventIdentifier = event.getEventID();
-        boolean changed = removeEventSpatialEntities(
-                SpatialEntityType.HATCHING, eventIdentifier);
+        boolean changed = removeEventSpatialEntities(SpatialEntityType.HATCHING,
+                eventIdentifier);
         changed |= removeEventSpatialEntities(SpatialEntityType.UNSELECTED,
                 eventIdentifier);
         changed |= removeEventSpatialEntities(SpatialEntityType.SELECTED,
@@ -674,6 +695,41 @@ class SpatialEntityManager {
 
         /*
          * Tell the view about the change.
+         */
+        if (changed) {
+            view.refresh();
+        }
+    }
+
+    /**
+     * Remove spatial entities for the specified events.
+     * 
+     * @param events
+     *            Events for which to remove spatial entities.
+     */
+    void removeEntitiesForEvents(Collection<? extends IHazardEvent> events) {
+
+        /*
+         * Iterate through the events for which to remove entities, removing any
+         * found associated with each.
+         */
+        boolean changed = false;
+        for (IHazardEvent event : events) {
+
+            /*
+             * Remove any spatial entities associated with the event.
+             */
+            String eventIdentifier = event.getEventID();
+            changed = removeEventSpatialEntities(SpatialEntityType.HATCHING,
+                    eventIdentifier);
+            changed |= removeEventSpatialEntities(SpatialEntityType.UNSELECTED,
+                    eventIdentifier);
+            changed |= removeEventSpatialEntities(SpatialEntityType.SELECTED,
+                    eventIdentifier);
+        }
+
+        /*
+         * Tell the view about the change, if any.
          */
         if (changed) {
             view.refresh();
@@ -689,20 +745,16 @@ class SpatialEntityManager {
      * @param toolType
      *            Type of the tool with which the spatial entities are to be
      *            associated.
-     * @param toolIdentifier
-     *            Identifier of the tool with which the spatial entities are to
-     *            be associated.
      */
     void updateEntitiesForToolVisualFeatures(
-            VisualFeaturesList toolVisualFeatures, ToolType toolType,
-            String toolIdentifier) {
+            VisualFeaturesList toolVisualFeatures, ToolType toolType) {
 
         /*
          * Generate the new spatial entities, and tell the view about the
          * change.
          */
         if (replaceToolSpatialEntities(toolVisualFeatures, toolType,
-                toolIdentifier, getSelectedTimeForVisualFeatures())) {
+                getSelectedTimeForVisualFeatures())) {
             view.refresh();
         }
     }
@@ -716,17 +768,13 @@ class SpatialEntityManager {
      *            Type of the tool with which the
      *            <code>toolVisualFeatures</code> spatial entities are to be
      *            associated.
-     * @param toolIdentifier
-     *            Identifier of the tool with which the
-     *            <code>toolVisualFeatures</code> spatial entities are to be
-     *            associated.
      * @param force
      *            Flag indicating whether or not to force recreation of
      *            entities, even if they appear to be the same as the old
      *            versions.
      */
     void recreateAllEntities(VisualFeaturesList toolVisualFeatures,
-            ToolType toolType, String toolIdentifier, boolean force) {
+            ToolType toolType, boolean force) {
 
         /*
          * Iterate through the hazard events, compiling lists of spatial
@@ -744,11 +792,10 @@ class SpatialEntityManager {
         Map<SpatialEntityType, List<SpatialEntity<? extends IHazardEventEntityIdentifier>>> newSpatialEntitiesForTypes = new EnumMap<>(
                 SpatialEntityType.class);
         for (SpatialEntityType type : HAZARD_EVENT_SPATIAL_ENTITY_TYPES) {
-            newSpatialEntitiesForTypes
-                    .put(type,
-                            new ArrayList<SpatialEntity<? extends IHazardEventEntityIdentifier>>(
-                                    SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
-                                            .get(type)));
+            newSpatialEntitiesForTypes.put(type,
+                    new ArrayList<SpatialEntity<? extends IHazardEventEntityIdentifier>>(
+                            SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
+                                    .get(type)));
         }
         for (ObservedHazardEvent event : sessionManager.getEventManager()
                 .getCheckedEvents()) {
@@ -782,10 +829,9 @@ class SpatialEntityManager {
                 .entrySet()) {
             repopulateEntityAssociationsAndIndicesForEvents(entry.getKey(),
                     entry.getValue());
-            if (force
-                    || (doListsHoldSameReferences(
-                            spatialEntitiesForTypes.get(entry.getKey()),
-                            entry.getValue()) == false)) {
+            if (force || (doListsHoldSameReferences(
+                    spatialEntitiesForTypes.get(entry.getKey()),
+                    entry.getValue()) == false)) {
                 changedEntityTypes.add(entry.getKey());
             }
         }
@@ -805,7 +851,7 @@ class SpatialEntityManager {
          * the tool-related spatial entity type as changed.
          */
         if (replaceToolSpatialEntities(toolVisualFeatures, toolType,
-                toolIdentifier, selectedTime)) {
+                selectedTime)) {
             changedEntityTypes.add(SpatialEntityType.TOOL);
         }
 
@@ -847,8 +893,7 @@ class SpatialEntityManager {
          * lower bound of the selected time.
          */
         VisualFeaturesList visualFeatures = event.getVisualFeatures();
-        if ((visualFeatures != null)
-                && (visualFeatures.isEmpty() == false)
+        if ((visualFeatures != null) && (visualFeatures.isEmpty() == false)
                 && isChangedSelectedTimeAffectingVisualFeatures(oldTime,
                         newTime)) {
             return EventDisplayChange.ADD_OR_REPLACE;
@@ -916,15 +961,16 @@ class SpatialEntityManager {
                 }
                 IAdvancedGeometry geometry = spatialEntity.getGeometry();
                 if ((geometry instanceof GeometryWrapper)
-                        && isOrContainsPolygon(((GeometryWrapper) geometry)
-                                .getGeometry())) {
+                        && isOrContainsPolygon(
+                                ((GeometryWrapper) geometry).getGeometry())) {
                     return spatialEntity;
                 } else if (geometry instanceof AdvancedGeometryCollection) {
                     for (IAdvancedGeometry subGeometry : ((AdvancedGeometryCollection) geometry)
                             .getChildren()) {
                         if ((subGeometry instanceof GeometryWrapper)
-                                && isOrContainsPolygon(((GeometryWrapper) subGeometry)
-                                        .getGeometry())) {
+                                && isOrContainsPolygon(
+                                        ((GeometryWrapper) subGeometry)
+                                                .getGeometry())) {
                             return spatialEntity;
                         }
                     }
@@ -952,8 +998,8 @@ class SpatialEntityManager {
      */
     boolean isChangedSelectedTimeAffectingVisualFeatures(SelectedTime oldTime,
             SelectedTime newTime) {
-        return ((oldTime == null) || (oldTime.getLowerBound() != newTime
-                .getLowerBound()));
+        return ((oldTime == null)
+                || (oldTime.getLowerBound() != newTime.getLowerBound()));
     }
 
     // Private Methods
@@ -976,8 +1022,7 @@ class SpatialEntityManager {
      * @return Position and size of the sublist, or <code>null</code> if there
      *         are no spatial entities within the list for this hazard event.
      */
-    private Sublist getEventEntitySublistWithinList(
-            String eventIdentifier,
+    private Sublist getEventEntitySublistWithinList(String eventIdentifier,
             Map<String, Integer> indicesForEvents,
             List<? extends SpatialEntity<? extends IHazardEventEntityIdentifier>> spatialEntities) {
         if (indicesForEvents.containsKey(eventIdentifier)) {
@@ -1095,8 +1140,9 @@ class SpatialEntityManager {
              * appropriate.
              */
             indicesForEvents.put(events.get(eventIndex).getEventID(),
-                    (insertionIndex == -1 ? spatialEntitiesForTypes.get(type)
-                            .size() : insertionIndex));
+                    (insertionIndex == -1
+                            ? spatialEntitiesForTypes.get(type).size()
+                            : insertionIndex));
             if (createAssociationsOfIdentifiersWithEntities(type,
                     spatialEntities)) {
                 selectedSpatialEntityIdentifiersChanged();
@@ -1161,8 +1207,7 @@ class SpatialEntityManager {
         boolean changed = true;
         Map<String, Integer> indicesForEvents = indicesForEventsForTypes
                 .get(type);
-        Sublist sublist = getEventEntitySublistWithinList(
-                eventIdentifier,
+        Sublist sublist = getEventEntitySublistWithinList(eventIdentifier,
                 indicesForEvents,
                 (List<? extends SpatialEntity<? extends IHazardEventEntityIdentifier>>) spatialEntitiesForTypes
                         .get(type));
@@ -1180,8 +1225,9 @@ class SpatialEntityManager {
              * Get the index at which the new entities are to be inserted, which
              * may differ from where the old entities were placed.
              */
-            int newIndex = (indexMayHaveChanged ? getInsertionIndexForEntities(
-                    type, events, eventIndex) : sublist.index);
+            int newIndex = (indexMayHaveChanged
+                    ? getInsertionIndexForEntities(type, events, eventIndex)
+                    : sublist.index);
 
             /*
              * If the insertion index has not changed, check for reuse should
@@ -1191,7 +1237,8 @@ class SpatialEntityManager {
              * reused, and no entities are being removed).
              */
             if (checkForReuse && (sublist.index == newIndex)
-                    && doListsHoldSameReferences(sublist.list, spatialEntities)) {
+                    && doListsHoldSameReferences(sublist.list,
+                            spatialEntities)) {
                 return false;
             }
 
@@ -1295,8 +1342,7 @@ class SpatialEntityManager {
          */
         Map<String, Integer> indicesForEvents = indicesForEventsForTypes
                 .get(type);
-        Sublist sublist = getEventEntitySublistWithinList(
-                eventIdentifier,
+        Sublist sublist = getEventEntitySublistWithinList(eventIdentifier,
                 indicesForEvents,
                 (List<? extends SpatialEntity<? extends IHazardEventEntityIdentifier>>) spatialEntitiesForTypes
                         .get(type));
@@ -1354,8 +1400,6 @@ class SpatialEntityManager {
      *            entities are to be generated.
      * @param toolType
      *            Type of the tool that generated the visual features.
-     * @param toolIdentifier
-     *            Identifier of the tool that generated the visual features.
      * @param selectedTime
      *            Current selected time, needed to generate the spatial entities
      *            since the visual features may have temporally variant (and
@@ -1366,7 +1410,7 @@ class SpatialEntityManager {
     @SuppressWarnings("unchecked")
     private boolean replaceToolSpatialEntities(
             VisualFeaturesList visualFeaturesList, final ToolType toolType,
-            final String toolIdentifier, Date selectedTime) {
+            Date selectedTime) {
 
         /*
          * Remove records of previous tool spatial entities, except for the
@@ -1408,12 +1452,12 @@ class SpatialEntityManager {
             List<SpatialEntity<ToolVisualFeatureEntityIdentifier>> topmostSpatialEntities = null;
             for (VisualFeature visualFeature : visualFeaturesList) {
                 ToolVisualFeatureEntityIdentifier identifier = new ToolVisualFeatureEntityIdentifier(
-                        toolType, toolIdentifier, visualFeature.getIdentifier());
+                        toolType, visualFeature.getIdentifier());
                 SpatialEntity<ToolVisualFeatureEntityIdentifier> entity = visualFeature
                         .getStateAtTime(
                                 (SpatialEntity<ToolVisualFeatureEntityIdentifier>) spatialEntitiesForIdentifiers
-                                        .get(identifier), identifier,
-                                selectedTime);
+                                        .get(identifier),
+                                identifier, selectedTime);
                 if (entity != null) {
                     if (entity.isTopmost()) {
                         if (topmostSpatialEntities == null) {
@@ -1464,7 +1508,8 @@ class SpatialEntityManager {
             if (addedSpatialEntities != null) {
                 createAssociationsOfIdentifiersWithEntities(
                         SpatialEntityType.TOOL, addedSpatialEntities);
-                addSpatialEntities(SpatialEntityType.TOOL, addedSpatialEntities);
+                addSpatialEntities(SpatialEntityType.TOOL,
+                        addedSpatialEntities);
                 changed = (doListsHoldSameReferences(oldToolSpatialEntities,
                         toolSpatialEntities) == false);
             }
@@ -1680,8 +1725,8 @@ class SpatialEntityManager {
         if ((visualFeaturesList != null) && visualFeaturesList.isEmpty()) {
             visualFeaturesList = null;
         }
-        boolean inTimeRange = selectedRange.intersects(event.getStartTime()
-                .getTime(), event.getEndTime().getTime());
+        boolean inTimeRange = selectedRange.intersects(
+                event.getStartTime().getTime(), event.getEndTime().getTime());
         if ((visualFeaturesList != null) || inTimeRange) {
 
             /*
@@ -1696,10 +1741,12 @@ class SpatialEntityManager {
             double hazardBorderWidth = configManager.getBorderWidth(event,
                     selected);
             LineStyle lineStyle = configManager.getBorderStyle(event);
-            BorderStyle hazardBorderStyle = (lineStyle == LineStyle.DOTTED ? BorderStyle.DOTTED
+            BorderStyle hazardBorderStyle = (lineStyle == LineStyle.DOTTED
+                    ? BorderStyle.DOTTED
                     : (lineStyle == LineStyle.DASHED ? BorderStyle.DASHED
                             : BorderStyle.SOLID));
-            double hazardPointDiameter = (selected ? HAZARD_EVENT_POINT_SELECTED_DIAMETER
+            double hazardPointDiameter = (selected
+                    ? HAZARD_EVENT_POINT_SELECTED_DIAMETER
                     : HAZARD_EVENT_POINT_DIAMETER);
             String hazardLabel = getHazardLabel(event);
 
@@ -1713,7 +1760,8 @@ class SpatialEntityManager {
                 if (hazardType != null) {
                     HazardTypeEntry hazardTypeEntry = hazardTypes
                             .get(hazardType);
-                    if (hazardTypeEntry.getHatchingStyle() != HatchingStyle.NONE) {
+                    if (hazardTypeEntry
+                            .getHatchingStyle() != HatchingStyle.NONE) {
                         CreatedSpatialEntities entities = createSpatialEntitiesForEventHatching(
                                 event, hazardTypeEntry, hazardColor,
                                 HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_LENGTH,
@@ -1789,8 +1837,8 @@ class SpatialEntityManager {
                 created = true;
             }
         }
-        return (created == false ? EMPTY_CREATION_RESULT : new CreationResult(
-                created, reusedForTypes));
+        return (created == false ? EMPTY_CREATION_RESULT
+                : new CreationResult(created, reusedForTypes));
     }
 
     /**
@@ -1874,8 +1922,10 @@ class SpatialEntityManager {
                  * significance of the event.
                  */
                 String significance = event.getSignificance();
-                boolean showLabel = ((hazardTypeEntry.getHatchingStyle() == HatchingStyle.WARNGEN)
-                        && (significance != null) && (significance.isEmpty() == false));
+                boolean showLabel = ((hazardTypeEntry
+                        .getHatchingStyle() == HatchingStyle.WARNGEN)
+                        && (significance != null)
+                        && (significance.isEmpty() == false));
 
                 /*
                  * Build the spatial entity, reusing any previously built entity
@@ -1887,15 +1937,16 @@ class SpatialEntityManager {
                 SpatialEntity<HazardEventHatchingEntityIdentifier> oldEntity = (SpatialEntity<HazardEventHatchingEntityIdentifier>) spatialEntitiesForIdentifiers
                         .get(identifier);
                 SpatialEntity<HazardEventHatchingEntityIdentifier> entity = SpatialEntity
-                        .build(oldEntity, identifier, AdvancedGeometryUtilities
-                                .createGeometryWrapper(
-                                        geometryData.getGeometry(), 0), null,
-                                hazardColor, 0.0, BorderStyle.SOLID,
+                        .build(oldEntity, identifier,
+                                AdvancedGeometryUtilities.createGeometryWrapper(
+                                        geometryData.getGeometry(), 0),
+                                null, hazardColor, 0.0, BorderStyle.SOLID,
                                 FillStyle.HATCHED, 0.0, null,
                                 (showLabel ? significance : null), 0.0, 0.0,
                                 textOffsetLength, textOffsetDirection,
                                 hazardTextPointSize, hazardColor,
-                                DragCapability.NONE, false, false, false, false);
+                                DragCapability.NONE, false, false, false,
+                                false);
                 if (spatialEntities == null) {
                     spatialEntities = new ArrayList<>();
                 }
@@ -1962,9 +2013,8 @@ class SpatialEntityManager {
             String hazardLabel, double hazardSinglePointTextOffsetLength,
             double hazardSinglePointTextOffsetDirection,
             double hazardMultiPointTextOffsetLength,
-            double hazardMultiPointTextOffsetDirection,
-            int hazardTextPointSize, boolean editable, boolean rotatable,
-            boolean scaleable) {
+            double hazardMultiPointTextOffsetDirection, int hazardTextPointSize,
+            boolean editable, boolean rotatable, boolean scaleable) {
         IHazardEventEntityIdentifier identifier = new HazardEventEntityIdentifier(
                 event.getEventID());
         SpatialEntity<IHazardEventEntityIdentifier> oldEntity = (SpatialEntity<IHazardEventEntityIdentifier>) spatialEntitiesForIdentifiers
@@ -1972,8 +2022,8 @@ class SpatialEntityManager {
         SpatialEntity<? extends IHazardEventEntityIdentifier> entity = SpatialEntity
                 .build(oldEntity, identifier, getProcessedBaseGeometry(event),
                         hazardColor, TRANSPARENT_COLOR, hazardBorderWidth,
-                        hazardBorderStyle, FillStyle.SOLID,
-                        hazardPointDiameter, SymbolShape.CIRCLE, hazardLabel,
+                        hazardBorderStyle, FillStyle.SOLID, hazardPointDiameter,
+                        SymbolShape.CIRCLE, hazardLabel,
                         hazardSinglePointTextOffsetLength,
                         hazardSinglePointTextOffsetDirection,
                         hazardMultiPointTextOffsetLength,
@@ -2038,14 +2088,15 @@ class SpatialEntityManager {
      */
     @SuppressWarnings("unchecked")
     private CreatedSpatialEntities createSpatialEntitiesForEventVisualFeatures(
-            VisualFeaturesList visualFeaturesList,
-            final String eventIdentifier, boolean selected, Date selectedTime,
-            Color hazardColor, double hazardBorderWidth,
-            BorderStyle hazardBorderStyle, double hazardPointDiameter,
-            String hazardLabel, double hazardSinglePointTextOffsetLength,
+            VisualFeaturesList visualFeaturesList, final String eventIdentifier,
+            boolean selected, Date selectedTime, Color hazardColor,
+            double hazardBorderWidth, BorderStyle hazardBorderStyle,
+            double hazardPointDiameter, String hazardLabel,
+            double hazardSinglePointTextOffsetLength,
             double hazardSinglePointTextOffsetDirection,
             double hazardMultiPointTextOffsetLength,
-            double hazardMultiPointTextOffsetDirection, int hazardTextPointSize) {
+            double hazardMultiPointTextOffsetDirection,
+            int hazardTextPointSize) {
 
         /*
          * If there are visual features in the list, iterate through them,
@@ -2242,8 +2293,8 @@ class SpatialEntityManager {
             }
             if (type == SpatialEntityType.SELECTED) {
                 for (SpatialEntity<? extends IEntityIdentifier> entity : entities) {
-                    selectedSpatialEntityIdentifiers.remove(entity
-                            .getIdentifier());
+                    selectedSpatialEntityIdentifiers
+                            .remove(entity.getIdentifier());
                 }
             }
             return (entities.isEmpty() == false);
@@ -2322,15 +2373,16 @@ class SpatialEntityManager {
          * high-resolution geometry is not to be shown.
          */
         IAdvancedGeometry geometry = (HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE
-                .equals(event.getHazardAttribute(VISIBLE_GEOMETRY)) ? event
-                .getGeometry() : AdvancedGeometryUtilities
-                .createGeometryWrapper(event.getProductGeometry(), 0));
+                .equals(event.getHazardAttribute(VISIBLE_GEOMETRY))
+                        ? event.getGeometry()
+                        : AdvancedGeometryUtilities.createGeometryWrapper(
+                                event.getProductGeometry(), 0));
 
         /*
          * Compile a list of polygons for the geometry if it is a collection.
          */
-        AdvancedGeometryCollection collection = (geometry instanceof AdvancedGeometryCollection ? (AdvancedGeometryCollection) geometry
-                : null);
+        AdvancedGeometryCollection collection = (geometry instanceof AdvancedGeometryCollection
+                ? (AdvancedGeometryCollection) geometry : null);
         List<Polygon> polygons = null;
         if (collection != null) {
             for (IAdvancedGeometry subGeometry : collection.getChildren()) {
@@ -2339,8 +2391,8 @@ class SpatialEntityManager {
                             .getGeometry();
                     if (subBaseGeometry instanceof Polygon) {
                         if (polygons == null) {
-                            polygons = new ArrayList<>(collection.getChildren()
-                                    .size());
+                            polygons = new ArrayList<>(
+                                    collection.getChildren().size());
                         }
                         polygons.add((Polygon) subBaseGeometry);
                     }
@@ -2359,11 +2411,12 @@ class SpatialEntityManager {
              * For each polygon with the multi-polygon, attempt to prune out
              * holes.
              */
-            Geometry newGeometry = geometryFactory.createGeometryCollection(
-                    getPrunedPolygons(polygons).toArray(
-                            new Geometry[polygons.size()])).buffer(0);
-            geometry = AdvancedGeometryUtilities.createGeometryWrapper(
-                    newGeometry, 0);
+            Geometry newGeometry = geometryFactory
+                    .createGeometryCollection(getPrunedPolygons(polygons)
+                            .toArray(new Geometry[polygons.size()]))
+                    .buffer(0);
+            geometry = AdvancedGeometryUtilities
+                    .createGeometryWrapper(newGeometry, 0);
 
         } else if (geometry instanceof GeometryWrapper) {
             GeometryWrapper wrapper = (GeometryWrapper) geometry;
@@ -2406,8 +2459,8 @@ class SpatialEntityManager {
         if (polygon.getNumInteriorRing() == 0) {
             return polygon;
         }
-        return geometryFactory.createPolygon(
-                (LinearRing) polygon.getExteriorRing(), null);
+        return geometryFactory
+                .createPolygon((LinearRing) polygon.getExteriorRing(), null);
     }
 
     /**

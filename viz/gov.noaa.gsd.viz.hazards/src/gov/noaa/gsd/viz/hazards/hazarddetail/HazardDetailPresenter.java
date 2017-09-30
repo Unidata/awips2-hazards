@@ -20,13 +20,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
@@ -42,20 +40,22 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.AbstractSessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAllowUntilFurtherNoticeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventMetadataModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTypeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastAccessedEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionPreviewOrIssueOngoingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -188,6 +188,8 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  * Jun 27, 2017   20347    Chris.Golden      Hazard detail view now pops up if a hazard
  *                                           event is changed to status ending and it is
  *                                           selected.
+ * Sep 27, 2017   38072    Chris.Golden      Changed to use new SessionEventModified
+ *                                           notification. Also moved to Java 8 streams.
  * </pre>
  * 
  * @author Chris.Golden
@@ -299,6 +301,15 @@ public class HazardDetailPresenter
             return persistTimestamp;
         }
     }
+
+    // Private Enumerated Types
+
+    /**
+     * Elements of the view.
+     */
+    private enum ViewElement {
+        CATEGORY_EDITABILITY, CATEGORY_VALUE, TYPE_LIST, TYPE_EDITABILITY, TYPE_VALUE, TIME_RANGE, END_TIME_UNTIL_FURTHER_NOTICE_ENABLED, METADATA_SPECIFIERS, METADATA_VALUES, SELECTED_EVENT_DISPLAYABLES, BUTTONS_ENABLED
+    };
 
     // Private Variables
 
@@ -667,7 +678,7 @@ public class HazardDetailPresenter
             ObservedHazardEvent event = getEventByIdentifier(
                     identifier.getEventIdentifier());
             if (event != null) {
-                getModel().getEventManager().eventCommandInvoked(event,
+                getModel().eventCommandInvoked(event,
                         identifier.getDetailIdentifier(),
                         identifier.getMutableProperties());
             }
@@ -815,14 +826,14 @@ public class HazardDetailPresenter
     }
 
     /**
-     * Respond to session modifications by determining whether an issue or
-     * preview are ongoing.
+     * Respond to session preview or issue ongoing modifications.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void sessionModified(final SessionModified change) {
+    public void sessionPreviewOrIssueOngoingModified(
+            SessionPreviewOrIssueOngoingModified change) {
         if (detailViewShowing) {
             updateViewButtonsEnabledStates();
         }
@@ -835,22 +846,16 @@ public class HazardDetailPresenter
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventRemoved(final SessionEventRemoved change) {
+    public void sessionEventsRemoved(SessionEventsRemoved change) {
 
         /*
-         * Remove any cached specifier managers associated with versions of this
-         * event.
+         * Remove any cached specifier managers associated with versions of any
+         * of the events that have been removed.
          */
-        final String identifier = change.getEvent().getEventID();
-        Maps.filterEntries(specifierManagersForSelectedEventVersions,
-                new Predicate<Map.Entry<Pair<String, Integer>, MegawidgetSpecifierManager>>() {
-                    @Override
-                    public boolean apply(
-                            Map.Entry<Pair<String, Integer>, MegawidgetSpecifierManager> input) {
-                        return (input.getKey().getFirst()
-                                .equals(identifier) == false);
-                    }
-                });
+        Set<String> identifiers = change.getEvents().stream()
+                .map(IHazardEvent::getEventID).collect(Collectors.toSet());
+        specifierManagersForSelectedEventVersions.entrySet().removeIf(
+                entry -> identifiers.contains(entry.getKey().getFirst()));
     }
 
     /**
@@ -861,7 +866,7 @@ public class HazardDetailPresenter
      */
     @Handler
     public void sessionSelectedEventsModified(
-            final SessionSelectedEventsModified change) {
+            SessionSelectedEventsModified change) {
 
         /*
          * Get the selected event versions' identifiers as a list.
@@ -930,7 +935,7 @@ public class HazardDetailPresenter
      */
     @Handler
     public void sessionLastAccessedSelectedEventModified(
-            final SessionLastAccessedEventModified change) {
+            SessionLastAccessedEventModified change) {
 
         /*
          * Do nothing if the view is not showing, or if the selected event
@@ -981,8 +986,7 @@ public class HazardDetailPresenter
     @Handler
     @Enveloped(messages = { SessionSelectedEventConflictsModified.class,
             SessionAutoCheckConflictsModified.class })
-    public void sessionSelectedEventConflictsModified(
-            final MessageEnvelope change) {
+    public void sessionSelectedEventConflictsModified(MessageEnvelope change) {
         if (detailViewShowing == false) {
             return;
         }
@@ -990,45 +994,50 @@ public class HazardDetailPresenter
     }
 
     /**
-     * Respond to an event's type having changed.
+     * Respond to an event having changed.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventTypeModified(
-            final SessionEventTypeModified change) {
-        if (detailViewShowing == false) {
-            return;
+    public void sessionEventModified(SessionEventModified change) {
+
+        /*
+         * Create a set of view elements to be used to track which elements have
+         * been updated already, in order to allow methods invoked here to not
+         * re-update something that has already been updated.
+         */
+        EnumSet<ViewElement> updatedElements = EnumSet
+                .noneOf(ViewElement.class);
+
+        /*
+         * Since a status update for the event might result in the dialog being
+         * shown, check for any such updates first.
+         */
+        if (change.getClassesOfModifications()
+                .contains(EventStatusModification.class)) {
+            sessionEventStatusModified(change, updatedElements);
         }
 
         /*
-         * Update the type in the view if this is not the source of the change,
-         * and if the event having its type changed is currently visible.
+         * Iterate through the modifications, reacting to any that will result
+         * in a potential view change by updating the appropriate parts of the
+         * view.
          */
-        if (isNotOrigin(change) && isVisibleEventVersionModified(change)) {
-            IHazardEvent event = getVisibleEvent();
-            if (event != null) {
-                updateViewType(event, visibleEventVersionIdentifier);
-            }
-            updateSelectedEventDisplayablesIfChanged();
-        }
-    }
-
-    /**
-     * Respond to an event's time range having changed.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventTimeRangeModified(
-            final SessionEventTimeRangeModified change) {
-        if (detailViewShowing && isNotOrigin(change)
-                && isVisibleEventVersionModified(change)) {
-            IHazardEvent event = getVisibleEvent();
-            if (event != null) {
-                updateViewTimeRange(event, visibleEventVersionIdentifier);
+        for (IEventModification modification : change.getModifications()) {
+            if (modification instanceof EventTypeModification) {
+                sessionEventTypeModified(change, updatedElements);
+            } else if (modification instanceof EventTimeRangeModification) {
+                sessionEventTimeRangeModified(change, updatedElements);
+            } else if (modification instanceof EventMetadataModification) {
+                sessionEventMetadataSpecifiersModified(change, updatedElements);
+            } else if (modification instanceof EventAllowUntilFurtherNoticeModification) {
+                sessionEventAllowUntilFurtherNoticeModified(change,
+                        updatedElements);
+            } else if (modification instanceof EventAttributesModification) {
+                sessionEventAttributesModified(change,
+                        (EventAttributesModification) modification,
+                        updatedElements);
             }
         }
     }
@@ -1041,36 +1050,14 @@ public class HazardDetailPresenter
      */
     @Handler
     public void sessionEventTimeRangeBoundariesModified(
-            final SessionEventsTimeRangeBoundariesModified change) {
-        if (detailViewShowing
-                && isVisibleEventVersionInCollection(change.getEvents())) {
+            SessionEventsTimeRangeBoundariesModified change) {
+        if (detailViewShowing && isVisibleEventVersionInCollection(
+                change.getEventIdentifiers())) {
             IHazardEvent event = getVisibleEvent();
             if (event != null) {
                 updateViewTimeRangeBoundaries(event,
                         visibleEventVersionIdentifier);
                 updateViewDurations(event, visibleEventVersionIdentifier);
-            }
-        }
-    }
-
-    /**
-     * Respond to an event's metadata megawidget specifiers having changed.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventMetadataSpecifiersModified(
-            final SessionEventMetadataModified change) {
-        String eventIdentifier = change.getEvent().getEventID();
-        ObservedHazardEvent event = getEventByIdentifier(eventIdentifier);
-        if (event != null) {
-            Pair<String, Integer> identifier = new Pair<>(eventIdentifier,
-                    null);
-            specifierManagersForSelectedEventVersions.remove(identifier);
-            cacheMetadataSpecifiers(event, identifier);
-            if (detailViewShowing && isVisibleEventVersionModified(change)) {
-                updateViewMetadataSpecifiers(event, identifier, false);
             }
         }
     }
@@ -1083,7 +1070,7 @@ public class HazardDetailPresenter
      */
     @Handler
     public void sessionEventScriptMutablePropertiesModified(
-            final SessionEventScriptExtraDataAvailable change) {
+            SessionEventScriptExtraDataAvailable change) {
         String eventIdentifier = change.getEvent().getEventID();
         ObservedHazardEvent event = getEventByIdentifier(eventIdentifier);
         if (event != null) {
@@ -1094,80 +1081,13 @@ public class HazardDetailPresenter
     }
 
     /**
-     * Respond to the set of events allowing "until further notice" for their
-     * end times having changed.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventAllowUntilFurtherNoticeModified(
-            final SessionEventAllowUntilFurtherNoticeModified change) {
-        if (detailViewShowing && isVisibleEventVersionModified(change)) {
-            updateViewEndTimeUntilFurtherNoticeEnabled(change.getEvent(),
-                    visibleEventVersionIdentifier);
-        }
-    }
-
-    /**
-     * Respond to an event's attributes having changed.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventAttributesModified(
-            final SessionEventAttributesModified change) {
-        if (detailViewShowing && isNotOrigin(change)
-                && isVisibleEventVersionModified(change)) {
-            IHazardEvent event = getVisibleEvent();
-            if (event != null) {
-                if (change.getAttributeKeys()
-                        .contains(ISessionEventManager.ATTR_HAZARD_CATEGORY)) {
-                    updateViewCategory(event, visibleEventVersionIdentifier);
-                    updateViewTypeList(event, visibleEventVersionIdentifier);
-                }
-                updateViewMetadataValues(event, visibleEventVersionIdentifier,
-                        change.getAttributeKeys());
-            }
-            updateSelectedEventDisplayablesIfChanged();
-        }
-    }
-
-    /**
-     * Respond to an event's status having changed.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventStatusModified(
-            final SessionEventStatusModified change) {
-        if (detailViewShowing) {
-            if (isVisibleEventVersionModified(change)) {
-                IHazardEvent event = getVisibleEvent();
-                updateViewCategoryEditability(event,
-                        visibleEventVersionIdentifier);
-                updateViewTypeList(event, visibleEventVersionIdentifier);
-                updateViewTypeEditability(event, visibleEventVersionIdentifier);
-            }
-            updateSelectedEventDisplayablesIfChanged();
-            updateViewButtonsEnabledStates();
-        } else if ((change.getEvent().getStatus() == HazardStatus.ENDING)
-                && (change.getOriginator() != Originator.DATABASE) && getModel()
-                        .getSelectionManager().isSelected(change.getEvent())) {
-            showHazardDetail();
-        }
-    }
-
-    /**
      * Respond to the visible time range changing.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void visibleTimeRangeChanged(final VisibleTimeRangeChanged change) {
+    public void visibleTimeRangeChanged(VisibleTimeRangeChanged change) {
         if (detailViewShowing && isNotOrigin(change)) {
             updateViewVisibleTimeRange();
         }
@@ -1261,6 +1181,213 @@ public class HazardDetailPresenter
     // Private Methods
 
     /**
+     * Respond to an event's type having changed.
+     * 
+     * @param change
+     *            Change that encompasses this modification.
+     * @param updatedElements
+     *            Set of view elements that have already been updated. This set
+     *            will have any view elements added to it by this method that
+     *            are updated as a result of this invocation.
+     */
+    private void sessionEventTypeModified(SessionEventModified change,
+            Set<ViewElement> updatedElements) {
+        if (detailViewShowing == false) {
+            return;
+        }
+
+        /*
+         * Update the type in the view if this is not the source of the change,
+         * and if the event having its type changed is currently visible.
+         */
+        if (isNotOrigin(change) && isVisibleEventVersionModified(change)) {
+            IHazardEvent event = getVisibleEvent();
+            if ((event != null) && (updatedElements
+                    .contains(ViewElement.TYPE_VALUE) == false)) {
+                updateViewType(event, visibleEventVersionIdentifier);
+                updatedElements.add(ViewElement.TYPE_VALUE);
+            }
+            if (updatedElements.contains(
+                    ViewElement.SELECTED_EVENT_DISPLAYABLES) == false) {
+                updateSelectedEventDisplayablesIfChanged();
+                updatedElements.add(ViewElement.SELECTED_EVENT_DISPLAYABLES);
+            }
+        }
+    }
+
+    /**
+     * Respond to an event's time range having changed.
+     * 
+     * @param change
+     *            Change that encompasses this modification.
+     * @param updatedElements
+     *            Set of view elements that have already been updated. This set
+     *            will have any view elements added to it by this method that
+     *            are updated as a result of this invocation.
+     */
+    private void sessionEventTimeRangeModified(SessionEventModified change,
+            Set<ViewElement> updatedElements) {
+        if (detailViewShowing && isNotOrigin(change)
+                && isVisibleEventVersionModified(change)) {
+            IHazardEvent event = getVisibleEvent();
+            if ((event != null) && (updatedElements
+                    .contains(ViewElement.TIME_RANGE) == false)) {
+                updateViewTimeRange(event, visibleEventVersionIdentifier);
+                updatedElements.add(ViewElement.TIME_RANGE);
+            }
+        }
+    }
+
+    /**
+     * Respond to an event's metadata megawidget specifiers having changed.
+     * 
+     * @param change
+     *            Change that encompasses this modification.
+     * @param updatedElements
+     *            Set of view elements that have already been updated. This set
+     *            will have any view elements added to it by this method that
+     *            are updated as a result of this invocation.
+     */
+    private void sessionEventMetadataSpecifiersModified(
+            SessionEventModified change, Set<ViewElement> updatedElements) {
+        String eventIdentifier = change.getEvent().getEventID();
+        ObservedHazardEvent event = getEventByIdentifier(eventIdentifier);
+        if ((event != null) && (updatedElements
+                .contains(ViewElement.METADATA_SPECIFIERS) == false)) {
+            Pair<String, Integer> identifier = new Pair<>(eventIdentifier,
+                    null);
+            specifierManagersForSelectedEventVersions.remove(identifier);
+            cacheMetadataSpecifiers(event, identifier);
+            if (detailViewShowing && isVisibleEventVersionModified(change)) {
+                updateViewMetadataSpecifiers(event, identifier, false);
+            }
+            updatedElements.add(ViewElement.METADATA_SPECIFIERS);
+        }
+    }
+
+    /**
+     * Respond to the set of events allowing "until further notice" for their
+     * end times having changed.
+     * 
+     * @param change
+     *            Change that encompasses this modification.
+     * @param updatedElements
+     *            Set of view elements that have already been updated. This set
+     *            will have any view elements added to it by this method that
+     *            are updated as a result of this invocation.
+     */
+    private void sessionEventAllowUntilFurtherNoticeModified(
+            SessionEventModified change, Set<ViewElement> updatedElements) {
+        if (detailViewShowing && isVisibleEventVersionModified(change)
+                && (updatedElements.contains(
+                        ViewElement.END_TIME_UNTIL_FURTHER_NOTICE_ENABLED) == false)) {
+            updateViewEndTimeUntilFurtherNoticeEnabled(change.getEvent(),
+                    visibleEventVersionIdentifier);
+            updatedElements
+                    .add(ViewElement.END_TIME_UNTIL_FURTHER_NOTICE_ENABLED);
+        }
+    }
+
+    /**
+     * Respond to an event's status having changed.
+     * 
+     * @param change
+     *            Change that encompasses this modification.
+     * @param updatedElements
+     *            Set of view elements that have already been updated. This set
+     *            will have any view elements added to it by this method that
+     *            are updated as a result of this invocation.
+     */
+    private void sessionEventStatusModified(SessionEventModified change,
+            Set<ViewElement> updatedElements) {
+        if (detailViewShowing) {
+            if (isVisibleEventVersionModified(change)) {
+                IHazardEvent event = getVisibleEvent();
+                if (updatedElements
+                        .contains(ViewElement.CATEGORY_EDITABILITY) == false) {
+                    updateViewCategoryEditability(event,
+                            visibleEventVersionIdentifier);
+                    updatedElements.add(ViewElement.CATEGORY_EDITABILITY);
+                }
+                if (updatedElements.contains(ViewElement.TYPE_LIST) == false) {
+                    updateViewTypeList(event, visibleEventVersionIdentifier);
+                    updatedElements.add(ViewElement.TYPE_LIST);
+                }
+                if (updatedElements
+                        .contains(ViewElement.TYPE_EDITABILITY) == false) {
+                    updateViewTypeEditability(event,
+                            visibleEventVersionIdentifier);
+                    updatedElements.add(ViewElement.TYPE_EDITABILITY);
+                }
+            }
+            if (updatedElements.contains(
+                    ViewElement.SELECTED_EVENT_DISPLAYABLES) == false) {
+                updateSelectedEventDisplayablesIfChanged();
+                updatedElements.add(ViewElement.SELECTED_EVENT_DISPLAYABLES);
+            }
+            if (updatedElements
+                    .contains(ViewElement.BUTTONS_ENABLED) == false) {
+                updateViewButtonsEnabledStates();
+                updatedElements.add(ViewElement.BUTTONS_ENABLED);
+            }
+        } else if ((change.getEvent().getStatus() == HazardStatus.ENDING)
+                && (change.getOriginator() != Originator.DATABASE) && getModel()
+                        .getSelectionManager().isSelected(change.getEvent())) {
+            showHazardDetail();
+        }
+    }
+
+    /**
+     * Respond to an event's attributes having changed.
+     * 
+     * @param change
+     *            Change that encompasses this modification.
+     * @param modification
+     *            Modification that occurred.
+     * @param updatedElements
+     *            Set of view elements that have already been updated. This set
+     *            will have any view elements added to it by this method that
+     *            are updated as a result of this invocation.
+     */
+    private void sessionEventAttributesModified(SessionEventModified change,
+            EventAttributesModification modification,
+            Set<ViewElement> updatedElements) {
+        if (detailViewShowing && isNotOrigin(change)
+                && isVisibleEventVersionModified(change)) {
+            IHazardEvent event = getVisibleEvent();
+            if (event != null) {
+                if (modification.getAttributeKeys()
+                        .contains(HazardConstants.HAZARD_EVENT_CATEGORY)) {
+                    if (updatedElements
+                            .contains(ViewElement.CATEGORY_VALUE) == false) {
+                        updateViewCategory(event,
+                                visibleEventVersionIdentifier);
+                        updatedElements.add(ViewElement.CATEGORY_VALUE);
+                    }
+                    if (updatedElements
+                            .contains(ViewElement.TYPE_LIST) == false) {
+                        updateViewTypeList(event,
+                                visibleEventVersionIdentifier);
+                        updatedElements.add(ViewElement.TYPE_LIST);
+                    }
+                }
+                if (updatedElements
+                        .contains(ViewElement.METADATA_VALUES) == false) {
+                    updateViewMetadataValues(event,
+                            visibleEventVersionIdentifier,
+                            modification.getAttributeKeys());
+                    updatedElements.add(ViewElement.METADATA_VALUES);
+                }
+            }
+            if (updatedElements.contains(
+                    ViewElement.SELECTED_EVENT_DISPLAYABLES) == false) {
+                updateSelectedEventDisplayablesIfChanged();
+                updatedElements.add(ViewElement.SELECTED_EVENT_DISPLAYABLES);
+            }
+        }
+    }
+
+    /**
      * Show a view providing setting detail for the current hazard events.
      * 
      * @param force
@@ -1308,7 +1435,8 @@ public class HazardDetailPresenter
      * @return <code>true</code> if the modification is of the currently visible
      *         event, <code>false</code> otherwise.
      */
-    private boolean isVisibleEventVersionModified(SessionEventModified change) {
+    private boolean isVisibleEventVersionModified(
+            AbstractSessionEventModified change) {
         return ((visibleEventVersionIdentifier != null) && change.getEvent()
                 .getEventID().equals(visibleEventVersionIdentifier.getFirst()));
     }
@@ -1317,18 +1445,18 @@ public class HazardDetailPresenter
      * Determine whether or not the currently visible event version is found
      * within the specified collection of events.
      * 
-     * @param events
-     *            Events to be checked for containment of the currently visible
-     *            event.
+     * @param eventIdentifiers
+     *            Identifiers of events to be checked for containment of the
+     *            currently visible event.
      * @return <code>true</code> if the currently visible event is found within
      *         the specified events, <code>false</code> otherwise.
      */
     private boolean isVisibleEventVersionInCollection(
-            Collection<ObservedHazardEvent> events) {
+            Collection<String> eventIdentifiers) {
         if ((visibleEventVersionIdentifier != null)
                 && (visibleEventVersionIdentifier.getSecond() == null)) {
-            for (ObservedHazardEvent event : events) {
-                if (event.getEventID()
+            for (String eventIdentifier : eventIdentifiers) {
+                if (eventIdentifier
                         .equals(visibleEventVersionIdentifier.getFirst())) {
                     return true;
                 }
@@ -1738,6 +1866,10 @@ public class HazardDetailPresenter
          * disabled on a per-hazard-type basis. Once we get there, replace the
          * "false" below with:
          * 
+         * (event is instance of ObservedHazardEvent)
+         * 
+         * with:
+         * 
          * ((event is instance of ObservedHazardEvent) && (event type allows
          * time sliders to be moved))
          * 
@@ -1845,10 +1977,19 @@ public class HazardDetailPresenter
      */
     private void updateViewMetadataValues(IHazardEvent event,
             Pair<String, Integer> eventVersionIdentifier, Set<String> names) {
+
+        /*
+         * Set the states of all the hazard attributes if no names are provided;
+         * if names are provided, only set the states of the hazard attributes
+         * with those names.
+         */
         getView().getMetadataChanger().setStates(eventVersionIdentifier,
                 new HashMap<>(names == null ? event.getHazardAttributes()
-                        : Maps.filterKeys(event.getHazardAttributes(),
-                                Predicates.in(names))));
+                        : event.getHazardAttributes().entrySet().stream()
+                                .filter(entry -> names.contains(entry.getKey()))
+                                .collect(Collectors.toMap(
+                                        entry -> entry.getKey(),
+                                        entry -> entry.getValue()))));
     }
 
     /**

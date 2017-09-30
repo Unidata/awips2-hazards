@@ -9,8 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl;
 
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +30,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
+
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
 /**
  * Description: Manages alerting in hazard services. In order to decouple the
@@ -68,8 +68,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
-        INotificationObserver {
+public class HazardSessionAlertsManager
+        implements IHazardSessionAlertsManager, INotificationObserver {
 
     /**
      * An object used to post {@link HazardAlertsModified}s to registered
@@ -255,8 +255,8 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
 
     @Override
     public void shutdown() {
-        SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
-                simulatedTimeChangeListener);
+        SimulatedTime.getSystemTime()
+                .removeSimulatedTimeChangeListener(simulatedTimeChangeListener);
         notificationHandler.stop();
         cancelJobs();
     }
@@ -342,8 +342,8 @@ public class HazardSessionAlertsManager implements IHazardSessionAlertsManager,
     }
 
     private void postAlertsModifiedNotification() {
-        notificationSender.postNotificationAsync(new HazardAlertsModified(
-                getActiveAlerts()));
+        notificationSender.postNotificationAsync(
+                new HazardAlertsModified(getActiveAlerts()));
     }
 
 }

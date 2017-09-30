@@ -123,6 +123,7 @@ import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
  *                                      by an instance of this class after said menu item
  *                                      is displayed. Also added "correct selected" menu
  *                                      item.
+ * Sep 27, 2017   38072    Chris.Golden Added use of batched messages.
  * </pre>
  * 
  * @author mnash
@@ -313,6 +314,11 @@ public class ContextMenuHelper {
     // Private Variables
 
     /**
+     * Session manager.
+     */
+    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+
+    /**
      * Session event manager.
      */
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
@@ -361,6 +367,7 @@ public class ContextMenuHelper {
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
             IRunnableAsynchronousScheduler scheduler,
             HazardServicesPresenter<?> presenter) {
+        this.sessionManager = sessionManager;
         this.eventManager = sessionManager.getEventManager();
         this.selectionManager = sessionManager.getSelectionManager();
         this.productManager = sessionManager.getProductManager();
@@ -844,10 +851,12 @@ public class ContextMenuHelper {
             }
         } else if (menuLabel.contains(
                 ContextMenuSelections.REMOVE_POTENTIAL_HAZARDS.getValue())) {
+            sessionManager.startBatchedChanges();
             for (ObservedHazardEvent event : eventManager
                     .getEventsByStatus(HazardStatus.POTENTIAL, true)) {
                 eventManager.removeEvent(event, false, originator);
             }
+            sessionManager.finishBatchedChanges();
         } else if (menuLabel.startsWith(EventCommand.CORRECT.value)) {
             correctSelectedEvent();
         } else if (menuLabel.contains(

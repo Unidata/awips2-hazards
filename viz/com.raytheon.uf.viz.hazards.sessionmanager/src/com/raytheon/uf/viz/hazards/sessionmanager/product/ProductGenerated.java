@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
 /**
  * Notification that is sent out when a product is successfully generated.
@@ -40,10 +39,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * @version 1.0
  */
 
-public class ProductGenerated extends ProductModified implements
-        ISessionNotification {
+public class ProductGenerated extends ProductModified {
 
-    public ProductGenerated(ProductGeneratorInformation productGeneratorInformation) {
+    public ProductGenerated(
+            ProductGeneratorInformation productGeneratorInformation) {
         super(productGeneratorInformation);
     }
 

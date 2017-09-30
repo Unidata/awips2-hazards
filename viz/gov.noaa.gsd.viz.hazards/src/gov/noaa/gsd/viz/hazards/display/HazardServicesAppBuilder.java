@@ -99,7 +99,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -326,6 +326,8 @@ import net.engio.mbassy.bus.error.PublicationError;
  * Aug 15, 2017 22757      Chris.Golden        Added ability for recommenders to specify either a
  *                                             message to display, or a dialog to display, with their
  *                                             results (that is, within the returned event set).
+ * Sep 27, 2017 38072      Chris.Golden        Changed to use callback objects for the recommender
+ *                                             manager.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -673,6 +675,10 @@ public class HazardServicesAppBuilder
 
     private IToolParameterGatherer toolParameterGatherer;
 
+    private ISessionRecommenderManager.IDialogParametersReceiver recommenderDialogParametersReceiver;
+
+    private ISessionRecommenderManager.IResultsDisplayCompleteNotifier recommenderDisplayCompleteNotifier;
+
     /**
      * Epoch time in milliseconds of the current frame.
      */
@@ -990,55 +996,57 @@ public class HazardServicesAppBuilder
         this.toolParameterGatherer = new IToolParameterGatherer() {
 
             @Override
-            public void getToolParameters(final String tool,
-                    final ToolType type,
-                    final RecommenderExecutionContext context,
-                    final Map<String, Serializable> dialogInput) {
+            public void getToolParameters(final ToolType type,
+                    final Map<String, Serializable> dialogInput,
+                    final ISessionRecommenderManager.IDialogParametersReceiver dialogParametersReceiver) {
                 if (Display.getDefault().getThread() == Thread
                         .currentThread()) {
                     Dict dict = new Dict();
                     for (String parameter : dialogInput.keySet()) {
                         dict.put(parameter, dialogInput.get(parameter));
                     }
-                    toolsPresenter.showToolParameterGatherer(tool, type,
-                            context, dict.toJSONString());
-                } else {
-                    Display.getDefault().asyncExec(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            getToolParameters(tool, type, context, dialogInput);
-                        }
-                    });
-                }
-            }
-
-            @Override
-            public void getToolSpatialInput(String tool, ToolType type,
-                    RecommenderExecutionContext context,
-                    VisualFeaturesList visualFeatures) {
-                spatialPresenter.setToolVisualFeatures(type, tool, context,
-                        visualFeatures);
-            }
-
-            @Override
-            public void showToolResults(final String tool, final ToolType type,
-                    RecommenderExecutionContext context,
-                    final Map<String, Serializable> dialogResults) {
-                if (Display.getDefault().getThread() == Thread
-                        .currentThread()) {
-                    Dict dict = new Dict();
-                    for (String parameter : dialogResults.keySet()) {
-                        dict.put(parameter, dialogResults.get(parameter));
-                    }
-                    toolsPresenter.showToolResults(tool, type, context,
+                    recommenderDialogParametersReceiver = dialogParametersReceiver;
+                    toolsPresenter.showToolParameterGatherer(type,
                             dict.toJSONString());
                 } else {
                     Display.getDefault().asyncExec(new Runnable() {
 
                         @Override
                         public void run() {
-                            showToolResults(tool, type, context, dialogResults);
+                            getToolParameters(type, dialogInput,
+                                    dialogParametersReceiver);
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void getToolSpatialInput(ToolType type,
+                    VisualFeaturesList visualFeatures,
+                    ISessionRecommenderManager.ISpatialParametersReceiver spatialParametersReceiver) {
+                spatialPresenter.setToolVisualFeatures(type, visualFeatures,
+                        spatialParametersReceiver);
+            }
+
+            @Override
+            public void showToolResults(ToolType type,
+                    final Map<String, Serializable> dialogResults,
+                    final ISessionRecommenderManager.IResultsDisplayCompleteNotifier displayCompleteNotifier) {
+                if (Display.getDefault().getThread() == Thread
+                        .currentThread()) {
+                    Dict dict = new Dict();
+                    for (String parameter : dialogResults.keySet()) {
+                        dict.put(parameter, dialogResults.get(parameter));
+                    }
+                    recommenderDisplayCompleteNotifier = displayCompleteNotifier;
+                    toolsPresenter.showToolResults(type, dict.toJSONString());
+                } else {
+                    Display.getDefault().asyncExec(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            showToolResults(type, dialogResults,
+                                    displayCompleteNotifier);
                         }
                     });
                 }
@@ -1818,6 +1826,39 @@ public class HazardServicesAppBuilder
      */
     public BoundedReceptionEventBus<Object> getEventBus() {
         return eventBus;
+    }
+
+    /**
+     * Tell the recommender dialog parameter receiver of the specified
+     * parameters provided by the user.
+     * 
+     * @param parameters
+     *            Parameters provided by the user.
+     */
+    public void receiveRecommenderDialogParameters(
+            Map<String, Serializable> parameters) {
+        if (recommenderDialogParametersReceiver != null) {
+            recommenderDialogParametersReceiver
+                    .receiveDialogParameters(parameters);
+        } else {
+            throw new IllegalStateException(
+                    "cannot receive recommender dialog parameters, "
+                            + "as no receiver is registered");
+        }
+    }
+
+    /**
+     * Tell the recommender results display complete notifier that results
+     * display is complete.
+     */
+    public void notifyRecommenderResultsDisplayComplete() {
+        if (recommenderDisplayCompleteNotifier != null) {
+            recommenderDisplayCompleteNotifier.resultsDisplayCompleted();
+        } else {
+            throw new IllegalStateException(
+                    "cannot notify recommender results display complete, "
+                            + "as no notifier is registered");
+        }
     }
 
     /**

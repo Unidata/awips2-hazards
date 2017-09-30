@@ -19,42 +19,63 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
- * A Notification that will be sent out through the SessionManager to notify all
- * components that a new event has been removed from the session.
+ * Base class for notifications that will be sent out to notify all components
+ * that an event in the session has changed in some way.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 11, 2013    1257    bsteffen     Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Changed to make it explicitly abstract.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
+public abstract class AbstractSessionEventModified
+        extends SessionEventsModified {
 
-public class SessionEventRemoved extends SessionEventsModified implements
-        ISessionNotification {
+    // Private Variables
 
-    private final IHazardEvent event;
+    /**
+     * Event that has been modified.
+     */
+    private final ObservedHazardEvent event;
 
-    public SessionEventRemoved(
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param eventManager
+     *            Event manager.
+     * @param event
+     *            Event that has been modified.
+     * @param originator
+     *            Originator of the change.
+     */
+    public AbstractSessionEventModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
-            IHazardEvent event, IOriginator originator) {
+            ObservedHazardEvent event, IOriginator originator) {
         super(eventManager, originator);
         this.event = event;
     }
 
-    public IHazardEvent getEvent() {
+    // Public Methods
+
+    /**
+     * Get the event that has been modified.
+     *
+     * @return Event that has been modified.
+     */
+    public ObservedHazardEvent getEvent() {
         return event;
     }
 }

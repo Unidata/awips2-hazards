@@ -23,33 +23,48 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
- * A Notification that will be sent out through the SessionManager to notify all
- * components that the session has changed. TODO Should this be named
- * ModelModified?
+ * Notification that will be sent out to notify all components that the preview
+ * or issue ongoing state has been modified.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Mar 06, 2014 2819       daniel.s.schaffer@noaa.gov    Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Mar 06, 2014    2819    Dan Schaffer Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Changed name to explicitly identify
+ *                                      the purpose of the class, and
+ *                                      implemented merge() method.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
+public class SessionPreviewOrIssueOngoingModified
+        extends OriginatedSessionNotification {
 
-public class SessionModified extends OriginatedSessionNotification implements
-        ISessionNotification {
+    // Public Constructors
 
     /**
+     * Construct a standard instance.
+     * 
      * @param originator
+     *            Originator of the change.
      */
-    public SessionModified(IOriginator originator) {
+    public SessionPreviewOrIssueOngoingModified(IOriginator originator) {
         super(originator);
     }
 
+    // Public Methods
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
+                modified);
+    }
 }

@@ -14,10 +14,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
+
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Description: Execution context for a recommender run.
@@ -50,12 +54,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
  *                                      by frame changes.
  * May 31, 2017   34684    Chris.Golden Added support for selection-change-triggered
  *                                      recommender execution.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() and toString() methods,
+ *                                      and made an IMergeable.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class RecommenderExecutionContext {
+public class RecommenderExecutionContext
+        implements IMergeable<RecommenderExecutionContext> {
 
     // Private Static Variables
 
@@ -295,8 +302,8 @@ public class RecommenderExecutionContext {
         this.identifier = counter.getAndIncrement();
         this.trigger = trigger;
         this.origin = origin;
-        this.eventIdentifiers = (eventIdentifier == null ? null : ImmutableSet
-                .copyOf(Sets.newHashSet(eventIdentifier)));
+        this.eventIdentifiers = (eventIdentifier == null ? null
+                : ImmutableSet.copyOf(Sets.newHashSet(eventIdentifier)));
         this.attributeIdentifiers = (attributeIdentifiers == null ? null
                 : ImmutableSet.copyOf(attributeIdentifiers));
         this.eventType = eventType;
@@ -336,8 +343,8 @@ public class RecommenderExecutionContext {
         this.identifier = counter.getAndIncrement();
         this.trigger = trigger;
         this.origin = origin;
-        this.eventIdentifiers = (eventIdentifiers == null ? null : ImmutableSet
-                .copyOf(eventIdentifiers));
+        this.eventIdentifiers = (eventIdentifiers == null ? null
+                : ImmutableSet.copyOf(eventIdentifiers));
         this.attributeIdentifiers = (attributeIdentifiers == null ? null
                 : ImmutableSet.copyOf(attributeIdentifiers));
         this.eventType = eventType;
@@ -417,5 +424,95 @@ public class RecommenderExecutionContext {
      */
     public Map<String, Serializable> getExtraEventSetAttributes() {
         return extraEventSetAttributes;
+    }
+
+    /**
+     * Merge the specified context with this one (the subject) if possible,
+     * returning the result. Note that for this implementation, there are only
+     * two possible results: a merge failure, or a merge success with the object
+     * being nullified.
+     * 
+     * @param original
+     *            Object context.
+     * @param modified
+     *            Ignored for this implementation.
+     * @return Result of the attempt.
+     */
+    @Override
+    public MergeResult<RecommenderExecutionContext> merge(
+            RecommenderExecutionContext original,
+            RecommenderExecutionContext modified) {
+
+        /*
+         * A merge is possible only if the triggers and origins of the two
+         * contexts are identical.
+         */
+        if ((getTrigger() == original.getTrigger())
+                && (getOrigin() == original.getOrigin())) {
+
+            /*
+             * Do not allow merges for "none", "hazard type first", or
+             * "time interval" contexts; for "hazard event modification" and
+             * "visual feature change" contexts, only allow merges if the event
+             * identifiers are the same; for all others, merge the two.
+             */
+            switch (getTrigger()) {
+            case NONE:
+            case HAZARD_TYPE_FIRST:
+            case TIME_INTERVAL:
+                return IMergeable.getFailureResult();
+            case HAZARD_EVENT_MODIFICATION:
+            case HAZARD_EVENT_VISUAL_FEATURE_CHANGE:
+                if (getEventIdentifiers()
+                        .equals(original.getEventIdentifiers())) {
+                    return IMergeable.getSuccessObjectCancellationResult(
+                            new RecommenderExecutionContext(getTrigger(),
+                                    getOrigin(), getEventIdentifiers(),
+                                    Sets.union(getAttributeIdentifiers(),
+                                            original.getAttributeIdentifiers()),
+                                    null, null));
+                } else {
+                    return IMergeable.getFailureResult();
+                }
+            case HAZARD_EVENT_SELECTION:
+                return IMergeable.getSuccessObjectCancellationResult(
+                        getHazardEventSelectionChangeContext(
+                                Sets.union(getEventIdentifiers(),
+                                        original.getEventIdentifiers()),
+                                getOrigin()));
+            default:
+                return IMergeable.getSuccessObjectCancellationResult(this);
+            }
+        } else {
+            return IMergeable.getFailureResult();
+        }
+    }
+
+    @Override
+    public String toString() {
+        StringBuffer buffer = new StringBuffer();
+        buffer.append("context: { ID: ");
+        buffer.append(identifier);
+        buffer.append(", trigger: ");
+        buffer.append(trigger);
+        buffer.append(", origin: ");
+        buffer.append(origin);
+        buffer.append(", event type: ");
+        buffer.append(eventType);
+        buffer.append(", event IDs: [");
+        if (eventIdentifiers != null) {
+            buffer.append(Joiner.on(", ").join(eventIdentifiers));
+        }
+        buffer.append("], attribute IDs: [");
+        if (attributeIdentifiers != null) {
+            buffer.append(Joiner.on(", ").join(attributeIdentifiers));
+        }
+        buffer.append("], extra attributes: {");
+        if (extraEventSetAttributes != null) {
+            buffer.append(Joiner.on(", ").withKeyValueSeparator(": ")
+                    .join(extraEventSetAttributes));
+        }
+        buffer.append("} }");
+        return buffer.toString();
     }
 }

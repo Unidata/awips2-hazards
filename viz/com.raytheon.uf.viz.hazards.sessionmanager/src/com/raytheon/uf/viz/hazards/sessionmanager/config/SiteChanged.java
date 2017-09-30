@@ -9,8 +9,11 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
+
+import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Description: Notification indicating that the current site has changed.
@@ -21,6 +24,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 16, 2016   15556    Chris.Golden Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,5 +63,12 @@ public class SiteChanged extends OriginatedSessionNotification {
      */
     public String getSiteIdentifier() {
         return siteIdentifier;
+    }
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
+                modified);
     }
 }

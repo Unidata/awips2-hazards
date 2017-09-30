@@ -152,6 +152,9 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['onlyIncludeTriggerEvents'] = True
         metadata['includeDataLayerTimes'] = True
         
+        metadata["getDialogInfoNeeded"] = False
+        metadata["getSpatialInfoNeeded"] = False
+        
         return metadata
 
     def defineDialog(self, eventSet):
@@ -224,6 +227,12 @@ class Recommender(RecommenderTemplate.Recommender):
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
                 self.probUtils.setActivation(event)
                 self.setOriginDict[event.getEventID()] = False
+                self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
+                print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
+                print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
+                self.flush()
+                self.setVisualFeatures(event)
+                resultEventSet.add(event)
                 continue
                         
             # Begin Graph Draw
@@ -236,7 +245,7 @@ class Recommender(RecommenderTemplate.Recommender):
             self.eventBookkeeping(event, origin)
             
             # Adjust Hazard Event Attributes
-            
+            changes = False
             if trigger == 'frameChange':
                 if not self.adjustForFrameChange(event, eventSetAttrs, resultEventSet):
                     continue
@@ -250,26 +259,33 @@ class Recommender(RecommenderTemplate.Recommender):
                 
             elif trigger == 'hazardEventModification':
                 changes = self.adjustForEventModification(event, eventSetAttrs, resultEventSet)
-                if not changes:
-                    # Handle other dialog buttons
-                    self.handleAdditionalEventModifications(event, resultEventSet)
-                    continue
+                #if not changes:
+                # Handle other dialog buttons
+                self.handleAdditionalEventModifications(event, resultEventSet)
+                    #continue
                 if 'modifyButton' in self.attributeIdentifiers or (self.editableHazard and self.movedStartTime): 
                     resultEventSet.addAttribute(SELECTED_TIME_KEY, self.eventSt_ms)
                     self.lastSelectedTime = self.eventSt_ms
                     print "SR Setting selected time to eventSt"
+                    print "SR Setting selected time to eventSt --YG", self.eventSt_ms
                     self.flush()
+                    changes = True
                     
             elif trigger == 'hazardEventVisualFeatureChange':
                 if not self.adjustForVisualFeatureChange(event, eventSetAttrs):
                     continue
                 resultEventSet.addAttribute(SELECTED_TIME_KEY, self.dataLayerTimeToLeft)
                 print "SR Setting selected time to dataLayerTimeToLeft"
+                print "SR Setting selected time to dataLayerTimeToLeft --YG", self.dataLayerTimeToLeft
                 self.lastSelectedTime =  self.dataLayerTimeToLeft
                 self.flush()
+                changes = True
                 
             elif trigger == 'autoUpdate':
-                pass
+                changes = True
+            
+            if not changes:
+                continue
 
             print self.logMessage("Re-calculating")                                                
             # Re-calculate Motion Vector-related and Probabilistic Information
@@ -338,6 +354,10 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # Make sure that already elapsed events are never processed.
         if event.getStatus() == "ELAPSED":
+            # elapsed event may need to be added again so that the other UI can see it 
+            event.setStatus('ELAPSED')
+            event.set('statusForHiddenField', 'ELAPSED')
+            resultEventSet.add(event)            
             return False  
         
         # Make sure that triggers resulting from database changes are never
@@ -502,7 +522,8 @@ class Recommender(RecommenderTemplate.Recommender):
         print "SR Visual Cue eventSt, latestDataLayer", self.eventSt_ms, self.latestDataLayerTime
         self.flush()
         if self.eventSt_ms != self.latestDataLayerTime:
-            event.set('dataLayerStatus', 'Data Layer Updated')
+            event.set('dataLayerStatus', 'Updated')
+            #event.set('dataLayerStatus', 'Data Layer Updated')            
 
     def processDataLayerUpdate(self, event, eventSetAttrs, resultEventSet):
         if not self.editableObjects:
@@ -520,7 +541,9 @@ class Recommender(RecommenderTemplate.Recommender):
 
     def adjustForEventModification(self, event, eventSetAttrs, resultEventSet):        
         print '\n---SR: Entering adjustForEventModification...'
+        print "SR entering adjustForEventModification -- YG"
         print self.attributeIdentifiers
+        self.flush()
         
         changed = False
 
@@ -617,7 +640,9 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return False
     
-    def handleAdditionalEventModifications(self, event, resultEventSet):  
+    def handleAdditionalEventModifications(self, event, resultEventSet):
+        print "SR- Entering handleAdditionalEventModification --YG"
+        self.flush()
         if "status" in self.attributeIdentifiers or "showGrid" in self.attributeIdentifiers:
             self.setVisualFeatures(event)
             resultEventSet.add(event)
@@ -784,7 +809,7 @@ class Recommender(RecommenderTemplate.Recommender):
                       
         Update event geometry i.e. polygon at event start time, if changed        
         '''
-        
+        print "SR entering adjustForVisualFeatureChange --YG"
         print "SR AdjustforVisualFeature editable", self.editableHazard
         self.flush()
         if not self.editableHazard:
@@ -798,8 +823,9 @@ class Recommender(RecommenderTemplate.Recommender):
         if not features: features = []
 
         # We are only changing one visual feature per SwathRecommender execution
+        # because only one visual feature is editable at any one time.
         changedIdentifier = list(eventSetAttrs.get('attributeIdentifiers'))[0]
-
+        
         for feature in features:
             featureIdentifier = feature.get('identifier')
             # Find the feature that has changed
@@ -822,35 +848,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.flush()
                 event.set('motionVectorCentroids', motionVectorCentroids)
                 event.set('motionVectorTimes', motionVectorTimes)
-                                     
-#                 # If the feature is prior to the event start time, 
-#                 #   add it to the past list
-#                 if featureSt < self.eventSt_ms:
-#                     pastPolys = event.get('pastPolys', []) 
-#                     pastTimes = event.get('pastTimes', [])
-#                     pastPolys, pastTimes = self.updateShapes(pastPolys, pastTimes, featurePoly, featureSt, featureEt,
-#                                    limit=self.maxPastPolygons())
-#                     event.set('pastPolys', pastPolys)
-#                     event.set('pastTimes', pastTimes)
-                    
+                                                         
                 # If the feature is at the event start time, add it to the 
                 #  event geometry
                 if abs(featureSt - self.eventSt_ms) <= self.probUtils.timeDelta_ms():
                     event.setGeometry(featurePoly)
-#                     # If nudging an issued event, restore the issuedDuration
-#                     if not self.pendingHazard: 
-#                         durationSecs = event.get("durationSecsAtIssuance")
-#                         if durationSecs is not None:
-#                             endTimeMS = TimeUtils.roundEpochTimeMilliseconds(self.eventSt_ms + durationSecs * 1000,
-#                                                                              delta=datetime.timedelta(seconds=1))
-#                             event.setEndTime(datetime.datetime.utcfromtimestamp(endTimeMS / 1000))
-#                             # graphProbs = self.probUtils.getGraphProbsBasedOnDuration(event)
-#                             graphProbs = event.get("graphProbsAtIssuance")
-#                             # LogUtils.logMessage('[2]', graphProbs)
-#                             event.set('convectiveProbTrendGraph', graphProbs)
-#                 automationLevel = event.get('automationLevel')
-#                 if automationLevel == 'automated':
-#                     self.setAttributesAndGeometry(event)               
         
         if len(motionVectorCentroids) <= 1:
             return True
@@ -957,6 +959,8 @@ class Recommender(RecommenderTemplate.Recommender):
              self.printFeatures(event, "Visual Features", features)
         
     def forecastVisualFeatures(self, event, startTime_ms):
+        print "SR -- entering forecastVisualFeatures --YG"
+        self.flush()
         forecastPolys = event.get('forecastPolys')
         if not forecastPolys:
             return
@@ -993,8 +997,11 @@ class Recommender(RecommenderTemplate.Recommender):
             if i <= 1:
                 print "SR forecast i, polySt, eventSt", i, self.probUtils.displayMsTime(polySt_ms), polySt_ms, polySt_ms == self.eventSt_ms
                 self.flush()
+            print "SR polyst and eventst--YG ", polySt_ms, self.eventSt_ms
             if polySt_ms == self.eventSt_ms:
                 startTimeShapeFound = True
+                print "SR StartTimeShapeFound... YG "
+            self.flush()
             
             if i == 0:
                 firstForecastSt_ms = polySt_ms                
@@ -1049,9 +1056,12 @@ class Recommender(RecommenderTemplate.Recommender):
             relocatedShape = self.probUtils.reduceShapeIfPolygon(AdvancedGeometry.
                                                                    createRelocatedShape(geometry, centroid))    
             if polySt_ms == self.eventSt_ms:
+                print "SR ======================= editableHazard ", self.editableHazard
                 if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                     dragCapability = 'all'
-                    editable = True            
+                    editable = True 
+                    print "SR relocatedShape, editable -YG ", self.eventSt_ms
+                    self.flush()           
               
             relocatedFeature = {
               "identifier": "swathRec_relocated_" + str(polySt_ms),
@@ -1092,7 +1102,8 @@ class Recommender(RecommenderTemplate.Recommender):
             print "****SR startTimeShape not found -- attempt to use geometry"
             self.flush()
             if self.editableHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
-                # print "SR forecast poly equal to start time -- setting editable"
+                #print "SR forecast poly equal to start time -- setting editable"
+                print "SR setting editable...YG "
                 self.flush()
                 dragCapability = 'all'
                 editable = True

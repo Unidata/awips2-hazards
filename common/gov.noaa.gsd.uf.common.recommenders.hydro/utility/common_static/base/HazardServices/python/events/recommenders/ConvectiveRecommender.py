@@ -101,6 +101,8 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["eventState"] = "Pending"
         metaDict['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         metaDict['includeDataLayerTimes'] = True
+        metaDict["getDialogInfoNeeded"] = False
+        metaDict["getSpatialInfoNeeded"] = False
         return metaDict
 
     def defineDialog(self, eventSet):

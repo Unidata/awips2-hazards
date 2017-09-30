@@ -420,4 +420,18 @@ public class SimpleSessionEventManager
     public void copyEvents(List<IHazardEvent> events) {
         throw new UnsupportedOperationException();
     }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
+     * getRecommendersForTriggerIdentifiers(java.lang.String)
+     */
+    @Override
+    public Map<String, String> getRecommendersForTriggerIdentifiers(
+            String eventIdentifier) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

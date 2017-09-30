@@ -135,6 +135,7 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      event.
  * Mar 30, 2017 15528      Chris.Golden Changed to reset modified flag when asked to do so
  *                                      during the persistence of a hazard event.
+ * Sep 27, 2017 38072      Chris.Golden Removed definitions of constants that did not belong here.
  * </pre>
  * 
  * @author bsteffen
@@ -144,28 +145,13 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 public interface ISessionEventManager<E extends IHazardEvent> {
 
     /**
-     * The issued attribute will be available as a Boolean for all hazards in
-     * the session to mark whether the event has been previously issued, it will
-     * not be persisted.
-     */
-    public static final String ATTR_ISSUED = "issued";
-
-    /**
-     * The hazard category attribute will be available as a String for any new
-     * hazards without a phenSig. After a phenSig has been assigned hazard
-     * category should be looked up from the configuration manager. This
-     * attribute will not be persisted.
-     */
-    public static final String ATTR_HAZARD_CATEGORY = "hazardCategory";
-
-    /**
-     * Add a new event to the Session, for example the event might come from a
-     * user geometry or from a recommender. The new event will automatically be
-     * selected and checked.
+     * Add a new event to the session, for example the event might come from a
+     * user geometry or from a recommender.
      * 
      * @param event
      *            Nascent event.
      * @param originator
+     *            Originator of the addition.
      * @return Event that was added. This will generally not be the same object
      *         as the passed-in <code>event</code>, since addition requires that
      *         a specific subclass of {@link IHazardEvent} is created.
@@ -344,11 +330,13 @@ public interface ISessionEventManager<E extends IHazardEvent> {
 
     /**
      * Receive notification that a command was invoked within the user interface
-     * that requires a metadata refresh or a script to be run in response.
+     * that may require a metadata refresh or other reaction.
+     * 
+     * TODO: Remove the <code>mutableProperties</code> parameter once event
+     * modifying scripts are removed.
      * 
      * @param event
-     *            Hazard event for which to run the script or refresh the
-     *            metadata.
+     *            Hazard event for which the command was invoked.
      * @param identifier
      *            Identifier of the command that was invoked.
      * @param mutableProperties
@@ -356,6 +344,18 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public void eventCommandInvoked(E event, String identifier,
             Map<String, Map<String, Object>> mutableProperties);
+
+    /**
+     * Get the map of hazard attribute identifiers that trigger recommender
+     * executions to the recommenders executed for the specified hazard event.
+     * 
+     * @param eventIdentifier
+     *            Identifier of the hazard event for which to fetch the map.
+     * @return Map, or <code>null</code> if the hazard event has no associated
+     *         map.
+     */
+    public Map<String, String> getRecommendersForTriggerIdentifiers(
+            String eventIdentifier);
 
     /**
      * Get all events with the given status from the session. This will never

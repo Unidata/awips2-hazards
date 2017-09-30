@@ -19,9 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.time.impl;
 
-import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
-import gov.noaa.gsd.common.utilities.TimeResolution;
-
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumMap;
@@ -32,8 +29,6 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
-
-import net.engio.mbassy.listener.Handler;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.time.DateUtils;
@@ -50,10 +45,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender.IIntraNotificationHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeMinuteTicked;
@@ -63,6 +60,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
+
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
  * Implementation of ISessionTimeManager
@@ -136,6 +136,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
  *                                      selected time to change if the current time
  *                                      is set by the user to something more than an
  *                                      hour from the previous current time.
+ * Sep 27, 2017 38072      Chris.Golden Added use of intra-managerial notifications.
  * </pre>
  * 
  * @author bsteffen
@@ -160,6 +161,7 @@ public class SessionTimeManager implements ISessionTimeManager {
      * units.
      */
     private static final Map<TimeResolution, Long> UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION;
+
     static {
         Map<TimeResolution, Long> map = new EnumMap<>(TimeResolution.class);
         map.put(TimeResolution.MINUTES, TimeUnit.MINUTES.toMillis(1L));
@@ -256,8 +258,10 @@ public class SessionTimeManager implements ISessionTimeManager {
              * match. Regardless, record the new current time.
              */
             long currentTime = getCurrentTimeInMillis();
-            if (Math.abs(currentTime - approximateCurrentTime) > TimeUtil.MILLIS_PER_HOUR) {
-                setSelectedTime(new SelectedTime(currentTime), Originator.OTHER);
+            if (Math.abs(currentTime
+                    - approximateCurrentTime) > TimeUtil.MILLIS_PER_HOUR) {
+                setSelectedTime(new SelectedTime(currentTime),
+                        Originator.OTHER);
             }
             approximateCurrentTime = currentTime;
 
@@ -274,6 +278,58 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
     };
 
+    /**
+     * Intra-managerial notification handler for selected events changes.
+     */
+    private IIntraNotificationHandler<SessionSelectedEventsModified> selectedEventsChangeHandler = new IIntraNotificationHandler<SessionSelectedEventsModified>() {
+
+        @Override
+        public void handleNotification(
+                SessionSelectedEventsModified notification) {
+            selectedEventsModified(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for event time range changes.
+     */
+    private IIntraNotificationHandler<SessionEventModified> eventTimeRangeChangeHandler = new IIntraNotificationHandler<SessionEventModified>() {
+
+        @Override
+        public void handleNotification(SessionEventModified notification) {
+            if (notification.getClassesOfModifications()
+                    .contains(EventTimeRangeModification.class)) {
+                eventTimeRangeModified(notification);
+            }
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for settings changes.
+     */
+    private IIntraNotificationHandler<SettingsModified> settingsChangeHandler = new IIntraNotificationHandler<SettingsModified>() {
+
+        @Override
+        public void handleNotification(SettingsModified notification) {
+            settingsModified(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
     // Public Constructors
 
     /**
@@ -285,6 +341,7 @@ public class SessionTimeManager implements ISessionTimeManager {
      *            Notification sender, used to send out time-related
      *            notifications.
      */
+    @SuppressWarnings("unchecked")
     public SessionTimeManager(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
             ISessionNotificationSender notificationSender) {
@@ -296,13 +353,25 @@ public class SessionTimeManager implements ISessionTimeManager {
         selectedTime = new SelectedTime(currentTime.getTime());
 
         /*
+         * Register handlers for notifications from other managers.
+         */
+        notificationSender.registerIntraNotificationHandler(
+                SessionSelectedEventsModified.class,
+                selectedEventsChangeHandler);
+        notificationSender.registerIntraNotificationHandler(
+                SessionEventModified.class, eventTimeRangeChangeHandler);
+        notificationSender.registerIntraNotificationHandler(
+                Sets.newHashSet(SettingsModified.class, SettingsLoaded.class),
+                settingsChangeHandler);
+
+        /*
          * Schedule timer notifications, and subscribe to notifications of
          * simulated time changes to update the timer appropriately whenever
          * such changes occur.
          */
         scheduleTimerNotifications(false);
-        SimulatedTime.getSystemTime().addSimulatedTimeChangeListener(
-                simulatedTimeChangeListener);
+        SimulatedTime.getSystemTime()
+                .addSimulatedTimeChangeListener(simulatedTimeChangeListener);
     }
 
     // Public Methods
@@ -361,8 +430,8 @@ public class SessionTimeManager implements ISessionTimeManager {
             return;
         }
         this.selectedTime = selectedTime;
-        notificationSender.postNotificationAsync(new SelectedTimeChanged(this,
-                originator));
+        notificationSender.postNotificationAsync(
+                new SelectedTimeChanged(this, selectedTime, originator));
     }
 
     @Override
@@ -381,14 +450,15 @@ public class SessionTimeManager implements ISessionTimeManager {
     }
 
     @Override
-    public void setVisibleTimeRange(TimeRange timeRange, IOriginator originator) {
+    public void setVisibleTimeRange(TimeRange timeRange,
+            IOriginator originator) {
         assert (timeRange != null);
         if (timeRange.equals(visibleTimeRange)) {
             return;
         }
         this.visibleTimeRange = timeRange;
-        notificationSender.postNotificationAsync(new VisibleTimeRangeChanged(
-                this, originator));
+        notificationSender.postNotificationAsync(
+                new VisibleTimeRangeChanged(this, originator));
     }
 
     @Override
@@ -412,19 +482,38 @@ public class SessionTimeManager implements ISessionTimeManager {
         minutesSinceExecutionForTasks.remove(task);
     }
 
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this);
+    }
+
+    @Override
+    public void shutdown() {
+        notificationSender.unregisterIntraNotificationHandler(
+                selectedEventsChangeHandler);
+        notificationSender.unregisterIntraNotificationHandler(
+                eventTimeRangeChangeHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(settingsChangeHandler);
+        cancelTimerNotifications();
+        SimulatedTime.getSystemTime()
+                .removeSimulatedTimeChangeListener(simulatedTimeChangeListener);
+    }
+
+    // Private Methods
+
     /**
      * Handle a change in the selected events.
      * 
      * @param change
      *            Change that occurred.
      */
-    @Handler(priority = 1)
-    public void selectedEventsModified(SessionSelectedEventsModified change) {
+    private void selectedEventsModified(SessionSelectedEventsModified change) {
         if (change.getEventIdentifiers().isEmpty()) {
             return;
         }
-        SelectedTime newSelectedTime = getSelectedTimeIntersectingEvents(change
-                .getSelectionManager().getSelectedEvents());
+        SelectedTime newSelectedTime = getSelectedTimeIntersectingEvents(
+                change.getSelectionManager().getSelectedEvents());
         if (newSelectedTime.equals(selectedTime) == false) {
             setSelectedTime(newSelectedTime, Originator.OTHER);
             ensureVisibleTimeRangeIncludesLowerSelectedTime();
@@ -437,13 +526,13 @@ public class SessionTimeManager implements ISessionTimeManager {
      * @param change
      *            Change that occurred.
      */
-    @Handler(priority = 1)
-    public void eventTimeRangeModified(SessionEventTimeRangeModified change) {
+    private void eventTimeRangeModified(SessionEventModified change) {
         Set<String> eventIdentifiers = sessionManager.getSelectionManager()
                 .getSelectedEventIdentifiers();
         if (eventIdentifiers.contains(change.getEvent().getEventID())) {
-            setSelectedTime(getSelectedTimeIntersectingEvents(sessionManager
-                    .getSelectionManager().getSelectedEvents()),
+            setSelectedTime(
+                    getSelectedTimeIntersectingEvents(sessionManager
+                            .getSelectionManager().getSelectedEvents()),
                     Originator.OTHER);
         }
     }
@@ -454,8 +543,7 @@ public class SessionTimeManager implements ISessionTimeManager {
      * @param change
      *            Change that occurred.
      */
-    @Handler(priority = 1)
-    public void settingsModified(SettingsModified change) {
+    private void settingsModified(SettingsModified change) {
 
         /*
          * See if the time resolution has changed; if so, then schedule a timer
@@ -501,20 +589,6 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
     }
 
-    @Override
-    public String toString() {
-        return ToStringBuilder.reflectionToString(this);
-    }
-
-    @Override
-    public void shutdown() {
-        cancelTimerNotifications();
-        SimulatedTime.getSystemTime().removeSimulatedTimeChangeListener(
-                simulatedTimeChangeListener);
-    }
-
-    // Private Methods
-
     /**
      * Schedule the timer notifications.
      * 
@@ -546,11 +620,11 @@ public class SessionTimeManager implements ISessionTimeManager {
          * the seconds one is needed, schedule only it; if the time resolution
          * is minutes, schedule only the minutes one; otherwise, schedule both.
          */
-        Set<TimeResolution> timeResolutions = (onlyScheduleSecondsTick ? Sets
-                .newHashSet(TimeResolution.SECONDS)
-                : (timeResolution == TimeResolution.MINUTES ? Sets
-                        .newHashSet(TimeResolution.MINUTES) : Sets
-                        .newHashSet(TimeResolution.values())));
+        Set<TimeResolution> timeResolutions = (onlyScheduleSecondsTick
+                ? Sets.newHashSet(TimeResolution.SECONDS)
+                : (timeResolution == TimeResolution.MINUTES
+                        ? Sets.newHashSet(TimeResolution.MINUTES)
+                        : Sets.newHashSet(TimeResolution.values())));
 
         /*
          * Create timer tasks to fire off once a minute and/or once a second, as
@@ -579,23 +653,24 @@ public class SessionTimeManager implements ISessionTimeManager {
             TimerTask timerTask = new TimerTask() {
                 @Override
                 public void run() {
-                    sessionManager.getRunnableAsynchronousScheduler().schedule(
-                            new Runnable() {
-                                @Override
-                                public void run() {
-                                    approximateCurrentTime = getCurrentTimeInMillis();
-                                    notificationSender
-                                            .postNotificationAsync((timeResolution == TimeResolution.MINUTES ? new CurrentTimeMinuteTicked(
+                    sessionManager.getRunnableAsynchronousScheduler()
+                            .schedule(new Runnable() {
+                        @Override
+                        public void run() {
+                            approximateCurrentTime = getCurrentTimeInMillis();
+                            notificationSender.postNotificationAsync(
+                                    (timeResolution == TimeResolution.MINUTES
+                                            ? new CurrentTimeMinuteTicked(
                                                     Originator.OTHER,
                                                     SessionTimeManager.this)
-                                                    : new CurrentTimeSecondTicked(
-                                                            Originator.OTHER,
-                                                            SessionTimeManager.this)));
-                                    if (timeResolution == TimeResolution.MINUTES) {
-                                        runScheduledTasks(false);
-                                    }
-                                }
-                            });
+                                            : new CurrentTimeSecondTicked(
+                                                    Originator.OTHER,
+                                                    SessionTimeManager.this)));
+                            if (timeResolution == TimeResolution.MINUTES) {
+                                runScheduledTasks(false);
+                            }
+                        }
+                    });
                 }
             };
 
@@ -737,14 +812,15 @@ public class SessionTimeManager implements ISessionTimeManager {
         Range<Long> intersection = Range.all();
         Range<Long> span = null;
         for (ObservedHazardEvent event : events) {
-            Range<Long> eventRange = Range.closed(event.getStartTime()
-                    .getTime(), event.getEndTime().getTime());
+            Range<Long> eventRange = Range.closed(
+                    event.getStartTime().getTime(),
+                    event.getEndTime().getTime());
             if (intersection != null) {
                 if (intersection.isConnected(eventRange)) {
                     intersection = intersection.intersection(eventRange);
                 } else {
-                    boolean eventRangeHigher = (intersection.upperEndpoint() < eventRange
-                            .lowerEndpoint());
+                    boolean eventRangeHigher = (intersection
+                            .upperEndpoint() < eventRange.lowerEndpoint());
                     span = Range.closed(
                             (eventRangeHigher ? intersection.upperEndpoint()
                                     : eventRange.upperEndpoint()),
@@ -756,10 +832,10 @@ public class SessionTimeManager implements ISessionTimeManager {
                 boolean eventRangeHigher = (span.upperEndpoint() < eventRange
                         .lowerEndpoint());
                 span = Range.closed(
-                        (eventRangeHigher ? span.lowerEndpoint() : eventRange
-                                .upperEndpoint()),
-                        (eventRangeHigher ? eventRange.lowerEndpoint() : span
-                                .upperEndpoint()));
+                        (eventRangeHigher ? span.lowerEndpoint()
+                                : eventRange.upperEndpoint()),
+                        (eventRangeHigher ? eventRange.lowerEndpoint()
+                                : span.upperEndpoint()));
             }
         }
 
@@ -776,7 +852,7 @@ public class SessionTimeManager implements ISessionTimeManager {
                 selectedTime = new SelectedTime(
                         selectedTime.getLowerBound() > intersection
                                 .upperEndpoint() ? intersection.upperEndpoint()
-                                : intersection.lowerEndpoint());
+                                        : intersection.lowerEndpoint());
             }
         } else {
             if (selectedTime.getRange().encloses(span) == false) {
@@ -797,8 +873,8 @@ public class SessionTimeManager implements ISessionTimeManager {
 
             long lowerBoundMillis = selectedTime.getLowerBound();
             Date lowerBound = new Date(lowerBoundMillis);
-            Date truncatedLowerBound = truncateDateForTimeResolution(
-                    lowerBound, timeResolution);
+            Date truncatedLowerBound = truncateDateForTimeResolution(lowerBound,
+                    timeResolution);
             if (lowerBound.equals(truncatedLowerBound) == false) {
                 lowerBoundMillis = truncatedLowerBound.getTime();
                 changed = true;
@@ -806,8 +882,8 @@ public class SessionTimeManager implements ISessionTimeManager {
 
             long upperBoundMillis = selectedTime.getUpperBound();
             Date upperBound = new Date(upperBoundMillis);
-            Date truncatedUpperBound = truncateDateForTimeResolution(
-                    upperBound, timeResolution);
+            Date truncatedUpperBound = truncateDateForTimeResolution(upperBound,
+                    timeResolution);
             if (upperBound.equals(truncatedUpperBound) == false) {
                 upperBoundMillis = truncatedUpperBound.getTime()
                         + UNIT_IN_MILLISECONDS_FOR_TIME_RESOLUTION

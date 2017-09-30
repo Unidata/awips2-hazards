@@ -19,17 +19,21 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
- * Notification that will be sent out through the SessionManager to notify all
- * components that the boundaries constraining the range of allowable values for
- * the start and/or end time of an event in the session have changed.
+ * Notification that will be sent out to notify all components that the
+ * boundaries constraining the range of allowable values for the start and/or
+ * end time of one or more events in the session have changed.
  * 
  * <pre>
  * 
@@ -38,24 +42,75 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 02, 2015    2331    Chris.Golden Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionEventsTimeRangeBoundariesModified extends
-        SessionEventsModified implements ISessionNotification {
+public class SessionEventsTimeRangeBoundariesModified
+        extends SessionEventsModified {
 
-    private final Set<String> events;
+    // Private Variables
 
+    /**
+     * Identifiers of events that have had their time range boundaries changed.
+     */
+    private final Set<String> eventIdentifiers;
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param eventManager
+     *            Event manager.
+     * @param eventIdentifiers
+     *            Identifiers of events that have had their time range
+     *            boundaries modified.
+     * @param originator
+     *            Originator of the change.
+     */
     public SessionEventsTimeRangeBoundariesModified(
             ISessionEventManager<ObservedHazardEvent> eventManager,
-            Set<String> events, IOriginator originator) {
+            Set<String> eventIdentifiers, IOriginator originator) {
         super(eventManager, originator);
-        this.events = Collections.unmodifiableSet(events);
+        this.eventIdentifiers = ImmutableSet.copyOf(eventIdentifiers);
     }
 
-    public final Set<String> getChangedEvents() {
-        return events;
+    /**
+     * Get the identifiers of the events that have had their time range
+     * boundaries modified. Note that the returned set is not modifiable.
+     * 
+     * @return Identifiers of the events.
+     */
+    public final Set<String> getEventIdentifiers() {
+        return eventIdentifiers;
+    }
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+
+        /*
+         * If the new notification has the same originator as this one, and is
+         * of the same type, merge the two together by combining their event
+         * identifier sets; otherwise, the merge has failed.
+         */
+        if ((modified instanceof SessionEventsTimeRangeBoundariesModified)
+                && getOriginator()
+                        .equals(((SessionEventsTimeRangeBoundariesModified) modified)
+                                .getOriginator())) {
+            HashSet<String> combinedEventIdentifiers = new HashSet<>(
+                    getEventIdentifiers());
+            combinedEventIdentifiers
+                    .addAll(((SessionEventsTimeRangeBoundariesModified) modified)
+                            .getEventIdentifiers());
+            return IMergeable.getSuccessObjectCancellationResult(
+                    new SessionEventsTimeRangeBoundariesModified(
+                            getEventManager(), combinedEventIdentifiers,
+                            getOriginator()));
+        }
+        return IMergeable.getFailureResult();
     }
 }

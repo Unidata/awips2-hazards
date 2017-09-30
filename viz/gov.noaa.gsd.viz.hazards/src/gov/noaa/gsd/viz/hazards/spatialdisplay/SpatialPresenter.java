@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.time.DateUtils;
 import org.eclipse.jface.action.Action;
@@ -36,6 +37,7 @@ import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IContributionItem;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
@@ -55,24 +57,26 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventMetadataModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTypeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventVisualFeaturesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventCheckedStateModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTimeChanged;
@@ -102,9 +106,7 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-import net.engio.mbassy.listener.Enveloped;
 import net.engio.mbassy.listener.Handler;
-import net.engio.mbassy.subscription.MessageEnvelope;
 
 /**
  * Spatial presenter, used to mediate between the model and the spatial view.
@@ -230,6 +232,8 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  * Jun 30, 2017 21638      Chris.Golden      Only allow gage action menu item to be enabled if there
  *                                           is a recommender configured as the gage-point-first
  *                                           recommender.
+ * Sep 27, 2017 38072      Chris.Golden      Changed to use new SessionEventModified notification,
+ *                                           and to work with new recommender manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -302,6 +306,28 @@ public class SpatialPresenter extends
      * Empty visual features list.
      */
     private static final VisualFeaturesList EMPTY_VISUAL_FEATURES = new VisualFeaturesList();
+
+    /**
+     * Map pairing modification classes of interest for the handler of the
+     * {@link SessionEventModified} notification with flags indicating whether
+     * or not each such modification should also trigger a setting of the
+     * undo/redo state.
+     */
+    private static final Map<Class<? extends IEventModification>, Boolean> SET_UNDO_REDO_FLAGS_FOR_EVENT_MODIFICATION_CLASSES;
+
+    static {
+        Map<Class<? extends IEventModification>, Boolean> map = new HashMap<>(7,
+                1.0f);
+        map.put(EventTypeModification.class, false);
+        map.put(EventTimeRangeModification.class, false);
+        map.put(EventGeometryModification.class, true);
+        map.put(EventVisualFeaturesModification.class, false);
+        map.put(EventStatusModification.class, true);
+        map.put(EventAttributesModification.class, false);
+        map.put(EventMetadataModification.class, false);
+        SET_UNDO_REDO_FLAGS_FOR_EVENT_MODIFICATION_CLASSES = ImmutableMap
+                .copyOf(map);
+    }
 
     // Private Variables
 
@@ -461,18 +487,9 @@ public class SpatialPresenter extends
     private ToolType spatialInfoCollectingToolType;
 
     /**
-     * Identifier of the tool attempting to collect information via the visual
-     * features within {@link #toolVisualFeatures}; if the latter is empty, this
-     * is irrelevant.
+     * Receiver of modifications to tool visual features, if any.
      */
-    private String spatialInfoCollectingToolIdentifier;
-
-    /**
-     * Execution context of the tool attempting to collect information via the
-     * visual features within {@link #toolVisualFeatures}; if the latter is
-     * empty, this is irrelevant.
-     */
-    private RecommenderExecutionContext spatialInfoCollectingToolContext;
+    private ISessionRecommenderManager.ISpatialParametersReceiver spatialInfoReceiver;
 
     /**
      * Visual features being used by a tool to collect spatial information; if
@@ -609,68 +626,40 @@ public class SpatialPresenter extends
     }
 
     /**
-     * Respond to an event's type changing.
+     * Respond to an event being changed.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventTypeModified(SessionEventTypeModified change) {
-        spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
-                false);
-    }
+    public void sessionEventModified(SessionEventModified change) {
 
-    /**
-     * Respond to an event's time range changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventTimeRangeModified(
-            SessionEventTimeRangeModified change) {
-        spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
-                false);
-    }
+        /*
+         * Get the classes of the modifications that were made, and use them to
+         * prune the map that has classes of interest to this method as keys.
+         */
+        Set<Class<? extends IEventModification>> modificationClasses = change
+                .getClassesOfModifications();
+        Map<Class<? extends IEventModification>, Boolean> setUndoRedoFlagsForModificationClasses = SET_UNDO_REDO_FLAGS_FOR_EVENT_MODIFICATION_CLASSES
+                .entrySet().stream()
+                .filter(entry -> modificationClasses.contains(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                        Map.Entry::getValue));
 
-    /**
-     * Respond to an event's geometry changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventGeometryModified(
-            SessionEventGeometryModified change) {
-        setUndoRedoEnableState();
-        spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
-                false);
-    }
-
-    /**
-     * Respond to an event's visual features changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventVisualFeaturesModified(
-            SessionEventVisualFeaturesModified change) {
-        spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
-                false);
-    }
-
-    /**
-     * Respond to an event's status changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventStatusModified(SessionEventStatusModified change) {
-        setUndoRedoEnableState();
-        spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
-                false);
+        /*
+         * If the resulting pruned map is not empty, then first, if it contains
+         * at least one entry that indicates that undo-redo should be set, set
+         * undo/redo enabled state; and regardless, replace the spatial entities
+         * for the the event that was changed.
+         */
+        if (setUndoRedoFlagsForModificationClasses.isEmpty() == false) {
+            if (setUndoRedoFlagsForModificationClasses
+                    .containsValue(Boolean.TRUE)) {
+                setUndoRedoEnableState();
+            }
+            spatialEntityManager.replaceEntitiesForEvent(change.getEvent(),
+                    false, false);
+        }
     }
 
     /**
@@ -687,40 +676,25 @@ public class SpatialPresenter extends
     }
 
     /**
-     * Respond to an event's attributes changing.
+     * Respond to events being added.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    @Enveloped(messages = { SessionEventAttributesModified.class,
-            SessionEventMetadataModified.class })
-    public void sessionEventAttributesModified(MessageEnvelope change) {
-        spatialEntityManager.replaceEntitiesForEvent(
-                change.<SessionEventModified> getMessage().getEvent(), false,
-                false);
+    public void sessionEventsAdded(SessionEventsAdded change) {
+        spatialEntityManager.addEntitiesForEvents(change.getEvents());
     }
 
     /**
-     * Respond to an event being added.
+     * Respond to events being removed.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventAdded(SessionEventAdded change) {
-        spatialEntityManager.addEntitiesForEvent(change.getEvent());
-    }
-
-    /**
-     * Respond to an event being removed.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventRemoved(SessionEventRemoved change) {
-        spatialEntityManager.removeEntitiesForEvent(change.getEvent());
+    public void sessionEventsRemoved(SessionEventsRemoved change) {
+        spatialEntityManager.removeEntitiesForEvents(change.getEvents());
     }
 
     /**
@@ -833,8 +807,7 @@ public class SpatialPresenter extends
         if (spatialEntityManager.isChangedSelectedTimeAffectingVisualFeatures(
                 lastSelectedTime, newSelectedTime)) {
             spatialEntityManager.updateEntitiesForToolVisualFeatures(
-                    toolVisualFeatures, spatialInfoCollectingToolType,
-                    spatialInfoCollectingToolIdentifier);
+                    toolVisualFeatures, spatialInfoCollectingToolType);
         }
     }
 
@@ -845,27 +818,23 @@ public class SpatialPresenter extends
      * @param toolType
      *            Type of the tool; if <code>null</code>, no tool is collecting
      *            spatial information.
-     * @param toolIdentifier
-     *            Identifier of the tool; if <code>null</code>, no tool is
-     *            collecting spatial information.
-     * @param context
-     *            Context in which the tool is to be run if spatial information
-     *            is collected; if <code>null</code>, no tool is collecting
-     *            spatial information.
      * @param visualFeatures
      *            Visual features to be used to collect spatial information; if
      *            <code>null</code>, no tool is collecting spatial information.
+     * @param spatialParametersReceiver
+     *            Receiver to be passed parameters that the user chooses in the
+     *            spatial display. If <code>null</code>, no tool is collecting
+     *            spatial information.
      */
-    public void setToolVisualFeatures(ToolType toolType, String toolIdentifier,
-            RecommenderExecutionContext context,
-            VisualFeaturesList visualFeatures) {
+    public void setToolVisualFeatures(ToolType toolType,
+            VisualFeaturesList visualFeatures,
+            ISessionRecommenderManager.ISpatialParametersReceiver spatialParametersReceiver) {
 
         /*
          * Remember the tool context for the new visual features.
          */
         spatialInfoCollectingToolType = toolType;
-        spatialInfoCollectingToolIdentifier = toolIdentifier;
-        spatialInfoCollectingToolContext = context;
+        spatialInfoReceiver = spatialParametersReceiver;
 
         /*
          * If the visual features are different from what they were before,
@@ -876,8 +845,7 @@ public class SpatialPresenter extends
         if (toolVisualFeatures.equals(visualFeatures) == false) {
             toolVisualFeatures = visualFeatures;
             spatialEntityManager.updateEntitiesForToolVisualFeatures(
-                    toolVisualFeatures, spatialInfoCollectingToolType,
-                    spatialInfoCollectingToolIdentifier);
+                    toolVisualFeatures, spatialInfoCollectingToolType);
         }
     }
 
@@ -914,8 +882,7 @@ public class SpatialPresenter extends
          * Recreate the spatial entities.
          */
         spatialEntityManager.recreateAllEntities(toolVisualFeatures,
-                spatialInfoCollectingToolType,
-                spatialInfoCollectingToolIdentifier, force);
+                spatialInfoCollectingToolType, force);
     }
 
     // Protected Methods
@@ -1266,35 +1233,24 @@ public class SpatialPresenter extends
                 .getIdentifier() instanceof ToolVisualFeatureEntityIdentifier) {
 
             /*
-             * Ensure the visual feature's associated tool is the same as the
-             * one that the current tool visual features are for.
+             * Find and modify the visual feature, then run the recommender with
+             * the modified visual feature list.
              */
-            ToolVisualFeatureEntityIdentifier toolIdentifier = (ToolVisualFeatureEntityIdentifier) context
-                    .getIdentifier();
-            if (toolIdentifier.getToolIdentifier()
-                    .equals(spatialInfoCollectingToolIdentifier)) {
-
-                /*
-                 * Find and modify the visual feature, then run the recommender
-                 * with the modified visual feature list.
-                 */
-                VisualFeature feature = toolVisualFeatures.getByIdentifier(
-                        toolIdentifier.getVisualFeatureIdentifier());
-                if (feature != null) {
-                    feature.setGeometry(context.getSelectedTime(),
-                            context.getGeometry());
-                    toolVisualFeatures.replace(feature);
-                    getModel().getRecommenderManager().runRecommender(
-                            spatialInfoCollectingToolIdentifier,
-                            spatialInfoCollectingToolContext,
-                            toolVisualFeatures, null);
-                }
+            VisualFeature feature = toolVisualFeatures.getByIdentifier(
+                    ((ToolVisualFeatureEntityIdentifier) context
+                            .getIdentifier()).getVisualFeatureIdentifier());
+            if (feature != null) {
+                feature.setGeometry(context.getSelectedTime(),
+                        context.getGeometry());
+                toolVisualFeatures.replace(feature);
+                spatialInfoReceiver
+                        .receiveSpatialParameters(toolVisualFeatures);
             }
 
             /*
              * Remove the visual features from the display.
              */
-            setToolVisualFeatures(null, null, null, null);
+            setToolVisualFeatures(null, null, null);
         } else {
 
             /*
@@ -1764,11 +1720,14 @@ public class SpatialPresenter extends
         }
 
         try {
+            getModel().startBatchedChanges();
             return getModel().getEventManager().addEvent(event,
                     UIOriginator.SPATIAL_DISPLAY);
         } catch (HazardEventServiceException e) {
             statusHandler.error("Could not add new hazard event.", e);
             return null;
+        } finally {
+            getModel().finishBatchedChanges();
         }
     }
 

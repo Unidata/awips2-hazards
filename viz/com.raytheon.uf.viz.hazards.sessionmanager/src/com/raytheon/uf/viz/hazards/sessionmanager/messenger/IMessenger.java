@@ -16,7 +16,7 @@ import java.util.Map;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
@@ -50,6 +50,9 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      something from outside the UI thread.
  * Aug 15, 2017  22757     Chris.Golden Added method to display tool execution
  *                                      results.
+ * Sep 27, 2017  38072     Chris.Golden Changed methods used to get tool
+ *                                      parameters or show tool results to
+ *                                      use new arguments.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -139,56 +142,52 @@ public interface IMessenger {
     public interface IToolParameterGatherer {
 
         /**
-         * Get the parameters for the specified tool.
+         * Get the parameters for the specified type of tool.
          * 
-         * @param tool
-         *            Identifier of the tool for which parameters are to be
-         *            gathered.
          * @param type
          *            Type of the tool.
-         * @param context
-         *            Context in which the tool is to be run.
          * @param dialogInput
          *            Map holding the parameters governing the contents of the
          *            dialog to be created to gather the parameters.
+         * @param dialogParametersReceiver
+         *            Receiver to be passed parameters that the user chooses in
+         *            the dialog.
          */
-        public void getToolParameters(String tool, ToolType type,
-                RecommenderExecutionContext context,
-                Map<String, Serializable> dialogInput);
+        public void getToolParameters(ToolType type,
+                Map<String, Serializable> dialogInput,
+                ISessionRecommenderManager.IDialogParametersReceiver dialogParametersReceiver);
 
         /**
-         * Get spatial input for the specified tool.
+         * Get spatial input for the specified type of tool.
          * 
-         * @param tool
-         *            Identifier of the tool for which input is to be requested.
          * @param type
          *            Type of the tool.
-         * @param context
-         *            Context in which the tool is to be run.
          * @param visualFeatures
          *            List of visual features to be used to get spatial input
          *            from the user.
+         * @param spatialParametersReceiver
+         *            Receiver to be passed parameters that the user chooses in
+         *            the spatial display.
          */
-        public void getToolSpatialInput(String tool, ToolType type,
-                RecommenderExecutionContext context,
-                VisualFeaturesList visualFeatures);
+        public void getToolSpatialInput(ToolType type,
+                VisualFeaturesList visualFeatures,
+                ISessionRecommenderManager.ISpatialParametersReceiver spatialParametersReceiver);
 
         /**
-         * Show the results for for the specified tool.
+         * Show the results for for the specified type of tool.
          * 
-         * @param tool
-         *            Identifier of the tool for which to show results.
          * @param type
          *            Type of the tool.
-         * @param context
-         *            Context in which the tool was run.
          * @param dialogResults
          *            Map holding the parameters governing the contents of the
          *            dialog to be created to show the results.
+         * @param displayCompleteNotifier
+         *            Notifier to be told when the tool results display is
+         *            complete.
          */
-        public void showToolResults(String tool, ToolType type,
-                RecommenderExecutionContext context,
-                Map<String, Serializable> dialogResults);
+        public void showToolResults(ToolType type,
+                Map<String, Serializable> dialogResults,
+                ISessionRecommenderManager.IResultsDisplayCompleteNotifier displayCompleteNotifier);
     }
 
     /**

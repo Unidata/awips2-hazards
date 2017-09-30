@@ -30,7 +30,6 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
@@ -67,6 +66,8 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
  *                                           either a message to display, or a dialog to
  *                                           display, with their results (that is, within
  *                                           the returned event set).
+ * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender
+ *                                           manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -303,8 +304,8 @@ public class ToolsView
     }
 
     @Override
-    public final void showToolParameterGatherer(String tool, ToolType type,
-            RecommenderExecutionContext context, String jsonParams) {
+    public final void showToolParameterGatherer(ToolType type,
+            String jsonParams) {
         if (toolDialog != null) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -318,14 +319,13 @@ public class ToolsView
         }
         toolDialog = new ToolParameterDialog(presenter,
                 PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
-                tool, type, context, jsonParams);
+                type, jsonParams);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);
     }
 
     @Override
-    public void showToolResults(String tool, ToolType type,
-            RecommenderExecutionContext context, String jsonParams) {
+    public void showToolResults(ToolType type, String jsonParams) {
         if (toolDialog != null) {
             Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
                     .getShell();
@@ -339,7 +339,7 @@ public class ToolsView
         }
         toolDialog = new ToolResultDialog(presenter,
                 PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
-                tool, type, context, jsonParams);
+                type, jsonParams);
         toolDialog.open();
         toolDialog.getShell().addDisposeListener(dialogDisposeListener);
     }

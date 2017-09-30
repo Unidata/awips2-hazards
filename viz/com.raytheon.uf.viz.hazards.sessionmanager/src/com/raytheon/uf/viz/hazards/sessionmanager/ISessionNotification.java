@@ -19,24 +19,28 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+
+import gov.noaa.gsd.common.utilities.IMergeable;
+
 /**
- * Tagging interface, all events sent out from the SessionManager must implement
- * this interface.
+ * Methods that must be implemented in order to create a class that embodies
+ * session notifications that are posted synchronously or asynchronously, or are
+ * enqueued for later posting in a batch, by an instance of
+ * {@link ISessionNotificationSender}.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 11, 2013    1257    bsteffen     Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Made extend new IMergeable interface.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
-public interface ISessionNotification {
-
+public interface ISessionNotification extends IMergeable<ISessionNotification> {
 }

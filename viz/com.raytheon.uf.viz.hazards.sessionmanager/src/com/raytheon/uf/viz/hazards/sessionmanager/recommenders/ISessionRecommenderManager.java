@@ -39,12 +39,75 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      a message to display, or a dialog to display,
  *                                      with their results (that is, within the returned
  *                                      event set).
+ * Sep 27, 2017   38072    Chris.Golden Removed methods that should not be public, and
+ *                                      added interfaces to be used to provide callback
+ *                                      objects for dialog and spatial input, and for
+ *                                      the displaying of results.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public interface ISessionRecommenderManager {
+
+    // Public Interfaces
+
+    /**
+     * Interface specifying the methods that must be implemented in order to
+     * function as a dialog parameters receiver. The latter is a class that
+     * responds to the user inputting recommender parameters into a dialog prior
+     * to the recommender's execution.
+     */
+    public interface IDialogParametersReceiver {
+
+        /**
+         * Receive the specified dialog parameters, or cancel the running of the
+         * recommender that originally asked for dialog parameters.
+         * 
+         * @param parameters
+         *            Map pairing parameter names with the values specified by
+         *            the user via a dialog, or <code>null</code> if the user
+         *            canceled the running of the recommender that originally
+         *            asked for dialog parameters.
+         */
+        void receiveDialogParameters(Map<String, Serializable> parameters);
+    }
+
+    /**
+     * Interface specifying the methods that must be implemented in order to
+     * function as a spatial parameters receiver. The latter is a class that
+     * responds to the user manipulating recommender-provided visual features
+     * via interaction with a spatial display prior to the recommender's
+     * execution.
+     */
+    public interface ISpatialParametersReceiver {
+
+        /**
+         * Receive the specified spatial parameters.
+         * 
+         * @param parameters
+         *            Visual features that have been manipulated to provide
+         *            input parameters, or <code>null</code> if the user
+         *            canceled the running of the recommender that originally
+         *            asked for input parameters.
+         */
+        void receiveSpatialParameters(VisualFeaturesList parameters);
+    }
+
+    /**
+     * Interface specifying the methods that must be implemented in order to
+     * function as a notifier of a running recommender's results display being
+     * complete. The latter is a class that responds to the user completing
+     * viewing of the results of the currently running recommender by notifying
+     * the recommender manager of the completion.
+     */
+    public interface IResultsDisplayCompleteNotifier {
+
+        /**
+         * Handle the completion of the display of recommender results.
+         */
+        void resultsDisplayCompleted();
+    }
 
     // Public Methods
 
@@ -56,18 +119,6 @@ public interface ISessionRecommenderManager {
      * @return Recommender.
      */
     public EventRecommender getRecommender(String recommenderIdentifier);
-
-    /**
-     * Add the specified event identifier to the set of events that have been
-     * removed. These are tracked so that if a recommmender is running while
-     * such an event is removed, and the recommender returns a result including
-     * a modified version of the event, the modification is ignored instead of
-     * re-adding the event to the session.
-     * 
-     * @param eventIdentifier
-     *            Identifier to be added.
-     */
-    public void rememberRemovedEventIdentifier(String eventIdentifier);
 
     /**
      * Run the specified recommender. If parameters must be gathered from the
@@ -98,37 +149,20 @@ public interface ISessionRecommenderManager {
             RecommenderExecutionContext context);
 
     /**
-     * Run the specified recommender in the specified context and with the
-     * specified user-provided dialog parameters.
+     * Receive notification that a command was invoked within the user interface
+     * that may require a recommender to be run in response.
      * 
-     * @param recommenderIdentifier
-     *            Identifier of the recommender to be run.
-     * @param context
-     *            Execution context in which to run the recommender.
-     * @param visualFeatures
-     *            List of visual features provided by the recommender earlier to
-     *            allow the user to input spatial info, if any.
-     * @param dialogInfo
-     *            Map of dialog parameters, if any.
+     * @param eventIdentifier
+     *            Identifier of the hazard event for which to run a recommender,
+     *            if any.
+     * @param commandIdentifier
+     *            Identifier of the command that was invoked.
      */
-    public void runRecommender(String recommenderIdentifier,
-            RecommenderExecutionContext context,
-            VisualFeaturesList visualFeatures,
-            Map<String, Serializable> dialogInfo);
+    public void eventCommandInvoked(String eventIdentifier,
+            String commandIdentifier);
 
     /**
-     * Handle the completion of the viewing of recommender results.
-     * 
-     * @param recommenderIdentifier
-     *            Identifier of the recommender that was run.
-     * @param context
-     *            Execution context in which the recommender was run.
-     */
-    public void handleResultsDisplayComplete(String recommenderIdentifier,
-            RecommenderExecutionContext context);
-
-    /**
-     * Shut down the recommenders.
+     * Shut the manager down.
      */
     public void shutdown();
 }

@@ -9,11 +9,17 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import java.util.HashSet;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Description: Notification of a change to the list of selected events, whether
@@ -35,6 +41,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  *                                      set, indicating which versions of
  *                                      which hazard events have changed
  *                                      selection.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,15 +94,16 @@ public class SessionSelectedEventsModified extends SessionSelectionModified {
             Set<Pair<String, Integer>> currentAndHistoricalEventIdentifiers,
             IOriginator originator) {
         super(selectionManager, originator);
-        this.eventIdentifiers = eventIdentifiers;
-        this.currentAndHistoricalEventIdentifiers = currentAndHistoricalEventIdentifiers;
+        this.eventIdentifiers = ImmutableSet.copyOf(eventIdentifiers);
+        this.currentAndHistoricalEventIdentifiers = ImmutableSet
+                .copyOf(currentAndHistoricalEventIdentifiers);
     }
 
     // Public Methods
 
     /**
      * Get the identifiers of the hazard events that have had their selection
-     * state changed.
+     * state changed. Note that the returned set is not modifiable.
      * 
      * @return Identifiers of the hazard events.
      */
@@ -110,11 +118,42 @@ public class SessionSelectedEventsModified extends SessionSelectionModified {
      * {@link #getEventIdentifiers()} paired with either <code>null</code>, if
      * it indicates the current version, or the index of the version in the
      * reversed history list of the event, if it indicates a historical version.
+     * Note that the returned set is not modifiable.
      * 
      * @return Identifiers of current and historical versions of the hazard
      *         events.
      */
     public Set<Pair<String, Integer>> getCurrentAndHistoricalEventIdentifiers() {
         return currentAndHistoricalEventIdentifiers;
+    }
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+
+        /*
+         * If the new notification has the same originator as this one, and is
+         * of the same type, merge the two together by combining their changes;
+         * otherwise, the merge has failed.
+         */
+        if ((modified instanceof SessionSelectedEventsModified)
+                && getOriginator()
+                        .equals(((SessionSelectedEventsModified) modified)
+                                .getOriginator())) {
+            Set<String> eventIdentifiers = new HashSet<>(getEventIdentifiers());
+            eventIdentifiers.addAll(((SessionSelectedEventsModified) modified)
+                    .getEventIdentifiers());
+            Set<Pair<String, Integer>> currentAndHistoricalEventIdentifiers = new HashSet<>(
+                    getCurrentAndHistoricalEventIdentifiers());
+            currentAndHistoricalEventIdentifiers
+                    .addAll(((SessionSelectedEventsModified) modified)
+                            .getCurrentAndHistoricalEventIdentifiers());
+            return IMergeable.getSuccessObjectCancellationResult(
+                    new SessionSelectedEventsModified(getSelectionManager(),
+                            eventIdentifiers,
+                            currentAndHistoricalEventIdentifiers,
+                            getOriginator()));
+        }
+        return IMergeable.getFailureResult();
     }
 }

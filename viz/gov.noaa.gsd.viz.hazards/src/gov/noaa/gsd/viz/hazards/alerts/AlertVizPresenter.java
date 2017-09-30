@@ -9,17 +9,9 @@
  */
 package gov.noaa.gsd.viz.hazards.alerts;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.mvp.IView;
-import gov.noaa.gsd.viz.mvp.Presenter;
-
 import java.util.EnumSet;
 import java.util.List;
 
-import net.engio.mbassy.listener.Handler;
-
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -30,6 +22,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPo
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.mvp.Presenter;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Description: {@link Presenter} for alerts shown in AlertViz
@@ -67,15 +65,14 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
 
     @Handler
     public void alertsModified(HazardAlertsModified notification) {
-        ImmutableList<IHazardAlert> activeAlerts = notification
-                .getActiveAlerts();
+        List<IHazardAlert> activeAlerts = notification.getActiveAlerts();
         alertAsNeeded(activeAlerts);
     }
 
-    private void alertAsNeeded(ImmutableList<IHazardAlert> activeAlerts) {
+    private void alertAsNeeded(List<IHazardAlert> activeAlerts) {
         for (IHazardAlert activeAlert : activeAlerts) {
-            if (activeAlert.getClass().equals(
-                    HazardEventExpirationPopUpAlert.class)) {
+            if (activeAlert.getClass()
+                    .equals(HazardEventExpirationPopUpAlert.class)) {
                 HazardEventExpirationPopUpAlert alert = (HazardEventExpirationPopUpAlert) activeAlert;
                 if (!renderedAlerts.contains(alert)) {
                     renderedAlerts.add(alert);

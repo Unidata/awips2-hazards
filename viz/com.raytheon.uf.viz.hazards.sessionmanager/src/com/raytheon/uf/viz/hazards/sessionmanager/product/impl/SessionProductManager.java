@@ -85,10 +85,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender.IIntraNotificationHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFailed;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
@@ -105,13 +105,11 @@ import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.Polygonal;
 import com.vividsolutions.jts.geom.Puntal;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISideEffectsApplier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecificationException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
-import net.engio.mbassy.listener.Handler;
 
 /**
  * Implementation of ISessionProductManager
@@ -261,7 +259,9 @@ import net.engio.mbassy.listener.Handler;
  * Mar 30, 2017 15528      Chris.Golden Changed to work with new version of mergeHazardEvents().
  * Jun 21, 2017 18375      Chris.Golden Added setting of potential events to pending status when
  *                                      they are previewed or issued.
- * Jun 26, 2017  19207     Chris.Golden Changes to view products for specific events.
+ * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
+ * Sep 27, 2017 38072      Chris.Golden Added use of intra-managerial notifications, and replaced
+ *                                      use of event bus with notification sender.
  * </pre>
  * 
  * @author bsteffen
@@ -327,8 +327,6 @@ public class SessionProductManager implements ISessionProductManager {
      */
     private final Map<Boolean, Collection<ProductGeneratorInformation>> productGeneratorInformationForSelectedHazardsCache;
 
-    private final BoundedReceptionEventBus<Object> eventBus;
-
     /** CAVE's Mode */
     private final CAVEMode caveMode = CAVEMode.getMode();
 
@@ -340,6 +338,54 @@ public class SessionProductManager implements ISessionProductManager {
 
     /** Used to order product dissemination. */
     private final Map<IGeneratedProduct, ProductGeneratorInformation> pgiMap = new HashMap<>();
+
+    /**
+     * Intra-managerial notification handler for event time range changes.
+     */
+    private IIntraNotificationHandler<SiteChanged> siteChangeHandler = new IIntraNotificationHandler<SiteChanged>() {
+
+        @Override
+        public void handleNotification(SiteChanged notification) {
+            siteChanged(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return false;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for product generated occurrences.
+     */
+    private IIntraNotificationHandler<ProductGenerated> productGeneratedHandler = new IIntraNotificationHandler<ProductGenerated>() {
+
+        @Override
+        public void handleNotification(ProductGenerated notification) {
+            auditProductGeneration(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return false;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for product failed occurrences.
+     */
+    private IIntraNotificationHandler<ProductFailed> productFailedHandler = new IIntraNotificationHandler<ProductFailed>() {
+
+        @Override
+        public void handleNotification(ProductFailed notification) {
+            handleProductGeneratorResult(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return false;
+        }
+    };
 
     public SessionProductManager(SessionManager sessionManager,
             ISessionTimeManager timeManager,
@@ -363,8 +409,14 @@ public class SessionProductManager implements ISessionProductManager {
         this.vtecTestMode = false;
         this.productGenerationAuditManager = new HashMap<>();
         this.productGeneratorInformationForSelectedHazardsCache = new HashMap<>();
-        this.eventBus = this.sessionManager.getEventBus();
         setDefaultVtecMode();
+
+        notificationSender.registerIntraNotificationHandler(SiteChanged.class,
+                siteChangeHandler);
+        notificationSender.registerIntraNotificationHandler(
+                ProductGenerated.class, productGeneratedHandler);
+        notificationSender.registerIntraNotificationHandler(ProductFailed.class,
+                productFailedHandler);
     }
 
     /**
@@ -850,7 +902,8 @@ public class SessionProductManager implements ISessionProductManager {
         boolean shouldContinue = areValidEvents(eventsToCheck, issue);
 
         // Got confirmation to issue above - close the Product Editor
-        eventBus.publishAsync(new ProductGenerationConfirmation());
+        notificationSender
+                .postNotificationAsync(new ProductGenerationConfirmation());
 
         return shouldContinue;
     }/* end generate() method */
@@ -961,7 +1014,8 @@ public class SessionProductManager implements ISessionProductManager {
                     sessionManager.setIssueOngoing(false);
 
                     // Got confirmation to issue above: close the Product Editor
-                    eventBus.publishAsync(new ProductGenerationConfirmation());
+                    notificationSender.postNotificationAsync(
+                            new ProductGenerationConfirmation());
                 }
 
                 @Override
@@ -993,6 +1047,12 @@ public class SessionProductManager implements ISessionProductManager {
 
     @Override
     public void shutdown() {
+        notificationSender
+                .unregisterIntraNotificationHandler(siteChangeHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(productGeneratedHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(productFailedHandler);
         productGen.shutdown();
         messenger = null;
     }
@@ -1185,7 +1245,8 @@ public class SessionProductManager implements ISessionProductManager {
             setPreviewOrIssueOngoing(issue, false);
             return;
         } else if (stagingRequired != StagingRequired.NONE) {
-            eventBus.publishAsync(new ProductStagingRequired(issue));
+            notificationSender
+                    .postNotificationAsync(new ProductStagingRequired(issue));
             return;
         }
         runProductGeneration(
@@ -1501,8 +1562,7 @@ public class SessionProductManager implements ISessionProductManager {
      * @param generated
      *            Successful product generation message
      */
-    @Handler
-    public void auditProductGeneration(ProductGenerated generated) {
+    private void auditProductGeneration(ProductGenerated generated) {
         ProductGenerationAuditor productGenerationAuditor = null;
         ProductGeneratorInformation productGeneratorInformation = generated
                 .getProductGeneratorInformation();
@@ -1530,8 +1590,7 @@ public class SessionProductManager implements ISessionProductManager {
      * @param failed
      *            Product generation failed message
      */
-    @Handler
-    public void handleProductGeneratorResult(ProductFailed failed) {
+    private void handleProductGeneratorResult(ProductFailed failed) {
         ProductGenerationAuditor productGenerationAuditor = null;
         ProductGeneratorInformation productGeneratorInformation = failed
                 .getProductGeneratorInformation();
@@ -1560,8 +1619,7 @@ public class SessionProductManager implements ISessionProductManager {
      * @param change
      *            Change that occurred.
      */
-    @Handler(priority = 1)
-    public void siteChanged(SiteChanged change) {
+    private void siteChanged(SiteChanged change) {
         productGen
                 .setSite(sessionManager.getConfigurationManager().getSiteID());
     }
@@ -1728,9 +1786,8 @@ public class SessionProductManager implements ISessionProductManager {
                 event.removeHazardAttribute(HazardConstants.ETNS);
                 event.removeHazardAttribute(HazardConstants.PILS);
             }
-            event.removeHazardAttribute(ISessionEventManager.ATTR_ISSUED);
-            event.removeHazardAttribute(
-                    ISessionEventManager.ATTR_HAZARD_CATEGORY);
+            event.removeHazardAttribute(HazardConstants.ISSUED);
+            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY);
 
             /*
              * TODO: Remove this once the HAZARD_EVENT_SELECTED attribute has
@@ -2143,10 +2200,10 @@ public class SessionProductManager implements ISessionProductManager {
 
     private void publishGenerationCompletion(
             ProductGenerationAuditor productGenerationAuditor) {
-        IProductGenerationComplete productGenerationComplete = new ProductGenerationComplete(
+        ProductGenerationComplete productGenerationComplete = new ProductGenerationComplete(
                 productGenerationAuditor.isIssue(),
                 productGenerationAuditor.getGeneratedProducts());
-        eventBus.publishAsync(productGenerationComplete);
+        notificationSender.postNotificationAsync(productGenerationComplete);
     }
 
     /**

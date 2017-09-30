@@ -43,15 +43,17 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventCreationTimeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIdentifierModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventOriginModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTypeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventVisualFeaturesModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.IllegalEventModificationException;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventOriginModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
@@ -174,6 +176,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      geometry to change.
  * Jun 21, 2017 18375      Chris.Golden Added new flag that prevents the modified
  *                                      flag from changing.
+ * Sep 27, 2017 38072      Chris.Golden Changed to use new SessionEventModified
+ *                                      notification.
  * </pre>
  * 
  * @author bsteffen
@@ -623,9 +627,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.setSiteID(site);
             if (notify) {
                 eventManager.hazardEventModified(
-                        new SessionEventOriginModified(eventManager, this,
-                                SessionEventOriginModified.Element.SITE_IDENTIFIER,
-                                originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventOriginModification(), originator));
                 handleModification();
             }
             return true;
@@ -638,8 +641,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         if (changed(getEventID(), eventId)) {
             delegate.setEventID(eventId);
             if (notify) {
-                eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this, originator));
+                eventManager.hazardEventModified(
+                        new SessionEventModified(eventManager, this,
+                                new EventIdentifierModification(), originator));
                 handleModification();
             }
             return true;
@@ -670,8 +674,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                  * upon what status is now being used.
                  */
                 eventManager.hazardEventStatusModified(
-                        new SessionEventStatusModified(eventManager, this,
-                                originator),
+                        new SessionEventModified(eventManager, this,
+                                new EventStatusModification(), originator),
                         persist);
             }
             return true;
@@ -686,8 +690,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                 delegate.setPhenomenon(phenomenon);
                 if (notify) {
                     eventManager.hazardEventModified(
-                            new SessionEventTypeModified(eventManager, this,
-                                    originator));
+                            new SessionEventModified(eventManager, this,
+                                    new EventTypeModification(), originator));
                     handleModification();
                 }
             } else {
@@ -705,8 +709,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                 delegate.setSignificance(significance);
                 if (notify) {
                     eventManager.hazardEventModified(
-                            new SessionEventTypeModified(eventManager, this,
-                                    originator));
+                            new SessionEventModified(eventManager, this,
+                                    new EventTypeModification(), originator));
                     handleModification();
                 }
             } else {
@@ -725,8 +729,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                 delegate.setSubType(subtype);
                 if (notify) {
                     eventManager.hazardEventModified(
-                            new SessionEventTypeModified(eventManager, this,
-                                    originator));
+                            new SessionEventModified(eventManager, this,
+                                    new EventTypeModification(), originator));
                     handleModification();
                 }
             } else {
@@ -754,8 +758,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
         eventManager.updateHazardAreas(this);
         if (notify) {
-            eventManager.hazardEventModified(new SessionEventTypeModified(
-                    eventManager, this, originator));
+            eventManager
+                    .hazardEventModified(new SessionEventModified(eventManager,
+                            this, new EventTypeModification(), originator));
             handleModification();
         }
         return changed;
@@ -768,7 +773,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.setCreationTime(date);
             if (notify) {
                 eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this, originator));
+                        eventManager, this, new EventCreationTimeModification(),
+                        originator));
                 handleModification();
             }
             return true;
@@ -783,8 +789,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.setEndTime(date);
             if (notify) {
                 eventManager.hazardEventModified(
-                        new SessionEventTimeRangeModified(eventManager, this,
-                                originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventTimeRangeModification(), originator));
                 handleModification();
             }
             return true;
@@ -798,8 +804,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.setStartTime(date);
             if (notify) {
                 eventManager.hazardEventModified(
-                        new SessionEventTimeRangeModified(eventManager, this,
-                                originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventTimeRangeModification(), originator));
                 handleModification();
             }
             return true;
@@ -815,8 +821,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         setStartTime(startTime, false, originator);
         setEndTime(endTime, false, originator);
         if (notify) {
-            eventManager.hazardEventModified(new SessionEventTimeRangeModified(
-                    eventManager, this, originator));
+            eventManager.hazardEventModified(
+                    new SessionEventModified(eventManager, this,
+                            new EventTimeRangeModification(), originator));
             handleModification();
         }
         return changed;
@@ -851,8 +858,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
 
             if (notify) {
                 eventManager.hazardEventModified(
-                        new SessionEventGeometryModified(eventManager, this,
-                                originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventGeometryModification(), originator));
                 handleModification();
             }
             return true;
@@ -890,9 +897,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                  * substantive modification to the hazard event.
                  */
                 eventManager.hazardEventModified(
-                        new SessionEventVisualFeaturesModified(eventManager,
-                                this,
-                                Sets.newHashSet(visualFeature.getIdentifier()),
+                        new SessionEventModified(eventManager, this,
+                                new EventVisualFeaturesModification(
+                                        visualFeature.getIdentifier()),
                                 originator));
             }
             return result;
@@ -929,9 +936,12 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                  * change and nothing else does, that should not be considered a
                  * substantive modification to the hazard event.
                  */
-                eventManager.hazardEventModified(
-                        new SessionEventVisualFeaturesModified(eventManager,
-                                this, changedIdentifiers, originator));
+                eventManager
+                        .hazardEventModified(
+                                new SessionEventModified(eventManager, this,
+                                        new EventVisualFeaturesModification(
+                                                changedIdentifiers),
+                                        originator));
             }
             return changedIdentifiers;
         }
@@ -1023,8 +1033,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         if (changed(getHazardMode(), mode)) {
             delegate.setHazardMode(mode);
             if (notify) {
-                eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this, originator));
+                eventManager.hazardEventModified(
+                        new SessionEventModified(eventManager, this,
+                                new EventOriginModification(), originator));
                 handleModification();
             }
             return true;
@@ -1037,8 +1048,9 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         if (changed(getSource(), source)) {
             delegate.setSource(source);
             if (notify) {
-                eventManager.hazardEventModified(new SessionEventModified(
-                        eventManager, this, originator));
+                eventManager.hazardEventModified(
+                        new SessionEventModified(eventManager, this,
+                                new EventOriginModification(), originator));
                 handleModification();
             }
             return true;
@@ -1052,9 +1064,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.setUserName(userName);
             if (notify) {
                 eventManager.hazardEventModified(
-                        new SessionEventOriginModified(eventManager, this,
-                                SessionEventOriginModified.Element.USER_NAME,
-                                originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventOriginModification(), originator));
             }
             return true;
         }
@@ -1067,9 +1078,8 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.setWorkStation(workStation);
             if (notify) {
                 eventManager.hazardEventModified(
-                        new SessionEventOriginModified(eventManager, this,
-                                SessionEventOriginModified.Element.WORKSTATION,
-                                originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventOriginModification(), originator));
             }
             return true;
         }
@@ -1098,9 +1108,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                             attributes.get(changedKey));
 
                 }
-                eventManager.hazardEventModified(
-                        new SessionEventAttributesModified(eventManager, this,
-                                modifiedAttributes, originalAttributes,
+                eventManager.hazardEventAttributeModified(
+                        new SessionEventModified(eventManager, this,
+                                new EventAttributesModification(
+                                        modifiedAttributes, originalAttributes),
                                 originator));
                 if (Sets.intersection(changedKeys,
                         eventManager.getHazardAttributesAffectingModifyFlag(
@@ -1184,9 +1195,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             }
             delegate.addHazardAttributes(modifiedAttributes);
             if (notify) {
-                eventManager.hazardEventModified(
-                        new SessionEventAttributesModified(eventManager, this,
-                                modifiedAttributes, originalAttributes,
+                eventManager.hazardEventAttributeModified(
+                        new SessionEventModified(eventManager, this,
+                                new EventAttributesModification(
+                                        modifiedAttributes, originalAttributes),
                                 originator));
                 if (Sets.intersection(changedKeys,
                         eventManager.getHazardAttributesAffectingModifyFlag(
@@ -1210,8 +1222,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.addHazardAttribute(key, value);
             if (notify) {
                 eventManager.hazardEventAttributeModified(
-                        new SessionEventAttributesModified(eventManager, this,
-                                key, value, oldValue, originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventAttributesModification(key, value,
+                                        oldValue),
+                                originator));
                 if (eventManager.getHazardAttributesAffectingModifyFlag(
                         delegate.getEventID()).contains(key)) {
                     handleModification();
@@ -1230,8 +1244,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
             delegate.removeHazardAttribute(key);
             if (notify) {
                 eventManager.hazardEventAttributeModified(
-                        new SessionEventAttributesModified(eventManager, this,
-                                key, null, oldValue, originator));
+                        new SessionEventModified(eventManager, this,
+                                new EventAttributesModification(key, null,
+                                        oldValue),
+                                originator));
                 if (eventManager.getHazardAttributesAffectingModifyFlag(
                         delegate.getEventID()).contains(key)) {
                     handleModification();

@@ -104,6 +104,8 @@ class Recommender(RecommenderTemplate.Recommender):
         '''
         metadata['eventState'] = 'Potential'
         metadata[INCLUDE_CWA_GEOMETRY] = True
+        
+        metadata["getSpatialInfoNeeded"] = False
        
         return metadata
 

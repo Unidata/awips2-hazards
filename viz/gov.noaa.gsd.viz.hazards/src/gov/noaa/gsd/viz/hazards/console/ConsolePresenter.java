@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.eclipse.jface.action.IContributionItem;
 
@@ -63,16 +64,18 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Column;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Console;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAllowUntilFurtherNoticeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventOriginModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTypeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventUnsavedChangesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventOriginModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventUnsavedChangesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
@@ -186,6 +189,8 @@ import net.engio.mbassy.listener.Handler;
  *                                           enabled state of a row menu's menu item
  *                                           after it is displayed.
  * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
+ * Sep 27, 2017   38072    Chris.Golden      Changed to use new SessionEventModified
+ *                                           notification.
  * </pre>
  * 
  * @author Chris.Golden
@@ -376,6 +381,28 @@ public class ConsolePresenter
     }
 
     // Private Static Constants
+
+    /**
+     * Map pairing modification classes of interest for the handler of the
+     * {@link SessionEventModified} notification with flags indicating whether
+     * or not each such modification should only trigger a refresh of the
+     * modified event's tabular entity if the originator was not the console.
+     */
+    private static final Map<Class<? extends IEventModification>, Boolean> CHECK_ORIGINATOR_FLAGS_FOR_EVENT_MODIFICATION_CLASSES;
+
+    static {
+        Map<Class<? extends IEventModification>, Boolean> map = new HashMap<>(7,
+                1.0f);
+        map.put(EventTypeModification.class, false);
+        map.put(EventStatusModification.class, false);
+        map.put(EventTimeRangeModification.class, true);
+        map.put(EventAllowUntilFurtherNoticeModification.class, false);
+        map.put(EventOriginModification.class, false);
+        map.put(EventUnsavedChangesModification.class, false);
+        map.put(EventAttributesModification.class, true);
+        CHECK_ORIGINATOR_FLAGS_FOR_EVENT_MODIFICATION_CLASSES = ImmutableMap
+                .copyOf(map);
+    }
 
     /**
      * Logging mechanism.
@@ -947,59 +974,62 @@ public class ConsolePresenter
     }
 
     /**
-     * Respond to an event being added.
+     * Respond to events being added.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventAdded(SessionEventAdded change) {
-        tabularEntityManager.addEntitiesForEvent(change.getEvent());
+    public void sessionEventsAdded(SessionEventsAdded change) {
+        for (IHazardEvent event : change.getEvents()) {
+            tabularEntityManager.addEntitiesForEvent(event);
+        }
     }
 
     /**
-     * Respond to an event being removed.
+     * Respond to events being removed.
      * 
      * @param change
      *            Change that occurred.
      */
     @Handler
-    public void sessionEventRemoved(SessionEventRemoved change) {
-        tabularEntityManager.removeEntitiesForEvent(change.getEvent());
+    public void sessionEventsRemoved(SessionEventsRemoved change) {
+        for (IHazardEvent event : change.getEvents()) {
+            tabularEntityManager.removeEntitiesForEvent(event);
+        }
     }
 
     /**
-     * Respond to an event's type changing.
+     * Respond to an event being changed.
      * 
      * @param change
-     *            Change that occurred.
+     *            Change that occcurred.
      */
     @Handler
-    public void sessionEventTypeModified(SessionEventTypeModified change) {
-        tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
-    }
+    public void sessionEventModified(SessionEventModified change) {
 
-    /**
-     * Respond to an event's status changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventStatusModified(SessionEventStatusModified change) {
-        tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
-    }
+        /*
+         * Get the classes of the modifications that were made, and use them to
+         * prune the map that has classes of interest to this method as keys.
+         */
+        Set<Class<? extends IEventModification>> modificationClasses = change
+                .getClassesOfModifications();
+        Map<Class<? extends IEventModification>, Boolean> checkOriginatorFlagsForModificationClasses = CHECK_ORIGINATOR_FLAGS_FOR_EVENT_MODIFICATION_CLASSES
+                .entrySet().stream()
+                .filter(entry -> modificationClasses.contains(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                        Map.Entry::getValue));
 
-    /**
-     * Respond to an event's time range changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventTimeRangeModified(
-            SessionEventTimeRangeModified change) {
-        if (change.getOriginator() != UIOriginator.CONSOLE) {
+        /*
+         * If the resulting pruned map is not empty, and either at least one of
+         * the modifications does not require an originator check, or the
+         * originator was not the console, refresh the root tabular entities
+         * associated with this event.
+         */
+        if ((checkOriginatorFlagsForModificationClasses.isEmpty() == false)
+                && (checkOriginatorFlagsForModificationClasses
+                        .containsValue(Boolean.FALSE)
+                        || (change.getOriginator() != UIOriginator.CONSOLE))) {
             tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
         }
     }
@@ -1013,46 +1043,9 @@ public class ConsolePresenter
     @Handler
     public void sessionEventTimeRangeBoundariesModified(
             SessionEventsTimeRangeBoundariesModified change) {
-        for (String eventIdentifier : change.getChangedEvents()) {
+        for (String eventIdentifier : change.getEventIdentifiers()) {
             tabularEntityManager.replaceRootEntityForEvent(
                     getModel().getEventManager().getEventById(eventIdentifier));
-        }
-    }
-
-    /**
-     * Respond to an event's allow-until-further-notice flag changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventAllowUntilFurtherNoticeModified(
-            SessionEventAllowUntilFurtherNoticeModified change) {
-        tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
-    }
-
-    /**
-     * Respond to an event's origin data changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventOriginModified(SessionEventOriginModified change) {
-        tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
-    }
-
-    /**
-     * Respond to an event's attributes changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventAttributesModified(
-            SessionEventAttributesModified change) {
-        if (change.getOriginator() != UIOriginator.CONSOLE) {
-            tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
         }
     }
 
@@ -1066,18 +1059,6 @@ public class ConsolePresenter
     public void sessionEventHistoryModified(
             SessionEventHistoryModified change) {
         tabularEntityManager.updateChildEntityListForEvent(change.getEvent());
-    }
-
-    /**
-     * Respond to an event's unsaved changes flag changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler
-    public void sessionEventUnsavedChangesModified(
-            SessionEventUnsavedChangesModified change) {
-        tabularEntityManager.replaceRootEntityForEvent(change.getEvent());
     }
 
     // Protected Methods

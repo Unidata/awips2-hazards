@@ -22,13 +22,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
@@ -48,10 +51,23 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventVisualFeaturesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionBatchNotificationsToggled;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender.IIntraNotificationHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
@@ -60,9 +76,8 @@ import com.raytheon.uf.viz.recommenders.CAVERecommenderEngine;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.vividsolutions.jts.geom.Coordinate;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.Merger;
 import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-import net.engio.mbassy.listener.Handler;
 
 /**
  * Description: Manager of recommenders and their execution.
@@ -145,12 +160,180 @@ import net.engio.mbassy.listener.Handler;
  *                                      either a message to display, or a dialog to
  *                                      display, with their results (that is, within
  *                                      the returned event set).
+ * Sep 27, 2017   38072    Chris.Golden Removed methods that should not be public, and
+ *                                      added private inner classes implementing the
+ *                                      interfaces to be used to provide callback
+ *                                      objects for dialog and spatial input, and for
+ *                                      the displaying of results. Instances of these
+ *                                      private classes are now used to allow UI
+ *                                      elements to notify the recommender manager that
+ *                                      it can proceed with the execution of a
+ *                                      recommender, or that the execution is complete.
+ *                                      Also added queuing of recommender execution
+ *                                      requests if a recommender is running, with the
+ *                                      requests being mergeable to allow multiple
+ *                                      requests to be potentially collapsed into one.
+ *                                      This allows needless recommender executions
+ *                                      triggered by similar notifications to be
+ *                                      avoided. Also added tracking of hazard event
+ *                                      modifications made while a recommender is
+ *                                      running, so that any changes made to hazard
+ *                                      events by a recommender's resulting event set
+ *                                      can have said modifications overlaid onto them.
+ *                                      This avoids having a recommender run return a
+ *                                      modified event that has, for example, a generic
+ *                                      attribute that was set to a new value by the
+ *                                      user while the recommender was running, and then
+ *                                      having that modified event overwrite the one
+ *                                      stored as part of this session. Finally, moved
+ *                                      the code from event manager to this class that
+ *                                      handles event modifications and selections
+ *                                      triggering recommender runs, and modified said
+ *                                      code to ensure that a multi-part modification
+ *                                      that only needs to trigger one recommender does
+ *                                      so only one time.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SessionRecommenderManager implements ISessionRecommenderManager {
+
+    // Private Enumerated Types
+
+    /**
+     * Actions that can be taken to set a boolean value.
+     */
+    private enum SetBooleanAction {
+        DO_NOT_SET, SET_TRUE, SET_FALSE
+    }
+
+    // Private Classes
+
+    /**
+     * Base class for execution continuers of the currently running recommender.
+     */
+    private abstract class ExecutionContinuer {
+
+        // Protected Variables
+
+        /**
+         * Identifier of the recommender for which execution is to be continued.
+         * If this does not match the current
+         * {@link #runningRecommenderIdentifier} of the enclosing object, this
+         * continuer is to be ignored.
+         */
+        protected final String recommenderIdentifier;
+
+        /**
+         * Context in which the recommender for which execution is to be
+         * continued is running. If this does not match the current
+         * {@link #runningContext} of the enclosing object, this continuer is to
+         * be ignored.
+         */
+        protected final RecommenderExecutionContext context;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         */
+        private ExecutionContinuer() {
+            this.recommenderIdentifier = runningRecommenderIdentifier;
+            this.context = runningContext;
+        }
+
+        // Protected Methods
+
+        /**
+         * Determine whether or not this receiver is relevant to the recommender
+         * that is currently running, if any.
+         * 
+         * @return <code>true</code> if this receiver is relevant,
+         *         <code>false</code> otherwise. If the latter, any parameters
+         *         provided to the receiver are ignored.
+         */
+        protected final boolean isRelevant() {
+            return (recommenderIdentifier.equals(runningRecommenderIdentifier)
+                    && context.getIdentifier() == runningContext
+                            .getIdentifier());
+        }
+    }
+
+    /**
+     * Implementation of a dialog parameters receiver.
+     */
+    private class DialogParametersReceiver extends ExecutionContinuer
+            implements IDialogParametersReceiver {
+
+        // Public Methods
+
+        @Override
+        public void receiveDialogParameters(
+                Map<String, Serializable> parameters) {
+            if (isRelevant()) {
+                if (parameters != null) {
+                    executeRunningRecommender(null, parameters);
+                } else {
+                    cancelRunningRecommender();
+                }
+            } else {
+                statusHandler.error(
+                        "Received dialog parameters for recommender "
+                                + recommenderIdentifier + " (" + context
+                                + ") which is not currently running; ignoring",
+                        new Exception());
+            }
+        }
+    }
+
+    /**
+     * Implementation of a spatial parameters receiver.
+     */
+    private class SpatialParametersReceiver extends ExecutionContinuer
+            implements ISpatialParametersReceiver {
+
+        // Public Methods
+
+        @Override
+        public void receiveSpatialParameters(VisualFeaturesList parameters) {
+            if (isRelevant()) {
+                if (parameters != null) {
+                    executeRunningRecommender(parameters, null);
+                } else {
+                    cancelRunningRecommender();
+                }
+            } else {
+                statusHandler.error(
+                        "Received spatial parameters for recommender "
+                                + recommenderIdentifier + " (" + context
+                                + ") which is not currently running; ignoring",
+                        new Exception());
+            }
+        }
+    }
+
+    /**
+     * Implementation of a results display complete notifier.
+     */
+    private class ResultsDisplayCompleteNotifier extends ExecutionContinuer
+            implements IResultsDisplayCompleteNotifier {
+
+        // Public Methods
+
+        @Override
+        public void resultsDisplayCompleted() {
+            if (isRelevant()) {
+                finishRunningRecommender();
+            } else {
+                statusHandler.error(
+                        "Received results display completion notification for recommender "
+                                + recommenderIdentifier + " (" + context
+                                + ") which is not currently running; ignoring",
+                        new Exception());
+            }
+        }
+    }
 
     // Private Static Constants
 
@@ -176,6 +359,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
 
     /**
+     * Notification sender.
+     */
+    private final ISessionNotificationSender notificationSender;
+
+    /**
      * Messenger used to communicate with the user.
      */
     private IMessenger messenger;
@@ -186,6 +374,56 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     private final AbstractRecommenderEngine<?> recommenderEngine;
 
     /**
+     * Map of recommender identifiers to metadata they provided when queried.
+     */
+    private final Map<String, Map<String, Serializable>> metadataForRecommenders = new HashMap<>();
+
+    /**
+     * Identifier of the recommender that is currently running; if
+     * <code>null</code>, no recommender is running. Note that this variable and
+     * {@link #runningContext} are either both <code>null</code> or both not
+     * <code>null</code>. Access to this variable is synchronized on
+     * {@link #pendingRecommenderExecutionRequests}.
+     */
+    private String runningRecommenderIdentifier;
+
+    /**
+     * Execution context of the recommender that is currently running; if
+     * <code>null</code>, no recommender is running. Note that this variable and
+     * {@link #runningRecommenderIdentifier} are either both <code>null</code>
+     * or both not <code>null</code>. Access to this variable is synchronized on
+     * {@link #pendingRecommenderExecutionRequests}.
+     */
+    private RecommenderExecutionContext runningContext;
+
+    /**
+     * Flag indicating whether batching of notifications is currently occurring.
+     * Recommender execution requests are accumulated when batching mode is on,
+     * as this means that two or more such requests may be able to be collapsed
+     * into one before execution. Access to this variable is synchronized on
+     * {@link #pendingRecommenderExecutionRequests}.
+     */
+    private boolean batching;
+
+    /**
+     * Pending recommender execution requests. If a recommender is currently
+     * running, or if batching of notifications is currently occurring, the
+     * request at the head of this list is to be run after the currently running
+     * recommender completes and no batching is occurring, then the next one,
+     * and so on until this list is empty. Access to this variable is
+     * synchronized on itself.
+     */
+    private final List<RecommenderExecutionRequest> pendingRecommenderExecutionRequests = new ArrayList<>();
+
+    /**
+     * Map pairing identifiers of events that have been modified since the start
+     * of the last recommender run with the modifications they have undergone.
+     * Access to this variable is synchronized on
+     * {@link #pendingRecommenderExecutionRequests}.
+     */
+    private final Map<String, List<IEventModification>> modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun = new HashMap<>();
+
+    /**
      * Set of event identifiers for those events that have been completely
      * removed since the commencement of the last recommender execution. As
      * events are removed, they are added to this set, and then when a
@@ -193,9 +431,17 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * recommender completes execution and returns an event set, any events
      * included in the latter are checked against this set to ensure that they
      * were not removed for some other reason while the recommender was running,
-     * and any that were removed are ignored.
+     * and any that were removed are ignored. Access to this variable is
+     * synchronized on {@link #pendingRecommenderExecutionRequests}.
      */
     private final Set<String> identifiersOfEventsRemovedSinceLastRecommenderRun = new HashSet<>();
+
+    /**
+     * Updated site identifier, to be changed before the next pending
+     * recommender execution request is fulfilled. Access to this variable is
+     * synchronized on {@link #pendingRecommenderExecutionRequests}.
+     */
+    private String updatedSiteIdentifier;
 
     /**
      * <p>
@@ -240,6 +486,115 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
     };
 
+    /**
+     * Intra-managerial notification handler for batch notification toggles.
+     */
+    private IIntraNotificationHandler<SessionBatchNotificationsToggled> batchNotificationToggleHandler = new IIntraNotificationHandler<SessionBatchNotificationsToggled>() {
+
+        @Override
+        public void handleNotification(
+                SessionBatchNotificationsToggled notification) {
+            setBatchingToggleAndRunNextRequestedRecommender(
+                    notification.isBatching() ? SetBooleanAction.SET_TRUE
+                            : SetBooleanAction.SET_FALSE,
+                    false);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for event selection changes.
+     */
+    private IIntraNotificationHandler<SessionSelectedEventsModified> eventSelectionChangeHandler = new IIntraNotificationHandler<SessionSelectedEventsModified>() {
+
+        @Override
+        public void handleNotification(
+                SessionSelectedEventsModified notification) {
+            triggerRecommendersForHazardEventSelectionChanges(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return false;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for event modifications.
+     */
+    private IIntraNotificationHandler<SessionEventModified> eventModifiedHandler = new IIntraNotificationHandler<SessionEventModified>() {
+
+        @Override
+        public void handleNotification(SessionEventModified notification) {
+
+            /*
+             * Record any modifications to hazard events if a recommender is
+             * currently running, so that those modifications can be applied to
+             * that recommender's resulting events to ensure that session
+             * changes do not get overwritten by the recommender's results.
+             */
+            recordModificationsToHazardEventIfNecessary(notification);
+
+            /*
+             * Run any recommenders that should be triggered by the
+             * modifications.
+             */
+            triggerRecommendersForHazardEventModifications(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for event removals.
+     */
+    private IIntraNotificationHandler<SessionEventsRemoved> eventsRemovedHandler = new IIntraNotificationHandler<SessionEventsRemoved>() {
+
+        @Override
+        public void handleNotification(SessionEventsRemoved notification) {
+
+            /*
+             * If a recommender is running, record the removed hazard events.
+             */
+            synchronized (pendingRecommenderExecutionRequests) {
+                if (runningRecommenderIdentifier != null) {
+                    identifiersOfEventsRemovedSinceLastRecommenderRun
+                            .addAll(notification.getEvents().stream()
+                                    .map(IHazardEvent::getEventID)
+                                    .collect(Collectors.toList()));
+                }
+            }
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for site changes.
+     */
+    private IIntraNotificationHandler<SiteChanged> siteChangeHandler = new IIntraNotificationHandler<SiteChanged>() {
+
+        @Override
+        public void handleNotification(SiteChanged notification) {
+            siteChanged(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return false;
+        }
+    };
+
     // Constructors
 
     /**
@@ -247,35 +602,37 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * 
      * @param sessionManager
      *            Session manager that is building this manager.
+     * @param notificationSender
+     *            Notification sender.
      * @param messenger
      *            Messenger used to communicate with the user.
-     * @param eventBus
-     *            Event bus to be used for notifications.
      */
     public SessionRecommenderManager(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
-            IMessenger messenger, BoundedReceptionEventBus<Object> eventBus) {
+            ISessionNotificationSender notificationSender,
+            IMessenger messenger) {
         this.sessionManager = sessionManager;
+        this.notificationSender = notificationSender;
         this.messenger = messenger;
         recommenderEngine = CAVERecommenderEngine.getInstance();
         recommenderEngine
                 .setSite(sessionManager.getConfigurationManager().getSiteID());
-        eventBus.subscribe(recommenderEngine);
+
+        notificationSender.registerIntraNotificationHandler(
+                SessionBatchNotificationsToggled.class,
+                batchNotificationToggleHandler);
+        notificationSender.registerIntraNotificationHandler(
+                SessionEventModified.class, eventModifiedHandler);
+        notificationSender.registerIntraNotificationHandler(
+                SessionEventsRemoved.class, eventsRemovedHandler);
+        notificationSender.registerIntraNotificationHandler(
+                SessionSelectedEventsModified.class,
+                eventSelectionChangeHandler);
+        notificationSender.registerIntraNotificationHandler(SiteChanged.class,
+                siteChangeHandler);
     }
 
     // Public Methods
-
-    /**
-     * Respond to the current site changing.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler(priority = 1)
-    public void siteChanged(SiteChanged change) {
-        recommenderEngine
-                .setSite(sessionManager.getConfigurationManager().getSiteID());
-    }
 
     @Override
     public EventRecommender getRecommender(String recommenderIdentifier) {
@@ -283,21 +640,555 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     }
 
     @Override
-    public void rememberRemovedEventIdentifier(String eventIdentifier) {
-        identifiersOfEventsRemovedSinceLastRecommenderRun.add(eventIdentifier);
+    public void runRecommender(String recommenderIdentifier,
+            RecommenderExecutionContext context) {
+        runRecommenders(Lists.newArrayList(recommenderIdentifier), context);
     }
 
     @Override
-    public void runRecommender(String recommenderIdentifier,
+    public void runRecommenders(List<String> recommenderIdentifiers,
             RecommenderExecutionContext context) {
+        if (recommenderIdentifiers.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "at least one recommender identifier must be supplied");
+        }
 
         /*
-         * Create the event set to be used, and add the execution context to it.
+         * If a recommender is currently running, or batching of requests is
+         * currently toggled on, add a request for these recommenders to be
+         * executed and do nothing more. The request may be merged with an
+         * existing request if one exists that is similar enough. If no
+         * recommender is currently running, set the flag indicating that one is
+         * running to true to ensure that this one can be run next.
          */
-        EventSet<IEvent> eventSet = new EventSet<>();
-        eventSet.addAttribute(HazardConstants.CENTER_POINT_LAT_LON,
-                getCenterPointAsDictionary());
-        addContextAsEventSetAttributes(context, eventSet);
+        synchronized (pendingRecommenderExecutionRequests) {
+            if ((runningRecommenderIdentifier != null) || batching) {
+                Merger.merge(pendingRecommenderExecutionRequests,
+                        new RecommenderExecutionRequest(context,
+                                recommenderIdentifiers));
+                return;
+            }
+            runningRecommenderIdentifier = recommenderIdentifiers.get(0);
+            runningContext = context;
+        }
+
+        /*
+         * Remember the recommenders to be run and prep for running the first
+         * one, gathering parameters for the latter as necessary.
+         */
+        runRecommendersGatheringParametersAsNecessary(recommenderIdentifiers);
+    }
+
+    @Override
+    public void eventCommandInvoked(String eventIdentifier,
+            String commandIdentifier) {
+        Map<String, String> recommendersForTriggerIdentifiers = sessionManager
+                .getEventManager()
+                .getRecommendersForTriggerIdentifiers(eventIdentifier);
+        if (recommendersForTriggerIdentifiers.containsKey(commandIdentifier)) {
+            runRecommender(
+                    recommendersForTriggerIdentifiers.get(commandIdentifier),
+                    RecommenderExecutionContext
+                            .getHazardEventModificationContext(eventIdentifier,
+                                    Sets.newHashSet(commandIdentifier),
+                                    RecommenderTriggerOrigin.USER));
+        }
+    }
+
+    @Override
+    public void shutdown() {
+        notificationSender.unregisterIntraNotificationHandler(
+                batchNotificationToggleHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(eventModifiedHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(eventsRemovedHandler);
+        notificationSender.unregisterIntraNotificationHandler(
+                eventSelectionChangeHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(siteChangeHandler);
+        recommenderEngine.shutdownEngine();
+        messenger = null;
+    }
+
+    // Private Methods
+
+    /**
+     * If a recommender is running, record the modifications indicated by the
+     * specified notification.
+     * 
+     * @param notification
+     *            Hazard event modified notification.
+     */
+    private void recordModificationsToHazardEventIfNecessary(
+            SessionEventModified notification) {
+
+        /*
+         * If a recommender is running, record the modifications as associated
+         * with the identifier of the event modified.
+         */
+        synchronized (pendingRecommenderExecutionRequests) {
+            if (runningRecommenderIdentifier != null) {
+                List<IEventModification> modifications = modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun
+                        .get(notification.getEvent().getEventID());
+                if (modifications == null) {
+                    modifications = new ArrayList<>(
+                            notification.getModifications());
+                    modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun
+                            .put(notification.getEvent().getEventID(),
+                                    modifications);
+                } else {
+                    for (IEventModification modification : notification
+                            .getModifications()) {
+                        Merger.merge(modifications, modification);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Trigger any recommenders that are to be run in response to the specified
+     * hazard event modification.
+     * 
+     * @param notification
+     *            Hazard event modified notification.
+     */
+    private void triggerRecommendersForHazardEventModifications(
+            SessionEventModified notification) {
+
+        /*
+         * Iterate through the modifications, compiling two things: a map (with
+         * iteration order being the order in which elements are added, to
+         * ensure that entries put in first are iterated through first) pairing
+         * triggered recommender identifiers with the hazard attribute (generic
+         * and first-class) that triggered them, and a record of what
+         * recommender is to be triggered by any visual feature changes (if any
+         * occurred), together with the identifiers of the visual feature(s)
+         * that changed, and the ordinal indicating when (if any visual feature
+         * recommender triggering is happening) the visual feature triggered
+         * recommender should be run with respect to the hazard attribute
+         * triggered recommenders.
+         */
+        Map<String, Set<String>> modifiedAttributesForTriggeredRecommenders = new LinkedHashMap<>();
+        int visualFeatureTriggeredRecommenderOrdinal = -1;
+        String visualFeatureTriggeredRecommender = null;
+        Set<String> modifiedVisualFeatureIdentifiers = null;
+        for (IEventModification modification : notification
+                .getModifications()) {
+            if (modification instanceof EventTimeRangeModification) {
+                addTriggeredRecommenderEntryForModifiedAttribute(
+                        modifiedAttributesForTriggeredRecommenders,
+                        notification,
+                        HazardEventFirstClassAttribute.TIME_RANGE);
+            } else if (modification instanceof EventStatusModification) {
+                addTriggeredRecommenderEntryForModifiedAttribute(
+                        modifiedAttributesForTriggeredRecommenders,
+                        notification, HazardEventFirstClassAttribute.STATUS);
+            } else if (modification instanceof EventGeometryModification) {
+                addTriggeredRecommenderEntryForModifiedAttribute(
+                        modifiedAttributesForTriggeredRecommenders,
+                        notification, HazardEventFirstClassAttribute.GEOMETRY);
+            } else if (modification instanceof EventVisualFeaturesModification) {
+
+                /*
+                 * If no visual feature triggered recommender has been found
+                 * until now, get the recommender identifier, and if one is
+                 * found, compile the identifiers of the visual feature(s) that
+                 * changed to trigger this recommender, as well as the size of
+                 * the attribute triggered recommenders map, so that the point
+                 * at which the visual feature triggered recommender should be
+                 * run with respect to the recommenders in the map. If this is
+                 * not the first visual feature modification found that is to
+                 * trigger a recommender, just add the changed visual features'
+                 * identifiers to the set of changed identifiers.
+                 */
+                if (visualFeatureTriggeredRecommender == null) {
+                    visualFeatureTriggeredRecommender = getTriggeredRecommenderForFirstClassAttributeChange(
+                            notification.getEvent(),
+                            HazardEventFirstClassAttribute.VISUAL_FEATURE,
+                            notification.getOriginator());
+                    if (visualFeatureTriggeredRecommender != null) {
+                        modifiedVisualFeatureIdentifiers = new HashSet<>(
+                                ((EventVisualFeaturesModification) modification)
+                                        .getVisualFeatureIdentifiers());
+                        visualFeatureTriggeredRecommenderOrdinal = modifiedAttributesForTriggeredRecommenders
+                                .size();
+                    }
+                } else {
+                    modifiedVisualFeatureIdentifiers
+                            .addAll(((EventVisualFeaturesModification) modification)
+                                    .getVisualFeatureIdentifiers());
+                }
+            } else if (modification instanceof EventAttributesModification) {
+                addTriggeredRecommenderEntryForModifiedAttributes(
+                        modifiedAttributesForTriggeredRecommenders,
+                        notification,
+                        ((EventAttributesModification) modification)
+                                .getAttributeKeys());
+            }
+        }
+
+        /*
+         * Iterate through the recommenders to be run, executing each in turn.
+         * If visual feature changes are to trigger a recommender as well, run
+         * that recommender at the appropriate point within the triggered
+         * recommenders.
+         */
+        int count = 0;
+        for (Map.Entry<String, Set<String>> entry : modifiedAttributesForTriggeredRecommenders
+                .entrySet()) {
+
+            runVisualFeaturesTriggeredRecommenderIfAppropriate(
+                    visualFeatureTriggeredRecommender,
+                    modifiedVisualFeatureIdentifiers, notification,
+                    visualFeatureTriggeredRecommenderOrdinal, count++);
+
+            runAttributeTriggeredRecommender(entry.getKey(), entry.getValue(),
+                    notification);
+        }
+
+        runVisualFeaturesTriggeredRecommenderIfAppropriate(
+                visualFeatureTriggeredRecommender,
+                modifiedVisualFeatureIdentifiers, notification,
+                visualFeatureTriggeredRecommenderOrdinal, count);
+    }
+
+    /**
+     * If the specified first-class attribute of the event referenced by the
+     * specified notification is associated with a recommender to be triggered
+     * by the attribute's modification, update the specified map to include an
+     * entry pairing said recommender's identifier with this attribute (or with
+     * this attribute and any others that are already found as the value within
+     * the map for said recommender).
+     * 
+     * @param modifiedAttributesForTriggeredRecommenders
+     *            Map pairing recommender identifiers with the attributes that
+     *            trigger them.
+     * @param notification
+     *            Notification of the event modification that is being
+     *            considered.
+     * @param attribute
+     *            First-class hazard event attribute that was modified.
+     */
+    private void addTriggeredRecommenderEntryForModifiedAttribute(
+            Map<String, Set<String>> modifiedAttributesForTriggeredRecommenders,
+            SessionEventModified notification,
+            HazardEventFirstClassAttribute attribute) {
+        String recommender = getTriggeredRecommenderForFirstClassAttributeChange(
+                notification.getEvent(), attribute,
+                notification.getOriginator());
+        if (recommender != null) {
+            Set<String> modifiedAttributes = modifiedAttributesForTriggeredRecommenders
+                    .get(recommender);
+            if (modifiedAttributes == null) {
+                modifiedAttributes = Sets.newHashSet(attribute.toString());
+                modifiedAttributesForTriggeredRecommenders.put(recommender,
+                        modifiedAttributes);
+            } else {
+                modifiedAttributes.add(attribute.toString());
+            }
+        }
+    }
+
+    /**
+     * If the specified generic attributes of the event referenced by the
+     * specified notification is associated with recommenders to be triggered by
+     * the attributes' modification, update the specified map to include entries
+     * pairing said recommenders' identifiers with their associated attributes
+     * (or with said attributes and any others that are already found as the
+     * value within the map for a given recommender).
+     * 
+     * @param modifiedAttributesForTriggeredRecommenders
+     *            Map pairing recommender identifiers with the attributes that
+     *            trigger them.
+     * @param notification
+     *            Notification of the event modification that is being
+     *            considered.
+     * @param attributes
+     *            Generic attributes that were modified.
+     */
+    private void addTriggeredRecommenderEntryForModifiedAttributes(
+            Map<String, Set<String>> modifiedAttributesForTriggeredRecommenders,
+            SessionEventModified notification, Set<String> attributes) {
+
+        /*
+         * Determine whether or not a recommender triggered this change, and if
+         * so, note its name, since recommenders should not be triggered by
+         * changes caused by the earlier runs of those same recommenders.
+         */
+        IOriginator originator = notification.getOriginator();
+        String cause = null;
+        if (originator instanceof RecommenderOriginator) {
+            cause = ((RecommenderOriginator) originator).getName();
+        }
+
+        /*
+         * See if at least one of the attributes that changed is a recommender
+         * trigger. If so, put together a mapping of recommenders that need to
+         * be run to the set of one or more attributes that triggered them.
+         */
+        Map<String, String> recommendersForTriggerIdentifiers = sessionManager
+                .getEventManager().getRecommendersForTriggerIdentifiers(
+                        notification.getEvent().getEventID());
+        Set<String> triggers = Sets.intersection(
+                recommendersForTriggerIdentifiers.keySet(), attributes);
+        for (String trigger : triggers) {
+
+            /*
+             * Get the recommender to be triggered by this attribute identifier;
+             * if it is the same as the recommender that caused the attribute to
+             * change, do nothing with it.
+             */
+            String recommender = recommendersForTriggerIdentifiers.get(trigger);
+            if (recommender.equals(cause)) {
+                continue;
+            }
+
+            /*
+             * If the recommender is already associated with a set of triggers,
+             * add this trigger to the set; otherwise, create a new set holding
+             * this trigger and associate it with the recommender.
+             */
+            if (modifiedAttributesForTriggeredRecommenders
+                    .containsKey(recommender)) {
+                modifiedAttributesForTriggeredRecommenders.get(recommender)
+                        .add(trigger);
+            } else {
+                Set<String> modifiedAttributes = Sets.newHashSet(trigger);
+                modifiedAttributesForTriggeredRecommenders.put(recommender,
+                        modifiedAttributes);
+            }
+        }
+    }
+
+    /**
+     * Get the identifier of the recommender that is triggered by a change to
+     * the specified first class attribute for the specified hazard event, if
+     * one is indeed triggered.
+     * 
+     * @param event
+     *            Hazard event that was changed.
+     * @param attribute
+     *            First-class attribute that experienced a value change.
+     * @param originator
+     *            Originator of the change.
+     * @return Identifier of the recommender that is triggered, or
+     *         <code>null</code> if no recommender is triggered.
+     */
+    private String getTriggeredRecommenderForFirstClassAttributeChange(
+            IHazardEvent event, HazardEventFirstClassAttribute attribute,
+            IOriginator originator) {
+
+        /*
+         * Get the recommender identifier that is to be triggered by this
+         * first-class attribute; if there is one, and it is not the same as the
+         * recommender (if any) that caused the change, return it.
+         */
+        String recommender = sessionManager.getConfigurationManager()
+                .getRecommenderTriggeredByChange(event, attribute);
+        if ((recommender != null)
+                && ((originator instanceof RecommenderOriginator == false)
+                        || (recommender
+                                .equals(((RecommenderOriginator) originator)
+                                        .getName()) == false))) {
+            return recommender;
+        }
+        return null;
+    }
+
+    /**
+     * Run the specified visual feature triggered recommender with the specified
+     * visual feature identifiers as triggers if the specified ordinal value
+     * equals the specified count.
+     * 
+     * @param recommenderIdentifier
+     *            Identifier of the recommender to run if appropriate.
+     * @param visualFeatureIdentifiers
+     *            Visual feature identifiers to pass to the recommender as the
+     *            triggering elements.
+     * @param notification
+     *            Notification containing the visual feature modification.
+     * @param ordinal
+     *            Ordinal value, to be compared with <code>count</code>.
+     * @param count
+     *            Count, to be compared with <code>ordinal</code>
+     */
+    private void runVisualFeaturesTriggeredRecommenderIfAppropriate(
+            String recommenderIdentifier, Set<String> visualFeatureIdentifiers,
+            SessionEventModified notification, int ordinal, int count) {
+        if (ordinal == count) {
+            runRecommender(recommenderIdentifier,
+                    RecommenderExecutionContext
+                            .getHazardEventVisualFeatureChangeContext(
+                                    notification.getEvent().getEventID(),
+                                    visualFeatureIdentifiers,
+                                    getRecommenderTriggerOriginatorFromOriginator(
+                                            notification.getOriginator())));
+        }
+    }
+
+    /**
+     * Run the specified attribute triggered recommender with the specified
+     * attribute identifiers as triggers.
+     * 
+     * @param recommenderIdentifier
+     *            Identifier of the recommender to run if appropriate.
+     * @param attributeIdentifiers
+     *            Attribute identifiers to pass to the recommender as the
+     *            triggering elements.
+     * @param notification
+     *            Notification containing the attribute modifications.
+     */
+    private void runAttributeTriggeredRecommender(String recommenderIdentifier,
+            Set<String> attributeIdentifiers,
+            SessionEventModified notification) {
+        runRecommender(recommenderIdentifier,
+                RecommenderExecutionContext.getHazardEventModificationContext(
+                        notification.getEvent().getEventID(),
+                        attributeIdentifiers,
+                        getRecommenderTriggerOriginatorFromOriginator(
+                                notification.getOriginator())));
+    }
+
+    /**
+     * Trigger any recommenders that are to be run in response to the specified
+     * hazard event selection change.
+     * 
+     * @param notification
+     *            Change that occurred.
+     */
+    private void triggerRecommendersForHazardEventSelectionChanges(
+            SessionSelectedEventsModified notification) {
+
+        /*
+         * Iterate through the events that changed their selection state,
+         * compiling a mapping of recommenders to be triggered for those events
+         * to those events for which to trigger those particular recommenders.
+         * Thus, for example, if three hazard events changed selection state,
+         * two of which are to trigger recommender A when they change selection
+         * and one of which is to trigger recommender B in such cases, the
+         * result of this loop will be a map of two entries, one holding
+         * recommender A associated with the two events that are to trigger it,
+         * the other holding recommender B associated with the remaining event.
+         */
+        Map<String, Set<String>> eventIdentifiersForTriggeredRecommenders = new HashMap<>(
+                notification.getEventIdentifiers().size(), 1.0f);
+        for (String eventIdentifier : notification.getEventIdentifiers()) {
+            ObservedHazardEvent event = sessionManager.getEventManager()
+                    .getEventById(eventIdentifier);
+            if (event == null) {
+                continue;
+            }
+            String recommender = getTriggeredRecommenderForFirstClassAttributeChange(
+                    event, HazardEventFirstClassAttribute.SELECTION,
+                    notification.getOriginator());
+            if (recommender != null) {
+                Set<String> eventIdentifiers = eventIdentifiersForTriggeredRecommenders
+                        .get(recommender);
+                if (eventIdentifiers == null) {
+                    eventIdentifiers = Sets.newHashSet(eventIdentifier);
+                    eventIdentifiersForTriggeredRecommenders.put(recommender,
+                            eventIdentifiers);
+                } else {
+                    eventIdentifiers.add(eventIdentifier);
+                }
+            }
+        }
+
+        /*
+         * Iterate through the entries in the map compiled above, running the
+         * appropriate recommender for each one if said recommender is not the
+         * same as the recommender (if any) that caused the selection change.
+         */
+        for (Map.Entry<String, Set<String>> entry : eventIdentifiersForTriggeredRecommenders
+                .entrySet()) {
+            sessionManager.getRecommenderManager()
+                    .runRecommender(entry.getKey(), RecommenderExecutionContext
+                            .getHazardEventSelectionChangeContext(
+                                    entry.getValue(),
+                                    getRecommenderTriggerOriginatorFromOriginator(
+                                            notification.getOriginator())));
+        }
+    }
+
+    /**
+     * Convert the specified originator into a recommender trigger originator.
+     * 
+     * @param originator
+     *            Originator to be converted.
+     * @return Recommender trigger originator.
+     */
+    private RecommenderTriggerOrigin getRecommenderTriggerOriginatorFromOriginator(
+            IOriginator originator) {
+        return ((originator instanceof RecommenderOriginator)
+                || originator.equals(Originator.OTHER)
+                        ? RecommenderTriggerOrigin.OTHER
+                        : (originator.equals(Originator.DATABASE)
+                                ? RecommenderTriggerOrigin.DATABASE
+                                : RecommenderTriggerOrigin.USER));
+    }
+
+    /**
+     * Run the specified recommenders sequentially, waiting for the first to
+     * complete before running the second and so on. If parameters must be
+     * gathered from the user via spatial or dialog input, this method will do
+     * so. If not, it will simply run the recommenders. It is assumed that the
+     * recommender with the identifier found at the top of the specified list is
+     * indeed currently running.
+     * 
+     * @param recommenderIdentifiers
+     *            Identifiers of the recommenders to be run, in the order in
+     *            which they should be run.
+     */
+    private void runRecommendersGatheringParametersAsNecessary(
+            List<String> recommenderIdentifiers) {
+
+        /*
+         * If more than one recommender is to be run, associate the list of
+         * recommenders to be run with this context's identifier so that the
+         * subsquent ones may be run after the first one.
+         */
+        if (recommenderIdentifiers.size() > 1) {
+            sequentialRecommendersForExecutionContextIdentifiers.put(
+                    runningContext.getIdentifier(), recommenderIdentifiers);
+        }
+
+        /*
+         * Run the first recommender in the list of those to be run.
+         */
+        runRecommenderGatheringParametersAsNecessary();
+    }
+
+    /**
+     * Proceed with the recommender that is currently running. If parameters
+     * must be gathered from the user via spatial or dialog input, this method
+     * will do so. If not, it will simply run the recommender. It is assumed
+     * that a recommender is indeed currently running.
+     */
+    private void runRecommenderGatheringParametersAsNecessary() {
+        /*
+         * Get the recommender metadata, and determine whether or not dialog
+         * info and/or spatial info are needed.
+         */
+        Map<String, Serializable> metadata = getRecommenderMetadata(
+                runningRecommenderIdentifier);
+        boolean getDialogInfoNeeded = (Boolean.FALSE.equals(metadata.get(
+                HazardConstants.RECOMMENDER_METADATA_GET_DIALOG_INFO_NEEDED)) == false);
+        boolean getSpatialInfoNeeded = (Boolean.FALSE.equals(metadata.get(
+                HazardConstants.RECOMMENDER_METADATA_GET_SPATIAL_INFO_NEEDED)) == false);
+
+        /*
+         * Create the event set to be used if dialog and/or spatial info is to
+         * be fetched, and add the execution context to it.
+         */
+        EventSet<IEvent> eventSet = null;
+        if (getDialogInfoNeeded || getSpatialInfoNeeded) {
+            eventSet = new EventSet<>();
+            eventSet.addAttribute(HazardConstants.CENTER_POINT_LAT_LON,
+                    getCenterPointAsDictionary());
+            addContextAsEventSetAttributes(runningContext, eventSet);
+        }
 
         /*
          * Determine whether or not any spatial or dialog input is required; if
@@ -307,56 +1198,61 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * is taken by putting up a dialog and waiting for the user to proceed.
          * Otherwise, just run the recommender.
          */
-        VisualFeaturesList visualFeatures = recommenderEngine
-                .getSpatialInfo(recommenderIdentifier, eventSet);
-        Map<String, Serializable> dialogDescription = recommenderEngine
-                .getDialogInfo(recommenderIdentifier, eventSet);
+        VisualFeaturesList visualFeatures = (getSpatialInfoNeeded
+                ? recommenderEngine.getSpatialInfo(runningRecommenderIdentifier,
+                        eventSet)
+                : null);
+        Map<String, Serializable> dialogDescription = (getDialogInfoNeeded
+                ? recommenderEngine.getDialogInfo(runningRecommenderIdentifier,
+                        eventSet)
+                : null);
         if (((visualFeatures != null) && (visualFeatures.isEmpty() == false))
                 || ((dialogDescription != null)
                         && (dialogDescription.isEmpty() == false))) {
             if ((visualFeatures != null)
                     && (visualFeatures.isEmpty() == false)) {
                 messenger.getToolParameterGatherer().getToolSpatialInput(
-                        recommenderIdentifier, ToolType.RECOMMENDER, context,
-                        visualFeatures);
+                        ToolType.RECOMMENDER, visualFeatures,
+                        new SpatialParametersReceiver());
             }
             if ((dialogDescription != null)
                     && (dialogDescription.isEmpty() == false)) {
-                dialogDescription.put(HazardConstants.FILE_PATH_KEY,
-                        recommenderEngine.getInventory(recommenderIdentifier)
-                                .getFile().getFile().getPath());
+                dialogDescription
+                        .put(HazardConstants.FILE_PATH_KEY,
+                                recommenderEngine
+                                        .getInventory(
+                                                runningRecommenderIdentifier)
+                                        .getFile().getFile().getPath());
                 messenger.getToolParameterGatherer().getToolParameters(
-                        recommenderIdentifier, ToolType.RECOMMENDER, context,
-                        dialogDescription);
+                        ToolType.RECOMMENDER, dialogDescription,
+                        new DialogParametersReceiver());
             }
         } else {
-            runRecommender(recommenderIdentifier, context, null, null);
+            executeRunningRecommender(null, null);
         }
     }
 
-    @Override
-    public void runRecommenders(List<String> recommenderIdentifiers,
-            RecommenderExecutionContext context) {
-        if (recommenderIdentifiers.size() > 1) {
-            sequentialRecommendersForExecutionContextIdentifiers
-                    .put(context.getIdentifier(), recommenderIdentifiers);
-        }
-        runRecommender(recommenderIdentifiers.get(0), context);
-    }
-
+    /**
+     * Execute the recommender that is currently running with the specified
+     * user-provided dialog and/or spatial parameters. It is assumed that a
+     * recommender is indeed currently running.
+     * 
+     * @param visualFeatures
+     *            List of visual features provided by the recommender earlier to
+     *            allow the user to input spatial info, if any.
+     * @param dialogInfo
+     *            Map of dialog parameters, if any.
+     */
     @SuppressWarnings("unchecked")
-    @Override
-    public void runRecommender(final String recommenderIdentifier,
-            final RecommenderExecutionContext context,
-            VisualFeaturesList visualFeatures,
+    private void executeRunningRecommender(VisualFeaturesList visualFeatures,
             Map<String, Serializable> dialogInfo) {
 
         /*
          * Get the recommender metadata, and decide what events are to be
          * included in the event set based upon its values.
          */
-        Map<String, Serializable> metadata = recommenderEngine
-                .getScriptMetadata(recommenderIdentifier);
+        Map<String, Serializable> metadata = getRecommenderMetadata(
+                runningRecommenderIdentifier);
         Boolean onlyIncludeTriggerEvent = (Boolean) metadata.get(
                 HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS);
         List<String> includeEventTypesList = (List<String>) metadata
@@ -374,15 +1270,39 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * of each such event to the set.
          */
         EventSet<IEvent> eventSet = new EventSet<>();
-        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((context
+        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((runningContext
                 .getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE)
-                || (context.getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
-                || (context.getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
-            for (String eventIdentifier : context.getEventIdentifiers()) {
-                eventSet.add(createBaseHazardEvent(sessionManager
-                        .getEventManager().getEventById(eventIdentifier)));
+                || (runningContext
+                        .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
+                || (runningContext
+                        .getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
+
+            /*
+             * Since the recommender is meant to only be passed the triggering
+             * hazard event(s), place only those into the input event set. If
+             * they cannot be found, they may have been removed after they
+             * caused the triggering of the recommender run. If none are found,
+             * cancel the running of the recommender.
+             */
+            for (String eventIdentifier : runningContext
+                    .getEventIdentifiers()) {
+                ObservedHazardEvent event = sessionManager.getEventManager()
+                        .getEventById(eventIdentifier);
+                if (event != null) {
+                    eventSet.add(createBaseHazardEvent(event));
+                }
+            }
+            if (eventSet.isEmpty()) {
+                cancelRunningRecommender();
+                return;
             }
         } else {
+
+            /*
+             * Include all events that belong (either every event in the
+             * session, or only those events with the right hazard types) in the
+             * input event set.
+             */
             Collection<ObservedHazardEvent> hazardEvents = sessionManager
                     .getEventManager().getEvents();
             for (ObservedHazardEvent event : hazardEvents) {
@@ -397,14 +1317,19 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * Clear the set of removed event identifiers, since it should only hold
          * identifiers of events that have been removed since the last
          * commencement of a recommender's execution, and said commencement is
-         * about to occur.
+         * about to occur. Do the same thing with the map of event identifiers
+         * to modifications.
          */
-        identifiersOfEventsRemovedSinceLastRecommenderRun.clear();
+        synchronized (pendingRecommenderExecutionRequests) {
+            identifiersOfEventsRemovedSinceLastRecommenderRun.clear();
+            modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun
+                    .clear();
+        }
 
         /*
          * Add the execution context parameters to the event set.
          */
-        addContextAsEventSetAttributes(context, eventSet);
+        addContextAsEventSetAttributes(runningContext, eventSet);
 
         /*
          * Add session information to event set.
@@ -442,8 +1367,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         /*
          * Get the engine to initiate the execution of the recommender.
          */
-        recommenderEngine.runExecuteRecommender(recommenderIdentifier, eventSet,
-                visualFeatures, dialogInfo,
+        recommenderEngine.runExecuteRecommender(runningRecommenderIdentifier,
+                eventSet, visualFeatures, dialogInfo,
                 new IPythonJobListener<EventSet<IEvent>>() {
 
                     @Override
@@ -456,7 +1381,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         sessionManager.getRunnableAsynchronousScheduler()
                                 .schedule(new Runnable() {
 
-                            @SuppressWarnings("unused")
                             @Override
                             public void run() {
 
@@ -487,22 +1411,21 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                             HazardConstants.FILE_PATH_KEY,
                                             recommenderEngine
                                                     .getInventory(
-                                                            recommenderIdentifier)
+                                                            runningRecommenderIdentifier)
                                                     .getFile().getFile()
                                                     .getPath());
                                     messenger.getToolParameterGatherer()
                                             .showToolResults(
-                                                    recommenderIdentifier,
                                                     ToolType.RECOMMENDER,
-                                                    context,
-                                                    resultDialogDescription);
+                                                    resultDialogDescription,
+                                                    new ResultsDisplayCompleteNotifier());
                                 }
 
                                 /*
                                  * Handle the resulting changes to the session.
                                  */
-                                handleRecommenderResult(recommenderIdentifier,
-                                        result);
+                                handleRecommenderResult(
+                                        runningRecommenderIdentifier, result);
 
                                 /*
                                  * If no results are being displayed, run the
@@ -510,8 +1433,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                  * recommenders, if any.
                                  */
                                 if (showingResultsDialog == false) {
-                                    handleResultsDisplayComplete(
-                                            recommenderIdentifier, context);
+                                    finishRunningRecommender();
                                 }
                             }
                         });
@@ -525,39 +1447,217 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 });
     }
 
-    @Override
-    public void handleResultsDisplayComplete(String recommenderIdentifier,
-            RecommenderExecutionContext context) {
+    /**
+     * Finish up execution of the currently running recommender. It is assumed
+     * that a recommender is indeed currently running.
+     */
+    private void finishRunningRecommender() {
 
         /*
-         * If this recommender is being run as part of a list of recommenders to
-         * be run sequentially, then run the next one, and if the next one is
-         * the last one in the sequence, remove the list from the
-         * sequential-recommenders map since it will no longer be referenced.
+         * If the currently running recommender is being run as part of a list
+         * of recommenders to be run sequentially, then run the next one.
+         * Otherwise, execute the next recommender in the requests queue, if
+         * any.
          */
-        long contextIdentifier = context.getIdentifier();
+        long contextIdentifier = runningContext.getIdentifier();
         List<String> sequentialRecommenders = sequentialRecommendersForExecutionContextIdentifiers
                 .get(contextIdentifier);
         if (sequentialRecommenders != null) {
+
+            /*
+             * Get the identifier of the next recommender to be run in the
+             * sequence and remember it. If said next recommender is the last
+             * one in the sequence, remove the list from the
+             * sequential-recommenders map since it will no longer be
+             * referenced.
+             */
             int nextIndex = sequentialRecommenders
-                    .indexOf(recommenderIdentifier) + 1;
-            String nextRecommenderIdentifier = sequentialRecommenders
-                    .get(nextIndex);
+                    .indexOf(runningRecommenderIdentifier) + 1;
+            synchronized (pendingRecommenderExecutionRequests) {
+                runningRecommenderIdentifier = sequentialRecommenders
+                        .get(nextIndex);
+            }
             if (nextIndex == sequentialRecommenders.size() - 1) {
                 sequentialRecommendersForExecutionContextIdentifiers
                         .remove(contextIdentifier);
             }
-            runRecommender(nextRecommenderIdentifier, context);
+
+            /*
+             * Run the next recommender.
+             */
+            runRecommenderGatheringParametersAsNecessary();
+        } else {
+
+            /*
+             * If the site has been updated during the running of the
+             * recommender, process it now.
+             */
+            updateSiteIfNecessary();
+
+            /*
+             * Run the next requested recommender if any requests are pending
+             * and batching is off.
+             */
+            setBatchingToggleAndRunNextRequestedRecommender(
+                    SetBooleanAction.DO_NOT_SET, true);
         }
     }
 
-    @Override
-    public void shutdown() {
-        recommenderEngine.shutdownEngine();
-        messenger = null;
+    /**
+     * Cancel the currently running recommender. It is assumed that a
+     * recommender is indeed currently running.
+     */
+    private void cancelRunningRecommender() {
+
+        /*
+         * Remove the list of recommenders to be run sequentially after this
+         * one, if such a list is found.
+         */
+        sequentialRecommendersForExecutionContextIdentifiers
+                .remove(runningContext.getIdentifier());
+
+        /*
+         * Clean up after the attempted running of the recommender.
+         */
+        finishRunningRecommender();
     }
 
-    // Private Methods
+    /**
+     * Set the batching flag as speciifed, and then run the next requested
+     * recommender if appropriate.
+     * 
+     * @param setBatchingAction
+     *            Action to be taken with regard to the batching flag.
+     * @param resetRunningTrackers
+     *            Flag indicating whether or not to reset the running
+     *            recommender tracker member variables if batching is now (or
+     *            already was) toggled on or there are no pending recommender
+     *            requests.
+     */
+    private void setBatchingToggleAndRunNextRequestedRecommender(
+            SetBooleanAction setBatchingAction,
+            boolean assumeNoRunningRecommender) {
+
+        List<String> recommenderIdentifiers = null;
+        synchronized (pendingRecommenderExecutionRequests) {
+
+            /*
+             * If the batching flag is to be set, set it now.
+             */
+            if (setBatchingAction == SetBooleanAction.SET_TRUE) {
+                batching = true;
+            } else if (setBatchingAction == SetBooleanAction.SET_FALSE) {
+                batching = false;
+            }
+
+            /*
+             * If there are recommender execution requests pending and batching
+             * is toggled off, and either no recommender is running or there is
+             * no reason to worry about whether one is running or not, handle
+             * the next one. Otherwise, reset the trackers of the currently
+             * running recommender if there is no reason to worry about whether
+             * a recommender is running or not.
+             */
+            if ((batching == false)
+                    && (pendingRecommenderExecutionRequests.isEmpty() == false)
+                    && (assumeNoRunningRecommender
+                            || (runningRecommenderIdentifier == null))) {
+
+                /*
+                 * Take the request at the head of the queue and record the
+                 * first recomender identifier it provides the currently running
+                 * recommender.
+                 */
+                RecommenderExecutionRequest request = pendingRecommenderExecutionRequests
+                        .remove(0);
+                recommenderIdentifiers = request.getRecommenderIdentifiers();
+                runningRecommenderIdentifier = recommenderIdentifiers.get(0);
+                runningContext = request.getContext();
+
+            } else if (assumeNoRunningRecommender) {
+
+                /*
+                 * Reset the running recommender trackers.
+                 */
+                runningRecommenderIdentifier = null;
+                runningContext = null;
+            }
+        }
+
+        /*
+         * If the above resulted in a new recommender now running, start the
+         * process.
+         */
+        if (recommenderIdentifiers != null) {
+            runRecommendersGatheringParametersAsNecessary(
+                    recommenderIdentifiers);
+        }
+    }
+
+    /**
+     * Respond to the current site changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    private void siteChanged(SiteChanged change) {
+
+        /*
+         * If a recommender is currently running, remember the new site so that
+         * it may be updated later. Otherwise, update the site immediately. The
+         * delay when a recommender is running is to avoid having the site
+         * change mid-execution for a recommender.
+         */
+        String newSiteIdentifier = sessionManager.getConfigurationManager()
+                .getSiteID();
+        synchronized (pendingRecommenderExecutionRequests) {
+            if (runningRecommenderIdentifier != null) {
+                updatedSiteIdentifier = newSiteIdentifier;
+            } else {
+                updateSite();
+            }
+        }
+    }
+
+    /**
+     * Update the site if necessary, that is, if
+     * {@link #siteChanged(SiteChanged)} was invoked while a recommender was
+     * running.
+     */
+    private void updateSiteIfNecessary() {
+        synchronized (pendingRecommenderExecutionRequests) {
+            if (updatedSiteIdentifier != null) {
+                updateSite();
+            }
+        }
+    }
+
+    /**
+     * Update the site.
+     */
+    private void updateSite() {
+        recommenderEngine.setSite(updatedSiteIdentifier);
+        updatedSiteIdentifier = null;
+    }
+
+    /**
+     * Get the metadata for the specified recommender.
+     * 
+     * @param recommenderIdentifier
+     *            Identifier of the recommender for which to fetch the metadata.
+     * @return Map of metadata keys to values for the recommender.
+     */
+    private Map<String, Serializable> getRecommenderMetadata(
+            String recommenderIdentifier) {
+        Map<String, Serializable> metadata = metadataForRecommenders
+                .get(recommenderIdentifier);
+        if (metadata == null) {
+            metadata = recommenderEngine
+                    .getScriptMetadata(recommenderIdentifier);
+            metadataForRecommenders.put(recommenderIdentifier, metadata);
+        }
+        return metadata;
+    }
 
     /**
      * Create a base hazard event copy of the specified hazard event.
@@ -690,6 +1790,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
                     .getEventManager();
 
+            sessionManager.startBatchedChanges();
+
             /*
              * Get the attributes of the event set indicating whether any or all
              * events are to be saved to history lists or to the latest version
@@ -724,8 +1826,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              */
             Set<String> eventIdentifiersNeedingOriginSet = new HashSet<>(
                     events.size(), 1.0f);
-            Serializable setOriginObj = events
-                    .getAttribute(HazardConstants.RECOMMENDER_RESULT_SET_ORIGIN);
+            Serializable setOriginObj = events.getAttribute(
+                    HazardConstants.RECOMMENDER_RESULT_SET_ORIGIN);
             if (Boolean.FALSE.equals(setOriginObj) == false) {
                 for (IEvent event : events) {
                     if (event instanceof IHazardEvent) {
@@ -742,8 +1844,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     for (Map.Entry<?, ?> entry : setOriginFlagsForEventIdentifiers
                             .entrySet()) {
                         if (Boolean.FALSE.equals(entry.getValue())) {
-                            eventIdentifiersNeedingOriginSet.remove(entry
-                                    .getKey());
+                            eventIdentifiersNeedingOriginSet
+                                    .remove(entry.getKey());
                         }
                     }
                 }
@@ -851,85 +1953,123 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              */
             List<ObservedHazardEvent> addedOrModifiedEvents = new ArrayList<>(
                     events.size());
-            for (IEvent event : events) {
-                if (event instanceof IHazardEvent) {
+            synchronized (pendingRecommenderExecutionRequests) {
+                for (IEvent event : events) {
+                    if (event instanceof IHazardEvent) {
 
-                    /*
-                     * Get the hazard event, and if it is not new, ensure that
-                     * it does not have the identifier of an event that was
-                     * removed by some other action while this recommender was
-                     * running. If it was removed during recommender execution,
-                     * ignore it, as it should not be around anymore. Also
-                     * ignore it if it is to be deleted per this recommender's
-                     * request.
-                     */
-                    IHazardEvent hazardEvent = (IHazardEvent) event;
-                    boolean isNew = (hazardEvent.getEventID() == null);
-                    if ((isNew == false)
-                            && (identifiersOfEventsRemovedSinceLastRecommenderRun
-                                    .contains(hazardEvent.getEventID())
-                                    || identifiersOfEventsToBeDeleted.contains(
-                                            hazardEvent.getEventID()))) {
-                        continue;
-                    }
+                        /*
+                         * Get the hazard event, and if it is not new, ensure
+                         * that it does not have the identifier of an event that
+                         * was removed by some other action while this
+                         * recommender was running. If it was removed during
+                         * recommender execution, ignore it, as it should not be
+                         * around anymore. Also ignore it if it is to be deleted
+                         * per this recommender's request.
+                         */
+                        IHazardEvent hazardEvent = (IHazardEvent) event;
+                        boolean isNew = (hazardEvent.getEventID() == null);
+                        if ((isNew == false)
+                                && (identifiersOfEventsRemovedSinceLastRecommenderRun
+                                        .contains(hazardEvent.getEventID())
+                                        || identifiersOfEventsToBeDeleted
+                                                .contains(hazardEvent
+                                                        .getEventID()))) {
+                            continue;
+                        }
 
-                    /*
-                     * Add the hazard area for the event, and the site
-                     * identifier if it not already set, and if the recommender
-                     * wants the origin set, do so now.
-                     */
-                    Map<String, String> ugcHatchingAlgorithms = eventManager
-                            .buildInitialHazardAreas(hazardEvent);
-                    hazardEvent.addHazardAttribute(HAZARD_AREA,
-                            (Serializable) ugcHatchingAlgorithms);
-                    if (hazardEvent.getSiteID() == null) {
-                        hazardEvent.setSiteID(configManager.getSiteID());
-                    }
-                    if (isNew
-                            || eventIdentifiersNeedingOriginSet
-                                    .contains(hazardEvent.getEventID())) {
-                        hazardEvent.setUserName(LocalizationManager
-                                .getInstance().getCurrentUser());
-                        hazardEvent.setWorkStation(VizApp.getHostName());
-                        hazardEvent.setSource(IHazardEvent.Source.RECOMMENDER);
-                    }
+                        /*
+                         * Add the hazard area for the event.
+                         */
+                        Map<String, String> ugcHatchingAlgorithms = eventManager
+                                .buildInitialHazardAreas(hazardEvent);
+                        hazardEvent.addHazardAttribute(HAZARD_AREA,
+                                (Serializable) ugcHatchingAlgorithms);
 
-                    /*
-                     * Add the event (or modify an existing event by merging the
-                     * new version into it).
-                     */
-                    hazardEvent.removeHazardAttribute(
-                            HazardConstants.HAZARD_EVENT_SELECTED);
-                    ObservedHazardEvent addedEvent = null;
-                    try {
-                        addedEvent = eventManager.addEvent(hazardEvent,
-                                originator);
-                    } catch (HazardEventServiceException e) {
-                        statusHandler
-                                .error("Could not add hazard event generated by "
-                                        + recommenderIdentifier + ".", e);
-                        continue;
-                    }
-                    addedOrModifiedEvents.add(addedEvent);
+                        /*
+                         * If this is an existing hazard event, iterate through
+                         * any modifications that the session copy has undergone
+                         * since the recommender started running, modifying the
+                         * recommender's result event copy to include all such
+                         * modifications. This avoids having the changes made to
+                         * the event within the session overwritten by the
+                         * recommender's version.
+                         */
+                        if (isNew == false) {
+                            List<IEventModification> modifications = modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun
+                                    .get(hazardEvent.getEventID());
+                            if (modifications != null) {
+                                IHazardEvent sessionEvent = eventManager
+                                        .getEventById(hazardEvent.getEventID());
+                                if (sessionEvent != null) {
+                                    for (IEventModification modification : modifications) {
+                                        modification.apply(sessionEvent,
+                                                hazardEvent);
+                                    }
+                                }
+                            }
+                        }
 
-                    /*
-                     * If the event is new and new events are to be all saved to
-                     * history or database, add it to the new events list;
-                     * otherwise, if all events (new or existing) are to be
-                     * saved to history or database, add it to the list for all
-                     * events; otherwise, if only some events are to be saved to
-                     * one or both, place it in the map of identifiers to
-                     * events.
-                     */
-                    if (isNew && (addedNewEvents != null)) {
-                        addedNewEvents.add(addedEvent);
-                    } else if (addedEvents != null) {
-                        addedEvents.add(addedEvent);
-                    } else if (addedEventsForIdentifiers != null) {
-                        addedEventsForIdentifiers.put(addedEvent.getEventID(),
-                                addedEvent);
+                        /*
+                         * Add the site identifier if it not already set, and if
+                         * the recommender wants the origin set, do so now.
+                         */
+                        if (hazardEvent.getSiteID() == null) {
+                            hazardEvent.setSiteID(configManager.getSiteID());
+                        }
+                        if (isNew || eventIdentifiersNeedingOriginSet
+                                .contains(hazardEvent.getEventID())) {
+                            hazardEvent.setUserName(LocalizationManager
+                                    .getInstance().getCurrentUser());
+                            hazardEvent.setWorkStation(VizApp.getHostName());
+                            hazardEvent
+                                    .setSource(IHazardEvent.Source.RECOMMENDER);
+                        }
+
+                        /*
+                         * Add the event (or modify an existing event by merging
+                         * the new version into it).
+                         */
+                        hazardEvent.removeHazardAttribute(
+                                HazardConstants.HAZARD_EVENT_SELECTED);
+                        ObservedHazardEvent addedEvent = null;
+                        try {
+                            addedEvent = eventManager.addEvent(hazardEvent,
+                                    originator);
+                        } catch (HazardEventServiceException e) {
+                            statusHandler
+                                    .error("Could not add hazard event generated by "
+                                            + recommenderIdentifier + ".", e);
+                            continue;
+                        }
+                        addedOrModifiedEvents.add(addedEvent);
+
+                        /*
+                         * If the event is new and new events are to be all
+                         * saved to history or database, add it to the new
+                         * events list; otherwise, if all events (new or
+                         * existing) are to be saved to history or database, add
+                         * it to the list for all events; otherwise, if only
+                         * some events are to be saved to one or both, place it
+                         * in the map of identifiers to events.
+                         */
+                        if (isNew && (addedNewEvents != null)) {
+                            addedNewEvents.add(addedEvent);
+                        } else if (addedEvents != null) {
+                            addedEvents.add(addedEvent);
+                        } else if (addedEventsForIdentifiers != null) {
+                            addedEventsForIdentifiers
+                                    .put(addedEvent.getEventID(), addedEvent);
+                        }
                     }
                 }
+
+                /*
+                 * Clear the removed event identifiers and the modified events
+                 * map.
+                 */
+                identifiersOfEventsRemovedSinceLastRecommenderRun.clear();
+                modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun
+                        .clear();
             }
 
             /*
@@ -1021,6 +2161,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 sessionManager.getTimeManager().setSelectedTime(selectedTime,
                         originator);
             }
+
+            sessionManager.finishBatchedChanges();
         }
     }
 

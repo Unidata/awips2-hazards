@@ -9,8 +9,11 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
+
+import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Description: Notification of a change to the state for the
@@ -22,21 +25,33 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * May 12, 2014    2925    Chris.Golden Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionAutoCheckConflictsModified extends
-        OriginatedSessionNotification {
+public class SessionAutoCheckConflictsModified
+        extends OriginatedSessionNotification {
+
+    // Public Constructors
 
     /**
      * Construct a standard instance.
      * 
      * @param originator
-     *            Originator of the event.
+     *            Originator of the change.
      */
     public SessionAutoCheckConflictsModified(IOriginator originator) {
         super(originator);
+    }
+
+    // Public Methods
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
+                modified);
     }
 }

@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
@@ -60,7 +61,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionPreviewOrIssueOngoingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionSelectionManager;
@@ -176,6 +177,11 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  *                                      while the recommender was executing can be ignored.
  * May 31, 2017 34684      Chris.Golden Moved recommender-specific methods to the session
  *                                      recommender manager where they belong.
+ * Sep 27, 2017 38072      Chris.Golden Removed getter for the event bus, as it should not be
+ *                                      publicly accessible; and added methods to start and stop
+ *                                      batching of messages. Also switched over to receiving
+ *                                      intra-managerial notifications instead of listening on
+ *                                      the event bus for notifications.
  * </pre>
  * 
  * @author bsteffen
@@ -229,8 +235,6 @@ public class SessionManager
     private final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(this.getClass());
 
-    private final BoundedReceptionEventBus<Object> eventBus;
-
     private final SessionNotificationSender sender;
 
     private final ISessionEventManager<ObservedHazardEvent> eventManager;
@@ -277,9 +281,9 @@ public class SessionManager
             IDisplayResourceContextProvider displayResourceContextProvider,
             IFrameContextProvider frameContextProvider, IMessenger messenger,
             BoundedReceptionEventBus<Object> eventBus) {
-        this.eventBus = eventBus;
         this.messenger = messenger;
-        sender = new SessionNotificationSender(eventBus);
+        sender = new SessionNotificationSender(eventBus,
+                RUNNABLE_ASYNC_SCHEDULER);
         timeManager = new SessionTimeManager(this, sender);
         configManager = new SessionConfigurationManager(this, pathManager,
                 timeManager, sender);
@@ -288,11 +292,11 @@ public class SessionManager
                 messenger);
         this.eventManager = eventManager;
         selectionManager = new SessionSelectionManager(eventManager, sender);
+        recommenderManager = new SessionRecommenderManager(this, sender,
+                messenger);
         productManager = new SessionProductManager(this, timeManager,
                 configManager, eventManager, selectionManager, sender,
                 messenger);
-        recommenderManager = new SessionRecommenderManager(this, messenger,
-                eventBus);
         alertsManager = new HazardSessionAlertsManager(sender,
                 getRunnableAsynchronousScheduler(), timeManager);
         alertsManager.addAlertGenerationStrategy(HazardNotification.class,
@@ -309,12 +313,6 @@ public class SessionManager
          * observer (done in the stop method)?
          */
         alertsManager.start();
-        registerForNotification(timeManager);
-        registerForNotification(configManager);
-        registerForNotification(eventManager);
-        registerForNotification(productManager);
-        registerForNotification(recommenderManager);
-        registerForNotification(alertsManager);
 
     }
 
@@ -374,24 +372,7 @@ public class SessionManager
     }
 
     @Override
-    public void registerForNotification(Object object) {
-        eventBus.subscribe(object);
-    }
-
-    @Override
-    public void unregisterForNotification(Object object) {
-        eventBus.unsubscribe(object);
-    }
-
-    @Override
     public void shutdown() {
-
-        unregisterForNotification(timeManager);
-        unregisterForNotification(configManager);
-        unregisterForNotification(eventManager);
-        unregisterForNotification(productManager);
-        unregisterForNotification(recommenderManager);
-        unregisterForNotification(alertsManager);
 
         eventManager.shutdown();
 
@@ -404,6 +385,16 @@ public class SessionManager
         recommenderManager.shutdown();
 
         alertsManager.shutdown();
+    }
+
+    @Override
+    public void startBatchedChanges() {
+        sender.startAccumulatingAsyncNotifications();
+    }
+
+    @Override
+    public void finishBatchedChanges() {
+        sender.finishAccumulatingAsyncNotifications();
     }
 
     @Override
@@ -421,7 +412,8 @@ public class SessionManager
     @Override
     public void toggleHatchedAreaDisplay() {
         hatchAreaDisplay = !hatchAreaDisplay;
-        eventBus.publish(new SessionHatchingToggled(Originator.OTHER));
+        sender.postNotificationAsync(
+                new SessionHatchingToggled(Originator.OTHER));
     }
 
     @Override
@@ -432,9 +424,11 @@ public class SessionManager
     @Override
     public void reset() {
 
+        startBatchedChanges();
         for (ObservedHazardEvent event : eventManager.getEvents()) {
             eventManager.removeEvent(event, false, Originator.OTHER);
         }
+        finishBatchedChanges();
 
         hazardManager.removeAllEvents();
 
@@ -550,7 +544,7 @@ public class SessionManager
     @Override
     public void setPreviewOngoing(boolean previewOngoing) {
         this.previewOngoing = previewOngoing;
-        notifySessionModified();
+        notifyPreviewOrIssueOngoingModified();
     }
 
     @Override
@@ -561,19 +555,13 @@ public class SessionManager
     @Override
     public void setIssueOngoing(boolean issueOngoing) {
         this.issueOngoing = issueOngoing;
-        notifySessionModified();
+        notifyPreviewOrIssueOngoingModified();
 
     }
 
-    private void notifySessionModified() {
-        eventBus.publish(new SessionModified(Originator.OTHER));
-    }
-
-    /**
-     * @return the eventBus
-     */
-    public BoundedReceptionEventBus<Object> getEventBus() {
-        return eventBus;
+    private void notifyPreviewOrIssueOngoingModified() {
+        sender.postNotificationAsync(
+                new SessionPreviewOrIssueOngoingModified(Originator.OTHER));
     }
 
     @Override
@@ -693,6 +681,14 @@ public class SessionManager
         }
     }
 
+    @Override
+    public void eventCommandInvoked(ObservedHazardEvent event,
+            String identifier,
+            Map<String, Map<String, Object>> mutableProperties) {
+        eventManager.eventCommandInvoked(event, identifier, mutableProperties);
+        recommenderManager.eventCommandInvoked(event.getEventID(), identifier);
+    }
+
     /**
      * Examine all selected hazards to ensure they are valid prior to issuance
      * or previewing.
@@ -721,5 +717,4 @@ public class SessionManager
          */
         return true;
     }
-
 }

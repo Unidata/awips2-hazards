@@ -35,7 +35,6 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
@@ -104,7 +103,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                           tool dialog.
  * Jul 18, 2013    585     Chris Golden      Changed to support loading
  *                                           from bundle.
- * Aug 21, 2013   1921     daniel.s.schaffer@noaa.gov  Call recommender framework directly
+ * Aug 21, 2013   1921     daniel.s.schaffer Call recommender framework directly
  * Dec 16, 2013   2545     Chris.Golden      Added current time provider
  *                                           for megawidget use.
  * Apr 14, 2014   2925     Chris.Golden      Minor changes to work with megawidget
@@ -124,7 +123,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Oct 20, 2014   4818     Chris.Golden      Removed scrolled composite from the dialog,
  *                                           since scrolling is now handled by the
  *                                           megawidgets.
- * Dec 13, 2014   4959     Dan Schaffer Spatial Display cleanup and other bug fixes
+ * Dec 13, 2014   4959     Dan Schaffer      Spatial Display cleanup and other bug fixes
  * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
  * Jun 17, 2015   8389     Benjamin.Phillippe Fixed min/max time visible variables to 
@@ -133,6 +132,8 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                           manager.
  * Aug 15, 2017  22757     Chris.Golden      Refactored to become an abstract base class
  *                                           for all tool dialogs.
+ * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender
+ *                                           manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -192,16 +193,6 @@ abstract class AbstractToolDialog extends BasicDialog {
     private final File pythonSideEffectsScriptFile;
 
     /**
-     * Execution context in which the tool is or was running.
-     */
-    private final RecommenderExecutionContext context;
-
-    /**
-     * Identifier of the tool for which the dialog is being shown.
-     */
-    private final String tool;
-
-    /**
      * Type of the tool for which the dialog is being shown.
      */
     private final ToolType type;
@@ -215,12 +206,8 @@ abstract class AbstractToolDialog extends BasicDialog {
      *            Presenter.
      * @param parent
      *            Parent shell.
-     * @param tool
-     *            Identifier of the tool to be executed.
      * @param type
      *            Type of the tool.
-     * @param context
-     *            Execution context in which this tool is to be run.
      * @param jsonParams
      *            JSON string giving the parameters for this dialog. Within the
      *            set of all fields that are defined by these parameters, all
@@ -228,13 +215,10 @@ abstract class AbstractToolDialog extends BasicDialog {
      *            identifiers.
      */
     public AbstractToolDialog(ToolsPresenter presenter, Shell parent,
-            String tool, ToolType type, RecommenderExecutionContext context,
-            String jsonParams) {
+            ToolType type, String jsonParams) {
         super(parent);
         this.presenter = presenter;
-        this.tool = tool;
         this.type = type;
-        this.context = context;
         setShellStyle(
                 SWT.CLOSE | SWT.MODELESS | SWT.BORDER | SWT.TITLE | SWT.RESIZE);
         setBlockOnOpen(false);
@@ -539,24 +523,6 @@ abstract class AbstractToolDialog extends BasicDialog {
      */
     protected ToolsPresenter getPresenter() {
         return presenter;
-    }
-
-    /**
-     * Get the execution context in which the tool is or was running.
-     * 
-     * @return Execution context.
-     */
-    protected RecommenderExecutionContext getContext() {
-        return context;
-    }
-
-    /**
-     * Get the identifier of the tool for which the dialog is being shown.
-     * 
-     * @return Tool identifier.
-     */
-    protected String getTool() {
-        return tool;
     }
 
     /**

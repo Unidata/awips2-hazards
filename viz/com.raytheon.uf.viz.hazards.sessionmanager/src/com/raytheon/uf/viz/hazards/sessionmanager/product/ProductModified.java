@@ -21,6 +21,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
  * Base class for any notification that affects a product.
  * 
@@ -28,10 +31,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 19, 2013 1257       bsteffen    Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 19, 2013    1257    bsteffen     Initial creation
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author bsteffen
@@ -42,7 +45,8 @@ public class ProductModified implements ISessionNotification {
 
     private final ProductGeneratorInformation productGeneratorInformation;
 
-    public ProductModified(ProductGeneratorInformation productGeneratorInformation) {
+    public ProductModified(
+            ProductGeneratorInformation productGeneratorInformation) {
         this.productGeneratorInformation = productGeneratorInformation;
     }
 
@@ -50,5 +54,9 @@ public class ProductModified implements ISessionNotification {
         return productGeneratorInformation;
     }
 
-
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return IMergeable.getFailureResult();
+    }
 }

@@ -19,10 +19,8 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.core.runtime.jobs.Job;
 
@@ -39,6 +37,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommend
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
+
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
 /**
  * Primary interface for maintaining the state of everything during a session of
@@ -81,6 +81,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.undoable.IUndoRedoable;
  *                                      executing can be ignored.
  * May 31, 2017 34684      Chris.Golden Moved recommender-specific methods to the session
  *                                      recommender manager where they belong.
+ * Sep 27, 2017 38072      Chris.Golden Removed getter for the event bus, as it should not
+ *                                      be publicly accessible; and added methods to start
+ *                                      and stop batching of messages.
  * </pre>
  * 
  * @author bsteffen
@@ -169,28 +172,31 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
     public IFrameContextProvider getFrameContextProvider();
 
     /**
-     * Register an object as to receive ISessionNotifiation events for this
-     * session. The object passed in should use the
-     * {@link BoundedReceptionEventBus} <code>{@literal @}Handler</code>
-     * annotation to specify which methods are listening for
-     * ISessionNotification or its sub classes.
-     * 
-     * @param object
-     */
-    public void registerForNotification(Object object);
-
-    /**
-     * UNregister for notifications.
-     * 
-     * @param object
-     */
-    public void unregisterForNotification(Object object);
-
-    /**
      * 
      * Shutdown activities such as spawned {@link Job}s
      */
     public void shutdown();
+
+    /**
+     * Mark the beginning of a batch of changes to the session.
+     * <p>
+     * <strong>Note</strong>: For every invocation of this method, an invocation
+     * of {@link #finishBatchedChanges()} must be made as well. At any point at
+     * which this method has been invoked more than the latter method, any
+     * notifications normally sent out asynchronously about the changes are
+     * held, and not released until the number of invocations of the two methods
+     * is equal again.
+     * </p>
+     */
+    public void startBatchedChanges();
+
+    /**
+     * Finish accumulating a batch of changes to the session, sending out any
+     * asynchronous notifications that have accumulated since the batch started
+     * if this method has been invoked an equal number of times as has
+     * {@link #startBatchedChanges()}.
+     */
+    public void finishBatchedChanges();
 
     /**
      * Turns on/off automatic hazard checking.
@@ -301,4 +307,22 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      *             If a problem occurs.
      */
     public void setupEventIdDisplay() throws HazardEventServiceException;
+
+    /**
+     * Receive notification that a command was invoked within the user interface
+     * that may require a metadata refresh, a recommender execution, or some
+     * other response.
+     * 
+     * TODO: Remove the <code>mutableProperties</code> parameter once event
+     * modifying scripts are removed.
+     * 
+     * @param event
+     *            Hazard event for which the command was invoked.
+     * @param identifier
+     *            Identifier of the command that was invoked.
+     * @param mutableProperties
+     *            Mutable properties to be passed to the script, if one is run.
+     */
+    public void eventCommandInvoked(E event, String identifier,
+            Map<String, Map<String, Object>> mutableProperties);
 }

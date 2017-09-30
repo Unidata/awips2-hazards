@@ -144,7 +144,11 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      their default value instead of any existing old value.
  * Jun 30, 2017 19223     Chris.Golden  Added PRODUCT_DATA_PARAM.
  * Aug 15, 2017 22757     Chris.Golden  Added new constants related to recommender result
- *                                      display, and removed obsolete recommender-related constants.
+ *                                      display, and removed obsolete recommender-related
+ *                                      constants.
+ * Sep 27, 2017 38072     Chris.Golden  Added issued attribute name, and recommender metadata
+ *                                      constants for indicating whether or not dialog and/or
+ *                                      spatial input is required.
  * </pre>
  * 
  * @author mnash
@@ -220,6 +224,10 @@ public final class HazardConstants {
     public static final String RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES = "includeDataLayerTimes";
 
     public static final String RECOMMENDER_METADATA_INCLUDE_CWA_GEOMETRY = "includeCwaGeometry";
+
+    public static final String RECOMMENDER_METADATA_GET_DIALOG_INFO_NEEDED = "getDialogInfoNeeded";
+
+    public static final String RECOMMENDER_METADATA_GET_SPATIAL_INFO_NEEDED = "getSpatialInfoNeeded";
 
     // Recommender method names
 
@@ -787,6 +795,11 @@ public final class HazardConstants {
      * EventSet attribute key for runMode
      */
     public static final String RUN_MODE = "runMode";
+
+    /**
+     * Issued flag key in hazard.
+     */
+    public static final String ISSUED = "issued";
 
     /**
      * End time key in hazard

@@ -65,6 +65,9 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['onlyIncludeTriggerEvents'] = True
         #metadata['includeEventTypes'] = [ "Prob_Severe", "Prob_Tornado" ]
         
+        metadata["getDialogInfoNeeded"] = False
+        metadata["getSpatialInfoNeeded"] = False
+        
         return metadata
 
     def defineDialog(self, eventSet):

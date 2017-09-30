@@ -39,6 +39,9 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['eventState'] = 'Pending'
         metadata['includeEventTypes'] = [ "SIGMET.Convective" ]
         
+        metadata["getDialogInfoNeeded"] = False
+        metadata["getSpatialInfoNeeded"] = False
+        
         return metadata
 
     def defineDialog(self, eventSet):

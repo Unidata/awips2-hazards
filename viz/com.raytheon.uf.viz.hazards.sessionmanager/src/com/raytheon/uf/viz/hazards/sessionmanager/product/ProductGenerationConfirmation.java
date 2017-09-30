@@ -21,6 +21,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
  * Notification that is sent out when the user confirms that they want to issue
  * the products.
@@ -43,4 +46,9 @@ public class ProductGenerationConfirmation implements ISessionNotification {
     public ProductGenerationConfirmation() {
     }
 
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return IMergeable.getFailureResult();
+    }
 }

@@ -14,7 +14,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 
@@ -28,6 +27,8 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Aug 15, 2017   22757    Chris.Golden Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Changed to work with new recommender
+ *                                      manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -51,12 +52,8 @@ public class ToolParameterDialog extends AbstractToolDialog {
      *            Presenter.
      * @param parent
      *            Parent shell.
-     * @param tool
-     *            Identifier of the tool to be executed.
      * @param type
      *            Type of the tool.
-     * @param context
-     *            Execution context in which this tool is to be run.
      * @param jsonParams
      *            JSON string giving the parameters for this dialog. Within the
      *            set of all fields that are defined by these parameters, all
@@ -64,9 +61,8 @@ public class ToolParameterDialog extends AbstractToolDialog {
      *            identifiers.
      */
     public ToolParameterDialog(ToolsPresenter presenter, Shell parent,
-            String tool, ToolType type, RecommenderExecutionContext context,
-            String jsonParams) {
-        super(presenter, parent, tool, type, context, jsonParams);
+            ToolType type, String jsonParams) {
+        super(presenter, parent, type, jsonParams);
     }
 
     // Protected Methods
@@ -84,6 +80,14 @@ public class ToolParameterDialog extends AbstractToolDialog {
         super.okPressed();
         getPresenter().publish(new ToolAction(
                 ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
-                getTool(), getType(), getState(), getContext()));
+                null, getType(), getState(), null));
+    }
+
+    @Override
+    protected void cancelPressed() {
+        super.okPressed();
+        getPresenter().publish(new ToolAction(
+                ToolAction.RecommenderActionEnum.RUN_RECOMMENDER_WITH_PARAMETERS,
+                null, getType(), null, null));
     }
 }

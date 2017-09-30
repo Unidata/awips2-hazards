@@ -140,6 +140,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["version"] = "1.0"
         metaDict["description"] = "Builds recommendations based on river gauge points and hydro data."
         metaDict["eventState"] = "Potential"
+        metaDict["getSpatialInfoNeeded"] = False
         return metaDict
 
     def defineDialog(self, eventSet):

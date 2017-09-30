@@ -9,8 +9,13 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.alerts;
 
+import java.util.List;
+
 import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
+
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Description: A {@link ISessionNotification} indicating that the state of
@@ -19,10 +24,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
  * Jul 19, 2013   1325     daniel.s.schaffer@noaa.gov      Initial creation
- * 
+ * Sep 27, 2017  38072     Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -30,14 +35,40 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  */
 public class HazardAlertsModified implements ISessionNotification {
 
-    private final ImmutableList<IHazardAlert> activeAlerts;
+    // Private Variables
 
-    public HazardAlertsModified(ImmutableList<IHazardAlert> activeAlerts) {
-        this.activeAlerts = activeAlerts;
+    /**
+     * Active alerts.
+     */
+    private final List<IHazardAlert> activeAlerts;
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param activeAlerts
+     *            Active alerts.
+     */
+    public HazardAlertsModified(List<IHazardAlert> activeAlerts) {
+        this.activeAlerts = (activeAlerts instanceof ImmutableList
+                ? activeAlerts : ImmutableList.copyOf(activeAlerts));
     }
 
-    public ImmutableList<IHazardAlert> getActiveAlerts() {
+    // Public Constructors
+
+    /**
+     * Get the active alerts. Note that the returned list is not modifiable.
+     * 
+     * @return Active alerts.
+     */
+    public List<IHazardAlert> getActiveAlerts() {
         return activeAlerts;
     }
 
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return IMergeable.getFailureResult();
+    }
 }

@@ -40,6 +40,9 @@ class Recommender(RecommenderTemplate.Recommender):
         metadata['eventState'] = 'Pending'
         metadata['onlyIncludeTriggerEvents'] = True
         
+        metadata["getDialogInfoNeeded"] = False
+        metadata["getSpatialInfoNeeded"] = False
+        
         return metadata
 
     def defineDialog(self, eventSet):

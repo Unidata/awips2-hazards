@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,6 +33,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionHazardNotificationListener;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 /**
  * Tests for SessionHazardNotification
@@ -112,11 +113,12 @@ public class SessionHazardNotificationListenerTest {
         HazardEvent event = getDummyEvent();
         event.setPhenomenon(TEST_PHEN2);
 
-        listener.handleNotification(new HazardNotification(event,
-                NotificationType.UPDATE, true));
+        listener.handleNotification(
+                new HazardNotification(event, NotificationType.UPDATE, true));
 
-        Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
-                .getPhenomenon(), TEST_PHEN2);
+        Assert.assertEquals(
+                eventManager.getEventById(TEST_EVENT_ID).getPhenomenon(),
+                TEST_PHEN2);
     }
 
     /**
@@ -179,8 +181,8 @@ public class SessionHazardNotificationListenerTest {
 
         HazardEvent event = getDummyEvent();
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL2);
-        listener.handleNotification(new HazardNotification(event,
-                NotificationType.UPDATE, true));
+        listener.handleNotification(
+                new HazardNotification(event, NotificationType.UPDATE, true));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
                 .getHazardAttribute(TEST_ATTR_KEY), TEST_ATTR_VAL2);
@@ -210,14 +212,14 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testChangeAttribute() {
         eventManager.reset();
-        HazardEvent event = new HazardEvent(eventManager.addEvent(
-                getDummyEvent(), null));
+        HazardEvent event = new HazardEvent(
+                eventManager.addEvent(getDummyEvent(), null));
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL1);
 
         event = getDummyEvent();
         event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL2);
-        listener.handleNotification(new HazardNotification(event,
-                NotificationType.UPDATE, true));
+        listener.handleNotification(
+                new HazardNotification(event, NotificationType.UPDATE, true));
 
         Assert.assertEquals(eventManager.getEventById(TEST_EVENT_ID)
                 .getHazardAttribute(TEST_ATTR_KEY), TEST_ATTR_VAL2);

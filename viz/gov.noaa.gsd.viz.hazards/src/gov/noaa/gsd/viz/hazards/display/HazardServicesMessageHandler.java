@@ -39,9 +39,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationConfirmation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductStagingRequired;
@@ -219,6 +219,8 @@ import net.engio.mbassy.listener.Handler;
  *                                            message to display, or a dialog to display, with
  *                                            their results (that is, within the returned event
  *                                            set).
+ * Sep 27, 2017 8072      Chris.Golden        Changed to use callback objects for the recommender
+ *                                            manager.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -297,7 +299,7 @@ public final class HazardServicesMessageHandler {
 
     @Handler
     public void handleProductGenerationCompletion(
-            IProductGenerationComplete productGenerationComplete) {
+            ProductGenerationComplete productGenerationComplete) {
         if (productGenerationComplete.isIssued() == false) {
 
             /*
@@ -681,14 +683,12 @@ public final class HazardServicesMessageHandler {
                 break;
 
             case RUN_RECOMMENDER_WITH_PARAMETERS:
-                sessionRecommenderManager.runRecommender(
-                        toolAction.getToolName(), toolAction.getContext(), null,
+                appBuilder.receiveRecommenderDialogParameters(
                         toolAction.getAuxiliaryDetails());
                 break;
 
             case RECOMMENDER_RESULTS_DISPLAY_COMPLETE:
-                sessionRecommenderManager.handleResultsDisplayComplete(
-                        toolAction.getToolName(), toolAction.getContext());
+                appBuilder.notifyRecommenderResultsDisplayComplete();
                 break;
 
             case ENABLE_EVENT_DRIVEN_TOOLS:

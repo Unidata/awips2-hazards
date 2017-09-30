@@ -19,39 +19,88 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
- * A Notification that will be sent out through the SessionManager to notify all
- * components that the selected time has changed.
+ * Notification that will be sent out to notify all components that the selected
+ * time has changed.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
- * Nov 18, 2014 4124       Chris.Golden Changed to use originator and work
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 11, 2013    1257    bsteffen     Initial creation.
+ * Nov 18, 2014    4124    Chris.Golden Changed to use originator and work
  *                                      with revamped time manager.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
 public class SelectedTimeChanged extends OriginatedSessionNotification {
 
+    // Private Variables
+
+    /**
+     * Time manager.
+     */
     private final ISessionTimeManager timeManager;
 
+    /**
+     * New selected time.
+     */
+    private final SelectedTime selectedTime;
+
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param timeManager
+     *            Time manager.
+     * @param selectedTime
+     *            New selected time.
+     * @param originator
+     *            Originator of the change.
+     */
     public SelectedTimeChanged(ISessionTimeManager timeManager,
-            IOriginator originator) {
+            SelectedTime selectedTime, IOriginator originator) {
         super(originator);
         this.timeManager = timeManager;
+        this.selectedTime = selectedTime;
     }
 
+    // Public Methods
+
+    /**
+     * Get the time manager.
+     * 
+     * @return Time manager.
+     */
+    public ISessionTimeManager getTimeManager() {
+        return timeManager;
+    }
+
+    /**
+     * Get the selected time as of the creation of this notification.
+     * 
+     * @return Selected time.
+     */
     public SelectedTime getSelectedTime() {
-        return timeManager.getSelectedTime();
+        return selectedTime;
+    }
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
+                modified);
     }
 }

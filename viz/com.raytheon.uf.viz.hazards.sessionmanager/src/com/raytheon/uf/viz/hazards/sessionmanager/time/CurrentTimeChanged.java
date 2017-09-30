@@ -10,8 +10,11 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
 import com.raytheon.uf.common.time.SimulatedTime;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
+
+import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Base class for notifications that indicate that the current CAVE time has
@@ -26,12 +29,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 30, 2015    2331    Chris.Golden Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class CurrentTimeChanged extends OriginatedSessionNotification {
+public abstract class CurrentTimeChanged extends OriginatedSessionNotification {
 
     // Private Variables
 
@@ -65,5 +69,14 @@ public class CurrentTimeChanged extends OriginatedSessionNotification {
      */
     public ISessionTimeManager getTimeManager() {
         return timeManager;
+    }
+
+    // Public Methods
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
+                modified);
     }
 }

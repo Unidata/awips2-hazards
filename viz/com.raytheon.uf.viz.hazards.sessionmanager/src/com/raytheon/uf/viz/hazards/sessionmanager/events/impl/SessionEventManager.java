@@ -69,10 +69,8 @@ import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.RecommenderTriggerOrigin;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
@@ -105,42 +103,43 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorEntry;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGeneratorTable;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.AbstractSessionEventModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAllowUntilFurtherNoticeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventMetadataModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTypeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventUnsavedChangesModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAdded;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAllowUntilFurtherNoticeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventAttributesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventCheckedStateModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventGeometryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventMetadataModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventStatusModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTimeRangeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventTypeModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventUnsavedChangesModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventVisualFeaturesModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
+import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender.IIntraNotificationHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IEventApplier;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IQuestionAnswerer;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
-import com.raytheon.uf.viz.hazards.sessionmanager.product.IProductGenerationComplete;
-import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationComplete;
+import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeMinuteTicked;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeReset;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
@@ -160,7 +159,6 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValidatorHelper;
-import net.engio.mbassy.listener.Handler;
 
 /**
  * Implementation of ISessionEventManager
@@ -587,6 +585,12 @@ import net.engio.mbassy.listener.Handler;
  *                                      process would choke on the visual features until now;
  *                                      changes made in 18-Hazard_Services that were merged into
  *                                      this repo now allow visual features to be saved properly.)
+ * Sep 27, 2017   38072    Chris.Golden Switched over to receiving intra-managerial notifications
+ *                                      instead of listening on the event bus for notifications.
+ *                                      Also now making use of batching of messages. Also removed
+ *                                      all recommender-triggering code from here, so that it
+ *                                      could be placed in the session recommender manager where
+ *                                      it belongs.
  * </pre>
  * 
  * @author bsteffen
@@ -598,7 +602,7 @@ public class SessionEventManager
     // Private Static Constants
 
     private static final Set<String> ATTRIBUTES_TO_RETAIN_ON_MERGE = ImmutableSet
-            .of(ISessionEventManager.ATTR_ISSUED, ISSUE_TIME);
+            .of(HazardConstants.ISSUED, HazardConstants.ISSUE_TIME);
 
     private static final String POINT_ID = "id";
 
@@ -750,6 +754,120 @@ public class SessionEventManager
     private boolean addCreatedEventsToSelected;
 
     /**
+     * Intra-managerial notification handler for session event additions.
+     */
+    private IIntraNotificationHandler<SessionEventsAdded> eventsAddedHandler = new IIntraNotificationHandler<SessionEventsAdded>() {
+
+        @Override
+        public void handleNotification(SessionEventsAdded notification) {
+            sessionEventsAdded(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for session event removals.
+     */
+    private IIntraNotificationHandler<SessionEventsRemoved> eventsRemovedHandler = new IIntraNotificationHandler<SessionEventsRemoved>() {
+
+        @Override
+        public void handleNotification(SessionEventsRemoved notification) {
+            sessionEventsRemoved(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for session event changes.
+     */
+    private IIntraNotificationHandler<SessionEventModified> eventChangeHandler = new IIntraNotificationHandler<SessionEventModified>() {
+
+        @Override
+        public void handleNotification(SessionEventModified notification) {
+            for (IEventModification modification : notification
+                    .getModifications()) {
+                if (modification instanceof EventTypeModification) {
+                    sessionEventTypeModified(notification.getEvent());
+                } else if (modification instanceof EventTimeRangeModification) {
+                    sessionEventTimeRangeModified(notification.getEvent(),
+                            notification.getOriginator());
+                } else if (modification instanceof EventStatusModification) {
+                    sessionEventStatusModified(notification.getEvent(),
+                            notification.getOriginator());
+                } else if (modification instanceof EventGeometryModification) {
+                    sessionEventGeometryModified(notification.getEvent(),
+                            notification.getOriginator());
+                } else if (modification instanceof EventAttributesModification) {
+                    sessionEventAttributesModified(notification.getEvent(),
+                            (EventAttributesModification) modification,
+                            notification.getOriginator());
+                }
+            }
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for product generation completions.
+     */
+    private IIntraNotificationHandler<ProductGenerationComplete> productGenerationCompletionHandler = new IIntraNotificationHandler<ProductGenerationComplete>() {
+
+        @Override
+        public void handleNotification(ProductGenerationComplete notification) {
+            productGenerationComplete(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for settings changes.
+     */
+    private IIntraNotificationHandler<SettingsModified> settingsChangeHandler = new IIntraNotificationHandler<SettingsModified>() {
+
+        @Override
+        public void handleNotification(SettingsModified notification) {
+            settingsModified(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
+     * Intra-managerial notification handler for current time changes.
+     */
+    private IIntraNotificationHandler<CurrentTimeChanged> currentTimeChangeHandler = new IIntraNotificationHandler<CurrentTimeChanged>() {
+
+        @Override
+        public void handleNotification(CurrentTimeChanged notification) {
+            currentTimeChanged(notification);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
+    };
+
+    /**
      * Flag indicating whether the manager has been shut down.
      * 
      * @deprecated This should be removed once garbage collection problems have
@@ -760,6 +878,7 @@ public class SessionEventManager
 
     // Public Constructors
 
+    @SuppressWarnings("unchecked")
     public SessionEventManager(
             ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
             ISessionTimeManager timeManager,
@@ -781,6 +900,22 @@ public class SessionEventManager
         this.geoMapUtilities = new GeoMapUtilities(this.configManager);
         this.riverForecastManager = new RiverForecastManager();
 
+        notificationSender.registerIntraNotificationHandler(
+                SessionEventsAdded.class, eventsAddedHandler);
+        notificationSender.registerIntraNotificationHandler(
+                SessionEventsRemoved.class, eventsRemovedHandler);
+        notificationSender.registerIntraNotificationHandler(
+                SessionEventModified.class, eventChangeHandler);
+        notificationSender.registerIntraNotificationHandler(
+                ProductGenerationComplete.class,
+                productGenerationCompletionHandler);
+        notificationSender.registerIntraNotificationHandler(
+                Sets.newHashSet(SettingsModified.class, SettingsLoaded.class),
+                settingsChangeHandler);
+        notificationSender.registerIntraNotificationHandler(
+                Sets.<Class<? extends CurrentTimeChanged>> newHashSet(
+                        CurrentTimeReset.class, CurrentTimeMinuteTicked.class),
+                currentTimeChangeHandler);
     }
 
     // Public Methods
@@ -875,8 +1010,11 @@ public class SessionEventManager
             throw new IllegalStateException(
                     "cannot change type of event " + event.getEventID());
         }
-        event.addHazardAttribute(ATTR_HAZARD_CATEGORY, category, originator);
+        sessionManager.startBatchedChanges();
+        event.addHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY,
+                category, originator);
         event.setHazardType(null, null, null, Originator.OTHER);
+        sessionManager.finishBatchedChanges();
     }
 
     @Override
@@ -891,6 +1029,8 @@ public class SessionEventManager
                 && areEquivalent(event.getSubType(), subType)) {
             return true;
         }
+
+        sessionManager.startBatchedChanges();
 
         /*
          * If the event cannot change type, create a new event with the new
@@ -950,6 +1090,7 @@ public class SessionEventManager
                         .error("Could not add new event that was to replace event "
                                 + "that was having its type changed but which could "
                                 + "not change type.", e);
+                sessionManager.finishBatchedChanges();
                 return false;
             }
             sessionManager.getSelectionManager()
@@ -1057,41 +1198,9 @@ public class SessionEventManager
         }
 
         /*
-         * Update the time boundaries if this is not a new event; if it is new,
-         * simply copy the old event's time boundaries (truncated to minute
-         * resolution if resolution has been reduced) to this one. Then update
-         * the duration choices for the event.
+         * Update the time boundaries and duration choices, if any.
          */
-        if (oldEvent == null) {
-            updateTimeBoundariesForEvents(event, false);
-        } else {
-            Range<Long> oldStartTimeBoundaries = startTimeBoundariesForEventIdentifiers
-                    .get(oldEvent.getEventID());
-            Range<Long> oldEndTimeBoundaries = endTimeBoundariesForEventIdentifiers
-                    .get(oldEvent.getEventID());
-            Range<Long> newStartTimeBoundaries = oldStartTimeBoundaries;
-            Range<Long> newEndTimeBoundaries = oldEndTimeBoundaries;
-            if (timeResolutionReduced) {
-                newStartTimeBoundaries = Range.closed(
-                        roundTimeDownToNearestMinute(
-                                oldStartTimeBoundaries.lowerEndpoint()),
-                        roundTimeDownToNearestMinute(
-                                oldStartTimeBoundaries.upperEndpoint()));
-                newEndTimeBoundaries = (newEndTime
-                        .getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS
-                                ? Range.singleton(
-                                        HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
-                                : Range.closed(roundTimeDownToNearestMinute(
-                                        oldEndTimeBoundaries.lowerEndpoint()),
-                                        roundTimeDownToNearestMinute(
-                                                oldEndTimeBoundaries
-                                                        .upperEndpoint())));
-            }
-            startTimeBoundariesForEventIdentifiers.put(event.getEventID(),
-                    newStartTimeBoundaries);
-            endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
-                    newEndTimeBoundaries);
-        }
+        updateTimeBoundariesForEvents(event, false);
         updateDurationChoicesForEvent(event, false);
 
         /*
@@ -1103,6 +1212,8 @@ public class SessionEventManager
         if (oldEvent != null) {
             convertEndTimeToDuration(event);
         }
+
+        sessionManager.finishBatchedChanges();
 
         return (originator != Originator.OTHER);
     }
@@ -1149,9 +1260,9 @@ public class SessionEventManager
 
         /*
          * If the event will now have "until further notice" as its end time, or
-         * the event has a duration and the latter has not changed, shift
-         * whichever (or both) end time boundaries to accommodate the new end
-         * time and (if not "until further notice") whatever other possible
+         * the event has a duration and the latter has not changed, remember to
+         * shift whichever (or both) end time boundaries to accommodate the new
+         * end time and (if not "until further notice") whatever other possible
          * durations the event is allowed. This allows duration-equipped hazard
          * events that have their durations limited (they cannot be expanded, or
          * cannot be shrunk, or both) to still have their end times displaced as
@@ -1161,19 +1272,32 @@ public class SessionEventManager
          */
         boolean hasDuration = (configManager.getDurationChoices(event)
                 .isEmpty() == false);
+        boolean updateEndTimeBoundaries = false;
         if ((end == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)
                 || (hasDuration && (event.getEndTime().getTime()
                         - event.getStartTime().getTime() == end - start))) {
-            updateEndTimeBoundariesForSingleEvent(event, start, end);
+            updateEndTimeBoundaries = true;
         } else if ((end < endBoundaries.lowerEndpoint())
                 || (end > endBoundaries.upperEndpoint())) {
             return false;
+        }
+
+        sessionManager.startBatchedChanges();
+
+        /*
+         * If the end time boundaries need shifting, do so now.
+         */
+        if (updateEndTimeBoundaries) {
+            updateEndTimeBoundariesForSingleEvent(event, start, end);
         }
 
         /*
          * Set the new time range for the event.
          */
         event.setTimeRange(startTime, endTime, originator);
+
+        sessionManager.finishBatchedChanges();
+
         return true;
     }
 
@@ -1195,9 +1319,11 @@ public class SessionEventManager
          */
         if (isValidGeometryChange(geometry, event, false)
                 && userConfirmationAsNecessary(event)) {
+            sessionManager.startBatchedChanges();
             makeHighResolutionVisible(event, originator);
             event.setGeometry(geometry, originator);
             updateHazardAreas(event);
+            sessionManager.finishBatchedChanges();
             return true;
         }
         return false;
@@ -1288,8 +1414,12 @@ public class SessionEventManager
         }
     }
 
-    @Handler(priority = 1)
-    public void settingsModified(SettingsModified notification) {
+    /**
+     * Handle a change to the settings.
+     * 
+     * @param notification
+     */
+    private void settingsModified(SettingsModified notification) {
         if (notification.getChanged().contains(
                 ObservedSettings.Type.EVENT_IDENTIFIER_DISPLAY_TYPE)) {
             reloadHazardServicesEventId();
@@ -1321,72 +1451,72 @@ public class SessionEventManager
     }
 
     /**
-     * Respond to the addition of a hazard event by updating the event's start
-     * and end time editability boundaries, by ensuring that the event end time
-     * "until further notice" flag is appropriate, and by modifying the event
-     * conflict tracking data as appropriate.
+     * Respond to the addition of hazard events.
      * 
      * @param change
      *            Change that occurred.
      */
-    @Handler(priority = 1)
-    public void hazardAdded(SessionEventAdded change) {
-        ensureEventEndTimeUntilFurtherNoticeAppropriate(change.getEvent(),
-                true);
-        updateTimeBoundariesForEvents(change.getEvent(), false);
-        updateDurationChoicesForEvent(change.getEvent(), false);
-        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
-                false);
+    private void sessionEventsAdded(SessionEventsAdded change) {
+        sessionManager.startBatchedChanges();
+        for (IHazardEvent event : change.getEvents()) {
+            ensureEventEndTimeUntilFurtherNoticeAppropriate(event, true);
+            updateTimeBoundariesForEvents(event, false);
+            updateDurationChoicesForEvent(event, false);
+            updateConflictingEventsForSelectedEventIdentifiers(event, false);
+        }
+        sessionManager.finishBatchedChanges();
     }
 
     /**
-     * Respond to the removal of a hazard event by firing off a notification
-     * that the list of selected events has changed, if appropriate, as well as
-     * by updating the event's start and end time editability boundaries, and by
-     * modifying the event conflict tracking data as appropriate.
+     * Respond to the removal of hazard events.
      * 
      * @param change
      *            Change that occurred.
      */
-    @Handler(priority = 1)
-    public void hazardRemoved(SessionEventRemoved change) {
-        timeResolutionsForEventIdentifiers
-                .remove(change.getEvent().getEventID());
-        updateSavedTimesForEventIfIssued(change.getEvent(), true);
-        updateTimeBoundariesForEvents(change.getEvent(), true);
-        updateDurationChoicesForEvent(change.getEvent(), true);
-        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
-                true);
+    private void sessionEventsRemoved(SessionEventsRemoved change) {
+        sessionManager.startBatchedChanges();
+        for (IHazardEvent event : change.getEvents()) {
+            timeResolutionsForEventIdentifiers.remove(event.getEventID());
+            updateSavedTimesForEventIfIssued(event, true);
+            updateTimeBoundariesForEvents(event, true);
+            updateDurationChoicesForEvent(event, true);
+            updateConflictingEventsForSelectedEventIdentifiers(event, true);
+        }
+        sessionManager.finishBatchedChanges();
     }
 
     /**
-     * Respond to a hazard event's type change by updating the event's start and
-     * end time editability boundaries, and by firing off a notification that
-     * the event may have new metadata, as well as modifying the event conflict
-     * tracking data as appropriate.
+     * Respond to an event's type change.
      * 
-     * @param change
-     *            Change that occurred.
+     * @param event
+     *            Event that experienced the change.
      */
-    @Handler(priority = 1)
-    public void hazardTypeChanged(SessionEventTypeModified change) {
-        updateEventMetadata(change.getEvent());
-        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
-                false);
+    private void sessionEventTypeModified(ObservedHazardEvent event) {
+        updateConflictingEventsForSelectedEventIdentifiers(event, false);
+
+        /*
+         * Event metadata must be updated asynchronously because the event type
+         * modification needs to set the time range before fetching metadata.
+         */
+        sessionManager.getRunnableAsynchronousScheduler()
+                .schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        updateEventMetadata(event);
+                    }
+                });
     }
 
     /**
-     * Respond to a hazard event's status change by firing off a notification
-     * that the event may have new metadata. Also, if the event has changed its
-     * status to ending, or reverted from ending back to issued, update its time
-     * boundaries and duration choices.
+     * Respond to an event's status change.
      * 
-     * @param change
-     *            Change that occurred.
+     * @param event
+     *            Event that experienced the change.
+     * @param originator
+     *            Originator of the change.
      */
-    @Handler(priority = 1)
-    public void hazardStatusChanged(SessionEventStatusModified change) {
-        ObservedHazardEvent event = change.getEvent();
+    private void sessionEventStatusModified(ObservedHazardEvent event,
+            IOriginator originator) {
         if ((event.getStatus() == HazardStatus.ELAPSED)
                 || (event.getStatus() == HazardStatus.ENDING)
                 || (event.getStatus() == HazardStatus.ENDED)) {
@@ -1405,22 +1535,16 @@ public class SessionEventManager
             updateDurationChoicesForEvent(event, false);
         }
         updateEventMetadata(event);
-        triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
-                HazardEventFirstClassAttribute.STATUS, change.getOriginator());
     }
 
     /**
-     * Respond to the completion of product generation by updating the
-     * associated events' parameters, and by recalculating said events' start
-     * and end time boundaries if necessary.
+     * Respond to the completion of product generation.
      * 
      * @param productGenerationComplete
      *            Notification that is being received.
      */
-
-    @Handler(priority = 1)
-    public void handleProductGenerationCompletion(
-            IProductGenerationComplete productGenerationComplete) {
+    private void productGenerationComplete(
+            ProductGenerationComplete productGenerationComplete) {
 
         ProductGeneratorTable pgTable = configManager
                 .getProductGeneratorTable();
@@ -1542,71 +1666,13 @@ public class SessionEventManager
     }
 
     /**
-     * If a change to the specified first class attribute value for the
-     * specified hazard event should trigger the running of a recommender, run
-     * that recommender now.
-     * 
-     * @param event
-     *            Hazard event that was changed.
-     * @param attribute
-     *            First-class attribute that experienced a value change.
-     * @param originator
-     *            Originator of the change.
-     */
-    private void triggerRecommenderForFirstClassAttributeChange(
-            IHazardEvent event, HazardEventFirstClassAttribute attribute,
-            IOriginator originator) {
-
-        /*
-         * Get the recommender identifier that is to be triggered by this
-         * first-class attribute; if there is one, and it is not the same as the
-         * recommender (if any) that caused the change, run that recommender.
-         */
-        String recommenderIdentifier = configManager
-                .getRecommenderTriggeredByChange(event, attribute);
-        if ((recommenderIdentifier != null)
-                && ((originator instanceof RecommenderOriginator == false)
-                        || (recommenderIdentifier
-                                .equals(((RecommenderOriginator) originator)
-                                        .getName()) == false))) {
-            sessionManager.getRecommenderManager().runRecommender(
-                    recommenderIdentifier,
-                    RecommenderExecutionContext
-                            .getHazardEventModificationContext(
-                                    event.getEventID(),
-                                    Sets.newHashSet(attribute.toString()),
-                                    ((originator instanceof RecommenderOriginator)
-                                            || originator
-                                                    .equals(Originator.OTHER)
-                                                            ? RecommenderTriggerOrigin.OTHER
-                                                            : (originator
-                                                                    .equals(Originator.DATABASE)
-                                                                            ? RecommenderTriggerOrigin.DATABASE
-                                                                            : RecommenderTriggerOrigin.USER))));
-        }
-    }
-
-    /**
-     * Respond to a CAVE current time reset by updating all the events' start
+     * Respond to a CAVE current time change by updating all the events' start
      * and end time editability boundaries.
      * 
      * @param change
      *            Change that occurred.
      */
-    @Handler(priority = 1)
-    public void currentTimeReset(CurrentTimeReset change) {
-        updateTimeBoundariesForEvents(null, false);
-    }
-
-    /**
-     * Respond to a CAVE current time minute tick by updating all the events'
-     * start and end time editability boundaries.
-     * 
-     * @param change
-     *            Change that occurred.
-     */
-    @Handler(priority = 1)
-    public void currentTimeMinuteTicked(CurrentTimeMinuteTicked change) {
+    private void currentTimeChanged(CurrentTimeChanged change) {
         updateTimeBoundariesForEvents(null, false);
     }
 
@@ -1725,9 +1791,8 @@ public class SessionEventManager
 
         /*
          * If the command that was invoked is a metadata refresh trigger,
-         * perform the refresh; if it is a recommender running trigger, run the
-         * recommender; otherwise, if the command is meant to trigger the
-         * editing of rise-crest-fall information, start the edit.
+         * perform the refresh; otherwise, if the command is meant to trigger
+         * the editing of rise-crest-fall information, start the edit.
          */
         String eventId = event.getEventID();
         if (metadataReloadTriggeringIdentifiersForEventIdentifiers
@@ -1736,17 +1801,6 @@ public class SessionEventManager
                         .get(eventId).contains(identifier)) {
             updateEventMetadata(event);
             return;
-        } else if (recommendersForTriggerIdentifiersForEventIdentifiers
-                .containsKey(eventId)
-                && recommendersForTriggerIdentifiersForEventIdentifiers
-                        .get(eventId).containsKey(identifier)) {
-            sessionManager.getRecommenderManager().runRecommender(
-                    recommendersForTriggerIdentifiersForEventIdentifiers
-                            .get(eventId).get(identifier),
-                    RecommenderExecutionContext
-                            .getHazardEventModificationContext(eventId,
-                                    Sets.newHashSet(identifier),
-                                    RecommenderTriggerOrigin.USER));
         } else if (editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .containsKey(event.getEventID())
                 && editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
@@ -1772,6 +1826,14 @@ public class SessionEventManager
                 scriptFilesForEventIdentifiers.get(event.getEventID()),
                 eventModifyingFunctionName, mutableProperties,
                 eventModifyingScriptListener);
+    }
+
+    @Override
+    public Map<String, String> getRecommendersForTriggerIdentifiers(
+            String eventIdentifier) {
+        Map<String, String> map = recommendersForTriggerIdentifiersForEventIdentifiers
+                .get(eventIdentifier);
+        return (map == null ? Collections.emptyMap() : map);
     }
 
     /**
@@ -1846,15 +1908,17 @@ public class SessionEventManager
                     eventModifiers);
         }
 
+        sessionManager.startBatchedChanges();
+
         /*
          * Fire off a notification that the metadata may have changed for this
          * event if this event is currently one of the session events (it may
          * not be if it has not yet been added).
          */
         if (events.contains(event)) {
-            notificationSender.postNotificationAsync(
-                    new SessionEventMetadataModified(this, event,
-                            Originator.OTHER));
+            notificationSender
+                    .postNotificationAsync(new SessionEventModified(this, event,
+                            new EventMetadataModification(), Originator.OTHER));
         }
 
         /*
@@ -1900,6 +1964,8 @@ public class SessionEventManager
 
         event.setHazardAttributes(attributes);
         event.setModified(eventModified);
+
+        sessionManager.finishBatchedChanges();
     }
 
     /**
@@ -2007,45 +2073,40 @@ public class SessionEventManager
     }
 
     /**
-     * Ensure that toggles of end time "until further notice" flags result in
-     * the appropriate time being set to "until further notice" or, if the flag
-     * has been set to false, an appropriate default time. Also ensure that any
-     * metadata state changes that should trigger a metadata reload, or that
-     * should trigger a recommender run, do so.
+     * Respond to an event's attributes being changed.
      * 
-     * @param change
-     *            Change that occurred.
+     * @param event
+     *            Event that experienced the change.
+     * @param modification
+     *            Modification that occurred.
+     * @param originator
+     *            Originator of the change.
      */
-    @Handler(priority = 1)
-    public void hazardAttributesChanged(SessionEventAttributesModified change) {
+    private void sessionEventAttributesModified(ObservedHazardEvent event,
+            EventAttributesModification modification, IOriginator originator) {
 
         /*
          * If the end time "until further notice" flag has changed value but was
          * not removed, change the end time in a corresponding manner.
          */
-        if (change.containsAttribute(
+        if (modification.containsAttribute(
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)
-                && change.getEvent().getHazardAttributes().containsKey(
+                && event.getHazardAttributes().containsKey(
                         HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
-            setEventEndTimeForUntilFurtherNotice(change.getEvent(),
-                    Boolean.TRUE.equals(change.getEvent().getHazardAttribute(
+            setEventEndTimeForUntilFurtherNotice(event,
+                    Boolean.TRUE.equals(event.getHazardAttribute(
                             HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
         }
 
         /*
          * If any of the attributes changed are metadata-reload triggers, see if
-         * metadata needs to be reloaded; if any of them are to trigger the
-         * running of recommenders, run the recommenders; otherwise, if any of
-         * them are to trigger the editing of rise-crest-fall information,
-         * reload that.
+         * metadata needs to be reloaded; otherwise, if any of them are to
+         * trigger the editing of rise-crest-fall information, reload that.
          */
         Set<String> metadataReloadTriggeringIdentifiers = metadataReloadTriggeringIdentifiersForEventIdentifiers
-                .get(change.getEvent().getEventID());
-        Map<String, String> recommendersForTriggerIdentifiers = recommendersForTriggerIdentifiersForEventIdentifiers
-                .get(change.getEvent().getEventID());
+                .get(event.getEventID());
         Set<String> editRiseCrestFallTriggeringIdentifiers = editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
-                .get(change.getEvent().getEventID());
-        boolean triggeredReloadOrRecommender = false;
+                .get(event.getEventID());
         if (metadataReloadTriggeringIdentifiers != null) {
 
             /*
@@ -2059,231 +2120,45 @@ public class SessionEventManager
              */
             Set<String> triggers = Sets.intersection(
                     metadataReloadTriggeringIdentifiers,
-                    change.getAttributeKeys());
+                    modification.getAttributeKeys());
             for (String trigger : triggers) {
-                if (change.getOldAttribute(trigger) != null) {
-                    updateEventMetadata(change.getEvent());
-                    triggeredReloadOrRecommender = true;
+                if (modification.getOldAttribute(trigger) != null) {
+                    updateEventMetadata(event);
                     break;
                 }
             }
         }
-        if ((triggeredReloadOrRecommender == false)
-                && (recommendersForTriggerIdentifiers != null)) {
-
-            /*
-             * Determine whether or not a recommender triggered this change, and
-             * if so, note its name, since recommenders should not be triggered
-             * by changes caused by the earlier runs of those same recommenders.
-             */
-            String cause = null;
-            IOriginator originator = change.getOriginator();
-            if (originator instanceof RecommenderOriginator) {
-                cause = ((RecommenderOriginator) change.getOriginator())
-                        .getName();
-            }
-
-            /*
-             * See if at least one of the attributes that changed is a
-             * recommender trigger. If so, put together a mapping of
-             * recommenders that need to be run to the set of one or more
-             * attributes that triggered them.
-             */
-            Set<String> triggers = Sets.intersection(
-                    recommendersForTriggerIdentifiers.keySet(),
-                    change.getAttributeKeys());
-            Map<String, Set<String>> triggerSetsForRecommenders = new HashMap<>();
-            for (String trigger : triggers) {
-
-                /*
-                 * Get the recommender to be triggered by this attribute
-                 * identifier; if it is the same as the recommender that caused
-                 * the attribute to change, do nothing with it.
-                 */
-                String recommender = recommendersForTriggerIdentifiers
-                        .get(trigger);
-                if (recommender.equals(cause)) {
-                    continue;
-                }
-
-                /*
-                 * If the recommender is already associated with a set of
-                 * triggers, add this trigger to the set; otherwise, create a
-                 * new set holding this trigger and associate it with the
-                 * recommender.
-                 */
-                if (triggerSetsForRecommenders.containsKey(recommender)) {
-                    triggerSetsForRecommenders.get(recommender).add(trigger);
-                } else {
-                    Set<String> triggerSet = Sets.newHashSet(trigger);
-                    triggerSetsForRecommenders.put(recommender, triggerSet);
-                }
-            }
-
-            /*
-             * Iterate through the recommenders to be run, executing each in
-             * turn.
-             */
-            for (Map.Entry<String, Set<String>> entry : triggerSetsForRecommenders
-                    .entrySet()) {
-                sessionManager.getRecommenderManager().runRecommender(
-                        entry.getKey(),
-                        RecommenderExecutionContext
-                                .getHazardEventModificationContext(
-                                        change.getEvent().getEventID(),
-                                        entry.getValue(),
-                                        ((originator instanceof RecommenderOriginator)
-                                                || originator
-                                                        .equals(Originator.OTHER)
-                                                                ? RecommenderTriggerOrigin.OTHER
-                                                                : (originator
-                                                                        .equals(Originator.DATABASE)
-                                                                                ? RecommenderTriggerOrigin.DATABASE
-                                                                                : RecommenderTriggerOrigin.USER))));
-            }
-            if (triggerSetsForRecommenders.isEmpty() == false) {
-                triggeredReloadOrRecommender = true;
-            }
-        }
-        if ((triggeredReloadOrRecommender == false)
-                && (editRiseCrestFallTriggeringIdentifiers != null) && (Sets
-                        .intersection(editRiseCrestFallTriggeringIdentifiers,
-                                change.getAttributeKeys())
-                        .isEmpty() == false)) {
-            startRiseCrestFallEdit(change.getEvent());
+        if ((editRiseCrestFallTriggeringIdentifiers != null)
+                && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
+                        modification.getAttributeKeys()).isEmpty() == false)) {
+            startRiseCrestFallEdit(event);
         }
     }
 
     /**
-     * Ensure that changes to an event's time range cause the selected hazard
-     * conflicts map to be updated.
+     * Respond to an event's time range being changed.
      * 
-     * @param change
-     *            Change that occurred.
+     * @param event
+     *            Event that experienced the change.
+     * @param originator
+     *            Originator of the change.
      */
-    @Handler(priority = 1)
-    public void hazardTimeRangeChanged(SessionEventTimeRangeModified change) {
-        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
-                false);
-        triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
-                HazardEventFirstClassAttribute.TIME_RANGE,
-                change.getOriginator());
+    private void sessionEventTimeRangeModified(ObservedHazardEvent event,
+            IOriginator originator) {
+        updateConflictingEventsForSelectedEventIdentifiers(event, false);
     }
 
     /**
-     * Ensure that changes to an event's geometry cause the selected hazard
-     * conflicts map to be updated.
+     * Respond to an event's geometry being changed.
      * 
-     * @param change
-     *            Change that occurred.
+     * @param event
+     *            Event that experienced the change.
+     * @param originator
+     *            Originator of the change.
      */
-    @Handler(priority = 1)
-    public void hazardGeometryChanged(SessionEventGeometryModified change) {
-        updateConflictingEventsForSelectedEventIdentifiers(change.getEvent(),
-                false);
-        triggerRecommenderForFirstClassAttributeChange(change.getEvent(),
-                HazardEventFirstClassAttribute.GEOMETRY,
-                change.getOriginator());
-    }
-
-    @Handler(priority = 1)
-    public void hazardVisualFeatureChanged(
-            SessionEventVisualFeaturesModified change) {
-
-        /*
-         * Get the recommender identifier that is to be triggered by visual
-         * feature changes; if there is one, and it is not the same as the
-         * recommender (if any) that caused the change, run that recommender.
-         */
-        String recommenderIdentifier = configManager
-                .getRecommenderTriggeredByChange(change.getEvent(),
-                        HazardEventFirstClassAttribute.VISUAL_FEATURE);
-        IOriginator originator = change.getOriginator();
-        if ((recommenderIdentifier != null)
-                && ((originator instanceof RecommenderOriginator == false)
-                        || (recommenderIdentifier
-                                .equals(((RecommenderOriginator) originator)
-                                        .getName()) == false))) {
-            sessionManager.getRecommenderManager().runRecommender(
-                    recommenderIdentifier,
-                    RecommenderExecutionContext
-                            .getHazardEventVisualFeatureChangeContext(
-                                    change.getEvent().getEventID(),
-                                    change.getVisualFeatureIdentifiers(),
-                                    ((originator instanceof RecommenderOriginator)
-                                            || originator
-                                                    .equals(Originator.OTHER)
-                                                            ? RecommenderTriggerOrigin.OTHER
-                                                            : (originator
-                                                                    .equals(Originator.DATABASE)
-                                                                            ? RecommenderTriggerOrigin.DATABASE
-                                                                            : RecommenderTriggerOrigin.USER))));
-        }
-    }
-
-    @Handler(priority = 1)
-    public void hazardSelectionChanged(SessionSelectedEventsModified change) {
-
-        /*
-         * Iterate through the events that changed their selection state,
-         * compiling a mapping of recommenders to be triggered for those events
-         * to those events for which to trigger those particular recommenders.
-         * Thus, for example, if three hazard events changed selection state,
-         * two of which are to trigger recommender A when they change selection
-         * and one of which is to trigger recommender B in such cases, the
-         * result of this loop will be a map of two entries, one holding
-         * recommender A associated with the two events that are to trigger it,
-         * the other holding recommender B associated with the remaining event.
-         */
-        Map<String, Set<String>> eventIdentifiersForRecommenderIdentifiers = new HashMap<>(
-                change.getEventIdentifiers().size(), 1.0f);
-        for (String eventIdentifier : change.getEventIdentifiers()) {
-            ObservedHazardEvent event = getEventById(eventIdentifier);
-            if (event == null) {
-                continue;
-            }
-            String recommenderIdentifier = configManager
-                    .getRecommenderTriggeredByChange(event,
-                            HazardEventFirstClassAttribute.SELECTION);
-            if (recommenderIdentifier != null) {
-                Set<String> eventIdentifiers = eventIdentifiersForRecommenderIdentifiers
-                        .get(recommenderIdentifier);
-                if (eventIdentifiers == null) {
-                    eventIdentifiers = Sets.newHashSet(eventIdentifier);
-                    eventIdentifiersForRecommenderIdentifiers
-                            .put(recommenderIdentifier, eventIdentifiers);
-                } else {
-                    eventIdentifiers.add(eventIdentifier);
-                }
-            }
-        }
-
-        /*
-         * Iterate through the entries in the map compile above, running the
-         * appropriate recommender for each one if said recommender is not the
-         * same as the recommender (if any) that caused the selection change.
-         */
-        IOriginator originator = change.getOriginator();
-        for (Map.Entry<String, Set<String>> entry : eventIdentifiersForRecommenderIdentifiers
-                .entrySet()) {
-            if ((originator instanceof RecommenderOriginator == false) || (entry
-                    .getKey().equals(((RecommenderOriginator) originator)
-                            .getName()) == false)) {
-                sessionManager.getRecommenderManager().runRecommender(
-                        entry.getKey(),
-                        RecommenderExecutionContext
-                                .getHazardEventSelectionChangeContext(
-                                        entry.getValue(),
-                                        ((originator instanceof RecommenderOriginator)
-                                                || originator
-                                                        .equals(Originator.OTHER)
-                                                                ? RecommenderTriggerOrigin.OTHER
-                                                                : (originator
-                                                                        .equals(Originator.DATABASE)
-                                                                                ? RecommenderTriggerOrigin.DATABASE
-                                                                                : RecommenderTriggerOrigin.USER))));
-            }
-        }
+    private void sessionEventGeometryModified(ObservedHazardEvent event,
+            IOriginator originator) {
+        updateConflictingEventsForSelectedEventIdentifiers(event, false);
     }
 
     @Override
@@ -2400,9 +2275,9 @@ public class SessionEventManager
                     .remove(event.getEventID());
         }
         if (changed && events.contains(event)) {
-            notificationSender.postNotificationAsync(
-                    new SessionEventAllowUntilFurtherNoticeModified(this, event,
-                            Originator.OTHER));
+            notificationSender.postNotificationAsync(new SessionEventModified(
+                    this, event, new EventAllowUntilFurtherNoticeModification(),
+                    Originator.OTHER));
         }
     }
 
@@ -2538,6 +2413,8 @@ public class SessionEventManager
             return;
         }
 
+        sessionManager.startBatchedChanges();
+
         /*
          * Get the identifiers of the events that were selected before this
          * change.
@@ -2614,7 +2491,8 @@ public class SessionEventManager
                 for (IHazardEvent historicalEvent : historyList) {
                     if (HazardStatus.issuedButNotEndedOrElapsed(
                             historicalEvent.getStatus())) {
-                        addedEvent.addHazardAttribute(ATTR_ISSUED, true);
+                        addedEvent.addHazardAttribute(HazardConstants.ISSUED,
+                                true);
                         break;
                     }
                 }
@@ -2667,6 +2545,8 @@ public class SessionEventManager
          */
         sessionManager.getSelectionManager().setSelectedEventIdentifiers(
                 selectedEventIdentifiers, Originator.OTHER);
+
+        sessionManager.finishBatchedChanges();
     }
 
     @Override
@@ -2752,8 +2632,9 @@ public class SessionEventManager
                     Originator.OTHER);
         }
         if (configManager.getHazardCategory(oevent) == null
-                && oevent.getHazardAttribute(ATTR_HAZARD_CATEGORY) == null) {
-            oevent.addHazardAttribute(ATTR_HAZARD_CATEGORY,
+                && oevent.getHazardAttribute(
+                        HazardConstants.HAZARD_EVENT_CATEGORY) == null) {
+            oevent.addHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY,
                     settings.getDefaultCategory(), false, originator);
         }
 
@@ -2835,18 +2716,34 @@ public class SessionEventManager
         }
         oevent.setHazardMode(productClass, false, originator);
 
+        /*
+         * Add the event to the set of checked events.
+         */
+        checkedEventIdentifiers.add(oevent.getEventID());
+
+        /*
+         * Determine whether this event allows until-further-notice and record
+         * this fact if it does, and record any saved times for the event if it
+         * has been issued.
+         */
+        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
+        updateSavedTimesForEventIfIssued(oevent, false);
+
+        /*
+         * Add the event to the collection of managed events.
+         */
         events.add(oevent);
 
         /*
          * Notify listeners that the event has been added.
          */
         notificationSender.postNotificationAsync(
-                new SessionEventAdded(this, oevent, originator));
+                new SessionEventsAdded(this, oevent, originator));
 
         /*
          * Set the issued flag as appropriate.
          */
-        oevent.addHazardAttribute(ATTR_ISSUED,
+        oevent.addHazardAttribute(HazardConstants.ISSUED,
                 HazardStatus.issuedButNotEndedOrElapsed(oevent.getStatus()),
                 false, originator);
 
@@ -2868,19 +2765,6 @@ public class SessionEventManager
         }
 
         /*
-         * Add the event to the set of checked events.
-         */
-        checkedEventIdentifiers.add(oevent.getEventID());
-
-        /*
-         * Determine whether this event allows until-further-notice and record
-         * this fact if it does, and record any saved times for the event if it
-         * has been issued.
-         */
-        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
-        updateSavedTimesForEventIfIssued(oevent, false);
-
-        /*
          * Create the event metadata for the new event.
          */
         updateEventMetadata(oevent);
@@ -2894,6 +2778,8 @@ public class SessionEventManager
             ObservedHazardEvent oldEvent, boolean forceMerge,
             boolean keepVisualFeatures, boolean persistOnStatusChange,
             boolean useModifiedValue, IOriginator originator) {
+
+        sessionManager.startBatchedChanges();
 
         oldEvent.setSiteID(newEvent.getSiteID(), originator);
         oldEvent.setUserName(newEvent.getUserName(), originator);
@@ -2973,6 +2859,8 @@ public class SessionEventManager
         if (useModifiedValue) {
             oldEvent.setModified(newEvent.isModified());
         }
+
+        sessionManager.finishBatchedChanges();
     }
 
     /**
@@ -3058,12 +2946,15 @@ public class SessionEventManager
             }
         } else {
             try {
+                sessionManager.startBatchedChanges();
                 addEvent(event, Originator.DATABASE);
             } catch (HazardEventServiceException e) {
                 statusHandler.error(
                         "Should never occur since hazard event did not need "
                                 + "new identifier: could not add hazard event.",
                         e);
+            } finally {
+                sessionManager.finishBatchedChanges();
             }
         }
 
@@ -3157,7 +3048,9 @@ public class SessionEventManager
         if ((confirm == false)
                 || (getEventsToBeDeleted(Lists.newArrayList(event))
                         .isEmpty() == false)) {
+            sessionManager.startBatchedChanges();
             deleteEvent(event, true, originator);
+            sessionManager.finishBatchedChanges();
         }
     }
 
@@ -3171,9 +3064,11 @@ public class SessionEventManager
         Collection<ObservedHazardEvent> eventsToRemove = (confirm
                 ? getEventsToBeDeleted(events)
                 : new ArrayList<ObservedHazardEvent>(events));
+        sessionManager.startBatchedChanges();
         for (ObservedHazardEvent event : eventsToRemove) {
             deleteEvent(event, true, originator);
         }
+        sessionManager.finishBatchedChanges();
     }
 
     /**
@@ -3222,8 +3117,6 @@ public class SessionEventManager
      */
     private void deleteEvent(IHazardEvent event, boolean delete,
             IOriginator originator) {
-        sessionManager.getRecommenderManager()
-                .rememberRemovedEventIdentifier(event.getEventID());
         if (events.contains(event)) {
 
             /*
@@ -3260,7 +3153,7 @@ public class SessionEventManager
             scriptFilesForEventIdentifiers.remove(eventIdentifier);
             eventModifyingScriptsForEventIdentifiers.remove(eventIdentifier);
             notificationSender.postNotificationAsync(
-                    new SessionEventRemoved(this, event, originator));
+                    new SessionEventsRemoved(this, event, originator));
         }
 
         /*
@@ -3299,7 +3192,8 @@ public class SessionEventManager
      * @param notification
      *            Notification to be sent out about the modification.
      */
-    protected void hazardEventModified(SessionEventModified notification) {
+    protected void hazardEventModified(
+            AbstractSessionEventModified notification) {
         ObservedHazardEvent event = notification.getEvent();
         sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
                 event.getEventID(), notification.getOriginator());
@@ -3319,9 +3213,9 @@ public class SessionEventManager
      */
     protected void hazardEventModifiedFlagChanged(ObservedHazardEvent event) {
         if (events.contains(event)) {
-            notificationSender.postNotificationAsync(
-                    new SessionEventUnsavedChangesModified(this, event,
-                            Originator.OTHER));
+            notificationSender.postNotificationAsync(new SessionEventModified(
+                    this, event, new EventUnsavedChangesModification(),
+                    Originator.OTHER));
             if (event.isModified()
                     && (event.getStatus() == HazardStatus.POTENTIAL)) {
                 event.setStatus(HazardStatus.PENDING, false, Originator.OTHER);
@@ -3339,9 +3233,8 @@ public class SessionEventManager
      * be added to this method's implementation as necessary if said logic must
      * be run whenever an event is so modified.
      */
-
     protected void hazardEventAttributeModified(
-            SessionEventAttributesModified notification) {
+            SessionEventModified notification) {
         IHazardEvent event = notification.getEvent();
         sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
                 event.getEventID(), notification.getOriginator());
@@ -3360,8 +3253,8 @@ public class SessionEventManager
      * be added to this method's implementation as necessary if said logic must
      * be run whenever an event is so modified.
      */
-    protected void hazardEventStatusModified(
-            SessionEventStatusModified notification, boolean persist) {
+    protected void hazardEventStatusModified(SessionEventModified notification,
+            boolean persist) {
 
         /*
          * Persist and deselect the event as necessary.
@@ -3407,7 +3300,7 @@ public class SessionEventManager
             boolean needsPersist = false;
             switch (newStatus) {
             case ISSUED:
-                event.addHazardAttribute(ATTR_ISSUED, true);
+                event.addHazardAttribute(HazardConstants.ISSUED, true);
                 needsPersist = true;
                 break;
             case PROPOSED:
@@ -3616,7 +3509,8 @@ public class SessionEventManager
     }
 
     private boolean hasEverBeenIssued(IHazardEvent event) {
-        return Boolean.TRUE.equals(event.getHazardAttribute(ATTR_ISSUED));
+        return Boolean.TRUE
+                .equals(event.getHazardAttribute(HazardConstants.ISSUED));
     }
 
     @Override
@@ -4606,6 +4500,19 @@ public class SessionEventManager
     @Override
     public void shutdown() {
 
+        notificationSender
+                .unregisterIntraNotificationHandler(eventsAddedHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(eventsRemovedHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(eventChangeHandler);
+        notificationSender.unregisterIntraNotificationHandler(
+                productGenerationCompletionHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(settingsChangeHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(currentTimeChangeHandler);
+
         /*
          * TODO: Decide whether expiration is to be done in Java code or not.
          * For now, this code is commented out; no expiration of events will
@@ -4727,9 +4634,11 @@ public class SessionEventManager
 
     @Override
     public void endEvent(ObservedHazardEvent event, IOriginator originator) {
+        sessionManager.startBatchedChanges();
         sessionManager.getSelectionManager().removeEventFromSelectedEvents(
                 event.getEventID(), Originator.OTHER);
         event.setStatus(HazardStatus.ENDED, true, true, originator);
+        sessionManager.finishBatchedChanges();
     }
 
     @Override
@@ -4773,9 +4682,11 @@ public class SessionEventManager
     @Override
     public void proposeEvents(Collection<ObservedHazardEvent> events,
             IOriginator originator) {
+        sessionManager.startBatchedChanges();
         for (ObservedHazardEvent observedHazardEvent : events) {
             proposeEvent(observedHazardEvent, originator);
         }
+        sessionManager.finishBatchedChanges();
     }
 
     private boolean isProposedStateAllowed(ObservedHazardEvent event,
@@ -5453,6 +5364,8 @@ public class SessionEventManager
     @Override
     public void copyEvents(List<IHazardEvent> events) {
 
+        sessionManager.startBatchedChanges();
+
         /*
          * Create a copy of each of the events.
          */
@@ -5514,6 +5427,8 @@ public class SessionEventManager
          */
         sessionManager.getSelectionManager().setSelectedEventIdentifiers(
                 eventIdentifiers, Originator.OTHER);
+
+        sessionManager.finishBatchedChanges();
     }
 
     @Override
@@ -5570,9 +5485,9 @@ public class SessionEventManager
          * to first-class fields within the hazard event, or otherwise removed.
          */
         if (justIssued == false) {
-            dbEvent.removeHazardAttribute(ATTR_ISSUED);
+            dbEvent.removeHazardAttribute(HazardConstants.ISSUED);
         }
-        dbEvent.removeHazardAttribute(ATTR_HAZARD_CATEGORY);
+        dbEvent.removeHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY);
 
         /*
          * TODO: Remove this once the HAZARD_EVENT_SELECTED attribute has been

@@ -25,8 +25,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
- * Notification that is sent out through the SessionManager when the Settings
- * have been loaded for the first time.
+ * Notification that is sent out when the Settings have been loaded for the
+ * first time.
  * 
  * <pre>
  * 
@@ -34,17 +34,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * 
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
- * Jun 13, 2013 1257       bsteffen     Initial creation
- * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager,
+ * Jun 13, 2013    1257    bsteffen     Initial creation
+ * Dec 05, 2014    4124    Chris.Golden Changed to work with parameterized config manager,
  *                                      and to include originator.
- * Feb 01, 2017 15556      Chris.Golden Changed to pass set of changed settings elements
+ * Feb 01, 2017   15556    Chris.Golden Changed to pass set of changed settings elements
  *                                      to superclass constructor.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-
 public class SettingsLoaded extends SettingsModified {
 
     public SettingsLoaded(

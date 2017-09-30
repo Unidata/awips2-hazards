@@ -9,10 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
 
+import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
+
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.common.visuals.VisualFeature;
-
-import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 
 /**
  * Description: Identifier for a {@link SpatialEntity} generated from a
@@ -27,13 +27,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
  * ------------ ---------- ------------ --------------------------
  * Jun 15, 2016   19537    Chris.Golden Initial creation.
  * Aug 28, 2016   19537    Chris.Golden Added toString() method.
+ * Sep 27, 2017   38072    Chris.Golden Removed unneeded tool identifier.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ToolVisualFeatureEntityIdentifier implements
-        IVisualFeatureEntityIdentifier {
+public class ToolVisualFeatureEntityIdentifier
+        implements IVisualFeatureEntityIdentifier {
 
     // Private Variables
 
@@ -41,11 +42,6 @@ public class ToolVisualFeatureEntityIdentifier implements
      * Tool type.
      */
     private final ToolType toolType;
-
-    /**
-     * Tool identifier.
-     */
-    private final String toolIdentifier;
 
     /**
      * Visual feature identifier.
@@ -59,15 +55,12 @@ public class ToolVisualFeatureEntityIdentifier implements
      * 
      * @param toolType
      *            Type of the tool.
-     * @param toolIdentifier
-     *            Hazard event identifier.
      * @param visualFeatureIdentifier
      *            Visual feature identifier.
      */
     public ToolVisualFeatureEntityIdentifier(ToolType toolType,
-            String toolIdentifier, String visualFeatureIdentifier) {
+            String visualFeatureIdentifier) {
         this.toolType = toolType;
-        this.toolIdentifier = toolIdentifier;
         this.visualFeatureIdentifier = visualFeatureIdentifier;
     }
 
@@ -82,15 +75,6 @@ public class ToolVisualFeatureEntityIdentifier implements
         return toolType;
     }
 
-    /**
-     * Get the tool identifier.
-     * 
-     * @return Tool identifier.
-     */
-    public String getToolIdentifier() {
-        return toolIdentifier;
-    }
-
     @Override
     public String getVisualFeatureIdentifier() {
         return visualFeatureIdentifier;
@@ -102,24 +86,25 @@ public class ToolVisualFeatureEntityIdentifier implements
             return false;
         }
         ToolVisualFeatureEntityIdentifier otherIdentifier = (ToolVisualFeatureEntityIdentifier) other;
-        return (((toolType == otherIdentifier.toolType) || ((toolType != null) && toolType
-                .equals(otherIdentifier.toolType)))
-                && ((toolIdentifier == otherIdentifier.toolIdentifier) || ((toolIdentifier != null) && toolIdentifier
-                        .equals(otherIdentifier.toolIdentifier))) && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier) || ((visualFeatureIdentifier != null) && visualFeatureIdentifier
-                .equals(otherIdentifier.visualFeatureIdentifier))));
+        return (((toolType == otherIdentifier.toolType) || ((toolType != null)
+                && toolType.equals(otherIdentifier.toolType)))
+                && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier)
+                        || ((visualFeatureIdentifier != null)
+                                && visualFeatureIdentifier.equals(
+                                        otherIdentifier.visualFeatureIdentifier))));
     }
 
     @Override
     public int hashCode() {
         return (int) (((toolType == null ? 0L : (long) toolType.hashCode())
-                + (toolIdentifier == null ? 0L : (long) toolIdentifier
-                        .hashCode()) + (visualFeatureIdentifier == null ? 0L
-                    : (long) visualFeatureIdentifier.hashCode())) % Integer.MAX_VALUE);
+                + (visualFeatureIdentifier == null ? 0L
+                        : (long) visualFeatureIdentifier.hashCode()))
+                % Integer.MAX_VALUE);
     }
 
     @Override
     public String toString() {
-        return getToolIdentifier() + " (visual feature = \""
+        return getToolType() + " (visual feature = \""
                 + getVisualFeatureIdentifier() + "\")";
     }
 }

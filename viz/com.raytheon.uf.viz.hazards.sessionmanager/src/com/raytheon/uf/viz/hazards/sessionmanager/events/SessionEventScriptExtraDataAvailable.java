@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -35,13 +36,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 16, 2014    4753    Chris.Golden Initial creation.
+ * Sep 27, 2017   38072    Chris.Golden Marked as deprecated.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
+ * @deprecated Event scripts are no longer needed and should be removed.
  */
-
-public class SessionEventScriptExtraDataAvailable extends SessionEventModified {
+@Deprecated
+public class SessionEventScriptExtraDataAvailable
+        extends AbstractSessionEventModified {
 
     private final Map<String, Map<String, Object>> mutableProperties;
 
@@ -51,7 +55,7 @@ public class SessionEventScriptExtraDataAvailable extends SessionEventModified {
             Map<String, Map<String, Object>> mutableProperties,
             IOriginator originator) {
         super(eventManager, event, originator);
-        this.mutableProperties = mutableProperties;
+        this.mutableProperties = ImmutableMap.copyOf(mutableProperties);
     }
 
     public Map<String, Map<String, Object>> getMutableProperties() {

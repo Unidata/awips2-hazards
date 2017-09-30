@@ -50,6 +50,7 @@ Please click CANCEL and manually draw an inundation area.
         metaDict["version"] = "1.0"
         metaDict["description"] = "Calculates inundation areas based on dams."
         metaDict["eventState"] = "Pending"
+        metaDict["getSpatialInfoNeeded"] = False
         return metaDict
 
     def defineDialog(self, eventSet):

@@ -9,9 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.utilities;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
@@ -25,6 +22,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 
 /**
  * Description: Builder of hazard events from various geometries.
@@ -95,7 +95,8 @@ public class HazardEventBuilder {
             throws InvalidGeometryException {
         IAdvancedGeometry geometry = AdvancedGeometryUtilities
                 .createGeometryWrapper(geometryFactory.createPolygon(
-                        geometryFactory.createLinearRing(coordinates), null), 0);
+                        geometryFactory.createLinearRing(coordinates), null),
+                        0);
 
         checkValidity(geometry);
 
@@ -153,8 +154,8 @@ public class HazardEventBuilder {
              * hazard event will not allow the use of select-by-area to modify
              * its geometry.
              */
-            existingEvent
-                    .removeHazardAttribute(HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+            existingEvent.removeHazardAttribute(
+                    HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
             return existingEvent;
         }
 

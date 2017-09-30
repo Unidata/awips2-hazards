@@ -35,6 +35,7 @@ import gov.noaa.gsd.viz.mvp.IView;
  *                                           a message to display, or a dialog to display,
  *                                           with their results (that is, within the returned
  *                                           event set).
+ * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender manager.
  * </pre>
  * 
  * @author Chris.Golden
@@ -63,21 +64,15 @@ public interface IToolsView<C, E extends Enum<E>> extends IView<C, E> {
      * It doesn't make sense that a {@link RecommenderExecutionContext} is being
      * passed in if it's for tools, not specifically recommenders.
      * 
-     * @param tool
-     *            Identifier for the tool for which parameters are to be
-     *            gathered.
      * @param type
      *            Type of the tool.
-     * @param context
-     *            Execution context in which this tool is to be run.
      * @param jsonParams
      *            JSON string giving the parameters for this subview. Within the
      *            set of all fields that are defined by these parameters, all
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public void showToolParameterGatherer(String tool, ToolType type,
-            RecommenderExecutionContext context, String jsonParams);
+    public void showToolParameterGatherer(ToolType type, String jsonParams);
 
     /**
      * Show a tool subview that is used to display results for a tool that was
@@ -88,20 +83,15 @@ public interface IToolsView<C, E extends Enum<E>> extends IView<C, E> {
      * It doesn't make sense that a {@link RecommenderExecutionContext} is being
      * passed in if it's for tools, not specifically recommenders.
      * 
-     * @param tool
-     *            Identifier for the tool for which results are to be shown.
      * @param type
      *            Type of the tool.
-     * @param context
-     *            Execution context in which this tool was run.
      * @param jsonParams
      *            JSON string giving the parameters for this subview. Within the
      *            set of all fields that are defined by these parameters, all
      *            the fields (megawidget specifiers) must have unique
      *            identifiers.
      */
-    public void showToolResults(String tool, ToolType type,
-            RecommenderExecutionContext context, String jsonParams);
+    public void showToolResults(ToolType type, String jsonParams);
 
     /**
      * Set the tools to those specified.

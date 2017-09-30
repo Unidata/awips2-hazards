@@ -10,23 +10,27 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.time;
 
 import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
- * A notification that will be sent out through the SessionManager to notify all
- * components that the visible time range has changed.
+ * Notification that will be sent out to notify all components that the visible
+ * time range has changed.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Mar 19, 2014 2925       Chris.Golden    Initial creation.
- * May 10, 2014 2925       Chris.Golden    Added originator.
- * Nov 18, 2014 4124       Chris.Golden    Changed to work with revamped time
- *                                         manager.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Mar 19, 2014    2925    Chris.Golden Initial creation.
+ * May 10, 2014    2925    Chris.Golden Added originator.
+ * Nov 18, 2014    4124    Chris.Golden Changed to work with revamped time
+ *                                      manager.
+ * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * </pre>
  * 
  * @author Chris.Golden
@@ -34,15 +38,44 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  */
 public class VisibleTimeRangeChanged extends OriginatedSessionNotification {
 
+    // Private Variables
+
+    /**
+     * Time manager.
+     */
     private final ISessionTimeManager timeManager;
 
+    // Public Constructors
+
+    /**
+     * Construct a standard instance.
+     * 
+     * @param timeManager
+     *            Time manager.
+     * @param originator
+     *            Originator of the change.
+     */
     public VisibleTimeRangeChanged(ISessionTimeManager timeManager,
             IOriginator originator) {
         super(originator);
         this.timeManager = timeManager;
     }
 
+    // Public Methods
+
+    /**
+     * Get the visible time range.
+     * 
+     * @return Visible time range.
+     */
     public TimeRange getVisibleTimeRange() {
         return timeManager.getVisibleTimeRange();
+    }
+
+    @Override
+    public MergeResult<ISessionNotification> merge(
+            ISessionNotification original, ISessionNotification modified) {
+        return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
+                modified);
     }
 }

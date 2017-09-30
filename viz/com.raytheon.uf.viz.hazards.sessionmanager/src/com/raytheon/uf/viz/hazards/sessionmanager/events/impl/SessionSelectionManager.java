@@ -51,13 +51,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  * Jun 21, 2017   18375    Chris.Golden Removed setting of potential
  *                                      events to pending status when
  *                                      they are selected.
+ * Sep 27, 2017   38072    Chris.Golden Now makes use of batching of
+ *                                      notifications.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionSelectionManager implements
-        ISessionSelectionManager<ObservedHazardEvent> {
+public class SessionSelectionManager
+        implements ISessionSelectionManager<ObservedHazardEvent> {
 
     // Private Static Constants
 
@@ -144,7 +146,8 @@ public class SessionSelectionManager implements
      * 
      * @param eventManager
      *            Session event manager holding the events that will be used to
-     *            create and maintain the selection set. notificationSender
+     *            create and maintain the selection set.
+     * @param notificationSender
      *            Sender of notifications that must be posted concerning changes
      *            to the selection set.
      */
@@ -195,8 +198,8 @@ public class SessionSelectionManager implements
 
     @Override
     public List<Pair<String, Integer>> getSelectedEventVersionIdentifiersList() {
-        return Collections
-                .unmodifiableList(selectedCurrentAndHistoricalEventIdentifiersOrdered);
+        return Collections.unmodifiableList(
+                selectedCurrentAndHistoricalEventIdentifiersOrdered);
     }
 
     @Override
@@ -312,9 +315,8 @@ public class SessionSelectionManager implements
                 selectedEvents.add(event);
                 selectedEventIdentifiers.add(eventIdentifier);
                 if (currentEventsToBeSelected.contains(eventIdentifier)) {
-                    selectedCurrentAndHistoricalEventIdentifiers
-                            .add(new Pair<String, Integer>(eventIdentifier,
-                                    null));
+                    selectedCurrentAndHistoricalEventIdentifiers.add(
+                            new Pair<String, Integer>(eventIdentifier, null));
                 }
                 SortedSet<Integer> selectedHistoricalIndices = selectedIndicesForHistoricalEventIdentifiers
                         .get(eventIdentifier);
@@ -351,8 +353,9 @@ public class SessionSelectionManager implements
     @Override
     public void addEventToSelectedEvents(String selectedEventIdentifier,
             IOriginator originator) {
-        addEventToSelectedEvents(new Pair<String, Integer>(
-                selectedEventIdentifier, null), originator);
+        addEventToSelectedEvents(
+                new Pair<String, Integer>(selectedEventIdentifier, null),
+                originator);
     }
 
     @Override
@@ -373,8 +376,8 @@ public class SessionSelectionManager implements
         Set<Pair<String, Integer>> selectedEventVersionIdentifiers = new HashSet<>(
                 selectedEventIdentifiers.size(), 1.0f);
         for (String eventIdentifier : selectedEventIdentifiers) {
-            selectedEventVersionIdentifiers.add(new Pair<String, Integer>(
-                    eventIdentifier, null));
+            selectedEventVersionIdentifiers
+                    .add(new Pair<String, Integer>(eventIdentifier, null));
         }
 
         /*
@@ -393,20 +396,21 @@ public class SessionSelectionManager implements
          * Filter out any historical version identifiers that have indices that
          * are too high for their events' history lists.
          */
-        selectedEventVersionIdentifiers = new HashSet<>(Sets.filter(
-                selectedEventVersionIdentifiers,
-                new Predicate<Pair<String, Integer>>() {
-                    @Override
-                    public boolean apply(Pair<String, Integer> input) {
-                        if (input.getSecond() == null) {
-                            return true;
-                        }
-                        Integer historicalCount = eventManager
-                                .getHistoricalVersionCountForEvent(input
-                                        .getFirst());
-                        return ((historicalCount != null) && (input.getSecond() < historicalCount));
-                    }
-                }));
+        selectedEventVersionIdentifiers = new HashSet<>(
+                Sets.filter(selectedEventVersionIdentifiers,
+                        new Predicate<Pair<String, Integer>>() {
+                            @Override
+                            public boolean apply(Pair<String, Integer> input) {
+                                if (input.getSecond() == null) {
+                                    return true;
+                                }
+                                Integer historicalCount = eventManager
+                                        .getHistoricalVersionCountForEvent(
+                                                input.getFirst());
+                                return ((historicalCount != null) && (input
+                                        .getSecond() < historicalCount));
+                            }
+                        }));
 
         /*
          * Compile a set of the events whose selection is being altered.
@@ -431,25 +435,26 @@ public class SessionSelectionManager implements
         /*
          * Do nothing if this event is not selected.
          */
-        if (selectedEventIdentifiers.contains(selectedEventIdentifier) == false) {
+        if (selectedEventIdentifiers
+                .contains(selectedEventIdentifier) == false) {
             return;
         }
 
         /*
          * Compile the set of all selected versions of this event.
          */
-        Set<Pair<String, Integer>> selectedCurrentAndHistoricalEventIdentifiers = getAllSelectedVersionsOfEvent(selectedEventIdentifier);
+        Set<Pair<String, Integer>> selectedCurrentAndHistoricalEventIdentifiers = getAllSelectedVersionsOfEvent(
+                selectedEventIdentifier);
 
         /*
          * Remove all versions of the event from the selected set.
          */
-        removeEventsFromSelectedEvents(
-                Sets.newHashSet(selectedEventIdentifier),
-                (selectedCurrentAndHistoricalEventIdentifiers
-                        .contains(new Pair<String, Integer>(
-                                selectedEventIdentifier, null)) ? Sets
-                        .newHashSet(selectedEventIdentifier) : Collections
-                        .<String> emptySet()),
+        removeEventsFromSelectedEvents(Sets.newHashSet(selectedEventIdentifier),
+                (selectedCurrentAndHistoricalEventIdentifiers.contains(
+                        new Pair<String, Integer>(selectedEventIdentifier,
+                                null)) ? Sets
+                                        .newHashSet(selectedEventIdentifier)
+                                        : Collections.<String> emptySet()),
                 selectedCurrentAndHistoricalEventIdentifiers,
                 selectedIndicesForHistoricalEventIdentifiers, originator);
     }
@@ -478,15 +483,15 @@ public class SessionSelectionManager implements
         int numSelectedVersions = (selectedCurrentAndHistoricalEventIdentifiers
                 .contains(new Pair<String, Integer>(
                         selectedEventVersionIdentifier.getFirst(), null)) ? 1
-                : 0)
+                                : 0)
                 + (selectedIndices != null ? selectedIndices.size() : 0);
         ObservedHazardEvent removedEvent = null;
         if (numSelectedVersions == 1) {
             int removalIndex = selectedEventIdentifiersOrdered
                     .indexOf(selectedEventVersionIdentifier.getFirst());
             if (removalIndex != -1) {
-                selectedEventIdentifiers.remove(selectedEventVersionIdentifier
-                        .getFirst());
+                selectedEventIdentifiers
+                        .remove(selectedEventVersionIdentifier.getFirst());
                 selectedEventIdentifiersOrdered.remove(removalIndex);
                 removedEvent = selectedEvents.remove(removalIndex);
             } else {
@@ -508,8 +513,8 @@ public class SessionSelectionManager implements
             selectedCurrentAndHistoricalEventIdentifiersOrdered
                     .remove(removalIndex);
             if (selectedEventVersionIdentifier.getSecond() != null) {
-                selectedIndices.remove(selectedEventVersionIdentifier
-                        .getSecond());
+                selectedIndices
+                        .remove(selectedEventVersionIdentifier.getSecond());
             }
             if (selectedIndices.isEmpty()) {
                 selectedIndicesForHistoricalEventIdentifiers
@@ -520,16 +525,18 @@ public class SessionSelectionManager implements
                     "event version to be deselected not found in set of selected session events");
         }
 
+        notificationSender.startAccumulatingAsyncNotifications();
+
         /*
          * Send out a notification concerning the selection change.
          */
         notificationSender
                 .postNotificationAsync(new SessionSelectedEventsModified(this,
-                        (removedEvent != null ? Sets
-                                .newHashSet(selectedEventVersionIdentifier
-                                        .getFirst()) : Collections
-                                .<String> emptySet()), Sets
-                                .newHashSet(selectedEventVersionIdentifier),
+                        (removedEvent != null
+                                ? Sets.newHashSet(selectedEventVersionIdentifier
+                                        .getFirst())
+                                : Collections.<String> emptySet()),
+                        Sets.newHashSet(selectedEventVersionIdentifier),
                         originator));
 
         /*
@@ -540,6 +547,8 @@ public class SessionSelectionManager implements
             eventManager.updateConflictingEventsForSelectedEventIdentifiers(
                     removedEvent, true);
         }
+
+        notificationSender.finishAccumulatingAsyncNotifications();
     }
 
     @Override
@@ -564,8 +573,8 @@ public class SessionSelectionManager implements
         Set<Pair<String, Integer>> selectedCurrentAndHistoricalEventIdentifiers = new HashSet<>(
                 selectedEventIdentifiers.size() * 2, 1.0f);
         for (String eventIdentifier : selectedEventIdentifiers) {
-            if (this.selectedCurrentAndHistoricalEventIdentifiers
-                    .contains(new Pair<String, Integer>(eventIdentifier, null))) {
+            if (this.selectedCurrentAndHistoricalEventIdentifiers.contains(
+                    new Pair<String, Integer>(eventIdentifier, null))) {
                 selectedCurrentEventIdentifiers.add(eventIdentifier);
             }
             selectedCurrentAndHistoricalEventIdentifiers
@@ -589,9 +598,9 @@ public class SessionSelectionManager implements
         /*
          * If these events are already unselected, there is nothing to be done.
          */
-        selectedEventVersionIdentifiers = new HashSet<>(Sets.intersection(
-                selectedEventVersionIdentifiers,
-                this.selectedCurrentAndHistoricalEventIdentifiers));
+        selectedEventVersionIdentifiers = new HashSet<>(
+                Sets.intersection(selectedEventVersionIdentifiers,
+                        this.selectedCurrentAndHistoricalEventIdentifiers));
         if (selectedEventVersionIdentifiers.isEmpty()) {
             return;
         }
@@ -626,15 +635,15 @@ public class SessionSelectionManager implements
             SortedSet<Integer> selectedIndices = selectedIndicesForHistoricalEventIdentifiers
                     .get(eventIdentifier);
             int numSelected = (selectedCurrentAndHistoricalEventIdentifiers
-                    .contains(new Pair<String, Integer>(eventIdentifier, null)) ? 1
-                    : 0)
+                    .contains(new Pair<String, Integer>(eventIdentifier, null))
+                            ? 1 : 0)
                     + (selectedIndices != null ? selectedIndices.size() : 0);
             SortedSet<Integer> newlyDeselectedIndices = newlyDeselectedIndicesForHistoricalEventIdentifiers
                     .get(eventIdentifier);
             int numNewlyDeselected = (newlyDeselectedCurrentEventIdentifiers
                     .contains(eventIdentifier) ? 1 : 0)
-                    + (newlyDeselectedIndices != null ? newlyDeselectedIndices
-                            .size() : 0);
+                    + (newlyDeselectedIndices != null
+                            ? newlyDeselectedIndices.size() : 0);
             if (numSelected > numNewlyDeselected) {
                 iterator.remove();
             }
@@ -646,7 +655,8 @@ public class SessionSelectionManager implements
         removeEventsFromSelectedEvents(newlyDeselectedEventIdentifiers,
                 newlyDeselectedCurrentEventIdentifiers,
                 selectedEventVersionIdentifiers,
-                newlyDeselectedIndicesForHistoricalEventIdentifiers, originator);
+                newlyDeselectedIndicesForHistoricalEventIdentifiers,
+                originator);
     }
 
     @Override
@@ -672,19 +682,20 @@ public class SessionSelectionManager implements
     @Override
     public void setLastAccessedSelectedEvent(String eventIdentifier,
             IOriginator originator) {
-        setLastAccessedSelectedEventVersion(new Pair<String, Integer>(
-                eventIdentifier, null), originator);
+        setLastAccessedSelectedEventVersion(
+                new Pair<String, Integer>(eventIdentifier, null), originator);
     }
 
     @Override
     public void setLastAccessedSelectedEventVersion(
-            Pair<String, Integer> eventVersionIdentifier, IOriginator originator) {
-        if (eventVersionIdentifier.equals(accessedEventsStack.peek()) == false) {
+            Pair<String, Integer> eventVersionIdentifier,
+            IOriginator originator) {
+        if (eventVersionIdentifier
+                .equals(accessedEventsStack.peek()) == false) {
             accessedEventsStack.remove(eventVersionIdentifier);
             accessedEventsStack.push(eventVersionIdentifier);
-            notificationSender
-                    .postNotificationAsync(new SessionLastAccessedEventModified(
-                            this, originator));
+            notificationSender.postNotificationAsync(
+                    new SessionLastAccessedEventModified(this, originator));
         }
     }
 
@@ -774,6 +785,8 @@ public class SessionSelectionManager implements
                     .putAll(selectedIndicesForHistoricalEventIdentifiers);
         }
 
+        notificationSender.startAccumulatingAsyncNotifications();
+
         /*
          * Determine which events changed selection state and send out a
          * notification of any such change.
@@ -785,10 +798,10 @@ public class SessionSelectionManager implements
                 Sets.symmetricDifference(
                         oldSelectedCurrentAndHistoricalEventIdentifiers,
                         this.selectedCurrentAndHistoricalEventIdentifiers));
-        if (changedSelectionStateCurrentAndHistoricalEventIdentifiers.isEmpty() == false) {
-            notificationSender
-                    .postNotificationAsync(new SessionSelectedEventsModified(
-                            this,
+        if (changedSelectionStateCurrentAndHistoricalEventIdentifiers
+                .isEmpty() == false) {
+            notificationSender.postNotificationAsync(
+                    new SessionSelectedEventsModified(this,
                             changedSelectionStateEventIdentifiers,
                             changedSelectionStateCurrentAndHistoricalEventIdentifiers,
                             originator));
@@ -797,7 +810,8 @@ public class SessionSelectionManager implements
         /*
          * Set the last accessed event if there are events selected.
          */
-        if (selectedCurrentAndHistoricalEventIdentifiersOrdered.isEmpty() == false) {
+        if (selectedCurrentAndHistoricalEventIdentifiersOrdered
+                .isEmpty() == false) {
 
             /*
              * If no events are newly selected, make the last accessed event be
@@ -812,18 +826,23 @@ public class SessionSelectionManager implements
                             oldSelectedCurrentAndHistoricalEventIdentifiers);
             if (newlySelectedCurrentAndHistoricalEventIdentifiers.isEmpty()) {
                 setLastAccessedSelectedEventVersion(
-                        selectedCurrentAndHistoricalEventIdentifiersOrdered.get(selectedCurrentAndHistoricalEventIdentifiersOrdered
-                                .size() - 1), Originator.OTHER);
-            } else if (newlySelectedCurrentAndHistoricalEventIdentifiers.size() == 1) {
+                        selectedCurrentAndHistoricalEventIdentifiersOrdered
+                                .get(selectedCurrentAndHistoricalEventIdentifiersOrdered
+                                        .size() - 1),
+                        Originator.OTHER);
+            } else if (newlySelectedCurrentAndHistoricalEventIdentifiers
+                    .size() == 1) {
                 setLastAccessedSelectedEventVersion(
                         newlySelectedCurrentAndHistoricalEventIdentifiers
-                                .iterator().next(), Originator.OTHER);
+                                .iterator().next(),
+                        Originator.OTHER);
             } else {
                 for (int index = selectedCurrentAndHistoricalEventIdentifiersOrdered
                         .size() - 1; index > -1; index--) {
                     if (newlySelectedCurrentAndHistoricalEventIdentifiers
-                            .contains(selectedCurrentAndHistoricalEventIdentifiersOrdered
-                                    .get(index))) {
+                            .contains(
+                                    selectedCurrentAndHistoricalEventIdentifiersOrdered
+                                            .get(index))) {
                         setLastAccessedSelectedEventVersion(
                                 selectedCurrentAndHistoricalEventIdentifiersOrdered
                                         .get(index),
@@ -839,6 +858,8 @@ public class SessionSelectionManager implements
          */
         eventManager.updateConflictingEventsForSelectedEventIdentifiers(null,
                 false);
+
+        notificationSender.finishAccumulatingAsyncNotifications();
     }
 
     /**
@@ -859,12 +880,14 @@ public class SessionSelectionManager implements
          * historical version that does not exist, there is nothing to be done.
          */
         Integer historicalCount = eventManager
-                .getHistoricalVersionCountForEvent(selectedEventVersionIdentifier
-                        .getFirst());
+                .getHistoricalVersionCountForEvent(
+                        selectedEventVersionIdentifier.getFirst());
         if (selectedCurrentAndHistoricalEventIdentifiers
                 .contains(selectedEventVersionIdentifier)
-                || ((selectedEventVersionIdentifier.getSecond() != null) && ((historicalCount == null) || (historicalCount <= selectedEventVersionIdentifier
-                        .getSecond())))) {
+                || ((selectedEventVersionIdentifier.getSecond() != null)
+                        && ((historicalCount == null)
+                                || (historicalCount <= selectedEventVersionIdentifier
+                                        .getSecond())))) {
             return;
         }
 
@@ -879,8 +902,8 @@ public class SessionSelectionManager implements
         ObservedHazardEvent selectedEvent = null;
         for (ObservedHazardEvent event : eventManager.getEvents()) {
             String eventIdentifier = event.getEventID();
-            if (eventIdentifier.equals(selectedEventVersionIdentifier
-                    .getFirst())) {
+            if (eventIdentifier
+                    .equals(selectedEventVersionIdentifier.getFirst())) {
                 selectedEvent = event;
                 if (selectedEventVersionIdentifier.getSecond() != null) {
                     if (selectedCurrentAndHistoricalEventIdentifiers
@@ -895,7 +918,8 @@ public class SessionSelectionManager implements
                                 createHistoricalIndicesSortedSet());
                     } else {
                         for (Integer index : selectedIndices) {
-                            if (selectedEventVersionIdentifier.getSecond() > index) {
+                            if (selectedEventVersionIdentifier
+                                    .getSecond() > index) {
                                 break;
                             }
                             currentAndHistoricalInsertionIndex++;
@@ -905,7 +929,8 @@ public class SessionSelectionManager implements
                 break;
             } else if (selectedEventIdentifiers.contains(eventIdentifier)) {
                 insertionIndex++;
-                currentAndHistoricalInsertionIndex += getSelectedCurrentAndHistoricalVersionCount(eventIdentifier);
+                currentAndHistoricalInsertionIndex += getSelectedCurrentAndHistoricalVersionCount(
+                        eventIdentifier);
             }
         }
 
@@ -916,12 +941,12 @@ public class SessionSelectionManager implements
          */
         boolean addOverallEvent = false;
         if (selectedEvent != null) {
-            if (selectedEventIdentifiers
-                    .contains(selectedEventVersionIdentifier.getFirst()) == false) {
+            if (selectedEventIdentifiers.contains(
+                    selectedEventVersionIdentifier.getFirst()) == false) {
                 addOverallEvent = true;
                 selectedEvents.add(insertionIndex, selectedEvent);
-                selectedEventIdentifiers.add(selectedEventVersionIdentifier
-                        .getFirst());
+                selectedEventIdentifiers
+                        .add(selectedEventVersionIdentifier.getFirst());
                 selectedEventIdentifiersOrdered.add(insertionIndex,
                         selectedEventVersionIdentifier.getFirst());
             }
@@ -931,31 +956,34 @@ public class SessionSelectionManager implements
                     currentAndHistoricalInsertionIndex,
                     selectedEventVersionIdentifier);
             if (selectedEventVersionIdentifier.getSecond() != null) {
-                selectedIndicesForHistoricalEventIdentifiers.get(
-                        selectedEventVersionIdentifier.getFirst()).add(
-                        selectedEventVersionIdentifier.getSecond());
+                selectedIndicesForHistoricalEventIdentifiers
+                        .get(selectedEventVersionIdentifier.getFirst())
+                        .add(selectedEventVersionIdentifier.getSecond());
             }
         } else {
             throw new IllegalStateException(
                     "event to be selected not found in list of session events");
         }
 
+        notificationSender.startAccumulatingAsyncNotifications();
+
         /*
          * Send out a notification concerning the selection change.
          */
         notificationSender
                 .postNotificationAsync(new SessionSelectedEventsModified(this,
-                        (addOverallEvent ? Sets
-                                .newHashSet(selectedEventVersionIdentifier
-                                        .getFirst()) : Collections
-                                .<String> emptySet()), Sets
-                                .newHashSet(selectedEventVersionIdentifier),
+                        (addOverallEvent
+                                ? Sets.newHashSet(selectedEventVersionIdentifier
+                                        .getFirst())
+                                : Collections.<String> emptySet()),
+                        Sets.newHashSet(selectedEventVersionIdentifier),
                         originator));
 
         /*
          * Set the last accessed event version to the one just added.
          */
-        if (selectedCurrentAndHistoricalEventIdentifiersOrdered.isEmpty() == false) {
+        if (selectedCurrentAndHistoricalEventIdentifiersOrdered
+                .isEmpty() == false) {
             setLastAccessedSelectedEventVersion(selectedEventVersionIdentifier,
                     Originator.OTHER);
         }
@@ -965,6 +993,8 @@ public class SessionSelectionManager implements
          */
         eventManager.updateConflictingEventsForSelectedEventIdentifiers(
                 selectedEvent, false);
+
+        notificationSender.finishAccumulatingAsyncNotifications();
     }
 
     /**
@@ -979,8 +1009,7 @@ public class SessionSelectionManager implements
      * @param originator
      *            Originator of the action.
      */
-    private void addEventsToSelectedEvents(
-            Set<String> selectedEventIdentifiers,
+    private void addEventsToSelectedEvents(Set<String> selectedEventIdentifiers,
             Set<Pair<String, Integer>> selectedCurrentAndHistoricalEventIdentifiers,
             IOriginator originator) {
 
@@ -1100,8 +1129,8 @@ public class SessionSelectionManager implements
                         .get(eventIdentifier);
                 if (selectedIndices == null) {
                     selectedIndices = createHistoricalIndicesSortedSet();
-                    selectedIndicesForHistoricalEventIdentifiers.put(
-                            eventIdentifier, selectedIndices);
+                    selectedIndicesForHistoricalEventIdentifiers
+                            .put(eventIdentifier, selectedIndices);
                 }
 
                 /*
@@ -1160,8 +1189,7 @@ public class SessionSelectionManager implements
             /*
              * If there are no more to-be-selected events left, stop.
              */
-            if (selectedSomething
-                    && newlySelectedEventIdentifiers.isEmpty()
+            if (selectedSomething && newlySelectedEventIdentifiers.isEmpty()
                     && newlySelectedCurrentEventIdentifiers.isEmpty()
                     && newlySelectedIndicesForHistoricalEventIdentifiers
                             .isEmpty()) {
@@ -1172,10 +1200,11 @@ public class SessionSelectionManager implements
              * If no version of this event was just selected, and it is already
              * selected, increment the insertion indices as appropriate.
              */
-            if ((selectedSomething == false)
-                    && this.selectedEventIdentifiers.contains(eventIdentifier)) {
+            if ((selectedSomething == false) && this.selectedEventIdentifiers
+                    .contains(eventIdentifier)) {
                 insertionIndex++;
-                currentAndHistoricalInsertionIndex += getSelectedCurrentAndHistoricalVersionCount(eventIdentifier);
+                currentAndHistoricalInsertionIndex += getSelectedCurrentAndHistoricalVersionCount(
+                        eventIdentifier);
             }
         }
 
@@ -1185,22 +1214,23 @@ public class SessionSelectionManager implements
          */
         if ((newlySelectedEventIdentifiers.isEmpty() == false)
                 || (newlySelectedCurrentEventIdentifiers.isEmpty() == false)
-                || (newlySelectedIndicesForHistoricalEventIdentifiers.isEmpty() == false)) {
+                || (newlySelectedIndicesForHistoricalEventIdentifiers
+                        .isEmpty() == false)) {
             throw new IllegalStateException(
                     "event(s) to be selected not found in list of session events");
         }
+
+        notificationSender.startAccumulatingAsyncNotifications();
 
         /*
          * Send out a notification concerning the selection change.
          */
         notificationSender
-                .postNotificationAsync(new SessionSelectedEventsModified(
-                        this,
+                .postNotificationAsync(new SessionSelectedEventsModified(this,
                         selectedEventIdentifiers,
-                        new HashSet<>(
-                                Sets.difference(
-                                        this.selectedCurrentAndHistoricalEventIdentifiers,
-                                        oldSelectedCurrentAndHistoricalEventIdentifiers)),
+                        new HashSet<>(Sets.difference(
+                                this.selectedCurrentAndHistoricalEventIdentifiers,
+                                oldSelectedCurrentAndHistoricalEventIdentifiers)),
                         originator));
 
         /*
@@ -1216,6 +1246,8 @@ public class SessionSelectionManager implements
          */
         eventManager.updateConflictingEventsForSelectedEventIdentifiers(null,
                 false);
+
+        notificationSender.finishAccumulatingAsyncNotifications();
     }
 
     /**
@@ -1286,7 +1318,8 @@ public class SessionSelectionManager implements
                 this.selectedEventIdentifiersOrdered.remove(removalIndex);
                 this.selectedEvents.remove(removalIndex);
                 deselectedSomething = true;
-            } else if (this.selectedEventIdentifiers.contains(eventIdentifier)) {
+            } else if (this.selectedEventIdentifiers
+                    .contains(eventIdentifier)) {
                 removalIndex++;
             }
 
@@ -1297,7 +1330,8 @@ public class SessionSelectionManager implements
              */
             Pair<String, Integer> currentIdentifier = new Pair<>(
                     eventIdentifier, null);
-            if (newlyDeselectedCurrentEventIdentifiers.remove(eventIdentifier)) {
+            if (newlyDeselectedCurrentEventIdentifiers
+                    .remove(eventIdentifier)) {
                 this.selectedCurrentAndHistoricalEventIdentifiers
                         .remove(currentIdentifier);
                 this.selectedCurrentAndHistoricalEventIdentifiersOrdered
@@ -1386,8 +1420,7 @@ public class SessionSelectionManager implements
             /*
              * If there are no more to-be-deselected events left, stop.
              */
-            if (deselectedSomething
-                    && newlyDeselectedEventIdentifiers.isEmpty()
+            if (deselectedSomething && newlyDeselectedEventIdentifiers.isEmpty()
                     && newlyDeselectedCurrentEventIdentifiers.isEmpty()
                     && newlyDeselectedIndicesForHistoricalEventIdentifiers
                             .isEmpty()) {
@@ -1407,6 +1440,8 @@ public class SessionSelectionManager implements
                     "event(s) to be deselected not found in selected set of session events");
         }
 
+        notificationSender.startAccumulatingAsyncNotifications();
+
         /*
          * Send out a notification concerning the selection change.
          */
@@ -1421,6 +1456,8 @@ public class SessionSelectionManager implements
          */
         eventManager.updateConflictingEventsForSelectedEventIdentifiers(null,
                 false);
+
+        notificationSender.finishAccumulatingAsyncNotifications();
     }
 
     /**
@@ -1563,8 +1600,8 @@ public class SessionSelectionManager implements
                 .get(selectedEventIdentifier);
         if (selectedIndices != null) {
             for (Integer index : selectedIndices) {
-                selectedCurrentAndHistoricalEventIdentifiers.add(new Pair<>(
-                        selectedEventIdentifier, index));
+                selectedCurrentAndHistoricalEventIdentifiers
+                        .add(new Pair<>(selectedEventIdentifier, index));
             }
         }
         return selectedCurrentAndHistoricalEventIdentifiers;

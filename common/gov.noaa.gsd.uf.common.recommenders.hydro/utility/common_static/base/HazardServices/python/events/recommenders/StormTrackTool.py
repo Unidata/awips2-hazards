@@ -44,6 +44,7 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["version"] = "1.0"
         metaDict["description"] = "Builds and calculates points for a storm track."
         metaDict["eventState"] = "Pending"
+        metaDict["getDialogInfoNeeded"] = False
         return metaDict
 
     def defineSpatialInfo(self, eventSet):
