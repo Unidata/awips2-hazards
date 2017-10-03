@@ -14,9 +14,13 @@
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "PROG_ON_DIFF",
 
+
 Aviation = {
     "settingsID" : "Aviation",
-    "perspectiveIDs" : [],    
+    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
+                        "com.raytheon.viz.mpe.ui.MPEPerspective",
+                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
+                        "com.raytheon.viz.ui.GFEPerspective"],    
     "displayName": "Aviation",
     "possibleSites": ["National"],
     "visibleSites": ["National"],    
@@ -65,11 +69,7 @@ Aviation = {
     "visibleStatuses": [
         "potential",
         "proposed",
-        #"pending",
         "issued",
-        #"elapsed",
-        #"ending",
-        #"ended"
     ],
     "columns": {
         "Event ID": {
@@ -80,14 +80,12 @@ Aviation = {
         "Hazard Type": {
             "type": "string",
             "fieldName": "type",
-            # "sortPriority": 1,
             "sortDir": "ascending",
             "hintTextFieldName": "headline",
             "displayEmptyAs": "Undefined"
             
         },
         "Status": {
-            # "sortPriority": 2,
             "sortDir": "ascending",
             "width": 61,
             "fieldName": "status",
@@ -205,12 +203,6 @@ Aviation = {
             "visible":True,
         },
         {
-            "toolName": "VAARecommender",
-            "displayName": "VAARecommender",
-            "toolType": "RECOMMENDER",
-            "visible":True,
-        },
-        {
             "toolName": "CreateHazardEventFromPoints",
             "displayName": "CreateHazardEventFromPoints",
             "toolType": "RECOMMENDER",
@@ -223,7 +215,5 @@ Aviation = {
             "visible":True,
         },                                                                                                                                                                                                
     ],
-    # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
-    #"eventIdDisplayType" : "ALWAYS_FULL"
     "eventIdDisplayType" : "ONLY_SERIAL"
 }

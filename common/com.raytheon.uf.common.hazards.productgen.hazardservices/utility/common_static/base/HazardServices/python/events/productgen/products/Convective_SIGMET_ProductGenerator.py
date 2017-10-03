@@ -1,18 +1,12 @@
 """
     Description: Product Generator for the Convective SIGMET product.
 """
-import os, types, sys, collections, re
-import math
-from HydroProductParts import HydroProductParts 
-import GeometryFactory
+import os, sys, collections
 import HydroGenerator
-from KeyInfo import KeyInfo
-import shapely, time, datetime, TimeUtils
-import HazardDataAccess
+import shapely, time, datetime
 import MetaData_Convective_SIGMET
 import Domains
 import AviationUtils
-from VisualFeatures import VisualFeatures
 from com.raytheon.uf.common.time import SimulatedTime
 
 class Product(HydroGenerator.Product):
@@ -22,9 +16,6 @@ class Product(HydroGenerator.Product):
         # Used by the VTECEngineWrapper to access the productGeneratorTable
         self._productGeneratorName = 'Convective_SIGMET_ProductGenerator'
         self._productID = 'SIGMET.Convective'
-
-###################################################
-        
                 
     def defineScriptMetadata(self):
         metadata = collections.OrderedDict()
@@ -131,8 +122,23 @@ class Product(HydroGenerator.Product):
                     startTime = event.getStartTime()
                     if startTime > self._latestStartTime:
                         self._latestStartTime = startTime
-                          
+        
+        eventNumberList = []
+        eventDictList = []                
+        #ensure hazard events are processed in order of creation, based on hazard event number
         for event in self._inputHazardEvents:
+            eventID = event.getEventID()
+            eventNumber = int(eventID[-6:])
+            eventNumberList.append(eventNumber)
+            
+        eventNumberList.sort()
+        
+        for eventNumber in eventNumberList:
+            for event in self._inputHazardEvents:
+                if str(eventNumber) in event.getEventID():
+                    eventDictList.append(event)
+        
+        for event in eventDictList:                  
             event.set('issueTime', self._issueTime)
             self._originalGeomType = event.get('originalGeomType')
             if not self._eventValid(event, self._latestStartTime):
@@ -176,7 +182,6 @@ class Product(HydroGenerator.Product):
 
         for feature in features:           
             if 'base' in feature["identifier"]:
-            
                 polyDict = feature["geometry"]
                 for timeBounds, geometry in polyDict.iteritems():
                     featurePoly = geometry.asShapely()
@@ -191,12 +196,9 @@ class Product(HydroGenerator.Product):
                         AviationUtils.AviationUtils().updateVisualFeatures(event, vertices, poly)
                     else:
                         poly = []
-                        AviationUtils.AviationUtils().updateVisualFeatures(event, vertices, poly)
-    
-######################START ACTUAL PRODUCT GENERATION METHODS ###################################                                                          
+                        AviationUtils.AviationUtils().updateVisualFeatures(event, vertices, poly)                                                        
  
     def _eventValid(self, event, latestStartTime):
-        
         if event.getStatus() in ['ELAPSED', 'ENDED', 'ENDING']:  
             event.setStatus('ELAPSED')              
             return False
@@ -213,9 +215,8 @@ class Product(HydroGenerator.Product):
         return geometry
     
     def _currentTime(self, hazardEvent):
-        currentTime = time.mktime(hazardEvent.getCreationTime().timetuple())
         
-        return currentTime
+        return time.mktime(hazardEvent.getCreationTime().timetuple())
     
     def _startTime(self, hazardEvent):
         epochStartTime = time.mktime(hazardEvent.getStartTime().timetuple())
@@ -389,9 +390,7 @@ class Product(HydroGenerator.Product):
     
     def _boundingStatement(self, hazardEvent):
         
-        boundingStatement = hazardEvent.getHazardAttributes().get('boundingStatement')
-        
-        return boundingStatement
+        return hazardEvent.getHazardAttributes().get('boundingStatement')
             
     def _states(self, hazardEvent):
         self._hazardZonesDict = hazardEvent.getHazardAttributes().get('hazardArea')
@@ -413,23 +412,19 @@ class Product(HydroGenerator.Product):
         self._convectiveSigmetDomain = hazardEvent.getHazardAttributes().get('convectiveSigmetDomain')
         hazardEvent.set('convectiveSigmetDomain', self._convectiveSigmetDomain) 
         convectiveSigmetDomainDict = {'East': 'E', 'Central': 'C', 'West': 'W'}
-        
-        domainStr = convectiveSigmetDomainDict[self._convectiveSigmetDomain]
                 
-        return domainStr
+        return convectiveSigmetDomainDict[self._convectiveSigmetDomain]
     
     def _mode(self, hazardEvent):
         convectiveSigmetModeDict = {'Polygon': 'AREA', 'LineString': 'LINE', 'Point': 'ISOL'}
-        modeStr = convectiveSigmetModeDict[self._geomType]
                 
-        return modeStr
+        return convectiveSigmetModeDict[self._geomType]
     
     def _modifier(self, hazardEvent):
         self._convectiveSigmetModifier = hazardEvent.getHazardAttributes().get('convectiveSigmetModifier')
         convectiveSigmetModifierDict = {'Developing': 'DVLPG ', 'Intensifying': 'INTSF ', 'Diminishing': 'DMSHG ', 'None': ''}
-        modifierStr = convectiveSigmetModifierDict[self._convectiveSigmetModifier]
                 
-        return modifierStr
+        return convectiveSigmetModifierDict[self._convectiveSigmetModifier]
     
     def _embedded(self, hazardEvent):
         self._convectiveSigmetWidth = str(hazardEvent.getHazardAttributes().get('convectiveSigmetWidth'))
@@ -511,13 +506,13 @@ class Product(HydroGenerator.Product):
     
     def _outlookStartTime(self, hazardEvent):
         outlookStartTime = time.mktime(hazardEvent.getEndTime().timetuple())
-        outlookStartTime = time.strftime('%d%H%M', time.gmtime(outlookStartTime))        
-        return outlookStartTime
+        
+        return time.strftime('%d%H%M', time.gmtime(outlookStartTime))
     
     def _outlookEndTime(self, hazardEvent):
         outlookEndTime = hazardEvent.getEndTime() + datetime.timedelta(hours=4)
-        outlookEndTime = outlookEndTime.strftime('%d%H%M')             
-        return outlookEndTime
+           
+        return outlookEndTime.strftime('%d%H%M') 
     
     def _outlookReferral(self, hazardEvent):
         return "REFER TO MOST RECENT ACUS01 KWNS FROM STORM PREDICTION CENTER FOR SYNOPSIS AND METEOROLOGICAL DETAILS."
@@ -551,6 +546,7 @@ class Product(HydroGenerator.Product):
         return 'None'
     
     def _outlook2Likelihood(self, hazardEvent):
+        
         return self.likelihoodDict[hazardEvent.get('convectiveSigmetOutlookLayerLikelihood2')]
     
     def _outlook3BoundingStatement(self, hazardEvent):
@@ -563,13 +559,14 @@ class Product(HydroGenerator.Product):
         return 'None'
     
     def _outlook3Likelihood(self, hazardEvent):
+        
         return self.likelihoodDict[hazardEvent.get('convectiveSigmetOutlookLayerLikelihood3')]
     
     def _createVisualFeatureGeomDict(self, hazardEvent):
         visualFeatureGeomDict = {}
         features = hazardEvent.getVisualFeatures()
         if not features:
-            vertices = self.geometry(hazardEvent)
+            vertices = self._geometry(hazardEvent)
             visualFeatureGeomDict = {'basePreview': vertices}
             
         for feature in features:

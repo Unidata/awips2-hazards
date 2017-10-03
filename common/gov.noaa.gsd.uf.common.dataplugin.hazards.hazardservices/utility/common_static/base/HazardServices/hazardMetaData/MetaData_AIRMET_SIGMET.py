@@ -9,11 +9,8 @@ import sys
 
 class MetaData(CommonMetaData.MetaData):
     
-    
     def AAWUinitialize(self, hazardEvent, metaDict):
         self.initialize(hazardEvent, metaDict)
-        
-        CommonMetaData.writelines(sys.stderr, ['Calling AIRMET_SIGMET', '\n'])
         
         self._flightLevels = [ "N/A", "SFC", "FL010", "FL020", "FL030", "FL040", "FL050",
                                     "FL060", "FL070", "FL080", "FL090", "FL100", "FL110",
@@ -2024,7 +2021,6 @@ class MetaData(CommonMetaData.MetaData):
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     
     import sys
-    CommonMetaData.writelines(sys.stderr, ['Hello World!\n'])
     
     if triggerIdentifiers is not None:
         for triggerIdentifier in triggerIdentifiers:
@@ -2050,7 +2046,6 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                                         
         ###CONTROLLING SERIES NAMES FOR INTERNATIONAL SIGMET BASED ON ORIGINATING OFFICE(MWO)###
         if "internationalSigmetOffice" in triggerIdentifiers:
-        #if (triggerIdentifiers is None) or ("internationalSigmetOffice" in triggerIdentifiers):
             if "KKCI" in mutableProperties["internationalSigmetOffice"]["values"]:
                 return {
                       "internationalSigmetSequence": {
@@ -2083,7 +2078,6 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
                 
         ###DISABLE EVERYTHING IF CHOOSING TO CANCEL INTERNATIONAL SIGMET###
         if "internationalSigmetCancellation" in triggerIdentifiers:
-        #if triggerIdentifiers is None or "internationalSigmetCancellation" in triggerIdentifiers:
             if mutableProperties["internationalSigmetCancellation"]["values"] == True:
                 return {
                         "internationalSigmetPhenomenonGroup": {
@@ -2099,7 +2093,6 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
       
         ###CONTROLLING LAYER OPTION FOR INTL SIGMET BASED ON VA SELECTION###
         if "internationalSigmetVALayersSpinner" in triggerIdentifiers:
-        #if triggerIdentifiers is None or "internationalSigmetVALayersSpinner" in triggerIdentifiers:
             if mutableProperties["internationalSigmetVALayersSpinner"]["values"] == 1:
                 return {
                         "internationalSigmetVALayer3": {
@@ -2301,13 +2294,10 @@ def applyInterdependencies(triggerIdentifiers, mutableProperties):
     seriesOverride = None
     if triggerIdentifiers:
         seriesOverride = {}
-        CommonMetaData.writelines(sys.stderr, [str(triggerIdentifiers),'\n=====\n'])
         for ti in triggerIdentifiers:
             if ti.find('AAWUSeriesOverride') >= 0:
-                CommonMetaData.writelines(sys.stderr, [str(mutableProperties.get('AAWUSeriesOverride')),'\n'])
                 val = mutableProperties.get('AAWUSeriesOverride')['values']
                 seriesOverride['AAWUAdvisorySeries'] = {"enable":val}
                 seriesOverride['AAWUAdvisoryNumber'] = {"enable":val}            
         
-    CommonMetaData.writelines(sys.stderr, ['Override:', str(seriesOverride), '\n\n'])
     return seriesOverride

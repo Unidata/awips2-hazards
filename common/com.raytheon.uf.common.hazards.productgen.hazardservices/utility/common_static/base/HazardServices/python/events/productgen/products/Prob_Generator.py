@@ -425,7 +425,7 @@ class Product(ProductTemplate.Product):
                 value = dialogInputMap.get(key)
                 # Some values may be lists e.g. calls to action
                 value = json.dumps(value)
-                ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], value)
+                ProductTextUtil.createOrUpdateProductText(key, '', '', '', [eventID], 'National', value)
         self.flush()
 
     def _addDialogInputMapToDict(self, dialogInputMap, productDict):

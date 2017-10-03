@@ -960,7 +960,7 @@
          <parameter>Prob_Convection.Thunderstorms</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="0.27" g="0.45" b="1.00" a="1.0"/>
+          <color r="0.75" g="0.91" b="0.75" a="1.0"/>
      </hazardStyle>
    </styleRule>
 
@@ -969,7 +969,7 @@
          <parameter>Prob_Convection.Marginal</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="0.69" g="0.48" b="1.00" a="1.0"/>
+          <color r="0.50" g="0.77" b="0.50" a="1.0"/>
      </hazardStyle>
    </styleRule>
 
@@ -978,7 +978,7 @@
          <parameter>Prob_Convection.Slight</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="0.52" g="0.27" b="0.80" a="1.0"/>
+          <color r="0.97" g="0.97" b="0.50" a="1.0"/>
      </hazardStyle>
    </styleRule>
 
@@ -987,7 +987,7 @@
          <parameter>Prob_Convection.Enhanced</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="0.00" g="0.66" b="0.84" a="1.0"/>
+          <color r="0.90" g="0.76" b="0.50" a="1.0"/>
      </hazardStyle>
    </styleRule>
    <styleRule>
@@ -995,7 +995,7 @@
          <parameter>Prob_Convection.Moderate</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="0.39" g="0.73" b="1.00" a="1.0"/>
+          <color r="0.90" g="0.50" b="0.50" a="1.0"/>
      </hazardStyle>
    </styleRule>
 
@@ -1004,7 +1004,7 @@
          <parameter>Prob_Convection.High</parameter>
       </paramLevelMatches>
       <hazardStyle>
-          <color r="0.48" g="0.00" b="0.73" a="1.0"/>
+          <color r="1.00" g="0.50" b="1.00" a="1.0"/>
      </hazardStyle>
    </styleRule>
 

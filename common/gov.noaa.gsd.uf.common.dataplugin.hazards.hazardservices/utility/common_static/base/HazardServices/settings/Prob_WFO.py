@@ -14,13 +14,9 @@
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
     #"eventIdDisplayType" : "PROG_ON_DIFF",
 
-
 Prob_WFO = {
     "settingsID" : "Prob_WFO",
-    "perspectiveIDs" : ["com.raytheon.viz.hydro.HydroPerspective",
-                        "com.raytheon.viz.mpe.ui.MPEPerspective",
-                        "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",
-                        "com.raytheon.viz.ui.GFEPerspective"],
+    "perspectiveIDs" : [],
 #     "perspectiveIDs" :  ["com.raytheon.viz.hydro.HydroPerspective",
 #                         "com.raytheon.viz.mpe.ui.MPEPerspective",
 #                         "com.raytheon.uf.viz.d2d.ui.perspectives.D2D5Pane",

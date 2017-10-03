@@ -2,22 +2,14 @@
 Utility for Aviation Products
 '''
 import shapely
-import EventFactory, EventSetFactory, GeometryFactory
+import GeometryFactory
 import AdvancedGeometry
 import numpy as np
 import datetime, math
 from math import sin, cos, sqrt, atan2, radians, pi
 import time
-import shapely.ops as so
-import os, sys
 import matplotlib
-from matplotlib import path as mPath
-from scipy import ndimage
 from shapely.geometry import Polygon
-from scipy.io import netcdf
-from collections import defaultdict
-from shutil import copy2
-import HazardDataAccess
 import TimeUtils
 from VisualFeatures import VisualFeatures
 import Domains
@@ -171,7 +163,7 @@ class AviationUtils:
         
         visualFeatures = event.getVisualFeatures()
         for feature in visualFeatures:
-            if 'base' in feature['identifier'] or 'hazardEvent' in feature['identifier']:
+            if 'base' in feature['identifier'] or 'hazardEvent' in feature['identifier'] or 'VOR' in feature['identifier']:
                 pass
             else:
                 selectedFeatures.append(feature)                 
@@ -218,6 +210,7 @@ class AviationUtils:
     
     def polygonArea(self, hazardEvent, geomType, width):
         hazGeometry = hazardEvent.getFlattenedGeometry()
+        
         try:
             for g in hazGeometry.geoms:
                     vertices = shapely.geometry.base.dump_coords(g)
@@ -544,7 +537,6 @@ class AviationUtils:
                 vertices = shapely.geometry.base.dump_coords(g)
             initialPoly = GeometryFactory.createPolygon(vertices)
           
-        #numPoints = 6
         tolerance = 0.001
         newPoly = initialPoly.simplify(tolerance, preserve_topology=True)
         while len(newPoly.exterior.coords) > numPoints:

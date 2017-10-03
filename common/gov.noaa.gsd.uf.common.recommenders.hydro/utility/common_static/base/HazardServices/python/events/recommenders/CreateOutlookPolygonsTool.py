@@ -1,19 +1,13 @@
 '''
 CreateOutlookPolygonsTool to attributes from copied hazard event and create new event.
 '''
-import datetime, math, TimeUtils
-import EventFactory, EventSetFactory, GeometryFactory
+import datetime, time, TimeUtils
+import GeometryFactory
 import RecommenderTemplate
 import logging, UFStatusHandler
-
-import time
 import shapely
 from shapely.geometry import Polygon
-import os, sys
 from VisualFeatures import VisualFeatures
-import Domains
-import AviationUtils
-import json
 import AdvancedGeometry
 
 class Recommender(RecommenderTemplate.Recommender):
@@ -64,11 +58,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential probabilistic hazard events. 
         '''
-        import sys
-        sys.stderr.write("Running Create Outlook Polygons Tool.\n")
-
-        sys.stderr.flush() 
-        
         for event in eventSet:
             if event.getHazardType() == 'SIGMET.Convective':
                 self.createConvectiveSigmetOutlook(event)
@@ -83,10 +72,33 @@ class Recommender(RecommenderTemplate.Recommender):
         startTime = hazardEvent.getStartTime().replace(second=0, microsecond=0)
         startTime = startTime - datetime.timedelta(hours=2)
         endTime = TimeUtils.roundDatetime(hazardEvent.getEndTime())
-          
+        
         vertices = hazardEvent.getFlattenedGeometry()
         vertices = shapely.geometry.base.dump_coords(vertices)
         vertices = vertices.pop()
+        
+        if hazardEvent.get('originalGeomType') == 'Polygon':  
+            pass
+        elif hazardEvent.get('originalGeomType') == 'LineString':
+            width = float(hazardEvent.get('convectiveSigmetWidth'))
+            widthDegree = width/60
+            buffer = []
+            
+            buffer.append((vertices[0][0]-(widthDegree),vertices[0][1]))
+            buffer.append((vertices[1][0]-(widthDegree),vertices[1][1]))
+            buffer.append((vertices[1][0]+(widthDegree),vertices[1][1]))
+            buffer.append((vertices[0][0]+(widthDegree),vertices[0][1]))
+            
+            vertices = buffer
+                                                        
+        else:
+            width = float(hazardEvent.get('convectiveSigmetWidth')/2)
+            buffer = []
+            buffer.append((vertices[0][0]-(widthDegree),vertices[0][1]))
+            buffer.append((vertices[0][0],vertices[0][1]-(widthDegree)))
+            buffer.append((vertices[0][0]+(widthDegree),vertices[0][1]))
+            buffer.append((vertices[0][0],vertices[0][1]+(widthDegree)))
+            vertices = buffer
   
         fcstVerticesDict = {}
           
@@ -109,22 +121,8 @@ class Recommender(RecommenderTemplate.Recommender):
               
         selectedFeatures = []
           
-        #basePoly = hazardEvent.getGeometry()
-        #basePoly = {
-        #    "identifier": "basePreview_" + eventID,
-        #    "visibilityConstraints": "always",
-        #    "dragCapability": "all",
-        #    "borderColor": "eventType",
-        #    "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
-        #    "geometry": {
-        #        (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime)): basePoly
-        #    }
-        #}
-        #selectedFeatures.append(basePoly) 
-          
         for i in range(0, numOutlooks):
-            poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(fcstVerticesDict['T+'+str((i+1)*3)+'hrs']), 0)
-            #featureName = 'Outlook'+str(i+1)            
+            poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(fcstVerticesDict['T+'+str((i+1)*3)+'hrs']), 0)          
             featureName = {
                 "identifier": 'Outlook'+str(i+1)+ eventID,
                 "dragCapability": "all",
@@ -138,8 +136,8 @@ class Recommender(RecommenderTemplate.Recommender):
             selectedFeatures.append(featureName)
             
         visualFeatures = hazardEvent.getVisualFeatures()
+        
         for feature in visualFeatures:
-            #print "feature: ", feature
             if "Outlook" in feature['identifier']:
                 pass
             else:

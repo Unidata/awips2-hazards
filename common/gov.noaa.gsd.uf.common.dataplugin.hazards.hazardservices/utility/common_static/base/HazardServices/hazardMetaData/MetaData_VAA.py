@@ -3,16 +3,14 @@
 '''
 import CommonMetaData
 import VolcanoMetaData
-import AviationUtils
 from HazardConstants import *
 from VisualFeatures import VisualFeatures
-import time, datetime
+import time
 
 class MetaData(CommonMetaData.MetaData):
     
     def execute(self, hazardEvent=None, metaDict=None):
         self.initialize(hazardEvent, metaDict)
-        
         hazardEvent.setVisualFeatures(VisualFeatures([]))
         
         volcanoDict = VolcanoMetaData.VolcanoMetaData().getVolcanoDict()
@@ -26,13 +24,13 @@ class MetaData(CommonMetaData.MetaData):
         metaData = [
             self.getAction(),
             self.getVolcanoName(volcanoNamesList),
+            self.getVolcanoProductType(),
             self.getVAANumber(),
             self.getVolcanoHeader(),
             self.getVolcanoStatus(),
             self.getEruptionDetails(),           
             self.getVolcanoLayers(),
             self.getInfoSource(volcanoIndicators),
-            self.getVolcanoProductType(),
             self.getConfidence(), 
             self.getCoordinatingVAAC(),            
             self.getRemarks(),
@@ -121,8 +119,7 @@ class MetaData(CommonMetaData.MetaData):
                 "label": "Eruption Details:",
                 "visibleChars": 40,
                 "lines": 1,
-                "expandHorizontally": True,
-                #"values": "VA ASSOCIATED WITH THE DD/HHmmZ ERUPTION."                            
+                "expandHorizontally": True,                           
                 }        
     def getVolcanoLayers(self):
         return {
@@ -344,28 +341,6 @@ class MetaData(CommonMetaData.MetaData):
                 "label": "Indicated By:",
                 "values": "avo",
                 "choices": indicators,
-#                 "choices": [
-#                             {"identifier": "himawari",
-#                              "displayString": "HIMAWARI"},
-#                             {"identifier": "goes",
-#                              "displayString": "GOES"},
-#                             {"identifier": "poes",
-#                              "displayString": "POES"},
-#                             {"identifier": "lightning",
-#                              "displayString": "LIGHTNING"},                            
-#                             {"identifier": "avo",
-#                              "displayString": "AVO"},
-#                             {"identifier": "kvert",
-#                              "displayString": "KVERT"},
-#                             {"identifier": "pilot",
-#                              "displayString": "PILOT REPORT"},
-#                             {"identifier": "radar",
-#                              "displayString": "RADAR"},
-#                             {"identifier": "ship",
-#                              "displayString": "SHIP REPORT"},
-#                             {"identifier": "webcam",
-#                              "displayString": "AVO WEBCAM"},                                                                                                                                                                                                                                                                                                                                                                                                                
-#                             ]
                 }
     def getConfidence(self):
         return {
@@ -423,7 +398,6 @@ class MetaData(CommonMetaData.MetaData):
 ## # Interdependency script entry point.
 def applyInterdependencies(triggerIdentifiers, megawidgetDict):    
     import sys
-    CommonMetaData.writelines(sys.stderr, ['VAA Interdependency Script Triggered\n'])
     
     nextAdvisoryTime = megawidgetDict["volcanoNextAdvisory"]["values"]      
                 
@@ -433,9 +407,6 @@ def applyInterdependencies(triggerIdentifiers, megawidgetDict):
                       "volcanoConfidence": {"enable": True},
                       "volcanoProductType": {"enable": True},
                       "volcanoCoordinatingVAAC": {"enable": True},
-                      "volcanoNextAdvisory": {"enable": True},
-                      "volcanoNextAdvisory": {"values": "WILL BE ISSUED BY YYYYMMDD/HHHHZ"}, # + self.nextAdvisoryTime + "Z"}, #{"values": nextAdvisoryTime},
-                      "volcanoRemarks": {"values": ""},
                       "volcanoLayersSpinner": {"enable": True},
                       "volcanoCreateVAALayers": {"enable": True},                
                       }
@@ -445,7 +416,7 @@ def applyInterdependencies(triggerIdentifiers, megawidgetDict):
            ("volcanoAction" in triggerIdentifiers) or ("volcanoProductType" in triggerIdentifiers) or \
            ("volcanoLayersSpinner" in triggerIdentifiers) or ("volcanoLayerForecast1" in triggerIdentifiers) or \
            ("volcanoLayerForecast2" in triggerIdentifiers) or ("volcanoLayerForecast3" in triggerIdentifiers) or \
-           ("volcanoCreateVAALayers" in triggerIdentifiers) or ("volcanoRemarks" in triggerIdentifiers):
+           ("volcanoCreateVAALayers" in triggerIdentifiers):
             ###RESUSPENDED ASH###
             if megawidgetDict["volcanoAction"]["values"] == 'Resuspended Ash':
                 returnDict["volcanoEruptionDetails"] = {"values": "RESUSPENDED VA"}
@@ -465,7 +436,7 @@ def applyInterdependencies(triggerIdentifiers, megawidgetDict):
                 returnDict["volcanoProductType"] = {"enable": False}
                 returnDict["volcanoConfidence"] = {"enable": False}
                 returnDict["volcanoCoordinatingVAAC"] = {"enable": False}
-                returnDict["volcanoNextAdvisory"] = {"values": "NO LATER THAN YYYYmmdd/HHMMZ"} #+updateTime}                
+                returnDict["volcanoNextAdvisory"] = {"values": "NO LATER THAN YYYYmmdd/HHMMZ"}                
                 returnDict["volcanoEruptionDetails"] = {"values": "VA ASSOCIATED WITH THE DD/HHmmZ ERUPTION."}
                 returnDict["volcanoRemarks"] = {"enable": False}
                 returnDict["volcanoRemarks"] = {"values": "A MORE DETAILED ADVISORY WILL FOLLOW AS SOON AS POSSIBLE."}

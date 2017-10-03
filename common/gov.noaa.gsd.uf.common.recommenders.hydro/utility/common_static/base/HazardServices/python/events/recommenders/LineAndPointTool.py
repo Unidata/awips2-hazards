@@ -1,18 +1,13 @@
 '''
 Line and Point Tool to generate polygons from line and point hazard events.
 '''
-import datetime, math, TimeUtils
-import EventFactory, EventSetFactory, GeometryFactory
+import datetime, time, TimeUtils
+import GeometryFactory
 import RecommenderTemplate
 import logging, UFStatusHandler
-
-import time
 import shapely
 from shapely.geometry import Polygon
-from inspect import currentframe, getframeinfo
-import os, sys
 from VisualFeatures import VisualFeatures
-import Domains
 import AviationUtils
 import AdvancedGeometry
 
@@ -78,6 +73,20 @@ class Recommender(RecommenderTemplate.Recommender):
         self._attribute = eventSetAttrs.get('attributeIdentifiers')
         eventIdentifiers = eventSetAttrs.get('eventIdentifiers')
         self._eventIdentifier = next(iter(eventIdentifiers)) if eventIdentifiers else None
+        
+        identifiers = list(eventSetAttrs.get('attributeIdentifiers'))
+        baseAttribute = False
+        hazardAttribute = False
+        for identifier in identifiers:
+            if 'hazardEvent' in identifier:
+                hazardAttribute = True
+            else:
+                pass
+            
+            if 'basePreview' in identifier:
+                baseAttribute = True
+            else:
+                pass
       
         changed = False
         for event in eventSet:
@@ -88,8 +97,32 @@ class Recommender(RecommenderTemplate.Recommender):
             vertices = self._getVertices(event)
             VOR_points = event.getHazardAttributes().get('VOR_points')
             
-            #for points and lines, calculate polygon and add visual feature
+            if self._originalGeomType == 'Polygon':
+                if self._trigger == 'hazardEventModification':
+                    self.addPolygonVisualFeatures(event)
+                if self._trigger == 'hazardEventVisualFeatureChange':
+                    if baseAttribute == False:
+                        self.addPolygonVisualFeatures(event)
+                    else:
+                        if hazardAttribute:
+                            self.addPolygonVisualFeatures(event)
+                        else: 
+                            changed = self._processEventModification(event, self._trigger, eventSetAttrs)    
             if self._originalGeomType != 'Polygon':
+                if self._trigger == 'hazardEventVisualFeatureChange':
+                    if baseAttribute ==  False:
+                        poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
+                        event.set('polygon', poly) 
+                        changed = (self.addVisualFeatures(event,poly) or changed)
+                        event.set('generated',True)
+                    else:
+                        if hazardAttribute:
+                            poly = AviationUtils.AviationUtils().createPolygon(vertices,self._width,self._originalGeomType)
+                            event.set('polygon', poly) 
+                            changed = (self.addVisualFeatures(event,poly) or changed)
+                            event.set('generated',True)                            
+                        else:
+                            changed = self._processEventModification(event, self._trigger, eventSetAttrs)                    
                 if self._trigger == 'hazardEventModification':
                     if event.get('generated'):
                         self._adjustForVisualFeatureChange(event, eventSetAttrs)                       
@@ -105,6 +138,89 @@ class Recommender(RecommenderTemplate.Recommender):
                 eventSet.add(event)                 
 
         return eventSet
+    
+    def addPolygonVisualFeatures(self,hazardEvent):
+        selectedFeatures = []
+        
+        features = hazardEvent.getVisualFeatures()
+        for feature in features:
+            if 'Outlook' in feature['identifier']:
+                selectedFeatures.append(feature)        
+                
+        startTime = hazardEvent.getStartTime().replace(second=0, microsecond=0)
+        startTime = startTime - datetime.timedelta(hours=2)
+        endTime = TimeUtils.roundDatetime(hazardEvent.getEndTime())
+        
+        VOR_points = hazardEvent.getHazardAttributes().get('VOR_points')
+        eventID = hazardEvent.getEventID()
+        
+        polygonArea = AviationUtils.AviationUtils().polygonArea(hazardEvent, self._originalGeomType, None)
+        domain = hazardEvent.getHazardAttributes().get('convectiveSigmetDomain')
+        direction = hazardEvent.getHazardAttributes().get('convectiveSigmetDirection')
+        speed = hazardEvent.getHazardAttributes().get('convectiveSigmetSpeed')
+        cloudTop = hazardEvent.getHazardAttributes().get('convectiveSigmetCloudTop')
+        cloudTopText = hazardEvent.getHazardAttributes().get('convectiveSigmetCloudTopText')        
+        
+        status = hazardEvent.getStatus()
+        if status == 'ISSUED':
+            area = str(polygonArea) + " sq mi"
+            numberStr = hazardEvent.getHazardAttributes().get('convectiveSigmetNumberStr')
+            number = "\n" + numberStr + domain[0] + "\n"
+        
+            if cloudTop == 'topsAbove':
+                tops = "\nAbove FL450"
+            elif cloudTop == 'topsTo':
+                tops = "\nTo FL " + str(cloudTopText)
+            
+            motion = "\n" + str(direction)+"@"+str(speed)+"kts"
+            label = number + area + tops + motion
+        else:
+            area = str(polygonArea) + " sq mi"
+            if cloudTop == 'topsAbove':
+                tops = "\nAbove FL450"
+            elif cloudTop == 'topsTo':
+                tops = "\nTo FL " + str(cloudTopText)
+            else:
+                tops = "\nN/A"
+            
+            motion = "\n" + str(direction)+"@"+str(speed)+" kts"                        
+            label = area + tops + motion
+        
+        poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(VOR_points), 0)
+        
+        basePoly = hazardEvent.getGeometry()
+                
+        fillColor = {"red": 130 / 255.0, "green": 0 / 255.0, "blue": 0 / 255.0, "alpha": 0.0 }
+        borderColor = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }
+                    
+        VORPoly = {
+            "identifier": "VORPreview_" + eventID,
+            "visibilityConstraints": "always",
+            "borderColor": "eventType",
+            "fillColor": fillColor,
+            "label": label,
+            "geometry": {
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): poly
+            }
+        }
+        
+        basePoly = {
+            "identifier": "basePreview_" + eventID,
+            "visibilityConstraints": "selected",
+            "dragCapability": "all",
+            "borderColor": borderColor, #"eventType",
+            "fillColor": {"red": 1, "green": 1, "blue": 1, "alpha": 0},
+            "geometry": {
+                (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): basePoly
+            }
+        }                    
+
+        selectedFeatures.append(basePoly)
+        selectedFeatures.append(VORPoly)
+        
+        hazardEvent.setVisualFeatures(VisualFeatures(selectedFeatures))    
+        
+        return True            
     
     def _processEventModification(self, event, trigger, eventSetAttrs):
         if not self._makeUpdates(event, trigger, eventSetAttrs):                                
@@ -122,6 +238,7 @@ class Recommender(RecommenderTemplate.Recommender):
         if not features: features = []
 
         identifiers = list(eventSetAttrs.get('attributeIdentifiers'))
+        
         if identifiers:
             changedIdentifier = list(eventSetAttrs.get('attributeIdentifiers'))[0]
         else:
@@ -129,13 +246,11 @@ class Recommender(RecommenderTemplate.Recommender):
 
         for feature in features:            
             if 'base' in feature["identifier"]:
-                
-            
                 featureIdentifier = feature.get('identifier')
                 # Find the feature that has changed
                 changedIdentifierList = ['convectiveSigmetWidth', 'convectiveSigmetDirection',
                                          'convectiveSigmetSpeed', 'convectiveSigmetCloudTop', 'convectiveSigmetCloudTopText', 'geometry']
-                if (featureIdentifier == changedIdentifier) or (changedIdentifier in changedIdentifierList and 'basePreview' in featureIdentifier):
+                if (featureIdentifier == changedIdentifier) or (changedIdentifier in changedIdentifierList and 'basePreview' in featureIdentifier) or ('basePreview' in changedIdentifier):
                     # Get feature polygon
                     polyDict = feature["geometry"]
                     for timeBounds, geometry in polyDict.iteritems():
@@ -166,11 +281,18 @@ class Recommender(RecommenderTemplate.Recommender):
         return vertices 
 
     def addVisualFeatures(self, event, points):
+        selectedFeatures = []
+        
+        features = event.getVisualFeatures()
+        for feature in features:
+            if 'Outlook' in feature['identifier']:
+                selectedFeatures.append(feature)        
+        
         startTime = event.getStartTime().replace(second=0, microsecond=0)
         startTime = startTime - datetime.timedelta(hours=1)
         endTime = TimeUtils.roundDatetime(event.getEndTime())
         eventID = event.getEventID()
-        selectedFeatures = []
+
         
         polygonArea = AviationUtils.AviationUtils().polygonArea(event, self._originalGeomType, self._width)
         label = AviationUtils.AviationUtils().createLabel(event, polygonArea)
@@ -178,8 +300,7 @@ class Recommender(RecommenderTemplate.Recommender):
         poly = AdvancedGeometry.createShapelyWrapper(GeometryFactory.createPolygon(points), 0)         
         
         basePoly = event.getGeometry()
-                
-        #borderColor = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 255 / 255.0, "alpha": 1.0 }  #white   
+                  
         borderColor = {"red": 255 / 255.0, "green": 255 / 255.0, "blue": 0 / 255.0, "alpha": 1.0 }  #yellow  
         
         hazardEventPoly = {
@@ -198,7 +319,6 @@ class Recommender(RecommenderTemplate.Recommender):
             "borderThickness": "eventType",
             "diameter": "eventType",
             "label": label,
-            #"borderColor": {"red": 255/255.0, "green": 255/255.0, "blue": 0/255.0, "alpha": 1}, #yellow
             "borderColor": {"red": 255/255.0, "green": 255/255.0, "blue": 255/255.0, "alpha": 1}, #white
             "geometry": {
                 (TimeUtils.datetimeToEpochTimeMillis(startTime), TimeUtils.datetimeToEpochTimeMillis(endTime) + 1000): basePoly
