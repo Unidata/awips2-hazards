@@ -41,7 +41,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * @version 1.0
  */
 @DynamicSerialize
-public class InteroperabilityRecordQueryRequest extends HazardEventQueryRequest {
+public class InteroperabilityRecordQueryRequest
+        extends HazardEventQueryRequest {
 
     /**
      * Creates a new InteroperabilityRecordQueryRequest

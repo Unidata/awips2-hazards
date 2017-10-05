@@ -22,7 +22,6 @@ package com.raytheon.uf.common.dataplugin.events.hazards.request;
 import java.util.List;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
@@ -32,38 +31,41 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * 4/5/2016     16577    Ben.Phillippe Initial creation
- * 5/3/2016     18193    Ben.Phillippe Replication of Hazard VTEC Records
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * 4/5/2016       16577    Ben.Phillippe Initial creation
+ * 5/3/2016       18193    Ben.Phillippe Replication of Hazard VTEC Records
+ * Oct 02, 2017   38506    Chris.Golden  Moved common elements to new superclass.
  * </pre>
  * 
  * @author bphillip
  * @version 1.0
  */
 @DynamicSerialize
-public class StoreHazardEventVtecRequest extends HazardRequest {
+public class StoreHazardEventVtecRequest extends ChangeHazardEventVtecRequest {
 
-    @DynamicSerializeElement
-    private List<Object> vtecList;
+    // Public Constructors
 
-    @DynamicSerializeElement
-    private boolean practice;
-
+    /**
+     * Construct an empty instance.
+     */
     public StoreHazardEventVtecRequest() {
 
-    }
-    
-    public StoreHazardEventVtecRequest(boolean practice){
-        super(practice);
-    }
-
-    public List<Object> getVtecList() {
-        return vtecList;
+        /*
+         * No action.
+         */
     }
 
-    public void setVtecList(List<Object> vtecList) {
-        this.vtecList = vtecList;
+    /**
+     * Construct a standard instance.
+     * 
+     * @param vtecRecords
+     *            VTEC records to store.
+     * @param practice
+     *            Flag indicating whether or not practice mode is in effect.
+     */
+    public StoreHazardEventVtecRequest(List<Object> vtecRecords,
+            boolean practice) {
+        super(vtecRecords, practice);
     }
 }

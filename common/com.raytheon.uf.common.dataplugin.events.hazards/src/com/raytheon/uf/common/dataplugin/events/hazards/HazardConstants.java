@@ -149,6 +149,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Sep 27, 2017 38072     Chris.Golden  Added issued attribute name, and recommender metadata
  *                                      constants for indicating whether or not dialog and/or
  *                                      spatial input is required.
+ * Oct 02, 2017 38506     Chris.Golden  Added GENERIC_PROPERTY constant.
  * </pre>
  * 
  * @author mnash
@@ -696,6 +697,8 @@ public final class HazardConstants {
      * session.
      */
     public static final String LOCALIZED_SITE_ID = "localizedSiteID";
+
+    public static final String GENERIC_PROPERTY = "property";
 
     public static final String GEOMETRY = "geometry";
 

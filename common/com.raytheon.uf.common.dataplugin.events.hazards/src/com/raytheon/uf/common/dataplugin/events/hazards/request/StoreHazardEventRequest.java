@@ -23,7 +23,6 @@ import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
@@ -33,54 +32,39 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Aug 20, 2015    6895    Ben.Phillippe Routing registry requests through request server
+ * Oct 02, 2017   38506    Chris.Golden  Moved common elements to new superclass.
  * </pre>
  * 
  * @author bphillip
  * @version 1.0
  */
 @DynamicSerialize
-public class StoreHazardEventRequest extends HazardRequest {
+public class StoreHazardEventRequest extends ChangeHazardEventRequest {
 
-    /** The hazard events to store */
-    @DynamicSerializeElement
-    private List<HazardEvent> events;
+    // Public Constructors
 
     /**
-     * Creates a new StoreHazardEventRequest
+     * Construct an empty instance.
      */
     public StoreHazardEventRequest() {
 
+        /*
+         * No action.
+         */
     }
 
     /**
-     * Creates a new StoreHazardEventRequest
+     * Construct a standard instance.
      * 
      * @param events
-     *            The events to store
+     *            Events to store.
      * @param practice
-     *            practice mode flag
+     *            Flag indicating whether or not practice mode is in effect.
      */
     public StoreHazardEventRequest(List<HazardEvent> events, boolean practice) {
-        super(practice);
-        this.events = events;
-    }
-
-    /**
-     * @return the events
-     */
-    public List<HazardEvent> getEvents() {
-        return events;
-    }
-
-    /**
-     * @param events
-     *            the events to set
-     */
-    public void setEvents(List<HazardEvent> events) {
-        this.events = events;
+        super(events, practice);
     }
 }

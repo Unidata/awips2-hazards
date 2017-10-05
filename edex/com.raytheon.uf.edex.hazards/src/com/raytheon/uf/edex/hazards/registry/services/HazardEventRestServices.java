@@ -27,13 +27,13 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.UriInfo;
 
-import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServicesUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.services.IHazardEventRestServices;
 import com.raytheon.uf.edex.registry.ebxml.dao.RegistryObjectDao;
+
+import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
 
 /**
  * 
@@ -67,11 +67,12 @@ public class HazardEventRestServices implements IHazardEventRestServices {
 
     }
 
+    @Override
     @GET
     @Produces("text/xml")
     @Path("executeQuery")
-    public String executeQuery(@Context
-    UriInfo info) throws HazardEventServiceException {
+    public String executeQuery(@Context UriInfo info)
+            throws HazardEventServiceException {
         return HazardEventServicesUtil.getHazardEventResponse(query(info));
     }
 
@@ -79,15 +80,15 @@ public class HazardEventRestServices implements IHazardEventRestServices {
     @GET
     @Produces("text/xml")
     @Path("getRegistryObjects")
-    public String getRegistryObjects(@Context
-    UriInfo info) throws HazardEventServiceException {
+    public String getRegistryObjects(@Context UriInfo info)
+            throws HazardEventServiceException {
         return HazardEventServicesUtil.getRegistryObjectResponse(query(info));
     }
 
     private List<RegistryObjectType> query(UriInfo info)
             throws HazardEventServiceException {
-        return dao.executeHQLQuery(HazardEventServicesUtil.createAttributeQuery(HazardEvent.class,info
-                .getQueryParameters()));
+        return dao.executeHQLQuery(HazardEventServicesUtil.createAttributeQuery(
+                HazardEvent.class, info.getQueryParameters(), null));
     }
 
     /**

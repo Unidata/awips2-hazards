@@ -19,28 +19,14 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.request;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import oasis.names.tc.ebxml.regrep.xsd.query.v4.QueryRequest;
-import oasis.names.tc.ebxml.regrep.xsd.query.v4.ResponseOptionType;
-import oasis.names.tc.ebxml.regrep.xsd.rim.v4.QueryType;
-import oasis.names.tc.ebxml.regrep.xsd.rim.v4.SlotType;
-import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServicesUtil;
-import com.raytheon.uf.common.registry.constants.CanonicalQueryTypes;
-import com.raytheon.uf.common.registry.constants.QueryLanguages;
-import com.raytheon.uf.common.registry.constants.QueryReturnTypes;
-import com.raytheon.uf.common.registry.ebxml.RegistryUtil;
+import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServicesUtil.IQueryParameterKeyGenerator;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -63,6 +49,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                      these requests so that the former do
  *                                      not carry extra serialized objects
  *                                      with them that are not needed.
+ * Oct 02, 2017 38506     Chris.Golden  Moved common elements into a new
+ *                                      superclass.
  * </pre>
  * 
  * @author bphillip
@@ -71,16 +59,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @XmlRootElement(name = "HazardEventQueryRequest")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
-public class HazardEventQueryRequest extends HazardRequest {
+public class HazardEventQueryRequest
+        extends HazardQueryRequest<HazardEventQueryRequest> {
 
     // Private Variables
-
-    /**
-     * List of query parameters.
-     */
-    @XmlElement
-    @DynamicSerializeElement
-    private List<HazardQueryParameter> queryParams = new ArrayList<HazardQueryParameter>();
 
     /**
      * Which categories of hazard events to include in the response.
@@ -106,14 +88,14 @@ public class HazardEventQueryRequest extends HazardRequest {
      * {@link #setInclude(Include)} may be invoked. If only the size of the set
      * of events being requested is needed,
      * {@link #setSizeOnlyRequired(boolean)} may be invoked.
-     * 
-     * ###### DO NOT USE ######
-     * 
-     * This should never be used as it may incorrectly default the practice
-     * flag. It is only included as it is required by JAXB.
+     * <p>
+     * <strong>Note</strong>: Do not use. This should never be used as it may
+     * incorrectly default the practice flag. It is only included as it is
+     * required by JAXB.
+     * </p>
      */
     public HazardEventQueryRequest() {
-        super(true);
+        super();
     }
 
     /**
@@ -163,10 +145,9 @@ public class HazardEventQueryRequest extends HazardRequest {
      * @param values
      *            Values for which to search under the key.
      */
-    public HazardEventQueryRequest(boolean practice, String key,
-            String operand, Object[] values) {
-        super(practice);
-        queryParams.add(new HazardQueryParameter(key, operand, values));
+    public HazardEventQueryRequest(boolean practice, String key, String operand,
+            Object[] values) {
+        super(practice, key, operand, values);
     }
 
     /**
@@ -185,17 +166,9 @@ public class HazardEventQueryRequest extends HazardRequest {
      * @param value
      *            Value for which to search under the key.
      */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public HazardEventQueryRequest(boolean practice, String key,
-            String operand, Object value) {
-        super(practice);
-        if (value instanceof Collection) {
-            Collection coll = (Collection) value;
-            queryParams.add(new HazardQueryParameter(key, "in", coll
-                    .toArray(new Object[coll.size()])));
-        } else {
-            queryParams.add(new HazardQueryParameter(key, operand, value));
-        }
+    public HazardEventQueryRequest(boolean practice, String key, String operand,
+            Object value) {
+        super(practice, key, operand, value);
     }
 
     /**
@@ -215,7 +188,7 @@ public class HazardEventQueryRequest extends HazardRequest {
      *            equality.
      */
     public HazardEventQueryRequest(boolean practice, String key, Object value) {
-        this(practice, key, "=", value);
+        super(practice, key, value);
     }
 
     /**
@@ -234,30 +207,12 @@ public class HazardEventQueryRequest extends HazardRequest {
      *            Values for which to search under the key when testing for the
      *            "in" relationship.
      */
-    public HazardEventQueryRequest(boolean practice, String key, Object[] values) {
-        this(practice, key, "in", values);
+    public HazardEventQueryRequest(boolean practice, String key,
+            Object[] values) {
+        super(practice, key, values);
     }
 
     // Public Methods
-
-    /**
-     * Get the query parameters.
-     * 
-     * @return Query parameters.
-     */
-    public List<HazardQueryParameter> getQueryParams() {
-        return queryParams;
-    }
-
-    /**
-     * Set the query parameters.
-     * 
-     * @param queryParams
-     *            Query parameters.
-     */
-    public void setQueryParams(List<HazardQueryParameter> queryParams) {
-        this.queryParams = queryParams;
-    }
 
     /**
      * Get the categories of hazard events to be included.
@@ -302,141 +257,17 @@ public class HazardEventQueryRequest extends HazardRequest {
         this.sizeOnlyRequired = sizeOnlyRequired;
     }
 
-    /**
-     * Concatenate a clause onto the query.
-     * 
-     * @param key
-     *            Parameter for which to search.
-     * @param operand
-     *            Comparison operand to use.
-     * @param values
-     *            Values for which to search under the key.
-     * @return This object.
-     */
-    public HazardEventQueryRequest and(String key, String operand,
-            Object... values) {
-        queryParams.add(new HazardQueryParameter(key, operand, values));
-        return this;
-    }
-
-    /**
-     * Concatenate a clause onto the query.
-     * 
-     * @param key
-     *            Parameter for which to search.
-     * @param operand
-     *            Comparison operand to use.
-     * @param value
-     *            Value for which to search under the key.
-     * @return This object.
-     */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public HazardEventQueryRequest and(String key, String operand, Object value) {
-        if (value instanceof Collection) {
-            Collection collection = (Collection) value;
-            queryParams.add(new HazardQueryParameter(key, "in", collection
-                    .toArray(new Object[collection.size()])));
-        } else {
-            queryParams.add(new HazardQueryParameter(key, operand, value));
-        }
-        return this;
-    }
-
-    /**
-     * Concatenate a clause onto the query assuming an equals (<code>=</code>)
-     * operand.
-     * 
-     * @param key
-     *            Parameter for which to search.
-     * @param value
-     *            Value for which to search under the key when testing for
-     *            equality.
-     * @return This object.
-     */
-    public HazardEventQueryRequest and(String key, Object value) {
-        return and(key, "=", value);
-    }
-
-    /**
-     * Concatenate a clause onto the query assuming an in (<code>in</code>)
-     * operand.
-     * 
-     * @param key
-     *            Parameter for which to search.
-     * @param values
-     *            Values for which to search under the key when testing for the
-     *            "in" relationship.
-     * @return This object.
-     */
-    public HazardEventQueryRequest and(String key, Object[] values) {
-        queryParams.add(new HazardQueryParameter(key, values));
-        return this;
-    }
-
-    /**
-     * Concatenate a clause onto the query assuming an in (<code>in</code>)
-     * operand.
-     * 
-     * @param key
-     *            Parameter for which to search.
-     * @param values
-     *            Values for which to search under the key when testing for the
-     *            "in" relationship.
-     * @return This object.
-     */
-    public HazardEventQueryRequest and(String key, Collection<Object> values) {
-        queryParams.add(new HazardQueryParameter(key, values
-                .toArray(new Object[values.size()])));
-        return this;
-    }
-
-    /**
-     * Get the registry query request.
-     * 
-     * @return Registry query request.
-     */
-    public QueryRequest getRegistryQueryRequest() {
-        String queryExpression = HazardEventServicesUtil.createAttributeQuery(
-                isPractice(), HazardEvent.class, this.queryParams);
-        QueryRequest queryRequest = new QueryRequest();
-        queryRequest.setId(RegistryUtil.generateRegistryObjectId());
-        ResponseOptionType responseOption = new ResponseOptionType();
-        responseOption.setReturnComposedObjects(true);
-        responseOption.setReturnType(QueryReturnTypes.REGISTRY_OBJECT);
-        QueryType query = new QueryType();
-        query.setQueryDefinition(CanonicalQueryTypes.ADHOC_QUERY);
-        query.getSlot().add(
-                new SlotType("queryLanguage", new StringValueType(
-                        QueryLanguages.HQL)));
-        query.getSlot().add(
-                new SlotType("queryExpression", new StringValueType(
-                        queryExpression)));
-        queryRequest.setQuery(query);
-        return queryRequest;
-    }
-
     @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        int i = 0;
-        for (HazardQueryParameter param : this.queryParams) {
-            builder.append(param);
-            if (i != this.queryParams.size() - 1) {
-                builder.append(" AND ");
-            }
-            i++;
-        }
-
-        return builder.toString();
+    public IQueryParameterKeyGenerator getQueryParameterKeyGenerator() {
+        return null;
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
-        int result = 1;
-        result = prime * result
-                + ((queryParams == null) ? 0 : queryParams.hashCode());
-        return result;
+        int result = prime * super.hashCode()
+                + ((include == null) ? 0 : include.hashCode());
+        return prime * result + (sizeOnlyRequired ? 1 : 0);
     }
 
     @Override
@@ -444,20 +275,24 @@ public class HazardEventQueryRequest extends HazardRequest {
         if (this == obj) {
             return true;
         }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
+        if (super.equals(obj) == false) {
             return false;
         }
         HazardEventQueryRequest other = (HazardEventQueryRequest) obj;
-        if (queryParams == null) {
-            if (other.queryParams != null) {
+        if (include == null) {
+            if (other.include != null) {
                 return false;
             }
-        } else if (!queryParams.equals(other.queryParams)) {
+        } else if (include.equals(other.include) == false) {
             return false;
         }
         return true;
+    }
+
+    // Protected Methods
+
+    @Override
+    protected Class<?> getTypeToBeQueried() {
+        return HazardEvent.class;
     }
 }

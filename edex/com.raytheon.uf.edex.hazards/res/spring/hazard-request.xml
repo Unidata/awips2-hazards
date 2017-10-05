@@ -29,7 +29,22 @@
 
 	<bean id="UpdateHazardEventHandler"
 		class="com.raytheon.uf.edex.hazards.handlers.UpdateHazardEventHandler" />
+		
+    <bean id="DeleteAllGenericRegistryObjectsHandler"
+        class="com.raytheon.uf.edex.hazards.handlers.DeleteAllGenericRegistryObjectsHandler" />
 
+    <bean id="DeleteGenericRegistryObjectHandler"
+        class="com.raytheon.uf.edex.hazards.handlers.DeleteGenericRegistryObjectHandler" />
+
+    <bean id="GenericRegistryObjectQueryHandler"
+        class="com.raytheon.uf.edex.hazards.handlers.GenericRegistryObjectQueryHandler" />
+
+    <bean id="StoreGenericRegistryObjectHandler"
+        class="com.raytheon.uf.edex.hazards.handlers.StoreGenericRegistryObjectHandler" />
+
+    <bean id="UpdateGenericRegistryObjectHandler"
+        class="com.raytheon.uf.edex.hazards.handlers.UpdateGenericRegistryObjectHandler" />
+        
 	<bean id="GetRegistryInfoHandler"
 		class="com.raytheon.uf.edex.hazards.handlers.GetRegistryInfoHandler" />
 		
@@ -103,7 +118,37 @@
 			value="com.raytheon.uf.common.dataplugin.events.hazards.request.UpdateHazardEventRequest" />
 		<constructor-arg ref="UpdateHazardEventHandler" />
 	</bean>
+	
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.dataplugin.events.hazards.request.DeleteAllGenericRegistryObjectsRequest" />
+        <constructor-arg ref="DeleteAllGenericRegistryObjectsHandler" />
+    </bean>
 
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.dataplugin.events.hazards.request.DeleteGenericRegistryObjectRequest" />
+        <constructor-arg ref="DeleteGenericRegistryObjectHandler" />
+    </bean>
+
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.dataplugin.events.hazards.request.GenericRegistryObjectQueryRequest" />
+        <constructor-arg ref="GenericRegistryObjectQueryHandler" />
+    </bean>
+
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.dataplugin.events.hazards.request.StoreGenericRegistryObjectRequest" />
+        <constructor-arg ref="StoreGenericRegistryObjectHandler" />
+    </bean>
+
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.dataplugin.events.hazards.request.UpdateGenericRegistryObjectRequest" />
+        <constructor-arg ref="UpdateGenericRegistryObjectHandler" />
+    </bean>
+    
 	<bean factory-bean="handlerRegistry" factory-method="register">
 		<constructor-arg
 			value="com.raytheon.uf.common.hazards.productgen.request.SpatialQueryRequest" />

@@ -77,7 +77,20 @@
         <property name="registryHandler" ref="registryHandler" />
         <property name="practice" value="true" />
     </bean>
+    
+    <bean id="GenericRegistryObjectServicesImpl"
+        class="com.raytheon.uf.edex.hazards.registry.services.GenericRegistryObjectServices">
+        <property name="dao" ref="registryObjectDao" />
+        <property name="registryHandler" ref="registryHandler" />
+        <property name="practice" value="false" />
+    </bean>
 
+    <bean id="PracticeGenericRegistryObjectServicesImpl"
+        class="com.raytheon.uf.edex.hazards.registry.services.GenericRegistryObjectServices">
+        <property name="dao" ref="registryObjectDao" />
+        <property name="registryHandler" ref="registryHandler" />
+        <property name="practice" value="true" />
+    </bean>
 	<bean id="BaseInteropService" abstract="true"
 		class="com.raytheon.uf.edex.hazards.interop.AbstractLegacyAppInteropSrv">
 		<property name="hazardNotifier" ref="HazardNotifier" />
@@ -97,6 +110,7 @@
 			<list>
 				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent</value>
 				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.vtec.HazardEventVtec</value>
+				<value>urn:oasis:names:tc:ebxml-regrep:ObjectType:RegistryObject:com.raytheon.uf.common.dataplugin.events.hazards.event.GenericRegistryObject</value>
 			</list>
 		</property>
 	</bean>

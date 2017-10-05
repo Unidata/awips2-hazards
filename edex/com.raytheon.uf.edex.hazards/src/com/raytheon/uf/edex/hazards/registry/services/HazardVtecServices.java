@@ -91,7 +91,7 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "storeVtec")
     public HazardEventVtecResponse storeVtec(
             @WebParam(name = "vtec") HazardEventVtec... vtec)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         return storeVtecList(Arrays.asList(vtec));
     }
 
@@ -99,29 +99,31 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "storeVtecList")
     public HazardEventVtecResponse storeVtecList(
             @WebParam(name = "vtec") List<HazardEventVtec> vtec)
-            throws HazardEventServiceException {
-        statusHandler.info("Creating " + vtec.size()
-                + " HazardEvent VTEC records: ");
+                    throws HazardEventServiceException {
+        statusHandler.info(
+                "Creating " + vtec.size() + " HazardEvent VTEC records: ");
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventVtecResponse response = new HazardEventVtecResponse();
         try {
             for (HazardEventVtec vtecRecord : vtec) {
                 vtecRecord.setPractice(this.practice);
-                response.addExceptions(registryHandler.storeOrReplaceObject(
-                        userName, vtecRecord).getErrors());
+                response.addExceptions(registryHandler
+                        .storeOrReplaceObject(userName, vtecRecord)
+                        .getErrors());
             }
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Storing Events", e);
         }
-        return HazardEventServicesUtil.checkResponse("STORE_VTEC", "Created "
-                + vtec.size() + " HazardEvents VTEC Records.", response);
+        return HazardEventServicesUtil.checkResponse("STORE_VTEC",
+                "Created " + vtec.size() + " HazardEvents VTEC Records.",
+                response);
     }
 
     @Override
     @WebMethod(operationName = "deleteVtec")
     public HazardEventVtecResponse deleteVtec(
             @WebParam(name = "vtec") HazardEventVtec... vtec)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         return deleteVtecList(Arrays.asList(vtec));
     }
 
@@ -129,26 +131,30 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "deleteVtecList")
     public HazardEventVtecResponse deleteVtecList(
             @WebParam(name = "vtec") List<HazardEventVtec> vtec)
-            throws HazardEventServiceException {
-        statusHandler.info("Deleting " + vtec.size()
-                + " HazardEvent VTEC records.");
+                    throws HazardEventServiceException {
+        statusHandler
+                .info("Deleting " + vtec.size() + " HazardEvent VTEC records.");
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventVtecResponse response = new HazardEventVtecResponse();
         try {
-            response.addExceptions(registryHandler.removeObjects(userName,
-                    new ArrayList<HazardEventVtec>(vtec)).getErrors());
+            response.addExceptions(
+                    registryHandler
+                            .removeObjects(userName,
+                                    new ArrayList<HazardEventVtec>(vtec))
+                            .getErrors());
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Deleting Events", e);
         }
-        return HazardEventServicesUtil.checkResponse("DELETE", "Deleted "
-                + vtec.size() + " HazardEvent VTEC records", response);
+        return HazardEventServicesUtil.checkResponse("DELETE",
+                "Deleted " + vtec.size() + " HazardEvent VTEC records",
+                response);
     }
 
     @Override
     @WebMethod(operationName = "deleteVtecByQuery")
     public HazardEventVtecResponse deleteVtecByQuery(
             @WebParam(name = "request") HazardEventQueryRequest request)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         statusHandler.info("Deleting VTEC records using query: " + request);
         HazardEventVtecResponse response = new HazardEventVtecResponse();
         HazardEventVtecResponse queryResponse = retrieveVtec(request);
@@ -171,19 +177,19 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "deleteAllVtec")
     public HazardEventVtecResponse deleteAllVtec()
             throws HazardEventServiceException {
-        statusHandler
-                .info("Deleting all HazardEvent VTEC records from the Registry");
+        statusHandler.info(
+                "Deleting all HazardEvent VTEC records from the Registry");
         HazardEventVtecResponse deleteAllResponse = new HazardEventVtecResponse();
         try {
-            HazardEventVtecResponse retrieveResponse = retrieveVtec(new HazardEventQueryRequest(
-                    practice));
+            HazardEventVtecResponse retrieveResponse = retrieveVtec(
+                    new HazardEventQueryRequest(practice));
 
             if (retrieveResponse.success()) {
                 if (retrieveResponse.getEvents().isEmpty()) {
                     deleteAllResponse.merge(retrieveResponse);
                 } else {
-                    HazardEventVtecResponse deleteResponse = deleteVtecList(retrieveResponse
-                            .getVtecRecords());
+                    HazardEventVtecResponse deleteResponse = deleteVtecList(
+                            retrieveResponse.getVtecRecords());
                     if (!deleteResponse.success()) {
                         deleteAllResponse.merge(deleteResponse);
                     }
@@ -193,8 +199,8 @@ public class HazardVtecServices implements IHazardVtecServices {
             }
 
         } catch (Throwable e) {
-            throw new HazardEventServiceException(
-                    "Error Deleting VTEC records", e);
+            throw new HazardEventServiceException("Error Deleting VTEC records",
+                    e);
         }
         return HazardEventServicesUtil.checkResponse("DELETE_ALL", "",
                 deleteAllResponse);
@@ -204,7 +210,7 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "updateVtec")
     public HazardEventVtecResponse updateVtec(
             @WebParam(name = "vtec") HazardEventVtec... vtec)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         return updateVtecList(Arrays.asList(vtec));
     }
 
@@ -212,29 +218,31 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "updateVtecList")
     public HazardEventVtecResponse updateVtecList(
             @WebParam(name = "vtec") List<HazardEventVtec> vtec)
-            throws HazardEventServiceException {
-        statusHandler.info("Updating " + vtec.size()
-                + " HazardEvent VTEC records: ");
+                    throws HazardEventServiceException {
+        statusHandler.info(
+                "Updating " + vtec.size() + " HazardEvent VTEC records: ");
         String userName = wsContext.getUserPrincipal().getName();
         HazardEventVtecResponse response = new HazardEventVtecResponse();
         try {
             for (HazardEventVtec vtecRecord : vtec) {
                 vtecRecord.setPractice(practice);
-                response.addExceptions(registryHandler.storeOrReplaceObject(
-                        userName, vtecRecord).getErrors());
+                response.addExceptions(registryHandler
+                        .storeOrReplaceObject(userName, vtecRecord)
+                        .getErrors());
             }
         } catch (Throwable e) {
             throw new HazardEventServiceException("Error Updating Events", e);
         }
-        return HazardEventServicesUtil.checkResponse("UPDATE", "Updated "
-                + vtec.size() + " HazardEvent VTEC records.", response);
+        return HazardEventServicesUtil.checkResponse("UPDATE",
+                "Updated " + vtec.size() + " HazardEvent VTEC records.",
+                response);
     }
 
     @Override
     @WebMethod(operationName = "retrieveVtecByParams")
     public HazardEventVtecResponse retrieveVtecByParams(
             @WebParam(name = "params") Object... params)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         HazardEventQueryRequest request = null;
         if (params.length == 0 || params.length % 3 != 0) {
             throw new IllegalArgumentException(
@@ -251,13 +259,14 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "retrieveVtec")
     public HazardEventVtecResponse retrieveVtec(
             @WebParam(name = "request") HazardEventQueryRequest request)
-            throws HazardEventServiceException {
-        statusHandler.info("Executing Query for HazardEvent VTEC Records:\n "
-                + request);
+                    throws HazardEventServiceException {
+        statusHandler.info(
+                "Executing Query for HazardEvent VTEC Records:\n " + request);
         HazardEventVtecResponse response = new HazardEventVtecResponse();
         try {
             String query = HazardEventServicesUtil.createAttributeQuery(
-                    practice, HazardEventVtec.class, request.getQueryParams());
+                    practice, HazardEventVtec.class, request.getQueryParams(),
+                    null);
             // Workaround to ensure unique results are returned
             response.setVtecRecords(HazardEventServicesUtil.getContentObjects(
                     (new LinkedHashSet(dao.executeHQLQuery(query))),
@@ -276,7 +285,7 @@ public class HazardVtecServices implements IHazardVtecServices {
     @WebMethod(operationName = "getHazardVtecTable")
     public HazardEventVtecResponse getHazardVtecTable(
             @WebParam(name = "officeID") String officeID)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         HazardEventVtecResponse response = new HazardEventVtecResponse();
         HazardEventQueryRequest queryRequest = new HazardEventQueryRequest(
                 practice);
@@ -284,7 +293,7 @@ public class HazardVtecServices implements IHazardVtecServices {
         try {
             String query = HazardEventServicesUtil.createAttributeQuery(
                     practice, HazardEventVtec.class,
-                    queryRequest.getQueryParams());
+                    queryRequest.getQueryParams(), null);
             // Workaround to ensure unique results are returned
             response.setVtecRecords(HazardEventServicesUtil.getContentObjects(
                     (new LinkedHashSet(dao.executeHQLQuery(query))),
@@ -295,7 +304,8 @@ public class HazardVtecServices implements IHazardVtecServices {
         }
         return (HazardEventVtecResponse) HazardEventServicesUtil.checkResponse(
                 "QUERY", "Retrieved " + response.getVtecRecords().size()
-                        + " HazardEvent VTEC Records.", response);
+                        + " HazardEvent VTEC Records.",
+                response);
     }
 
     public RegistryObjectDao getDao() {

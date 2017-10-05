@@ -22,7 +22,6 @@ package com.raytheon.uf.common.dataplugin.events.hazards.request;
 import java.util.List;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
  * 
@@ -32,56 +31,41 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 24, 2016 20037      Robert.Blum Initial Creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 24, 2016   20037    Robert.Blum  Initial creation.
+ * Oct 02, 2017   38506    Chris.Golden Moved common elements to new superclass.
  * </pre>
  * 
  * @author Robert.Blum
  * @version 1.0
  */
 @DynamicSerialize
-public class DeleteHazardEventVtecsRequest extends HazardRequest {
+public class DeleteHazardEventVtecsRequest
+        extends ChangeHazardEventVtecRequest {
 
-    /** List of Vtecs to be deleted from the registry */
-    @DynamicSerializeElement
-    private List<Object> vtecRecords;
+    // Public Constructors
 
     /**
-     * Creates a new DeleteHazardEventVtecsRequest
+     * Construct an empty instance.
      */
     public DeleteHazardEventVtecsRequest() {
 
+        /*
+         * No action.
+         */
     }
 
     /**
-     * Creates a new DeleteHazardEventVtecsRequest
+     * Construct a standard instance.
      * 
      * @param vtecRecords
-     *            List of vtecRecords to delete
+     *            VTEC records to delete.
      * @param practice
-     *            Practice mode flag
+     *            Flag indicating whether or not practice mode is in effect.
      */
     public DeleteHazardEventVtecsRequest(List<Object> vtecRecords,
             boolean practice) {
-        super(practice);
-        this.vtecRecords = vtecRecords;
+        super(vtecRecords, practice);
     }
-
-    /**
-     * @return the vtecRecords
-     */
-    public List<Object> getVtecRecords() {
-        return vtecRecords;
-    }
-
-    /**
-     * @param vtecRecords
-     *            the vtecRecords to set
-     */
-    public void setVtecRecords(List<Object> vtecRecords) {
-        this.vtecRecords = vtecRecords;
-    }
-
 }

@@ -16,7 +16,8 @@ Require-Bundle: com.raytheon.uf.common.serialization;bundle-version="1.14.2",
  com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  com.raytheon.uf.common.security;bundle-version="1.14.0",
  com.raytheon.uf.common.registry.ebxml;bundle-version="1.14.0",
- com.raytheon.uf.common.geospatial;bundle-version="1.14.2"
+ com.raytheon.uf.common.geospatial;bundle-version="1.14.2",
+ com.raytheon.uf.common.registry.schemas.ebxml
 Export-Package: com.raytheon.uf.common.dataplugin.hazards.interoperability,
  com.raytheon.uf.common.dataplugin.hazards.interoperability.registry,
  com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services,

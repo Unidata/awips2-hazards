@@ -30,9 +30,11 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.xml.bind.JAXBException;
 
 import com.raytheon.uf.common.dataplugin.events.ValidationException;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.GenericRegistryObject;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.vtec.HazardEventVtec;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter.HazardAttributeSlotConverter;
+import com.raytheon.uf.common.dataplugin.events.hazards.request.GenericRegistryObjectQueryRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardQueryParameter;
 import com.raytheon.uf.common.serialization.JAXBManager;
@@ -63,12 +65,33 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.StringValueType;
  *                                      from Richard Peter to improve query
  *                                      performance.
  * Feb 16, 2017 29138     Chris.Golden  Changed to work with new hazard event
+ * Oct 02, 2017 38506     Chris.Golden  Changed to include ability to
+ *                                      serialize and deserialize
+ *                                      {@link GenericRegistryObject}
+ *                                      instances and related objects.
  * </pre>
  * 
  * @author bphillip
  * @version 1.0
  */
 public class HazardEventServicesUtil {
+
+    /**
+     * Interface describing methods to be implemented by any classes acting as
+     * query parameter key converters. These are used to generate modified
+     * {@link HazardQueryParameter} keys.
+     */
+    public interface IQueryParameterKeyGenerator {
+
+        /**
+         * Transform the specified query parameter key..
+         * 
+         * @param queryParameterKey
+         *            Query parameter key to be transformed.
+         * @return Transformed key.
+         */
+        public String getTransformedParameterKey(String queryParameterKey);
+    }
 
     /** The logger */
     private static final IUFStatusHandler statusHandler = UFStatus
@@ -88,7 +111,10 @@ public class HazardEventServicesUtil {
         try {
             responseJaxb = new JAXBManager(HazardEvent.class,
                     HazardEventResponse.class, HazardEventQueryRequest.class,
-                    HazardQueryParameter.class, HazardEventVtec.class);
+                    HazardQueryParameter.class, HazardEventVtec.class,
+                    GenericRegistryObject.class,
+                    GenericRegistryObjectResponse.class,
+                    GenericRegistryObjectQueryRequest.class);
         } catch (JAXBException e) {
             throw new RuntimeException(
                     "Error constructing JAXB manager for Hazard Services!", e);
@@ -105,12 +131,19 @@ public class HazardEventServicesUtil {
     /**
      * Creates a slot query based on a map from a REST call
      * 
+     * @param clazz
+     *            Class for which the query is to search.
      * @param queryParameters
      *            The query parameters
+     * @param slotNameGenerator
+     *            Optional query parameter key generator. If specified, it is
+     *            used to generate modified parameter keys in place of any keys
+     *            provided in the <code>queryParameters</code>.
      * @return The constructed HQL query
      */
     public static String createAttributeQuery(Class<?> clazz,
-            MultivaluedMap<String, String> queryParameters) {
+            MultivaluedMap<String, String> queryParameters,
+            IQueryParameterKeyGenerator queryParameterKeyGenerator) {
         boolean practice = true;
         List<HazardQueryParameter> parameters = new ArrayList<HazardQueryParameter>(
                 queryParameters.size());
@@ -125,7 +158,8 @@ public class HazardEventServicesUtil {
 
             }
         }
-        return createAttributeQuery(practice, clazz, parameters);
+        return createAttributeQuery(practice, clazz, parameters,
+                queryParameterKeyGenerator);
     }
 
     /**
@@ -133,12 +167,19 @@ public class HazardEventServicesUtil {
      * 
      * @param practice
      *            If this is a practice mode query
+     * @param clazz
+     *            Class for which the query is to search.
      * @param queryParameters
      *            The query parameters
+     * @param slotNameGenerator
+     *            Optional query parameter key generator. If specified, it is
+     *            used to generate modified parameter keys in place of any keys
+     *            provided in the <code>queryParameters</code>.
      * @return The HQL query to execute
      */
     public static String createAttributeQuery(boolean practice, Class<?> clazz,
-            List<HazardQueryParameter> queryParameters) {
+            List<HazardQueryParameter> queryParameters,
+            IQueryParameterKeyGenerator queryParameterKeyGenerator) {
         queryParameters.add(new HazardQueryParameter("registryObjectClassName",
                 clazz.getName()));
         queryParameters.add(new HazardQueryParameter("practice", practice));
@@ -155,9 +196,18 @@ public class HazardEventServicesUtil {
                 whereClause.append(" and ");
             }
 
-            // add to where clause
-            whereClause.append(
-                    String.format(SLOT_CRITERIA_CLAUSE, i, parameter.getKey()));
+            /*
+             * Add to where clause, using the query parameter key generator if
+             * one was provided to transform the key, unless the parameters are
+             * one of the last two added above.
+             */
+            whereClause.append(String.format(SLOT_CRITERIA_CLAUSE, i,
+                    ((queryParameterKeyGenerator != null)
+                            && (i < queryParameters.size() - 2)
+                                    ? queryParameterKeyGenerator
+                                            .getTransformedParameterKey(
+                                                    parameter.getKey())
+                                    : parameter.getKey())));
             boolean addOr = false;
             for (Object val : parameter.getValues()) {
                 if (addOr) {

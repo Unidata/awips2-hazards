@@ -78,4 +78,29 @@
         </jaxws:outInterceptors>
     </jaxws:server>
 
+    <jaxws:server id="GenericRegistryObjectServices" address="/genericRegistryObjectServices"
+        bus="cxf">
+        <jaxws:serviceBean>
+            <ref bean="GenericRegistryObjectServicesImpl" />
+        </jaxws:serviceBean>
+        <jaxws:inInterceptors>
+            <ref bean="authenticationInterceptor" />
+        </jaxws:inInterceptors>
+        <jaxws:outInterceptors>
+            <ref bean="securityOutInterceptor" />
+        </jaxws:outInterceptors>
+    </jaxws:server>
+
+    <jaxws:server id="PracticeGenericRegistryObjectServices" address="/genericRegistryObjectServices/practice"
+        bus="cxf">
+        <jaxws:serviceBean>
+            <ref bean="PracticeGenericRegistryObjectServicesImpl" />
+        </jaxws:serviceBean>
+        <jaxws:inInterceptors>
+            <ref bean="authenticationInterceptor" />
+        </jaxws:inInterceptors>
+        <jaxws:outInterceptors>
+            <ref bean="securityOutInterceptor" />
+        </jaxws:outInterceptors>
+    </jaxws:server>
 </beans>

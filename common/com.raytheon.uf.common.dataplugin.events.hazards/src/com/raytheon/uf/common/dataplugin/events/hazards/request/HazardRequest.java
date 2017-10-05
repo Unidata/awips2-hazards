@@ -19,6 +19,11 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.request;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 
@@ -31,19 +36,22 @@ import com.raytheon.uf.common.serialization.comm.IServerRequest;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through request server
- * May 06, 2016 18202      Robert.Blum Changes for operational mode.
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Aug 20, 2015    6895    Ben.Phillippe Routing registry requests through request server.
+ * May 06, 2016   18202    Robert.Blum   Changes for operational mode.
+ * Oct 02, 2017   38506    Chris.Golden  Added equals() and hashCode() methods.
  * </pre>
  * 
  * @author bphillip
  * @version 1.0
  */
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.NONE)
 public abstract class HazardRequest implements IServerRequest {
 
     /** Practice mode flag */
+    @XmlElement
     @DynamicSerializeElement
     protected boolean practice;
 
@@ -51,7 +59,6 @@ public abstract class HazardRequest implements IServerRequest {
      * Creates a new HazardRequest
      */
     protected HazardRequest() {
-
     }
 
     /**
@@ -83,4 +90,25 @@ public abstract class HazardRequest implements IServerRequest {
         this.practice = practice;
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (practice ? 1 : 0);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        if (practice != ((HazardRequest) obj).practice) {
+            return false;
+        }
+        return true;
+    }
 }

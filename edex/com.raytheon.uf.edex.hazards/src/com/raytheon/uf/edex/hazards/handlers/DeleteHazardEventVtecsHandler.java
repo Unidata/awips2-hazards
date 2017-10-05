@@ -53,16 +53,16 @@ import com.raytheon.uf.common.serialization.comm.IRequestHandler;
  * @author Robert.Blum
  * @version 1.0
  */
-public class DeleteHazardEventVtecsHandler implements
-        IRequestHandler<DeleteHazardEventVtecsRequest> {
+public class DeleteHazardEventVtecsHandler
+        implements IRequestHandler<DeleteHazardEventVtecsRequest> {
 
     @SuppressWarnings("unchecked")
     @Override
     public HazardEventResponse handleRequest(
             DeleteHazardEventVtecsRequest request)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         boolean practice = request.isPractice();
-        List<Object> vtecList = request.getVtecRecords();
+        List<Object> vtecList = request.getVtecList();
         List<HazardEventVtec> vtecRecords = new ArrayList<>(vtecList.size());
         for (Object vtecEntry : vtecList) {
             Map<String, Object> vtecMap = (HashMap<String, Object>) vtecEntry;
