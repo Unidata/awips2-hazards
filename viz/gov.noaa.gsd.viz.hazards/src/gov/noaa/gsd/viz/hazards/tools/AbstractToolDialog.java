@@ -132,8 +132,10 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                           manager.
  * Aug 15, 2017  22757     Chris.Golden      Refactored to become an abstract base class
  *                                           for all tool dialogs.
- * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender
+ * Sep 27, 2017  38072     Chris.Golden      Changed to work with new recommender
  *                                           manager.
+ * Oct 10, 2017  39151     Chris Golden      Changed to handle new parameter for
+ *                                           megawidget manager constructor.
  * </pre>
  * 
  * @author Chris.Golden
@@ -431,7 +433,7 @@ abstract class AbstractToolDialog extends BasicDialog {
                         }
 
                     }, minVisibleTime, maxVisibleTime, currentTimeProvider,
-                    sideEffectsApplier);
+                    sideEffectsApplier, null);
         } catch (MegawidgetException e) {
             statusHandler
                     .error("ToolDialog.createDialogArea(): Unable to create megawidget "

@@ -2173,7 +2173,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldType": "Button",
                         "fieldName": "automateAllButton",
                         "label": "Automate All",
-                        "enable": enableAutomated,
+                        "editable": enableAutomated,
                         },
                         self.getModifyButton(activateModify),
                         self.getCancelButton(),
@@ -2181,7 +2181,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldType": "Button",
                         "fieldName": "automateNoneButton",
                         "label": "Automate None",
-                        "enable": enableAutomated,
+                        "editable": enableAutomated,
                         },
                         
                        ]
@@ -2205,7 +2205,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "sendEveryChange": False,
             "values": geometryAutomated,
             "modifyRecommender": 'SwathRecommender',
-            "enable": enableAutomated,
+            "editable": enableAutomated,
             }
     
     def getModifyButton(self, enable):               
@@ -2213,7 +2213,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldType": "Button",
             "fieldName": "modifyButton",
             "label": "     MODIFY     ",
-            "enable": enable,
+            "editable": enable,
             "modifyRecommender": 'SwathRecommender',
         }        
         return grp
@@ -2227,7 +2227,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldType": "Button",
             "fieldName": "cancelButton",
             "label": "*** End Object ***",
-            "enable": enable,
+            "editable": enable,
             "modifyRecommender": 'SwathRecommender',
         }
         return grp
@@ -2257,7 +2257,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "label": "Automate Motion Vector",
                         "values": False,
                         "modifyRecommender": recommender,
-                        "enable": enableAutomated,
+                        "editable": enableAutomated,
                         },
                        {
                         "fieldType": "CheckBox",
@@ -2274,7 +2274,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "label": "Reset Motion Vector",
                         "values": False,
                         "modifyRecommender": recommender,
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "IntegerSpinner",
@@ -2287,7 +2287,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "incrementDelta": 5,
                         "showScale": False,
                         "modifyRecommender": recommender,
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "IntegerSpinner",
@@ -2300,7 +2300,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "values": int(wspd),
                         "showScale": False,
                         "modifyRecommender": recommender,
-                        "enable": enable,
+                        "editable": enable,
                         },
                        {
                         "fieldType": "IntegerSpinner",
@@ -2313,7 +2313,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "incrementDelta": 5,
                         "showScale": False,
                         "modifyRecommender": recommender,
-                        "enable": enable,
+                        "editable": enable,
                         },
                        {
                         "fieldType": "IntegerSpinner",
@@ -2326,7 +2326,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "values": self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectSpdKtsUnc'),
                         "showScale": False,
                         "modifyRecommender": recommender,
-                        "enable": enable,
+                        "editable": enable,
                         },
                        ]
         }        
@@ -2349,7 +2349,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "expandHorizontally": False,
             "width":2,
             "modifyRecommender": recommender,
-            "enable": enable,
+            "editable": enable,
         }
         
         return presets
@@ -2384,7 +2384,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "label": "Automate Probability",
                         "values": False,
                         "modifyRecommender": recommender,
-                        "enable": enableAutomated,
+                        "editable": enableAutomated,
                         },
                         {
                         "fieldType": "Label",
@@ -2395,43 +2395,43 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendDraw",
                         "label": "Draw",
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendLinear",
                         "label": "Linear",
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendExp1",
                         "label": "Exp1",
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendExp2",
                         "label": "Exp2",
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendBell",
                         "label": "Bell",
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendPlus5",
                         "label": "+5",
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendMinus5",
                         "label": "-5",
-                        "enable": enable,
+                        "editable": enable,
                         },
                         {
                         "fieldType": "Graph",
@@ -2450,7 +2450,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "width": 9,
                         "yColors": colors,
                         "values": graphProbs,
-                        "enable": enable,
+                        "editable": enable,
                         },
 
                         {
@@ -2495,7 +2495,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "lines": 5,
             "expandHorizontally": False,
             "promptText": "(Enter discussion here...)",
-            "enable": enable,
+            "editable": enable,
         }
         return text
 
@@ -2529,7 +2529,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "label": "Storm Characteristics (included in discussion)",
             "numColumns":3,
             "fields": [windType, hailType, tornType],
-            "enable": enable,
+            "editable": enable,
             }
 
         
@@ -2549,7 +2549,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "choices": choices,
             "values": values,
             "expandHorizontally": False,
-            "enable": enable,
+            "editable": enable,
         }        
         return chars        
 
@@ -2662,6 +2662,14 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     print "\n*****************\nCM applyConvective called"
     print 'triggerIdentifiers', triggerIdentifiers
     returnDict = {}
+
+    # Ensure that no matter what else, the time range megawidget is made editable or read-only
+    # as appropriate. 
+    editableTimeRange = False
+    if "activate" in mutableProperties:
+        editableTimeRange = mutableProperties["activate"].get("values", False)
+    returnDict["__startTime__:__endTime__"] = { "editable": editableTimeRange }
+    
     modifyButtonChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'modifyButton' in triggerIdentifiers 
     print "modifyButtonChosen", modifyButtonChosen
     os.sys.__stdout__.flush()
@@ -2672,8 +2680,9 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         for key in ["resetMotionVector", "convectiveProbTrendDraw",
                 "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
                 "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
-                "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn"]:
-            returnDict[key] = {'enable' : activate}
+                "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn",
+                "__startTime__:__endTime__"]:
+            returnDict[key] = {'editable' : activate}
                 
         manuallyCreatedStatus = mutableProperties.get('manuallyCreatedStatus', {})
         manuallyCreated = manuallyCreatedStatus.get('values') # Should always be present
@@ -2683,13 +2692,13 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                 print "\nCM-Interdependency-set", activate, activateModify
                 sys.stdout.flush()
 
-                returnDict[key] = {'enable' : activate}
+                returnDict[key] = {'editable' : activate}
         for key in ["convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", 
                 "convectiveObjectSpdKtsUnc"]:
             # Enable these if geometryAutomated is off i.e. the user owns the mechanics
-            returnDict[key] = {'enable': activate}                
+            returnDict[key] = {'editable': activate}                
 
-        returnDict['modifyButton'] = {'enable' : activateModify}
+        returnDict['modifyButton'] = {'editable' : activateModify}
         return returnDict
 
     if triggerIdentifiers and 'automateAllButton' in triggerIdentifiers:

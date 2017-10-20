@@ -7,18 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
-import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
-import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +28,18 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+
+import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
+import gov.noaa.gsd.viz.hazards.ui.BasicDialog;
+import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 
 /**
  * Description: Product staging dialog, used to stage products that are to be
@@ -94,7 +94,9 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                     manager listener.
  * Aug 12, 2015   4123     Chris.G.    Changed to work with latest version of
  *                                     megawidget manager listener.
- * Feb 24, 2016   13929    Robert.Blum Remove first part of staging dialog.
+ * Feb 24, 2016  13929     Robert.Blum Remove first part of staging dialog.
+ * Oct 10, 2017  39151     Chris G.    Changed to handle new parameter for megawidget
+ *                                     manager constructor.
  * </pre>
  * 
  * @author shouming.wei
@@ -204,8 +206,7 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
      *            Maximum visible time for any widgets displaying time
      *            graphically.
      */
-    public void initialize(
-            List<String> productNames,
+    public void initialize(List<String> productNames,
             Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames,
             long minimumVisibleTime, long maximumVisibleTime) {
         this.productNames = productNames;
@@ -277,12 +278,14 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-        boolean okLeft = (Display.getDefault().getDismissalAlignment() == SWT.LEFT);
-        createButton(parent, (okLeft ? IDialogConstants.OK_ID
-                : IDialogConstants.CANCEL_ID), (okLeft ? OK_BUTTON_TEXT
-                : IDialogConstants.CANCEL_LABEL), okLeft);
-        createButton(parent, (okLeft ? IDialogConstants.CANCEL_ID
-                : IDialogConstants.OK_ID),
+        boolean okLeft = (Display.getDefault()
+                .getDismissalAlignment() == SWT.LEFT);
+        createButton(parent,
+                (okLeft ? IDialogConstants.OK_ID : IDialogConstants.CANCEL_ID),
+                (okLeft ? OK_BUTTON_TEXT : IDialogConstants.CANCEL_LABEL),
+                okLeft);
+        createButton(parent,
+                (okLeft ? IDialogConstants.CANCEL_ID : IDialogConstants.OK_ID),
                 (okLeft ? IDialogConstants.CANCEL_LABEL : OK_BUTTON_TEXT),
                 !okLeft);
     }
@@ -296,8 +299,8 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                         Display.getDefault().getSystemCursor(SWT.CURSOR_WAIT));
             }
             buttonInvocationHandler
-                    .commandInvoked(buttonId == IDialogConstants.OK_ID ? Command.CONTINUE
-                            : Command.CANCEL);
+                    .commandInvoked(buttonId == IDialogConstants.OK_ID
+                            ? Command.CONTINUE : Command.CANCEL);
         }
     }
 
@@ -322,10 +325,10 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                     size.y = height;
                 }
             } catch (NumberFormatException e) {
-                statusHandler.debug("Bad dialog size ("
-                        + settings.get(DIALOG_WIDTH) + ","
-                        + settings.get(DIALOG_HEIGHT)
-                        + "); using default values.");
+                statusHandler
+                        .debug("Bad dialog size (" + settings.get(DIALOG_WIDTH)
+                                + "," + settings.get(DIALOG_HEIGHT)
+                                + "); using default values.");
                 size = minimumSize;
             }
         }
@@ -369,7 +372,8 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
 
                             @Override
                             public void commandInvoked(
-                                    MegawidgetManager manager, String identifier) {
+                                    MegawidgetManager manager,
+                                    String identifier) {
 
                                 /*
                                  * No action; interdependencies script may react
@@ -429,11 +433,11 @@ class ProductStagingDialog extends BasicDialog implements IProductStagingView {
                                                 + "apply megawidget interdependencies: "
                                                 + exception, exception);
                             }
-                        }, minimumVisibleTime, maximumVisibleTime);
+                        }, null, minimumVisibleTime, maximumVisibleTime);
                 megawidgetManagers.add(megawidgetManager);
             } catch (MegawidgetException e) {
-                statusHandler.error(
-                        "unexpected problem creating metadata megawidgets for product "
+                statusHandler
+                        .error("unexpected problem creating metadata megawidgets for product "
                                 + productName + ": " + e, e);
             }
             tabItem.setControl(composite);

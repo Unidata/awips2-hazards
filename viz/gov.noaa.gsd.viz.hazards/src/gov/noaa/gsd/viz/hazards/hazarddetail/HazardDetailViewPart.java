@@ -12,8 +12,10 @@ package gov.noaa.gsd.viz.hazards.hazarddetail;
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +58,7 @@ import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
+import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailView.TimeRangeBoundary;
 import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
 import gov.noaa.gsd.viz.megawidgets.CheckBoxMegawidget;
 import gov.noaa.gsd.viz.megawidgets.ComboBoxMegawidget;
@@ -68,6 +71,7 @@ import gov.noaa.gsd.viz.megawidgets.IControlSpecifier;
 import gov.noaa.gsd.viz.megawidgets.IMegawidget;
 import gov.noaa.gsd.viz.megawidgets.IMegawidgetManagerListener;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
+import gov.noaa.gsd.viz.megawidgets.ISideEffectsProcessor;
 import gov.noaa.gsd.viz.megawidgets.ISingleLineSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.IStateChangeListener;
@@ -263,6 +267,8 @@ import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
  *                                           snapshots of events, so that the view may
  *                                           display such snapshots differently from the
  *                                           way it displays current events.
+ * Oct 10, 2017  39151     Chris.Golden      Changed to allow interdependency scripts to
+ *                                           alter the editability of time megawidgets.
  * </pre>
  * 
  * @author Chris.Golden
@@ -777,6 +783,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart
     private StackLayout metadataPanelLayout;
 
     /**
+     * Hazard event version identifiers for which the time megawidgets are
+     * currently read-only due to the presenter.
+     */
+    private final Set<Pair<String, Integer>> eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToPresenter = new HashSet<>();
+
+    /**
+     * Hazard event version identifiers for which the time megawidgets are
+     * currently read-only due to side effects scripts.
+     */
+    private final Set<Pair<String, Integer>> eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts = new HashSet<>();
+
+    /**
      * Map of hazard event version identifiers to their metadata megawidgets'
      * display settings; the latter are recorded whenever a metadata megawidget
      * manager is destroyed.
@@ -814,6 +832,100 @@ public class HazardDetailViewPart extends DockTrackingViewPart
      * Flag indicating whether or not to include Issue button
      */
     private boolean includeIssueButton;
+
+    /**
+     * Megawidget side effects pre/postprocessor that allows interdependency
+     * scripts to change the editability of time megawidgets.
+     */
+    private final ISideEffectsProcessor sideEffectsProcessor = new ISideEffectsProcessor() {
+
+        @Override
+        public Map<String, Map<String, Object>> preprocessSideEffects(
+                Collection<String> triggerIdentifiers,
+                Map<String, Map<String, Object>> mutableProperties) {
+
+            /*
+             * Ensure that there is a visible event.
+             */
+            if ((isAlive() == false)
+                    || (visibleEventVersionIdentifier == null)) {
+                return mutableProperties;
+            }
+
+            /*
+             * Create a mutable properties map holding a single entry,
+             * indicating the editability of the time range megawidgets, and add
+             * it to the overall mutable properties map.
+             */
+            Map<String, Object> megawidgetProperties = new HashMap<>(1, 1.0f);
+            megawidgetProperties.put(IControlSpecifier.MEGAWIDGET_EDITABLE,
+                    (eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts
+                            .contains(visibleEventVersionIdentifier) == false));
+            mutableProperties.put(TIME_RANGE_IDENTIFIER, megawidgetProperties);
+            return mutableProperties;
+        }
+
+        @Override
+        public Map<String, Map<String, Object>> postprocessSideEffects(
+                Collection<String> triggerIdentifiers,
+                Map<String, Map<String, Object>> mutableProperties) {
+
+            /*
+             * Remove any time-range-megawidget-related mutable properties map,
+             * and examine it; if it was not found, or it does not contain an
+             * editability entry, or there is no visible event, just return the
+             * remaining mutable properties.
+             */
+            Map<String, Object> megawidgetProperties = mutableProperties
+                    .remove(TIME_RANGE_IDENTIFIER);
+            if ((megawidgetProperties == null)
+                    || (megawidgetProperties.containsKey(
+                            IControlSpecifier.MEGAWIDGET_EDITABLE) == false)
+                    || (visibleEventVersionIdentifier == null)) {
+                return mutableProperties;
+            }
+
+            /*
+             * Determine what the editability for the time range megawidgets is
+             * to be based upon the extracted mutable property.
+             */
+            Object newEditableObj = megawidgetProperties
+                    .get(IControlSpecifier.MEGAWIDGET_EDITABLE);
+            boolean newEditable = false;
+            if (newEditableObj instanceof Boolean) {
+                newEditable = (Boolean) newEditableObj;
+            } else if (newEditableObj instanceof Number) {
+                newEditable = !(((Number) newEditableObj).doubleValue() == 0.0);
+            } else {
+                return mutableProperties;
+            }
+
+            /*
+             * If the editability has changed, remember the change, and
+             * configure the time range megawidgets accordingly.
+             */
+            boolean oldEditable = (eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts
+                    .contains(visibleEventVersionIdentifier) == false);
+            if (newEditable != oldEditable) {
+                if (newEditable) {
+                    eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts
+                            .remove(visibleEventVersionIdentifier);
+                } else {
+                    eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts
+                            .add(visibleEventVersionIdentifier);
+                }
+                boolean editable = (newEditable
+                        && (eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToPresenter
+                                .contains(
+                                        visibleEventVersionIdentifier) == false));
+                for (MultiTimeMegawidget megawidget : timeMegawidgets) {
+                    megawidget.setEditable(editable);
+                }
+                setEndTimeUntilFurtherNoticeEditableState(editable);
+            }
+            return mutableProperties;
+        }
+    };
 
     /**
      * <p>
@@ -1212,7 +1324,18 @@ public class HazardDetailViewPart extends DockTrackingViewPart
         @Override
         public void setEditable(Pair<String, Integer> identifier,
                 boolean editable) {
+            if (editable) {
+                eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToPresenter
+                        .remove(identifier);
+            } else {
+                eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToPresenter
+                        .add(identifier);
+            }
             if (isAlive() && identifier.equals(visibleEventVersionIdentifier)) {
+                editable = (editable
+                        && (eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts
+                                .contains(
+                                        visibleEventVersionIdentifier) == false));
                 for (MultiTimeMegawidget megawidget : timeMegawidgets) {
                     megawidget.setEditable(editable);
                 }
@@ -2940,7 +3063,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                                                     + "while attempting to apply megawidget interdependencies: "
                                                     + exception, exception);
                                 }
-                            }, minimumVisibleTime, maximumVisibleTime);
+                            }, sideEffectsProcessor, minimumVisibleTime,
+                            maximumVisibleTime);
                     if (editable == false) {
                         megawidgetManager.setEditable(false);
                     }
@@ -3188,7 +3312,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart
         }
         if (metadataIdentifier.equals(
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
-            setEndTimeUntilFurtherNoticeEditableState(editable);
+            setEndTimeUntilFurtherNoticeEditableState(
+                    (eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts
+                            .contains(eventVersionIdentifier) == false)
+                            && editable);
         } else {
 
             /*

@@ -9,9 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
-import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +25,9 @@ import org.eclipse.swt.widgets.Widget;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
 
 /**
  * <p>
@@ -147,12 +147,14 @@ import com.google.common.collect.Maps;
  *                                           megawidgets.
  * Jul 23, 2015    4245     Chris.Golden     Added notifications of visible time range
  *                                           changes.
- * Aug 12, 2015    4123    Chris.Golden      Changed to work with latest version
+ * Aug 12, 2015    4123     Chris.Golden     Changed to work with latest version
  *                                           of megawidget manager listener.
- * Oct 04, 2016   22736    Chris.Golden      Added method allowing an interdependency
+ * Oct 04, 2016   22736     Chris.Golden     Added method allowing an interdependency
  *                                           script to be reinitialized explicitly.
- * Feb 03, 2017   15556    Chris.Golden      Added ability to set entire manager's
+ * Feb 03, 2017   15556     Chris.Golden     Added ability to set entire manager's
  *                                           editability.
+ * Oct 10, 2017   39151     Chris Golden     Added use of a side effects processor, if
+ *                                           one is supplied at construction time.
  * </pre>
  * 
  * @author Chris.Golden
@@ -232,6 +234,12 @@ public class MegawidgetManager {
     private ISideEffectsApplier sideEffectsApplier;
 
     /**
+     * Side effects pre- and/or postprocessor, or <code>null</code> if there is
+     * no processor to be applied.
+     */
+    private ISideEffectsProcessor sideEffectsProcessor;
+
+    /**
      * Flag indicating whether or not the managed megawidgets are currently
      * enabled.
      */
@@ -276,9 +284,11 @@ public class MegawidgetManager {
              */
             if ((sideEffectsApplier != null)
                     && ((megawidget instanceof IStateful) == false)) {
-                applySideEffects(Lists.newArrayList(megawidget.getSpecifier()
-                        .getIdentifier()
-                        + (subcommand != null ? "." + subcommand : "")), false);
+                applySideEffects(
+                        Lists.newArrayList(megawidget.getSpecifier()
+                                .getIdentifier()
+                                + (subcommand != null ? "." + subcommand : "")),
+                        false);
             }
         }
     };
@@ -311,8 +321,10 @@ public class MegawidgetManager {
              * If a side effects applier is available, apply side effects.
              */
             if (sideEffectsApplier != null) {
-                applySideEffects(Lists.newArrayList(megawidget.getSpecifier()
-                        .getIdentifier()), true);
+                applySideEffects(
+                        Lists.newArrayList(
+                                megawidget.getSpecifier().getIdentifier()),
+                        true);
             }
         }
 
@@ -347,8 +359,10 @@ public class MegawidgetManager {
              * sending along the notification of the state change.
              */
             if (sideEffectsApplier != null) {
-                applySideEffects(Lists.newArrayList(megawidget.getSpecifier()
-                        .getIdentifier()), true);
+                applySideEffects(
+                        Lists.newArrayList(
+                                megawidget.getSpecifier().getIdentifier()),
+                        true);
             }
         }
     };
@@ -361,8 +375,8 @@ public class MegawidgetManager {
         @Override
         public void sizeChanged(IResizer megawidget) {
             if (managerListener != null) {
-                managerListener.sizeChanged(MegawidgetManager.this, megawidget
-                        .getSpecifier().getIdentifier());
+                managerListener.sizeChanged(MegawidgetManager.this,
+                        megawidget.getSpecifier().getIdentifier());
             }
         }
     };
@@ -373,13 +387,12 @@ public class MegawidgetManager {
     private final IVisibleTimeRangeListener visibleTimeRangeListener = new IVisibleTimeRangeListener() {
 
         @Override
-        public void visibleTimeRangeChanged(
-                IVisibleTimeRangeChanger megawidget, long lower, long upper) {
+        public void visibleTimeRangeChanged(IVisibleTimeRangeChanger megawidget,
+                long lower, long upper) {
             if (managerListener != null) {
-                managerListener
-                        .visibleTimeRangeChanged(MegawidgetManager.this,
-                                megawidget.getSpecifier().getIdentifier(),
-                                lower, upper);
+                managerListener.visibleTimeRangeChanged(MegawidgetManager.this,
+                        megawidget.getSpecifier().getIdentifier(), lower,
+                        upper);
             }
         }
     };
@@ -419,7 +432,7 @@ public class MegawidgetManager {
             List<? extends Map<String, Object>> specifiers,
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener)
-            throws MegawidgetException {
+                    throws MegawidgetException {
         this(parent, specifiers, state, managerListener, null);
     }
 
@@ -497,9 +510,9 @@ public class MegawidgetManager {
             MegawidgetSpecifierManager specifierManager,
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener)
-            throws MegawidgetException {
-        construct(parent, IMenu.class, specifierManager, state,
-                managerListener, 0L, 0L);
+                    throws MegawidgetException {
+        construct(parent, IMenu.class, specifierManager, state, managerListener,
+                null, 0L, 0L);
     }
 
     /**
@@ -549,9 +562,9 @@ public class MegawidgetManager {
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener, long minVisibleTime,
             long maxVisibleTime, ICurrentTimeProvider currentTimeProvider)
-            throws MegawidgetException {
+                    throws MegawidgetException {
         this(parent, specifiers, state, managerListener, minVisibleTime,
-                maxVisibleTime, currentTimeProvider, null);
+                maxVisibleTime, currentTimeProvider, null, null);
     }
 
     /**
@@ -594,6 +607,9 @@ public class MegawidgetManager {
      * @param sideEffectsApplier
      *            Side effects applier to be used, or <code>null</code> if no
      *            side effects application is to be done by the manager.
+     * @param sideEffectsProcessor
+     *            Optional pre- and/or postprocessor of side effects; ignored if
+     *            <code>sideEffectsApplier</code> is <code>null</code>.
      * @throws MegawidgetException
      *             If one of the megawidget specifiers is invalid, or if an
      *             error occurs while creating or initializing one of the
@@ -604,10 +620,14 @@ public class MegawidgetManager {
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener, long minVisibleTime,
             long maxVisibleTime, ICurrentTimeProvider currentTimeProvider,
-            ISideEffectsApplier sideEffectsApplier) throws MegawidgetException {
-        this(parent, new MegawidgetSpecifierManager(specifiers,
-                IControlSpecifier.class, currentTimeProvider,
-                sideEffectsApplier), state, managerListener, minVisibleTime,
+            ISideEffectsApplier sideEffectsApplier,
+            ISideEffectsProcessor sideEffectsProcessor)
+                    throws MegawidgetException {
+        this(parent,
+                new MegawidgetSpecifierManager(specifiers,
+                        IControlSpecifier.class, currentTimeProvider,
+                        sideEffectsApplier),
+                state, managerListener, sideEffectsProcessor, minVisibleTime,
                 maxVisibleTime);
     }
 
@@ -634,6 +654,10 @@ public class MegawidgetManager {
      * @param managerListener
      *            Listener to be notified of events that occur within this
      *            manager.
+     * @param sideEffectsProcessor
+     *            Optional pre- and/or postprocessor of side effects; ignored if
+     *            there is no side effects applier as part of the
+     *            <code>specifierManager</code>.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -650,7 +674,8 @@ public class MegawidgetManager {
     public MegawidgetManager(Composite parent,
             MegawidgetSpecifierManager specifierManager,
             Map<String, Object> state,
-            IMegawidgetManagerListener managerListener, long minVisibleTime,
+            IMegawidgetManagerListener managerListener,
+            ISideEffectsProcessor sideEffectsProcessor, long minVisibleTime,
             long maxVisibleTime) throws MegawidgetException {
 
         /*
@@ -667,8 +692,8 @@ public class MegawidgetManager {
          * Do the heavy lifting for construction.
          */
         Set<IControl> baseMegawidgets = construct(parent, IControl.class,
-                specifierManager, state, managerListener, minVisibleTime,
-                maxVisibleTime);
+                specifierManager, state, managerListener, sideEffectsProcessor,
+                minVisibleTime, maxVisibleTime);
 
         /*
          * Align the base megawidgets' component elements to one another
@@ -765,9 +790,8 @@ public class MegawidgetManager {
         Map<String, Map<String, Object>> mutableProperties = new HashMap<>(
                 megawidgetsForIdentifiers.size(), 1.0f);
         for (String identifier : megawidgetsForIdentifiers.keySet()) {
-            mutableProperties.put(identifier,
-                    megawidgetsForIdentifiers.get(identifier)
-                            .getMutableProperties());
+            mutableProperties.put(identifier, megawidgetsForIdentifiers
+                    .get(identifier).getMutableProperties());
         }
         return mutableProperties;
     }
@@ -792,7 +816,7 @@ public class MegawidgetManager {
      */
     public final void setMutableProperties(
             Map<String, Map<String, Object>> mutableProperties)
-            throws MegawidgetPropertyException {
+                    throws MegawidgetPropertyException {
 
         /*
          * Set the mutable properties, finding out what states changed in the
@@ -878,7 +902,8 @@ public class MegawidgetManager {
                 } else {
                     if (value != null) {
                         throw new MegawidgetStateException(identifier, null,
-                                null, "unexpected non-map object "
+                                null,
+                                "unexpected non-map object "
                                         + "found when looking for nested "
                                         + "state element map");
                     }
@@ -914,9 +939,10 @@ public class MegawidgetManager {
     public final void setState(Map<String, Object> newState)
             throws MegawidgetStateException {
         state = (interdependencyOnlyStateIdentifiers.isEmpty() ? newState
-                : Maps.filterKeys(newState, Predicates.not(Predicates
-                        .in(interdependencyOnlyStateIdentifiers))));
-        for (IStateful megawidget : statefulMegawidgetsForIdentifiers.values()) {
+                : Maps.filterKeys(newState, Predicates.not(
+                        Predicates.in(interdependencyOnlyStateIdentifiers))));
+        for (IStateful megawidget : statefulMegawidgetsForIdentifiers
+                .values()) {
             setState(megawidget, false);
         }
         propertyProgrammaticallyChanged = true;
@@ -950,9 +976,10 @@ public class MegawidgetManager {
      */
     public final void modifyState(Map<String, ?> changedState)
             throws MegawidgetStateException {
-        changedState = (interdependencyOnlyStateIdentifiers.isEmpty() ? changedState
-                : Maps.filterKeys(changedState, Predicates.not(Predicates
-                        .in(interdependencyOnlyStateIdentifiers))));
+        changedState = (interdependencyOnlyStateIdentifiers.isEmpty()
+                ? changedState
+                : Maps.filterKeys(changedState, Predicates.not(
+                        Predicates.in(interdependencyOnlyStateIdentifiers))));
         if (changedState.isEmpty()) {
             return;
         }
@@ -1003,8 +1030,8 @@ public class MegawidgetManager {
         Map<String, Map<String, Object>> extraDataMap = new HashMap<>(
                 megawidgetsForIdentifiers.size(), 1.0f);
         for (String identifier : megawidgetsForIdentifiers.keySet()) {
-            Map<String, Object> extraData = megawidgetsForIdentifiers.get(
-                    identifier).getExtraData();
+            Map<String, Object> extraData = megawidgetsForIdentifiers
+                    .get(identifier).getExtraData();
             if (extraData.isEmpty() == false) {
                 extraDataMap.put(identifier, extraData);
             }
@@ -1021,13 +1048,14 @@ public class MegawidgetManager {
      *            Any megawidgets that are being managed that do not have an
      *            entry in this map have their extra data left untouched.
      */
-    public final void setExtraData(Map<String, Map<String, Object>> extraDataMap) {
+    public final void setExtraData(
+            Map<String, Map<String, Object>> extraDataMap) {
         for (String identifier : extraDataMap.keySet()) {
             if (megawidgetsForIdentifiers.containsKey(identifier) == false) {
                 continue;
             }
-            megawidgetsForIdentifiers.get(identifier).setExtraData(
-                    extraDataMap.get(identifier));
+            megawidgetsForIdentifiers.get(identifier)
+                    .setExtraData(extraDataMap.get(identifier));
         }
     }
 
@@ -1041,8 +1069,8 @@ public class MegawidgetManager {
                 megawidgetsForIdentifiers.size(), 1.0f);
         for (Map.Entry<String, IMegawidget> entry : megawidgetsForIdentifiers
                 .entrySet()) {
-            displaySettingsForIdentifiers.put(entry.getKey(), entry.getValue()
-                    .getDisplaySettings());
+            displaySettingsForIdentifiers.put(entry.getKey(),
+                    entry.getValue().getDisplaySettings());
         }
         return displaySettingsForIdentifiers;
     }
@@ -1060,8 +1088,8 @@ public class MegawidgetManager {
             Map<String, IDisplaySettings> displaySettingsForIdentifiers) {
         for (Map.Entry<String, IDisplaySettings> entry : displaySettingsForIdentifiers
                 .entrySet()) {
-            IMegawidget megawidget = megawidgetsForIdentifiers.get(entry
-                    .getKey());
+            IMegawidget megawidget = megawidgetsForIdentifiers
+                    .get(entry.getKey());
             if (megawidget != null) {
                 megawidget.setDisplaySettings(entry.getValue());
             }
@@ -1164,6 +1192,10 @@ public class MegawidgetManager {
      * @param managerListener
      *            Listener to be notified of events that occur within this
      *            manager.
+     * @param sideEffectsProcessor
+     *            Optional pre- and/or postprocessor of side effects; ignored if
+     *            there is no side effects applier as part of the
+     *            <code>specifierManager</code>.
      * @param minVisibleTime
      *            Minimum visible time for any time scale megawidgets specified
      *            within <code>specifiers</code>. If no time scale megawidgets
@@ -1179,11 +1211,11 @@ public class MegawidgetManager {
      *             error occurs while creating or initializing one of the
      *             megawidgets.
      */
-    private <P extends Widget, M extends IMegawidget> Set<M> construct(
-            P parent, Class<M> superClass,
-            MegawidgetSpecifierManager specifierManager,
+    private <P extends Widget, M extends IMegawidget> Set<M> construct(P parent,
+            Class<M> superClass, MegawidgetSpecifierManager specifierManager,
             Map<String, Object> state,
-            IMegawidgetManagerListener managerListener, long minVisibleTime,
+            IMegawidgetManagerListener managerListener,
+            ISideEffectsProcessor sideEffectsProcessor, long minVisibleTime,
             long maxVisibleTime) throws MegawidgetException {
 
         /*
@@ -1194,6 +1226,8 @@ public class MegawidgetManager {
         this.parent = parent;
         this.state = state;
         this.sideEffectsApplier = specifierManager.getSideEffectsApplier();
+        this.sideEffectsProcessor = (sideEffectsApplier != null
+                ? sideEffectsProcessor : null);
         this.managerListener = managerListener;
 
         /*
@@ -1260,11 +1294,12 @@ public class MegawidgetManager {
      */
     @SuppressWarnings("unchecked")
     private void rememberMegawidgets(IMegawidget megawidget) {
-        megawidgetsForIdentifiers.put(
-                megawidget.getSpecifier().getIdentifier(), megawidget);
+        megawidgetsForIdentifiers.put(megawidget.getSpecifier().getIdentifier(),
+                megawidget);
         if (megawidget instanceof SwtWrapperMegawidget) {
-            swtWrappersForIdentifiers.put(megawidget.getSpecifier()
-                    .getIdentifier(), (SwtWrapperMegawidget) megawidget);
+            swtWrappersForIdentifiers.put(
+                    megawidget.getSpecifier().getIdentifier(),
+                    (SwtWrapperMegawidget) megawidget);
         }
         if (megawidget instanceof IParent) {
             for (IMegawidget childMegawidget : ((IParent<? extends IMegawidget>) megawidget)
@@ -1318,8 +1353,8 @@ public class MegawidgetManager {
             IMegawidget megawidget = megawidgetsForIdentifiers.get(identifier);
             if (megawidget == null) {
                 throw new MegawidgetPropertyException(identifier, null, null,
-                        null, "no megawidget for identifier \"" + identifier
-                                + "\"");
+                        null,
+                        "no megawidget for identifier \"" + identifier + "\"");
             }
 
             /*
@@ -1339,16 +1374,16 @@ public class MegawidgetManager {
              * Ensure that the state, if changed, is kept track of within this
              * instance's state variable.
              */
-            if (megawidgetMutableProperties
-                    .containsKey(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
+            if (megawidgetMutableProperties.containsKey(
+                    StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
 
                 /*
                  * Handle the values whether they are a single value, or a map
                  * of values. The former is only possible if this is a
                  * single-state megawidget.
                  */
-                Object values = megawidgetMutableProperties
-                        .get(StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
+                Object values = megawidgetMutableProperties.get(
+                        StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
                 Map<String, Object> map = null;
                 if (values instanceof Map) {
                     try {
@@ -1515,8 +1550,8 @@ public class MegawidgetManager {
                     }
                     for (String stateIdentifier : ((IStatefulSpecifier) ((IStateful) megawidget)
                             .getSpecifier()).getStateIdentifiers()) {
-                        megawidgetIdentifiersForStateIdentifiers.put(
-                                stateIdentifier, identifier);
+                        megawidgetIdentifiersForStateIdentifiers
+                                .put(stateIdentifier, identifier);
                     }
                     if (megawidget instanceof TimeScaleMegawidget) {
                         timeScaleMegawidgets
@@ -1591,14 +1626,23 @@ public class MegawidgetManager {
             boolean stateChangeOccurred) {
 
         /*
+         * Get the mutable properties to which to apply side effects, modifying
+         * them using the pre/postprocessor if one exists.
+         */
+        Map<String, Map<String, Object>> mutableProperties = getMutableProperties();
+        if (sideEffectsProcessor != null) {
+            mutableProperties = sideEffectsProcessor
+                    .preprocessSideEffects(identifiers, mutableProperties);
+        }
+
+        /*
          * Apply the side effects, getting a map of changed mutable properties
          * back.
          */
         Map<String, Map<String, Object>> changedProperties = sideEffectsApplier
-                .applySideEffects(
-                        identifiers,
-                        getMutableProperties(),
-                        (stateChangeOccurred || propertyProgrammaticallyChanged));
+                .applySideEffects(identifiers, mutableProperties,
+                        (stateChangeOccurred
+                                || propertyProgrammaticallyChanged));
 
         /*
          * If at least some properties have changed, set them as the new mutable
@@ -1606,6 +1650,19 @@ public class MegawidgetManager {
          * changes.
          */
         if (changedProperties != null) {
+
+            /*
+             * Postprocess the mutable properties that were modified by the
+             * applier if a pre/postprocessor exists.
+             */
+            if (sideEffectsProcessor != null) {
+                changedProperties = sideEffectsProcessor
+                        .postprocessSideEffects(identifiers, changedProperties);
+            }
+
+            /*
+             * Make the new mutable properties take effect.
+             */
             Map<String, Object> valuesForChangedStates = null;
             try {
                 valuesForChangedStates = doSetMutableProperties(
@@ -1617,6 +1674,10 @@ public class MegawidgetManager {
                                     e);
                 }
             }
+
+            /*
+             * Notify if appropriate.
+             */
             if ((valuesForChangedStates != null) && (managerListener != null)) {
                 notifyListenerOfStateChanges(valuesForChangedStates);
             }
@@ -1654,9 +1715,11 @@ public class MegawidgetManager {
             Map<String, ?> statesForIdentifiers) {
         if (managerListener != null) {
             statesForIdentifiers = (interdependencyOnlyStateIdentifiers
-                    .isEmpty() ? statesForIdentifiers : Maps.filterKeys(
-                    statesForIdentifiers, Predicates.not(Predicates
-                            .in(interdependencyOnlyStateIdentifiers))));
+                    .isEmpty()
+                            ? statesForIdentifiers
+                            : Maps.filterKeys(statesForIdentifiers,
+                                    Predicates.not(Predicates.in(
+                                            interdependencyOnlyStateIdentifiers))));
             if (statesForIdentifiers.isEmpty()) {
                 return;
             }
@@ -1666,8 +1729,8 @@ public class MegawidgetManager {
                 managerListener.stateElementChanged(this, singleEntry.getKey(),
                         singleEntry.getValue());
             } else {
-                managerListener
-                        .stateElementsChanged(this, statesForIdentifiers);
+                managerListener.stateElementsChanged(this,
+                        statesForIdentifiers);
             }
         }
     }

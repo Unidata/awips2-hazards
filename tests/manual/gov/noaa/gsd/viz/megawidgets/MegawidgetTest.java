@@ -9,11 +9,6 @@
  */
 package gov.noaa.gsd.viz.megawidgets;
 
-import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -35,6 +30,11 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
 import com.google.common.collect.Range;
+
+import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
 
 /**
  * Description: Megawidget tester.
@@ -101,16 +101,16 @@ public class MegawidgetTest extends Dialog {
         Display display = new Display();
 
         if (args.length == 0) {
-            System.err
-                    .println("Error: No JSON file provided from which to take megawidget specifiers.");
+            System.err.println(
+                    "Error: No JSON file provided from which to take megawidget specifiers.");
             System.exit(1);
         }
         if (args.length > 1) {
             PythonSideEffectsApplier.initialize();
         }
         MegawidgetTest dialog = new MegawidgetTest(args[0],
-                (args.length > 1 ? args[1] : null), (args.length > 2 ? args[2]
-                        : null));
+                (args.length > 1 ? args[1] : null),
+                (args.length > 2 ? args[2] : null));
         dialog.open();
 
         while ((dialog.getShell() != null)
@@ -197,9 +197,10 @@ public class MegawidgetTest extends Dialog {
                         public long getCurrentTime() {
                             return System.currentTimeMillis();
                         }
-                    }, (scriptFilePath == null ? null
-                            : new PythonSideEffectsApplier(new File(PATH_PREFIX
-                                    + scriptFilePath))));
+                    },
+                    (scriptFilePath == null ? null
+                            : new PythonSideEffectsApplier(
+                                    new File(PATH_PREFIX + scriptFilePath))));
             Range<Long> bounds = getTimeBoundaries(null,
                     specifierManager.getSpecifiers());
             long minTime = (bounds == null ? System.currentTimeMillis()
@@ -261,8 +262,8 @@ public class MegawidgetTest extends Dialog {
                                 stringBuilder.append(" = ");
                                 stringBuilder.append(entry.getValue());
                             }
-                            System.out
-                                    .println("POTENTIALLY MULTIPLE STATE CHANGES: "
+                            System.out.println(
+                                    "POTENTIALLY MULTIPLE STATE CHANGES: "
                                             + stringBuilder);
                         }
 
@@ -287,7 +288,7 @@ public class MegawidgetTest extends Dialog {
                             System.out.println("TIME RANGE CHANGED.");
                         }
 
-                    }, minTime, maxTime);
+                    }, null, minTime, maxTime);
         } catch (Exception e) {
             System.err.println("Error: Megawidget improperly specified: " + e);
             e.printStackTrace(System.err);
@@ -303,8 +304,8 @@ public class MegawidgetTest extends Dialog {
             SwtWrapperMegawidget megawidget = manager
                     .getSwtWrapper(swtWrapperIdentifier);
             if (megawidget == null) {
-                System.err
-                        .println("Error: No SWT wrapper megawidget with identifier \""
+                System.err.println(
+                        "Error: No SWT wrapper megawidget with identifier \""
                                 + swtWrapperIdentifier + "\" found.");
             } else {
                 Composite wrapper = megawidget.getWrapperComposite();
@@ -339,8 +340,8 @@ public class MegawidgetTest extends Dialog {
             byte[] encoded = Files.readAllBytes(Paths.get(PATH_PREFIX + path));
             return new String(encoded);
         } catch (Exception e) {
-            System.err.println("Error: Could not read in file \"" + path
-                    + "\": " + e);
+            System.err.println(
+                    "Error: Could not read in file \"" + path + "\": " + e);
             PythonSideEffectsApplier.prepareForShutDown();
             System.exit(1);
             return null;
@@ -377,8 +378,8 @@ public class MegawidgetTest extends Dialog {
             }
             if (specifier instanceof IParentSpecifier) {
                 Range<Long> bounds = getTimeBoundaries(
-                        (minTime == Long.MAX_VALUE ? null : Range.closed(
-                                minTime, maxTime)),
+                        (minTime == Long.MAX_VALUE ? null
+                                : Range.closed(minTime, maxTime)),
                         ((IParentSpecifier<ISpecifier>) specifier)
                                 .getChildMegawidgetSpecifiers());
                 if (bounds != null) {
@@ -387,7 +388,7 @@ public class MegawidgetTest extends Dialog {
                 }
             }
         }
-        return (minTime == Long.MAX_VALUE ? null : Range.closed(minTime,
-                maxTime));
+        return (minTime == Long.MAX_VALUE ? null
+                : Range.closed(minTime, maxTime));
     }
 }
