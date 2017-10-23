@@ -4,7 +4,7 @@ Bundle-Name: Viz Hazards Drawing display Capabilities
 Bundle-SymbolicName: gov.noaa.gsd.viz.hazards;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: gov.noaa.gsd.viz.hazards.display.HazardServicesActivator
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-Vendor: GSD
 Eclipse-RegisterBuddy: com.raytheon.uf.common.serialization, com.raytheon.viz.awipstools, com.raytheon.viz.core, com.raytheon.uf.viz.core.rsc 
 Require-Bundle: com.raytheon.viz.core,

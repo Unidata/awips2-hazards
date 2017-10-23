@@ -48,6 +48,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * Mar 08, 2017 29138      Chris.Golden Added startup config option to allow persistence behavior
  *                                      to be tweaked via configuration.
+ * Oct 23, 2017 21730      Chris.Golden Added defaultType.
  * </pre>
  * 
  * @author bsteffen
@@ -81,6 +82,9 @@ public class StartUpConfig {
 
     @JsonProperty("siteBackupBaseDir")
     private String siteBackupBaseDir;
+
+    @JsonProperty("defaultType")
+    private String defaultType;
 
     @JsonProperty("visibleSites")
     private Set<String> visibleSites;
@@ -177,6 +181,14 @@ public class StartUpConfig {
 
     public void setSiteBackupBaseDir(String siteBackupBaseDir) {
         this.siteBackupBaseDir = siteBackupBaseDir;
+    }
+
+    public String getDefaultType() {
+        return defaultType;
+    }
+
+    public void setDefaultType(String defaultType) {
+        this.defaultType = defaultType;
     }
 
     @Override

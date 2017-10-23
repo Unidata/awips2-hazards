@@ -4,7 +4,7 @@ Bundle-Name: Hazard Services Legacy Interoperability
 Bundle-SymbolicName: com.raytheon.uf.edex.hazards.interop
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: com.raytheon.uf.common.status,
  com.raytheon.uf.common.dataplugin,
  com.raytheon.uf.common.dataplugin.events,

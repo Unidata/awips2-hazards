@@ -234,6 +234,8 @@ import net.engio.mbassy.listener.Handler;
  *                                           recommender.
  * Sep 27, 2017 38072      Chris.Golden      Changed to use new SessionEventModified notification,
  *                                           and to work with new recommender manager.
+ * Oct 23, 2017 21730      Chris.Golden      Added use of default hazard type for manually created
+ *                                           hazard events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1721,8 +1723,11 @@ public class SpatialPresenter extends
 
         try {
             getModel().startBatchedChanges();
-            return getModel().getEventManager().addEvent(event,
+            ObservedHazardEvent addedEvent = getModel().getEventManager()
+                    .addEvent(event, UIOriginator.SPATIAL_DISPLAY);
+            getModel().getEventManager().setEventTypeToDefault(addedEvent,
                     UIOriginator.SPATIAL_DISPLAY);
+            return addedEvent;
         } catch (HazardEventServiceException e) {
             statusHandler.error("Could not add new hazard event.", e);
             return null;

@@ -192,6 +192,19 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      code to ensure that a multi-part modification
  *                                      that only needs to trigger one recommender does
  *                                      so only one time.
+ * Oct 23, 2017   21730    Chris.Golden Adjusted IIntraNotificationHander implementations
+ *                                      to make their isSynchronous() methods take the
+ *                                      new parameter, using this parameter in the case
+ *                                      of the batching notification to make it be
+ *                                      handled synchronously if batching is starting,
+ *                                      asynchronously if ending. This allows the ending
+ *                                      of notification, and thus the running of any
+ *                                      queued recommender execution requests, to be
+ *                                      delayed until all the other notifications that
+ *                                      actually trigger recommenders have been processed,
+ *                                      which in turn allows batching of recommender runs
+ *                                      to result in more batching and less individual
+ *                                      runs.
  * </pre>
  * 
  * @author Chris.Golden
@@ -501,8 +514,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
 
         @Override
-        public boolean isSynchronous() {
-            return true;
+        public boolean isSynchronous(
+                SessionBatchNotificationsToggled notification) {
+
+            /*
+             * It is important that any batching notifications indicating
+             * batching is starting be processed immediately, whereas those that
+             * indicate batching is ending get delayed so that other
+             * notifications are handled first.
+             */
+            return notification.isBatching();
         }
     };
 
@@ -518,7 +539,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(
+                SessionSelectedEventsModified notification) {
             return false;
         }
     };
@@ -547,7 +569,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SessionEventModified notification) {
             return true;
         }
     };
@@ -574,7 +596,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SessionEventsRemoved notification) {
             return true;
         }
     };
@@ -590,7 +612,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SiteChanged notification) {
             return false;
         }
     };
@@ -761,7 +783,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
          * Iterate through the modifications, compiling two things: a map (with
          * iteration order being the order in which elements are added, to
          * ensure that entries put in first are iterated through first) pairing
-         * triggered recommender identifiers with the hazard attribute (generic
+         * triggered recommender identifiers with the hazard attributes (generic
          * and first-class) that triggered them, and a record of what
          * recommender is to be triggered by any visual feature changes (if any
          * occurred), together with the identifiers of the visual feature(s)

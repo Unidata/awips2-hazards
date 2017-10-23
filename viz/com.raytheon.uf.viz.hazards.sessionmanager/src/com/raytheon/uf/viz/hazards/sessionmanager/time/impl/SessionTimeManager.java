@@ -137,6 +137,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      is set by the user to something more than an
  *                                      hour from the previous current time.
  * Sep 27, 2017 38072      Chris.Golden Added use of intra-managerial notifications.
+ * Oct 23, 2017 21730      Chris.Golden Adjusted IIntraNotificationHander
+ *                                      implementations to make their isSynchronous()
+ *                                      methods take the new parameter.
  * </pre>
  * 
  * @author bsteffen
@@ -290,7 +293,8 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(
+                SessionSelectedEventsModified notification) {
             return true;
         }
     };
@@ -309,7 +313,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SessionEventModified notification) {
             return true;
         }
     };
@@ -325,7 +329,7 @@ public class SessionTimeManager implements ISessionTimeManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SettingsModified notification) {
             return true;
         }
     };

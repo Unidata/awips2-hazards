@@ -1,173 +1,1344 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- WARNING: Eclipse auto-generated file.
-              Any modifications will be overwritten.
-              To include a user specific buildfile here, simply create one in the same
-              directory with the processing instruction <?eclipse.ant.import?>
-              as the first entry and export the buildfile again. -->
-<project basedir="." default="build" name="com.raytheon.viz.core">
-    <property environment="env"/>
-    <property name="com.raytheon.viz.libs.location" value="../com.raytheon.viz.libs"/>
-    <property name="ECLIPSE_HOME" value="../../eclipse/"/>
-	<property name="UDIG_HOME" value="../../udig/"/>
-    <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.6"/>
-    <property name="source" value="1.6"/>
-    <property name="plugin.version" value="1.0.0" />
-    <property name="plugin.name" value="gov.noaa.gsd.viz.ihis.display" />
-    <property name="plugin.jar" value="${plugin.name}_${plugin.version}.jar" />
-    <property name="plugin.src" value="src" />
-    <property name="plugin.classes" value="bin" />
-	
-    <path id="Plug-in Dependencies.libraryclasspath">
-        <pathelement location="../../../../com.raytheon.viz.libs"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.ui_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.ui.nl1_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.catalog_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.core_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.catalog.rasterings_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.catalog.worldimage_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.project_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.emf.ecore_2.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.emf.common_2.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/arcgrid-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/commons-codec-1.3.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/commons-lang-2.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/dummy_spatial-8.1.8.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/epsg-wkt-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/geoapi-2.0-tiger.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/geotiff-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/gml-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/image-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/indexed-shapefile-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/jdom-1.0b10.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/JTS-1.6.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/log4j-1.2.8.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/main-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/opengis-legacy-0.1.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/picocontainer-1.2.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/referencing-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/shapefile-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/shapefile-renderer-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/units-0.01.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/vecmath-1.3.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/wfs-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/wkb4j-1.0-RC1.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/wms-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/xmlrpc-2.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/validation-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/hsql-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/hsqldb-1.8.0.1.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/brewer-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/coverage-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/api-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/render-2.2.x.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.libs_1.1.0/lib/xerces-2.4.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.project.ui_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.catalog.shp_1.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.core.runtime_3.1.2.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.osgi_3.1.2.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.ui_3.1.2.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.swt_3.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.swt.gtk.linux.x86_3.1.1.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.swt.nl1_3.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.jface_3.1.1.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.core.commands_3.1.0.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/org.eclipse.ui.workbench_3.1.2.jar"/>
-        <pathelement location="${UDIG_HOME}/plugins/net.refractions.udig.style.sld_1.1.0.jar"/>
-    </path>
-    <path id="com.raytheon.viz.core.classpath">
-        <pathelement location="bin"/>
-        <path refid="Plug-in Dependencies.libraryclasspath"/>
-        <pathelement location="../../vizXml/messagedto.jar"/>
-        <pathelement location="../../jibx/lib/jibx-bind.jar"/>
-        <pathelement location="../../jibx/lib/jibx-run.jar"/>
-        <pathelement location="../../jibx/lib/xpp3.jar"/>
-        <pathelement location="${com.raytheon.viz.libs.location}/lib/activemq-3.2.1.jar"/>
-        <pathelement location="${com.raytheon.viz.libs.location}/lib/commons-logging-1.0.4.jar"/>
-        <pathelement location="${com.raytheon.viz.libs.location}/lib/commons-logging-api.jar"/>
-        <pathelement location="${com.raytheon.viz.libs.location}/lib/concurrent-1.3.4.jar"/>
-        <pathelement location="${com.raytheon.viz.libs.location}/lib/geronimo-spec-j2ee-management-1.0-rc4.jar"/>
-        <pathelement location="${com.raytheon.viz.libs.location}/lib/geronimo-spec-jms-1.1-rc4.jar"/>
-    </path>
-    <target name="init">
-        <mkdir dir="bin"/>
-        <copy includeemptydirs="false" todir="bin">
-            <fileset dir="src" excludes="**/*.launch, **/*.java"/>
-        </copy>
-    </target>
-    <target name="clean">
-        <delete dir="bin"/>
-    </target>
-    <target depends="clean" name="cleanall"/>
-    <target depends="build-subprojects,build-project" name="build"/>
-    <target name="build-subprojects"/>
-    <target depends="init" name="build-project">
-        <echo message="${ant.project.name}: ${ant.file}"/>
-        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
-            <src path="src"/>
-            <classpath refid="com.raytheon.viz.core.classpath"/>
-        </javac>
-    </target>
-    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
-    <target description="copy Eclipse compiler jars to ant lib directory" name="init-eclipse-compiler">
-        <copy todir="${ant.library.dir}">
-            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
-        </copy>
-        <unzip dest="${ant.library.dir}">
-            <patternset includes="jdtCompilerAdapter.jar"/>
-            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
-        </unzip>
-    </target>
-    <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
-        <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
-        <antcall target="build"/>
-    </target>
-    <target name="ResourceManager">
-        <java classname="com.raytheon.viz.core.rsc.ResourceManager" failonerror="true" fork="yes">
-            <classpath refid="com.raytheon.viz.core.classpath"/>
-        </java>
-    </target>
-    <target name="LoadJMS">
-        <java classname="com.raytheon.viz.core.test.LoadJMS" failonerror="true" fork="yes">
-            <jvmarg line="-Xmx512m"/>
-            <classpath refid="com.raytheon.viz.core.classpath"/>
-        </java>
-    </target>
-	
-	
+<project name="gov.noaa.gsd.viz.hazards" default="build.jars" basedir=".">
 
-	    
-	    <property name="bin.includes" value="
-	        .classpath
-	        .project
-	        build.properties
-	        build.xml
-	        doc/**
-	        icons/**
-	        images/**
-	        plugin.properties
-	        plugin.xml
-	        readme.html" />
+	<property name="p2.build.repo" value="file:${buildDirectory}/buildRepo"/>
+	<property name="basews" value="${ws}"/>
+	<property name="baseos" value="${os}"/>
+	<property name="basearch" value="${arch}"/>
+	<property name="basenl" value="${nl}"/>
+	<property name="bundleId" value="gov.noaa.gsd.viz.hazards"/>
+	<property name="bundleVersion" value="1.0.0.201710232127"/>
+	<property name="p2.publishonerror" value="false"/>
 
-	    <!-- common part for all plugin projects, no editing beyond this line required -->
-	    <target name="mkrelease" description="compile plugin" depends="clean,build,jar" />
+	<!-- Compiler settings. -->
+	<property name="javacFailOnError" value="false"/>
+	<property name="javacDebugInfo" value="on"/>
+	<property name="javacVerbose" value="false"/>
+	<property name="logExtension" value=".log"/>
+	<property name="compilerArg" value=""/>
+	<property name="compilation.prereq.log" value="${buildDirectory}/prereqErrors.log"/>
+	<property name="javacSource" value="1.3"/>
+	<property name="javacTarget" value="1.2"/>
+	<condition property="dir_bootclasspath" value="${java.home}/../Classes">
+		<and>
+			<os family="mac"/>
+			<available file="${java.home}/../Classes" type="dir"/>
+		</and>
+	</condition>
+	<property name="dir_bootclasspath" value="${java.home}/lib"/>
+	<path id="path_bootclasspath">
+		<fileset dir="${dir_bootclasspath}">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+	<property name="bootclasspath" refid="path_bootclasspath"/>
+	<condition property="bundleBootClasspath" value="${JavaSE-1.8}"	>
+		<isset property="JavaSE-1.8"/>
+	</condition>
+	<condition property="bundleJavacSource" value="1.8"	>
+		<isset property="JavaSE-1.8"/>
+	</condition>
+	<condition property="bundleJavacTarget" value="1.8"	>
+		<isset property="JavaSE-1.8"/>
+	</condition>
+	<property name="bundleJavacSource" value="${javacSource}"/>
+	<property name="bundleJavacTarget" value="${javacTarget}"/>
+	<property name="bundleBootClasspath" value="${bootclasspath}"/>
 
+	<target name="init" depends="properties">
+		<condition property="pluginTemp" value="${buildTempFolder}/plugins"		>
+			<isset property="buildTempFolder"/>
+		</condition>
+		<property name="pluginTemp" value="${basedir}"/>
+		<condition property="build.result.folder" value="${pluginTemp}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127"		>
+			<isset property="buildTempFolder"/>
+		</condition>
+		<property name="build.result.folder" value="${basedir}"/>
+		<property name="temp.folder" value="${basedir}/temp.folder"/>
+		<property name="plugin.destination" value="${basedir}"/>
+		<condition property="p2.publish.parts" value="true"		>
+			<istrue value="${p2.gathering}"/>
+		</condition>
+		<property name="compilation.problem.marker" value="${build.result.folder}/compilation.problem"/>
+		<condition property="compilation.problem.marker.exists" value="true"		>
+			<and>
+			<available file="${compilation.problem.marker}"/>
+			<isfalse value="${p2.publishonerror}"/>
+			</and>
+		</condition>
+	</target>
 
-    <target name="jar">
-        <jar destfile="${plugin.jar}" manifest="META-INF/Manifest.mf">
-        	<fileset dir="${plugin.classes}" />
-        	<fileset file="plugin.xml" />
-        	<fileset dir=".">
-        		<include name="icons/**"/>
-        	</fileset>
-        </jar>
-    </target>
-	
+	<target name="properties" if="eclipse.running">
+		<property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
 
-		
-	
+	</target>
 
-	
-    	
-	
+	<target name="build.update.jar" depends="init" description="Build the plug-in: gov.noaa.gsd.viz.hazards for an update site.">
+		<delete dir="${temp.folder}"/>
+		<mkdir dir="${temp.folder}"/>
+		<antcall target="build.jars"/>
+		<antcall target="gather.bin.parts">
+			<param name="destination.temp.folder" value="${temp.folder}/"/>
+		</antcall>
+		<jar destfile="${plugin.destination}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127.jar" basedir="${temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127" filesetmanifest="merge"/>
+		<delete dir="${temp.folder}"/>
+	</target>
+
+	<target name="@dot.nestedJars">
+		<mkdir dir="${buildDirectory}/nestedJars/org.eclipse.equinox.registry_3.6.0.v20150318-1503"/>
+		<unzip src="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.registry_3.6.0.v20150318-1503.jar" dest="${buildDirectory}/nestedJars/org.eclipse.equinox.registry_3.6.0.v20150318-1503" overwrite="false">
+			<patternset includes="runtime_registry_compatibility.jar"/>
+		</unzip>
+		<mkdir dir="${buildDirectory}/nestedJars/com.ibm.icu_54.1.1.v201501272100"/>
+		<unzip src="../../../../../../../../awips2/eclipse/plugins/com.ibm.icu_54.1.1.v201501272100.jar" dest="${buildDirectory}/nestedJars/com.ibm.icu_54.1.1.v201501272100" overwrite="false">
+			<patternset includes="icu-data.jar"/>
+		</unzip>
+		<mkdir dir="${buildDirectory}/nestedJars/org.eclipse.e4.core.services_2.0.0.v20150403-1912"/>
+		<unzip src="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.core.services_2.0.0.v20150403-1912.jar" dest="${buildDirectory}/nestedJars/org.eclipse.e4.core.services_2.0.0.v20150403-1912" overwrite="false">
+			<patternset includes="injection_annotations.jar"/>
+		</unzip>
+	</target>
+	<target name="@dot" depends="init,@dot.nestedJars" unless="@dot" description="Create jar: gov.noaa.gsd.viz.hazards @dot.">
+		<delete dir="${build.result.folder}/@dot"/>
+		<mkdir dir="${build.result.folder}/@dot"/>
+		<path id="@dot.classpath">
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.colormap/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.colormap/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.serialization/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.serialization/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.thrift/libthrift-0.9.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.slf4j/jcl-over-slf4j-1.7.21.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.slf4j/jul-to-slf4j-1.7.21.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.slf4j/log4j-over-slf4j-1.7.21.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.slf4j/slf4j-api-1.7.21.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/ch.qos.logback/logback-classic-1.1.7.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/ch.qos.logback/logback-core-1.1.7.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/net.sf.cglib/cglib-nodep-2.1_3.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.util/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.util/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.measure/jsr-275-1.0-beta-2.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.units/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.units/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.beanutils/commons-beanutils-1.8.3.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.collections/commons-collections-3.2.2.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.localization/resources/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.localization/bin"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.localization/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.localization/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.serialization.comm/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.serialization.comm/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.message/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.message/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.status/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.status/@dot"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/guava-13.0.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/MVEL-fork.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/commons-lang-2.5.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/commons-primitives-1.0.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/commons-collections-3.2.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/commons-io-2.0.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/commons-beanutils-1.8.0.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/commons-logging-1.1.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/commons-digester-2.0.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/asm-all-3.3.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/nebula-cdatetime.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wb.core.lib_1.8.0.r45x201506110820/lib/nebula-cwt.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui_3.107.0.v20150507-1945.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.runtime_3.11.1.v20150903-1804.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/javax.annotation_1.2.0.v201401042248.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/javax.inject_1.0.0.v20091030.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.osgi_3.10.101.v20150820-1432.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.osgi.compatibility.state_1.0.100.v20150402-1551.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.common_3.7.0.v20150402-1709.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.jobs_3.7.0.v20150330-2103.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.runtime.compatibility.registry_3.6.0.v20150318-1505/runtime_registry_compatibility.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.runtime.compatibility.registry_3.6.0.v20150318-1505"/>
+			<pathelement path="${buildDirectory}/nestedJars/org.eclipse.equinox.registry_3.6.0.v20150318-1503/runtime_registry_compatibility.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.registry_3.6.0.v20150318-1503.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.preferences_3.5.300.v20150408-1437.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.contenttype_3.5.0.v20150421-2214.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.app_1.3.300.v20150423-1356.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.osgi.services_3.5.0.v20150519-2006.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.servlet/javax.servlet-api-3.1.0.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.swt_3.104.1.v20150825-0743.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.swt.gtk.linux.x86_64_3.104.1.v20150825-0743.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jface_3.11.0.v20150602-1400.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.commands_3.7.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.bidi_0.10.0.v20130327-1442.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.workbench_3.107.0.v20150825-2206.jar"/>
+			<pathelement path="${buildDirectory}/nestedJars/com.ibm.icu_54.1.1.v201501272100/icu-data.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/com.ibm.icu_54.1.1.v201501272100.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.core.commands_0.11.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.expressions_3.5.0.v20150421-2214.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.core.contexts_1.4.0.v20150828-0818.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.core.di_1.5.0.v20150421-2214.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.core.di.annotations_1.4.0.v20150528-1451.jar"/>
+			<pathelement path="${buildDirectory}/nestedJars/org.eclipse.e4.core.services_2.0.0.v20150403-1912/injection_annotations.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.core.services_2.0.0.v20150403-1912.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.workbench_1.3.0.v20150531-1948.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.model.workbench_1.1.100.v20150407-1430.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.emf.ecore_2.11.1.v20150805-0538.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.emf.common_2.11.0.v20150805-0538.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.resources_3.10.1.v20150725-1910.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ant.core_3.4.0.v20150428-1928.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.variables_3.2.800.v20130819-1716.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.filesystem_1.5.0.v20150725-1910.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.filesystem.java7_1.0.100.v20150423-0754.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.filesystem.linux.x86_64_1.2.200.v20140124-1940.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.emf.xpath_0.1.100.v20150513-0856.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.apache.commons.jxpath_1.3.0.v200911051830.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.services_1.2.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/javax.xml_1.3.4.v201005080400.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.di_1.1.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.core.di.extensions_0.13.0.v20150421-2214.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.emf.ecore.change_2.11.0.v20150805-0538.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.emf.ecore.xmi_2.11.1.v20150805-0538.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.workbench.renderers.swt_0.13.0.v20150901-1347.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.workbench.swt_0.13.0.v20150504-0621.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.databinding_1.5.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.databinding.observable_1.5.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.databinding.property_1.5.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jface.databinding_1.7.0.v20150406-2148.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.css.core_0.11.0.v20150511-1937.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.w3c.css.sac_1.3.1.v200903091627.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.apache.batik.css_1.7.0.v201011041433.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.w3c.dom.events_3.0.0.draft20060413_v201105210656.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.w3c.dom.svg_1.1.0.v201011041433.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.w3c.dom.smil_1.0.1.v200903091627.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.apache.batik.util_1.7.0.v201011041433.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.apache.batik.util.gui_1.7.0.v200903091627.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.css.swt_0.12.0.v20150511-1003.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.bindings_0.11.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.workbench3_0.13.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.css.swt.theme_0.10.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.swt.gtk_1.0.1.v20150708-1529.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.widgets_1.1.0.v20150427-1751.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.ds_1.4.300.v20150423-1356.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.util_1.0.500.v20130404-1337.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.event_1.3.100.v20140115-1647.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.help_3.6.0.v20130326-1254.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.e4.ui.workbench.addons.swt_1.2.0.v20150512-1414.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.auth/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.auth/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.configuration/commons-configuration-1.10.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.digester/commons-digester-1.8.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.lang/commons-lang-2.6.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.lang3/commons-lang3-3.4.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.convert/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.convert/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataaccess/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataaccess/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.time/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.time/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.persistence/hibernate-jpa-2.0-api-1.0.1.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/hibernate-c3p0-4.2.15.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/hibernate-commons-annotations-4.0.2.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/hibernate-core-4.2.15.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/hibernate-ehcache-4.2.15.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/hibernate-jpa-2.0-api-1.0.1.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/hibernate-spatial-4.0.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/hibernate-entitymanager-4.2.15.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/jboss-transaction-api_1.1_spec-1.0.1.Final.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.hibernate/jboss-logging-3.1.0.GA.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.javassist/javassist-3.18.1-GA.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.datastorage/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.datastorage/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.geospatial/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.geospatial/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/common-2.6.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/commons-dbcp-1.3.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/commons-jxpath-1.3.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/ecore-2.6.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-api-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-coverage-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-cql-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-data-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-epsg-wkt-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-geotiff-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-graph-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-gtopo30-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-image-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-jdbc-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-jdbc-postgis-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-main-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-metadata-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-opengis-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-referencing-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-referencing3D-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-render-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-shapefile-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xml-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-filter-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-gml2-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-gml3-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-kml-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-ows-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-sld-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-wfs-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-wfs-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/imageio-ext-tiff-1.1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/imageio-ext-utilities-1.1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/jdom-1.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/jt-utils-1.3.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/jt-zonalstats-1.3.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/jts-1.13.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/net.opengis.ows-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/net.opengis.wfs-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/picocontainer-1.2.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/xsd-2.6.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/commons-pool-1.5.4.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.geotools/gt-xsd-core-10.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.vecmath/vecmath-1.3.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.postgres/postgis-jdbc-2.2.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.postgres/postgis-jdbc-java2d-2.2.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.postgres/postgresql-9.3-1104.jdbc4.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.pool/commons-pool-1.6.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.xerces/xercesImpl-2.9.1.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataquery/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataquery/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataplugin/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataplugin/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.numeric/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.numeric/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataplugin.level/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataplugin.level/@dot"/>
+			<pathelement path="../../common/com.raytheon.uf.common.dataplugin.events/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.dataplugin.events/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.python/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.python/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.jep/jep-3.5.3.jar"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.configuration/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.configuration/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/com.fasterxml.jackson/jackson-annotations-2.6.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/com.fasterxml.jackson/jackson-core-2.6.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/com.fasterxml.jackson/jackson-databind-2.6.5.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/com.fasterxml.jackson/jackson-module-jaxb-annotations-2.6.5.jar"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.utilities/gson-2.1.jar"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.utilities/joda-time-2.0.jar"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.utilities/bin"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.utilities/bin/"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.utilities/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.registry.schemas.ebxml/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.registry.schemas.ebxml/@dot"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/FastInfoset-1.2.13.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/geronimo-activation_1.1_spec-1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/geronimo-annotation_1.0_spec-1.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/geronimo-stax-api_1.0_spec-1.0.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/neethi-3.0.3.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/wsdl4j-1.6.3.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/javax.ws.rs-api-2.0.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/stax2-api-3.1.4.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/woodstox-core-asl-4.4.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-core-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-bindings-object-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-bindings-soap-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-bindings-xml-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-databinding-jaxb-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-databinding-xmlbeans-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-frontend-jaxrs-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-frontend-jaxws-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-frontend-simple-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-management-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-rs-client-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-rs-extension-providers-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-rs-json-basic-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-rs-security-cors-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-rs-security-sso-saml-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-rs-security-xml-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-rs-service-description-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-security-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-security-saml-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-transports-http-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-transports-http-jetty-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-transports-local-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-ws-addr-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-ws-policy-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-ws-rm-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-ws-security-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-wsdl-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-tools-common-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-tools-misctools-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-tools-validator-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-tools-wadlto-jaxrs-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-tools-wsdlto-core-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-tools-wsdlto-databinding-jaxb-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-tools-wsdlto-frontend-jaxws-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cxf/cxf-rt-features-clustering-3.1.5.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-core-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-profile-api-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-saml-api-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-saml-impl-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-security-api-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-security-impl-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-soap-api-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-xacml-api-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-xacml-impl-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-xacml-saml-api-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-xacml-saml-impl-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-xmlsec-api-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/opensaml-xmlsec-impl-3.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.opensaml/java-support-7.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.ssl/commons-ssl.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.objectweb/asm-2.2.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.objectweb/asm-attrs-2.2.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.objectweb/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.reflections/reflections-0.9.9-RC1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/com.google.guava/guava-18.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/com.springsource.org.aopalliance-1.0.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-aop-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-beans-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-context-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-context-support-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-core-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-expression-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-jdbc-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-jms-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-orm-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-tx-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/spring-web-4.2.7.RELEASE.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/antlr-2.7.7.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.springframework/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.quartz/quartz-1.8.6.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.registry.ebxml/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.registry.ebxml/@dot"/>
+			<pathelement path="../../../AWIPS2_foss/lib/com.sun.xml.bind/jaxb-impl-2.1.9.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.codec/commons-codec-1.10.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.comm/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.comm/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.http/httpclient-4.3.6.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.http/httpclient-cache-4.3.6.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.http/httpcore-4.3.3.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.http/httpmime-4.3.6.jar"/>
+			<pathelement path="../../common/com.raytheon.uf.common.dataplugin.events.hazards/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.dataplugin.events.hazards/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.activetable/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.activetable/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.warning/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.warning/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.security/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.security/@dot"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.visuals/bin/"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.visuals/@dot"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.productgen/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.productgen/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.text/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.text/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.site/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.site/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.wmo/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.wmo/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.python.concurrent/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.python.concurrent/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.plugin.nwsauth/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.plugin.nwsauth/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dissemination/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dissemination/@dot"/>
+			<pathelement path="../../common/com.raytheon.uf.common.recommenders/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.recommenders/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.localization.python/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.localization.python/@dot"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.ihfs/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.ihfs/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.ohd/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.ohd/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.maps/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.maps/com.raytheon.uf.viz.core.maps.jar"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core/com.raytheon.uf.viz.core.jar"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core/bin"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.inventory/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.inventory/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.pointdata/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.pointdata/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.datacube/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.datacube/com.raytheon.uf.viz.datacube.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.derivparam/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.derivparam/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.qpid/qpid-client-0.32.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.qpid/qpid-common-0.32.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.jms/geronimo-jms_1.1_spec-1.1.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.jms/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/activemq-broker-5.13.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/activemq-client-5.13.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/activemq-openwire-legacy-5.13.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/activemq-stomp-5.13.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/geronimo-j2ee-management_1.1_spec-1.0.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/geronimo-jta_1.0.1B_spec-1.0.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/hawtbuf-1.11.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.activemq/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.alertmonitor/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.alertmonitor/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.velocity/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.velocity/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.velocity/velocity-tools-generic-2.0.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.velocity/velocity-1.7.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.velocity/oro-2.0.8.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.style/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.style/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.jms/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.jms/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.core/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.core/com.raytheon.viz.core.jar"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.ui/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.ui/com.raytheon.viz.ui.jar"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.productbrowser/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.productbrowser/com.raytheon.uf.viz.productbrowser.jar"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.rsc/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.rsc/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.ui.menus/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.ui.menus/com.raytheon.uf.viz.ui.menus.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.menus/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.menus/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataplugin.maps/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.dataplugin.maps/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.d2d.core/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.d2d.core/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.awipstools/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.awipstools/com.raytheon.viz.awipstools.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.radar/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.radar/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.points/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.points/com.raytheon.uf.viz.points.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.awipstools/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.awipstools/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.ui.tools.map/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.ui.tools.map/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.staticdata/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.staticdata/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/edex/gov.noaa.nws.ncep.edex.common/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/edex/gov.noaa.nws.ncep.edex.common/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.edex.uengine/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.edex.uengine/@dot"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.edex.common/bin/"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.edex.common/@dot"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.uf.edex.database/bin/"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.uf.edex.database/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/net.sf.ehcache/ehcache-core-2.4.3.jar"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.uf.edex.core/bin/"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.uf.edex.core/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.pool2/commons-pool2-2.4.2.jar"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.edex.decodertools/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.edex.decodertools/@dot"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.apache.commons.logging_1.1.1.v201101211721.jar"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.uf.edex.pointdata/bin/"/>
+			<pathelement path="../../../ufcore/edex/com.raytheon.uf.edex.pointdata/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.staticdataprovider/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.staticdataprovider/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.aww/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.aww/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.ui.pgen/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.ui.pgen/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.core.contours/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.core.contours/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.wxmath/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.wxmath/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.core.gl/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.core.gl/com.raytheon.viz.core.gl.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl/gluegen-rt.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl/jogl.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl.linux64/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl.linux64/gluegen-rt.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl.linux64/jogl.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/javax.media.opengl.win64/@dot"/>
+			<pathelement path="../../../AWIPS2_foss/lib/javax.media.opengl.win64/gluegen-rt.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/javax.media.opengl.win64/jogl.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl.win32/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl.win32/gluegen-rt.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/javax.media.opengl.win32/jogl.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/com.sun.jna/jna-4.1.0.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.texteditor/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.texteditor/com.raytheon.viz.texteditor.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.text.subscription/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.text.subscription/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.spellchecker/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.spellchecker/com.raytheon.uf.viz.spellchecker.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.ui_3.11.1.v20150827-1306.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.core_3.11.1.v20150902-1521.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.compiler.apt_1.2.0.v20150514-0146.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.compiler.tool_1.1.0.v20150513-2007.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.text_3.5.400.v20150505-1044.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.team.core_3.7.100.v20150203-1452.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.compare.core_3.5.500.v20150505-1058.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.search_3.10.0.v20150318-0856.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.core.filebuffers_3.5.500.v20140723-1040.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.ide_3.11.0.v20150825-2158.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.views_3.8.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jface.text_3.10.0.v20150603-1752.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.forms_3.6.200.v20150506-2029.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.p2.engine_2.4.0.v20150511-1532.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.p2.core_2.4.0.v20150527-1706.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.p2.metadata_2.3.0.v20150511-1532.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.p2.metadata.repository_1.2.200.v20150428-1613.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.p2.repository_2.3.100.v20150428-1613.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.equinox.security_1.2.100.v20150423-1356.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.tukaani.xz_1.3.0.v201308270617.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.workbench.texteditor_3.9.100.v20141023-1946.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ltk.core.refactoring_3.6.201.v20150819-1034.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ltk.ui.refactoring_3.7.200.v20140625-1835.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.navigator_3.6.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.compare_3.5.600.v20150420-1449.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.editors_3.9.0.v20150213-1939.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.team.ui_3.7.200.v20150203-1452.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.debug.core_3.10.0.v20150303-1130.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.debug.ui_3.11.100.v20150731-1137.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.console_3.6.100.v20150822-1912.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.launching_3.8.0.v20150527-0946.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.debug_3.9.0.v20150528-1838/jdi.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.debug_3.9.0.v20150528-1838/jdimodel.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.debug_3.9.0.v20150528-1838/tools.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.navigator.resources_3.5.0.v20150422-0725.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.ui.views.properties.tabbed_3.6.100.v20150423-0822.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jdt.core.manipulation_1.5.100.v20141002-1241.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.dom4j/dom4j-1.6.1.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.dom4j/jaxen-1.1.4.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.dom4j/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.common/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.common/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.pointdata/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.pointdata/com.raytheon.viz.pointdata.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-anim-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-bridge-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-css-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-dom-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-ext-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-extension-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-gui-util-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-gvt-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-parser-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-script-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-svg-dom-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-svggen-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-transcoder-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-util-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-xml-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.batik/batik-awt-util-1.8.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.w3c.xml.ext/xml-apis-ext-1.3.04.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.xmlgraphics/xmlgraphics-commons-2.0.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.grid/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.grid/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.gridcoverage/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.gridcoverage/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.parameter/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.parameter/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.alerts/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.viz.alerts/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.point/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.point/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.localization.perspective/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.localization.perspective/com.raytheon.uf.viz.localization.perspective.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev_4.4.0.201510052309/pydev.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev_4.4.0.201510052309/libs/WinRegistry-4.5.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.ast_4.4.0.201510052309/ast.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.parser_4.4.0.201510052309/parser.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.junit_4.12.0.v201504281640/junit.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.hamcrest.core_1.3.0.v201303031735.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.core_4.4.0.201510052309/core.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_core_4.4.0.201510052309/shared_core.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_core_4.4.0.201510052309/libs/snakeyaml-1.11.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_core_4.4.0.201510052309/libs/lucene-analyzers-common-5.2.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_core_4.4.0.201510052309/libs/lucene-core-5.2.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_ui_4.4.0.201510052309/shared_ui.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.jython_4.4.0.201510052309/pydev-jython.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.jython_4.4.0.201510052309/jython.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_interactive_console_4.4.0.201510052309/interactive_console.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_interactive_console_4.4.0.201510052309/commons-logging-1.1.1.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_interactive_console_4.4.0.201510052309/ws-commons-util-1.0.2.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_interactive_console_4.4.0.201510052309/xmlrpc-client-3.1.3.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_interactive_console_4.4.0.201510052309/xmlrpc-common-3.1.3.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.shared_interactive_console_4.4.0.201510052309/xmlrpc-server-3.1.3.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.xml.ui_1.1.501.v201501212057.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.sse.ui_1.3.400.v201505141512.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.sse.core_1.1.900.v201401092025.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.uriresolver_1.2.200.v201505132009.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.validation_1.2.700.v201508251749.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.frameworks_1.2.200.v201304241450.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.environment_1.0.400.v200912181831.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.osgi.util_3.3.100.v20150423-1351.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.core_1.2.0.v200908251833.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.project.facet.core_1.4.300.v201111030423.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.xml.core_1.1.902.v201501211904.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.jem.util_2.1.200.v201404021757.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.emf_1.2.400.v201505132009.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.emfworkbench.integration_1.2.101.v201107081800.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.emf.edit_2.11.1.v20150806-0404.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.ui_1.1.500.v200911182011.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.validation.ui_1.2.500.v201310231452.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.wst.common.frameworks.ui_1.2.400.v201504292002.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/com.python.pydev.analysis_4.4.0.201510052309/analysis.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/com.python.pydev_4.4.0.201510052309/pydev.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.debug_4.4.0.201510052309/pydev-debug.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.debug_4.4.0.201510052309/libs/winp-1.19.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.python.pydev.refactoring_4.4.0.201510052309/refactoring.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.apache.log4j_1.2.15.v201012070815.jar"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.localization/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.localization/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.gempak.parameters.core/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.gempak.parameters.core/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak.nativelib/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak.nativelib/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak.nativelib.linux64/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.pgen/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.pgen/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.resources/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.resources/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.xy/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.xy/com.raytheon.uf.viz.xy.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.core.graphing/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.core.graphing/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.mcidas/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.mcidas/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/edu.wisc.ssec.mcidas/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/edu.wisc.ssec.mcidas/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.gempak.parameters/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.gempak.parameters/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.ui.display/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.ui.display/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak/@dot"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.log/bin/"/>
+			<pathelement path="../../../AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.log/@dot"/>
+			<pathelement path="../gov.noaa.gsd.viz.widgets/bin/"/>
+			<pathelement path="../gov.noaa.gsd.viz.widgets/@dot"/>
+			<pathelement path="../gov.noaa.gsd.viz.mvp/bin/"/>
+			<pathelement path="../gov.noaa.gsd.viz.mvp/@dot"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.eventbus/mbassador-1.1.10.jar"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.eventbus/bin"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.eventbus/bin/"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.eventbus/@dot"/>
+			<pathelement path="../gov.noaa.gsd.viz.megawidgets/lib/org.eclipse.nebula.cwt_0.9.0.201312041736.jar"/>
+			<pathelement path="../gov.noaa.gsd.viz.megawidgets/lib/org.eclipse.nebula.widgets.cdatetime_0.14.0.201312041736.jar"/>
+			<pathelement path="../gov.noaa.gsd.viz.megawidgets/bin"/>
+			<pathelement path="../gov.noaa.gsd.viz.megawidgets/bin/"/>
+			<pathelement path="../gov.noaa.gsd.viz.megawidgets/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/net.sf.swtaddons/net.sf.swtaddons_0.1.1_bin_src.jar"/>
+			<pathelement path="../../../ufcore-foss/lib/net.sf.swtaddons"/>
+			<pathelement path="../../../ufcore-foss/lib/net.sf.swtaddons/@dot"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.draw2d_3.10.1.201508170204.jar"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/org.eclipse.emf.common.ui_2.10.0.v20150806-0404.jar"/>
+			<pathelement path="../gov.noaa.gsd.viz.megawidgets.sideeffects/bin/"/>
+			<pathelement path="../gov.noaa.gsd.viz.megawidgets.sideeffects/@dot"/>
+			<pathelement path="../../../../../../../../awips2/eclipse/plugins/com.google.gson_2.2.4.v201311231704.jar"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.hazards.utilities/@dot"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.hazards.utilities.hazardservices/bin/"/>
+			<pathelement path="../../common/gov.noaa.gsd.common.hazards.utilities.hazardservices/@dot"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.hydro/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.hazards.hydro/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.shef/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.shef/@dot"/>
+			<pathelement path="../com.raytheon.uf.viz.productgen/bin/"/>
+			<pathelement path="../com.raytheon.uf.viz.productgen/@dot"/>
+			<pathelement path="../../../ufcore-foss/lib/org.apache.commons.io/commons-io-2.4.jar"/>
+			<pathelement path="../com.raytheon.uf.viz.python/bin/"/>
+			<pathelement path="../com.raytheon.uf.viz.python/@dot"/>
+			<pathelement path="../com.raytheon.uf.viz.hazards.sessionmanager/bin/"/>
+			<pathelement path="../com.raytheon.uf.viz.hazards.sessionmanager/@dot"/>
+			<pathelement path="../com.raytheon.uf.viz.recommenders/bin/"/>
+			<pathelement path="../com.raytheon.uf.viz.recommenders/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.json/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.json/@dot"/>
+			<pathelement path="../../common/com.raytheon.uf.common.dataplugin.hazards.interoperability/bin/"/>
+			<pathelement path="../../common/com.raytheon.uf.common.dataplugin.hazards.interoperability/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.hydro/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.hydro/com.raytheon.viz.hydro.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.mpe/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.mpe/@dot"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.commons.cli/commons-cli-1.2.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.hydrocommon/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.hydrocommon/com.raytheon.viz.hydrocommon.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.hydro/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.hydro/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.grid/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.core.grid/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.xmrg/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.xmrg/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.mpe/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.mpe/@dot"/>
+			<pathelement path="../../../AWIPS2_foss/lib/ucar.nc2/netcdf-4.2.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/ucar.nc2/grib-8.0.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/ucar.nc2/bufr-3.0.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.app.launcher/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.app.launcher/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.ui.personalities.awips/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.viz.ui.personalities.awips/com.raytheon.viz.ui.personalities.awips.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.pypies/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.pypies/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz/com.raytheon.uf.viz.alertviz.jar"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz/bin"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz/@dot"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.alertviz/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.alertviz/@dot"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.derby/derby-10.12.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.derby/derbyrun-10.12.1.1.jar"/>
+			<pathelement path="../../../AWIPS2_foss/lib/org.apache.derby/derbytools-10.12.1.1.jar"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.logback/bin/"/>
+			<pathelement path="../../../ufcore/common/com.raytheon.uf.common.logback/@dot"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz.ui/bin/"/>
+			<pathelement path="../../../AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz.ui/com.raytheon.uf.viz.alertviz.ui.jar"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.application/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.application/@dot"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.personalities.cave/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.personalities.cave/com.raytheon.uf.viz.personalities.cave.jar"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.spring.dm/bin/"/>
+			<pathelement path="../../../ufcore/viz/com.raytheon.uf.viz.spring.dm/@dot"/>
+			<pathelement path="icons/"/>
+			<pathelement path="${build.result.folder}/../gov.noaa.gsd.viz.hazards_1.0.0.201710232127/icons/"/>
+			<pathelement path="bin/"/>
+			<pathelement path="${build.result.folder}/../gov.noaa.gsd.viz.hazards_1.0.0.201710232127/bin/"/>
+		</path>
+		<!-- compile the source code -->
+		<javac destdir="${build.result.folder}/@dot" failonerror="${javacFailOnError}" verbose="${javacVerbose}" debug="${javacDebugInfo}" includeAntRuntime="no" bootclasspath="${bundleBootClasspath}" source="${bundleJavacSource}" target="${bundleJavacTarget}"		>
+			<compilerarg line="${compilerArg}" compiler="${build.compiler}"/>
+			<classpath refid="@dot.classpath" />
+			<src path="src/"			/>
+			<compilerarg value="@${basedir}/javaCompiler...args" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"			/>
+			<compilerarg line="-log &apos;${build.result.folder}/@dot${logExtension}&apos;" compiler="org.eclipse.jdt.core.JDTCompilerAdapter"			/>
+		</javac>
+		<antcall target="checkCompilationResults"/>
+		<!-- Copy necessary resources -->
+		<copy todir="${build.result.folder}/@dot" failonerror="true" overwrite="false">
+			<fileset dir="src/">
+				<exclude name="**/*.java"/>
+				<exclude name="**/package.htm*"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="src.zip" depends="init" unless="src.zip">
+		<mkdir dir="${build.result.folder}"/>
+		<antcall target="zip.src.zip"/>
+	</target>
+	<target name="zip.src.zip">
+		<zip destfile="${build.result.folder}/src.zip" filesonly="false" whenempty="skip" update="false">
+			<fileset dir="src/">
+				<include name="**/*.java"/>
+			</fileset>
+		</zip>
+	</target>
+	<target name="copy.src.zip">
+		<copy todir="${source.destination.folder}/" failonerror="true" overwrite="true">
+			<fileset dir="src/">
+				<include name="**/*.java"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="build.jars" depends="init" description="Compile classes and build nested jars for the plug-in: gov.noaa.gsd.viz.hazards.">
+		<delete file="${compilation.problem.marker}" quiet="true"/>
+		<available property="@dot" file="${build.result.folder}/@dot"/>
+		<antcall target="@dot"/>
+	</target>
+
+	<target name="checkCompilationResults" if="compilation.error.occured">
+		<echo file="${compilation.problem.marker}" message="gov.noaa.gsd.viz.hazards_1.0.0.201710232127${line.separator}compilation.error.occured=${compilation.error.occured}"/>
+		<eclipse.logCompileError log="${compilation.prereq.log}" bundle="gov.noaa.gsd.viz.hazards_1.0.0.201710232127">
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.w3c.xml.ext/compilation.problem"/>
+			<include name="${pluginTemp}/org.w3c.xml.ext_1.3.4/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak.nativelib/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.viz.gempak.nativelib_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/javax.media.opengl.win64/compilation.problem"/>
+			<include name="${pluginTemp}/javax.media.opengl.win64_1.14.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/gov.noaa.gsd.common.hazards.utilities.hazardservices/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.common.hazards.utilities.hazardservices_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.dataplugin.events.hazards/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.events.hazards_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.python/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.python_1.12.1174.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.batik/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.batik_1.8.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.jms/compilation.problem"/>
+			<include name="${pluginTemp}/javax.jms_1.1.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.localization.python/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.localization.python_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/com.google.guava/compilation.problem"/>
+			<include name="${pluginTemp}/com.google.guava_18.0.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.slf4j/compilation.problem"/>
+			<include name="${pluginTemp}/org.slf4j_1.7.21/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.hazards.hydro/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.hazards.hydro_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/net.sf.swtaddons/compilation.problem"/>
+			<include name="${pluginTemp}/net.sf.swtaddons_0.1.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.texteditor/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.texteditor_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.spring.dm/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.spring.dm_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.derivparam/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.derivparam_1.14.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.activemq/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.activemq_5.13.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.core.maps/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.core.maps_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.text.subscription/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.text.subscription_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.convert/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.convert_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.mcidas/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.common.dataplugin.mcidas_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.edex.decodertools/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.edex.decodertools_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.alertmonitor/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.alertmonitor_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.pypies/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.pypies_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/com.sun.jna/compilation.problem"/>
+			<include name="${pluginTemp}/com.sun.jna_4.1.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.grid/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.grid_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.resources/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.viz.resources_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.json/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.json_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.xmlgraphics/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.xmlgraphics_2.0.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.localization/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.viz.localization_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.uf.viz.xy/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.xy_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.productbrowser/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.productbrowser_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.personalities.cave/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.personalities.cave_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.jep/compilation.problem"/>
+			<include name="${pluginTemp}/org.jep_3.5.3/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.auth/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.auth_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.awipstools/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.awipstools_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.warning/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.warning_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.serialization.comm/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.serialization.comm_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.uf.viz.spellchecker/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.spellchecker_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.registry.ebxml/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.registry.ebxml_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.core.point/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.core.point_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.velocity/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.velocity_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.quartz/compilation.problem"/>
+			<include name="${pluginTemp}/org.quartz_1.8.6/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/edex/com.raytheon.edex.common/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.edex.common_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.staticdataprovider/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.staticdataprovider_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.xerces/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.xerces_2.9.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.viz.core.contours/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.core.contours_1.15.2.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.http/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.http_4.3.6/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.inventory/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.inventory_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/org.apache.derby/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.derby_10.12.1.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.reflections/compilation.problem"/>
+			<include name="${pluginTemp}/org.reflections_0.9.9/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.text/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.text_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.velocity/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.velocity_1.7.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/edex/gov.noaa.nws.ncep.edex.common/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.edex.common_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/gov.noaa.gsd.common.hazards.utilities/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.common.hazards.utilities_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.ohd/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.ohd_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/common/gov.noaa.nws.ncep.common/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.common_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.postgres/compilation.problem"/>
+			<include name="${pluginTemp}/org.postgres_9.3.5/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/org.apache.commons.ssl/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.ssl_1.0.2/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/org.apache.commons.cxf/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.cxf_3.1.5/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.viz.ui/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.ui_1.15.3.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/com.fasterxml.jackson/compilation.problem"/>
+			<include name="${pluginTemp}/com.fasterxml.jackson_2.6.5/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.datastorage/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.datastorage_1.15.2.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.ui.menus/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.ui.menus_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.common/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.viz.common_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.xmrg/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.xmrg_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.dom4j/compilation.problem"/>
+			<include name="${pluginTemp}/org.dom4j_1.6.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.dataquery/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataquery_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.units/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.units_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.hazards.ihfs/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.hazards.ihfs_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.shef/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.shef_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.log/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.common.log_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.lang/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.lang_2.6.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.mpe/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.mpe_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.uf.viz.app.launcher/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.app.launcher_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.springframework/compilation.problem"/>
+			<include name="${pluginTemp}/org.springframework_4.2.7/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.dataplugin/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/com.raytheon.uf.viz.productgen/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.productgen_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/ch.qos.logback/compilation.problem"/>
+			<include name="${pluginTemp}/ch.qos.logback_1.1.7/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.widgets/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.viz.widgets_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.ui.pgen/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.ui.pgen_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.pool2/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.pool2_2.4.2/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.viz.gempak_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/net.sf.ehcache/compilation.problem"/>
+			<include name="${pluginTemp}/net.sf.ehcache_2.4.3/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.dataplugin.level/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.level_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.viz.core/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.core_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.util/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.util_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.qpid/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.qpid_0.32.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.dataplugin.events/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.events_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/com.raytheon.uf.viz.python/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.python_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.hydro/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.hydro_1.16.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.core.rsc/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.core.rsc_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.media.opengl.win32/compilation.problem"/>
+			<include name="${pluginTemp}/javax.media.opengl.win32_1.1.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.wmo/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.wmo_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.ui.tools.map/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.ui.tools.map_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dataplugin.radar/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.radar_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.localization.perspective/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.localization.perspective_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.localization/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.localization_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.logback/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.logback_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.lang3/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.lang3_3.4.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.site/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.site_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.uf.viz.d2d.core/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.d2d.core_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.core/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.core_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.edex.uengine/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.edex.uengine_1.14.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.core.grid/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.core.grid_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.awipstools/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.awipstools_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.plugin.nwsauth/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.plugin.nwsauth_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz.ui/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.alertviz.ui_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/ucar.nc2/compilation.problem"/>
+			<include name="${pluginTemp}/ucar.nc2_4.2.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.comm/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.comm_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.hazards.configuration/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.hazards.configuration_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.uf.viz.points/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.points_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.ui.personalities.awips/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.ui.personalities.awips_1.12.1174.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/net.sf.cglib/compilation.problem"/>
+			<include name="${pluginTemp}/net.sf.cglib_2.1.3/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/gov.noaa.gsd.common.eventbus/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.common.eventbus_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.hydrocommon/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.hydrocommon_1.14.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.registry.schemas.ebxml/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.registry.schemas.ebxml_1.14.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.alertviz/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.alertviz_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.serialization/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.serialization_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.security/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.security_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.pgen/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.common.dataplugin.pgen_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.persistence/compilation.problem"/>
+			<include name="${pluginTemp}/javax.persistence_2.0.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/edex/com.raytheon.uf.edex.database/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.edex.database_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.gempak.nativelib.linux64/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.viz.gempak.nativelib.linux64_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.hazards.productgen/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.hazards.productgen_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/org.objectweb/compilation.problem"/>
+			<include name="${pluginTemp}/org.objectweb_2.2.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/common/edu.wisc.ssec.mcidas/compilation.problem"/>
+			<include name="${pluginTemp}/edu.wisc.ssec.mcidas_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.pointdata/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.pointdata_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.status/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.status_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/edex/com.raytheon.uf.edex.pointdata/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.edex.pointdata_1.12.1174.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.dissemination/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dissemination_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.hydro/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.hydro_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.io/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.io_2.4.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/org.opensaml/compilation.problem"/>
+			<include name="${pluginTemp}/org.opensaml_3.1.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/gov.noaa.gsd.common.utilities/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.common.utilities_1.0.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.megawidgets.sideeffects/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.viz.megawidgets.sideeffects_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.gempak.parameters/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.gempak.parameters_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.megawidgets/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.viz.megawidgets_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.collections/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.collections_3.2.2/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.dataaccess/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataaccess_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.viz.alerts/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.alerts_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.dataplugin.aww/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.common.dataplugin.aww_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/org.apache.commons.cli/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.cli_1.2.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.menus/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.menus_1.16.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.media.opengl/compilation.problem"/>
+			<include name="${pluginTemp}/javax.media.opengl_1.1.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/com.raytheon.uf.viz.recommenders/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.recommenders_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.datacube/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.datacube_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.uf.viz.alertviz/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.alertviz_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.recommenders/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.recommenders_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.viz.core.gl/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.core.gl_1.15.2.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.geospatial/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.geospatial_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.message/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.message_1.14.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.codec/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.codec_1.10.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.thrift/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.thrift_0.9.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.jms/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.jms_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.time/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.time_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.wxmath/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.wxmath_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.numeric/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.numeric_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.media.opengl.linux64/compilation.problem"/>
+			<include name="${pluginTemp}/javax.media.opengl.linux64_1.1.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.style/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.style_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.measure/compilation.problem"/>
+			<include name="${pluginTemp}/javax.measure_1.0.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.pointdata/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.pointdata_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.hibernate/compilation.problem"/>
+			<include name="${pluginTemp}/org.hibernate_4.2.15/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/gov.noaa.gsd.common.visuals/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.common.visuals_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.javassist/compilation.problem"/>
+			<include name="${pluginTemp}/org.javassist_3.18.1.GA/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/viz/com.raytheon.uf.viz.application/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.application_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.configuration/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.configuration_1.10.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/edex/com.raytheon.uf.edex.core/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.edex.core_1.14.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/com.raytheon.uf.viz.hazards.sessionmanager/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.viz.hazards.sessionmanager_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.servlet/compilation.problem"/>
+			<include name="${pluginTemp}/javax.servlet_3.1.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.pool/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.pool_1.6.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.mvp/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.gsd.viz.mvp_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/common/gov.noaa.nws.ncep.common.staticdata/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.common.staticdata_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.parameter/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.parameter_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.beanutils/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.beanutils_1.8.3/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/hazardServices/common/com.raytheon.uf.common.dataplugin.hazards.interoperability/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.hazards.interoperability_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.geotools/compilation.problem"/>
+			<include name="${pluginTemp}/org.geotools_10.5.0/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.python.concurrent/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.python.concurrent_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.gridcoverage/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.gridcoverage_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.colormap/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.colormap_1.15.1.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/javax.vecmath/compilation.problem"/>
+			<include name="${pluginTemp}/javax.vecmath_1.3.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.viz.ui.display/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.viz.ui.display_1.0.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.mpe/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.mpe_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore-foss/lib/org.apache.commons.digester/compilation.problem"/>
+			<include name="${pluginTemp}/org.apache.commons.digester_1.8.1/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/edexOsgi/com.raytheon.uf.common.activetable/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.activetable_1.14.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/ufcore/common/com.raytheon.uf.common.dataplugin.maps/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.uf.common.dataplugin.maps_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_baseline/cave/com.raytheon.viz.core.graphing/compilation.problem"/>
+			<include name="${pluginTemp}/com.raytheon.viz.core.graphing_1.15.0.201710232127/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_foss/lib/com.sun.xml.bind/compilation.problem"/>
+			<include name="${pluginTemp}/com.sun.xml.bind_2.1.9/compilation.problem"/>
+			<include name="/scratch/hopefaccia/golden/ade/awips/AWIPS2_NCEP/viz/gov.noaa.nws.ncep.gempak.parameters.core/compilation.problem"/>
+			<include name="${pluginTemp}/gov.noaa.nws.ncep.gempak.parameters.core_1.0.0.201710232127/compilation.problem"/>
+		</eclipse.logCompileError>
+	</target>
+
+	<target name="build.sources" depends="init">
+		<available property="src.zip" file="${build.result.folder}/src.zip"/>
+		<antcall target="src.zip"/>
+	</target>
+
+	<target name="publish.bin.parts" depends="init" if="p2.publish.parts" unless="compilation.problem.marker.exists">
+		<mkdir dir="${build.result.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127"/>
+		<copy todir="${build.result.folder}" failonerror="true" overwrite="true">
+			<fileset dir="${basedir}">
+				<include name="META-INF/MANIFEST.MF"/>
+				<include name="plugin.xml"/>
+				<include name="fragment.xml"/>
+			</fileset>
+		</copy>
+		<eclipse.versionReplacer path="${build.result.folder}" version="1.0.0.201710232127"/>
+		<antcall target="apitools.generation">
+			<param name="projectLocation" value="${basedir}"/>
+			<param name="binary.folders" value="${build.result.folder}/@dot:/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.hazards/icons/:/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.hazards/bin/"/>
+			<param name="projectName" value="${bundleId}_${bundleVersion}"/>
+			<param name="target.folder" value="${build.result.folder}"/>
+		</antcall>
+		<eclipse.gatherBundle 
+		   metadataRepository="${p2.build.repo}"
+		   artifactRepository="${p2.build.repo}"
+		   buildResultFolder="${build.result.folder}"
+		   baseDirectory="${basedir}"
+		/>
+	</target>
+
+	<target name="gather.bin.parts" depends="init" if="destination.temp.folder">
+		<mkdir dir="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127"/>
+		<copy todir="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127" failonerror="true" overwrite="false">
+			<fileset dir="${build.result.folder}/@dot">
+				<include name="**"/>
+			</fileset>
+		</copy>
+		<copy todir="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127" failonerror="true" overwrite="true">
+			<fileset dir="${basedir}">
+				<include name="META-INF/"/>
+				<include name="icons/"/>
+				<include name="plugin.xml"/>
+				<include name="bin/"/>
+				<include name="localization/"/>
+				<include name="res/"/>
+			</fileset>
+		</copy>
+		<eclipse.versionReplacer path="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127" version="1.0.0.201710232127"/>
+		<antcall target="apitools.generation">
+			<param name="projectLocation" value="${basedir}"/>
+			<param name="binary.folders" value="${build.result.folder}/@dot:/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.hazards/icons/:/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.hazards/bin/"/>
+			<param name="projectName" value="${bundleId}_${bundleVersion}"/>
+			<param name="target.folder" value="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127"/>
+		</antcall>
+	</target>
+
+	<target name="build.zips" depends="init">
+	</target>
+
+	<target name="gather.sources" depends="init" if="destination.temp.folder">
+		<mkdir dir="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127"/>
+		<copy file="${build.result.folder}/src.zip" todir="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127" failonerror="false" overwrite="false"/>
+		<antcall target="copy.src.includes">
+			<param name="source.destination.folder" value="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127"/>
+		</antcall>
+	</target>
+
+	<target name="gather.individual.sources" depends="init">
+		<antcall target="copy.src.zip">
+			<param name="source.destination.folder" value="${destination.temp.folder}"/>
+		</antcall>
+		<antcall target="copy.src.includes">
+			<param name="source.destination.folder" value="${destination.temp.folder}"/>
+		</antcall>
+	</target>
+
+	<target name="copy.src.includes" depends="init">
+	</target>
+
+	<target name="gather.logs" depends="init" if="destination.temp.folder">
+		<mkdir dir="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127"/>
+		<copy todir="${destination.temp.folder}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127" failonerror="false" overwrite="false">
+			<fileset dir="${build.result.folder}">
+				<include name="@dot${logExtension}"/>
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="clean" depends="init" description="Clean the plug-in: gov.noaa.gsd.viz.hazards of all the zips, jars and logs created.">
+		<delete dir="${build.result.folder}/@dot"/>
+		<delete file="${build.result.folder}/src.zip"/>
+		<delete file="${plugin.destination}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127.jar"/>
+		<delete file="${plugin.destination}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127.zip"/>
+		<delete dir="${temp.folder}"/>
+		<delete file="${compilation.problem.marker}" quiet="true"/>
+	</target>
+
+	<target name="refresh" depends="init" if="eclipse.running" description="Refresh this folder.">
+		<eclipse.convertPath fileSystemPath="/scratch/hopefaccia/golden/ade/awips/hazardServices/viz/gov.noaa.gsd.viz.hazards" property="resourcePath"/>
+		<eclipse.refreshLocal resource="${resourcePath}" depth="infinite"/>
+	</target>
+
+	<target name="zip.plugin" depends="init" description="Create a zip containing all the elements for the plug-in: gov.noaa.gsd.viz.hazards.">
+		<delete dir="${temp.folder}"/>
+		<mkdir dir="${temp.folder}"/>
+		<antcall target="build.jars"/>
+		<antcall target="build.sources"/>
+		<antcall target="gather.bin.parts">
+			<param name="destination.temp.folder" value="${temp.folder}/"/>
+		</antcall>
+		<antcall target="gather.sources">
+			<param name="destination.temp.folder" value="${temp.folder}/"/>
+		</antcall>
+		<delete>
+			<fileset dir="${temp.folder}">
+				<include name="**/*.bin${logExtension}"/>
+			</fileset>
+		</delete>
+		<zip destfile="${plugin.destination}/gov.noaa.gsd.viz.hazards_1.0.0.201710232127.zip" basedir="${temp.folder}" filesonly="true" whenempty="skip" update="false"/>
+		<delete dir="${temp.folder}"/>
+	</target>
+
+	<target name="apitools.generation" if="generateAPIDescription">
+		<apitooling.apigeneration  projectName="${projectName}" project="${projectLocation}" binary="${binary.folders}" target="${target.folder}" extramanifests="${extraManifests}" allownonapiproject="${allowNonApiProject}"		/>
+	</target>
+
 </project>

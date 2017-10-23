@@ -62,6 +62,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
  * Jul 10, 2013            bsteffen     Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Added intra-managerial notifications
  *                                      and message batching capability.
+ * Oct 23, 2017   21730    Chris.Golden Changed IIntraNotificationHander to make
+ *                                      its isSynchronous() method take the
+ *                                      notification to be handled, so that a
+ *                                      decision about whether to handle it
+ *                                      synchronously or not may be properly
+ *                                      contextualized.
  * </pre>
  * 
  * @author bsteffen
@@ -88,12 +94,16 @@ public interface ISessionNotificationSender {
 
         /**
          * Determine whether or not this handler should be invoked
-         * synchronously, that is, when the notification is posted.
+         * synchronously, that is, when the notification is posted. The answer
+         * to this may be based upon the specified notification, which is to be
+         * handled.
          * 
+         * @param notification
+         *            Notification that is to be handled.
          * @return <code>true</code> if this handler should be invoked
          *         synchronously, <code>false</code> otherwise.
          */
-        public boolean isSynchronous();
+        public boolean isSynchronous(N notification);
     }
 
     // Public Methods

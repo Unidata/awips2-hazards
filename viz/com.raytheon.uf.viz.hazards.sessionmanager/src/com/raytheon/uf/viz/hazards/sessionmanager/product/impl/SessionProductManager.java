@@ -262,6 +262,9 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Jun 26, 2017 19207      Chris.Golden Changes to view products for specific events.
  * Sep 27, 2017 38072      Chris.Golden Added use of intra-managerial notifications, and replaced
  *                                      use of event bus with notification sender.
+ * Oct 23, 2017 21730      Chris.Golden Adjusted implementations of IIntraNotificationHander to
+ *                                      adjust their isSynchronous() methods to take the new
+ *                                      parameter.
  * </pre>
  * 
  * @author bsteffen
@@ -350,7 +353,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SiteChanged notification) {
             return false;
         }
     };
@@ -366,7 +369,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(ProductGenerated notification) {
             return false;
         }
     };
@@ -382,7 +385,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(ProductFailed notification) {
             return false;
         }
     };

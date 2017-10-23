@@ -64,6 +64,12 @@ StartUpConfig = {
     "displayMaps" : [ "Counties_site" ],
 
     #########################
+    #  Hazard Event Creation
+    # defaultType may be an empty string, meaning no hazard type is assigned to manually created
+    # hazard events, or else one of the types defined in HazardTypes.py.
+    "defaultType" : "",
+
+    #########################
     # Hazard Information Dialog
     #    
     # Title text that is to be shown in the tabs of the Hazard Information Dialog for each event.

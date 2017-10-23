@@ -4,4 +4,4 @@ Bundle-Name: Hazards
 Bundle-SymbolicName: gov.noaa.gsd.uf.common.dataplugin.hazards
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: GSD
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8

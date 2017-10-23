@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EVENT_ID_DISPLAY_TYPE;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAP_CENTER;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_FIELD_TYPE_GROUP;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
@@ -309,6 +310,9 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      hazard attribute change does not for exammple
  *                                      trigger a metadata refresh and a recommender
  *                                      run; it should do only one of the two.
+ * Oct 23, 2017 21730      Chris.Golden Added ability to do a two-level query for
+ *                                      default hazard type (check settings, then
+ *                                      starup config).
  * </pre>
  * 
  * @author bsteffen
@@ -1420,6 +1424,12 @@ public class SessionConfigurationManager
             String s = settings.getEventIdDisplayType();
             if ((s == null) || s.isEmpty()) {
                 s = startUpConfig.getConfig().getEventIdDisplayType();
+            }
+            value = s;
+        } else if (identifier.equals(HAZARD_EVENT_TYPE)) {
+            String s = settings.getDefaultType();
+            if ((s == null) || s.isEmpty()) {
+                s = startUpConfig.getConfig().getDefaultType();
             }
             value = s;
         } else if (identifier.equals(MAP_CENTER)) {

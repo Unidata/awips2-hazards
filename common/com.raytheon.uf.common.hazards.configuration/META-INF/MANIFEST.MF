@@ -4,7 +4,7 @@ Bundle-Name: Hazards Configuration
 Bundle-SymbolicName: com.raytheon.uf.common.hazards.configuration
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: com.fasterxml.jackson,
  org.apache.commons.lang3,
  org.jep;bundle-version="2.3.0",

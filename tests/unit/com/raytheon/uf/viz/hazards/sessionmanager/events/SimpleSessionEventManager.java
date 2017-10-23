@@ -434,4 +434,19 @@ public class SimpleSessionEventManager
         // TODO Auto-generated method stub
         return null;
     }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
+     * setEventTypeToDefault(com.raytheon.uf.common.dataplugin.events.hazards.
+     * event.IHazardEvent,
+     * com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator)
+     */
+    @Override
+    public boolean setEventTypeToDefault(ObservedHazardEvent event,
+            IOriginator originator) {
+        throw new UnsupportedOperationException();
+    }
 }

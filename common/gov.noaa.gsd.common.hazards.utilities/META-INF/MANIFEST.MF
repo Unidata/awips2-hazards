@@ -4,4 +4,4 @@ Bundle-Name: gov.noaa.gsd.common.hazards.utilities
 Bundle-SymbolicName: gov.noaa.gsd.common.hazards.utilities
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: GSD
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8

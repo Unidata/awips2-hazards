@@ -19,9 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-import gov.noaa.gsd.common.utilities.TimeResolutionAdapter;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +31,9 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
+import gov.noaa.gsd.common.utilities.TimeResolutionAdapter;
 
 /**
  * Basic settings implementation.
@@ -57,6 +57,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * May 10, 2016 18515      Chris.Golden Added "deselect after issuing" flag.
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
+ * Oct 23, 2017 21730      Chris.Golden Added defaultType.
  * </pre>
  * 
  * @author bsteffen
@@ -106,6 +107,11 @@ public class Settings implements ISettings {
      * Which hazard category new events should go into.
      */
     private String defaultCategory;
+
+    /**
+     * Which hazard type should be assigned to new events.
+     */
+    private String defaultType;
 
     /**
      * Which sites are possible for being loaded/displayed
@@ -165,20 +171,17 @@ public class Settings implements ISettings {
 
     /**
      * <pre>
-     * Mode for displaying a Hazard Event ID:.
-     * ALWAYS_FULL    Always returns the full ID (default) 
-     * FULL_ON_DIFF   Always return the full id if there is any difference 
-     *                between the current settings for: appId, siteId or year.
-     * PROG_ON_DIFF   Build a progressively larger Display Id based on the largest
-     *                difference between the Current Settings and the given Event Id.
-     *                Different App = Full ID             "ZZ-SSS-YYYY-999999"
-     *                Different Site = Site Level ID:     "SSS-YYYY-999999"
-     *                (Same App)
-     *                Different Year = Year Level ID:     "YYYY-999999"
-     *                (Same App and Site)
-     *                Same App, Site and Year: Serial ID: "999999"
-     * ALWAYS_SITE    Always display the Site Id and Serial Id "SSS-999999"
-     * ONLY_SERIAL    Only displays the Serial ID despite other differences.
+     * Mode for displaying a Hazard Event ID:. ALWAYS_FULL Always returns the
+     * full ID (default) FULL_ON_DIFF Always return the full id if there is any
+     * difference between the current settings for: appId, siteId or year.
+     * PROG_ON_DIFF Build a progressively larger Display Id based on the largest
+     * difference between the Current Settings and the given Event Id. Different
+     * App = Full ID "ZZ-SSS-YYYY-999999" Different Site = Site Level ID:
+     * "SSS-YYYY-999999" (Same App) Different Year = Year Level ID:
+     * "YYYY-999999" (Same App and Site) Same App, Site and Year: Serial ID:
+     * "999999" ALWAYS_SITE Always display the Site Id and Serial Id
+     * "SSS-999999" ONLY_SERIAL Only displays the Serial ID despite other
+     * differences.
      * 
      */
     private String eventIdDisplayType;
@@ -208,6 +211,7 @@ public class Settings implements ISettings {
         setTimeResolution(other.getTimeResolution());
         setMapCenter(other.getMapCenter());
         setDefaultCategory(other.getDefaultCategory());
+        setDefaultType(other.getDefaultType());
         setPossibleSites(other.getPossibleSites());
         setVisibleSites(other.getVisibleSites());
         setDisplayName(other.getDisplayName());
@@ -300,6 +304,16 @@ public class Settings implements ISettings {
     @Override
     public void setDefaultCategory(String defaultCategory) {
         this.defaultCategory = defaultCategory;
+    }
+
+    @Override
+    public String getDefaultType() {
+        return defaultType;
+    }
+
+    @Override
+    public void setDefaultType(String defaultType) {
+        this.defaultType = defaultType;
     }
 
     @Override

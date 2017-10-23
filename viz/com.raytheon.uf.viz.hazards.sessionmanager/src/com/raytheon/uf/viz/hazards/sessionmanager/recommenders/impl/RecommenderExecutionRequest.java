@@ -30,6 +30,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 26, 2017   38072    Chris.Golden Initial creation.
+ * Oct 23, 2017   21730    Chris.Golden Fixed null pointer exception.
  * </pre>
  * 
  * @author Chris.Golden
@@ -107,7 +108,8 @@ class RecommenderExecutionRequest
         if (getRecommenderIdentifiers()
                 .equals(original.getRecommenderIdentifiers())) {
             MergeResult<RecommenderExecutionContext> result = getContext()
-                    .merge(original.getContext(), modified.getContext());
+                    .merge(original.getContext(),
+                            (modified == null ? null : modified.getContext()));
             if (result.isSuccess()) {
                 return IMergeable.getSuccessObjectCancellationResult(
                         new RecommenderExecutionRequest(

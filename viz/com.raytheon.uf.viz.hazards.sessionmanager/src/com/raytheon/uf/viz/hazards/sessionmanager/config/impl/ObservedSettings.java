@@ -85,6 +85,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * Feb 01, 2017 15556      Chris.Golden Changed to include set of changed settings
  *                                      elements when notifying of changes.
+ * Oct 23, 2017 21730      Chris.Golden Added defaultType.
  * </pre>
  * 
  * @author bsteffen
@@ -99,7 +100,7 @@ public class ObservedSettings implements ISettings {
      * Types of changes that may be made to a settings object.
      */
     public enum Type {
-        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, MAP_CENTER, DEFAULT_CATEGORY, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, ADD_GEOMETRY_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
+        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, MAP_CENTER, DEFAULT_CATEGORY, DEFAULT_TYPE, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, ADD_GEOMETRY_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
     };
 
     private SessionConfigurationManager configManager;
@@ -241,6 +242,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public String getDefaultType() {
+        return delegate.getDefaultType();
+    }
+
+    @Override
     public Set<String> getPossibleSites() {
         return getSetCopy(delegate.getPossibleSites());
     }
@@ -357,6 +363,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public void setDefaultType(String defaultType) {
+        setDefaultType(defaultType, true, Originator.OTHER);
+    }
+
+    @Override
     public void setPossibleSites(Set<String> possibleSites) {
         setPossibleSites(possibleSites, true, Originator.OTHER);
     }
@@ -438,6 +449,8 @@ public class ObservedSettings implements ISettings {
         changed.addAll(setMapCenter(other.getMapCenter(), false, originator));
         changed.addAll(setDefaultCategory(other.getDefaultCategory(), false,
                 originator));
+        changed.addAll(
+                setDefaultType(other.getDefaultType(), false, originator));
         changed.addAll(
                 setPossibleSites(other.getPossibleSites(), false, originator));
         changed.addAll(
@@ -522,6 +535,10 @@ public class ObservedSettings implements ISettings {
                 persisted.getDefaultCategory()) == false) {
             changed.addAll(setDefaultCategory(update.getDefaultCategory(),
                     false, null));
+        }
+        if (changed(getDefaultType(), persisted.getDefaultType()) == false) {
+            changed.addAll(
+                    setDefaultType(update.getDefaultType(), false, null));
         }
         if (changed(getPossibleSites(),
                 persisted.getPossibleSites()) == false) {
@@ -626,6 +643,10 @@ public class ObservedSettings implements ISettings {
     public void setDefaultCategory(String defaultCategory,
             IOriginator originator) {
         setDefaultCategory(defaultCategory, true, originator);
+    }
+
+    public void setDefaultType(String defaultType, IOriginator originator) {
+        setDefaultType(defaultType, true, originator);
     }
 
     public void setPossibleSites(Set<String> possibleSites,
@@ -765,6 +786,16 @@ public class ObservedSettings implements ISettings {
             delegate.setDefaultCategory(defaultCategory);
             settingsChanged(notify, Type.DEFAULT_CATEGORY, originator);
             return EnumSet.of(Type.DEFAULT_CATEGORY);
+        }
+        return EnumSet.noneOf(Type.class);
+    }
+
+    protected Set<Type> setDefaultType(String defaultType, boolean notify,
+            IOriginator originator) {
+        if (changed(defaultType, getDefaultType())) {
+            delegate.setDefaultType(defaultType);
+            settingsChanged(notify, Type.DEFAULT_TYPE, originator);
+            return EnumSet.of(Type.DEFAULT_TYPE);
         }
         return EnumSet.noneOf(Type.class);
     }

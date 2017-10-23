@@ -7,7 +7,7 @@ Bundle-Vendor: RAYTHEON
 Eclipse-BuddyPolicy: global
 Comment: Using global buddy policy so the python generators/formatters can
  import any java classes without adding register buddies
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: com.raytheon.uf.common.dataplugin.events.hazards;bundle-version="1.0.0",
  org.apache.commons.lang;bundle-version="2.3.0",
  com.raytheon.uf.common.python;bundle-version="1.12.1174",

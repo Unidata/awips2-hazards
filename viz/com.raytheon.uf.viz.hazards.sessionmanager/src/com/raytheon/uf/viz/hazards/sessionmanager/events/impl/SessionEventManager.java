@@ -591,6 +591,12 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      all recommender-triggering code from here, so that it
  *                                      could be placed in the session recommender manager where
  *                                      it belongs.
+ * Oct 23, 2017   21730    Chris.Golden Added method to set a hazard event to the default hazard
+ *                                      type as configured, if any. Also adjusted implementations
+ *                                      of IIntraNotificationHander to adjust their isSynchronous()
+ *                                      methods to take the new parameter. Also fixed metadata
+ *                                      fetching to occur asynchronously when triggered by a status
+ *                                      change or by an attribute change.
  * </pre>
  * 
  * @author bsteffen
@@ -764,7 +770,7 @@ public class SessionEventManager
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SessionEventsAdded notification) {
             return true;
         }
     };
@@ -780,7 +786,7 @@ public class SessionEventManager
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SessionEventsRemoved notification) {
             return true;
         }
     };
@@ -814,7 +820,7 @@ public class SessionEventManager
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SessionEventModified notification) {
             return true;
         }
     };
@@ -830,7 +836,7 @@ public class SessionEventManager
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(ProductGenerationComplete notification) {
             return true;
         }
     };
@@ -846,7 +852,7 @@ public class SessionEventManager
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(SettingsModified notification) {
             return true;
         }
     };
@@ -862,7 +868,7 @@ public class SessionEventManager
         }
 
         @Override
-        public boolean isSynchronous() {
+        public boolean isSynchronous(CurrentTimeChanged notification) {
             return true;
         }
     };
@@ -1219,6 +1225,70 @@ public class SessionEventManager
     }
 
     @Override
+    public boolean setEventTypeToDefault(ObservedHazardEvent event,
+            IOriginator originator) {
+
+        /*
+         * Ensure that the event's status is appropriate.
+         */
+        HazardStatus status = event.getStatus();
+        if ((status != null) && (status != HazardStatus.POTENTIAL)
+                && (status != HazardStatus.PENDING)) {
+            statusHandler.error(
+                    "Cannot set event type to default for events that have been issued or proposed.",
+                    new IllegalStateException());
+            return false;
+        }
+
+        /*
+         * Do nothing unless a default type is available.
+         */
+        String defaultType = configManager.getSettingsValue(
+                HazardConstants.HAZARD_EVENT_TYPE, configManager.getSettings());
+        if ((defaultType != null) && (defaultType.isEmpty() == false)) {
+
+            /*
+             * Do nothing if the default type is not defined.
+             */
+            if (configManager.getHazardTypes()
+                    .containsKey(defaultType) == false) {
+                statusHandler.error("Bad configuration: default hazard type \""
+                        + defaultType
+                        + "\" has no definition. Please ensure that HazardTypes.py "
+                        + "has an entry for the default hazard type.");
+                return false;
+            }
+
+            sessionManager.startBatchedChanges();
+
+            /*
+             * Set the event's type to the default type, and associate its
+             * category
+             */
+            String[] typeComponents = HazardEventUtilities
+                    .getHazardPhenSigSubType(defaultType);
+            setEventType(event, typeComponents[0], typeComponents[1],
+                    typeComponents[2], originator);
+            String category = configManager.getHazardCategory(event);
+            if ((category == null) || category.isEmpty()) {
+                statusHandler.error("Bad configuration: default hazard type \""
+                        + defaultType
+                        + "\" has no associated hazard category. Please "
+                        + "ensure that HazardCategories.py has an entry for "
+                        + "the default hazard type.");
+            } else {
+                event.addHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY,
+                        category, originator);
+            }
+
+            sessionManager.finishBatchedChanges();
+
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
             Date endTime, IOriginator originator) {
 
@@ -1534,7 +1604,19 @@ public class SessionEventManager
             updateTimeBoundariesForEvents(event, false);
             updateDurationChoicesForEvent(event, false);
         }
-        updateEventMetadata(event);
+
+        /*
+         * Event metadata must be updated asynchronously in order to avoid
+         * problems with the new status not being fully digested before metadata
+         * is fetched.
+         */
+        sessionManager.getRunnableAsynchronousScheduler()
+                .schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        updateEventMetadata(event);
+                    }
+                });
     }
 
     /**
@@ -2123,7 +2205,19 @@ public class SessionEventManager
                     modification.getAttributeKeys());
             for (String trigger : triggers) {
                 if (modification.getOldAttribute(trigger) != null) {
-                    updateEventMetadata(event);
+
+                    /*
+                     * Event metadata must be updated asynchronously in order to
+                     * avoid problems with the new attribute values not being
+                     * fully digested before metadata is fetched.
+                     */
+                    sessionManager.getRunnableAsynchronousScheduler()
+                            .schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    updateEventMetadata(event);
+                                }
+                            });
                     break;
                 }
             }

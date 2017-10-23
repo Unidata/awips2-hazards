@@ -47,6 +47,14 @@ import gov.noaa.gsd.common.utilities.Merger;
  * Jul 10, 2013            bsteffen     Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Added intra-managerial notifications
  *                                      and message batching capability.
+ * Oct 23, 2017   21730    Chris.Golden Pass notification to be handled to the
+ *                                      IIntraNotificationHander.isSynchronous()
+ *                                      method since it now requires this, and
+ *                                      also changed the notification that is
+ *                                      sent out about notification accumulation
+ *                                      being ended to be sent after all the
+ *                                      notifications that were accumulated have
+ *                                      themselves been sent.
  * </pre>
  * 
  * @author bsteffen
@@ -193,12 +201,12 @@ public class SessionNotificationSender implements ISessionNotificationSender {
             }
             accumulationCounter--;
             if (accumulationCounter == 0) {
-                postNotificationAsync(
-                        new SessionBatchNotificationsToggled(false));
                 for (ISessionNotification notification : accumulatedNotifications) {
                     bus.publishAsync(notification);
                 }
                 accumulatedNotifications.clear();
+                postNotificationAsync(
+                        new SessionBatchNotificationsToggled(false));
             }
         }
     }
@@ -249,7 +257,8 @@ public class SessionNotificationSender implements ISessionNotificationSender {
                 .get(notification.getClass());
         if (handlers != null) {
             for (final IIntraNotificationHandler<?> handler : handlers) {
-                if (handler.isSynchronous()) {
+                if (((IIntraNotificationHandler<? super N>) handler)
+                        .isSynchronous(notification)) {
                     ((IIntraNotificationHandler<? super N>) handler)
                             .handleNotification(notification);
                 } else {

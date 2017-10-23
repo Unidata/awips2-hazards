@@ -92,7 +92,7 @@ class Recommender(RecommenderTemplate.Recommender):
             event.setGeometry(poly)    
             event.set('originalGeometry', poly)
             self._originalGeomType = event.get('originalGeomType')
-            boundingStatement = AviationUtils.AviationUtils().boundingStatement(event,self._originalGeomType,TABLEFILE,poly,None)
+            boundingStatement = AviationUtils.AviationUtils().boundingStatement(event,self._originalGeomType,poly,None)
         
         return eventSet
     

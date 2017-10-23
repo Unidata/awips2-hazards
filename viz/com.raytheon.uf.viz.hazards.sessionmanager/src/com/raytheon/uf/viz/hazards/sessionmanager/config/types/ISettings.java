@@ -9,11 +9,11 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.types;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
  * Description: Interface describing a settings object, used to hold display
@@ -30,6 +30,7 @@ import java.util.Set;
  * Aug 03, 2015    8836    Chris.Cody   Changes for a configurable Event Id
  * May 10, 2016   18515    Chris.Golden Added "deselect after issuing" flag.
  * Oct 19, 2016   21873    Chris.Golden Added time resolution.
+ * Oct 23, 2017   21730    Chris.Golden Added defaultType.
  * </pre>
  * 
  * @author Chris.Golden
@@ -77,6 +78,10 @@ public interface ISettings {
     public String getDefaultCategory();
 
     public void setDefaultCategory(String defaultCategory);
+
+    public String getDefaultType();
+
+    public void setDefaultType(String defaultType);
 
     public Set<String> getPossibleSites();
 

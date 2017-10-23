@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: Utilities
 Bundle-SymbolicName: gov.noaa.gsd.common.utilities
 Bundle-Version: 1.0.0
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: gson-2.1.jar,
  joda-time-2.0.jar,
  .

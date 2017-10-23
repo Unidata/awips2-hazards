@@ -23,7 +23,7 @@ Require-Bundle: com.raytheon.uf.common.serialization;bundle-version="1.12.1174",
  gov.noaa.gsd.common.utilities;bundle-version="1.0.0",
  com.fasterxml.jackson,
  com.raytheon.uf.common.message;bundle-version="1.14.1"
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Import-Package: com.google.common.base,
  com.google.common.collect,

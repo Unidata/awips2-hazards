@@ -136,6 +136,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  * Mar 30, 2017 15528      Chris.Golden Changed to reset modified flag when asked to do so
  *                                      during the persistence of a hazard event.
  * Sep 27, 2017 38072      Chris.Golden Removed definitions of constants that did not belong here.
+ * Oct 23, 2017 21730      Chris.Golden Added method to set a hazard event to the default hazard
+ *                                      type as configured, if any.
  * </pre>
  * 
  * @author bsteffen
@@ -261,6 +263,19 @@ public interface ISessionEventManager<E extends IHazardEvent> {
      */
     public boolean setEventType(E event, String phenomenon, String significance,
             String subType, IOriginator originator);
+
+    /**
+     * Set the specified event to have the default event type, if one has been
+     * specified in the configuration.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param originator
+     *            Originator of this change.
+     * @return <code>true</code> if the event type was set, <code>false</code>
+     *         if no default type was found.
+     */
+    public boolean setEventTypeToDefault(E event, IOriginator originator);
 
     /**
      * Set the specified event's time range.

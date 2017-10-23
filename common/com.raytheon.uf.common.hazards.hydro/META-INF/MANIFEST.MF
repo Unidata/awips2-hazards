@@ -4,7 +4,7 @@ Bundle-Name: Hydro
 Bundle-SymbolicName: com.raytheon.uf.common.hazards.hydro
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Export-Package: com.raytheon.uf.common.hazards.hydro
 Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",
  com.raytheon.uf.common.time;bundle-version="1.12.1174",

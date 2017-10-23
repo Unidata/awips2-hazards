@@ -4,7 +4,7 @@ Bundle-Name: Visualfeatures
 Bundle-SymbolicName: gov.noaa.gsd.common.visuals
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: GSD/ESRL/NOAA
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: com.google.guava;bundle-version="18.0.0",
  com.raytheon.uf.common.colormap;bundle-version="1.15.0",
  com.raytheon.uf.common.registry.ebxml;bundle-version="1.14.0",
