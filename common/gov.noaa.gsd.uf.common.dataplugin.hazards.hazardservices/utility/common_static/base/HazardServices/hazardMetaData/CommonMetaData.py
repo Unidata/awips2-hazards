@@ -2087,8 +2087,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         activateModify = self.hazardEvent.get('activateModify', False)      
         print  "CM ConvectiveControls -- activate, activateModify", activate, activateModify
         self.flush()       
-        # Object Info
+        
+        # event modification
         mws.append( self.getConvectiveObjectInfo(activate, activateModify))
+        
+        # Shape
+        mws.append( self.getConvectiveShape(activate))
+        
         # Motion Vector
         mws.append( self.getConvectiveMotionVector(activate))
         # Probability Trend
@@ -2153,38 +2158,104 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
         ]        
         return mwList
-    
-    def getConvectiveObjectInfo(self, activate, activateModify):        
+
+    def getConvectiveShape(self, enable):        
         
-        enableAutomated = self.getEnableAutomated(activate)
-        print "\nCM-ACTIVATE-getConvectiveObjectInfo:", activate, activateModify
-        print '\tenableAutomated:', enableAutomated, '\n'
+        print "\nCM-ACTIVATE-getConvectiveShape:", enable
         self.flush()
-        
         
         grp = {
             "fieldType": "Group",
-            "fieldName": "convectiveObjectInfo",
-            "label": "Event Modification", ### BUG ALERT: rename?
-            "numColumns":3,
+            "fieldName": "convectiveShapeGroup",
+            "label": "Shape",
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,                        
+            "numColumns":1,
             "fields": [
-                        self.getAutoShape(activate),
+                        self.getAutoShape(enable),
+                       ],
+        }  
+        
+        return grp 
+    
+    def getAutomationButtons(self, activate):      
+        
+        enableAutomated = self.getEnableAutomated(activate)
+        print "\nCM-ACTIVATE-getConvectiveObjectInfo:", activate
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+                
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveAutomationGroup",
+            "label": "Automation",
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,                        
+            "numColumns":2,
+            "fields": [                       
                         {
                         "fieldType": "Button",
                         "fieldName": "automateAllButton",
                         "label": "Automate All",
                         "editable": enableAutomated,
                         },
-                        self.getModifyButton(activateModify),
-                        self.getCancelButton(),
                         {
                         "fieldType": "Button",
                         "fieldName": "automateNoneButton",
                         "label": "Automate None",
                         "editable": enableAutomated,
-                        },
-                        
-                       ]
+                        },                           
+                    ],
+            }
+        
+        return grp
+    
+    def getConvectiveObjectInfo(self, activate, activateModify):        
+        
+        print "\nCM-ACTIVATE-getConvectiveObjectInfo:", activate, activateModify
+        self.flush()       
+        
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "convectiveCompositeGroup",
+            "label": "Automation",
+            "numColumns":3,
+            "fields": [
+                       self.getEventModification(activate, activateModify),
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "labelForNothing",
+                        "label": "                   ",
+                        },                        
+                       self.getAutomationButtons(activate),                          
+                    ],
+            }
+        
+        return grp
+    
+    def getEventModification(self, activate, activateModify):        
+         
+        print "\nCM-ACTIVATE-getEventModification:", activate, activateModify
+        self.flush()
+
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveObjectInfo",
+            "label": "Event Modification", ### BUG ALERT: rename?
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,            
+            "numColumns":3,
+            "fields": [
+                        self.getModifyButton(activateModify),
+                        self.getCancelButton(),
+                        self.getCopyButton(),
+                    ]
         }        
         return grp
     
@@ -2201,7 +2272,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return {
             "fieldType": "CheckBox",
             "fieldName": "geometryAutomated",
-            "label": "Automate Shape",
+            "label": "Automate Shape/Position  ",
             "sendEveryChange": False,
             "values": geometryAutomated,
             "modifyRecommender": 'SwathRecommender',
@@ -2213,6 +2284,16 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldType": "Button",
             "fieldName": "modifyButton",
             "label": "     MODIFY     ",
+            "editable": enable,
+            "modifyRecommender": 'SwathRecommender',
+        }        
+        return grp
+    
+    def getCopyButton(self, enable = False):               
+        grp = {
+            "fieldType": "Button",
+            "fieldName": "copyButton",
+            "label": "     Copy     ",
             "editable": enable,
             "modifyRecommender": 'SwathRecommender',
         }        
@@ -2249,6 +2330,10 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldType": "Group",
             "fieldName": "convectiveMotionVectorGroup",
             "label": "Motion Vector",
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,                        
             "numColumns":3,
             "fields": [
                         {
@@ -2374,6 +2459,10 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldType": "Group",
             "fieldName": "convectiveProbabilityGroup",
             "label": "Prob Trend",
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,                        
             "expandHorizontally": False,
             "expandVertically": False,
             "numColumns":9,

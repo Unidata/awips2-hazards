@@ -214,27 +214,13 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         for event in eventSet:
 
-            print 'SR:', event.get('objectID'), event.getStatus()
+            print 'SR:', event.get('objectID'), event.getStatus(), event.getStartTime(), event.getEndTime()
             self.lastSelectedTime = self.selectedTime
                                     
             # Determine if we want to process this event or skip it
             if not self.selectEventForProcessing(event, trigger, origin, eventSetAttrs, resultEventSet):
                 continue
 
-            # React to the change in selection state, if that is what
-            # triggered this execution of the recommender.
-            if trigger == 'hazardEventSelection':
-                print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
-                self.probUtils.setActivation(event)
-                self.setOriginDict[event.getEventID()] = False
-                self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
-                print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
-                print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
-                self.flush()
-                self.setVisualFeatures(event)
-                resultEventSet.add(event)
-                continue
-                        
             # Begin Graph Draw
             if self.beginGraphDraw(event, trigger):
                  resultEventSet.add(event)
@@ -243,6 +229,26 @@ class Recommender(RecommenderTemplate.Recommender):
             self.movedStartTime = False
             self.initializeEvent(event)
             self.eventBookkeeping(event, origin)
+            
+            print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
+            print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
+            self.flush()
+            
+            # React to the change in selection state, if that is what
+            # triggered this execution of the recommender.
+            if trigger == 'hazardEventSelection':
+                print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
+                #print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
+                self.probUtils.setActivation(event)
+                self.setOriginDict[event.getEventID()] = False
+                self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
+                print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
+                print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
+                print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
+                self.flush()
+                self.setVisualFeatures(event)
+                resultEventSet.add(event)
+                continue
             
             # Adjust Hazard Event Attributes
             changes = False
@@ -305,6 +311,8 @@ class Recommender(RecommenderTemplate.Recommender):
                                 
             # Add revised event to result
             event.set('lastSelectedTime', self.lastSelectedTime)
+            print "SR setting lastSelectedTime to --- YG --", self.lastSelectedTime
+            self.flush()
             resultEventSet.add(event)
             
         if self.saveToDatabase:
@@ -550,6 +558,9 @@ class Recommender(RecommenderTemplate.Recommender):
         if 'selected' in self.attributeIdentifiers:
             return False               
         
+        if 'status' in self.attributeIdentifiers:
+            self.probUtils.setActivation(event)
+            return True
 
         if 'resetMotionVector' in self.attributeIdentifiers: 
 #              for key in ['convectiveObjectDir', 'convectiveObjectSpdKts',
@@ -666,6 +677,9 @@ class Recommender(RecommenderTemplate.Recommender):
         event.set('convectiveProbTrendGraph', probVals)
     
     def updateConvectiveAttrs(self, event):
+        print "Entering updateConvectiveAttrs... YG "
+        self.flush()
+        
         convectiveAttrs = event.get('convectiveAttrs')
         if not convectiveAttrs:
             return
@@ -997,11 +1011,8 @@ class Recommender(RecommenderTemplate.Recommender):
             if i <= 1:
                 print "SR forecast i, polySt, eventSt", i, self.probUtils.displayMsTime(polySt_ms), polySt_ms, polySt_ms == self.eventSt_ms
                 self.flush()
-            print "SR polyst and eventst--YG ", polySt_ms, self.eventSt_ms
             if polySt_ms == self.eventSt_ms:
                 startTimeShapeFound = True
-                print "SR StartTimeShapeFound... YG "
-            self.flush()
             
             if i == 0:
                 firstForecastSt_ms = polySt_ms                
@@ -1332,11 +1343,11 @@ class Recommender(RecommenderTemplate.Recommender):
         if featuresDisplay.get('pastPolys'):
             for i in range(len(pastPolys)):
                 st, et = pastTimes[i]
-                print 'SR find previous testing', self.probUtils.displayMsTime(st), abs(st-polySt_ms), self.probUtils.timeDelta_ms()
-                self.flush()
+                #print 'SR find previous testing', self.probUtils.displayMsTime(st), abs(st-polySt_ms), self.probUtils.timeDelta_ms()
+                #self.flush()
                 if abs(st - polySt_ms) < self.probUtils.timeDelta_ms():
-                    print "SR previous using past", i, self.probUtils.displayMsTime(st)
-                    self.flush()
+                    #print "SR previous using past", i, self.probUtils.displayMsTime(st)
+                    #self.flush()
                     return pastPolys[i], 'past'
         if featuresDisplay.get('upstreamPolys'):
             for i in range(len(upstreamPolys)):

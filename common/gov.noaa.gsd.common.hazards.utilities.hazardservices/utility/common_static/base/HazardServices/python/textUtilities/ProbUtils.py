@@ -201,14 +201,14 @@ class ProbUtils(object):
         
         '''
         colorsList = event.get('convectiveProbTrendGraph', self.getGraphProbsBasedOnDuration(event))
-        print '\n\n[PU]: colorsList', colorsList
+        #print '\n\n[PU]: colorsList', colorsList
         probTrend = [entry.get('y') for entry in colorsList]
-        print '\t[PU]: probTrend', probTrend
+        #print '\t[PU]: probTrend', probTrend
 
         probTrendTimeInterval = int(event.get('convectiveProbabilityTrendIncrement', 5))
         
 
-        print '\t[PU]: probTrendTimeInterval', probTrendTimeInterval, event.get('convectiveProbabilityTrendIncrement'), type(event.get('convectiveProbabilityTrendIncrement'))
+        #print '\t[PU]: probTrendTimeInterval', probTrendTimeInterval, event.get('convectiveProbabilityTrendIncrement'), type(event.get('convectiveProbabilityTrendIncrement'))
 
         ### Add 1 to duration to get "inclusive" 
         probTrendTimeIntervals = np.arange(len(probTrend))*probTrendTimeInterval
@@ -483,12 +483,13 @@ class ProbUtils(object):
         previousDataLayerTime = event.get("previousDataLayerTime")
         issueStart = event.get("eventStartTimeAtIssuance")
         graphVals = event.get("convectiveProbTrendGraph")
+
         currentStart = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
                 
         if graphVals is None:
             #LogUtils.logMessage('[HERE-0]')
             return self.getGraphProbsBasedOnDuration(event)
-        
+                
         if issueStart is None:
             issueStart = currentStart
         
@@ -580,7 +581,7 @@ class ProbUtils(object):
         
         ### Round up for some context
         duration = duration+probInc if duration%probInc != 0 else duration
-        
+
         max = 100
         if event.get('probSeverAttrs'):
             max = event.get('probSeverAttrs').get('probabilities')
@@ -958,7 +959,7 @@ class ProbUtils(object):
         presetResults = {'dirVal':dirVal, 'speedVal': speedVal, 'spdUVal':spdUVal, 'dirUVal':dirUVal}
         presetResultsOLD = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
         
-        print 'PU[3] - presetResultsOLD, presetResults', presetResultsOLD, presetResults
+        #print 'PU[3] - presetResultsOLD, presetResults', presetResultsOLD, presetResults
         
         if timeDirection == 'upstream':
 #            presetResults = presetMethod(speedVal, dirVal, spdUVal, dirUVal, secs, totalSecs)
@@ -1024,7 +1025,7 @@ class ProbUtils(object):
         xDis2 = secs * spdUVal * 0.514444444
         yDis2 = dis * math.tan(math.radians(dirUVal))
         
-        print '\n\n PU[4] - dis, xDis, yDis', dis, xDis, yDis, '\n'
+        #print '\n\n PU[4] - dis, xDis, yDis', dis, xDis, yDis, '\n'
         
         threat = sa.translate(threat,xDis,yDis)
         rot = dirValLast - dirVal
