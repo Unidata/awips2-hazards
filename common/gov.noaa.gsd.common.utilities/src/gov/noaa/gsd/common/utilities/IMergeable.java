@@ -25,77 +25,92 @@ package gov.noaa.gsd.common.utilities;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 20, 2017   38072    Chris.Golden Initial creation.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  *
  * @author Chris.Golden
  */
 public interface IMergeable<T extends IMergeable<T>> {
 
+    /**
+     * Helper class, needed because prior to Java 8 interfaces cannot have
+     * static methods.
+     * 
+     * TODO: When moving to Java 8, take all of these methods and make them
+     * static methods of the enclosing interface. Then remove this helper class,
+     * as it will now be empty.
+     * 
+     * @deprecated Unneeded once moving to Java 8.
+     */
+    @Deprecated
+    public class Helper {
+
+        /**
+         * Get an instance indicating merge failure.
+         * 
+         * @return Merge failure result.
+         */
+        public static <U extends IMergeable<?>> MergeResult<U> getFailureResult() {
+            return new MergeResult<>(false, null, null);
+        }
+
+        /**
+         * Get an instance indicating that the merge succeeded, and the subject
+         * and object canceled one another out.
+         * 
+         * @return Merge success result.
+         */
+        public static <U extends IMergeable<?>> MergeResult<U> getSuccessMutualCancellationResult() {
+            return new MergeResult<>(true, null, null);
+        }
+
+        /**
+         * Get an instance indicating that the merge succeeded, and the subject
+         * has been nullified, but a modified object remains.
+         * 
+         * @param object
+         *            Object to be used in place of the original one from before
+         *            the merge.
+         * @return Merge success result.
+         */
+        public static <U extends IMergeable<?>> MergeResult<U> getSuccessSubjectCancellationResult(
+                U object) {
+            return new MergeResult<>(true, null, object);
+        }
+
+        /**
+         * Get an instance indicating that the merge succeeded, and the object
+         * has been nullified, but a modified subject remains.
+         * 
+         * @param subject
+         *            Subject to be used in place of the original one from
+         *            before the merge.
+         * @return Merge success result.
+         */
+        public static <U extends IMergeable<?>> MergeResult<U> getSuccessObjectCancellationResult(
+                U subject) {
+            return new MergeResult<>(true, subject, null);
+        }
+
+        /**
+         * Get an instance indicating that the merge succeeded, and replacements
+         * have resulted for both the subject and the object.
+         * 
+         * @param subject
+         *            Subject to be used in place of the original one from
+         *            before the merge.
+         * @param object
+         *            Object to be used in place of the original one from before
+         *            the merge.
+         * @return Merge success result.
+         */
+        public static <U extends IMergeable<?>> MergeResult<U> getSuccessBothReplacedResult(
+                U subject, U object) {
+            return new MergeResult<>(true, subject, object);
+        }
+    }
+
     // Public Static Methods
-
-    /**
-     * Get an instance indicating merge failure.
-     * 
-     * @return Merge failure result.
-     */
-    public static <U extends IMergeable<?>> MergeResult<U> getFailureResult() {
-        return new MergeResult<>(false, null, null);
-    }
-
-    /**
-     * Get an instance indicating that the merge succeeded, and the subject and
-     * object canceled one another out.
-     * 
-     * @return Merge success result.
-     */
-    public static <U extends IMergeable<?>> MergeResult<U> getSuccessMutualCancellationResult() {
-        return new MergeResult<>(true, null, null);
-    }
-
-    /**
-     * Get an instance indicating that the merge succeeded, and the subject has
-     * been nullified, but a modified object remains.
-     * 
-     * @param object
-     *            Object to be used in place of the original one from before the
-     *            merge.
-     * @return Merge success result.
-     */
-    public static <U extends IMergeable<?>> MergeResult<U> getSuccessSubjectCancellationResult(
-            U object) {
-        return new MergeResult<>(true, null, object);
-    }
-
-    /**
-     * Get an instance indicating that the merge succeeded, and the object has
-     * been nullified, but a modified subject remains.
-     * 
-     * @param subject
-     *            Subject to be used in place of the original one from before
-     *            the merge.
-     * @return Merge success result.
-     */
-    public static <U extends IMergeable<?>> MergeResult<U> getSuccessObjectCancellationResult(
-            U subject) {
-        return new MergeResult<>(true, subject, null);
-    }
-
-    /**
-     * Get an instance indicating that the merge succeeded, and replacements
-     * have resulted for both the subject and the object.
-     * 
-     * @param subject
-     *            Subject to be used in place of the original one from before
-     *            the merge.
-     * @param object
-     *            Object to be used in place of the original one from before the
-     *            merge.
-     * @return Merge success result.
-     */
-    public static <U extends IMergeable<?>> MergeResult<U> getSuccessBothReplacedResult(
-            U subject, U object) {
-        return new MergeResult<>(true, subject, object);
-    }
 
     // Public Methods
 
@@ -132,5 +147,5 @@ public interface IMergeable<T extends IMergeable<T>> {
      *            invocations of this method with the former as an argument.
      * @return Result of the merge.
      */
-    public MergeResult<T> merge(T original, T modified);
+    public MergeResult<? extends T> merge(T original, T modified);
 }

@@ -328,6 +328,7 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             results (that is, within the returned event set).
  * Sep 27, 2017 38072      Chris.Golden        Changed to use callback objects for the recommender
  *                                             manager.
+ * Dec 07, 2017 41886      Chris.Golden        Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1029,7 +1030,7 @@ public class HazardServicesAppBuilder
             }
 
             @Override
-            public void showToolResults(ToolType type,
+            public void showToolResults(final ToolType type,
                     final Map<String, Serializable> dialogResults,
                     final ISessionRecommenderManager.IResultsDisplayCompleteNotifier displayCompleteNotifier) {
                 if (Display.getDefault().getThread() == Thread

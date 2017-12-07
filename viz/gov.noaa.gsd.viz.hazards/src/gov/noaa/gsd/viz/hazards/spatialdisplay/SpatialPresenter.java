@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang.time.DateUtils;
 import org.eclipse.jface.action.Action;
@@ -236,6 +235,7 @@ import net.engio.mbassy.listener.Handler;
  *                                           and to work with new recommender manager.
  * Oct 23, 2017 21730      Chris.Golden      Added use of default hazard type for manually created
  *                                           hazard events.
+ * Dec 07, 2017 41886      Chris.Golden      Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -640,13 +640,10 @@ public class SpatialPresenter extends
          * Get the classes of the modifications that were made, and use them to
          * prune the map that has classes of interest to this method as keys.
          */
-        Set<Class<? extends IEventModification>> modificationClasses = change
-                .getClassesOfModifications();
-        Map<Class<? extends IEventModification>, Boolean> setUndoRedoFlagsForModificationClasses = SET_UNDO_REDO_FLAGS_FOR_EVENT_MODIFICATION_CLASSES
-                .entrySet().stream()
-                .filter(entry -> modificationClasses.contains(entry.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey,
-                        Map.Entry::getValue));
+        Map<Class<? extends IEventModification>, Boolean> setUndoRedoFlagsForModificationClasses = new HashMap<>(
+                SET_UNDO_REDO_FLAGS_FOR_EVENT_MODIFICATION_CLASSES);
+        setUndoRedoFlagsForModificationClasses.keySet()
+                .retainAll(change.getClassesOfModifications());
 
         /*
          * If the resulting pruned map is not empty, then first, if it contains

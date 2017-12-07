@@ -11,10 +11,10 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -37,6 +37,7 @@ import gov.noaa.gsd.common.utilities.Merger;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 20, 2017   38072    Chris.Golden Initial creation.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  *
  * @author Chris.Golden
@@ -135,12 +136,12 @@ public class SessionEventModified extends AbstractSessionEventModified {
             Class<? extends IEventModification> modificationClass) {
         List<IEventModification> modifications = modificationsForClasses
                 .get(modificationClass);
-        return (modifications == null ? Collections.emptyList()
-                : modifications);
+        return (modifications == null
+                ? Collections.<IEventModification> emptyList() : modifications);
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
 
         /*
@@ -154,7 +155,8 @@ public class SessionEventModified extends AbstractSessionEventModified {
         if ((original instanceof SessionEventsRemoved) && getEventIdentifiers(
                 ((SessionEventsRemoved) original).getEvents())
                         .contains(getEvent().getEventID())) {
-            return IMergeable.getSuccessSubjectCancellationResult(modified);
+            return IMergeable.Helper
+                    .getSuccessSubjectCancellationResult(modified);
 
         } else if ((modified instanceof SessionEventModified)
                 && getOriginator().equals(
@@ -181,12 +183,12 @@ public class SessionEventModified extends AbstractSessionEventModified {
              * nullified and the subject has taken in all of the object's
              * modifications.
              */
-            return IMergeable.getSuccessObjectCancellationResult(
+            return IMergeable.Helper.getSuccessObjectCancellationResult(
                     new SessionEventModified(getEventManager(), getEvent(),
                             modifications, getOriginator()));
 
         } else {
-            return IMergeable.getFailureResult();
+            return IMergeable.Helper.getFailureResult();
         }
     }
 
@@ -208,13 +210,36 @@ public class SessionEventModified extends AbstractSessionEventModified {
          * Group the modifications into a map with keys of classes and values of
          * lists of the modifications for those classes, and then re-stream it
          * and convert the sublists into immutable lists.
+         * 
+         * TODO: When moving to Java 8, remove all the code below that is not
+         * commented out, and uncomment the code immediately below it.
          */
-        return ImmutableMap
-                .copyOf(modifications.stream()
-                        .collect(Collectors
-                                .groupingBy(IEventModification::getClass))
-                .entrySet().stream()
-                .collect(Collectors.toMap(entry -> entry.getKey(),
-                        entry -> ImmutableList.copyOf(entry.getValue()))));
+        Map<Class<? extends IEventModification>, List<IEventModification>> modificationsForClasses = new HashMap<>(
+                modifications.size(), 1.0f);
+        for (IEventModification modification : modifications) {
+            List<IEventModification> theseModifications = modificationsForClasses
+                    .get(modification.getClass());
+            if (theseModifications == null) {
+                theseModifications = new ArrayList<>();
+                modificationsForClasses.put(modification.getClass(),
+                        theseModifications);
+            }
+            theseModifications.add(modification);
+        }
+        Map<Class<? extends IEventModification>, List<IEventModification>> immutableModificationsForClasses = new HashMap<>(
+                modificationsForClasses.size(), 1.0f);
+        for (Map.Entry<Class<? extends IEventModification>, List<IEventModification>> entry : modificationsForClasses
+                .entrySet()) {
+            immutableModificationsForClasses.put(entry.getKey(),
+                    ImmutableList.copyOf(entry.getValue()));
+        }
+        return ImmutableMap.copyOf(immutableModificationsForClasses);
+        // return ImmutableMap
+        // .copyOf(modifications.stream()
+        // .collect(Collectors
+        // .groupingBy(IEventModification::getClass))
+        // .entrySet().stream()
+        // .collect(Collectors.toMap(entry -> entry.getKey(),
+        // entry -> ImmutableList.copyOf(entry.getValue()))));
     }
 }

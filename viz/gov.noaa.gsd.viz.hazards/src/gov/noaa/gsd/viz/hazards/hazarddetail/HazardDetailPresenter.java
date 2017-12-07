@@ -16,11 +16,12 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -190,6 +191,7 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  *                                           selected.
  * Sep 27, 2017   38072    Chris.Golden      Changed to use new SessionEventModified
  *                                           notification. Also moved to Java 8 streams.
+ * Dec 07, 2017   41886    Chris.Golden      Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -852,10 +854,27 @@ public class HazardDetailPresenter
          * Remove any cached specifier managers associated with versions of any
          * of the events that have been removed.
          */
-        Set<String> identifiers = change.getEvents().stream()
-                .map(IHazardEvent::getEventID).collect(Collectors.toSet());
-        specifierManagersForSelectedEventVersions.entrySet().removeIf(
-                entry -> identifiers.contains(entry.getKey().getFirst()));
+
+        /*
+         * TODO: When moving to Java 8, remove the code below that is not
+         * commented out, and then uncomment the commented out code immediately
+         * below it.
+         */
+        Set<String> eventIdentifiers = new HashSet<>(change.getEvents().size(),
+                1.0f);
+        for (IHazardEvent event : change.getEvents()) {
+            eventIdentifiers.add(event.getEventID());
+        }
+        for (Iterator<Pair<String, Integer>> iterator = specifierManagersForSelectedEventVersions
+                .keySet().iterator(); iterator.hasNext();) {
+            if (eventIdentifiers.contains(iterator.next().getFirst())) {
+                iterator.remove();
+            }
+        }
+        // Set<String> identifiers = change.getEvents().stream()
+        // .map(IHazardEvent::getEventID).collect(Collectors.toSet());
+        // specifierManagersForSelectedEventVersions.entrySet().removeIf(
+        // entry -> eventIdentifiers.contains(entry.getKey().getFirst()));
     }
 
     /**
@@ -1983,13 +2002,26 @@ public class HazardDetailPresenter
          * if names are provided, only set the states of the hazard attributes
          * with those names.
          */
+
+        /*
+         * TODO: When moving to Java 8, remove the code below that is not
+         * commented out, and then uncomment the commented out code immediately
+         * below it.
+         */
+        Map<String, Serializable> hazardAttributes = new HashMap<>(
+                event.getHazardAttributes());
+        if (names != null) {
+            hazardAttributes.keySet().retainAll(names);
+        }
         getView().getMetadataChanger().setStates(eventVersionIdentifier,
-                new HashMap<>(names == null ? event.getHazardAttributes()
-                        : event.getHazardAttributes().entrySet().stream()
-                                .filter(entry -> names.contains(entry.getKey()))
-                                .collect(Collectors.toMap(
-                                        entry -> entry.getKey(),
-                                        entry -> entry.getValue()))));
+                hazardAttributes);
+        // getView().getMetadataChanger().setStates(eventVersionIdentifier,
+        // new HashMap<>(names == null ? event.getHazardAttributes()
+        // : event.getHazardAttributes().entrySet().stream()
+        // .filter(entry -> names.contains(entry.getKey()))
+        // .collect(Collectors.toMap(
+        // entry -> entry.getKey(),
+        // entry -> entry.getValue()))));
     }
 
     /**

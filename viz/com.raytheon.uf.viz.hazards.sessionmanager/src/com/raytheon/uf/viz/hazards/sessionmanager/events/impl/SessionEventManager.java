@@ -597,6 +597,7 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      methods to take the new parameter. Also fixed metadata
  *                                      fetching to occur asynchronously when triggered by a status
  *                                      change or by an attribute change.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author bsteffen
@@ -1561,7 +1562,7 @@ public class SessionEventManager
      * @param event
      *            Event that experienced the change.
      */
-    private void sessionEventTypeModified(ObservedHazardEvent event) {
+    private void sessionEventTypeModified(final ObservedHazardEvent event) {
         updateConflictingEventsForSelectedEventIdentifiers(event, false);
 
         /*
@@ -1585,7 +1586,7 @@ public class SessionEventManager
      * @param originator
      *            Originator of the change.
      */
-    private void sessionEventStatusModified(ObservedHazardEvent event,
+    private void sessionEventStatusModified(final ObservedHazardEvent event,
             IOriginator originator) {
         if ((event.getStatus() == HazardStatus.ELAPSED)
                 || (event.getStatus() == HazardStatus.ENDING)
@@ -1915,7 +1916,7 @@ public class SessionEventManager
             String eventIdentifier) {
         Map<String, String> map = recommendersForTriggerIdentifiersForEventIdentifiers
                 .get(eventIdentifier);
-        return (map == null ? Collections.emptyMap() : map);
+        return (map == null ? Collections.<String, String> emptyMap() : map);
     }
 
     /**
@@ -2164,7 +2165,7 @@ public class SessionEventManager
      * @param originator
      *            Originator of the change.
      */
-    private void sessionEventAttributesModified(ObservedHazardEvent event,
+    private void sessionEventAttributesModified(final ObservedHazardEvent event,
             EventAttributesModification modification, IOriginator originator) {
 
         /*

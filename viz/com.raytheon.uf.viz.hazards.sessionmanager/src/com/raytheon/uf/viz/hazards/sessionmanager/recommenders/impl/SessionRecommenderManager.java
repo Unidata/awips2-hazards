@@ -22,7 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -205,6 +204,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      which in turn allows batching of recommender runs
  *                                      to result in more batching and less individual
  *                                      runs.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -587,10 +587,20 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              */
             synchronized (pendingRecommenderExecutionRequests) {
                 if (runningRecommenderIdentifier != null) {
-                    identifiersOfEventsRemovedSinceLastRecommenderRun
-                            .addAll(notification.getEvents().stream()
-                                    .map(IHazardEvent::getEventID)
-                                    .collect(Collectors.toList()));
+
+                    /*
+                     * TODO: When moving to Java 8, remove the code below that
+                     * is not commented out, and then uncomment the commented
+                     * out code immediately below it.
+                     */
+                    for (IHazardEvent event : notification.getEvents()) {
+                        identifiersOfEventsRemovedSinceLastRecommenderRun
+                                .add(event.getEventID());
+                    }
+                    // identifiersOfEventsRemovedSinceLastRecommenderRun
+                    // .addAll(notification.getEvents().stream()
+                    // .map(IHazardEvent::getEventID)
+                    // .collect(Collectors.toList()));
                 }
             }
         }

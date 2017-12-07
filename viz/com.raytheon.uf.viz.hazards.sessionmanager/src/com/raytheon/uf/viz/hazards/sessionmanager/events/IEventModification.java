@@ -12,11 +12,13 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 import gov.noaa.gsd.common.utilities.IMergeable;
-import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Interface describing the methods that must be implemented by classes that are
  * to encapsulate a modification to a hazard event.
+ * 
+ * TODO: When moving to Java 8, uncomment the commented out block at the end of
+ * this interface.
  * 
  * <pre>
  *
@@ -25,7 +27,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 20, 2017   38072    Chris.Golden Initial creation.
- *
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  *
  * @author Chris.Golden
@@ -43,18 +45,19 @@ public interface IEventModification extends IMergeable<IEventModification> {
      *            Event to which to apply the modification.
      */
     public void apply(IHazardEvent sourceEvent, IHazardEvent targetEvent);
-
-    /*
-     * If this method is not overridden in implementations, it returns a merge
-     * result indicating that this modification has been nullified if the other
-     * modification is of the same subclass.
-     */
-    @Override
-    default public MergeResult<IEventModification> merge(
-            IEventModification original, IEventModification modified) {
-        if (getClass().isAssignableFrom(original.getClass())) {
-            return IMergeable.getSuccessSubjectCancellationResult(modified);
-        }
-        return IMergeable.getFailureResult();
-    }
+    //
+    // /*
+    // * If this method is not overridden in implementations, it returns a merge
+    // * result indicating that this modification has been nullified if the
+    // other
+    // * modification is of the same subclass.
+    // */
+    // @Override
+    // default public MergeResult<? extends IEventModification> merge(
+    // IEventModification original, IEventModification modified) {
+    // if (getClass().isAssignableFrom(original.getClass())) {
+    // return IMergeable.getSuccessSubjectCancellationResult(modified);
+    // }
+    // return IMergeable.getFailureResult();
+    // }
 }

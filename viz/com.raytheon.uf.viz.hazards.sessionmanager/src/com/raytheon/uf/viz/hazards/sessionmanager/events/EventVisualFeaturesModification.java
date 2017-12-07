@@ -28,6 +28,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 21, 2017   38072    Chris.Golden Initial creation.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  *
  * @author Chris.Golden
@@ -84,8 +85,8 @@ public class EventVisualFeaturesModification implements IEventModification {
     }
 
     @Override
-    public MergeResult<IEventModification> merge(IEventModification original,
-            IEventModification modified) {
+    public MergeResult<? extends IEventModification> merge(
+            IEventModification original, IEventModification modified) {
 
         /*
          * If the new modification is of the same type as this one, merge the
@@ -98,11 +99,11 @@ public class EventVisualFeaturesModification implements IEventModification {
             combinedVisualFeatureIdentifiers
                     .addAll(((EventVisualFeaturesModification) modified)
                             .getVisualFeatureIdentifiers());
-            return IMergeable.getSuccessSubjectCancellationResult(
+            return IMergeable.Helper.getSuccessSubjectCancellationResult(
                     new EventVisualFeaturesModification(
                             combinedVisualFeatureIdentifiers));
         } else {
-            return IMergeable.getFailureResult();
+            return IMergeable.Helper.getFailureResult();
         }
     }
 }

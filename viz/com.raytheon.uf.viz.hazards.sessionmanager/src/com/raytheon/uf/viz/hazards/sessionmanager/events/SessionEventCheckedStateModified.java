@@ -27,6 +27,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * ------------ ---------- ------------ --------------------------
  * Mar 15, 2017   15528    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -56,7 +57,7 @@ public class SessionEventCheckedStateModified
     // Public Methods
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
         return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
                 modified);

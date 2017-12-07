@@ -31,6 +31,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * ------------ ---------- ------------ --------------------------
  * Sep 26, 2017   38072    Chris.Golden Initial creation.
  * Oct 23, 2017   21730    Chris.Golden Fixed null pointer exception.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -102,24 +103,24 @@ class RecommenderExecutionRequest
      * @return Result of the attempt.
      */
     @Override
-    public MergeResult<RecommenderExecutionRequest> merge(
+    public MergeResult<? extends RecommenderExecutionRequest> merge(
             RecommenderExecutionRequest original,
             RecommenderExecutionRequest modified) {
         if (getRecommenderIdentifiers()
                 .equals(original.getRecommenderIdentifiers())) {
-            MergeResult<RecommenderExecutionContext> result = getContext()
+            MergeResult<? extends RecommenderExecutionContext> result = getContext()
                     .merge(original.getContext(),
                             (modified == null ? null : modified.getContext()));
             if (result.isSuccess()) {
-                return IMergeable.getSuccessObjectCancellationResult(
+                return IMergeable.Helper.getSuccessObjectCancellationResult(
                         new RecommenderExecutionRequest(
                                 result.getSubjectReplacement(),
                                 getRecommenderIdentifiers()));
             } else {
-                return IMergeable.getFailureResult();
+                return IMergeable.Helper.getFailureResult();
             }
         } else {
-            return IMergeable.getFailureResult();
+            return IMergeable.Helper.getFailureResult();
         }
     }
 }

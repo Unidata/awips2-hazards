@@ -32,9 +32,10 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 01, 2015 6726       Robert.Blum Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jul 01, 2015    6726    Robert.Blum  Initial creation
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Robert.Blum
@@ -47,8 +48,8 @@ public class ProductGenerationConfirmation implements ISessionNotification {
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
-        return IMergeable.getFailureResult();
+        return IMergeable.Helper.getFailureResult();
     }
 }

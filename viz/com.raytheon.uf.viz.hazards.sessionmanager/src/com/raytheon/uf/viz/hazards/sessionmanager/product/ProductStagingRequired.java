@@ -26,6 +26,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Oct 08, 2014    4042    Chris.Golden Initial creation.
  * Feb 24, 2016   13929    Robert.Blum  Remove first part of staging dialog.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -70,9 +71,9 @@ public class ProductStagingRequired implements ISessionNotification {
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification originalNotification,
             ISessionNotification modifiedNotification) {
-        return IMergeable.getFailureResult();
+        return IMergeable.Helper.getFailureResult();
     }
 }

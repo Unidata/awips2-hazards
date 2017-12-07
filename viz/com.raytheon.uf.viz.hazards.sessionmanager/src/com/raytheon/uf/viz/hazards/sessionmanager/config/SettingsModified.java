@@ -50,6 +50,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  *                                      can take a more fine-grained approach to dealing
  *                                      with settings changes.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author bsteffen
@@ -129,7 +130,7 @@ public class SettingsModified extends OriginatedSessionNotification {
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
 
         /*
@@ -142,10 +143,10 @@ public class SettingsModified extends OriginatedSessionNotification {
 
             Set<Type> changes = EnumSet.copyOf(getChanged());
             changes.addAll(((SettingsModified) modified).getChanged());
-            return IMergeable.getSuccessObjectCancellationResult(
+            return IMergeable.Helper.getSuccessObjectCancellationResult(
                     new SettingsModified(configManager, changes,
                             getOriginator()));
         }
-        return IMergeable.getFailureResult();
+        return IMergeable.Helper.getFailureResult();
     }
 }

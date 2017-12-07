@@ -31,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.eclipse.jface.action.IContributionItem;
 
@@ -191,6 +190,7 @@ import net.engio.mbassy.listener.Handler;
  * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
  * Sep 27, 2017   38072    Chris.Golden      Changed to use new SessionEventModified
  *                                           notification.
+ * Dec 07, 2017   41886    Chris.Golden      Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1012,13 +1012,10 @@ public class ConsolePresenter
          * Get the classes of the modifications that were made, and use them to
          * prune the map that has classes of interest to this method as keys.
          */
-        Set<Class<? extends IEventModification>> modificationClasses = change
-                .getClassesOfModifications();
-        Map<Class<? extends IEventModification>, Boolean> checkOriginatorFlagsForModificationClasses = CHECK_ORIGINATOR_FLAGS_FOR_EVENT_MODIFICATION_CLASSES
-                .entrySet().stream()
-                .filter(entry -> modificationClasses.contains(entry.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey,
-                        Map.Entry::getValue));
+        Map<Class<? extends IEventModification>, Boolean> checkOriginatorFlagsForModificationClasses = new HashMap<>(
+                CHECK_ORIGINATOR_FLAGS_FOR_EVENT_MODIFICATION_CLASSES);
+        checkOriginatorFlagsForModificationClasses.keySet()
+                .retainAll(change.getClassesOfModifications());
 
         /*
          * If the resulting pruned map is not empty, and either at least one of

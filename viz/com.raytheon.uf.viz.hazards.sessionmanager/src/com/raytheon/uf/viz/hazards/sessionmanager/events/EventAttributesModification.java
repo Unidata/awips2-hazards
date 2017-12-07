@@ -12,13 +12,11 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 import gov.noaa.gsd.common.utilities.IMergeable;
@@ -34,6 +32,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 21, 2017   38072    Chris.Golden Initial creation.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  *
  * @author Chris.Golden
@@ -169,8 +168,8 @@ public class EventAttributesModification implements IEventModification {
     }
 
     @Override
-    public MergeResult<IEventModification> merge(IEventModification original,
-            IEventModification modified) {
+    public MergeResult<? extends IEventModification> merge(
+            IEventModification original, IEventModification modified) {
         if (modified instanceof EventAttributesModification) {
 
             /*
@@ -190,12 +189,26 @@ public class EventAttributesModification implements IEventModification {
              */
             Map<String, Serializable> newAttributes = new HashMap<>(attributes);
             newAttributes.putAll(modifiedAttributes);
-            newAttributes.entrySet()
-                    .removeIf(entry -> (entry
-                            .getValue() == oldAttributes.get(entry
-                                    .getKey())
-                    || ((entry.getValue() != null) && entry.getValue()
-                            .equals(oldAttributes.get(entry.getKey())))));
+
+            /*
+             * TODO: When moving to Java 8, remove the for loop here and
+             * uncomment the stream-API-using code immediately below.
+             */
+            for (Iterator<Map.Entry<String, Serializable>> iterator = newAttributes
+                    .entrySet().iterator(); iterator.hasNext();) {
+                Map.Entry<String, Serializable> entry = iterator.next();
+                if ((entry.getValue() == oldAttributes.get(entry.getKey()))
+                        || ((entry.getValue() != null) && entry.getValue()
+                                .equals(oldAttributes.get(entry.getKey())))) {
+                    iterator.remove();
+                }
+            }
+            // newAttributes.entrySet()
+            // .removeIf(entry -> (entry
+            // .getValue() == oldAttributes.get(entry
+            // .getKey())
+            // || ((entry.getValue() != null) && entry.getValue()
+            // .equals(oldAttributes.get(entry.getKey())))));
 
             /*
              * Create an old attributes map that goes with the new combined
@@ -204,37 +217,28 @@ public class EventAttributesModification implements IEventModification {
              * attributes map if one is available, otherwise, from the new
              * modificaton's old attributes map.
              * 
-             * This is made more complicated by the annoying fact that
-             * Collectors.toMap() throws an error if one of the values of the
-             * map being created is null. Thus, the names of the new attributes
-             * are divided into two sets, those which will have non-null values,
-             * and those which will have null values. The former have a map
-             * created from them, and then null values are added to that same
-             * map for each key in the latter set.
+             * Note that using Java 8 streams here is a bad idea, since the
+             * Collectors.toMap() method that would be used at the end to
+             * coalesce the stream into a map throws an error if one of the
+             * values of the map being created is null. Thus, the map has to be
+             * created only for non-null-value keys, and then the null-value
+             * entries have to be added in afterwards, which results in a lot
+             * more steps. The non-stream way is better here.
              */
-            Set<String> nullAttributeNames = newAttributes.keySet().stream()
-                    .filter(name -> (oldAttributes.containsKey(name)
-                            ? oldAttributes.get(name)
-                            : modifiedOldAttributes.get(name)) == null)
-                    .collect(Collectors.toSet());
-            Set<String> nonNullAttributeNames = Sets
-                    .difference(newAttributes.keySet(), nullAttributeNames);
-
-            Map<String, Serializable> newOldAttributes = nonNullAttributeNames
-                    .stream()
-                    .collect(Collectors.toMap(Function.identity(),
-                            name -> oldAttributes.containsKey(name)
-                                    ? oldAttributes.get(name)
-                                    : modifiedOldAttributes.get(name)));
-            for (String name : nullAttributeNames) {
-                newOldAttributes.put(name, null);
+            Map<String, Serializable> newOldAttributes = new HashMap<>(
+                    newAttributes.size(), 1.0f);
+            for (String name : newAttributes.keySet()) {
+                newOldAttributes.put(name,
+                        (oldAttributes.containsKey(name)
+                                ? oldAttributes.get(name)
+                                : modifiedOldAttributes.get(name)));
             }
 
-            return IMergeable.getSuccessSubjectCancellationResult(
+            return IMergeable.Helper.getSuccessSubjectCancellationResult(
                     new EventAttributesModification(newAttributes,
                             newOldAttributes));
         } else {
-            return IMergeable.getFailureResult();
+            return IMergeable.Helper.getFailureResult();
         }
     }
 }

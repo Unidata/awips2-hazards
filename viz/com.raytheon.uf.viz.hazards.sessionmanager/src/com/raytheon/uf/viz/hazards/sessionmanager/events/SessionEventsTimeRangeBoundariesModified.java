@@ -43,6 +43,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * ------------ ---------- ------------ --------------------------
  * Feb 02, 2015    2331    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -89,7 +90,7 @@ public class SessionEventsTimeRangeBoundariesModified
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
 
         /*
@@ -106,11 +107,11 @@ public class SessionEventsTimeRangeBoundariesModified
             combinedEventIdentifiers
                     .addAll(((SessionEventsTimeRangeBoundariesModified) modified)
                             .getEventIdentifiers());
-            return IMergeable.getSuccessObjectCancellationResult(
+            return IMergeable.Helper.getSuccessObjectCancellationResult(
                     new SessionEventsTimeRangeBoundariesModified(
                             getEventManager(), combinedEventIdentifiers,
                             getOriginator()));
         }
-        return IMergeable.getFailureResult();
+        return IMergeable.Helper.getFailureResult();
     }
 }

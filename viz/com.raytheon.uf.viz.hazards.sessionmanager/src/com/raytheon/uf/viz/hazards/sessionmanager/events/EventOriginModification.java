@@ -11,6 +11,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
+import gov.noaa.gsd.common.utilities.IMergeable;
+import gov.noaa.gsd.common.utilities.MergeResult;
+
 /**
  * Modification of the origin (user name, workstation, site identifier, mode,
  * source) of an event.
@@ -22,6 +25,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 21, 2017   38072    Chris.Golden Initial creation.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  *
  * @author Chris.Golden
@@ -34,5 +38,20 @@ public class EventOriginModification implements IEventModification {
         targetEvent.setWorkStation(sourceEvent.getWorkStation());
         targetEvent.setSiteID(sourceEvent.getSiteID());
         targetEvent.setSource(sourceEvent.getSource());
+    }
+
+    /*
+     * TODO: Remove this when moving to Java 8, as the interface will have this
+     * as a default method.
+     */
+    @Override
+    @Deprecated
+    public MergeResult<? extends IEventModification> merge(
+            IEventModification original, IEventModification modified) {
+        if (getClass().isAssignableFrom(original.getClass())) {
+            return IMergeable.Helper
+                    .getSuccessSubjectCancellationResult(modified);
+        }
+        return IMergeable.Helper.getFailureResult();
     }
 }

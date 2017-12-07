@@ -56,6 +56,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  *                                      recommender execution.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() and toString() methods,
  *                                      and made an IMergeable.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -439,7 +440,7 @@ public class RecommenderExecutionContext
      * @return Result of the attempt.
      */
     @Override
-    public MergeResult<RecommenderExecutionContext> merge(
+    public MergeResult<? extends RecommenderExecutionContext> merge(
             RecommenderExecutionContext original,
             RecommenderExecutionContext modified) {
 
@@ -460,31 +461,32 @@ public class RecommenderExecutionContext
             case NONE:
             case HAZARD_TYPE_FIRST:
             case TIME_INTERVAL:
-                return IMergeable.getFailureResult();
+                return IMergeable.Helper.getFailureResult();
             case HAZARD_EVENT_MODIFICATION:
             case HAZARD_EVENT_VISUAL_FEATURE_CHANGE:
                 if (getEventIdentifiers()
                         .equals(original.getEventIdentifiers())) {
-                    return IMergeable.getSuccessObjectCancellationResult(
+                    return IMergeable.Helper.getSuccessObjectCancellationResult(
                             new RecommenderExecutionContext(getTrigger(),
                                     getOrigin(), getEventIdentifiers(),
                                     Sets.union(getAttributeIdentifiers(),
                                             original.getAttributeIdentifiers()),
                                     null, null));
                 } else {
-                    return IMergeable.getFailureResult();
+                    return IMergeable.Helper.getFailureResult();
                 }
             case HAZARD_EVENT_SELECTION:
-                return IMergeable.getSuccessObjectCancellationResult(
+                return IMergeable.Helper.getSuccessObjectCancellationResult(
                         getHazardEventSelectionChangeContext(
                                 Sets.union(getEventIdentifiers(),
                                         original.getEventIdentifiers()),
                                 getOrigin()));
             default:
-                return IMergeable.getSuccessObjectCancellationResult(this);
+                return IMergeable.Helper
+                        .getSuccessObjectCancellationResult(this);
             }
         } else {
-            return IMergeable.getFailureResult();
+            return IMergeable.Helper.getFailureResult();
         }
     }
 

@@ -39,6 +39,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Nov 18, 2014    4124    Chris.Golden Changed to use originator and work
  *                                      with revamped time manager.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author bsteffen
@@ -98,7 +99,7 @@ public class SelectedTimeChanged extends OriginatedSessionNotification {
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
         return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
                 modified);

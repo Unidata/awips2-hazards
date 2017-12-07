@@ -39,6 +39,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Sep 27, 2017   38072    Chris.Golden Changed name to explicitly identify
  *                                      the purpose of the class, and
  *                                      implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -62,7 +63,7 @@ public class SessionPreviewOrIssueOngoingModified
     // Public Methods
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
         return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
                 modified);

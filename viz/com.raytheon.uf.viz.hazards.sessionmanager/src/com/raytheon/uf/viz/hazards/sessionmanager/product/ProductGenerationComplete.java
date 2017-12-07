@@ -42,6 +42,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method and
  *                                      removed superfluous implementation
  *                                      of interface.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author bkowal
@@ -102,8 +103,8 @@ public class ProductGenerationComplete implements ISessionNotification {
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
-        return IMergeable.getFailureResult();
+        return IMergeable.Helper.getFailureResult();
     }
 }

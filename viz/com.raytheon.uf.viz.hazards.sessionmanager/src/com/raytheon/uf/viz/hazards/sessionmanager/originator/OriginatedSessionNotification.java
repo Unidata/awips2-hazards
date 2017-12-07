@@ -42,6 +42,7 @@ import gov.noaa.gsd.common.utilities.Utils;
  * Feb 06, 2014            mnash        Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method, and added
  *                                      helper methods for subclasses.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author mnash
@@ -130,9 +131,9 @@ public class OriginatedSessionNotification implements ISessionNotification {
      * behavior is desirable.
      */
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
-        return IMergeable.getFailureResult();
+        return IMergeable.Helper.getFailureResult();
     }
 
     @Override
@@ -169,10 +170,10 @@ public class OriginatedSessionNotification implements ISessionNotification {
                 && getOriginator()
                         .equals(((OriginatedSessionNotification) originalNotification)
                                 .getOriginator())) {
-            return IMergeable
+            return IMergeable.Helper
                     .getSuccessSubjectCancellationResult(modifiedNotification);
         }
-        return IMergeable.getFailureResult();
+        return IMergeable.Helper.getFailureResult();
     }
 
     // Private Methods

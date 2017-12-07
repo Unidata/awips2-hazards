@@ -47,6 +47,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Sep 27, 2017   38072    Chris.Golden Altered to allow notification of
  *                                      more than one event being added, and
  *                                      implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author bsteffen
@@ -110,7 +111,7 @@ public class SessionEventsAdded extends SessionEventsModified {
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
 
         /*
@@ -137,7 +138,7 @@ public class SessionEventsAdded extends SessionEventsModified {
              */
             List<IHazardEvent> combinedEvents = new ArrayList<>(getEvents());
             combinedEvents.addAll(newEvents);
-            return IMergeable.getSuccessObjectCancellationResult(
+            return IMergeable.Helper.getSuccessObjectCancellationResult(
                     new SessionEventsAdded(getEventManager(), combinedEvents,
                             getOriginator()));
 
@@ -167,31 +168,31 @@ public class SessionEventsAdded extends SessionEventsModified {
                     ? filterEventsToRemoveAnyWithIdentifiers(
                             ((SessionEventsRemoved) modified).getEvents(),
                             getEventIdentifiers(getEvents()))
-                    : Collections.emptyList());
+                    : Collections.<IHazardEvent> emptyList());
 
             /*
              * Return the appropriate result depending upon whether neither,
              * one, or both of the newly generated lists are empty.
              */
             if (addedEvents.isEmpty() && removedEvents.isEmpty()) {
-                return IMergeable.getSuccessMutualCancellationResult();
+                return IMergeable.Helper.getSuccessMutualCancellationResult();
             } else if (addedEvents.isEmpty()) {
-                return IMergeable.getSuccessSubjectCancellationResult(
+                return IMergeable.Helper.getSuccessSubjectCancellationResult(
                         new SessionEventsRemoved(getEventManager(),
                                 removedEvents, getOriginator()));
             } else if (removedEvents.isEmpty()) {
-                return IMergeable.getSuccessObjectCancellationResult(
+                return IMergeable.Helper.getSuccessObjectCancellationResult(
                         new SessionEventsAdded(getEventManager(), addedEvents,
                                 getOriginator()));
             } else {
-                return IMergeable.getSuccessBothReplacedResult(
+                return IMergeable.Helper.getSuccessBothReplacedResult(
                         new SessionEventsAdded(getEventManager(), addedEvents,
                                 getOriginator()),
                         new SessionEventsRemoved(getEventManager(),
                                 removedEvents, getOriginator()));
             }
         } else {
-            return IMergeable.getFailureResult();
+            return IMergeable.Helper.getFailureResult();
         }
     }
 }

@@ -19,10 +19,11 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
@@ -43,6 +44,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * ------------ ---------- ------------ --------------------------
  * Jun 11, 2013    1257    bsteffen     Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Added helper methods for subclasses.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author bsteffen
@@ -102,8 +104,19 @@ public class SessionEventsModified extends OriginatedSessionNotification {
      */
     protected Set<String> getEventIdentifiers(
             Collection<? extends IHazardEvent> events) {
-        return events.stream().map(IHazardEvent::getEventID)
-                .collect(Collectors.toSet());
+
+        /*
+         * TODO: When moving to Java 8, remove the code below that is not
+         * commented out, and then uncomment the commented out code immediately
+         * below it.
+         */
+        Set<String> eventIdentifiers = new HashSet<>(events.size(), 1.0f);
+        for (IHazardEvent event : events) {
+            eventIdentifiers.add(event.getEventID());
+        }
+        return eventIdentifiers;
+        // return events.stream().map(IHazardEvent::getEventID)
+        // .collect(Collectors.toSet());
     }
 
     /**
@@ -118,9 +131,22 @@ public class SessionEventsModified extends OriginatedSessionNotification {
      */
     protected List<IHazardEvent> filterEventsToRemoveAnyWithIdentifiers(
             List<IHazardEvent> events, Set<String> eventIdentifiers) {
-        return events.stream()
-                .filter(element -> eventIdentifiers
-                        .contains(element.getEventID()) == false)
-                .collect(Collectors.toList());
+
+        /*
+         * TODO: When moving to Java 8, remove the code below that is not
+         * commented out, and then uncomment the commented out code immediately
+         * below it.
+         */
+        List<IHazardEvent> prunedEvents = new ArrayList<>(events.size());
+        for (IHazardEvent event : events) {
+            if (eventIdentifiers.contains(event.getEventID()) == false) {
+                prunedEvents.add(event);
+            }
+        }
+        return prunedEvents;
+        // return events.stream()
+        // .filter(element -> eventIdentifiers
+        // .contains(element.getEventID()) == false)
+        // .collect(Collectors.toList());
     }
 }

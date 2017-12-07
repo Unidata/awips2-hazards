@@ -30,6 +30,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * ------------ ---------- ------------ --------------------------
  * Jan 30, 2015    2331    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -74,7 +75,7 @@ public abstract class CurrentTimeChanged extends OriginatedSessionNotification {
     // Public Methods
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
         return getMergeResultNullifyingSubjectIfSameClassAndOriginator(original,
                 modified);

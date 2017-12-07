@@ -21,6 +21,7 @@ import java.util.List;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 20, 2017   38072    Chris.Golden Initial creation.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  *
  * @author Chris.Golden
@@ -58,7 +59,7 @@ public class Merger {
          */
         T modified = object;
         for (int j = 0; j < subjects.size(); j++) {
-            MergeResult<T> mergeResult = subjects.get(j).merge(object,
+            MergeResult<? extends T> mergeResult = subjects.get(j).merge(object,
                     modified);
             if (mergeResult.isSuccess()) {
                 if (mergeResult.getSubjectReplacement() == null) {

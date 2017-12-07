@@ -149,6 +149,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           enabled state of a row menu's menu item
  *                                           after it is displayed.
  * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
+ * Dec 07, 2017   41886    Chris.Golden      Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1280,7 +1281,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                  * Remove all toolbar or menubar items first, since there may be
                  * ones left over from a previous invocation of this method.
                  */
-                IActionBars actionBars = getViewPart()
+                final IActionBars actionBars = getViewPart()
                         .getMainActionBarsManager();
                 IContributionManager contributionManager = (type
                         .equals(RCPMainUserInterfaceElement.TOOLBAR)
@@ -1326,7 +1327,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 Display.getDefault().asyncExec(new Runnable() {
                     @Override
                     public void run() {
-                        // contributionManager.update(true);
                         actionBars.updateActionBars();
                     }
                 });

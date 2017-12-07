@@ -46,6 +46,7 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Sep 27, 2017   38072    Chris.Golden Altered to allow notification of
  *                                      more than one event being removed, and
  *                                      implemented merge() method.
+ * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * </pre>
  * 
  * @author bsteffen
@@ -109,7 +110,7 @@ public class SessionEventsRemoved extends SessionEventsModified {
     }
 
     @Override
-    public MergeResult<ISessionNotification> merge(
+    public MergeResult<? extends ISessionNotification> merge(
             ISessionNotification original, ISessionNotification modified) {
 
         /*
@@ -134,11 +135,11 @@ public class SessionEventsRemoved extends SessionEventsModified {
              */
             List<IHazardEvent> combinedEvents = new ArrayList<>(getEvents());
             combinedEvents.addAll(newEvents);
-            return IMergeable.getSuccessObjectCancellationResult(
+            return IMergeable.Helper.getSuccessObjectCancellationResult(
                     new SessionEventsRemoved(getEventManager(), combinedEvents,
                             getOriginator()));
         } else {
-            return IMergeable.getFailureResult();
+            return IMergeable.Helper.getFailureResult();
         }
     }
 }
