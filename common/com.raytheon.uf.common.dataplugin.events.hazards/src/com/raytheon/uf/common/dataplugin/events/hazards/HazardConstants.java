@@ -150,6 +150,8 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      constants for indicating whether or not dialog and/or
  *                                      spatial input is required.
  * Oct 02, 2017 38506     Chris.Golden  Added GENERIC_PROPERTY constant.
+ * Dec 13, 2017 40923     Chris.Golden  Added constants for returning modified hazard event from
+ *                                      metadata fetch.
  * </pre>
  * 
  * @author mnash
@@ -1032,6 +1034,8 @@ public final class HazardConstants {
     public static final String RECOMMENDER_RUN_TRIGGER = "modifyRecommender";
 
     public static final String METADATA_EDIT_RISE_CREST_FALL = "editRiseCrestFall";
+
+    public static final String MODIFIED_HAZARD_EVENT_KEY = "modifiedHazardEvent";
 
     public static final String FILE_PATH_KEY = "filePath";
 

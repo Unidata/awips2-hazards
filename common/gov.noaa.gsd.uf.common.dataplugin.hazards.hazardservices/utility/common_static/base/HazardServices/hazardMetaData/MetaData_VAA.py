@@ -38,7 +38,8 @@ class MetaData(CommonMetaData.MetaData):
             self.getForecasterInitials(),
         ]
         return {
-                METADATA_KEY: metaData
+                METADATA_KEY: metaData,
+                METADATA_MODIFIED_HAZARD_EVENT: hazardEvent
                 }     
     def getAction(self):
         return {

@@ -25,6 +25,8 @@
     Nov 03, 2016    22965   Robert.Blum          Added MISSING_VALUE_STR.
     Aug 17, 2017    22757   Chris.Golden         Added recommender related constants.
     Sep 05, 2017    22965   Chris.Golden         Fixed SITE_CFG_ROOT path.
+    Dec 13, 2017    40923   Chris.Golden         Added constants for returning modified
+                                                 hazard event from metadata fetch.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -164,6 +166,7 @@ RETURN_TYPE_KEY = "returnType"
 GRID_PARAM_KEY = "gridParm"
 METADATA_KEY = "metadata"
 METADATA_FILE_PATH_KEY = "filePath"
+METADATA_MODIFIED_HAZARD_EVENT = "modifiedHazardEvent"
 EVENT_MODIFIERS_KEY = "eventModifiers"
 INTERDEPENDENCIES_SCRIPT_KEY = "interdependencies"
 METADICT_KEY = "metaDict"

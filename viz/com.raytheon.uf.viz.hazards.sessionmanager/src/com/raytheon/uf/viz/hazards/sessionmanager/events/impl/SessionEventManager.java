@@ -598,6 +598,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      fetching to occur asynchronously when triggered by a status
  *                                      change or by an attribute change.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 13, 2017   40923    Chris.Golden Added handling of returned modified hazard event from
+ *                                      metadata fetch by merging it into session hazard event.
  * </pre>
  * 
  * @author bsteffen
@@ -645,6 +647,8 @@ public class SessionEventManager
     // ConcurrentHashMap<String, TimerTask>();
 
     private ISimulatedTimeChangeListener timeListener;
+
+    private final Set<ObservedHazardEvent> eventsUndergoingMetadataFetch = new HashSet<>();
 
     private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
 
@@ -1587,7 +1591,7 @@ public class SessionEventManager
      *            Originator of the change.
      */
     private void sessionEventStatusModified(final ObservedHazardEvent event,
-            IOriginator originator) {
+            final IOriginator originator) {
         if ((event.getStatus() == HazardStatus.ELAPSED)
                 || (event.getStatus() == HazardStatus.ENDING)
                 || (event.getStatus() == HazardStatus.ENDED)) {
@@ -1783,7 +1787,8 @@ public class SessionEventManager
             return megawidgetSpecifiersForEventIdentifiers
                     .get(event.getEventID());
         } else {
-            return configManager.getMetadataForHazardEvent(event)
+            return configManager
+                    .getMetadataForHazardEvent(new BaseHazardEvent(event))
                     .getMegawidgetSpecifierManager();
         }
     }
@@ -1873,13 +1878,15 @@ public class SessionEventManager
             Map<String, Map<String, Object>> mutableProperties) {
 
         /*
-         * If the command that was invoked is a metadata refresh trigger,
-         * perform the refresh; otherwise, if the command is meant to trigger
-         * the editing of rise-crest-fall information, start the edit.
+         * If the command that was invoked is a metadata refresh trigger, and
+         * the event is not already undergoing a metadata refresh, perform the
+         * refresh; otherwise, if the command is meant to trigger the editing of
+         * rise-crest-fall information, start the edit.
          */
         String eventId = event.getEventID();
         if (metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .containsKey(eventId)
+                && (eventsUndergoingMetadataFetch.contains(event) == false)
                 && metadataReloadTriggeringIdentifiersForEventIdentifiers
                         .get(eventId).contains(identifier)) {
             updateEventMetadata(event);
@@ -1960,7 +1967,7 @@ public class SessionEventManager
          * and cache it away as well.
          */
         HazardEventMetadata metadata = configManager
-                .getMetadataForHazardEvent(event);
+                .getMetadataForHazardEvent(new BaseHazardEvent(event));
         MegawidgetSpecifierManager manager = metadata
                 .getMegawidgetSpecifierManager();
 
@@ -1992,6 +1999,13 @@ public class SessionEventManager
         }
 
         sessionManager.startBatchedChanges();
+
+        /*
+         * Make a note of this event undergoing a metadata fetch, so that any
+         * changes to the event that usually result in a metadata reload do not
+         * do so.
+         */
+        eventsUndergoingMetadataFetch.add(event);
 
         /*
          * Fire off a notification that the metadata may have changed for this
@@ -2044,9 +2058,24 @@ public class SessionEventManager
         for (String name : newAttributes.keySet()) {
             attributes.put(name, (Serializable) newAttributes.get(name));
         }
-
         event.setHazardAttributes(attributes);
+
+        /*
+         * If the event was modified by the metadata refresh process, merge the
+         * changes into the canonical session event.
+         */
+        IHazardEvent modifiedHazardEvent = metadata.getModifiedHazardEvent();
+        if (modifiedHazardEvent != null) {
+            mergeHazardEvents(modifiedHazardEvent, event, false, false, false,
+                    false, Originator.OTHER);
+        }
+
         event.setModified(eventModified);
+
+        /*
+         * Remove this event from the set of events undergoing a metadata fetch.
+         */
+        eventsUndergoingMetadataFetch.remove(event);
 
         sessionManager.finishBatchedChanges();
     }
@@ -2182,7 +2211,8 @@ public class SessionEventManager
         }
 
         /*
-         * If any of the attributes changed are metadata-reload triggers, see if
+         * If any of the attributes changed are metadata-reload triggers, and
+         * the event is not already undergoing a metadata refresh, see if
          * metadata needs to be reloaded; otherwise, if any of them are to
          * trigger the editing of rise-crest-fall information, reload that.
          */
@@ -2190,7 +2220,8 @@ public class SessionEventManager
                 .get(event.getEventID());
         Set<String> editRiseCrestFallTriggeringIdentifiers = editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                 .get(event.getEventID());
-        if (metadataReloadTriggeringIdentifiers != null) {
+        if ((metadataReloadTriggeringIdentifiers != null)
+                && (eventsUndergoingMetadataFetch.contains(event) == false)) {
 
             /*
              * Get the subset of trigger identifiers that changed, and then

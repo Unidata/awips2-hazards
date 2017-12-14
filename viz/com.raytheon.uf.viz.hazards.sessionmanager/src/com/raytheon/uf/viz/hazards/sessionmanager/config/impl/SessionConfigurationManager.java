@@ -313,6 +313,8 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Oct 23, 2017 21730      Chris.Golden Added ability to do a two-level query for
  *                                      default hazard type (check settings, then
  *                                      starup config).
+ * Dec 13, 2017 40923      Chris.Golden Added return of modified hazard event from
+ *                                      metadata fetch.
  * </pre>
  * 
  * @author bsteffen
@@ -378,8 +380,9 @@ public class SessionConfigurationManager
     }
 
     private static final HazardEventMetadata EMPTY_HAZARD_EVENT_METADATA = new HazardEventMetadata(
-            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER, Collections.<String> emptySet(),
+            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER, null,
             Collections.<String> emptySet(), Collections.<String> emptySet(),
+            Collections.<String> emptySet(),
             Collections.<String, String> emptyMap(),
             Collections.<String> emptySet(), null, null);
 
@@ -1043,17 +1046,21 @@ public class SessionConfigurationManager
         }
         List<Map<String, Object>> specifiersList = (List<Map<String, Object>>) result
                 .get(HazardConstants.METADATA_KEY);
+        IHazardEvent modifiedHazardEvent = (IHazardEvent) result
+                .get(HazardConstants.MODIFIED_HAZARD_EVENT_KEY);
         if (specifiersList.isEmpty()) {
-            return (eventModifyingFunctionNamesForIdentifiers == null
-                    ? EMPTY_HAZARD_EVENT_METADATA
-                    : new HazardEventMetadata(
-                            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
-                            Collections.<String> emptySet(),
-                            Collections.<String> emptySet(),
-                            Collections.<String> emptySet(),
-                            Collections.<String, String> emptyMap(),
-                            Collections.<String> emptySet(), scriptFile,
-                            eventModifyingFunctionNamesForIdentifiers));
+            return ((eventModifyingFunctionNamesForIdentifiers == null)
+                    && (modifiedHazardEvent == null)
+                            ? EMPTY_HAZARD_EVENT_METADATA
+                            : new HazardEventMetadata(
+                                    EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
+                                    modifiedHazardEvent,
+                                    Collections.<String> emptySet(),
+                                    Collections.<String> emptySet(),
+                                    Collections.<String> emptySet(),
+                                    Collections.<String, String> emptyMap(),
+                                    Collections.<String> emptySet(), scriptFile,
+                                    eventModifyingFunctionNamesForIdentifiers));
         }
         specifiersList = MegawidgetSpecifierManager.makeRawSpecifiersScrollable(
                 specifiersList, METADATA_GROUP_SPECIFIER_PARAMETERS);
@@ -1088,12 +1095,10 @@ public class SessionConfigurationManager
                 .removeAll(recommendersTriggeredForMetadataKeys.keySet());
 
         try {
-            return new HazardEventMetadata(
-                    new MegawidgetSpecifierManager(specifiersList,
-                            IControlSpecifier.class,
-                            timeManager.getCurrentTimeProvider(),
-                            sideEffectsApplier),
-                    refreshTriggeringMetadataKeys,
+            return new HazardEventMetadata(new MegawidgetSpecifierManager(
+                    specifiersList, IControlSpecifier.class,
+                    timeManager.getCurrentTimeProvider(), sideEffectsApplier),
+                    modifiedHazardEvent, refreshTriggeringMetadataKeys,
                     overrideOldValuesMetadataKeys,
                     affectingModifyFlagMetadataKeys,
                     recommendersTriggeredForMetadataKeys,

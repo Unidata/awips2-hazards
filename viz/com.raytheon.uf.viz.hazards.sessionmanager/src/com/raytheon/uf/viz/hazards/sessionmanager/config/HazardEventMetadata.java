@@ -9,11 +9,13 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-
 import java.io.File;
 import java.util.Map;
 import java.util.Set;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 /**
  * Description: Encapsulation of the description of all metadata parameters for
@@ -40,6 +42,7 @@ import java.util.Set;
  *                                      to use previously existing values for those
  *                                      attributes, but rather are to use the default
  *                                      values given in their metadata definitions.
+ * Dec 13, 2017   40923    Chris.Golden Added modified hazard event data member.
  * </pre>
  * 
  * @author Chris.Golden
@@ -53,6 +56,13 @@ public class HazardEventMetadata {
      * Megawidget specifier manager.
      */
     private final MegawidgetSpecifierManager megawidgetSpecifierManager;
+
+    /**
+     * Hazard event that was modified during the metadata fetch, or
+     * <code>null</code> if no modifications to the event for which the fetching
+     * was being done occurred.
+     */
+    private final IHazardEvent modifiedHazardEvent;
 
     /**
      * Set of metadata keys that are to trigger a metadata reload when any one
@@ -103,6 +113,10 @@ public class HazardEventMetadata {
      * 
      * @param megawidgetSpecifierManager
      *            Megawidget specifier manager.
+     * @param modifiedHazardEvent
+     *            Hazard event that was modified during the metadata fetch, or
+     *            <code>null</code> if no modifications to the event for which
+     *            the fetching was being done occurred.
      * @param refreshTriggeringMetadataKeys
      *            Set of metadata keys that are to trigger a metadata reload
      *            when any one of them is changed or invoked.
@@ -128,6 +142,7 @@ public class HazardEventMetadata {
      */
     public HazardEventMetadata(
             MegawidgetSpecifierManager megawidgetSpecifierManager,
+            IHazardEvent modifiedHazardEvent,
             Set<String> refreshTriggeringMetadataKeys,
             Set<String> overrideOldValuesMetadataKeys,
             Set<String> affectingModifyFlagMetadataKeys,
@@ -136,6 +151,7 @@ public class HazardEventMetadata {
             File scriptFile,
             Map<String, String> eventModifyingFunctionNamesForIdentifiers) {
         this.megawidgetSpecifierManager = megawidgetSpecifierManager;
+        this.modifiedHazardEvent = modifiedHazardEvent;
         this.recommendersTriggeredForMetadataKeys = recommendersTriggeredForMetadataKeys;
         this.refreshTriggeringMetadataKeys = refreshTriggeringMetadataKeys;
         this.overrideOldValuesMetadataKeys = overrideOldValuesMetadataKeys;
@@ -154,6 +170,18 @@ public class HazardEventMetadata {
      */
     public final MegawidgetSpecifierManager getMegawidgetSpecifierManager() {
         return megawidgetSpecifierManager;
+    }
+
+    /**
+     * Get the hazard event that was modified during the metadata fetch, if any
+     * modifications were made to the event for which the fetching was being
+     * done.
+     * 
+     * @return Modified hazard event, or <code>null</code> if no modifications
+     *         were made to the event.
+     */
+    public final IHazardEvent getModifiedHazardEvent() {
+        return modifiedHazardEvent;
     }
 
     /**

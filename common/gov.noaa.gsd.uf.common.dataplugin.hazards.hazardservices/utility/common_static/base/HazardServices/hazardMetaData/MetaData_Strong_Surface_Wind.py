@@ -40,6 +40,7 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
 
         return  {
                 METADATA_KEY: metaData,
+                METADATA_MODIFIED_HAZARD_EVENT: hazardEvent
                 }         
     
 ## # Interdependency script entry point.
