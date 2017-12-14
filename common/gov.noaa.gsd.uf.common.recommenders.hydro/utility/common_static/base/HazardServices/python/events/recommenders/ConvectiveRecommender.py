@@ -421,6 +421,7 @@ class Recommender(RecommenderTemplate.Recommender):
         hazardEvent.set('convectiveObjectSpdKts', values.get('wspd'))
         hazardEvent.set('probSeverAttrs',values)
         hazardEvent.set('objectID', ID)
+        hazardEvent.set('visibleGeometry', 'highResolutionGeometryIsVisible')
         hazardEvent.setStatus('ISSUED')
         hazardEvent.set('statusForHiddenField', 'ISSUED')
         
@@ -638,9 +639,17 @@ class Recommender(RecommenderTemplate.Recommender):
         
         for currentEvent in currentEventsList:
             
+            currentEventObjectID = currentEvent.get('objectID')
+            ### If current event has match in rec event, add to dict for later processing
+            ### should avoid 'userOwned' since they are filtered out with previous if statement
+            rawRecommendedID = currentEventObjectID[1:] if str(currentEventObjectID).startswith('M') else currentEventObjectID
+            
             print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
             if currentEvent.get('activateModify') == 0:
                 print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
+### These next two lines are a temporary try to see if this kills the duplication issue
+                recommendedObjectIDsList.remove(rawRecommendedID)
+                mergedEvents.add(currentEvent)
                 continue
 
             #if currentEvent.get('automationLevel') == 'userOwned':
@@ -650,7 +659,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
                 continue
             
-            currentEventObjectID = currentEvent.get('objectID')
             #print '######### currentEventObjectID ######', currentEventObjectID
             #print '\t0-->', str(currentEventObjectID)
             #print '\t1-->', recommendedObjectIDsList
@@ -660,9 +668,6 @@ class Recommender(RecommenderTemplate.Recommender):
             #if currentEventObjectID in recommendedObjectIDsList:
             ### Account for prepended 'M' to automated events that are level 3 or 2 automation.
             if str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList])):
-                ### If current event has match in rec event, add to dict for later processing
-                ### should avoid 'userOwned' since they are filtered out with previous if statement
-                rawRecommendedID = currentEventObjectID[1:] if str(currentEventObjectID).startswith('M') else currentEventObjectID
                 #print "\t#### rawRecommendedID", rawRecommendedID
                 #pprint.pprint(recommendedEventsDict)
                 intersectionDict[currentEventObjectID] = {'currentEvent': currentEvent, 'recommendedAttrs': recommendedEventsDict[rawRecommendedID]}
@@ -726,7 +731,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 identifiersOfEventsToSaveToHistory.append(recommendedEvent.getEventID())
 
         for e in mergedEvents:
-           print '[CR-2] %%%%%:', e.get('objectID'), e.getStatus()
+           #print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
                     
         return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
     

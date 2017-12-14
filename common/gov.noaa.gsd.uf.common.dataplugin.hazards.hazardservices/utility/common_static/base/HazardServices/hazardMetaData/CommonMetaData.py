@@ -2082,9 +2082,10 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
     # Prob_Severe and Prob_Tornado
     def convectiveControls(self): 
-        mws = self.initializeObject() 
-        activate = self.hazardEvent.get('activate', False)      
-        activateModify = self.hazardEvent.get('activateModify', False)      
+        activate, activateModify = self.probUtils.setActivation(self.hazardEvent, modify=False)
+        mws = self.initializeObject(activate, activateModify) 
+        #activate = self.hazardEvent.get('activate', False)      
+        #activateModify = self.hazardEvent.get('activateModify', False)      
         print  "CM ConvectiveControls -- activate, activateModify", activate, activateModify
         self.flush()       
         
@@ -2119,17 +2120,14 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return grp
 
 
-    def initializeObject(self):        
+    def initializeObject(self, activate, activateModify):        
         if self.hazardEvent.get('objectID') is None:
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
             self.hazardEvent.set('manuallyCreated', True)
         print "CM calling setActivation"
-        print '\n\nCM - manuallyCreated?', self.hazardEvent.get('manuallyCreated'), ' <<<\n\n'
-        self.flush()
-        self.probUtils.setActivation(self.hazardEvent)
-        activate = self.hazardEvent.get('activate', False)      
-        activateModify = self.hazardEvent.get('activateModify', False)   
+        #print '\n\nCM - manuallyCreated?', self.hazardEvent.get('manuallyCreated'), ' <<<\n\n'
+        #self.flush()
         status = self.hazardEvent.getStatus()         
         mwList = [
             {
@@ -2445,8 +2443,9 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
         
         probInc = 5
-        self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
-        graphProbs =  self.probUtils.getGraphProbs(self.hazardEvent)  
+        #self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
+        graphProbs =  self.probUtils.getGraphProbs(self.hazardEvent, fromCommonMetaData=True)  
+        previousDataLayerTime = self.probUtils.getPreviousDataLayerTime()
         colors = [ self.getProbTrendColor(y) for y in range(0,100, 20)]
                 
         enableAutomated = self.getEnableAutomated(enable)
@@ -2542,6 +2541,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "editable": enable,
                         },
 
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "previousDataLayerTime",
+                         "values": previousDataLayerTime
+                         },
                         {
                          "fieldType": "HiddenField",
                          "fieldName": "convectiveProbabilityTrendIncrement",
@@ -2788,7 +2792,11 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             returnDict[key] = {'editable': activate}                
 
         returnDict['modifyButton'] = {'editable' : activateModify}
+
+    
         return returnDict
+
+
 
     if triggerIdentifiers and 'automateAllButton' in triggerIdentifiers:
         
@@ -2832,6 +2840,16 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             ### Set new state of GMW with updated trend
             returnDict['convectiveProbTrendGraph'] = {'values' : updatedProbTrend}
 
+    if triggerIdentifiers is not None:
+        triggerSet = set(triggerIdentifiers)
+        motionSet = set(["resetMotionVector", "convectiveObjectDir", "convectiveObjectSpdKts", "convectiveObjectDirUnc", "convectiveObjectSpdKtsUnc"])
+        probTrendSet = set(["convectiveProbTrendDraw", "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell","convectiveProbTrendPlus5","convectiveProbTrendMinus5","convectiveProbTrendGraph"])
+        
+        if len(triggerSet.intersection(motionSet)) > 0:
+            returnDict['motionAutomated'] = {'values' : False}
+        if len(triggerSet.intersection(probTrendSet)) > 0:
+            returnDict['probTrendAutomated'] = {'values' : False}
+        
     return returnDict
 
 def applyFLInterdependencies(triggerIdentifiers, mutableProperties):

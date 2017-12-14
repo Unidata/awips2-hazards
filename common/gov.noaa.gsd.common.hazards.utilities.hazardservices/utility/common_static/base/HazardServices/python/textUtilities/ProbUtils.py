@@ -34,6 +34,7 @@ RAD_TO_DEG = 180.0 / np.pi
 class ProbUtils(object):
     def __init__(self):
         self.setUpDomain()
+        self._previousDataLayerTime = None
         
         
     def processEvents(self, eventSet, writeToFile=False):
@@ -477,8 +478,11 @@ class ProbUtils(object):
         pprint.pprint(newGraphVals)
             
         return newGraphVals            
+
+    def getPreviousDataLayerTime(self):
+        return self._previousDataLayerTime
     
-    def getGraphProbs(self, event, latestDataLayerTime=None):
+    def getGraphProbs(self, event, latestDataLayerTime=None, fromCommonMetaData=False):
         ### Get difference in minutes and the probability trend
         previousDataLayerTime = event.get("previousDataLayerTime")
         issueStart = event.get("eventStartTimeAtIssuance")
@@ -509,18 +513,15 @@ class ProbUtils(object):
             latest = datetime.datetime.utcfromtimestamp(currentStart/1000)
 
         latestDataLayerTime = latestDataLayerTime if latestDataLayerTime is not None else issueStart
-        #print 'Setting previousDataLayerTime', latestDataLayerTime
-        #self.flush()
-        previousDataLayerTime = event.set("previousDataLayerTime", latestDataLayerTime)
+
+        if fromCommonMetaData:
+            self._previousDataLayerTime = latestDataLayerTime
+        else:
+            previousDataLayerTime = event.set("previousDataLayerTime", latestDataLayerTime)
 
         
         inc = event.get('convectiveProbabilityTrendIncrement', 5)
-        #print 'Time Types?'
-        #print 'previous', type(previous), previous
-        #print 'latest', type(latest), latest
         minsDiff = (latest-previous).seconds/60
-        #print 'ProbUtils minsDiff', minsDiff
-        #self.flush()
         
         ### Get interpolated times and probabilities 
         intervalDict = self.getInterpolatedProbTrendColors(event, returnOneMinuteTime=True)
@@ -1097,7 +1098,7 @@ class ProbUtils(object):
     
     #########################################
     ### Common Methods shared among modules
-    def setActivation(self, event):
+    def setActivation(self, event, modify=True):
         '''
         Set the activate and activeModify attributes of the event
 
@@ -1137,8 +1138,9 @@ class ProbUtils(object):
 
         print "PU Setting activate, activateModify", activate, activateModify
         self.flush()
-        event.set('activate', activate)
-        event.set('activateModify', activateModify)
+        if modify:
+            event.set('activate', activate)
+            event.set('activateModify', activateModify)
         return activate, activateModify
                     
     #########################################

@@ -214,6 +214,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 
         for event in eventSet:
 
+            event.set('visibleGeometry', 'highResolutionGeometryIsVisible')
+
             print 'SR:', event.get('objectID'), event.getStatus(), event.getStartTime(), event.getEndTime()
             self.lastSelectedTime = self.selectedTime
                                     
