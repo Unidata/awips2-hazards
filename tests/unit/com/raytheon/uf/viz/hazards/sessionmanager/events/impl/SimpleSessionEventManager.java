@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.events;
+package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -33,10 +33,10 @@ import java.util.Set;
 
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
@@ -79,12 +79,11 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  * @version 1.0
  */
 
-public class SimpleSessionEventManager
-        implements ISessionEventManager<ObservedHazardEvent> {
+public class SimpleSessionEventManager implements ISessionEventManager {
 
     private final boolean canChangeType;
 
-    private final List<ObservedHazardEvent> events = new ArrayList<ObservedHazardEvent>();
+    private final List<ObservedHazardEvent> events = new ArrayList<>();
 
     public SimpleSessionEventManager() {
         this(true, true);
@@ -97,62 +96,72 @@ public class SimpleSessionEventManager
 
     @Override
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(
-            IHazardEvent hazardEvent) {
+            IHazardEventView hazardEvent) {
         return null;
     }
 
     @Override
-    public List<String> getDurationChoices(IHazardEvent event) {
+    public List<String> getDurationChoices(IHazardEventView event) {
         return Collections.emptyList();
     }
 
     @Override
-    public void eventCommandInvoked(ObservedHazardEvent event,
-            String identifier,
+    public void eventCommandInvoked(IHazardEventView event, String identifier,
             Map<String, Map<String, Object>> mutableProperties) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void setEventCategory(ObservedHazardEvent event, String category,
-            IOriginator originator) {
+    public <T> EventPropertyChangeResult changeEventProperty(
+            IHazardEventView event, EventPropertyChange<T> propertyChange,
+            T parameters) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean setEventType(ObservedHazardEvent event, String phenomenon,
-            String significance, String subType, IOriginator originator) {
+    public <T> EventPropertyChangeResult changeEventProperty(
+            IHazardEventView event, EventPropertyChange<T> propertyChange,
+            T parameters, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public ObservedHazardEvent addEvent(IHazardEvent event,
+    public IHazardEventView addEvent(IReadableHazardEvent event,
             IOriginator originator) {
         SessionEventManager eventManager = mock(SessionEventManager.class);
         ObservedHazardEvent ev = new ObservedHazardEvent(event, eventManager);
-        when(eventManager.canChangeType(ev)).thenReturn(true);
+        when(eventManager.canEventTypeBeChanged(ev)).thenReturn(true);
         events.add(ev);
-        return ev;
+        return new HazardEventView(ev);
     }
 
     @Override
-    public void removeEvent(ObservedHazardEvent event, boolean confirm,
+    public void removeEvent(IHazardEventView event, boolean confirm,
             IOriginator originator) {
-        events.remove(event);
+        for (ObservedHazardEvent sessionEvent : events) {
+            if (event.getEventID().equals(sessionEvent.getEventID())) {
+                events.remove(sessionEvent);
+                return;
+            }
+        }
     }
 
     @Override
-    public List<ObservedHazardEvent> getEvents() {
-        return events;
+    public List<IHazardEventView> getEvents() {
+        List<IHazardEventView> eventViews = new ArrayList<>(events.size());
+        for (ObservedHazardEvent event : events) {
+            eventViews.add(new HazardEventView(event));
+        }
+        return eventViews;
     }
 
     @Override
-    public boolean canChangeType(ObservedHazardEvent event) {
+    public boolean canEventTypeBeChanged(IReadableHazardEvent event) {
         return canChangeType;
     }
 
     @Override
-    public void sortEvents(Comparator<ObservedHazardEvent> comparator,
+    public void sortEvents(Comparator<IReadableHazardEvent> comparator,
             IOriginator originator) {
         Collections.sort(events, comparator);
     }
@@ -169,7 +178,7 @@ public class SimpleSessionEventManager
     }
 
     @Override
-    public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents() {
+    public Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> getAllConflictingEvents() {
         throw new UnsupportedOperationException();
     }
 
@@ -179,58 +188,58 @@ public class SimpleSessionEventManager
     }
 
     @Override
-    public Map<IHazardEvent, Collection<String>> getConflictingEvents(
-            IHazardEvent event, Date startTime, Date endTime, Geometry geometry,
-            String phenSigSubtype) {
+    public Map<IHazardEventView, Collection<String>> getConflictingEvents(
+            IHazardEventView event, Date startTime, Date endTime,
+            Geometry geometry, String phenSigSubtype) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
+    public Map<String, Collection<IHazardEventView>> getConflictingEventsForSelectedEvents() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public List<ObservedHazardEvent> getEventsForCurrentSettings() {
+    public List<IHazardEventView> getEventsForCurrentSettings() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void endEvent(ObservedHazardEvent event, IOriginator originator) {
+    public void endEvent(IHazardEventView event, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void issueEvent(ObservedHazardEvent event, IOriginator originator) {
+    public void issueEvent(IHazardEventView event, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Set<String> getEventIdsAllowingProposal() {
+    public Set<String> getSelectedEventIdsAllowingProposal() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void proposeEvent(ObservedHazardEvent event,
+    public EventPropertyChangeResult proposeEvent(IHazardEventView event,
             IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean canEventAreaBeChanged(ObservedHazardEvent event) {
+    public boolean canEventAreaBeChanged(IReadableHazardEvent event) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void updateSelectedHazardUGCs() {
+    public void updateSelectedHazardUgcs() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public ObservedHazardEvent getEventById(String eventId) {
+    public IHazardEventView getEventById(String eventId) {
         for (ObservedHazardEvent event : events) {
             if (event.getEventID().equals(eventId)) {
-                return event;
+                return new HazardEventView(event);
             }
 
         }
@@ -238,23 +247,23 @@ public class SimpleSessionEventManager
     }
 
     @Override
-    public HazardHistoryList getEventHistoryById(String eventId) {
+    public List<IHazardEventView> getEventHistoryById(String eventId) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEventsByStatus(
-            HazardStatus status, boolean includeUntyped) {
+    public Collection<IHazardEventView> getEventsByStatus(HazardStatus status,
+            boolean includeUntyped) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public List<ObservedHazardEvent> getCheckedEvents() {
+    public List<IHazardEventView> getCheckedEvents() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void removeEvents(Collection<ObservedHazardEvent> events,
+    public void removeEvents(Collection<? extends IHazardEventView> events,
             boolean confirm, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
@@ -265,28 +274,29 @@ public class SimpleSessionEventManager
     }
 
     @Override
-    public boolean isEventChecked(IHazardEvent event) {
+    public boolean isEventChecked(IHazardEventView event) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void setEventChecked(IHazardEvent event, boolean checked,
+    public void setEventChecked(IHazardEventView event, boolean checked,
             IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public ObservedHazardEvent getCurrentEvent() {
+    public IHazardEventView getCurrentEvent() {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void setCurrentEvent(ObservedHazardEvent event) {
+    public void setCurrentEvent(IHazardEventView event) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void proposeEvents(Collection<ObservedHazardEvent> events,
+    public Map<String, EventPropertyChangeResult> proposeEvents(
+            Collection<? extends IHazardEventView> events,
             IOriginator originator) {
         throw new UnsupportedOperationException();
     }
@@ -298,24 +308,19 @@ public class SimpleSessionEventManager
 
     @Override
     public boolean isValidGeometryChange(IAdvancedGeometry geometry,
-            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
+            IReadableHazardEvent hazardEvent, boolean checkGeometryValidity) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void addOrRemoveEnclosingUGCs(Coordinate location,
+    public void addOrRemoveEnclosingUgcs(Coordinate location,
             IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public Map<String, String> buildInitialHazardAreas(
-            IHazardEvent hazardEvent) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updateHazardAreas(IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
         throw new UnsupportedOperationException();
     }
 
@@ -326,18 +331,6 @@ public class SimpleSessionEventManager
 
     @Override
     public Map<String, Range<Long>> getEndTimeBoundariesForEventIds() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
-            Date endTime, IOriginator originator) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean setEventGeometry(ObservedHazardEvent event,
-            IAdvancedGeometry geometry, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -366,8 +359,10 @@ public class SimpleSessionEventManager
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events, boolean addToHistory,
-            boolean treatAsIssuance) {
+    public Map<String, EventPropertyChangeResult> saveEvents(
+            List<? extends IHazardEventView> events, boolean addToHistory,
+            boolean keepLocked, boolean treatAsIssuance,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -394,15 +389,17 @@ public class SimpleSessionEventManager
     }
 
     @Override
-    public void revertEventToLastSaved(String eventIdentifier) {
+    public EventPropertyChangeResult revertEventToLastSaved(
+            String eventIdentifier, IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void mergeHazardEvents(IHazardEvent newEvent,
-            ObservedHazardEvent oldEvent, boolean forceMerge,
-            boolean keepVisualFeatures, boolean persistOnStatusChange,
-            boolean useModifiedValue, IOriginator originator) {
+    public EventPropertyChangeResult mergeHazardEvents(
+            IReadableHazardEvent newEvent, IHazardEventView oldEvent,
+            boolean forceMerge, boolean keepVisualFeatures,
+            boolean persistOnStatusChange, boolean useModifiedValue,
+            IOriginator originator) {
         throw new UnsupportedOperationException();
     }
 
@@ -417,17 +414,10 @@ public class SimpleSessionEventManager
     }
 
     @Override
-    public void copyEvents(List<IHazardEvent> events) {
+    public void copyEvents(List<? extends IHazardEventView> events) {
         throw new UnsupportedOperationException();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
-     * getRecommendersForTriggerIdentifiers(java.lang.String)
-     */
     @Override
     public Map<String, String> getRecommendersForTriggerIdentifiers(
             String eventIdentifier) {
@@ -435,18 +425,82 @@ public class SimpleSessionEventManager
         return null;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager#
-     * setEventTypeToDefault(com.raytheon.uf.common.dataplugin.events.hazards.
-     * event.IHazardEvent,
-     * com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator)
-     */
     @Override
-    public boolean setEventTypeToDefault(ObservedHazardEvent event,
-            IOriginator originator) {
-        throw new UnsupportedOperationException();
+    public void breakEventLock(IHazardEventView event) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void setPotentialEventsToPending(
+            Collection<? extends IHazardEventView> events) {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public EventPropertyChangeResult initiateEventEndingProcess(
+            IHazardEventView event, IOriginator originator) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public EventPropertyChangeResult revertEventEndingProcess(
+            IHazardEventView event, IOriginator originator) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public boolean isUndoable(IHazardEventView event) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public boolean isRedoable(IHazardEventView event) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public EventPropertyChangeResult undo(IHazardEventView event) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public EventPropertyChangeResult redo(IHazardEventView event) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public boolean isEventHistorical(IHazardEventView event) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public boolean isEventModified(IHazardEventView event) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public boolean isProposedStateAllowed(IHazardEventView event) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public void resetEvents(IOriginator originator) {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public boolean isEventInDatabase(IReadableHazardEvent event) {
+        // TODO Auto-generated method stub
+        return false;
     }
 }

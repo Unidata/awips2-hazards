@@ -9,12 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.console;
 
-import gov.noaa.gsd.common.utilities.Sort;
-import gov.noaa.gsd.common.utilities.Sort.SortDirection;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
-import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,15 +25,23 @@ import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
+import com.raytheon.uf.common.message.WsId;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
+
+import gov.noaa.gsd.common.utilities.Sort;
+import gov.noaa.gsd.common.utilities.Sort.SortDirection;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
 
 /**
  * Description: Manager for {@link TabularEntity} instances within the
@@ -49,14 +51,14 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * current (latest) form, or historical (one of the states in which it was
  * persisted).
  * <p>
- * Note that it is assumed that the {@link HazardHistoryList} for any given
- * event, if found, will hold zero or more events, with each of those events
- * having an insert time. Furthermore, each one is assumed to have a fixed place
- * in a <i>reversed version</i> of the list, that is, the oldest one will always
- * be at the end of the list, the second-oldest at the next-to-last position in
- * the list, and so on. So, the last one would always have index <code>0</code>
- * in the reversed list, the second-to-last one invariably would have index
- * <code>1</code> in the reversed list, etc.
+ * Note that it is assumed that the history list for any given event, if found,
+ * will hold zero or more events, with each of those events having an insert
+ * time. Furthermore, each one is assumed to have a fixed place in a <i>reversed
+ * version</i> of the list, that is, the oldest one will always be at the end of
+ * the list, the second-oldest at the next-to-last position in the list, and so
+ * on. So, the last one would always have index <code>0</code> in the reversed
+ * list, the second-to-last one invariably would have index <code>1</code> in
+ * the reversed list, etc.
  * </p>
  * 
  * <pre>
@@ -65,6 +67,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Dec 16, 2016   15556    Chris.Golden Initial creation.
+ * Dec 19, 2016   21504    Robert.Blum  Adapted to hazard locking.
  * Feb 16, 2017   29138    Chris.Golden Changed to remove notion of visibility
  *                                      of events in the history list, since
  *                                      all events in the history list are now
@@ -80,6 +83,16 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                      console rows that under certain
  *                                      circumstances could cause the loop to
  *                                      run forever, freezing CAVE.
+ * May 01, 2017   33528    mduff        Changed lock status text to "E" if locked
+ *                                      for editing.
+ * Aug 01, 2017   35979    Roger.Ferrel Lock status now displays "Edit" instead
+ *                                      of "E".
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events. Also added use of
+ *                                      locking workstation and user name for
+ *                                      column cells when an event is locked,
+ *                                      instead of the event's workstation and
+ *                                      user name.
  * </pre>
  * 
  * @author Chris.Golden
@@ -103,9 +116,12 @@ class TabularEntityManager {
          *            Hazard event from which to fetch the property.
          * @param property
          *            Name of the property to be fetched.
+         * @param sessionManager
+         *            Session manager.
          * @return Value of the property.
          */
-        Object getProperty(IHazardEvent event, String property);
+        Object getProperty(IHazardEventView event, String property,
+                ISessionManager<ObservedSettings> sessionManager);
     }
 
     // Private Static Constants
@@ -136,7 +152,8 @@ class TabularEntityManager {
     private static final IHazardEventPropertyFetcher HAZARD_ATTRIBUTE_FETCHER = new IHazardEventPropertyFetcher() {
 
         @Override
-        public Object getProperty(IHazardEvent event, String property) {
+        public Object getProperty(IHazardEventView event, String property,
+                ISessionManager<ObservedSettings> sessionManager) {
             return event.getHazardAttribute(property);
         }
     };
@@ -152,99 +169,122 @@ class TabularEntityManager {
         map.put(HazardConstants.HAZARD_EVENT_IDENTIFIER,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getEventID();
                     }
                 });
         map.put(HazardConstants.HAZARD_EVENT_DISPLAY_IDENTIFIER,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getDisplayEventID();
                     }
                 });
+        map.put(HazardConstants.LOCK_STATUS, new IHazardEventPropertyFetcher() {
+            @Override
+            public Object getProperty(IHazardEventView event, String property,
+                    ISessionManager<ObservedSettings> sessionManager) {
+                return getLockStatusDescription(event,
+                        sessionManager.getLockManager());
+            }
+        });
         map.put(HazardConstants.HAZARD_EVENT_PHEN,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getPhenomenon();
                     }
                 });
         map.put(HazardConstants.HAZARD_EVENT_SIG,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getSignificance();
                     }
                 });
         map.put(HazardConstants.HAZARD_EVENT_SUB_TYPE,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getSubType();
                     }
                 });
         map.put(HazardConstants.HAZARD_EVENT_TYPE,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getHazardType();
                     }
                 });
         map.put(HazardConstants.HAZARD_EVENT_STATUS,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
-                        return (event.getStatus() == null ? null : event
-                                .getStatus().getValue());
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
+                        return (event.getStatus() == null ? null
+                                : event.getStatus().getValue());
                     }
                 });
         map.put(HazardConstants.HAZARD_EVENT_START_TIME,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getStartTime();
                     }
                 });
         map.put(HazardConstants.HAZARD_EVENT_END_TIME,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getEndTime();
                     }
                 });
         map.put(HazardConstants.CREATION_TIME,
                 new IHazardEventPropertyFetcher() {
                     @Override
-                    public Object getProperty(IHazardEvent event,
-                            String property) {
+                    public Object getProperty(IHazardEventView event,
+                            String property,
+                            ISessionManager<ObservedSettings> sessionManager) {
                         return event.getCreationTime();
                     }
                 });
         map.put(HazardConstants.WORKSTATION, new IHazardEventPropertyFetcher() {
             @Override
-            public Object getProperty(IHazardEvent event, String property) {
-                return event.getWorkStation();
+            public Object getProperty(IHazardEventView event, String property,
+                    ISessionManager<ObservedSettings> sessionManager) {
+                return getWorkstationInfoForEvent(event,
+                        sessionManager.getLockManager()).getHostName();
             }
         });
         map.put(HazardConstants.USER_NAME, new IHazardEventPropertyFetcher() {
             @Override
-            public Object getProperty(IHazardEvent event, String property) {
-                return event.getUserName();
+            public Object getProperty(IHazardEventView event, String property,
+                    ISessionManager<ObservedSettings> sessionManager) {
+                return getWorkstationInfoForEvent(event,
+                        sessionManager.getLockManager()).getUserName();
             }
         });
         map.put(HazardConstants.SITE_ID, new IHazardEventPropertyFetcher() {
             @Override
-            public Object getProperty(IHazardEvent event, String property) {
+            public Object getProperty(IHazardEventView event, String property,
+                    ISessionManager<ObservedSettings> sessionManager) {
                 return event.getSiteID();
             }
         });
@@ -256,7 +296,7 @@ class TabularEntityManager {
     /**
      * Session manager.
      */
-    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private ISessionManager<ObservedSettings> sessionManager;
 
     /**
      * View associated with the presenter using this manager.
@@ -333,7 +373,7 @@ class TabularEntityManager {
      * here.
      * </p>
      */
-    private final Map<String, IHazardEvent> eventsForIdentifiers = new HashMap<>();
+    private final Map<String, IHazardEventView> eventsForIdentifiers = new HashMap<>();
 
     /**
      * Map of event identifiers to countdown timers, for those events that have
@@ -348,7 +388,8 @@ class TabularEntityManager {
     private final IListStateChangeHandler<String, TabularEntity> treeContentsChangeHandler = new IListStateChangeHandler<String, TabularEntity>() {
 
         @Override
-        public void listElementChanged(String identifier, TabularEntity element) {
+        public void listElementChanged(String identifier,
+                TabularEntity element) {
             handleUserChangesToEntities(Sets.newHashSet(element));
         }
 
@@ -358,6 +399,54 @@ class TabularEntityManager {
             handleUserChangesToEntities(elements);
         }
     };
+
+    // Private Static Methods
+
+    /**
+     * Get a text description of the specified event's lock status.
+     * 
+     * @param event
+     *            Event for which to generate the description.
+     * @param lockManager
+     *            Lock manager.
+     * @return Text description.
+     */
+    private static String getLockStatusDescription(IHazardEventView event,
+            ISessionLockManager lockManager) {
+        LockInfo lockInfo = lockManager
+                .getHazardEventLockInfo(event.getEventID());
+        LockStatus status = lockInfo.getLockStatus();
+        if (status == LockStatus.LOCKABLE) {
+            return "U";
+        } else if (status == LockStatus.LOCKED_BY_ME) {
+            return "Edit";
+        } else {
+            WsId workstation = lockManager
+                    .getWorkStationHoldingHazardLock(event.getEventID());
+            return "L:" + (workstation == null ? "(unknown)"
+                    : workstation.getUserName());
+        }
+    }
+
+    /**
+     * Get the workstation identifier information for the specified event for
+     * display purposes.
+     * 
+     * @param event
+     *            Event for which to retrieve the workstation information.
+     * @param lockManager
+     *            Lock manager.
+     * @return Workstation information.
+     */
+    private static WsId getWorkstationInfoForEvent(IHazardEventView event,
+            ISessionLockManager lockManager) {
+        WsId workstationInfo = lockManager
+                .getWorkStationHoldingHazardLock(event.getEventID());
+        if (workstationInfo != null) {
+            return workstationInfo;
+        }
+        return event.getWsId();
+    }
 
     // Package-Private Constructors
 
@@ -379,8 +468,7 @@ class TabularEntityManager {
      *            for those sorts. This is an unmodifiable view of a map that is
      *            kept up to date by the presenter.
      */
-    TabularEntityManager(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+    TabularEntityManager(ISessionManager<ObservedSettings> sessionManager,
             List<Sort> sorts,
             Map<String, Comparator<?>> comparatorsForSortIdentifiers,
             Map<String, Class<?>> typesForSortIdentifiers) {
@@ -425,13 +513,13 @@ class TabularEntityManager {
      * @param event
      *            Hazard event for which to add entities.
      */
-    void addEntitiesForEvent(IHazardEvent event) {
+    void addEntitiesForEvent(IHazardEventView event) {
 
         /*
          * If the event to have entities added for it is not currently something
          * that should be displayed, do nothing.
          */
-        List<ObservedHazardEvent> events = sessionManager.getEventManager()
+        List<IHazardEventView> events = sessionManager.getEventManager()
                 .getEventsForCurrentSettings();
         if (events.indexOf(event) == -1) {
             return;
@@ -500,7 +588,7 @@ class TabularEntityManager {
      * @param event
      *            Hazard event for which to add the latest child entity.
      */
-    void updateChildEntityListForEvent(IHazardEvent event) {
+    void updateChildEntityListForEvent(IHazardEventView event) {
 
         /*
          * Do nothing if the history list is not being shown.
@@ -515,16 +603,16 @@ class TabularEntityManager {
          * entities.
          */
         String eventIdentifier = event.getEventID();
-        HazardHistoryList historicalEvents = sessionManager.getEventManager()
-                .getEventHistoryById(eventIdentifier);
+        List<IHazardEventView> historicalEvents = sessionManager
+                .getEventManager().getEventHistoryById(eventIdentifier);
         if (historicalEvents != null) {
 
             /*
              * Find the entity already created for the current version of this
              * event.
              */
-            Pair<String, Integer> entityIdentifier = new Pair<>(
-                    eventIdentifier, null);
+            Pair<String, Integer> entityIdentifier = new Pair<>(eventIdentifier,
+                    null);
             TabularEntity entity = tabularEntitiesForIdentifiers
                     .get(entityIdentifier);
             if (entity == null) {
@@ -557,13 +645,14 @@ class TabularEntityManager {
              */
             int count = 0;
             int oldEntityIndex = oldHistoricalEntities.size() - 1;
-            for (IHazardEvent historicalEvent : historicalEvents) {
+            for (IHazardEventView historicalEvent : historicalEvents) {
                 TabularEntity historicalEntity = null;
                 if (oldEntityIndex == -1) {
                     historicalEntity = buildTabularEntityForEvent(
                             historicalEvent, count, null, null);
-                    tabularEntitiesForIdentifiers.put(new Pair<>(
-                            eventIdentifier, count), historicalEntity);
+                    tabularEntitiesForIdentifiers.put(
+                            new Pair<>(eventIdentifier, count),
+                            historicalEntity);
                 } else {
                     historicalEntity = oldHistoricalEntities
                             .get(oldEntityIndex--);
@@ -609,7 +698,7 @@ class TabularEntityManager {
      * @param event
      *            Hazard event for which to replace the root entity.
      */
-    void replaceRootEntityForEvent(IHazardEvent event) {
+    void replaceRootEntityForEvent(IHazardEventView event) {
 
         /*
          * Get the old entity for this event, if one is found.
@@ -627,7 +716,7 @@ class TabularEntityManager {
          * If the event to have its root entity replaced is not currently
          * something that should be displayed, remove its entities instead.
          */
-        List<ObservedHazardEvent> events = sessionManager.getEventManager()
+        List<IHazardEventView> events = sessionManager.getEventManager()
                 .getEventsForCurrentSettings();
         if (events.indexOf(event) == -1) {
             removeEntitiesForEvent(event);
@@ -669,7 +758,7 @@ class TabularEntityManager {
      *            Indices of historical versions for which the entities should
      *            also be replaced; may be empty.
      */
-    void replaceEntitiesForEvent(IHazardEvent event,
+    void replaceEntitiesForEvent(IHazardEventView event,
             Set<Integer> historicalIndices) {
 
         /*
@@ -685,8 +774,8 @@ class TabularEntityManager {
              * Get the old version of the root entity.
              */
             String eventIdentifier = event.getEventID();
-            Pair<String, Integer> entityIdentifier = new Pair<>(
-                    eventIdentifier, null);
+            Pair<String, Integer> entityIdentifier = new Pair<>(eventIdentifier,
+                    null);
             TabularEntity oldEntity = tabularEntitiesForIdentifiers
                     .get(entityIdentifier);
             if (oldEntity == null) {
@@ -697,7 +786,7 @@ class TabularEntityManager {
              * If the event to have entities replaced is not currently something
              * that should be displayed, remove its entities instead.
              */
-            List<ObservedHazardEvent> events = sessionManager.getEventManager()
+            List<IHazardEventView> events = sessionManager.getEventManager()
                     .getEventsForCurrentSettings();
             if (events.indexOf(event) == -1) {
                 removeEntitiesForEvent(event);
@@ -712,21 +801,22 @@ class TabularEntityManager {
              * Reverse the list ordering at the end since historical entities
              * should have the newest ones first.
              */
-            HazardHistoryList historicalEvents = sessionManager
+            List<IHazardEventView> historicalEvents = sessionManager
                     .getEventManager().getEventHistoryById(eventIdentifier);
             List<TabularEntity> historicalEntities = null;
             if ((historicalEvents != null)
                     && (historicalEvents.isEmpty() == false)) {
-                historicalEntities = new ArrayList<>(oldEntity.getChildren()
-                        .size());
+                historicalEntities = new ArrayList<>(
+                        oldEntity.getChildren().size());
                 int count = 0;
-                for (IHazardEvent historicalEvent : historicalEvents) {
+                for (IHazardEventView historicalEvent : historicalEvents) {
                     Pair<String, Integer> historicalIdentifier = new Pair<>(
                             eventIdentifier, count);
                     TabularEntity oldHistoricalEntity = tabularEntitiesForIdentifiers
                             .get(historicalIdentifier);
-                    TabularEntity entity = (historicalIndices.contains(count) ? buildTabularEntityForEvent(
-                            historicalEvent, count, oldHistoricalEntity, null)
+                    TabularEntity entity = (historicalIndices.contains(count)
+                            ? buildTabularEntityForEvent(historicalEvent, count,
+                                    oldHistoricalEntity, null)
                             : oldHistoricalEntity);
                     historicalEntities.add(entity);
                     tabularEntitiesForIdentifiers.put(historicalIdentifier,
@@ -756,8 +846,8 @@ class TabularEntityManager {
             /*
              * Tell the list state changer of the replacement.
              */
-            view.getTreeContentsChanger().replaceElement(null,
-                    replacementIndex, entity);
+            view.getTreeContentsChanger().replaceElement(null, replacementIndex,
+                    entity);
         }
     }
 
@@ -767,7 +857,7 @@ class TabularEntityManager {
      * @param event
      *            Hazard event for which to remove representative entities.
      */
-    void removeEntitiesForEvent(IHazardEvent event) {
+    void removeEntitiesForEvent(IHazardEventView event) {
         removeEntitiesForEvent(event.getEventID());
     }
 
@@ -794,8 +884,8 @@ class TabularEntityManager {
              */
             List<TabularEntity> historicalEntities = entity.getChildren();
             for (TabularEntity historicalEntity : historicalEntities) {
-                tabularEntitiesForIdentifiers.remove(new Pair<>(
-                        eventIdentifier, historicalEntity.getHistoryIndex()));
+                tabularEntitiesForIdentifiers.remove(new Pair<>(eventIdentifier,
+                        historicalEntity.getHistoryIndex()));
             }
 
             /*
@@ -808,7 +898,8 @@ class TabularEntityManager {
             /*
              * Adjust the recorded indices of any following events.
              */
-            for (Map.Entry<String, Integer> entry : indicesForEvents.entrySet()) {
+            for (Map.Entry<String, Integer> entry : indicesForEvents
+                    .entrySet()) {
                 if (entry.getValue() > removalIndex) {
                     entry.setValue(entry.getValue() - 1);
                 }
@@ -899,8 +990,7 @@ class TabularEntityManager {
                 tabularEntitiesForIdentifiers);
         tabularEntities.clear();
         tabularEntitiesForIdentifiers.clear();
-        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
-                .getEventManager();
+        ISessionEventManager eventManager = sessionManager.getEventManager();
         for (TabularEntity entity : oldTabularEntities) {
 
             /*
@@ -967,10 +1057,11 @@ class TabularEntityManager {
              */
             tabularEntities.clear();
             indicesForEvents.clear();
-            for (int index = 0; index < sortedEventIdentifiers.size(); index++) {
+            for (int index = 0; index < sortedEventIdentifiers
+                    .size(); index++) {
                 String identifier = sortedEventIdentifiers.get(index);
-                tabularEntities.add(tabularEntitiesForIdentifiers
-                        .get(identifier));
+                tabularEntities
+                        .add(tabularEntitiesForIdentifiers.get(identifier));
                 indicesForEvents.put(identifier, index);
             }
 
@@ -1019,13 +1110,12 @@ class TabularEntityManager {
         /*
          * Iterate through the changed entities, handling each one in turn.
          */
-        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
-                .getEventManager();
+        ISessionEventManager eventManager = sessionManager.getEventManager();
         Set<Pair<String, Integer>> unselectedEntityIdentifiers = new HashSet<>(
                 entities.size() * 2, 1.0f);
         Set<Pair<String, Integer>> selectedEntityIdentifiers = new HashSet<>(
                 entities.size() * 2, 1.0f);
-        Set<ObservedHazardEvent> eventsRejectingTimeRangeChange = new HashSet<>();
+        Set<IHazardEventView> eventsRejectingChanges = new HashSet<>();
         for (TabularEntity entity : entities) {
 
             /*
@@ -1062,17 +1152,23 @@ class TabularEntityManager {
                 /*
                  * If the entity has changed its until further notice state,
                  * change the appropriate attribute of the corresponding event.
+                 * If the change is rejected, make a note of this so that the
+                 * view can be notified of the rejection.
                  */
-                ObservedHazardEvent event = eventManager.getEventById(entity
-                        .getIdentifier());
+                IHazardEventView event = eventManager
+                        .getEventById(entity.getIdentifier());
                 if (oldEntity.isEndTimeUntilFurtherNotice() != entity
                         .isEndTimeUntilFurtherNotice()) {
                     Map<String, Serializable> changedAttributes = new HashMap<>();
-                    changedAttributes
-                            .put(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                                    entity.isEndTimeUntilFurtherNotice());
-                    event.addHazardAttributes(changedAttributes,
-                            UIOriginator.CONSOLE);
+                    changedAttributes.put(
+                            HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                            entity.isEndTimeUntilFurtherNotice());
+                    if (eventManager.changeEventProperty(event,
+                            ISessionEventManager.ADD_EVENT_ATTRIBUTES,
+                            changedAttributes,
+                            UIOriginator.CONSOLE) != ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+                        eventsRejectingChanges.add(event);
+                    }
                 }
 
                 /*
@@ -1090,12 +1186,17 @@ class TabularEntityManager {
                  * is rejected, make a note of this so that the view can be
                  * notified of the rejection.
                  */
-                if (oldEntity.getTimeRange().equals(entity.getTimeRange()) == false) {
-                    if (eventManager.setEventTimeRange(event, new Date(entity
-                            .getTimeRange().lowerEndpoint()), new Date(entity
-                            .getTimeRange().upperEndpoint()),
-                            UIOriginator.CONSOLE) == false) {
-                        eventsRejectingTimeRangeChange.add(event);
+                if (oldEntity.getTimeRange()
+                        .equals(entity.getTimeRange()) == false) {
+                    if (eventManager.changeEventProperty(event,
+                            ISessionEventManager.SET_EVENT_TIME_RANGE,
+                            new Pair<>(
+                                    new Date(entity.getTimeRange()
+                                            .lowerEndpoint()),
+                                    new Date(entity.getTimeRange()
+                                            .upperEndpoint())),
+                            UIOriginator.CONSOLE) != ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+                        eventsRejectingChanges.add(event);
                     }
                 }
 
@@ -1131,7 +1232,7 @@ class TabularEntityManager {
          * Create new entities for any events that rejected a time range change,
          * and forward them to the view.
          */
-        for (ObservedHazardEvent event : eventsRejectingTimeRangeChange) {
+        for (IHazardEventView event : eventsRejectingChanges) {
             replaceRootEntityForEvent(event);
         }
 
@@ -1143,10 +1244,11 @@ class TabularEntityManager {
                 && (selectedEntityIdentifiers.isEmpty() == false)) {
             sessionManager.getSelectionManager()
                     .setSelectedEventVersionIdentifiers(
-                            Sets.union(Sets.difference(sessionManager
-                                    .getSelectionManager()
-                                    .getSelectedEventVersionIdentifiers(),
-                                    unselectedEntityIdentifiers),
+                            Sets.union(
+                                    Sets.difference(
+                                            sessionManager.getSelectionManager()
+                                                    .getSelectedEventVersionIdentifiers(),
+                                            unselectedEntityIdentifiers),
                                     selectedEntityIdentifiers),
                             UIOriginator.CONSOLE);
         } else if (unselectedEntityIdentifiers.isEmpty() == false) {
@@ -1155,8 +1257,8 @@ class TabularEntityManager {
                             unselectedEntityIdentifiers, UIOriginator.CONSOLE);
         } else {
             sessionManager.getSelectionManager()
-                    .addEventVersionsToSelectedEvents(
-                            selectedEntityIdentifiers, UIOriginator.CONSOLE);
+                    .addEventVersionsToSelectedEvents(selectedEntityIdentifiers,
+                            UIOriginator.CONSOLE);
         }
     }
 
@@ -1226,8 +1328,7 @@ class TabularEntityManager {
      *         will have had entries added in the map referenced by the instance
      *         variable {@link #tabularEntitiesForIdentifiers}.
      */
-    private TabularEntity createEntitiesForEvent(
-            IHazardEvent event,
+    private TabularEntity createEntitiesForEvent(IHazardEventView event,
             Pair<String, Integer> entityIdentifier,
             Map<Pair<String, Integer>, TabularEntity> tabularEntitiesForIdentifiers) {
 
@@ -1239,27 +1340,27 @@ class TabularEntityManager {
          */
         String eventIdentifier = event.getEventID();
         List<TabularEntity> historicalEntities = null;
-        if (showHistoryList
-                && (sessionManager.getEventManager()
-                        .getHistoricalVersionCountForEvent(eventIdentifier) > 0)) {
-            HazardHistoryList historicalEvents = sessionManager
+        if (showHistoryList && (sessionManager.getEventManager()
+                .getHistoricalVersionCountForEvent(eventIdentifier) > 0)) {
+            List<IHazardEventView> historicalEvents = sessionManager
                     .getEventManager().getEventHistoryById(eventIdentifier);
             if ((historicalEvents != null)
                     && (historicalEvents.isEmpty() == false)) {
                 historicalEntities = new ArrayList<>(
-                        getInitialHistoricalEntitiesSize(historicalEvents
-                                .size()));
+                        getInitialHistoricalEntitiesSize(
+                                historicalEvents.size()));
                 int count = 0;
-                for (IHazardEvent historicalEvent : historicalEvents) {
+                for (IHazardEventView historicalEvent : historicalEvents) {
                     Pair<String, Integer> historicalIdentifier = new Pair<>(
                             eventIdentifier, count);
                     TabularEntity entity = buildTabularEntityForEvent(
                             historicalEvent, count,
                             tabularEntitiesForIdentifiers
-                                    .get(historicalIdentifier), null);
+                                    .get(historicalIdentifier),
+                            null);
                     historicalEntities.add(entity);
-                    this.tabularEntitiesForIdentifiers.put(
-                            historicalIdentifier, entity);
+                    this.tabularEntitiesForIdentifiers.put(historicalIdentifier,
+                            entity);
                     count++;
                 }
                 Collections.reverse(historicalEntities);
@@ -1292,7 +1393,7 @@ class TabularEntityManager {
      *            Child tabular entities, if any, for the new entity.
      * @return New tabular entity.
      */
-    private TabularEntity buildTabularEntityForEvent(IHazardEvent event,
+    private TabularEntity buildTabularEntityForEvent(IHazardEventView event,
             Integer historyIndex, TabularEntity previousVersion,
             List<TabularEntity> children) {
 
@@ -1306,9 +1407,8 @@ class TabularEntityManager {
         String eventIdentifier = event.getEventID();
         ISessionConfigurationManager<?> configManager = sessionManager
                 .getConfigurationManager();
-        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
-                .getEventManager();
-        ISessionSelectionManager<?> selectionManager = sessionManager
+        ISessionEventManager eventManager = sessionManager.getEventManager();
+        ISessionSelectionManager selectionManager = sessionManager
                 .getSelectionManager();
         Range<Long> timeRange = Range.closed(event.getStartTime().getTime(),
                 event.getEndTime().getTime());
@@ -1319,15 +1419,19 @@ class TabularEntityManager {
          * "false" below with:
          * 
          * ((historyIndex == null) && (event type allows time sliders to be
-         * moved))
+         * moved) && (sessionManager.getLockManager().getHazardEventLockInfo(
+         * eventIdentifier)).getLockStatus() != LockStatus.LOCKED_BY_OTHER)
          */
         boolean timeRangeEditable = false;
-        Range<Long> lowerTimeBoundaries = (timeRangeEditable ? eventManager
-                .getStartTimeBoundariesForEventIds().get(eventIdentifier)
+
+        Range<Long> lowerTimeBoundaries = (timeRangeEditable
+                ? eventManager.getStartTimeBoundariesForEventIds()
+                        .get(eventIdentifier)
                 : Range.singleton(timeRange.lowerEndpoint()));
-        Range<Long> upperTimeBoundaries = (timeRangeEditable ? eventManager
-                .getEndTimeBoundariesForEventIds().get(eventIdentifier) : Range
-                .singleton(timeRange.upperEndpoint()));
+        Range<Long> upperTimeBoundaries = (timeRangeEditable
+                ? eventManager.getEndTimeBoundariesForEventIds()
+                        .get(eventIdentifier)
+                : Range.singleton(timeRange.upperEndpoint()));
 
         /*
          * Create the attributes map for the tabular entity. This consists of
@@ -1340,26 +1444,33 @@ class TabularEntityManager {
                 event.getHazardAttributes());
         attributes.put(HazardConstants.HAZARD_EVENT_DISPLAY_IDENTIFIER,
                 event.getDisplayEventID());
-        attributes
-                .put(HazardConstants.HAZARD_EVENT_PHEN, event.getPhenomenon());
+        attributes.put(HazardConstants.LOCK_STATUS,
+                TabularEntityManager.getLockStatusDescription(event,
+                        sessionManager.getLockManager()));
+        attributes.put(HazardConstants.HAZARD_EVENT_PHEN,
+                event.getPhenomenon());
         attributes.put(HazardConstants.HAZARD_EVENT_SIG,
                 event.getSignificance());
         attributes.put(HazardConstants.HAZARD_EVENT_SUB_TYPE,
                 event.getSubType());
-        attributes
-                .put(HazardConstants.HAZARD_EVENT_TYPE, event.getHazardType());
+        attributes.put(HazardConstants.HAZARD_EVENT_TYPE,
+                event.getHazardType());
         attributes.put(HazardConstants.HEADLINE,
                 configManager.getHeadline(event));
-        attributes.put(HazardConstants.HAZARD_EVENT_STATUS, event.getStatus()
-                .getValue());
+        attributes.put(HazardConstants.HAZARD_EVENT_STATUS,
+                event.getStatus().getValue());
         attributes.put(HazardConstants.HAZARD_EVENT_START_TIME,
                 timeRange.lowerEndpoint());
         attributes.put(HazardConstants.HAZARD_EVENT_END_TIME,
                 timeRange.upperEndpoint());
-        attributes.put(HazardConstants.CREATION_TIME, event.getCreationTime()
-                .getTime());
-        attributes.put(HazardConstants.WORKSTATION, event.getWorkStation());
-        attributes.put(HazardConstants.USER_NAME, event.getUserName());
+        attributes.put(HazardConstants.CREATION_TIME,
+                event.getCreationTime().getTime());
+        attributes.put(HazardConstants.WORKSTATION,
+                getWorkstationInfoForEvent(event,
+                        sessionManager.getLockManager()).getHostName());
+        attributes.put(HazardConstants.USER_NAME,
+                getWorkstationInfoForEvent(event,
+                        sessionManager.getLockManager()).getUserName());
         attributes.put(HazardConstants.SITE_ID, event.getSiteID());
 
         /*
@@ -1367,34 +1478,27 @@ class TabularEntityManager {
          */
         boolean unsaved = false;
         if ((historyIndex == null)
-                && (((event.getStatus() == HazardStatus.ISSUED) && ((ObservedHazardEvent) event)
-                        .isModified()) || (event.getStatus() == HazardStatus.ENDING))) {
+                && (((event.getStatus() == HazardStatus.ISSUED)
+                        && eventManager.isEventModified(event))
+                        || (event.getStatus() == HazardStatus.ENDING))) {
             unsaved = true;
         }
-        return TabularEntity
-                .build(previousVersion,
-                        eventIdentifier,
-                        historyIndex,
-                        event.getInsertTime(),
-                        unsaved,
-                        timeRange,
-                        Boolean.TRUE.equals(event
-                                .getHazardAttribute(HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)),
-                        (configManager.getDurationChoices(event).size() > 0),
-                        lowerTimeBoundaries,
-                        upperTimeBoundaries,
-                        eventManager.getTimeResolutionsForEventIds().get(
-                                eventIdentifier),
-                        ((historyIndex == null) && eventManager
-                                .getEventIdsAllowingUntilFurtherNotice()
+        return TabularEntity.build(previousVersion, eventIdentifier,
+                historyIndex, event.getInsertTime(), unsaved, timeRange,
+                Boolean.TRUE.equals(event.getHazardAttribute(
+                        HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)),
+                (configManager.getDurationChoices(event).size() > 0),
+                lowerTimeBoundaries, upperTimeBoundaries,
+                eventManager.getTimeResolutionsForEventIds()
+                        .get(eventIdentifier),
+                ((historyIndex == null)
+                        && eventManager.getEventIdsAllowingUntilFurtherNotice()
                                 .contains(eventIdentifier)),
-                        selectionManager.getSelectedEventVersionIdentifiers()
-                                .contains(
-                                        new Pair<String, Integer>(event
-                                                .getEventID(), historyIndex)),
-                        ((historyIndex == null) && eventManager
-                                .isEventChecked(event)), attributes,
-                        configManager.getColor(event), children);
+                selectionManager.getSelectedEventVersionIdentifiers()
+                        .contains(new Pair<String, Integer>(event.getEventID(),
+                                historyIndex)),
+                ((historyIndex == null) && eventManager.isEventChecked(event)),
+                attributes, configManager.getColor(event), children);
     }
 
     /**
@@ -1413,7 +1517,8 @@ class TabularEntityManager {
     private int getInitialHistoricalEntitiesSize(int historicalEventsCount) {
         if (historicalEventsCount < MINIMUM_INITIAL_HISTORICAL_ENTITIES_SIZE) {
             return historicalEventsCount;
-        } else if (historicalEventsCount / 2 < MINIMUM_INITIAL_HISTORICAL_ENTITIES_SIZE) {
+        } else if (historicalEventsCount
+                / 2 < MINIMUM_INITIAL_HISTORICAL_ENTITIES_SIZE) {
             return MINIMUM_INITIAL_HISTORICAL_ENTITIES_SIZE;
         } else {
             return historicalEventsCount / 2;
@@ -1471,9 +1576,8 @@ class TabularEntityManager {
          * insertion index should be. Otherwise, just return the insertion index
          * that was found.
          */
-        if ((lower < max)
-                && (compareHazardEvents(identifier, tabularEntities.get(lower)
-                        .getIdentifier()) == 0)) {
+        if ((lower < max) && (compareHazardEvents(identifier,
+                tabularEntities.get(lower).getIdentifier()) == 0)) {
 
             /*
              * Found the lower and upper boundaries of the range of tabular
@@ -1481,16 +1585,16 @@ class TabularEntityManager {
              */
             int lowerEquivalentRange = lower;
             for (int index = lower - 1; index >= 0; index--) {
-                if (compareHazardEvents(identifier, tabularEntities.get(index)
-                        .getIdentifier()) != 0) {
+                if (compareHazardEvents(identifier,
+                        tabularEntities.get(index).getIdentifier()) != 0) {
                     break;
                 }
                 lowerEquivalentRange = index;
             }
             int upperEquivalentRange = lower;
             for (int index = lower + 1; index < max; index++) {
-                if (compareHazardEvents(identifier, tabularEntities.get(index)
-                        .getIdentifier()) != 0) {
+                if (compareHazardEvents(identifier,
+                        tabularEntities.get(index).getIdentifier()) != 0) {
                     break;
                 }
                 upperEquivalentRange = index;
@@ -1506,8 +1610,8 @@ class TabularEntityManager {
             Map<String, Integer> indicesForEquivalentIdentifiers = new HashMap<>(
                     upperEquivalentRange + 1 - lowerEquivalentRange, 1.0f);
             for (int index = lowerEquivalentRange; index <= upperEquivalentRange; index++) {
-                indicesForEquivalentIdentifiers.put(tabularEntities.get(index)
-                        .getIdentifier(), index);
+                indicesForEquivalentIdentifiers
+                        .put(tabularEntities.get(index).getIdentifier(), index);
             }
             Set<String> equivalentIdentifiers = new HashSet<>(
                     indicesForEquivalentIdentifiers.keySet());
@@ -1522,11 +1626,11 @@ class TabularEntityManager {
              * likely to be at the end of the list.
              */
             String nextEquivalentEventIdentifier = null;
-            List<ObservedHazardEvent> events = sessionManager.getEventManager()
+            List<IHazardEventView> events = sessionManager.getEventManager()
                     .getEventsForCurrentSettings();
             for (int index = events.size() - 1; (index >= 0)
                     && (equivalentIdentifiers.isEmpty() == false); index--) {
-                ObservedHazardEvent event = events.get(index);
+                IHazardEventView event = events.get(index);
                 if (event.getEventID().equals(identifier)) {
                     break;
                 }
@@ -1572,7 +1676,7 @@ class TabularEntityManager {
          */
         List<String> sortedEventIdentifiers = new ArrayList<>();
         eventsForIdentifiers.clear();
-        for (ObservedHazardEvent event : sessionManager.getEventManager()
+        for (IHazardEventView event : sessionManager.getEventManager()
                 .getEventsForCurrentSettings()) {
             eventsForIdentifiers.put(event.getEventID(), event);
             sortedEventIdentifiers.add(event.getEventID());
@@ -1691,9 +1795,9 @@ class TabularEntityManager {
          * proceeding on down from there only if the previous comparison yielded
          * an equality result.
          */
-        IHazardEvent firstEvent = eventsForIdentifiers
+        IHazardEventView firstEvent = eventsForIdentifiers
                 .get(firstEventIdentifier);
-        IHazardEvent secondEvent = eventsForIdentifiers
+        IHazardEventView secondEvent = eventsForIdentifiers
                 .get(secondEventIdentifier);
         for (Sort sort : sorts) {
 
@@ -1701,22 +1805,21 @@ class TabularEntityManager {
              * Compare the objects using a comparator if supplied, or as
              * expiration times if not.
              */
-            Comparator<?> comparator = comparatorsForSortIdentifiers.get(sort
-                    .getAttributeIdentifier());
-            Class<?> type = typesForSortIdentifiers.get(sort
-                    .getAttributeIdentifier());
+            Comparator<?> comparator = comparatorsForSortIdentifiers
+                    .get(sort.getAttributeIdentifier());
+            Class<?> type = typesForSortIdentifiers
+                    .get(sort.getAttributeIdentifier());
             int result;
             if (comparator != null) {
                 result = compareHazardEvents(firstEvent, secondEvent,
                         sort.getAttributeIdentifier(), sort.getSortDirection(),
                         type, comparator);
             } else {
-                result = compare(
-                        sort.getSortDirection(),
-                        countdownTimersForEventIdentifiers.get(
-                                firstEventIdentifier).getExpireTime(),
-                        countdownTimersForEventIdentifiers.get(
-                                secondEventIdentifier).getExpireTime());
+                result = compare(sort.getSortDirection(),
+                        countdownTimersForEventIdentifiers
+                                .get(firstEventIdentifier).getExpireTime(),
+                        countdownTimersForEventIdentifiers
+                                .get(secondEventIdentifier).getExpireTime());
             }
 
             /*
@@ -1757,8 +1860,8 @@ class TabularEntityManager {
      *         respectively.
      */
     @SuppressWarnings("unchecked")
-    private int compareHazardEvents(IHazardEvent firstEvent,
-            IHazardEvent secondEvent, String property,
+    private int compareHazardEvents(IHazardEventView firstEvent,
+            IHazardEventView secondEvent, String property,
             SortDirection sortDirection, Class<?> typeClass,
             Comparator<?> comparator) {
         int result;
@@ -1781,12 +1884,11 @@ class TabularEntityManager {
                     getPropertyFromHazardEvent(secondEvent, property,
                             Double.class));
         } else {
-            result = ((Comparator<Date>) comparator)
-                    .compare(
-                            getPropertyFromHazardEvent(firstEvent, property,
-                                    Date.class),
-                            getPropertyFromHazardEvent(secondEvent, property,
-                                    Date.class));
+            result = ((Comparator<Date>) comparator).compare(
+                    getPropertyFromHazardEvent(firstEvent, property,
+                            Date.class),
+                    getPropertyFromHazardEvent(secondEvent, property,
+                            Date.class));
         }
         return result * (sortDirection == SortDirection.ASCENDING ? 1 : -1);
     }
@@ -1804,7 +1906,7 @@ class TabularEntityManager {
      *         there is no such property of the specified event.
      */
     @SuppressWarnings("unchecked")
-    private <T> T getPropertyFromHazardEvent(IHazardEvent event,
+    private <T> T getPropertyFromHazardEvent(IHazardEventView event,
             String property, Class<T> typeClass) {
 
         /*
@@ -1823,7 +1925,7 @@ class TabularEntityManager {
          * number and take its double value; otherwise, just cast it when
          * returning.
          */
-        Object value = fetcher.getProperty(event, property);
+        Object value = fetcher.getProperty(event, property, sessionManager);
         if (value == null) {
             return null;
         }
@@ -1851,8 +1953,9 @@ class TabularEntityManager {
      */
     private <T extends Comparable<T>> int compare(SortDirection sortDirection,
             T firstValue, T secondValue) {
-        int result = (firstValue == null ? -1 : (secondValue == null ? 1
-                : (firstValue.compareTo(secondValue))));
+        int result = (firstValue == null ? -1
+                : (secondValue == null ? 1
+                        : (firstValue.compareTo(secondValue))));
         return result * (sortDirection == SortDirection.ASCENDING ? 1 : -1);
     }
 }

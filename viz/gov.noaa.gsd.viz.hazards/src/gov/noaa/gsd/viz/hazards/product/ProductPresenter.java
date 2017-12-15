@@ -19,9 +19,6 @@
  **/
 package gov.noaa.gsd.viz.hazards.product;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -31,7 +28,9 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 /**
  * Product Presenter.
@@ -40,21 +39,21 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 29, 2016   16373    mpduff      Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Apr 29, 2016   16373    mpduff       Initial creation.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
 
-public class ProductPresenter extends
-        HazardServicesPresenter<IProductView<?, ?>> {
+public class ProductPresenter
+        extends HazardServicesPresenter<IProductView<?, ?>> {
 
-    public ProductPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public ProductPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }

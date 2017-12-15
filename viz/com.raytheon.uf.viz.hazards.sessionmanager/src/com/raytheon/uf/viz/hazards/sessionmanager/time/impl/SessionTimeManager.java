@@ -37,6 +37,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.time.ISimulatedTimeChangeListener;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
@@ -48,7 +49,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender.IIntraNotificationHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
@@ -140,6 +140,8 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Oct 23, 2017 21730      Chris.Golden Adjusted IIntraNotificationHander
  *                                      implementations to make their isSynchronous()
  *                                      methods take the new parameter.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
+ *                                      session events.
  * </pre>
  * 
  * @author bsteffen
@@ -177,7 +179,7 @@ public class SessionTimeManager implements ISessionTimeManager {
     /**
      * Session manager.
      */
-    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private final ISessionManager<ObservedSettings> sessionManager;
 
     /**
      * Notification sender, used to send out time-related notifications.
@@ -346,8 +348,7 @@ public class SessionTimeManager implements ISessionTimeManager {
      *            notifications.
      */
     @SuppressWarnings("unchecked")
-    public SessionTimeManager(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+    public SessionTimeManager(ISessionManager<ObservedSettings> sessionManager,
             ISessionNotificationSender notificationSender) {
         this.sessionManager = sessionManager;
         this.notificationSender = notificationSender;
@@ -798,12 +799,13 @@ public class SessionTimeManager implements ISessionTimeManager {
      * existing selected time does so, then it is returned; otherwise,a new
      * selected time is returned.
      * 
-     * @param events
-     *            Hazard events with which the selected time must intersect.
+     * @param eventViews
+     *            Views of the hazard events with which the selected time must
+     *            intersect.
      * @return Selected time that intersects the specified events.
      */
     private SelectedTime getSelectedTimeIntersectingEvents(
-            Collection<ObservedHazardEvent> events) {
+            Collection<? extends IHazardEventView> eventViews) {
 
         /*
          * Iterate through the events, starting with an unbounded range and
@@ -815,10 +817,10 @@ public class SessionTimeManager implements ISessionTimeManager {
          */
         Range<Long> intersection = Range.all();
         Range<Long> span = null;
-        for (ObservedHazardEvent event : events) {
+        for (IHazardEventView eventView : eventViews) {
             Range<Long> eventRange = Range.closed(
-                    event.getStartTime().getTime(),
-                    event.getEndTime().getTime());
+                    eventView.getStartTime().getTime(),
+                    eventView.getEndTime().getTime());
             if (intersection != null) {
                 if (intersection.isConnected(eventRange)) {
                     intersection = intersection.intersection(eventRange);

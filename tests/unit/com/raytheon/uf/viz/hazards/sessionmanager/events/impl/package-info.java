@@ -34,4 +34,4 @@
  * @author bsteffen
  * @version 1.0	
  */
-package com.raytheon.uf.viz.hazards.sessionmanager.events;
+package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;

@@ -19,15 +19,15 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.product;
 
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 
 /**
  * 
@@ -47,6 +47,8 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Mar 18, 2014 2917       jsanchez    Added getter/setters for ProductFormats.
  * Oct 03, 2014 4042       Chris.Golden Changed dialog info (list of maps specifying
  *                                      megawidgets) to megawidget specifier manager.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
@@ -56,9 +58,9 @@ public class ProductGeneratorInformation {
 
     private String productGeneratorName;
 
-    private Set<IHazardEvent> productEvents;
+    private Set<IReadableHazardEvent> productEvents;
 
-    private Set<IHazardEvent> possibleProductEvents;
+    private Set<IReadableHazardEvent> possibleProductEvents;
 
     private MegawidgetSpecifierManager stagingMegawidgetSpecifierManager;
 
@@ -80,19 +82,20 @@ public class ProductGeneratorInformation {
         this.productGeneratorName = productGeneratorName;
     }
 
-    public Set<IHazardEvent> getProductEvents() {
+    public Set<IReadableHazardEvent> getProductEvents() {
         return productEvents;
     }
 
-    public void setProductEvents(Set<IHazardEvent> productEvents) {
+    public void setProductEvents(Set<IReadableHazardEvent> productEvents) {
         this.productEvents = productEvents;
     }
 
-    public Set<IHazardEvent> getPossibleProductEvents() {
+    public Set<IReadableHazardEvent> getPossibleProductEvents() {
         return possibleProductEvents;
     }
 
-    public void setPossibleProductEvents(Set<IHazardEvent> possibleProductEvents) {
+    public void setPossibleProductEvents(
+            Set<IReadableHazardEvent> possibleProductEvents) {
         this.possibleProductEvents = possibleProductEvents;
     }
 
@@ -109,7 +112,8 @@ public class ProductGeneratorInformation {
         return dialogSelections;
     }
 
-    public void setDialogSelections(Map<String, Serializable> dialogSelections) {
+    public void setDialogSelections(
+            Map<String, Serializable> dialogSelections) {
         this.dialogSelections = dialogSelections;
     }
 

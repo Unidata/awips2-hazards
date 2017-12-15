@@ -18,7 +18,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
@@ -55,6 +54,8 @@ import net.engio.mbassy.listener.Handler;
  *                                           display, with their results (that is, within
  *                                           the returned event set).
  * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender manager.
+ * Dec 17, 2017   20739    Chris.Golden      Refactored away access to directly mutable
+ *                                           session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -74,8 +75,7 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ToolsPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public ToolsPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }

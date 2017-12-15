@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.datastorage;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -35,7 +33,7 @@ import java.util.Set;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventResponse;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
@@ -47,6 +45,8 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.TimeRange;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 
 /**
  * All access to the registry/database for hazards will happen through here.
@@ -65,11 +65,13 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 04, 2015   6895    Ben.Phillippe Finished HS data access refactor
  * Aug 20, 2015   6895    Ben.Phillippe Routing registry requests through
  *                                      request server
+ * Jan 26, 2016   7623    Ben.Phillippe Implemented locking of HazardEvents
  * Mar 14, 2016  12145    mduff         Cleaned up error handling.
  * May 06, 2016  18202    Robert.Blum   Changes for operational mode.
  * Sep 14, 2016  15934    Chris.Golden  Changed to handle advanced geometries
  *                                      now used by hazard events in place of
  *                                      JTS geometries.
+ * Dec 12, 2016  21504    Robert.Blum   Moved locking code to SessionLockManager.
  * Feb 16, 2017  29138    Chris.Golden  Revamped to allow for the querying of
  *                                      historical versions of events, or
  *                                      latest (non-historical) versions, or
@@ -89,6 +91,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      any empty history lists.
  * Apr 13, 2017  33142     Chris.Golden Added ability to delete all events
  *                                      with a particular event identifier.
+ * Dec 17, 2017  20739     Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author mnash
@@ -159,7 +163,7 @@ public class HazardEventManager implements IHazardEventManager {
     }
 
     @Override
-    public HazardEvent createEvent(IHazardEvent event) {
+    public HazardEvent createEvent(IReadableHazardEvent event) {
         return new HazardEvent(event);
     }
 
@@ -210,7 +214,8 @@ public class HazardEventManager implements IHazardEventManager {
 
     @Override
     public Map<String, HazardHistoryList> queryHistory(
-            HazardEventQueryRequest request) throws HazardEventServiceException {
+            HazardEventQueryRequest request)
+                    throws HazardEventServiceException {
         Map<String, HazardHistoryList> events = Collections.emptyMap();
         HazardEventResponse response = hazardDataAccess.retrieve(request);
         if (response.success()) {
@@ -230,7 +235,8 @@ public class HazardEventManager implements IHazardEventManager {
          * if StartUpConfig options are set to force this. Remove any history
          * lists that end up being empty as a result.
          */
-        boolean needLatest = (request.getInclude() != Include.HISTORICAL_EVENTS);
+        boolean needLatest = (request
+                .getInclude() != Include.HISTORICAL_EVENTS);
         Set<String> toBeRemoved = new HashSet<>();
         for (Map.Entry<String, HazardHistoryList> entry : events.entrySet()) {
             Iterator<HazardEvent> iterator = entry.getValue().iterator();
@@ -287,8 +293,8 @@ public class HazardEventManager implements IHazardEventManager {
         try {
             result = queryHistory(request);
         } catch (HazardEventServiceException e) {
-            statusHandler.handle(Priority.ERROR,
-                    "Error executing filter query", e);
+            statusHandler.handle(Priority.ERROR, "Error executing filter query",
+                    e);
             result = Collections.emptyMap();
         }
         return result;
@@ -355,11 +361,11 @@ public class HazardEventManager implements IHazardEventManager {
     }
 
     @Override
-    public Map<String, HazardHistoryList> getHistoryByPhenSig(
-            String phenomenon, String significance, boolean includeLatestVersion) {
+    public Map<String, HazardHistoryList> getHistoryByPhenSig(String phenomenon,
+            String significance, boolean includeLatestVersion) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(practice,
-                HazardConstants.PHENOMENON, phenomenon).and(
-                HazardConstants.SIGNIFICANCE, significance);
+                HazardConstants.PHENOMENON, phenomenon)
+                        .and(HazardConstants.SIGNIFICANCE, significance);
         if (includeLatestVersion == false) {
             request.setInclude(Include.HISTORICAL_EVENTS);
         }
@@ -418,8 +424,8 @@ public class HazardEventManager implements IHazardEventManager {
     }
 
     @Override
-    public Map<String, HazardHistoryList> getHistoryByTimeRange(
-            TimeRange range, boolean includeLatestVersion) {
+    public Map<String, HazardHistoryList> getHistoryByTimeRange(TimeRange range,
+            boolean includeLatestVersion) {
         return getHistoryByTime(range.getStart(), range.getEnd(),
                 includeLatestVersion);
     };
@@ -467,7 +473,8 @@ public class HazardEventManager implements IHazardEventManager {
             boolean includeHistoricalVersion) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(practice)
                 .and(HazardConstants.HAZARD_EVENT_IDENTIFIER, eventIdentifier);
-        request.setInclude(includeHistoricalVersion ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
+        request.setInclude(includeHistoricalVersion
+                ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
                 : Include.LATEST_EVENTS);
 
         try {
@@ -484,7 +491,8 @@ public class HazardEventManager implements IHazardEventManager {
             boolean includeHistoricalVersions) {
         HazardEventQueryRequest request = new HazardEventQueryRequest(practice,
                 HazardConstants.SITE_ID, site);
-        request.setInclude(includeHistoricalVersions ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
+        request.setInclude(includeHistoricalVersions
+                ? Include.LATEST_OR_MOST_RECENT_HISTORICAL_EVENTS
                 : Include.LATEST_EVENTS);
 
         try {
@@ -509,9 +517,11 @@ public class HazardEventManager implements IHazardEventManager {
     public Map<String, HazardHistoryList> getAllHistory(
             boolean includeLatestVersion) {
         try {
-            return queryHistory(new HazardEventQueryRequest(practice,
-                    includeLatestVersion ? Include.HISTORICAL_AND_LATEST_EVENTS
-                            : Include.HISTORICAL_EVENTS));
+            return queryHistory(
+                    new HazardEventQueryRequest(practice,
+                            includeLatestVersion
+                                    ? Include.HISTORICAL_AND_LATEST_EVENTS
+                                    : Include.HISTORICAL_EVENTS));
         } catch (HazardEventServiceException e) {
             statusHandler.handle(Priority.ERROR,
                     "Error requesting all event histories.", e);
@@ -522,8 +532,8 @@ public class HazardEventManager implements IHazardEventManager {
     @Override
     public boolean removeAllCopiesOfEvent(String eventIdentifier) {
         try {
-            return checkResponse(hazardDataAccess
-                    .deleteAllWithIdentifier(eventIdentifier));
+            return checkResponse(
+                    hazardDataAccess.deleteAllWithIdentifier(eventIdentifier));
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
         }
@@ -554,7 +564,8 @@ public class HazardEventManager implements IHazardEventManager {
      *             size.
      */
     private Map<String, Integer> queryHistorySize(
-            HazardEventQueryRequest request) throws HazardEventServiceException {
+            HazardEventQueryRequest request)
+                    throws HazardEventServiceException {
         Map<String, Integer> historySizesForEventIdentifiers = Collections
                 .emptyMap();
 
@@ -573,8 +584,8 @@ public class HazardEventManager implements IHazardEventManager {
         request.setSizeOnlyRequired(false);
         for (Map.Entry<String, HazardHistoryList> entry : queryHistory(request)
                 .entrySet()) {
-            historySizesForEventIdentifiers.put(entry.getKey(), entry
-                    .getValue().size());
+            historySizesForEventIdentifiers.put(entry.getKey(),
+                    entry.getValue().size());
         }
         // HazardEventResponse response = hazardDataAccess.retrieve(request);
         // if (response.success()) {

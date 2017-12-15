@@ -41,7 +41,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.configuration.ServerConfigLookupProxy;
@@ -95,7 +95,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -305,6 +304,7 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             fix was to have it asynchronously attempt to register
  *                                             again later.
  * Dec 02, 2016 26624      bkowal              Initialize a {@link ServerConfigLookupProxy} instance.
+ * Dec 19, 2016 21504      Robert.Blum         Supplied shell to dialog opening method calls.
  * Feb 01, 2017 15556      Chris.Golden        Minor changes to support console refactor, including
  *                                             implementation of the new console handler and
  *                                             hazard detail handler interfaces. Also moved methods
@@ -329,6 +329,8 @@ import net.engio.mbassy.bus.error.PublicationError;
  * Sep 27, 2017 38072      Chris.Golden        Changed to use callback objects for the recommender
  *                                             manager.
  * Dec 07, 2017 41886      Chris.Golden        Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017 20739      Chris.Golden        Refactored away access to directly mutable session
+ *                                             events.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -625,7 +627,7 @@ public class HazardServicesAppBuilder
      */
     private SpatialDisplay spatialDisplay;
 
-    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private ISessionManager<ObservedSettings> sessionManager;
 
     private AlertVizPresenter alertVizPresenter;
 
@@ -866,8 +868,8 @@ public class HazardServicesAppBuilder
 
             @Override
             public boolean getUserAnswerToQuestion(String question) {
-                return MessageDialog.openQuestion(null, "Hazard Services",
-                        question);
+                return MessageDialog.openQuestion(getBestParentForModalDialog(),
+                        "Hazard Services", question);
             }
 
             @Override
@@ -909,7 +911,8 @@ public class HazardServicesAppBuilder
 
                 if (Display.getDefault().getThread() == Thread
                         .currentThread()) {
-                    MessageDialog.openWarning(null, title, warning);
+                    MessageDialog.openWarning(getBestParentForModalDialog(),
+                            title, warning);
                 } else {
                     Display.getDefault().asyncExec(new Runnable() {
 
@@ -952,15 +955,15 @@ public class HazardServicesAppBuilder
         this.graphicalEditor = new IRiseCrestFallEditor() {
 
             @Override
-            public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
-                    IEventApplier applier) {
+            public IHazardEventView getRiseCrestFallEditor(
+                    IHazardEventView event, IEventApplier applier) {
                 if (editor == null || editor.isDisposed()) {
                     editor = new GraphicalEditor(getBestParentForModalDialog(),
-                            event, applier);
+                            event, sessionManager.getEventManager(), applier);
                 } else {
                     editor.bringToTop();
                 }
-                IHazardEvent evt = (IHazardEvent) editor.open();
+                IHazardEventView evt = (IHazardEventView) editor.open();
                 return evt;
             }
         };
@@ -1246,7 +1249,7 @@ public class HazardServicesAppBuilder
 
     @Override
     public void showUserConflictingHazardsWarning(
-            Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> areasForConflictingEventsForEvents) {
+            Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> areasForConflictingEventsForEvents) {
         launchConflictingHazardsDialog(areasForConflictingEventsForEvents,
                 false);
     }
@@ -2093,14 +2096,14 @@ public class HazardServicesAppBuilder
 
         boolean userResponse = true;
 
-        ISessionEventManager<ObservedHazardEvent> sessionEventManager = sessionManager
+        ISessionEventManager sessionEventManager = sessionManager
                 .getEventManager();
-        ISessionSelectionManager<ObservedHazardEvent> sessionSelectionManager = sessionManager
+        ISessionSelectionManager sessionSelectionManager = sessionManager
                 .getSelectionManager();
 
-        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = null;
+        Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictMap = null;
         try {
-            List<ObservedHazardEvent> selectedEvents = sessionSelectionManager
+            List<IHazardEventView> selectedEvents = sessionSelectionManager
                     .getSelectedEvents();
             conflictMap = sessionEventManager.getAllConflictingEvents();
 
@@ -2395,7 +2398,7 @@ public class HazardServicesAppBuilder
      * @return The return value from the dialog based on the user's selection.
      */
     private boolean launchConflictingHazardsDialog(
-            final Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap,
+            final Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictingHazardMap,
             final Boolean requiresConfirmation) {
 
         boolean userSelection = true;
@@ -2410,7 +2413,7 @@ public class HazardServicesAppBuilder
                 message.append("\n");
             }
 
-            for (IHazardEvent hazardEvent : conflictingHazardMap.keySet()) {
+            for (IHazardEventView hazardEvent : conflictingHazardMap.keySet()) {
 
                 String phenSig = HazardEventUtilities
                         .getHazardType(hazardEvent);
@@ -2419,7 +2422,7 @@ public class HazardServicesAppBuilder
                 message.append(phenSig);
                 message.append(") conflicts with: ");
 
-                Map<IHazardEvent, Collection<String>> conflictingHazards = conflictingHazardMap
+                Map<? extends IHazardEventView, Collection<String>> conflictingHazards = conflictingHazardMap
                         .get(hazardEvent);
 
                 HazardTypeEntry hazardTypeEntry = sessionManager
@@ -2428,7 +2431,7 @@ public class HazardServicesAppBuilder
                 Set<String> ugcTypes = hazardTypeEntry.getUgcTypes(); // E.g.
                                                                       // county
 
-                for (IHazardEvent conflictingHazard : conflictingHazards
+                for (IHazardEventView conflictingHazard : conflictingHazards
                         .keySet()) {
                     String conflictingPhenSig = HazardEventUtilities
                             .getHazardType(conflictingHazard);
@@ -2550,7 +2553,7 @@ public class HazardServicesAppBuilder
         PythonSideEffectsApplier.prepareForShutDown();
     }
 
-    public ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager() {
+    public ISessionManager<ObservedSettings> getSessionManager() {
         return sessionManager;
     }
 
@@ -2575,7 +2578,7 @@ public class HazardServicesAppBuilder
     }
 
     @Override
-    public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEvent event) {
+    public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEventView event) {
         return this.graphicalEditor;
     }
 

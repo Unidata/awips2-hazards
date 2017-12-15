@@ -46,7 +46,7 @@ import org.eclipse.ui.PlatformUI;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -111,6 +111,8 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  *                                      dangerous.
  * Jun 06, 2016 9620       Robert.Blum  Removed isCorrectable restriction when updating the editor tab.
  * Nov 07, 2016 22119      Kevin.Bisanz Add siteId so that saved/issued changes can be tagged with it.
+ * Dec 12, 2016 21504      Robert.Blum  Updates for hazard locking.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session events.
  * </pre>
  * 
  * @author jsanchez
@@ -181,6 +183,12 @@ public class ProductEditor extends AbstractProductDialog {
     private String siteId;
 
     /**
+     * Flag indicating that a hazardEvent has become locked by another
+     * workstation. The editor should disable the issuall and save buttons.
+     */
+    private boolean hazardLocked;
+
+    /**
      * Creates a new ProductEditor on the given shell with the provided
      * generated product lists
      * 
@@ -200,6 +208,7 @@ public class ProductEditor extends AbstractProductDialog {
                 generatedProductListStorage, hazardTypes);
         this.productGeneration = ProductGeneration.getInstance(siteId);
         this.siteId = siteId;
+        hazardLocked = false;
 
         /*
          * If these products are editable, save a copy for future use
@@ -524,7 +533,7 @@ public class ProductEditor extends AbstractProductDialog {
                     // Get the eventIDs for the label
                     String prefix = "";
                     for (IEvent event : prod.getEventSet()) {
-                        IHazardEvent hazardEvent = (IHazardEvent) event;
+                        IReadableHazardEvent hazardEvent = (IReadableHazardEvent) event;
                         sb.append(prefix);
                         sb.append(hazardEvent.getDisplayEventID());
                         prefix = "/";
@@ -740,11 +749,14 @@ public class ProductEditor extends AbstractProductDialog {
      */
     @Override
     public void updateButtons() {
-        boolean setEnabled = true;
-        for (AbstractDataEditor editor : editorManager.getAllEditors()) {
-            if (!editor.requiredFieldsCompleted()) {
-                setEnabled = false;
-                break;
+        boolean setEnabled = false;
+        if (!hazardLocked) {
+            setEnabled = true;
+            for (AbstractDataEditor editor : editorManager.getAllEditors()) {
+                if (!editor.requiredFieldsCompleted()) {
+                    setEnabled = false;
+                    break;
+                }
             }
         }
         issueAllButton.setEnabled(setEnabled);
@@ -854,5 +866,28 @@ public class ProductEditor extends AbstractProductDialog {
      */
     public void changeSite(String site) {
         productGeneration.setSite(site);
+    }
+
+    /**
+     * Sets the hazardLock flag on the Product Editor allowing certain buttons
+     * to be enabled/disabled.
+     * 
+     * @param locked
+     */
+    public void setHazardEventLocked(boolean locked) {
+        this.hazardLocked = locked;
+    }
+
+    /**
+     * Disables the Save button on each Product Data Editor to prevent saving
+     * user edits when the corresponding hazard is locked.
+     */
+    public void disableSaveButtons() {
+        for (GeneratedProductList productList : generatedProductListStorage) {
+            for (IGeneratedProduct product : productList) {
+                editorManager.getProductDataEditor(product)
+                        .setSaveButtonState(false);
+            }
+        }
     }
 }

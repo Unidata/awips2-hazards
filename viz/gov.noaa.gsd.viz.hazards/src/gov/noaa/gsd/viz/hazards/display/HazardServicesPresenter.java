@@ -9,14 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.mvp.IView;
-import gov.noaa.gsd.viz.mvp.Presenter;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.mvp.Presenter;
 
 /**
  * Superclass from which to derive presenters for specific types of views for
@@ -42,14 +41,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           config manager.
  * Aug 15, 2016 18376      Chris.Golden      Changed to work with newest version of
  *                                           superclass.
+ * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
+ *                                           mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class HazardServicesPresenter<V extends IView<?, ?>>
-        extends
-        Presenter<ISessionManager<ObservedHazardEvent, ObservedSettings>, HazardConstants.Element, V, Object> {
+public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
+        Presenter<ISessionManager<ObservedSettings>, HazardConstants.Element, V, Object> {
 
     // Public Constructors
 
@@ -61,8 +61,7 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardServicesPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public HazardServicesPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }
@@ -86,7 +85,7 @@ public abstract class HazardServicesPresenter<V extends IView<?, ?>>
      * @return Session manager.
      */
     @Deprecated
-    public ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager() {
+    public ISessionManager<ObservedSettings> getSessionManager() {
         return getModel();
     }
 

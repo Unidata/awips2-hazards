@@ -19,7 +19,7 @@ import java.util.Set;
 
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
@@ -36,7 +36,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGener
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
@@ -204,6 +203,7 @@ import net.engio.mbassy.listener.Handler;
  * Aug 15, 2016 18376      Chris.Golden       Removed unsubscribing from the event bus when H.S.
  *                                            closes, as this is already being done in dispose().
  * Oct 20, 2016 23137      mduff              Check for errors before opening the Product Editor.
+ * Jan 09, 2017 21504      Robert.Blum        Corrections now lock hazards.
  * Feb 01, 2017 15556      Chris.Golden       Removed obsolete code that was refactored out of
  *                                            relevance in the ongoing quest to shrink this class
  *                                            down to nothing. Also moved some code into the
@@ -219,8 +219,10 @@ import net.engio.mbassy.listener.Handler;
  *                                            message to display, or a dialog to display, with
  *                                            their results (that is, within the returned event
  *                                            set).
- * Sep 27, 2017 8072      Chris.Golden        Changed to use callback objects for the recommender
+ * Sep 27, 2017 38072      Chris.Golden       Changed to use callback objects for the recommender
  *                                            manager.
+ * Dec 17, 2017 20739      Chris.Golden       Refactored away access to directly mutable session
+ *                                            events.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -243,7 +245,7 @@ public final class HazardServicesMessageHandler {
      */
     private HazardServicesAppBuilder appBuilder = null;
 
-    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private final ISessionManager<ObservedSettings> sessionManager;
 
     private final ISessionConfigurationManager<ObservedSettings> sessionConfigurationManager;
 
@@ -468,10 +470,10 @@ public final class HazardServicesMessageHandler {
                                 .getProductGeneratorName());
                 productGeneratorInformation.setProductFormats(productFormats);
                 productGeneratorInformation.setGeneratedProducts(products);
-                Set<IHazardEvent> events = new HashSet<IHazardEvent>(
+                Set<IReadableHazardEvent> events = new HashSet<>(
                         products.getEventSet().size());
                 for (IEvent event : products.getEventSet()) {
-                    events.add((IHazardEvent) event);
+                    events.add((IReadableHazardEvent) event);
                 }
                 productGeneratorInformation.setProductEvents(events);
                 sessionManager.getProductManager()
@@ -571,6 +573,18 @@ public final class HazardServicesMessageHandler {
                     .getParameters();
             ArrayList<ProductData> productData = (ArrayList<ProductData>) parameters
                     .get(HazardConstants.PRODUCT_DATA_PARAM);
+            Set<String> eventsToLock = new HashSet<>(productData.size(), 1.0f);
+            for (ProductData data : productData) {
+                eventsToLock.addAll(data.getEventIDs());
+            }
+            boolean success = sessionManager.getLockManager()
+                    .lockHazardEventsForProductGeneration(eventsToLock);
+            if (!success) {
+                appBuilder.getWarner().warnUser("Failed to Lock Hazard",
+                        "Failed to locked all the required hazards for the selected "
+                                + "product(s). Product correction has been cancelled.");
+                return;
+            }
             sessionProductManager.generateProductFromProductData(productData,
                     true, false);
             break;

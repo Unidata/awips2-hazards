@@ -10,6 +10,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 
 import gov.noaa.gsd.common.utilities.IMergeable;
 import gov.noaa.gsd.common.utilities.MergeResult;
@@ -26,6 +27,8 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * ------------ ---------- ------------ --------------------------
  * Sep 21, 2017   38072    Chris.Golden Initial creation.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  *
  * @author Chris.Golden
@@ -33,9 +36,8 @@ import gov.noaa.gsd.common.utilities.MergeResult;
 public class EventOriginModification implements IEventModification {
 
     @Override
-    public void apply(IHazardEvent sourceEvent, IHazardEvent targetEvent) {
-        targetEvent.setUserName(sourceEvent.getUserName());
-        targetEvent.setWorkStation(sourceEvent.getWorkStation());
+    public void apply(IHazardEventView sourceEvent, IHazardEvent targetEvent) {
+        targetEvent.setWsId(sourceEvent.getWsId());
         targetEvent.setSiteID(sourceEvent.getSiteID());
         targetEvent.setSource(sourceEvent.getSource());
     }

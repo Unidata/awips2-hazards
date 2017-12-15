@@ -32,11 +32,26 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  * Apr 1, 2014            mnash        Initial creation
  * May 13, 2016   15676   Chris.Golden Added "database" as an originator.
  * Oct 05, 2016   22870   Chris.Golden Added "CAVE" as an originator.
+ * Dec 17, 2017   20739   Chris.Golden Added methods to determine whether
+ *                                     or not they are the result of direct
+ *                                     user input, and whether or not they
+ *                                     require hazard events to not be
+ *                                     locked by other workstations.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
 public enum Originator implements IOriginator {
-    DATABASE, CAVE, OTHER
+    DATABASE, CAVE, OTHER;
+
+    @Override
+    public boolean isDirectResultOfUserInput() {
+        return false;
+    }
+
+    @Override
+    public boolean isNotLockedByOthersRequired() {
+        return false;
+    }
 }

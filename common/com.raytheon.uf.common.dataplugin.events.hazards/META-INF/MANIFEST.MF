@@ -47,4 +47,5 @@ Export-Package: com.raytheon.uf.common.dataplugin.events.hazards,
  com.raytheon.uf.common.dataplugin.events.hazards.registry.services.client,
  com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter,
  com.raytheon.uf.common.dataplugin.events.hazards.registry.xmladapters,
- com.raytheon.uf.common.dataplugin.events.hazards.request
+ com.raytheon.uf.common.dataplugin.events.hazards.request,
+ com.raytheon.uf.common.dataplugin.events.locks

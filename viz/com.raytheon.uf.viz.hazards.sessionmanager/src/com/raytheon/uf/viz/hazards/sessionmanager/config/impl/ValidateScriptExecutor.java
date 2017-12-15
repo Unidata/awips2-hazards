@@ -9,7 +9,7 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -25,6 +25,8 @@ import jep.JepException;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jul 08, 2016   13788    Chris.Golden Initial creation.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -60,7 +62,7 @@ public class ValidateScriptExecutor
     /**
      * Hazard event to be validated.
      */
-    private final IHazardEvent hazardEvent;
+    private final IReadableHazardEvent hazardEvent;
 
     // Public Constructors
 
@@ -70,7 +72,7 @@ public class ValidateScriptExecutor
      * @param hazardEvent
      *            Hazard event to be validated.
      */
-    public ValidateScriptExecutor(IHazardEvent hazardEvent) {
+    public ValidateScriptExecutor(IReadableHazardEvent hazardEvent) {
         this.hazardEvent = hazardEvent;
     }
 

@@ -19,13 +19,6 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryAdapter;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.VisualFeature;
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
-
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
@@ -49,6 +42,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.geometryadapters.GeometryAdapter;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.slotconverter.HazardAttributeSlotConverter;
+import com.raytheon.uf.common.message.WsId;
+import com.raytheon.uf.common.message.adapter.WsIdAdapter;
 import com.raytheon.uf.common.registry.annotations.RegistryObject;
 import com.raytheon.uf.common.registry.annotations.RegistryObjectVersion;
 import com.raytheon.uf.common.registry.annotations.SlotAttribute;
@@ -57,6 +52,13 @@ import com.raytheon.uf.common.registry.ebxml.slots.DateSlotConverter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryAdapter;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
+import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
 
 /**
  * The Hazard record class which at its most basic level contains information
@@ -107,6 +109,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      geometries instead of JTS geometries.
  * Sep 21, 2016 15934      Chris.Golden Changed to work with new version of
  *                                      AdvancedGeometryUtilities.
+ * Dec 19, 2016 21504      Robert.Blum  Updates for hazard locking.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag.
  * Feb 13, 2017 28892      Chris.Golden Removed slot converter for visual features
  *                                      list, as visual features should not be
@@ -123,6 +126,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      hazard event, since this flag must be
  *                                      persisted as part of the hazard event.
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author mnash
@@ -283,20 +288,13 @@ public class HazardEvent implements IHazardEvent, IValidator {
     private Date insertTime;
 
     /**
-     * The user name of the person who created the hazard or the last person
-     * that issue the hazard.
+     * The workstation id of the person who created the hazard or the last
+     * person that issue the hazard.
      */
     @DynamicSerializeElement
     @XmlElement
-    private String userName;
-
-    /**
-     * The workstation of the person who created the hazard or the last person
-     * that issue the hazard.
-     */
-    @DynamicSerializeElement
-    @XmlElement
-    private String workStation;
+    @XmlJavaTypeAdapter(value = WsIdAdapter.class)
+    private WsId wsId;
 
     /**
      * Additional attributes of the hazard.
@@ -320,7 +318,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
      * @param event
      *            Hazard event to be copied.
      */
-    public HazardEvent(IHazardEvent event) {
+    public HazardEvent(IReadableHazardEvent event) {
         this();
         setModified(event.isModified());
         setEventID(event.getEventID());
@@ -337,8 +335,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
         setSource(event.getSource());
-        setWorkStation(event.getWorkStation());
-        setUserName(event.getUserName());
+        setWsId(event.getWsId());
         if (event.getHazardAttributes() != null) {
             setHazardAttributes(new HashMap<>(event.getHazardAttributes()));
         }
@@ -539,8 +536,8 @@ public class HazardEvent implements IHazardEvent, IValidator {
 
     @Override
     public VisualFeature getVisualFeature(String identifier) {
-        return (visualFeatures == null ? null : visualFeatures
-                .getByIdentifier(identifier));
+        return (visualFeatures == null ? null
+                : visualFeatures.getByIdentifier(identifier));
     }
 
     @Override
@@ -831,22 +828,12 @@ public class HazardEvent implements IHazardEvent, IValidator {
     }
 
     @Override
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public WsId getWsId() {
+        return wsId;
     }
 
     @Override
-    public String getUserName() {
-        return userName;
-    }
-
-    @Override
-    public void setWorkStation(String workStation) {
-        this.workStation = workStation;
-    }
-
-    @Override
-    public String getWorkStation() {
-        return workStation;
+    public void setWsId(WsId wsId) {
+        this.wsId = wsId;
     }
 }

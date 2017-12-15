@@ -27,7 +27,7 @@ import java.util.Map;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
 
 /**
@@ -47,6 +47,8 @@ import com.raytheon.uf.common.hazards.productgen.IGeneratedProduct;
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
  *                                      only phenomenon (i.e. no significance) where
  *                                      appropriate.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
+ *                                      events.
  * </pre>
  * 
  * @author bphillip
@@ -90,8 +92,8 @@ class DataEditorManager {
     public void addFormattedTextViewer(IGeneratedProduct product,
             FormattedTextViewer formattedTextViewer) {
         formattedTextViewer.initialize();
-        getProductEditorContainer(product).textViewerMap.put(
-                formattedTextViewer.getText(), formattedTextViewer);
+        getProductEditorContainer(product).textViewerMap
+                .put(formattedTextViewer.getText(), formattedTextViewer);
     }
 
     /**
@@ -115,7 +117,8 @@ class DataEditorManager {
      *            for
      * @return The ProductDataEditor for the specified product
      */
-    protected ProductDataEditor getProductDataEditor(IGeneratedProduct product) {
+    protected ProductDataEditor getProductDataEditor(
+            IGeneratedProduct product) {
         return getProductEditorContainer(product).dataEditor;
     }
 
@@ -139,7 +142,8 @@ class DataEditorManager {
      *            The product ID of the product to update
      */
     protected void updateFormattedTextViewers(IGeneratedProduct product) {
-        List<FormattedTextViewer> dataViewers = getFormattedTextViewers(product);
+        List<FormattedTextViewer> dataViewers = getFormattedTextViewers(
+                product);
         for (FormattedTextViewer dataViewer : dataViewers) {
             dataViewer.refresh();
         }
@@ -175,7 +179,8 @@ class DataEditorManager {
     private String getProductKey(IGeneratedProduct product) {
         EventSet<IEvent> eventSet = product.getEventSet();
         if (eventSet.isEmpty() == false) {
-            IHazardEvent event = (IHazardEvent) eventSet.iterator().next();
+            IReadableHazardEvent event = (IReadableHazardEvent) eventSet
+                    .iterator().next();
             return event.getEventID() + " "
                     + HazardEventUtilities.getHazardPhenSig(event);
         } else {

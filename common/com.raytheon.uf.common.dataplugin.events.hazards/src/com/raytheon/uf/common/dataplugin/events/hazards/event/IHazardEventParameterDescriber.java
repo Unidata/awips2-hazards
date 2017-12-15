@@ -21,6 +21,8 @@ package com.raytheon.uf.common.dataplugin.events.hazards.event;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 10, 2015    6393    Chris.Golden Initial creation.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -37,5 +39,5 @@ public interface IHazardEventParameterDescriber {
      * @return Description of the appropriate parameter, or <code>null</code> if
      *         no such parameter exists.
      */
-    public String getDescription(IHazardEvent event);
+    public String getDescription(IReadableHazardEvent event);
 }

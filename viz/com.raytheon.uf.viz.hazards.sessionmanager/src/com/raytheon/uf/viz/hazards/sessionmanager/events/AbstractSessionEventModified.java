@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 /**
@@ -34,6 +34,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * ------------ ---------- ------------ --------------------------
  * Jun 11, 2013    1257    bsteffen     Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Changed to make it explicitly abstract.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
@@ -47,7 +49,7 @@ public abstract class AbstractSessionEventModified
     /**
      * Event that has been modified.
      */
-    private final ObservedHazardEvent event;
+    private final IHazardEventView event;
 
     // Public Constructors
 
@@ -61,9 +63,8 @@ public abstract class AbstractSessionEventModified
      * @param originator
      *            Originator of the change.
      */
-    public AbstractSessionEventModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, IOriginator originator) {
+    public AbstractSessionEventModified(ISessionEventManager eventManager,
+            IHazardEventView event, IOriginator originator) {
         super(eventManager, originator);
         this.event = event;
     }
@@ -75,7 +76,7 @@ public abstract class AbstractSessionEventModified
      *
      * @return Event that has been modified.
      */
-    public ObservedHazardEvent getEvent() {
+    public IHazardEventView getEvent() {
         return event;
     }
 }

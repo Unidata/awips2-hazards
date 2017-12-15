@@ -64,6 +64,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.utilities.PythonBuildPaths;
 import com.raytheon.uf.common.hazards.configuration.ConfigLoader;
@@ -122,7 +123,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.TriggerType;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
@@ -315,6 +315,8 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      starup config).
  * Dec 13, 2017 40923      Chris.Golden Added return of modified hazard event from
  *                                      metadata fetch.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
+ *                                      session events.
  * </pre>
  * 
  * @author bsteffen
@@ -398,7 +400,7 @@ public class SessionConfigurationManager
     private final JobPool loaderPool = new JobPool(
             "Loading Hazard Services Config", 1);
 
-    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private ISessionManager<ObservedSettings> sessionManager;
 
     private IPathManager pathManager;
 
@@ -465,7 +467,7 @@ public class SessionConfigurationManager
     }
 
     public SessionConfigurationManager(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+            ISessionManager<ObservedSettings> sessionManager,
             IPathManager pathManager, ISessionTimeManager timeManager,
             ISessionNotificationSender notificationSender) {
         this.sessionManager = sessionManager;
@@ -993,8 +995,7 @@ public class SessionConfigurationManager
 
     @SuppressWarnings("unchecked")
     @Override
-    public HazardEventMetadata getMetadataForHazardEvent(
-            IHazardEvent hazardEvent) {
+    public HazardEventMetadata getMetadataForHazardEvent(IHazardEvent event) {
 
         /*
          * Create the environment map.
@@ -1009,7 +1010,7 @@ public class SessionConfigurationManager
          * names.
          */
         IPythonExecutor<ContextSwitchingPythonEval, Map<String, Object>> executor = new MetaDataScriptExecutor(
-                hazardEvent, environmentMap);
+                event, environmentMap);
         Map<String, Object> result = null;
         try {
             result = PYTHON_JOB_COORDINATOR.submitJob(executor).get();
@@ -1106,7 +1107,7 @@ public class SessionConfigurationManager
                     eventModifyingFunctionNamesForIdentifiers);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("Could not get hazard metadata for event ID = "
-                    + hazardEvent.getEventID() + ":" + e, e);
+                    + event.getEventID() + ":" + e, e);
             return EMPTY_HAZARD_EVENT_METADATA;
         }
     }
@@ -1264,7 +1265,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public void runEventModifyingScript(final IHazardEvent hazardEvent,
+    public void runEventModifyingScript(final IHazardEvent event,
             final File scriptFile, final String functionName,
             Map<String, Map<String, Object>> mutableProperties,
             final IEventModifyingScriptJobListener listener) {
@@ -1273,7 +1274,7 @@ public class SessionConfigurationManager
          * Run the event-modifying script asynchronously.
          */
         IPythonExecutor<ContextSwitchingPythonEval, ModifiedHazardEvent> executor = new EventModifyingScriptExecutor(
-                hazardEvent, scriptFile, functionName, mutableProperties);
+                event, scriptFile, functionName, mutableProperties);
         try {
             IPythonJobListener<ModifiedHazardEvent> pythonJobListener = new IPythonJobListener<ModifiedHazardEvent>() {
 
@@ -1293,8 +1294,8 @@ public class SessionConfigurationManager
                     Display.getDefault().asyncExec(new Runnable() {
                         @Override
                         public void run() {
-                            handleEventModifyingScriptExecutionError(
-                                    hazardEvent, functionName, e);
+                            handleEventModifyingScriptExecutionError(event,
+                                    functionName, e);
                         }
                     });
                 }
@@ -1302,8 +1303,7 @@ public class SessionConfigurationManager
             PYTHON_JOB_COORDINATOR.submitJobWithCallback(executor,
                     pythonJobListener);
         } catch (Exception e) {
-            handleEventModifyingScriptExecutionError(hazardEvent, functionName,
-                    e);
+            handleEventModifyingScriptExecutionError(event, functionName, e);
         }
     }
 
@@ -1319,10 +1319,12 @@ public class SessionConfigurationManager
      *            Error that occcurred.
      */
     private void handleEventModifyingScriptExecutionError(
-            IHazardEvent hazardEvent, String identifier, Throwable e) {
-        statusHandler.error("Error executing async event "
-                + "modifying script job for button identifier " + identifier
-                + " on event " + hazardEvent.getEventID() + ".", e);
+            IReadableHazardEvent event, String identifier, Throwable e) {
+        statusHandler.error(
+                "Error executing async event "
+                        + "modifying script job for button identifier "
+                        + identifier + " on event " + event.getEventID() + ".",
+                e);
     }
 
     @Override
@@ -1513,7 +1515,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public Color getColor(IHazardEvent event) {
+    public Color getColor(IReadableHazardEvent event) {
 
         StyleRule styleRule = null;
 
@@ -1541,7 +1543,7 @@ public class SessionConfigurationManager
      * 
      * @return The criteria to use in searching the Hazard Services Style Rules.
      */
-    private MatchCriteria getMatchCriteria(IHazardEvent event) {
+    private MatchCriteria getMatchCriteria(IReadableHazardEvent event) {
         ParamLevelMatchCriteria match = new ParamLevelMatchCriteria();
         List<String> paramList = Lists
                 .newArrayList(HazardEventUtilities.getHazardType(event));
@@ -1550,7 +1552,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public double getBorderWidth(IHazardEvent event, boolean selected) {
+    public double getBorderWidth(IReadableHazardEvent event, boolean selected) {
         if (selected) {
             return 3.5;
         } else {
@@ -1559,7 +1561,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public LineStyle getBorderStyle(IHazardEvent event) {
+    public LineStyle getBorderStyle(IReadableHazardEvent event) {
         switch (event.getStatus()) {
         case PENDING:
             return null;
@@ -1571,12 +1573,12 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public String getHeadline(IHazardEvent event) {
+    public String getHeadline(IReadableHazardEvent event) {
         return getHeadline(HazardEventUtilities.getHazardType(event));
     }
 
     @Override
-    public long getDefaultDuration(IHazardEvent event) {
+    public long getDefaultDuration(IReadableHazardEvent event) {
         String type = HazardEventUtilities.getHazardType(event);
         return (type != null
                 ? hazardTypes.getConfig().get(type).getDefaultDuration()
@@ -1584,7 +1586,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public List<String> getDurationChoices(IHazardEvent event) {
+    public List<String> getDurationChoices(IReadableHazardEvent event) {
 
         /*
          * If the duration choices for hazard types map has not yet been
@@ -1610,7 +1612,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public TimeResolution getTimeResolution(IHazardEvent event) {
+    public TimeResolution getTimeResolution(IReadableHazardEvent event) {
 
         /*
          * If the time resolutions for hazard types map has not yet been
@@ -1631,7 +1633,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public String getRecommenderTriggeredByChange(IHazardEvent event,
+    public String getRecommenderTriggeredByChange(IReadableHazardEvent event,
             HazardEventFirstClassAttribute change) {
 
         /*
@@ -1674,7 +1676,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public boolean isStartTimeIsCurrentTime(IHazardEvent event) {
+    public boolean isStartTimeIsCurrentTime(IReadableHazardEvent event) {
 
         /*
          * If the types-for-which-start-time-is-current-time set has not yet
@@ -1695,7 +1697,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public boolean isAllowAnyStartTime(IHazardEvent event) {
+    public boolean isAllowAnyStartTime(IReadableHazardEvent event) {
 
         /*
          * If the types-for-which-any-start-time-is-allowed set has not yet been
@@ -1716,7 +1718,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public boolean isAllowTimeExpand(IHazardEvent event) {
+    public boolean isAllowTimeExpand(IReadableHazardEvent event) {
 
         /*
          * If the types-for-which-end-time-expansion-is-allowed set has not yet
@@ -1740,7 +1742,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public boolean isAllowTimeShrink(IHazardEvent event) {
+    public boolean isAllowTimeShrink(IReadableHazardEvent event) {
 
         /*
          * If the types-for-which-end-time-shrinkage-is-allowed set has not yet
@@ -1851,7 +1853,7 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public String getHazardCategory(IHazardEvent event) {
+    public String getHazardCategory(IReadableHazardEvent event) {
         if (HazardEventUtilities.isHazardTypeValid(event) == false) {
             return (String) event
                     .getHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY);
@@ -2127,16 +2129,16 @@ public class SessionConfigurationManager
     }
 
     @Override
-    public String validateHazardEvent(IHazardEvent hazardEvent) {
-        if (hazardEvent != null) {
+    public String validateHazardEvent(IReadableHazardEvent event) {
+        if (event != null) {
             IPythonExecutor<ContextSwitchingPythonEval, String> executor = new ValidateScriptExecutor(
-                    hazardEvent);
+                    event);
             try {
                 return PYTHON_JOB_COORDINATOR.submitJob(executor).get();
             } catch (Exception e) {
                 statusHandler
                         .error("Error executing validate job for hazard event: "
-                                + hazardEvent.getEventID(), e);
+                                + event.getEventID(), e);
                 return null;
             }
         }

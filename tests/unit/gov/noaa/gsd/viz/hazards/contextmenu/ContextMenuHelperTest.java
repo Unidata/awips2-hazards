@@ -13,8 +13,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.ContextMenuSelections;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,13 +24,17 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
+import gov.noaa.gsd.viz.hazards.contextmenu.ContextMenuHelper.ContextMenuSelections;
 
 /**
  * Description: Test of {@link ContextMenuHelper}
@@ -58,7 +60,7 @@ public class ContextMenuHelperTest {
 
     private ContextMenuHelper contextMenuHelper;
 
-    private List<IHazardEvent> events;
+    private List<IHazardEventView> events;
 
     private List<String> selections;
 
@@ -84,11 +86,13 @@ public class ContextMenuHelperTest {
     public void oneSelectedPendingOneCurrentUnselectedIssued() {
         ObservedHazardEvent event0 = mock(ObservedHazardEvent.class);
         when(event0.getStatus()).thenReturn(HazardStatus.PENDING);
-        events.add(event0);
+        IHazardEventView eventView0 = new HazardEventView(event0);
+        events.add(eventView0);
 
         ObservedHazardEvent event1 = mock(ObservedHazardEvent.class);
         when(event1.getStatus()).thenReturn(HazardStatus.ISSUED);
-        when(eventManager.getCurrentEvent()).thenReturn(event1);
+        IHazardEventView eventView1 = new HazardEventView(event1);
+        when(eventManager.getCurrentEvent()).thenReturn(eventView1);
         when(eventManager.isCurrentEvent()).thenReturn(true);
         selections = buildSelections();
         assertEquals(selections.size(), 1);
@@ -97,11 +101,11 @@ public class ContextMenuHelperTest {
 
     @Test
     public void multipleSelected() {
-        ObservedHazardEvent event0 = buildEvent(HazardStatus.PENDING);
+        IHazardEventView event0 = buildEvent(HazardStatus.PENDING);
         when(selectionManager.isSelected(event0)).thenReturn(true);
         events.add(event0);
 
-        ObservedHazardEvent event1 = buildEvent(HazardStatus.ISSUED);
+        IHazardEventView event1 = buildEvent(HazardStatus.ISSUED);
         when(selectionManager.isSelected(event1)).thenReturn(true);
         events.add(event1);
 
@@ -110,54 +114,54 @@ public class ContextMenuHelperTest {
         selections = buildSelections();
         assertEquals(selections.size(), 2);
 
-        assertTrue(selections.contains(ContextMenuSelections.END_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.END_THIS_HAZARD.getValue()));
         assertTrue(selections.contains("Delete 1 Selected Pending"));
         when(eventManager.getCurrentEvent()).thenReturn(event0);
         selections = buildSelections();
         assertEquals(selections.size(), 2);
-        assertTrue(selections.contains(ContextMenuSelections.DELETE_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.DELETE_THIS_HAZARD.getValue()));
         assertTrue(selections.contains("End 1 Selected Issued"));
 
-        ObservedHazardEvent event2 = buildEvent(HazardStatus.PENDING);
+        IHazardEventView event2 = buildEvent(HazardStatus.PENDING);
         when(selectionManager.isSelected(event2)).thenReturn(true);
         events.add(event2);
 
-        ObservedHazardEvent event3 = buildEvent(HazardStatus.ISSUED);
+        IHazardEventView event3 = buildEvent(HazardStatus.ISSUED);
         when(selectionManager.isSelected(event3)).thenReturn(true);
         events.add(event3);
 
         selections = buildSelections();
         assertEquals(selections.size(), 3);
-        assertTrue(selections.contains(ContextMenuSelections.DELETE_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.DELETE_THIS_HAZARD.getValue()));
         assertTrue(selections.contains("Delete 2 Selected Pending"));
         assertTrue(selections.contains("End 2 Selected Issued"));
         when(eventManager.getCurrentEvent()).thenReturn(event1);
         selections = buildSelections();
         assertEquals(selections.size(), 3);
-        assertTrue(selections.contains(ContextMenuSelections.END_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.END_THIS_HAZARD.getValue()));
         assertTrue(selections.contains("Delete 2 Selected Pending"));
         assertTrue(selections.contains("End 2 Selected Issued"));
     }
 
     @Test
     public void oneSelectedHazardIsPending() {
-        ObservedHazardEvent event = buildSingleEvent(HazardStatus.PENDING);
+        IHazardEventView event = buildSingleEvent(HazardStatus.PENDING);
         when(selectionManager.isSelected(event)).thenReturn(true);
         selections = buildSelections();
         assertEquals(selections.size(), 1);
 
-        assertTrue(selections.contains(ContextMenuSelections.DELETE_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.DELETE_THIS_HAZARD.getValue()));
 
         when(event.getHazardType()).thenReturn("FA.A");
         selections = buildSelections();
         assertEquals(selections.size(), 2);
-        assertTrue(selections
-                .contains(ContextMenuSelections.PROPOSE_THIS_HAZARD.getValue()));
+        assertTrue(selections.contains(
+                ContextMenuSelections.PROPOSE_THIS_HAZARD.getValue()));
 
     }
 
@@ -175,8 +179,8 @@ public class ContextMenuHelperTest {
         selections = buildSelections();
         assertEquals(selections.size(), 1);
 
-        assertTrue(selections.contains(ContextMenuSelections.END_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.END_THIS_HAZARD.getValue()));
 
     }
 
@@ -185,8 +189,8 @@ public class ContextMenuHelperTest {
         buildSingleEvent(HazardStatus.PROPOSED);
         selections = buildSelections();
         assertEquals(selections.size(), 1);
-        assertTrue(selections.contains(ContextMenuSelections.DELETE_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.DELETE_THIS_HAZARD.getValue()));
 
     }
 
@@ -196,25 +200,26 @@ public class ContextMenuHelperTest {
         selections = buildSelections();
         assertEquals(selections.size(), 1);
 
-        assertTrue(selections.contains(ContextMenuSelections.REVERT_THIS_HAZARD
-                .getValue()));
+        assertTrue(selections
+                .contains(ContextMenuSelections.REVERT_THIS_HAZARD.getValue()));
 
     }
 
-    private ObservedHazardEvent buildSingleEvent(HazardStatus status) {
+    private IHazardEventView buildSingleEvent(HazardStatus status) {
         ObservedHazardEvent event = mock(ObservedHazardEvent.class);
         when(event.getStatus()).thenReturn(status);
-        events.add(event);
-        when(eventManager.getCurrentEvent()).thenReturn(event);
+        IHazardEventView eventView = new HazardEventView(event);
+        events.add(eventView);
+        when(eventManager.getCurrentEvent()).thenReturn(eventView);
         when(eventManager.isCurrentEvent()).thenReturn(true);
-        when(selectionManager.isSelected(event)).thenReturn(true);
-        return event;
+        when(selectionManager.isSelected(eventView)).thenReturn(true);
+        return eventView;
     }
 
-    private ObservedHazardEvent buildEvent(HazardStatus status) {
+    private IHazardEventView buildEvent(HazardStatus status) {
         ObservedHazardEvent result = mock(ObservedHazardEvent.class);
         when(result.getStatus()).thenReturn(status);
-        return result;
+        return new HazardEventView(result);
     }
 
     private List<String> buildSelections() {
@@ -235,8 +240,8 @@ public class ContextMenuHelperTest {
 
     @Test
     public void noSelected() {
-        when(selectionManager.getSelectedEvents()).thenReturn(
-                Collections.EMPTY_LIST);
+        when(selectionManager.getSelectedEvents())
+                .thenReturn(Collections.EMPTY_LIST);
         List<IContributionItem> items = contextMenuHelper
                 .getSelectedHazardManagementItems(Originator.OTHER, null);
         assertEquals(items.size(), 0);

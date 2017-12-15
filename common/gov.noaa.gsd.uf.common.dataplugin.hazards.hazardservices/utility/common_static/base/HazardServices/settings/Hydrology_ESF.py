@@ -18,6 +18,7 @@ Hydrology_ESF = {
     "defaultDuration": 28800000,
     "visibleColumns": [
         "Event ID",
+        "Lock Status",
         "Hazard Type",
         "Status",
         "Stream",
@@ -40,6 +41,11 @@ Hydrology_ESF = {
             "fieldName": "displayEventID",
             "sortDir": "none",
             "width": 110,
+        },
+        "Lock Status": {
+            "type": "string",
+            "fieldName": "lockStatus",
+            "sortDir": "none",
         },
         "Hazard Type": {
             "type": "string",

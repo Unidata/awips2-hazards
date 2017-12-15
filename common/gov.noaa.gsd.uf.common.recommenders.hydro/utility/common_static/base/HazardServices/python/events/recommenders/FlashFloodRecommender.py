@@ -12,6 +12,7 @@ import logging, UFStatusHandler
 import HazardDataAccess
 from EventSet import EventSet
 from HazardConstants import DELETE_EVENT_IDENTIFIERS_KEY, RESULTS_MESSAGE_KEY
+from HazardEventLockUtils import HazardEventLockUtils
 
 from ufpy.dataaccess import DataAccessLayer
 from ufpy.dataaccess.PyGeometryData import PyGeometryData
@@ -89,7 +90,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'FlashFloodRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
-       
+        self.hazardEventLockUtils = None
 
     def defineScriptMetadata(self):
         '''
@@ -315,8 +316,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # delete potential hazards
         sessionAttributes = eventSet.getAttributes()
-        currentEvents = self.getCurrentEvents(eventSet, sessionAttributes)
-        deleteEventIdentifiers = [event.getEventID() for event in currentEvents]
+        deleteEventIdentifiers = self.getIdentifiersOfCurrentEventsToBeDeleted(eventSet, sessionAttributes)
         
         self._localize()
         haveGuidance = False
@@ -578,12 +578,17 @@ class Recommender(RecommenderTemplate.Recommender):
        
         self.ffmpTemplates= FFMPTemplates.getInstance(self._domain, self._siteKey, FFMPTemplates.MODE.CAVE)
 
-    def getCurrentEvents(self, eventSet, sessionAttributes):
+    def getIdentifiersOfCurrentEventsToBeDeleted(self, eventSet, sessionAttributes):
         siteID = eventSet.getAttributes().get('siteID')
         caveMode = sessionAttributes.get('hazardMode','PRACTICE').upper()
         practice = True
         if caveMode == 'OPERATIONAL':
             practice = False
+
+        if self.hazardEventLockUtils is None:
+            self.hazardEventLockUtils = HazardEventLockUtils(practice)
+        lockedHazardIds = self.hazardEventLockUtils.getLockedEvents()
+
          # Get current events from Session Manager (could include pending / potential)
         currentEvents = []
         for event in eventSet:
@@ -606,7 +611,13 @@ class Recommender(RecommenderTemplate.Recommender):
                     currentEvents.append(event)
                     eventIDs.append(event.getEventID())
 
-        return currentEvents
+        currentEventIdentifiers = []
+        for event in currentEvents:
+            eventIdentifier = event.getEventID()
+            if eventIdentifier not in lockedHazardIds:
+                currentEventIdentifiers.append(eventIdentifier)
+
+        return currentEventIdentifiers
    
     def __str__(self):
         return 'Flash Flood Recommender'

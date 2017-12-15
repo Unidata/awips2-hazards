@@ -9,8 +9,8 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 import gov.noaa.gsd.common.utilities.MergeResult;
@@ -28,6 +28,8 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Dec 29, 2016   15556    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,9 +49,8 @@ public class SessionEventHistoryModified extends AbstractSessionEventModified {
      * @param originator
      *            Originator of the change.
      */
-    public SessionEventHistoryModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, IOriginator originator) {
+    public SessionEventHistoryModified(ISessionEventManager eventManager,
+            IHazardEventView event, IOriginator originator) {
         super(eventManager, event, originator);
     }
 

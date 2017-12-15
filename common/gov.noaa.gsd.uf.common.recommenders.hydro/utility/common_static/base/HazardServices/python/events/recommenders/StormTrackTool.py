@@ -25,11 +25,19 @@ import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 import GeometryFactory
 import EventFactory
+import logging, UFStatusHandler
+from HazardEventLockUtils import HazardEventLockUtils
 
 class Recommender(RecommenderTemplate.Recommender):
 
     def __init__(self):
-        return
+        self.hazardEventLockUtils = None
+        self.logger = logging.getLogger('StormTrackTool')
+        for handler in self.logger.handlers:
+            self.logger.removeHandler(handler)
+        self.logger.addHandler(UFStatusHandler.UFStatusHandler(
+            'gov.noaa.gsd.uf.common.recommenders', 'StormTrackTool', level=logging.INFO))
+        self.logger.setLevel(logging.INFO)
 
     def defineScriptMetadata(self):
         '''
@@ -646,7 +654,6 @@ class Recommender(RecommenderTemplate.Recommender):
             haveEvent = hazardEvent is not None
     
             # Artificially inject the initial hazard type into the attributes.
-            sessionAttributes = eventSet.getAttributes()
             if haveEvent:
                 try:
                     sessionAttributes["phenomena"] = hazardEvent.getPhenomenon()
@@ -736,7 +743,11 @@ class Recommender(RecommenderTemplate.Recommender):
             # Ensure the hazard event has been initialized by this recommender before;
             # if not, do nothing with it.            
             hazardEvent = self.getHazardEvent(eventSet)
-            if self.isStormTrackedEvent(hazardEvent) is False:
+            if hazardEvent is None:
+                self.logger.info("No identifier of unlocked hazard event found for StormTrackTool to modify.")
+                return None
+            elif self.isStormTrackedEvent(hazardEvent) is False:
+                self.logger.info("Hazard event found for StormTrackTool to modify is not storm tracked.")
                 return None
 
             # if the trigger was the modification of the event itself, handle it one
@@ -1086,15 +1097,33 @@ class Recommender(RecommenderTemplate.Recommender):
         @return Hazard event that was retrieved, or None if none was found.
         '''
 
+        # Get the event identifiers that apply for this execution of the
+        # recommender, and take the first of them as the one that is to
+        # be operated upon. This recommender should never be called with
+        # multiple event identifiers associated with the execution.
         eventIdentifiers = eventSet.getAttributes().get("eventIdentifiers")
         if eventIdentifiers is None:
             return None
-        eventId = next(iter(eventIdentifiers))
-        if eventId is not None:
-            eventId = str(eventId)
+        eventIdentifier = next(iter(eventIdentifiers))
+        if eventIdentifier is None:
+            return None
+        eventIdentifier = str(eventIdentifier)
+
+        # Ensure the event identifier is not one that is currently locked.
+        sessionAttributes = eventSet.getAttributes()
+        caveMode = sessionAttributes.get('runMode','PRACTICE').upper()
+        practice = True
+        if caveMode == 'OPERATIONAL':
+            practice = False
+        if self.hazardEventLockUtils is None:
+            self.hazardEventLockUtils = HazardEventLockUtils(practice)
+        if eventIdentifier in self.hazardEventLockUtils.getLockedEvents():
+            return None
+
+        # Return the event that matches the identifier, if any.
         events = eventSet.getEvents()
         for event in events:
-            if event.getEventID() == eventId:
+            if event.getEventID() == eventIdentifier:
                 return event
         return None
     

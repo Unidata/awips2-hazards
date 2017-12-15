@@ -3,140 +3,146 @@
     # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
     #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
     # Examples:  
-    #"mapCenter": {
+    # "mapCenter": {
     #    "lat": 41.06,
     #    "lon":-95.91,
     #    "zoom": 7
-    #},
-    #"possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
-    #"visibleSites":  ["BOU", "OAX"]
+    # },
+    # "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    # "visibleSites":  ["BOU", "OAX"]
     #
     # eventIdDisplayType is one of:  "ALWAYS_FULL", "FULL_ON_DIFF", "PROG_ON_DIFF", "ALWAYS_SITE", "ONLY_SERIAL"  
-    #"eventIdDisplayType" : "PROG_ON_DIFF",
+    # "eventIdDisplayType" : "PROG_ON_DIFF",
 
 Hydrology_WarningAdvisory = {
     "settingsID" : "Hydrology_WarningAdvisory",
     "perspectiveIDs" : [],
-    "displayName": "", # "Hydrology - Warnings and Advisories", 
+    "displayName": "",  # "Hydrology - Warnings and Advisories", 
     
     "mapCenter": {
         "lat": 41.06,
         "lon":-95.91,
         "zoom": 7
     },
-    "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
+    "possibleSites": ["BOU", "PUB", "GJT", "CYS", "OAX", "FSD", "DMX", "GID", "EAX", "TOP", "RAH"],
     "visibleSites":  ["BOU", "OAX"],
 
     "visibleTypes": [
-        #"FF.A", 
-        "FF.W.Convective", 
-        "FF.W.NonConvective", 
+        # "FF.A", 
+        "FF.W.Convective",
+        "FF.W.NonConvective",
         "FF.W.BurnScar",
-        "FA.Y", 
-        #"FA.A", 
-        "FA.W", 
-        "FL.Y", 
-        #"FL.A", 
+        "FA.Y",
+        # "FA.A", 
+        "FA.W",
+        "FL.Y",
+        # "FL.A", 
         "FL.W",
-        #"HY.O",
-        #"HY.S"
-    ], 
+        # "HY.O",
+        # "HY.S"
+    ],
     "hazardCategoriesAndTypes": [
         {
-        "displayString": "Hydrology", 
+        "displayString": "Hydrology",
         "children": [
-        #"FF.A", 
-        "FF.W.Convective", 
-        "FF.W.NonConvective", 
+        # "FF.A", 
+        "FF.W.Convective",
+        "FF.W.NonConvective",
         "FF.W.BurnScar",
-        "FA.Y", 
-        #"FA.A", 
-        "FA.W", 
-        "FL.Y", 
-        #"FL.A", 
+        "FA.Y",
+        # "FA.A", 
+        "FA.W",
+        "FL.Y",
+        # "FL.A", 
         "FL.W",
-        #"HY.O",
-        #"HY.S"
+        # "HY.O",
+        # "HY.S"
         ]
         }
-    ], 
-    "defaultTimeDisplayDuration": 172800000, 
+    ],
+    "defaultTimeDisplayDuration": 172800000,
     "defaultCategory" : "Hydrology",
-    "defaultDuration": 28800000, 
+    "defaultDuration": 28800000,
     "visibleColumns": [
         "Event ID",
-        "Hazard Type", 
-        "Status", 
+        "Lock Status",
+        "Hazard Type",
+        "Status",
         "Stream",
         "Point ID",
-        "Start Time", 
+        "Start Time",
         "End Time",
         "Expiration Time",
         "VTEC Codes",
-    ], 
+    ],
     "visibleStatuses": [
         "potential",
         "proposed",
-        #"pending",
+        # "pending",
         "issued",
         "elapsed",
         "ending",
-    ], 
+    ],
     "columns": {
         "Event ID": {
-            "type": "string", 
-            "fieldName": "displayEventID", 
+            "type": "string",
+            "fieldName": "displayEventID",
             "sortDir": "none"
-        }, 
+        },
+        "Lock Status": {
+            "type": "string",
+            "fieldName": "lockStatus",
+            "sortDir": "none",
+        },
         "Hazard Type": {
-            "type": "string", 
+            "type": "string",
             "fieldName": "type",
-            #"sortPriority": 1,
+            # "sortPriority": 1,
             "sortDir": "ascending",
             "hintTextFieldName": "headline",
             "displayEmptyAs": "Undefined"
             
-        }, 
+        },
         "Status": {
-            #"sortPriority": 2,
+            # "sortPriority": 2,
             "sortDir": "ascending",
-            "width": 61, 
+            "width": 61,
             "fieldName": "status",
             "type": "string"
-        }, 
+        },
         "Start Time": {
-            "sortDir": "none", 
-            "width": 125, 
-            "fieldName": "startTime", 
+            "sortDir": "none",
+            "width": 125,
+            "fieldName": "startTime",
             "type": "date"
-        }, 
+        },
         "End Time": {
-            "sortDir": "none", 
-            "width": 125, 
-            "fieldName": "endTime", 
+            "sortDir": "none",
+            "width": 125,
+            "fieldName": "endTime",
             "type": "date"
-        }, 
+        },
         "Phen": {
-            "sortDir": "none", 
-            "width": 50, 
-            "fieldName": "phen", 
+            "sortDir": "none",
+            "width": 50,
+            "fieldName": "phen",
             "type": "string"
-        }, 
+        },
         "Sig": {
-            "sortDir": "none", 
-            "width": 50, 
-            "fieldName": "sig", 
+            "sortDir": "none",
+            "width": 50,
+            "fieldName": "sig",
             "type": "string"
-        }, 
+        },
         "Expiration Time": {
-            "sortDir": "none", 
-            "width": 123, 
-            "fieldName": "expirationTime", 
+            "sortDir": "none",
+            "width": 123,
+            "fieldName": "expirationTime",
             "type": "date"
-        }, 
+        },
         "Creation Time": {
-            "sortDir": "none", 
-            "width": 122, 
+            "sortDir": "none",
+            "width": 122,
             "fieldName": "creationTime",
             "type": "date"
         },
@@ -145,90 +151,90 @@ Hydrology_WarningAdvisory = {
             "width": 122,
             "fieldName": "issueTime",
             "type": "date"
-        }, 
+        },
         "Site ID": {
-            "type": "string", 
-            "fieldName": "siteID", 
+            "type": "string",
+            "fieldName": "siteID",
             "sortDir": "none"
-        }, 
+        },
         "VTEC Codes": {
-            "type": "string", 
-            "fieldName": "vtecCodes", 
+            "type": "string",
+            "fieldName": "vtecCodes",
             "sortDir": "none",
             "displayEmptyAs": "[]"
-        }, 
+        },
         "ETNs": {
-            "type": "string", 
-            "fieldName": "etns", 
+            "type": "string",
+            "fieldName": "etns",
             "sortDir": "none",
             "displayEmptyAs": "[]"
-        }, 
+        },
         "PILs": {
-            "type": "string", 
-            "fieldName": "pils", 
+            "type": "string",
+            "fieldName": "pils",
             "sortDir": "none",
             "displayEmptyAs": "[]"
-        }, 
+        },
         "Time to Expiration": {
-            "sortDir": "none", 
-            "fieldName": "alert", 
+            "sortDir": "none",
+            "fieldName": "alert",
             "type": "countdown"
         },
         "Point ID": {
-            "sortDir": "none", 
-            "fieldName": "pointID", 
+            "sortDir": "none",
+            "fieldName": "pointID",
             "type": "string"
         },
         "River Mile": {
             "sortPriority": 2,
             "sortDir": "ascending",
-            "fieldName": "riverMile", 
+            "fieldName": "riverMile",
             "type": "number"
         },
         "Stream": {
             "sortPriority": 1,
             "sortDir": "ascending",
-            "fieldName": "streamName", 
+            "fieldName": "streamName",
             "type": "string"
         },
         "Workstation": {
             "sortDir": "none",
-            "fieldName": "workStation", 
+            "fieldName": "workStation",
             "type": "string"
         },
         "User Name": {
             "sortDir": "none",
-            "fieldName": "userName", 
+            "fieldName": "userName",
             "type": "string"
         },
-    }, 
+    },
     "toolbarTools": [
         {
-            "toolName": "DamBreakFloodRecommender", 
+            "toolName": "DamBreakFloodRecommender",
             "displayName": "Dam/Levee Break Flood Recommender",
             "toolType": "RECOMMENDER",
             "visible":True,
-        }, 
+        },
         {
-            "toolName": "BurnScarFloodRecommender", 
+            "toolName": "BurnScarFloodRecommender",
             "displayName": "Burn Scar Flood Recommender",
             "toolType": "RECOMMENDER",
             "visible":True,
-        }, 
+        },
         {
-            "toolName": "RiverFloodRecommender", 
+            "toolName": "RiverFloodRecommender",
             "displayName": "River Flood Recommender",
             "toolType": "RECOMMENDER",
             "visible":True,
         },
         {
-            "toolName": "FlashFloodRecommender", 
+            "toolName": "FlashFloodRecommender",
             "displayName": "Flash Flood Recommender",
             "toolType": "RECOMMENDER",
             "visible":True,
         },
         {
-            "toolName": "StormTrackTool", 
+            "toolName": "StormTrackTool",
             "displayName": "Storm Track",
             "toolType": "RECOMMENDER",
             "visible":True,

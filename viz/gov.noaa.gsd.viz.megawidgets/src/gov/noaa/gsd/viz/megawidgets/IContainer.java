@@ -10,11 +10,11 @@
 package gov.noaa.gsd.viz.megawidgets;
 
 /**
- * /** Interface describing the methods to be implemented by a megawidget that
- * is to act as a container of other megawidgets. Any subclasses of
- * {@link Megawidget} must implement this interface if they are to hold other
- * megawidgets. The parameter <code>M</code> provides the superclass of all the
- * child megawidgets that this parent may have.
+ * Interface describing the methods to be implemented by a megawidget that is to
+ * act as a container of other megawidgets. Any subclasses of {@link Megawidget}
+ * must implement this interface if they are to hold other megawidgets. The
+ * parameter <code>M</code> provides the superclass of all the child megawidgets
+ * that this parent may have.
  * 
  * <pre>
  * 

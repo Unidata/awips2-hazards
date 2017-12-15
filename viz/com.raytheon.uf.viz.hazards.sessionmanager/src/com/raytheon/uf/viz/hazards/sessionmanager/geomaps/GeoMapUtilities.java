@@ -43,7 +43,7 @@ import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataaccess.impl.DefaultGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -51,7 +51,6 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.IugcToMapGeometryDataBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.CountyUGCBuilder;
 import com.raytheon.uf.viz.hazards.sessionmanager.ugcbuilder.impl.FireWXZoneUGCBuilder;
@@ -148,7 +147,8 @@ import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
  *                                      neither fraction- nor area-based inclusion testing
  *                                      to automatically be considered to include UGCs that
  *                                      intersect them.
- * 
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
+ *                                      events.
  * </pre>
  * 
  * @author blawrenc
@@ -274,7 +274,7 @@ public class GeoMapUtilities {
      * @return Map pairing UGCs to geometries that intersect the hazard event.
      */
     public Map<String, IGeometryData> getIntersectingMapGeometriesForUgcs(
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
         Map<String, IGeometryData> geometriesForUgcs = new HashMap<>();
         for (String mapDatabaseTableName : getMapDatabaseTableNames(
                 hazardEvent)) {
@@ -303,7 +303,7 @@ public class GeoMapUtilities {
      */
     @SuppressWarnings("unchecked")
     public Pair<Map<String, String>, Geometry> addOrRemoveEnclosingUgcs(
-            IHazardEvent hazardEvent, Coordinate location) {
+            IReadableHazardEvent hazardEvent, Coordinate location) {
         try {
 
             Map<String, String> hazardAreas = (Map<String, String>) hazardEvent
@@ -418,7 +418,7 @@ public class GeoMapUtilities {
      *         associated with this event.
      */
     public Map<String, IGeometryData> buildHazardAreaForEvent(
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
         Set<String> mapDatabaseTableNames = getMapDatabaseTableNames(
                 hazardEvent);
         String mapLabelParameter = getMapLabelParameter(hazardEvent);
@@ -452,7 +452,7 @@ public class GeoMapUtilities {
      *            Hazard event.
      * @return Clipped geometry.
      */
-    public Geometry applyGfeClipping(IHazardEvent hazardEvent) {
+    public Geometry applyGfeClipping(IReadableHazardEvent hazardEvent) {
 
         /*
          * Lazy evaluation is required because the SessionConfigurationManager
@@ -507,11 +507,11 @@ public class GeoMapUtilities {
      *            Hazard type entry.
      * @return Clipped geometry.
      */
-    public Geometry applyWarngenClipping(ObservedHazardEvent selectedEvent,
+    public Geometry applyWarngenClipping(IReadableHazardEvent hazardEvent,
             HazardTypeEntry hazardType) {
         Geometry polygonUnion;
         Collection<IGeometryData> geoDataSet = buildHazardAreaForEvent(
-                selectedEvent).values();
+                hazardEvent).values();
 
         List<Geometry> geometries = new ArrayList<>();
 
@@ -564,7 +564,7 @@ public class GeoMapUtilities {
      * @return <code>true</code> if the hazard event is a non-hatching type,
      *         <code>false</code> otherwise.
      */
-    public boolean isNonHatching(IHazardEvent hazardEvent) {
+    public boolean isNonHatching(IReadableHazardEvent hazardEvent) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
         return ((hazardTypeEntry != null)
                 && (hazardTypeEntry.getHatchingStyle() == HatchingStyle.NONE));
@@ -579,7 +579,7 @@ public class GeoMapUtilities {
      * @return <code>true</code> if the hazard event uses Warngen style
      *         hatching, <code>false</code> otherwise.
      */
-    public boolean isWarngenHatching(IHazardEvent hazardEvent) {
+    public boolean isWarngenHatching(IReadableHazardEvent hazardEvent) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
         return ((hazardTypeEntry != null) && (hazardTypeEntry
                 .getHatchingStyle() == HatchingStyle.WARNGEN));
@@ -593,7 +593,7 @@ public class GeoMapUtilities {
      * @return <code>true</code> if the hazard event is point-based,
      *         <code>false</code> otherwise.
      */
-    public boolean isPointBasedHatching(IHazardEvent hazardEvent) {
+    public boolean isPointBasedHatching(IReadableHazardEvent hazardEvent) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
         return ((hazardTypeEntry != null) && hazardTypeEntry.isPointBased());
     }
@@ -608,7 +608,8 @@ public class GeoMapUtilities {
      * @return Names of the tables in the map database from which to retrieve
      *         map geometries for the hazard event.
      */
-    private Set<String> getMapDatabaseTableNames(IHazardEvent hazardEvent) {
+    private Set<String> getMapDatabaseTableNames(
+            IReadableHazardEvent hazardEvent) {
         return getHazardTypeEntry(hazardEvent).getUgcTypes();
     }
 
@@ -622,7 +623,7 @@ public class GeoMapUtilities {
      * @return Name of the field in the map database tables associated with this
      *         hazard event's UGCs to use for labeling.
      */
-    private String getMapLabelParameter(IHazardEvent hazardEvent) {
+    private String getMapLabelParameter(IReadableHazardEvent hazardEvent) {
         String mapLabelParameter = configManager.getHazardTypes()
                 .get(hazardEvent.getHazardType()).getUgcLabel();
         return mapLabelParameter;
@@ -782,8 +783,8 @@ public class GeoMapUtilities {
      *         there are no intersecting geometries.
      */
     private Set<IGeometryData> getIntersectingMapGeometries(
-            boolean applyIntersectionThreshold, IHazardEvent hazardEvent,
-            String mapDatabaseTableName) {
+            boolean applyIntersectionThreshold,
+            IReadableHazardEvent hazardEvent, String mapDatabaseTableName) {
         return getIntersectingMapGeometries(applyIntersectionThreshold,
                 hazardEvent,
                 getMapGeometries(hazardEvent, mapDatabaseTableName));
@@ -801,8 +802,8 @@ public class GeoMapUtilities {
      *            geometries.
      * @return Geometry data for the specified table and hazard event.
      */
-    private Set<IGeometryData> getMapGeometries(IHazardEvent hazardEvent,
-            String mapDatabaseTableName) {
+    private Set<IGeometryData> getMapGeometries(
+            IReadableHazardEvent hazardEvent, String mapDatabaseTableName) {
         String cwa = hazardEvent.getSiteID();
         if (cwa == null) {
 
@@ -931,7 +932,7 @@ public class GeoMapUtilities {
     @SuppressWarnings("unchecked")
     private Map<String, IGeometryData> buildHazardAreaForEvent(
             String mapDatabaseTableName, String mapLabelParameter, String cwa,
-            IHazardEvent hazardEvent) {
+            IReadableHazardEvent hazardEvent) {
 
         /*
          * TODO: A linked hash map is used to preserve the order in which items
@@ -1030,7 +1031,8 @@ public class GeoMapUtilities {
      *            Hazard event for which to fetch the type entry.
      * @return Hazard type entry.
      */
-    private HazardTypeEntry getHazardTypeEntry(IHazardEvent hazardEvent) {
+    private HazardTypeEntry getHazardTypeEntry(
+            IReadableHazardEvent hazardEvent) {
         return configManager.getHazardTypes()
                 .get(HazardEventUtilities.getHazardType(hazardEvent));
     }
@@ -1050,8 +1052,8 @@ public class GeoMapUtilities {
      *         there are no intersecting geometries.
      */
     private Set<IGeometryData> getIntersectingMapGeometries(
-            boolean applyIntersectionThreshold, IHazardEvent hazardEvent,
-            Set<IGeometryData> geometryData) {
+            boolean applyIntersectionThreshold,
+            IReadableHazardEvent hazardEvent, Set<IGeometryData> geometryData) {
         HazardTypeEntry hazardTypeEntry = getHazardTypeEntry(hazardEvent);
         boolean inclusionFractionTest = hazardTypeEntry
                 .isInclusionFractionTest();
@@ -1122,10 +1124,10 @@ public class GeoMapUtilities {
      *         there are no intersecting geometries.
      */
     private Set<IGeometryData> getIntersectingMapGeometries(
-            boolean applyIntersectionThreshold, IHazardEvent hazardEvent,
-            Set<IGeometryData> geometryData, boolean inclusionFractionTest,
-            double inclusionFraction, boolean inclusionAreaTest,
-            double inclusionAreaInSqKm) {
+            boolean applyIntersectionThreshold,
+            IReadableHazardEvent hazardEvent, Set<IGeometryData> geometryData,
+            boolean inclusionFractionTest, double inclusionFraction,
+            boolean inclusionAreaTest, double inclusionAreaInSqKm) {
         Set<IGeometryData> result = new HashSet<>();
         boolean gfeInteroperability = hazardEvent.getHazardAttributes()
                 .containsKey(HazardConstants.GFE_INTEROPERABILITY);

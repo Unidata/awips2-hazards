@@ -38,6 +38,8 @@ import com.raytheon.uf.common.hazards.productgen.KeyInfo;
  *                                           permanent solution to the problem, but it
  *                                           allows the megawidget framework to remain more 
  *                                           generic than it was becoming.
+ * Dec 17, 2017   20739    Chris.Golden      Refactored away access to directly mutable
+ *                                           session events.
  * </pre>
  * 
  * @author Chris.Golden

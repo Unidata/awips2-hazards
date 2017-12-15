@@ -16,12 +16,12 @@ import org.eclipse.swt.widgets.MessageBox;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardAction;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
@@ -73,10 +73,18 @@ import net.engio.mbassy.listener.Handler;
  * Jul 01, 2015     6726   Robert.Blum       IssueAll button no longer closes the Editor.
  * Dec 04, 2015    12981   Roger.Ferrel      Checks to prevent issuing unwanted
  *                                           expiration product.
+ * Jan 26, 2016     7623   Ben.Phillippe     Implemented locking of HazardEvents
  * Mar 30, 2016     8837   Robert.Blum       Added siteChanged() for service backup.
  * Sep 20, 2016    21622   Ben.Phillippe     Prevent preview of other site's hazards
+ * Dec 12, 2016    21504   Robert.Blum       Refactored locking code.
  * Feb 02, 2017    15556   Chris.Golden      Minor changes to support console refactor.
+ * Apr 05, 2017    32733   Robert.Blum       Changed lock status modified handler to
+ *                                           deal with new version of notification that
+ *                                           notifies of one or more lock statuses
+ *                                           changing.
  * Apr 27, 2017    11853   Chris.Golden      Added public method to close product editor.
+ * Dec 17, 2017    20739   Chris.Golden      Refactored away access to directly mutable
+ *                                           session events.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -95,8 +103,7 @@ public class ProductEditorPresenter
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ProductEditorPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public ProductEditorPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }
@@ -136,7 +143,7 @@ public class ProductEditorPresenter
         for (int i = 0; i < generatedProductsList.size()
                 && showProductEditor; i++) {
             for (IEvent event : generatedProductsList.get(i).getEventSet()) {
-                IHazardEvent hazardEvent = (IHazardEvent) event;
+                IReadableHazardEvent hazardEvent = (IReadableHazardEvent) event;
                 if (!siteId.equals(hazardEvent.getSiteID())) {
                     showProductEditor = false;
                     MessageBox mb1 = new MessageBox(VizWorkbenchManager
@@ -245,5 +252,30 @@ public class ProductEditorPresenter
                     }
                 });
 
+    }
+
+    @Handler
+    public void sessionEventsLockStatusModified(
+            SessionEventsLockStatusModified change) {
+
+        /*
+         * Determine if any locks of the events currently in the Product Editor
+         * have been broken. If so disable the Issue and Save buttons.
+         */
+        if (getView().isProductEditorOpen()) {
+            for (GeneratedProductList productList : getView()
+                    .getGeneratedProductsList()) {
+                for (IEvent event : productList.getEventSet()) {
+                    IReadableHazardEvent hazard = (IReadableHazardEvent) event;
+                    for (String eventIdentifier : change
+                            .getEventIdentifiers()) {
+                        if (hazard.getEventID().equals(eventIdentifier)) {
+                            getView().handleHazardEventLock();
+                            return;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

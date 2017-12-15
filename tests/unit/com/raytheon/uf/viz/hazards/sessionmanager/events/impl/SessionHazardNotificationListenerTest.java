@@ -17,9 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.viz.hazards.sessionmanager.events;
+package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_SELECTED;
+
+import java.io.Serializable;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -30,6 +32,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification.Notif
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionHazardNotificationListener;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -128,8 +133,10 @@ public class SessionHazardNotificationListenerTest {
     public void testRestore() {
         eventManager.reset();
 
-        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
-        event.addHazardAttribute(HAZARD_EVENT_SELECTED, true);
+        IHazardEventView event = eventManager.addEvent(getDummyEvent(), null);
+        eventManager.changeEventProperty(event,
+                ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                new Pair<String, Serializable>(HAZARD_EVENT_SELECTED, true));
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
                 NotificationType.STORE, true));
@@ -161,8 +168,10 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testPreserveSelection() {
         eventManager.reset();
-        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
-        event.addHazardAttribute(HAZARD_EVENT_SELECTED, true);
+        IHazardEventView event = eventManager.addEvent(getDummyEvent(), null);
+        eventManager.changeEventProperty(event,
+                ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                new Pair<String, Serializable>(HAZARD_EVENT_SELECTED, true));
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
                 NotificationType.UPDATE, true));
@@ -195,8 +204,10 @@ public class SessionHazardNotificationListenerTest {
     @Test
     public void testRemoveAttribute() {
         eventManager.reset();
-        IHazardEvent event = eventManager.addEvent(getDummyEvent(), null);
-        event.addHazardAttribute(TEST_ATTR_KEY, TEST_ATTR_VAL1);
+        IHazardEventView event = eventManager.addEvent(getDummyEvent(), null);
+        eventManager.changeEventProperty(event,
+                ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                new Pair<String, Serializable>(TEST_ATTR_KEY, TEST_ATTR_VAL1));
 
         listener.handleNotification(new HazardNotification(getDummyEvent(),
                 NotificationType.UPDATE, true));

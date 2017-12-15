@@ -35,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.Trigger;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.recommenders.AbstractRecommenderEngine;
@@ -57,11 +58,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModificat
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventVisualFeaturesModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager.EventPropertyChangeResult;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionBatchNotificationsToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender.IIntraNotificationHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
@@ -141,6 +142,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Sep 26, 2016   21758    Chris.Golden Changed call to removeEvents() to provide new
  *                                      parameter.
  * Nov 17, 2016   22119    Kevin.Bisanz Set hazard siteID in handleRecommenderResult()
+ * Dec 12, 2016   21504    Robert.Blum  Switched from user name and workstation to
+ *                                      WsId.
  * Feb 01, 2017   15556    Chris.Golden Minor cleanup.
  * Feb 21, 2017   29138    Chris.Golden Added use of session manager's runnable
  *                                      asynchronous scheduler.
@@ -205,6 +208,12 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      to result in more batching and less individual
  *                                      runs.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly mutable session
+ *                                      events. Also changed to use mergeHazardEvents()
+ *                                      instead of addEvent() when merging changes to an
+ *                                      existing hazard event back into the canonical
+ *                                      session event, since addEvent() is no longer
+ *                                      allowed to handle such cases.
  * Jan 17, 2018   45580    Chris.Golden Changed to use the same event-set-construction
  *                                      algorithm for building event sets for dialog
  *                                      and spatial parameter gathering, and for actual
@@ -373,7 +382,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
     /**
      * Session manager.
      */
-    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private final ISessionManager<ObservedSettings> sessionManager;
 
     /**
      * Notification sender.
@@ -597,13 +606,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                      * is not commented out, and then uncomment the commented
                      * out code immediately below it.
                      */
-                    for (IHazardEvent event : notification.getEvents()) {
+                    for (IHazardEventView event : notification.getEvents()) {
                         identifiersOfEventsRemovedSinceLastRecommenderRun
                                 .add(event.getEventID());
                     }
                     // identifiersOfEventsRemovedSinceLastRecommenderRun
                     // .addAll(notification.getEvents().stream()
-                    // .map(IHazardEvent::getEventID)
+                    // .map(IHazardEventView::getEventID)
                     // .collect(Collectors.toList()));
                 }
             }
@@ -644,7 +653,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      *            Messenger used to communicate with the user.
      */
     public SessionRecommenderManager(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+            ISessionManager<ObservedSettings> sessionManager,
             ISessionNotificationSender notificationSender,
             IMessenger messenger) {
         this.sessionManager = sessionManager;
@@ -1013,7 +1022,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      *         <code>null</code> if no recommender is triggered.
      */
     private String getTriggeredRecommenderForFirstClassAttributeChange(
-            IHazardEvent event, HazardEventFirstClassAttribute attribute,
+            IHazardEventView event, HazardEventFirstClassAttribute attribute,
             IOriginator originator) {
 
         /*
@@ -1111,7 +1120,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         Map<String, Set<String>> eventIdentifiersForTriggeredRecommenders = new HashMap<>(
                 notification.getEventIdentifiers().size(), 1.0f);
         for (String eventIdentifier : notification.getEventIdentifiers()) {
-            ObservedHazardEvent event = sessionManager.getEventManager()
+            IHazardEventView event = sessionManager.getEventManager()
                     .getEventById(eventIdentifier);
             if (event == null) {
                 continue;
@@ -1656,7 +1665,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              */
             for (String eventIdentifier : runningContext
                     .getEventIdentifiers()) {
-                ObservedHazardEvent event = sessionManager.getEventManager()
+                IHazardEventView event = sessionManager.getEventManager()
                         .getEventById(eventIdentifier);
                 if (event != null) {
                     eventSet.add(createBaseHazardEvent(event));
@@ -1672,9 +1681,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * session, or only those events with the right hazard types) in the
              * input event set.
              */
-            Collection<ObservedHazardEvent> hazardEvents = sessionManager
+            Collection<? extends IHazardEventView> hazardEvents = sessionManager
                     .getEventManager().getEvents();
-            for (ObservedHazardEvent event : hazardEvents) {
+            for (IHazardEventView event : hazardEvents) {
                 if ((includeEventTypes == null)
                         || includeEventTypes.contains(event.getHazardType())) {
                     eventSet.add(createBaseHazardEvent(event));
@@ -1730,7 +1739,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      *            Event to be copied.
      * @return Base hazard event copy.
      */
-    private BaseHazardEvent createBaseHazardEvent(ObservedHazardEvent event) {
+    private BaseHazardEvent createBaseHazardEvent(IHazardEventView event) {
         BaseHazardEvent copy = new BaseHazardEvent(event);
 
         /*
@@ -1851,7 +1860,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         if (events != null) {
             ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
                     .getConfigurationManager();
-            ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
+            ISessionEventManager eventManager = sessionManager
                     .getEventManager();
 
             sessionManager.startBatchedChanges();
@@ -1872,6 +1881,14 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             boolean addToHistory = Boolean.TRUE.equals(addToHistoryAttribute);
             boolean addToDatabase = ((addToHistory == false)
                     && Boolean.TRUE.equals(addToDatabaseAttribute));
+
+            /*
+             * Determine whether or not the events that are to be saved to the
+             * database are to be kept locked after the save, instead of the
+             * usual practice of unlocking them.
+             */
+            boolean keepLocked = Boolean.TRUE.equals(events.getAttribute(
+                    HazardConstants.RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE));
 
             /*
              * Determine whether or not the events that are to be saved to the
@@ -1924,8 +1941,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     addToHistoryAttribute);
             boolean saveAllNewToDatabase = ((saveAllNewToHistory == false)
                     && isListContainingNullElement(addToDatabaseAttribute));
-            List<IHazardEvent> addedNewEvents = (saveAllNewToHistory
-                    || saveAllNewToDatabase ? new ArrayList<IHazardEvent>()
+            List<IHazardEventView> addedNewEvents = (saveAllNewToHistory
+                    || saveAllNewToDatabase ? new ArrayList<IHazardEventView>()
                             : null);
 
             /*
@@ -1935,12 +1952,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * that will be used to pair the identifiers of events that are
              * created with the events themselves.
              */
-            List<IHazardEvent> addedEvents = (addToHistory || addToDatabase
-                    ? new ArrayList<IHazardEvent>(events.size()) : null);
-            Map<String, IHazardEvent> addedEventsForIdentifiers = ((addedEvents == null)
+            List<IHazardEventView> addedEvents = (addToHistory || addToDatabase
+                    ? new ArrayList<IHazardEventView>(events.size()) : null);
+            Map<String, IHazardEventView> addedEventsForIdentifiers = ((addedEvents == null)
                     && ((addToHistoryAttribute instanceof List)
                             || (addToDatabaseAttribute instanceof List))
-                                    ? new HashMap<String, IHazardEvent>(
+                                    ? new HashMap<String, IHazardEventView>(
                                             events.size(), 1.0f)
                                     : null);
 
@@ -1970,12 +1987,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                      */
                     identifiersOfEventsToBeDeleted = new HashSet<>(
                             ((Collection<?>) toBeDeleted).size(), 1.0f);
-                    List<ObservedHazardEvent> eventsToBeDeleted = new ArrayList<>(
+                    List<IHazardEventView> eventsToBeDeleted = new ArrayList<>(
                             ((Collection<?>) toBeDeleted).size());
                     for (Object element : (Collection<?>) toBeDeleted) {
                         boolean success = false;
                         if (element instanceof String) {
-                            ObservedHazardEvent event = eventManager
+                            IHazardEventView event = eventManager
                                     .getEventById((String) element);
                             if ((event != null)
                                     && (HazardStatus.hasEverBeenIssued(
@@ -2015,7 +2032,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * workstation if appropriate, and then telling the event manager to
              * add them.
              */
-            List<ObservedHazardEvent> addedOrModifiedEvents = new ArrayList<>(
+            List<IHazardEventView> addedOrModifiedEvents = new ArrayList<>(
                     events.size());
             synchronized (pendingRecommenderExecutionRequests) {
                 for (IEvent event : events) {
@@ -2031,7 +2048,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                          * per this recommender's request.
                          */
                         IHazardEvent hazardEvent = (IHazardEvent) event;
-                        boolean isNew = (hazardEvent.getEventID() == null);
+                        boolean isNew = ((hazardEvent.getEventID() == null)
+                                || (hazardEvent.getEventID().trim()
+                                        .length() == 0));
                         if ((isNew == false)
                                 && (identifiersOfEventsRemovedSinceLastRecommenderRun
                                         .contains(hazardEvent.getEventID())
@@ -2062,7 +2081,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                             List<IEventModification> modifications = modificationsForIdentifiersOfEventsModifiedSinceLastRecommenderRun
                                     .get(hazardEvent.getEventID());
                             if (modifications != null) {
-                                IHazardEvent sessionEvent = eventManager
+                                IHazardEventView sessionEvent = eventManager
                                         .getEventById(hazardEvent.getEventID());
                                 if (sessionEvent != null) {
                                     for (IEventModification modification : modifications) {
@@ -2082,28 +2101,48 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         }
                         if (isNew || eventIdentifiersNeedingOriginSet
                                 .contains(hazardEvent.getEventID())) {
-                            hazardEvent.setUserName(LocalizationManager
-                                    .getInstance().getCurrentUser());
-                            hazardEvent.setWorkStation(VizApp.getHostName());
+                            hazardEvent.setWsId(VizApp.getWsId());
                             hazardEvent
                                     .setSource(IHazardEvent.Source.RECOMMENDER);
                         }
 
                         /*
-                         * Add the event (or modify an existing event by merging
-                         * the new version into it).
+                         * Add the event if it is new, or modify an existing
+                         * event by merging the new version into it.
                          */
                         hazardEvent.removeHazardAttribute(
                                 HazardConstants.HAZARD_EVENT_SELECTED);
-                        ObservedHazardEvent addedEvent = null;
-                        try {
-                            addedEvent = eventManager.addEvent(hazardEvent,
-                                    originator);
-                        } catch (HazardEventServiceException e) {
-                            statusHandler
-                                    .error("Could not add hazard event generated by "
-                                            + recommenderIdentifier + ".", e);
-                            continue;
+                        IHazardEventView addedEvent = null;
+                        if (isNew) {
+                            try {
+                                addedEvent = eventManager.addEvent(hazardEvent,
+                                        originator);
+                            } catch (HazardEventServiceException e) {
+                                statusHandler.error(
+                                        "Could not add hazard event generated by "
+                                                + recommenderIdentifier + ".",
+                                        e);
+                                continue;
+                            }
+                        } else {
+                            addedEvent = eventManager
+                                    .getEventById(hazardEvent.getEventID());
+                            if (addedEvent != null) {
+                                EventPropertyChangeResult result = eventManager
+                                        .mergeHazardEvents(hazardEvent,
+                                                addedEvent, false, false, true,
+                                                false, originator);
+                                if (result != EventPropertyChangeResult.SUCCESS) {
+                                    statusHandler
+                                            .warn("Could not modify hazard event as requested by "
+                                                    + recommenderIdentifier
+                                                    + " due to "
+                                                    + (result == EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND
+                                                            ? "an inability to find the original event."
+                                                            : "an inability to lock the event."));
+                                    continue;
+                                }
+                            }
                         }
                         addedOrModifiedEvents.add(addedEvent);
 
@@ -2137,12 +2176,12 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             }
 
             /*
-             * If all brand new hazard events are to be saved to the history or
+             * If all brand-new hazard events are to be saved to the history or
              * database, perform the save.
              */
             if (addedNewEvents != null) {
                 eventManager.saveEvents(addedNewEvents, saveAllNewToHistory,
-                        treatAsIssuance);
+                        keepLocked, treatAsIssuance, originator);
             }
 
             /*
@@ -2154,8 +2193,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
              * appropriate.
              */
             if ((addedEvents != null) && (addedEvents.isEmpty() == false)) {
-                eventManager.saveEvents(addedEvents, addToHistory,
-                        treatAsIssuance);
+                eventManager.saveEvents(addedEvents, addToHistory, keepLocked,
+                        treatAsIssuance, originator);
             } else if ((addedEventsForIdentifiers != null)
                     && (addedEventsForIdentifiers.isEmpty() == false)) {
                 if (addToHistoryAttribute instanceof List) {
@@ -2163,7 +2202,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                             getEventsFromIdentifiers(
                                     (List<?>) addToHistoryAttribute,
                                     addedEventsForIdentifiers),
-                            true, treatAsIssuance);
+                            true, false, treatAsIssuance, originator);
                 } else if (addToDatabaseAttribute instanceof List) {
 
                     /*
@@ -2184,7 +2223,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     eventManager.saveEvents(
                             getEventsFromIdentifiers(addToDatabaseList,
                                     addedEventsForIdentifiers),
-                            false, treatAsIssuance);
+                            false, keepLocked, treatAsIssuance, originator);
                 }
             }
 
@@ -2195,7 +2234,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             Set<String> visibleTypes = configManager.getSettings()
                     .getVisibleTypes();
             int startSize = visibleTypes.size();
-            for (ObservedHazardEvent event : addedOrModifiedEvents) {
+            for (IHazardEventView event : addedOrModifiedEvents) {
                 visibleTypes.add(HazardEventUtilities.getHazardType(event));
             }
             if (startSize != visibleTypes.size()) {
@@ -2228,6 +2267,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
 
             sessionManager.finishBatchedChanges();
         }
+
     }
 
     /**
@@ -2266,9 +2306,9 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * @return List of events that go with the event identifiers and that are
      *         found in the map.
      */
-    private List<IHazardEvent> getEventsFromIdentifiers(
+    private List<IHazardEventView> getEventsFromIdentifiers(
             List<?> eventIdentifiers,
-            Map<String, IHazardEvent> eventsForIdentifiers) {
+            Map<String, IHazardEventView> eventsForIdentifiers) {
 
         Set<String> identifiersToSave = new HashSet<>(
                 eventsForIdentifiers.size(), 1.0f);
@@ -2277,7 +2317,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 identifiersToSave.add(element.toString());
             }
         }
-        List<IHazardEvent> eventsToSave = new ArrayList<>(
+        List<IHazardEventView> eventsToSave = new ArrayList<>(
                 identifiersToSave.size());
         for (String identifier : Sets.intersection(
                 eventsForIdentifiers.keySet(), identifiersToSave)) {

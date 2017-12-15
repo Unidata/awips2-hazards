@@ -9,20 +9,11 @@
  */
 package gov.noaa.gsd.viz.hazards.hazardtypefirst;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
-
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import net.engio.mbassy.listener.Handler;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -36,9 +27,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Choice;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.HazardInfoConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
+import gov.noaa.gsd.viz.mvp.widgets.IStateChangeHandler;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Description: Presenter for the hazard-type-first dialog.
@@ -60,14 +57,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecut
  * Feb 01, 2017   15556    Chris.Golden Changed to work with finer-grained settings
  *                                      change messages.
  * Jun 08, 2017   16373    Chris.Golden Corrected spelling of RUN_RECOMMENDER.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly mutable
+ *                                      session events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class HazardTypeFirstPresenter extends
-        HazardServicesPresenter<IHazardTypeFirstViewDelegate<?, ?>> implements
-        IOriginator {
+public class HazardTypeFirstPresenter
+        extends HazardServicesPresenter<IHazardTypeFirstViewDelegate<?, ?>> {
 
     // Package-Private Enumerated Types
 
@@ -135,10 +133,10 @@ public class HazardTypeFirstPresenter extends
         public void stateChanged(Object identifier, String value) {
             selectedCategory = value;
             selectedType = BLANK_TYPE_CHOICE;
-            getView().getTypeChanger()
-                    .setChoices(null, typesForCategories.get(value),
-                            typeDescriptionsForCategories.get(value),
-                            BLANK_TYPE_CHOICE);
+            getView().getTypeChanger().setChoices(null,
+                    typesForCategories.get(value),
+                    typeDescriptionsForCategories.get(value),
+                    BLANK_TYPE_CHOICE);
             updateOkCommandEnabledState();
         }
 
@@ -190,11 +188,11 @@ public class HazardTypeFirstPresenter extends
              * the OK command is only enabled if a legitimate type is currently
              * selected.
              */
-            getView().getCommandInvoker().setCommandInvocationHandler(
-                    commandInvocationHandler);
+            getView().getCommandInvoker()
+                    .setCommandInvocationHandler(commandInvocationHandler);
             updateOkCommandEnabledState();
-            getView().getCategoryChanger().setStateChangeHandler(
-                    categoryChangeHandler);
+            getView().getCategoryChanger()
+                    .setStateChangeHandler(categoryChangeHandler);
             getView().getTypeChanger().setStateChangeHandler(typeChangeHandler);
         }
     };
@@ -229,8 +227,7 @@ public class HazardTypeFirstPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardTypeFirstPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public HazardTypeFirstPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
 
@@ -245,14 +242,15 @@ public class HazardTypeFirstPresenter extends
         List<String> categories = new ArrayList<>();
         Map<String, ImmutableList<String>> typesForCategories = new HashMap<>();
         Map<String, ImmutableList<String>> typeDescriptionsForCategories = new HashMap<>();
-        for (Choice categoryAndTypes : categoriesAndTypes.getHazardCategories()) {
+        for (Choice categoryAndTypes : categoriesAndTypes
+                .getHazardCategories()) {
             List<Choice> typeChoices = categoryAndTypes.getChildren();
             List<String> types = new ArrayList<String>(typeChoices.size());
             List<String> typeDescriptions = new ArrayList<String>(
                     typeChoices.size());
             for (Choice hazardType : categoryAndTypes.getChildren()) {
-                if (configManager.getTypeFirstRecommender(hazardType
-                        .getIdentifier()) != null) {
+                if (configManager.getTypeFirstRecommender(
+                        hazardType.getIdentifier()) != null) {
                     types.add(hazardType.getIdentifier());
                     typeDescriptions.add(hazardType.getDisplayString());
                 }
@@ -373,9 +371,8 @@ public class HazardTypeFirstPresenter extends
              * settings-specified default category, set it to be the same as the
              * default, and clear the selected type.
              */
-            if ((selectedCategory == null)
-                    || (defaultCategoryHasTypes && (selectedCategory
-                            .equals(defaultCategory) == false))) {
+            if ((selectedCategory == null) || (defaultCategoryHasTypes
+                    && (selectedCategory.equals(defaultCategory) == false))) {
                 this.selectedCategory = defaultCategory;
                 this.selectedType = BLANK_TYPE_CHOICE;
             }
@@ -409,10 +406,10 @@ public class HazardTypeFirstPresenter extends
          * session manager will handle it. At that time, this will be changed to
          * directly run the tool, instead of using this deprecated code.
          */
-        publish(new ToolAction(
-                ToolAction.RecommenderActionEnum.RUN_RECOMMENDER, getModel()
-                        .getConfigurationManager().getTypeFirstRecommender(
-                                selectedType), ToolType.RECOMMENDER,
+        publish(new ToolAction(ToolAction.RecommenderActionEnum.RUN_RECOMMENDER,
+                getModel().getConfigurationManager().getTypeFirstRecommender(
+                        selectedType),
+                ToolType.RECOMMENDER,
                 RecommenderExecutionContext.getHazardTypeFirstContext(
                         selectedType, RecommenderTriggerOrigin.USER)));
     }

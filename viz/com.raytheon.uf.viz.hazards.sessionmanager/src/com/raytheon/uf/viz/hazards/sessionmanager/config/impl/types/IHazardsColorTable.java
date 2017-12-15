@@ -20,7 +20,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
 import com.raytheon.uf.common.colormap.Color;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 
 /**
  * Interface for any object that can be a color table. Used because colortables
@@ -31,10 +31,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 29, 2013 1257       bsteffen    Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 29, 2013  1257      bsteffen     Initial creation.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
@@ -43,6 +44,6 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 public interface IHazardsColorTable {
 
-    public Color getColor(IHazardEvent event);
+    public Color getColor(IReadableHazardEvent event);
 
 }

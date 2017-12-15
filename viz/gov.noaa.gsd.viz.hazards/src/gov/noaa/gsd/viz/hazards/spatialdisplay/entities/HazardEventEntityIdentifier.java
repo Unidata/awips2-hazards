@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
 
-import gov.noaa.gsd.common.visuals.SpatialEntity;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
 
 /**
  * Description: Identifier for {@link SpatialEntity} instance generated to
- * represent {@link IHazardEvent} objects in the spatial display.
+ * represent {@link IHazardEventView} objects in the spatial display.
  * 
  * <pre>
  * 
@@ -24,13 +24,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * ------------ ---------- ------------ --------------------------
  * Jun 27, 2016   19537    Chris.Golden Initial creation.
  * Aug 28, 2016   19537    Chris.Golden Added toString() method.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class HazardEventEntityIdentifier implements
-        IHazardEventEntityIdentifier {
+public class HazardEventEntityIdentifier
+        implements IHazardEventEntityIdentifier {
 
     // Private Variables
 
@@ -69,14 +71,15 @@ public class HazardEventEntityIdentifier implements
             return false;
         }
         HazardEventEntityIdentifier otherIdentifier = (HazardEventEntityIdentifier) other;
-        return (((eventIdentifier == otherIdentifier.eventIdentifier) || ((eventIdentifier != null) && eventIdentifier
-                .equals(otherIdentifier.eventIdentifier))));
+        return (((eventIdentifier == otherIdentifier.eventIdentifier)
+                || ((eventIdentifier != null) && eventIdentifier
+                        .equals(otherIdentifier.eventIdentifier))));
     }
 
     @Override
     public int hashCode() {
-        return (int) ((eventIdentifier == null ? 0L : (long) eventIdentifier
-                .hashCode()) % Integer.MAX_VALUE);
+        return (int) ((eventIdentifier == null ? 0L
+                : (long) eventIdentifier.hashCode()) % Integer.MAX_VALUE);
     }
 
     @Override

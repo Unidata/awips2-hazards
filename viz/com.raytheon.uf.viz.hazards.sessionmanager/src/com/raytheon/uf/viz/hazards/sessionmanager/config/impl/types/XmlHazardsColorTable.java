@@ -30,7 +30,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurationManager;
 
 /**
@@ -40,10 +40,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.SessionConfigurati
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 24, 2013 1257       bsteffen    Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 24, 2013  1257      bsteffen     Initial creation.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
@@ -65,7 +66,7 @@ public class XmlHazardsColorTable implements IHazardsColorTable {
     }
 
     @Override
-    public Color getColor(IHazardEvent event) {
+    public Color getColor(IReadableHazardEvent event) {
         String key = HazardEventUtilities.getHazardType(event);
         if (key == null) {
             return null;

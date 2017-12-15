@@ -9,7 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
@@ -22,6 +21,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 09, 2017   15556    Chris.Golden Initial creation.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -34,7 +35,7 @@ public class SessionSelectionModified extends OriginatedSessionNotification {
     /**
      * Session selection manager.
      */
-    private final ISessionSelectionManager<ObservedHazardEvent> selectionManager;
+    private final ISessionSelectionManager selectionManager;
 
     // Public Constructors
 
@@ -46,8 +47,7 @@ public class SessionSelectionModified extends OriginatedSessionNotification {
      * @param originator
      *            Originator of the event.
      */
-    public SessionSelectionModified(
-            ISessionSelectionManager<ObservedHazardEvent> selectionManager,
+    public SessionSelectionModified(ISessionSelectionManager selectionManager,
             IOriginator originator) {
         super(originator);
         this.selectionManager = selectionManager;
@@ -60,7 +60,7 @@ public class SessionSelectionModified extends OriginatedSessionNotification {
      * 
      * @return Selection manager.
      */
-    public ISessionSelectionManager<ObservedHazardEvent> getSelectionManager() {
+    public ISessionSelectionManager getSelectionManager() {
         return selectionManager;
     }
 }

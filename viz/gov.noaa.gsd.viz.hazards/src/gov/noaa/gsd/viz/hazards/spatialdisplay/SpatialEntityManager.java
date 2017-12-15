@@ -30,7 +30,8 @@ import com.google.common.collect.TreeRangeMap;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataaccess.geom.IGeometryData;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
@@ -40,8 +41,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationMa
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.geomaps.GeoMapUtilities;
+import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
@@ -115,6 +116,9 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityI
  * Sep 27, 2017   38072    Chris.Golden Changed to work with multiple
  *                                      event additions, and with the new
  *                                      recommender manager.
+ * Nov 22, 2017   21504    Chris.Golden Updates for hazard locking.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -369,7 +373,7 @@ class SpatialEntityManager {
     /**
      * Session manager.
      */
-    private ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private ISessionManager<ObservedSettings> sessionManager;
 
     /**
      * View associated with the presenter using this manager.
@@ -461,8 +465,7 @@ class SpatialEntityManager {
      *            Read-only set that will always contain the currently selected
      *            event identifiers.
      */
-    SpatialEntityManager(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+    SpatialEntityManager(ISessionManager<ObservedSettings> sessionManager,
             Set<String> selectedEventIdentifiers) {
         this.sessionManager = sessionManager;
         this.geoMapUtilities = new GeoMapUtilities(
@@ -519,14 +522,14 @@ class SpatialEntityManager {
      * @param events
      *            Events for which to add spatial entities.
      */
-    void addEntitiesForEvents(Collection<? extends IHazardEvent> events) {
+    void addEntitiesForEvents(Collection<? extends IHazardEventView> events) {
 
         /*
          * Iterate through the events for which to add entities, adding ones for
          * each in turn as appropriate.
          */
         boolean changed = false;
-        for (IHazardEvent event : events) {
+        for (IHazardEventView event : events) {
 
             /*
              * Find the event within the list of events that may be visible in
@@ -540,7 +543,7 @@ class SpatialEntityManager {
              * that time getCheckedEvents() returns an unmodifiable view that
              * remains updated.
              */
-            List<ObservedHazardEvent> checkedEvents = sessionManager
+            List<IHazardEventView> checkedEvents = sessionManager
                     .getEventManager().getCheckedEvents();
             int eventIndex = checkedEvents.indexOf(event);
             if (eventIndex != -1) {
@@ -554,9 +557,9 @@ class SpatialEntityManager {
                 SelectedTime selectedRange = sessionManager.getTimeManager()
                         .getSelectedTime();
                 Date selectedTime = getSelectedTimeForVisualFeatures();
-                if (createSpatialEntitiesForEvent((ObservedHazardEvent) event,
-                        hatchingEntities, unselectedEntities, selectedEntities,
-                        selectedRange, selectedTime,
+                if (createSpatialEntitiesForEvent(event, hatchingEntities,
+                        unselectedEntities, selectedEntities, selectedRange,
+                        selectedTime,
                         sessionManager.getConfigurationManager()
                                 .getHazardTypes(),
                         sessionManager
@@ -597,7 +600,7 @@ class SpatialEntityManager {
      *            Flag indicating whether or not replacement should be forced,
      *            even if the new and old spatial entities are identical.
      */
-    void replaceEntitiesForEvent(IHazardEvent event,
+    void replaceEntitiesForEvent(IHazardEventView event,
             boolean indexMayHaveChanged, boolean forceReplacement) {
 
         /*
@@ -610,7 +613,7 @@ class SpatialEntityManager {
         List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedEntities = null;
         List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedEntities = null;
         int eventIndex = -1;
-        List<ObservedHazardEvent> events = null;
+        List<IHazardEventView> events = null;
         if (sessionManager.getEventManager().isEventChecked(event)) {
 
             /*
@@ -628,10 +631,9 @@ class SpatialEntityManager {
             SelectedTime selectedRange = sessionManager.getTimeManager()
                     .getSelectedTime();
             Date selectedTime = getSelectedTimeForVisualFeatures();
-            creationResult = createSpatialEntitiesForEvent(
-                    (ObservedHazardEvent) event, hatchingEntities,
-                    unselectedEntities, selectedEntities, selectedRange,
-                    selectedTime,
+            creationResult = createSpatialEntitiesForEvent(event,
+                    hatchingEntities, unselectedEntities, selectedEntities,
+                    selectedRange, selectedTime,
                     sessionManager.getConfigurationManager().getHazardTypes(),
                     sessionManager.areHatchedAreasDisplayed());
         }
@@ -680,7 +682,7 @@ class SpatialEntityManager {
      * @param event
      *            Event for which to remove spatial entities.
      */
-    void removeEntitiesForEvent(IHazardEvent event) {
+    void removeEntitiesForEvent(IHazardEventView event) {
 
         /*
          * Remove any spatial entities associated with the event.
@@ -707,14 +709,15 @@ class SpatialEntityManager {
      * @param events
      *            Events for which to remove spatial entities.
      */
-    void removeEntitiesForEvents(Collection<? extends IHazardEvent> events) {
+    void removeEntitiesForEvents(
+            Collection<? extends IHazardEventView> events) {
 
         /*
          * Iterate through the events for which to remove entities, removing any
          * found associated with each.
          */
         boolean changed = false;
-        for (IHazardEvent event : events) {
+        for (IHazardEventView event : events) {
 
             /*
              * Remove any spatial entities associated with the event.
@@ -797,7 +800,7 @@ class SpatialEntityManager {
                             SpatialPresenter.INITIAL_SIZES_FOR_SPATIAL_ENTITIES_LISTS
                                     .get(type)));
         }
-        for (ObservedHazardEvent event : sessionManager.getEventManager()
+        for (IHazardEventView event : sessionManager.getEventManager()
                 .getCheckedEvents()) {
             createSpatialEntitiesForEvent(event,
                     newSpatialEntitiesForTypes.get(SpatialEntityType.HATCHING),
@@ -878,7 +881,7 @@ class SpatialEntityManager {
      *         spatial entities for the hazard event, if any.
      */
     EventDisplayChange getSpatialEntityActionForEventWithChangedSelectedTime(
-            ObservedHazardEvent event, SelectedTime oldTime,
+            IHazardEventView event, SelectedTime oldTime,
             SelectedTime newTime) {
 
         /*
@@ -1115,7 +1118,7 @@ class SpatialEntityManager {
      */
     private <E extends SpatialEntity<? extends IEntityIdentifier>> boolean addEventSpatialEntities(
             SpatialEntityType type, List<E> spatialEntities,
-            List<ObservedHazardEvent> events, int eventIndex) {
+            List<IHazardEventView> events, int eventIndex) {
         if (spatialEntities.isEmpty() == false) {
 
             /*
@@ -1196,7 +1199,7 @@ class SpatialEntityManager {
     @SuppressWarnings("unchecked")
     private <E extends SpatialEntity<? extends IHazardEventEntityIdentifier>> boolean replaceEventSpatialEntities(
             SpatialEntityType type, List<E> spatialEntities,
-            List<ObservedHazardEvent> events, int eventIndex,
+            List<IHazardEventView> events, int eventIndex,
             String eventIdentifier, boolean indexMayHaveChanged,
             boolean checkForReuse) {
 
@@ -1702,8 +1705,7 @@ class SpatialEntityManager {
      *         <code>true</code>, whether all the entities created or reused for
      *         the different spatial entity types were reused.
      */
-    private CreationResult createSpatialEntitiesForEvent(
-            ObservedHazardEvent event,
+    private CreationResult createSpatialEntitiesForEvent(IHazardEventView event,
             List<SpatialEntity<? extends IHazardEventEntityIdentifier>> hatchingSpatialEntities,
             List<SpatialEntity<? extends IHazardEventEntityIdentifier>> unselectedSpatialEntities,
             List<SpatialEntity<? extends IHazardEventEntityIdentifier>> selectedSpatialEntities,
@@ -1711,8 +1713,8 @@ class SpatialEntityManager {
             HazardTypes hazardTypes, boolean hatching) {
         ISessionConfigurationManager<ObservedSettings> configManager = sessionManager
                 .getConfigurationManager();
-        ISessionEventManager<ObservedHazardEvent> eventManager = sessionManager
-                .getEventManager();
+        ISessionEventManager eventManager = sessionManager.getEventManager();
+        ISessionLockManager lockManager = sessionManager.getLockManager();
 
         /*
          * Get the visual features list; if it is found to be non-empty, or it
@@ -1798,6 +1800,8 @@ class SpatialEntityManager {
                  */
                 CreatedSpatialEntities entities = createSpatialEntitiesForEventVisualFeatures(
                         visualFeaturesList, eventIdentifier, selected,
+                        (lockManager.getHazardEventLockStatus(
+                                event.getEventID()) != LockStatus.LOCKED_BY_OTHER),
                         selectedTime, hazardColor, hazardBorderWidth,
                         hazardBorderStyle, hazardPointDiameter, hazardLabel,
                         HAZARD_EVENT_SINGLE_POINT_TEXT_OFFSET_LENGTH,
@@ -1815,7 +1819,9 @@ class SpatialEntityManager {
                             entities.allReused);
                 }
             } else {
-                boolean editable = eventManager.canEventAreaBeChanged(event);
+                boolean editable = (eventManager.canEventAreaBeChanged(event)
+                        && (lockManager.getHazardEventLockStatus(event
+                                .getEventID()) != LockStatus.LOCKED_BY_OTHER));
                 CreatedSpatialEntity entity = createDefaultSpatialEntityForEvent(
                         event, hazardColor, hazardBorderWidth,
                         hazardBorderStyle, hazardPointDiameter, hazardLabel,
@@ -1890,7 +1896,7 @@ class SpatialEntityManager {
      */
     @SuppressWarnings("unchecked")
     private CreatedSpatialEntities createSpatialEntitiesForEventHatching(
-            IHazardEvent event, HazardTypeEntry hazardTypeEntry,
+            IHazardEventView event, HazardTypeEntry hazardTypeEntry,
             Color hazardColor, double textOffsetLength,
             double textOffsetDirection, int hazardTextPointSize) {
 
@@ -2008,7 +2014,7 @@ class SpatialEntityManager {
      */
     @SuppressWarnings("unchecked")
     private CreatedSpatialEntity createDefaultSpatialEntityForEvent(
-            IHazardEvent event, Color hazardColor, double hazardBorderWidth,
+            IHazardEventView event, Color hazardColor, double hazardBorderWidth,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
             String hazardLabel, double hazardSinglePointTextOffsetLength,
             double hazardSinglePointTextOffsetDirection,
@@ -2046,6 +2052,9 @@ class SpatialEntityManager {
      * @param selected
      *            Flag indicating whether or not the hazard event is currently
      *            selected.
+     * @param editable
+     *            Flag indicating whether or not the hazard event is currently
+     *            editable.
      * @param selectedTime
      *            Current selected time, needed to generate the spatial entities
      *            since the visual features may have temporally variant (and
@@ -2089,10 +2098,10 @@ class SpatialEntityManager {
     @SuppressWarnings("unchecked")
     private CreatedSpatialEntities createSpatialEntitiesForEventVisualFeatures(
             VisualFeaturesList visualFeaturesList, final String eventIdentifier,
-            boolean selected, Date selectedTime, Color hazardColor,
-            double hazardBorderWidth, BorderStyle hazardBorderStyle,
-            double hazardPointDiameter, String hazardLabel,
-            double hazardSinglePointTextOffsetLength,
+            boolean selected, boolean editable, Date selectedTime,
+            Color hazardColor, double hazardBorderWidth,
+            BorderStyle hazardBorderStyle, double hazardPointDiameter,
+            String hazardLabel, double hazardSinglePointTextOffsetLength,
             double hazardSinglePointTextOffsetDirection,
             double hazardMultiPointTextOffsetLength,
             double hazardMultiPointTextOffsetDirection,
@@ -2121,9 +2130,10 @@ class SpatialEntityManager {
                         .get(identifier);
                 SpatialEntity<? extends IHazardEventEntityIdentifier> entity = visualFeature
                         .getStateAtTime(oldEntity, identifier, selected,
-                                selectedTime, hazardColor, hazardBorderWidth,
-                                hazardBorderStyle, hazardPointDiameter,
-                                hazardLabel, hazardSinglePointTextOffsetLength,
+                                editable, selectedTime, hazardColor,
+                                hazardBorderWidth, hazardBorderStyle,
+                                hazardPointDiameter, hazardLabel,
+                                hazardSinglePointTextOffsetLength,
                                 hazardSinglePointTextOffsetDirection,
                                 hazardMultiPointTextOffsetLength,
                                 hazardMultiPointTextOffsetDirection,
@@ -2184,7 +2194,7 @@ class SpatialEntityManager {
      *         should instead be appended.
      */
     private int getInsertionIndexForEntities(SpatialEntityType type,
-            List<ObservedHazardEvent> events, int eventIndex) {
+            List<IHazardEventView> events, int eventIndex) {
 
         /*
          * The index at which to insert the entities is the one where entities
@@ -2309,7 +2319,7 @@ class SpatialEntityManager {
      *            Hazard event for which to get the displayable label.
      * @return Label to be displayed.
      */
-    private String getHazardLabel(IHazardEvent event) {
+    private String getHazardLabel(IHazardEventView event) {
         StringBuilder sb = new StringBuilder();
         sb.append(event.getDisplayEventID());
         String hazardType = HazardEventUtilities.getHazardType(event);
@@ -2366,7 +2376,7 @@ class SpatialEntityManager {
      *         geometry is not to be shown, and is then processed to remove
      *         undesirable characteristics.
      */
-    private IAdvancedGeometry getProcessedBaseGeometry(IHazardEvent event) {
+    private IAdvancedGeometry getProcessedBaseGeometry(IHazardEventView event) {
 
         /*
          * Get either the standard geometry, or the product geometry if the

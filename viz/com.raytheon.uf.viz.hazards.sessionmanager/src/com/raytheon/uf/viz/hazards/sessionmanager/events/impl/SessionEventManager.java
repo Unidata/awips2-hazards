@@ -49,6 +49,7 @@ import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -61,6 +62,8 @@ import java.util.TimerTask;
 import org.apache.commons.lang.time.DateUtils;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
@@ -77,11 +80,17 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEvent
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent.Source;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.hydro.CountyStateData;
@@ -89,6 +98,7 @@ import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.hazards.hydro.RiverPointZoneInfo;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
 import com.raytheon.uf.common.hazards.productgen.ProductGenerationException;
+import com.raytheon.uf.common.message.WsId;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -97,7 +107,6 @@ import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
@@ -125,6 +134,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModi
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
@@ -153,6 +163,8 @@ import com.vividsolutions.jts.geom.Point;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 import gov.noaa.gsd.viz.megawidgets.IParentSpecifier;
 import gov.noaa.gsd.viz.megawidgets.ISpecifier;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetPropertyException;
@@ -161,7 +173,8 @@ import gov.noaa.gsd.viz.megawidgets.TimeMegawidgetSpecifier;
 import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValidatorHelper;
 
 /**
- * Implementation of ISessionEventManager
+ * Session event manager, responsible for tracking and manipulating the state of
+ * all hazard events within the session.
  * 
  * <pre>
  * 
@@ -490,6 +503,9 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      replacements.
  * Dec 16, 2016   27006    bkowal       Set the replaced hazard type attribute on events that are
  *                                      replacing other hazard events.
+ * Dec 19, 2016   21504    Robert.Blum  Adapted to hazard locking.
+ * Jan 05, 2017   21504    Robert.Blum  Changed response to lock break notification if the event
+ *                                      has elapsed.
  * Feb 01, 2017   15556    Chris.Golden Added methods to get the history count and visible history
  *                                      count for a hazard event. Also moved selection methods to
  *                                      new selection manager, while removing use of the old
@@ -600,13 +616,22 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
  * Dec 13, 2017   40923    Chris.Golden Added handling of returned modified hazard event from
  *                                      metadata fetch by merging it into session hazard event.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly mutable session events
+ *                                      for all but the classes in this package. Also added
+ *                                      extensive checking to ensure that locks are acquired, etc.
+ *                                      as necessary. All changing of session events now happens
+ *                                      via this class, and other classes must request such
+ *                                      changes, not make them directly. Also changed addEvent()
+ *                                      to no longer accept the job of merging hazard events; this
+ *                                      is more properly the reason mergeHazardEvents() exists.
+ *                                      Also fixed bug in mergeHazardEvents() that used an origin
+ *                                      of OTHER regardless of the actual origin.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class SessionEventManager
-        implements ISessionEventManager<ObservedHazardEvent> {
+public class SessionEventManager implements ISessionEventManager {
 
     // Private Static Constants
 
@@ -619,12 +644,25 @@ public class SessionEventManager
 
     private static final double GEOMETRY_BUFFER_DISTANCE = .000001;
 
+    private static final IOriginator USER_ORIGINATOR = new IOriginator() {
+
+        @Override
+        public boolean isDirectResultOfUserInput() {
+            return true;
+        }
+
+        @Override
+        public boolean isNotLockedByOthersRequired() {
+            return true;
+        }
+    };
+
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionEventManager.class);
 
     // Private Variables
 
-    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private final ISessionManager<ObservedSettings> sessionManager;
 
     private final ISessionTimeManager timeManager;
 
@@ -634,7 +672,12 @@ public class SessionEventManager
 
     private final ISessionNotificationSender notificationSender;
 
-    private final List<ObservedHazardEvent> events = new ArrayList<>();
+    private final List<ObservedHazardEvent> allEvents = new ArrayList<>();
+
+    private final List<IHazardEventView> allEventViews = new ArrayList<>();
+
+    private final BiMap<ObservedHazardEvent, HazardEventView> viewsForHazardEvents = HashBiMap
+            .create();
 
     /*
      * TODO: Decide whether expiration is to be done in Java code or not. For
@@ -648,7 +691,7 @@ public class SessionEventManager
 
     private ISimulatedTimeChangeListener timeListener;
 
-    private final Set<ObservedHazardEvent> eventsUndergoingMetadataFetch = new HashSet<>();
+    private final Set<IHazardEventView> eventViewsUndergoingMetadataFetch = new HashSet<>();
 
     private final Set<String> identifiersOfEventsAllowingUntilFurtherNotice = new HashSet<>();
 
@@ -698,12 +741,17 @@ public class SessionEventManager
     private final Map<String, HazardEvent> latestVersionsFromDatabaseForEventIdentifiers = new HashMap<>();
 
     /**
-     * Map pairing event identifiers for all the {@link #events} with historical
-     * versions with the number of historical versions. If an event identifier
-     * has no associated value within this map, the event has no historical
-     * versions.
+     * Map pairing event identifiers for all the {@link #allEvents} with
+     * historical versions with the number of historical versions. If an event
+     * identifier has no associated value within this map, the event has no
+     * historical versions.
      */
     private final Map<String, Integer> historicalVersionCountsForEventIdentifiers = new HashMap<>();
+
+    /**
+     * Identifiers of events that are in the database.
+     */
+    private final Set<String> identifiersOfPersistedEvents = new HashSet<>();
 
     /**
      * Set of identifiers for all events that are currently checked.
@@ -715,7 +763,7 @@ public class SessionEventManager
      */
     private final Set<String> eventIdentifiersWithEndingStatus = new HashSet<>();
 
-    private final Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEventIdentifiers = new HashMap<>();
+    private final Map<String, Collection<IHazardEventView>> conflictingEventsForSelectedEventIdentifiers = new HashMap<>();
 
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
 
@@ -831,6 +879,26 @@ public class SessionEventManager
     };
 
     /**
+     * Intra-managerial notification handler for hazard event lock status
+     * changes.
+     */
+    private IIntraNotificationHandler<SessionEventsLockStatusModified> eventLockChangeHandler = new IIntraNotificationHandler<SessionEventsLockStatusModified>() {
+
+        @Override
+        public void handleNotification(
+                SessionEventsLockStatusModified notification) {
+            sessionEventsLockStatusModified(notification.getEventIdentifiers(),
+                    notification.getOriginator());
+        }
+
+        @Override
+        public boolean isSynchronous(
+                SessionEventsLockStatusModified notification) {
+            return true;
+        }
+    };
+
+    /**
      * Intra-managerial notification handler for product generation completions.
      */
     private IIntraNotificationHandler<ProductGenerationComplete> productGenerationCompletionHandler = new IIntraNotificationHandler<ProductGenerationComplete>() {
@@ -890,8 +958,7 @@ public class SessionEventManager
     // Public Constructors
 
     @SuppressWarnings("unchecked")
-    public SessionEventManager(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager,
+    public SessionEventManager(ISessionManager<ObservedSettings> sessionManager,
             ISessionTimeManager timeManager,
             ISessionConfigurationManager<ObservedSettings> configManager,
             IHazardEventManager dbManager,
@@ -918,6 +985,8 @@ public class SessionEventManager
         notificationSender.registerIntraNotificationHandler(
                 SessionEventModified.class, eventChangeHandler);
         notificationSender.registerIntraNotificationHandler(
+                SessionEventsLockStatusModified.class, eventLockChangeHandler);
+        notificationSender.registerIntraNotificationHandler(
                 ProductGenerationComplete.class,
                 productGenerationCompletionHandler);
         notificationSender.registerIntraNotificationHandler(
@@ -932,52 +1001,67 @@ public class SessionEventManager
     // Public Methods
 
     @Override
-    public ObservedHazardEvent getEventById(String eventId) {
-        for (ObservedHazardEvent event : getEvents()) {
-            if (event.getEventID().equals(eventId)) {
-                return event;
+    public IHazardEventView getEventById(String identifier) {
+        for (IHazardEventView eventView : allEventViews) {
+            if (eventView.getEventID().equals(identifier)) {
+                return eventView;
             }
         }
         return null;
     }
 
     @Override
-    public HazardHistoryList getEventHistoryById(String eventId) {
-        return dbManager.getHistoryByEventID(eventId, false);
+    public List<IHazardEventView> getEventHistoryById(String identifier) {
+
+        /*
+         * TODO: History lists should be cached; this is wasteful.
+         */
+        HazardHistoryList hazardHistoryList = dbManager
+                .getHistoryByEventID(identifier, false);
+        if (hazardHistoryList == null) {
+            return null;
+        }
+        List<IHazardEventView> viewList = new ArrayList<>(
+                hazardHistoryList.size());
+        for (IHazardEvent event : hazardHistoryList) {
+            viewList.add(new HazardEventView(event));
+        }
+        return viewList;
     }
 
     @Override
-    public int getHistoricalVersionCountForEvent(String eventIdentifier) {
+    public int getHistoricalVersionCountForEvent(String identifier) {
         Integer count = historicalVersionCountsForEventIdentifiers
-                .get(eventIdentifier);
+                .get(identifier);
         return (count == null ? 0 : count);
     }
 
     @Override
-    public Collection<ObservedHazardEvent> getEventsByStatus(
-            HazardStatus status, boolean includeUntyped) {
-        Collection<ObservedHazardEvent> allEvents = getEvents();
-        Collection<ObservedHazardEvent> events = new ArrayList<>(
-                allEvents.size());
-        for (ObservedHazardEvent event : allEvents) {
-            if (event.getStatus().equals(status)
-                    && (includeUntyped || (event.getHazardType() != null))) {
-                events.add(event);
+    public Collection<IHazardEventView> getEventsByStatus(HazardStatus status,
+            boolean includeUntyped) {
+        Collection<? extends IHazardEventView> allEventViews = getEvents();
+        Collection<IHazardEventView> eventViews = new ArrayList<>(
+                allEventViews.size());
+        for (IHazardEventView eventView : allEventViews) {
+            if (eventView.getStatus().equals(status) && (includeUntyped
+                    || (eventView.getHazardType() != null))) {
+                eventViews.add(eventView);
             }
         }
-        return events;
+        return eventViews;
     }
 
     @Override
-    public List<ObservedHazardEvent> getCheckedEvents() {
-        Collection<ObservedHazardEvent> allEvents = getEventsForCurrentSettings();
-        List<ObservedHazardEvent> events = new ArrayList<>(allEvents.size());
-        for (ObservedHazardEvent event : allEvents) {
-            if (checkedEventIdentifiers.contains(event.getEventID())) {
-                events.add(event);
+    public List<IHazardEventView> getCheckedEvents() {
+        Collection<IHazardEventView> allEventViews = getEventsForCurrentSettings();
+        List<IHazardEventView> eventViews = new ArrayList<>(
+                allEventViews.size());
+        for (IHazardEventView eventView : allEventViews) {
+            if (checkedEventIdentifiers.contains(eventView.getEventID())) {
+                eventViews.add(eventView);
             }
         }
-        return events;
+        return eventViews;
     }
 
     /**
@@ -997,7 +1081,7 @@ public class SessionEventManager
                 || ((string1 != null) && string1.equals(string2)));
     }
 
-    private boolean userConfirmationAsNecessary(ObservedHazardEvent event) {
+    private boolean userConfirmationAsNecessary(IReadableHazardEvent event) {
         if (event.getHazardAttribute(VISIBLE_GEOMETRY)
                 .equals(LOW_RESOLUTION_GEOMETRY_IS_VISIBLE)) {
             IQuestionAnswerer answerer = messenger.getQuestionAnswerer();
@@ -1008,16 +1092,122 @@ public class SessionEventManager
     }
 
     @Override
-    public List<ObservedHazardEvent> getEventsForCurrentSettings() {
-        List<ObservedHazardEvent> result = getEvents();
+    public List<IHazardEventView> getEventsForCurrentSettings() {
+        List<IHazardEventView> result = getEvents();
         filterEventsForConfig(result);
         return result;
     }
 
     @Override
-    public void setEventCategory(ObservedHazardEvent event, String category,
+    public <T> EventPropertyChangeResult changeEventProperty(
+            IHazardEventView event, EventPropertyChange<T> propertyChange,
+            T parameters) {
+        return changeEventProperty(event, propertyChange, parameters,
+                Originator.OTHER);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> EventPropertyChangeResult changeEventProperty(
+            IHazardEventView event, EventPropertyChange<T> propertyChange,
+            T parameters, IOriginator originator) {
+
+        /*
+         * Ensure the event is being managed.
+         */
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+
+        /*
+         * If this change originates with the user, get a lock on the event,
+         * aborting the change attempt and notifying the user if the lock cannot
+         * be acquired.
+         */
+        if (originator.isNotLockedByOthersRequired() && isEventInDatabase(event)
+                && (sessionManager.getLockManager()
+                        .lockHazardEvent(event.getEventID()) == false)) {
+            showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
+                    originator, event.getEventID());
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
+
+        /*
+         * Attempt to change the event property as directed.
+         */
+        if (propertyChange == SET_EVENT_CATEGORY) {
+            setEventCategory(sessionEvent, (String) parameters, originator);
+        } else if (propertyChange == SET_EVENT_TYPE) {
+            EventType type = (EventType) parameters;
+            setEventType(sessionEvent, type.getPhenomenon(),
+                    type.getSignificance(), type.getSubType(), originator);
+        } else if (propertyChange == SET_EVENT_TYPE_TO_DEFAULT) {
+            if (setEventTypeToDefault(sessionEvent, originator) == false) {
+                return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+            }
+        } else if (propertyChange == SET_EVENT_CREATION_TIME) {
+            sessionEvent.setCreationTime((Date) parameters, originator);
+        } else if (propertyChange == SET_EVENT_START_TIME) {
+            sessionEvent.setStartTime((Date) parameters, originator);
+        } else if (propertyChange == SET_EVENT_END_TIME) {
+            sessionEvent.setEndTime((Date) parameters, originator);
+        } else if (propertyChange == SET_EVENT_TIME_RANGE) {
+            Pair<Date, Date> startAndEndTimes = (Pair<Date, Date>) parameters;
+            if (setEventTimeRange(sessionEvent, startAndEndTimes.getFirst(),
+                    startAndEndTimes.getSecond(), originator) == false) {
+                return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+            }
+        } else if (propertyChange == SET_EVENT_GEOMETRY) {
+            if (setEventGeometry(sessionEvent, (IAdvancedGeometry) parameters,
+                    originator) == false) {
+                return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+            }
+        } else if (propertyChange == REPLACE_EVENT_VISUAL_FEATURE) {
+            if (sessionEvent.setVisualFeature((VisualFeature) parameters,
+                    originator) == false) {
+                return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+            }
+        } else if (propertyChange == SET_EVENT_VISUAL_FEATURES) {
+            sessionEvent.setVisualFeatures((VisualFeaturesList) parameters,
+                    originator);
+        } else if (propertyChange == SET_EVENT_SOURCE) {
+            sessionEvent.setSource((Source) parameters, originator);
+        } else if (propertyChange == SET_EVENT_WORKSTATION_IDENTIFIER) {
+            sessionEvent.setWsId((WsId) parameters, originator);
+        } else if (propertyChange == SET_EVENT_ATTRIBUTES) {
+            sessionEvent.setHazardAttributes(
+                    (Map<String, Serializable>) parameters, originator);
+        } else if (propertyChange == ADD_EVENT_ATTRIBUTE) {
+            Pair<String, Serializable> keyAndValue = (Pair<String, Serializable>) parameters;
+            sessionEvent.addHazardAttribute(keyAndValue.getFirst(),
+                    keyAndValue.getSecond(), originator);
+        } else if (propertyChange == ADD_EVENT_ATTRIBUTES) {
+            sessionEvent.addHazardAttributes(
+                    (Map<String, Serializable>) parameters, originator);
+        } else if (propertyChange == REMOVE_EVENT_ATTRIBUTE) {
+            sessionEvent.removeHazardAttribute((String) parameters, originator);
+        } else {
+            throw new IllegalArgumentException(
+                    "unknown property change \"" + parameters + "\"");
+        }
+        return EventPropertyChangeResult.SUCCESS;
+    }
+
+    /**
+     * Set the specified event to have the specified category. As a side effect,
+     * the event is changed to have no type.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param category
+     *            Category for the event.
+     * @param originator
+     *            Originator of this change.
+     */
+    private void setEventCategory(ObservedHazardEvent event, String category,
             IOriginator originator) {
-        if (!canChangeType(event)) {
+        if (!canEventTypeBeChanged(event)) {
             throw new IllegalStateException(
                     "cannot change type of event " + event.getEventID());
         }
@@ -1028,8 +1218,28 @@ public class SessionEventManager
         sessionManager.finishBatchedChanges();
     }
 
-    @Override
-    public boolean setEventType(ObservedHazardEvent event, String phenomenon,
+    /**
+     * Set the specified event to have the specified type. If the former cannot
+     * change its type, a new event will be created as a result.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param phenomenon
+     *            Phenomenon, or <code>null</code> if the event is to have no
+     *            type.
+     * @param significance
+     *            Phenomenon, or <code>null</code> if the event is to have no
+     *            type.
+     * @param subType
+     *            Phenomenon, or <code>null</code> if the event is to have no
+     *            subtype.
+     * @param originator
+     *            Originator of this change.
+     * @return True if the event type was set, or false if the attempt resulted
+     *         in the creation of a new event with the new type, and the
+     *         original event has not had its type changed.
+     */
+    private boolean setEventType(ObservedHazardEvent event, String phenomenon,
             String significance, String subType, IOriginator originator) {
 
         /*
@@ -1048,10 +1258,10 @@ public class SessionEventManager
          * type. Otherwise, record the old time resolution for this event, as it
          * may change.
          */
-        ObservedHazardEvent oldEvent = null;
         TimeResolution oldTimeResolution = configManager
                 .getTimeResolution(event);
-        if (canChangeType(event) == false) {
+        ObservedHazardEvent oldEvent = null;
+        if (canEventTypeBeChanged(event) == false) {
             oldEvent = event;
             IHazardEvent baseEvent = new BaseHazardEvent(event);
             baseEvent.setEventID("");
@@ -1095,7 +1305,8 @@ public class SessionEventManager
              * Add the event, and add it to the selection as well.
              */
             try {
-                event = addEvent(baseEvent, false, originator);
+                event = getSessionEventForView(
+                        addEvent(baseEvent, false, originator));
             } catch (HazardEventServiceException e) {
                 statusHandler
                         .error("Could not add new event that was to replace event "
@@ -1174,7 +1385,7 @@ public class SessionEventManager
                 ? roundDateDownToNearestMinute(oldStartTime) : oldStartTime);
         Date oldEndTime = event.getEndTime();
         Date newEndTime = ((oldEvent == null)
-                && (event.getSource() != IHazardEvent.Source.RECOMMENDER)
+                && (event.getSource() != IHazardEventView.Source.RECOMMENDER)
                         ? new Date(newStartTime.getTime()
                                 + configManager.getDefaultDuration(event))
                         : (oldEndTime
@@ -1192,7 +1403,7 @@ public class SessionEventManager
          * "until further notice" is subsequently turned off.
          */
         if ((oldEvent == null)
-                && (event.getSource() != IHazardEvent.Source.RECOMMENDER)) {
+                && (event.getSource() != IHazardEventView.Source.RECOMMENDER)) {
             event.removeHazardAttribute(
                     HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
             event.removeHazardAttribute(
@@ -1211,8 +1422,9 @@ public class SessionEventManager
         /*
          * Update the time boundaries and duration choices, if any.
          */
-        updateTimeBoundariesForEvents(event, false);
-        updateDurationChoicesForEvent(event, false);
+        IHazardEventView eventView = getViewForSessionEvent(event);
+        updateTimeBoundariesForEvents(eventView, false);
+        updateDurationChoicesForEvent(eventView, false);
 
         /*
          * If this is a new event, convert its end time to a duration if it does
@@ -1229,8 +1441,18 @@ public class SessionEventManager
         return (originator != Originator.OTHER);
     }
 
-    @Override
-    public boolean setEventTypeToDefault(ObservedHazardEvent event,
+    /**
+     * Set the specified event to have the default event type, if one has been
+     * specified in the configuration.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param originator
+     *            Originator of this change.
+     * @return <code>true</code> if the event type was set, <code>false</code>
+     *         if no default type was found.
+     */
+    private boolean setEventTypeToDefault(ObservedHazardEvent event,
             IOriginator originator) {
 
         /*
@@ -1293,8 +1515,22 @@ public class SessionEventManager
         return false;
     }
 
-    @Override
-    public boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
+    /**
+     * Set the specified event's time range.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param startTime
+     *            New start time.
+     * @param endTime
+     *            New end time.
+     * @param originator
+     *            Originator of this change.
+     * @return True if the new time range is now in use, false if it was
+     *         rejected because one or both values fell outside their allowed
+     *         boundaries.
+     */
+    private boolean setEventTimeRange(ObservedHazardEvent event, Date startTime,
             Date endTime, IOriginator originator) {
 
         /*
@@ -1363,7 +1599,8 @@ public class SessionEventManager
          * If the end time boundaries need shifting, do so now.
          */
         if (updateEndTimeBoundaries) {
-            updateEndTimeBoundariesForSingleEvent(event, start, end);
+            updateEndTimeBoundariesForSingleEvent(getViewForSessionEvent(event),
+                    start, end);
         }
 
         /*
@@ -1376,8 +1613,20 @@ public class SessionEventManager
         return true;
     }
 
-    @Override
-    public boolean setEventGeometry(ObservedHazardEvent event,
+    /**
+     * Set the specified event's geometry. It is assumed that the specified
+     * geometry is valid, that is, that {@link Geometry#isValid()} would return
+     * <code>true</code>.
+     * 
+     * @param event
+     *            Event to be modified.
+     * @param geometry
+     *            New geometry.
+     * @param originator
+     *            Originator of this change.
+     * @return True if the new geometry is now in use, false if it was rejected.
+     */
+    private boolean setEventGeometry(ObservedHazardEvent event,
             IAdvancedGeometry geometry, IOriginator originator) {
 
         /*
@@ -1397,11 +1646,72 @@ public class SessionEventManager
             sessionManager.startBatchedChanges();
             makeHighResolutionVisible(event, originator);
             event.setGeometry(geometry, originator);
-            updateHazardAreas(event);
+            updateHazardAreas(getViewForSessionEvent(event));
             sessionManager.finishBatchedChanges();
             return true;
         }
         return false;
+    }
+
+    private boolean isEventNotLockedByOther(IHazardEventView eventView) {
+        return (sessionManager.getLockManager().getHazardEventLockStatus(
+                eventView.getEventID()) != LockStatus.LOCKED_BY_OTHER);
+    }
+
+    @Override
+    public boolean isUndoable(IHazardEventView event) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return false;
+        }
+        if (isEventNotLockedByOther(event)) {
+            return sessionEvent.isUndoable();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isRedoable(IHazardEventView event) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return false;
+        }
+        if (isEventNotLockedByOther(event)) {
+            return sessionEvent.isRedoable();
+        }
+        return false;
+    }
+
+    @Override
+    public EventPropertyChangeResult undo(IHazardEventView event) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+        if (isEventInDatabase(event) && sessionManager.getLockManager()
+                .lockHazardEvent(event.getEventID()) == false) {
+            showWarningMessageAboutLockedEvents("Cannot Undo", "undone",
+                    USER_ORIGINATOR, event.getEventID());
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
+        return (sessionEvent.undo() ? EventPropertyChangeResult.SUCCESS
+                : EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE);
+    }
+
+    @Override
+    public EventPropertyChangeResult redo(IHazardEventView event) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+        if (isEventInDatabase(event) && (sessionManager.getLockManager()
+                .lockHazardEvent(event.getEventID()) == false)) {
+            showWarningMessageAboutLockedEvents("Cannot Redo", "redone",
+                    USER_ORIGINATOR, event.getEventID());
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
+        return (sessionEvent.redo() ? EventPropertyChangeResult.SUCCESS
+                : EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE);
     }
 
     /**
@@ -1427,7 +1737,7 @@ public class SessionEventManager
      * @param event
      *            Event to have its end time converted to a duration.
      */
-    private void convertEndTimeToDuration(IHazardEvent event) {
+    private void convertEndTimeToDuration(ObservedHazardEvent event) {
 
         /*
          * Do nothing unless this event has duration choices.
@@ -1533,7 +1843,7 @@ public class SessionEventManager
      */
     private void sessionEventsAdded(SessionEventsAdded change) {
         sessionManager.startBatchedChanges();
-        for (IHazardEvent event : change.getEvents()) {
+        for (IHazardEventView event : change.getEvents()) {
             ensureEventEndTimeUntilFurtherNoticeAppropriate(event, true);
             updateTimeBoundariesForEvents(event, false);
             updateDurationChoicesForEvent(event, false);
@@ -1550,7 +1860,7 @@ public class SessionEventManager
      */
     private void sessionEventsRemoved(SessionEventsRemoved change) {
         sessionManager.startBatchedChanges();
-        for (IHazardEvent event : change.getEvents()) {
+        for (IHazardEventView event : change.getEvents()) {
             timeResolutionsForEventIdentifiers.remove(event.getEventID());
             updateSavedTimesForEventIfIssued(event, true);
             updateTimeBoundariesForEvents(event, true);
@@ -1563,11 +1873,11 @@ public class SessionEventManager
     /**
      * Respond to an event's type change.
      * 
-     * @param event
-     *            Event that experienced the change.
+     * @param eventView
+     *            View of the event that experienced the change.
      */
-    private void sessionEventTypeModified(final ObservedHazardEvent event) {
-        updateConflictingEventsForSelectedEventIdentifiers(event, false);
+    private void sessionEventTypeModified(final IHazardEventView eventView) {
+        updateConflictingEventsForSelectedEventIdentifiers(eventView, false);
 
         /*
          * Event metadata must be updated asynchronously because the event type
@@ -1577,7 +1887,7 @@ public class SessionEventManager
                 .schedule(new Runnable() {
                     @Override
                     public void run() {
-                        updateEventMetadata(event);
+                        updateEventMetadata(eventView);
                     }
                 });
     }
@@ -1585,29 +1895,29 @@ public class SessionEventManager
     /**
      * Respond to an event's status change.
      * 
-     * @param event
+     * @param eventView
      *            Event that experienced the change.
      * @param originator
      *            Originator of the change.
      */
-    private void sessionEventStatusModified(final ObservedHazardEvent event,
+    private void sessionEventStatusModified(final IHazardEventView eventView,
             final IOriginator originator) {
-        if ((event.getStatus() == HazardStatus.ELAPSED)
-                || (event.getStatus() == HazardStatus.ENDING)
-                || (event.getStatus() == HazardStatus.ENDED)) {
-            if (event.getStatus() == HazardStatus.ENDING) {
-                eventIdentifiersWithEndingStatus.add(event.getEventID());
+        if ((eventView.getStatus() == HazardStatus.ELAPSED)
+                || (eventView.getStatus() == HazardStatus.ENDING)
+                || (eventView.getStatus() == HazardStatus.ENDED)) {
+            if (eventView.getStatus() == HazardStatus.ENDING) {
+                eventIdentifiersWithEndingStatus.add(eventView.getEventID());
             } else {
-                eventIdentifiersWithEndingStatus.remove(event.getEventID());
+                eventIdentifiersWithEndingStatus.remove(eventView.getEventID());
             }
-            updateTimeBoundariesForEvents(event, false);
-            updateDurationChoicesForEvent(event, false);
-        } else if ((event.getStatus() == HazardStatus.ISSUED)
+            updateTimeBoundariesForEvents(eventView, false);
+            updateDurationChoicesForEvent(eventView, false);
+        } else if ((eventView.getStatus() == HazardStatus.ISSUED)
                 && eventIdentifiersWithEndingStatus
-                        .contains(event.getEventID())) {
-            eventIdentifiersWithEndingStatus.remove(event.getEventID());
-            updateTimeBoundariesForEvents(event, false);
-            updateDurationChoicesForEvent(event, false);
+                        .contains(eventView.getEventID())) {
+            eventIdentifiersWithEndingStatus.remove(eventView.getEventID());
+            updateTimeBoundariesForEvents(eventView, false);
+            updateDurationChoicesForEvent(eventView, false);
         }
 
         /*
@@ -1619,7 +1929,24 @@ public class SessionEventManager
                 .schedule(new Runnable() {
                     @Override
                     public void run() {
-                        updateEventMetadata(event);
+                        updateEventMetadata(eventView);
+                        if ((originator != Originator.DATABASE) && ((eventView
+                                .getStatus() == HazardStatus.ELAPSED)
+                                || (eventView.getStatus() == HazardStatus.ENDED)
+                                || (eventView
+                                        .getStatus() == HazardStatus.ISSUED)
+                                || (eventView
+                                        .getStatus() == HazardStatus.PROPOSED))) {
+                            if ((sessionManager.getLockManager()
+                                    .unlockHazardEvent(
+                                            eventView.getEventID()) == false)
+                                    && originator.isDirectResultOfUserInput()) {
+                                messenger.getWarner().warnUser("Cannot Unlock",
+                                        "Cannot unlock event "
+                                                + eventView.getEventID()
+                                                + " following metatdata update.");
+                            }
+                        }
                     }
                 });
     }
@@ -1651,9 +1978,11 @@ public class SessionEventManager
                     Set<String> newlyDeselectedEventIdentifiers = new HashSet<>(
                             eventSet.size(), 1.0f);
                     for (IEvent event : eventSet) {
-                        IHazardEvent hazardEvent = (IHazardEvent) event;
-                        ObservedHazardEvent oEvent = getEventById(
+                        BaseHazardEvent hazardEvent = (BaseHazardEvent) event;
+                        IHazardEventView oEventView = getEventById(
                                 hazardEvent.getEventID());
+                        ObservedHazardEvent oEvent = getSessionEventForView(
+                                oEventView);
 
                         /*
                          * If the hazard is pending or proposed, make it issued;
@@ -1703,7 +2032,7 @@ public class SessionEventManager
                          * changed status normally get stored after generation.
                          */
                         if (wasPreIssued) {
-                            updateSavedTimesForEventIfIssued(oEvent, false);
+                            updateSavedTimesForEventIfIssued(oEventView, false);
 
                             /*
                              * TODO Uncomment this as part of Redmine issue
@@ -1712,12 +2041,20 @@ public class SessionEventManager
                              * juncture, and results in an exception.)
                              */
                             // updateTimeRangeBoundariesOfJustIssuedEvent(
-                            // oEvent,
+                            // oEventView,
                             // (Long) hazardEvent
                             // .getHazardAttribute(HazardConstants.ISSUE_TIME));
                             // updateDurationChoicesForEvent(oEvent, false);
                         } else if (wasReissued) {
                             persistEvent(oEvent);
+                            if (sessionManager.getLockManager()
+                                    .unlockHazardEvent(
+                                            oEvent.getEventID()) == false) {
+                                messenger.getWarner().warnUser("Cannot Unlock",
+                                        "Cannot unlock event "
+                                                + oEvent.getEventID()
+                                                + " following reissuance.");
+                            }
                         }
                     }
 
@@ -1743,13 +2080,10 @@ public class SessionEventManager
     /**
      * If an ending hazard is issued or an issued hazard is replaced, we need to
      * change it's state to ended.
-     * 
-     * @param hazardEvent
-     * @return
      */
-    private boolean isChangeToEndedStatusNeeded(IHazardEvent hazardEvent) {
-        return hazardEvent.getStatus().equals(HazardStatus.ENDING)
-                || hazardEvent.getHazardAttribute(REPLACED_BY) != null;
+    private boolean isChangeToEndedStatusNeeded(IReadableHazardEvent event) {
+        return event.getStatus().equals(HazardStatus.ENDING)
+                || event.getHazardAttribute(REPLACED_BY) != null;
     }
 
     /**
@@ -1765,7 +2099,7 @@ public class SessionEventManager
 
     @Override
     public MegawidgetSpecifierManager getMegawidgetSpecifiers(
-            IHazardEvent event) {
+            IHazardEventView event) {
 
         /*
          * If the specified event is an observed hazard event, then it is an
@@ -1777,13 +2111,13 @@ public class SessionEventManager
          * megawidget specifier manager should simply be fetched and returned,
          * not cached and not given a chance to modify the hazard event.
          */
-        if (event instanceof ObservedHazardEvent) {
+        if (getSessionEventForView(event) != null) {
             MegawidgetSpecifierManager manager = megawidgetSpecifiersForEventIdentifiers
                     .get(event.getEventID());
             if (manager != null) {
                 return manager;
             }
-            updateEventMetadata((ObservedHazardEvent) event);
+            updateEventMetadata(event);
             return megawidgetSpecifiersForEventIdentifiers
                     .get(event.getEventID());
         } else {
@@ -1793,8 +2127,33 @@ public class SessionEventManager
         }
     }
 
+    /**
+     * Get the session event for which the specified object acts as a view.
+     * 
+     * @param eventView
+     *            View of the event.
+     * @return Session event with which the view is associated, or
+     *         <code>null</code> if there is no associated event.
+     */
+    private ObservedHazardEvent getSessionEventForView(
+            IHazardEventView eventView) {
+        return viewsForHazardEvents.inverse().get(eventView);
+    }
+
+    /**
+     * Get the view of the specified session event.
+     * 
+     * @param event
+     *            Session event.
+     * @return View of the session event, or <code>null</code> if there is no
+     *         associated view.
+     */
+    IHazardEventView getViewForSessionEvent(ObservedHazardEvent event) {
+        return viewsForHazardEvents.get(event);
+    }
+
     @Override
-    public List<String> getDurationChoices(IHazardEvent event) {
+    public List<String> getDurationChoices(IHazardEventView event) {
 
         /*
          * Get the duration choices for the hazard event that are cached. If
@@ -1806,7 +2165,7 @@ public class SessionEventManager
         List<String> durationChoices = durationChoicesForEventIdentifiers
                 .get(event.getEventID());
         if ((durationChoices == null)
-                && (event instanceof ObservedHazardEvent == false)) {
+                && (getSessionEventForView(event) == null)) {
             durationChoices = configManager.getDurationChoices(event);
             if (durationChoices.isEmpty() == false) {
 
@@ -1844,15 +2203,15 @@ public class SessionEventManager
      * Get the map of the specified duration choices to their time deltas in
      * milliseconds.
      * 
-     * @param event
-     *            Event for which the deltas are being fetched.
+     * @param eventView
+     *            View of the event for which the deltas are being fetched.
      * @param durationChoices
      *            List of duration choices to be turned into deltas.
      * @return Map of the duration choices to their associated time deltas in
      *         milliseconds, or <code>null</code> if an error occurs.
      */
-    private Map<String, Long> getDeltasForDurationChoices(IHazardEvent event,
-            List<String> durationChoices) {
+    private Map<String, Long> getDeltasForDurationChoices(
+            IHazardEventView eventView, List<String> durationChoices) {
 
         /*
          * Get a map of the choice strings to their associated time deltas in
@@ -1866,15 +2225,14 @@ public class SessionEventManager
         } catch (MegawidgetPropertyException e) {
             statusHandler
                     .error("invalid list of duration choices for event of type "
-                            + HazardEventUtilities.getHazardType(event), e);
+                            + HazardEventUtilities.getHazardType(eventView), e);
             return null;
         }
         return deltasForDurations;
     }
 
     @Override
-    public void eventCommandInvoked(ObservedHazardEvent event,
-            String identifier,
+    public void eventCommandInvoked(IHazardEventView event, String identifier,
             Map<String, Map<String, Object>> mutableProperties) {
 
         /*
@@ -1886,7 +2244,7 @@ public class SessionEventManager
         String eventId = event.getEventID();
         if (metadataReloadTriggeringIdentifiersForEventIdentifiers
                 .containsKey(eventId)
-                && (eventsUndergoingMetadataFetch.contains(event) == false)
+                && (eventViewsUndergoingMetadataFetch.contains(event) == false)
                 && metadataReloadTriggeringIdentifiersForEventIdentifiers
                         .get(eventId).contains(identifier)) {
             updateEventMetadata(event);
@@ -1912,7 +2270,7 @@ public class SessionEventManager
         if (eventModifyingFunctionName == null) {
             return;
         }
-        configManager.runEventModifyingScript(event,
+        configManager.runEventModifyingScript(new BaseHazardEvent(event),
                 scriptFilesForEventIdentifiers.get(event.getEventID()),
                 eventModifyingFunctionName, mutableProperties,
                 eventModifyingScriptListener);
@@ -1920,9 +2278,9 @@ public class SessionEventManager
 
     @Override
     public Map<String, String> getRecommendersForTriggerIdentifiers(
-            String eventIdentifier) {
+            String identifier) {
         Map<String, String> map = recommendersForTriggerIdentifiersForEventIdentifiers
-                .get(eventIdentifier);
+                .get(identifier);
         return (map == null ? Collections.<String, String> emptyMap() : map);
     }
 
@@ -1937,16 +2295,16 @@ public class SessionEventManager
     private void eventModifyingScriptExecutionComplete(
             ModifiedHazardEvent event) {
         IHazardEvent hazardEvent = event.getHazardEvent();
-        ObservedHazardEvent originalEvent = getEventById(
+        IHazardEventView originalEventView = getEventById(
                 hazardEvent.getEventID());
-        if (originalEvent != null) {
+        if (originalEventView != null) {
             if (event.getMutableProperties() != null) {
                 notificationSender.postNotificationAsync(
                         new SessionEventScriptExtraDataAvailable(this,
-                                originalEvent, event.getMutableProperties(),
+                                originalEventView, event.getMutableProperties(),
                                 Originator.OTHER));
             }
-            originalEvent
+            getSessionEventForView(originalEventView)
                     .setHazardAttributes(hazardEvent.getHazardAttributes());
         }
     }
@@ -1956,10 +2314,10 @@ public class SessionEventManager
      * (creation of the event, updating of status or hazard type) that may
      * result in the available metadata changing.
      * 
-     * @param event
-     *            Event for which metadata may need updating.
+     * @param eventView
+     *            View of the event for which metadata may need updating.
      */
-    private void updateEventMetadata(ObservedHazardEvent event) {
+    private void updateEventMetadata(IHazardEventView eventView) {
 
         /*
          * Get a new megawidget specifier manager for this event, and store it
@@ -1967,34 +2325,34 @@ public class SessionEventManager
          * and cache it away as well.
          */
         HazardEventMetadata metadata = configManager
-                .getMetadataForHazardEvent(new BaseHazardEvent(event));
+                .getMetadataForHazardEvent(new BaseHazardEvent(eventView));
         MegawidgetSpecifierManager manager = metadata
                 .getMegawidgetSpecifierManager();
 
         assert (manager != null);
-        assert (event.getStartTime() != null);
-        assert (event.getEndTime() != null);
+        assert (eventView.getStartTime() != null);
+        assert (eventView.getEndTime() != null);
 
-        megawidgetSpecifiersForEventIdentifiers.put(event.getEventID(),
+        megawidgetSpecifiersForEventIdentifiers.put(eventView.getEventID(),
                 manager);
         metadataReloadTriggeringIdentifiersForEventIdentifiers.put(
-                event.getEventID(),
+                eventView.getEventID(),
                 metadata.getRefreshTriggeringMetadataKeys());
         metadataIdentifiersAffectingModifyFlagsForEventIdentifiers.put(
-                event.getEventID(),
+                eventView.getEventID(),
                 metadata.getAffectingModifyFlagMetadataKeys());
         recommendersForTriggerIdentifiersForEventIdentifiers.put(
-                event.getEventID(),
+                eventView.getEventID(),
                 metadata.getRecommendersTriggeredForMetadataKeys());
         editRiseCrestFallTriggeringIdentifiersForEventIdentifiers.put(
-                event.getEventID(),
+                eventView.getEventID(),
                 metadata.getEditRiseCrestFallTriggeringMetadataKeys());
         Map<String, String> eventModifiers = metadata
                 .getEventModifyingFunctionNamesForIdentifiers();
         if (eventModifiers != null) {
-            scriptFilesForEventIdentifiers.put(event.getEventID(),
+            scriptFilesForEventIdentifiers.put(eventView.getEventID(),
                     metadata.getScriptFile());
-            eventModifyingScriptsForEventIdentifiers.put(event.getEventID(),
+            eventModifyingScriptsForEventIdentifiers.put(eventView.getEventID(),
                     eventModifiers);
         }
 
@@ -2005,17 +2363,27 @@ public class SessionEventManager
          * changes to the event that usually result in a metadata reload do not
          * do so.
          */
-        eventsUndergoingMetadataFetch.add(event);
+        eventViewsUndergoingMetadataFetch.add(eventView);
 
         /*
          * Fire off a notification that the metadata may have changed for this
          * event if this event is currently one of the session events (it may
          * not be if it has not yet been added).
          */
-        if (events.contains(event)) {
-            notificationSender
-                    .postNotificationAsync(new SessionEventModified(this, event,
+        if (allEventViews.contains(eventView)) {
+            notificationSender.postNotificationAsync(
+                    new SessionEventModified(this, eventView,
                             new EventMetadataModification(), Originator.OTHER));
+        }
+
+        /*
+         * If the event was modified by the metadata refresh process, merge the
+         * changes into the canonical session event.
+         */
+        IHazardEvent modifiedHazardEvent = metadata.getModifiedHazardEvent();
+        if (modifiedHazardEvent != null) {
+            mergeHazardEvents(modifiedHazardEvent, eventView, false, false,
+                    false, false, Originator.OTHER);
         }
 
         /*
@@ -2044,38 +2412,30 @@ public class SessionEventManager
          * For now, copying back and forth between maps holding Object values
          * and those holding Serializable values must be done.
          */
-        boolean eventModified = event.isModified();
-        Map<String, Serializable> attributes = event.getHazardAttributes();
+        boolean eventModified = eventView.isModified();
+        Map<String, Serializable> attributes = eventView.getHazardAttributes();
         Map<String, Object> newAttributes = new HashMap<String, Object>(
                 attributes);
         newAttributes.keySet()
                 .removeAll(metadata.getOverrideOldValuesMetadataKeys());
         populateTimeAttributesStartingStates(manager.getSpecifiers(),
-                newAttributes, event.getStartTime().getTime(),
-                event.getEndTime().getTime());
+                newAttributes, eventView.getStartTime().getTime(),
+                eventView.getEndTime().getTime());
         manager.populateWithStartingStates(newAttributes);
         attributes = new HashMap<>(newAttributes.size());
         for (String name : newAttributes.keySet()) {
             attributes.put(name, (Serializable) newAttributes.get(name));
         }
-        event.setHazardAttributes(attributes);
 
-        /*
-         * If the event was modified by the metadata refresh process, merge the
-         * changes into the canonical session event.
-         */
-        IHazardEvent modifiedHazardEvent = metadata.getModifiedHazardEvent();
-        if (modifiedHazardEvent != null) {
-            mergeHazardEvents(modifiedHazardEvent, event, false, false, false,
-                    false, Originator.OTHER);
-        }
+        ObservedHazardEvent event = getSessionEventForView(eventView);
+        event.setHazardAttributes(attributes);
 
         event.setModified(eventModified);
 
         /*
          * Remove this event from the set of events undergoing a metadata fetch.
          */
-        eventsUndergoingMetadataFetch.remove(event);
+        eventViewsUndergoingMetadataFetch.remove(eventView);
 
         sessionManager.finishBatchedChanges();
     }
@@ -2083,24 +2443,24 @@ public class SessionEventManager
     /**
      * Start the edit of rise-crest-fall information for the specified event.
      * 
-     * @param event
-     *            Event for which to edit the rise-crest-fall information.
+     * @param eventView
+     *            View of the event for which to edit the rise-crest-fall
+     *            information.
      */
-    private void startRiseCrestFallEdit(IHazardEvent event) {
+    private void startRiseCrestFallEdit(final IHazardEventView eventView) {
         IEventApplier applier = new IEventApplier() {
             @Override
-            public void apply(IHazardEvent event) {
-                updateEventMetadata((ObservedHazardEvent) event);
-                updateTimeBoundariesForEvents(event, false);
+            public void apply(IHazardEventView eventView) {
+                updateEventMetadata(eventView);
+                updateTimeBoundariesForEvents(eventView, false);
             }
         };
-        IRiseCrestFallEditor editor = messenger.getRiseCrestFallEditor(event);
-        IHazardEvent evt = editor.getRiseCrestFallEditor(event, applier);
+        IRiseCrestFallEditor editor = messenger
+                .getRiseCrestFallEditor(eventView);
+        IHazardEventView evt = editor.getRiseCrestFallEditor(eventView,
+                applier);
         if (evt != null) {
-            if (evt instanceof ObservedHazardEvent) {
-                event = evt;
-            }
-            updateEventMetadata((ObservedHazardEvent) event);
+            updateEventMetadata(eventView);
         }
     }
 
@@ -2187,14 +2547,15 @@ public class SessionEventManager
     /**
      * Respond to an event's attributes being changed.
      * 
-     * @param event
-     *            Event that experienced the change.
+     * @param eventView
+     *            View of the event that experienced the change.
      * @param modification
      *            Modification that occurred.
      * @param originator
      *            Originator of the change.
      */
-    private void sessionEventAttributesModified(final ObservedHazardEvent event,
+    private void sessionEventAttributesModified(
+            final IHazardEventView eventView,
             EventAttributesModification modification, IOriginator originator) {
 
         /*
@@ -2203,10 +2564,10 @@ public class SessionEventManager
          */
         if (modification.containsAttribute(
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)
-                && event.getHazardAttributes().containsKey(
+                && eventView.getHazardAttributes().containsKey(
                         HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
-            setEventEndTimeForUntilFurtherNotice(event,
-                    Boolean.TRUE.equals(event.getHazardAttribute(
+            setEventEndTimeForUntilFurtherNotice(eventView,
+                    Boolean.TRUE.equals(eventView.getHazardAttribute(
                             HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)));
         }
 
@@ -2217,11 +2578,12 @@ public class SessionEventManager
          * trigger the editing of rise-crest-fall information, reload that.
          */
         Set<String> metadataReloadTriggeringIdentifiers = metadataReloadTriggeringIdentifiersForEventIdentifiers
-                .get(event.getEventID());
+                .get(eventView.getEventID());
         Set<String> editRiseCrestFallTriggeringIdentifiers = editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
-                .get(event.getEventID());
+                .get(eventView.getEventID());
         if ((metadataReloadTriggeringIdentifiers != null)
-                && (eventsUndergoingMetadataFetch.contains(event) == false)) {
+                && (eventViewsUndergoingMetadataFetch
+                        .contains(eventView) == false)) {
 
             /*
              * Get the subset of trigger identifiers that changed, and then
@@ -2247,7 +2609,7 @@ public class SessionEventManager
                             .schedule(new Runnable() {
                                 @Override
                                 public void run() {
-                                    updateEventMetadata(event);
+                                    updateEventMetadata(eventView);
                                 }
                             });
                     break;
@@ -2257,34 +2619,53 @@ public class SessionEventManager
         if ((editRiseCrestFallTriggeringIdentifiers != null)
                 && (Sets.intersection(editRiseCrestFallTriggeringIdentifiers,
                         modification.getAttributeKeys()).isEmpty() == false)) {
-            startRiseCrestFallEdit(event);
+            startRiseCrestFallEdit(eventView);
         }
     }
 
     /**
      * Respond to an event's time range being changed.
      * 
-     * @param event
-     *            Event that experienced the change.
+     * @param eventView
+     *            View of the event that experienced the change.
      * @param originator
      *            Originator of the change.
      */
-    private void sessionEventTimeRangeModified(ObservedHazardEvent event,
+    private void sessionEventTimeRangeModified(IHazardEventView eventView,
             IOriginator originator) {
-        updateConflictingEventsForSelectedEventIdentifiers(event, false);
+        updateConflictingEventsForSelectedEventIdentifiers(eventView, false);
     }
 
     /**
      * Respond to an event's geometry being changed.
      * 
-     * @param event
-     *            Event that experienced the change.
+     * @param eventView
+     *            View of the event that experienced the change.
      * @param originator
      *            Originator of the change.
      */
-    private void sessionEventGeometryModified(ObservedHazardEvent event,
+    private void sessionEventGeometryModified(IHazardEventView eventView,
             IOriginator originator) {
-        updateConflictingEventsForSelectedEventIdentifiers(event, false);
+        updateConflictingEventsForSelectedEventIdentifiers(eventView, false);
+    }
+
+    /**
+     * Respond to one or more events' lock statuses being changed.
+     * 
+     * @param eventIdentifiers
+     *            Identifiers of the events that experienced the change.
+     * @param originator
+     *            Originator of the change.
+     */
+    private void sessionEventsLockStatusModified(Set<String> eventIdentifiers,
+            IOriginator originator) {
+        for (String eventIdentifier : eventIdentifiers) {
+            IHazardEventView eventView = getEventById(eventIdentifier);
+            if (eventView != null) {
+                updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
+                        eventView, false);
+            }
+        }
     }
 
     @Override
@@ -2314,14 +2695,14 @@ public class SessionEventManager
      * Set the end time for the specified event with respect to the specified
      * value for "until further notice".
      * 
-     * @param event
-     *            Event to have its end time set.
+     * @param eventView
+     *            View of the event to have its end time set.
      * @param untilFurtherNotice
      *            Flag indicating whether or not the end time should be
      *            "until further notice".
      */
-    private void setEventEndTimeForUntilFurtherNotice(IHazardEvent event,
-            boolean untilFurtherNotice) {
+    private void setEventEndTimeForUntilFurtherNotice(
+            IHazardEventView eventView, boolean untilFurtherNotice) {
 
         /*
          * If "until further notice" has been toggled on for the end time, save
@@ -2332,28 +2713,29 @@ public class SessionEventManager
          * interval is found to have been saved, perhaps due to a metadata
          * change or a type change, just use the default duration for the event.
          */
+        ObservedHazardEvent event = getSessionEventForView(eventView);
         if (untilFurtherNotice) {
-            long interval = event.getEndTime().getTime()
-                    - event.getStartTime().getTime();
+            long interval = eventView.getEndTime().getTime()
+                    - eventView.getStartTime().getTime();
             event.addHazardAttribute(
                     HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE,
                     interval);
-            updateEndTimeBoundariesForSingleEvent(event,
-                    event.getStartTime().getTime(),
+            updateEndTimeBoundariesForSingleEvent(eventView,
+                    eventView.getStartTime().getTime(),
                     HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
             event.setEndTime(new Date(
                     HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
-        } else if ((event.getEndTime() != null) && (event.getEndTime()
+        } else if ((eventView.getEndTime() != null) && (eventView.getEndTime()
                 .getTime() == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS)) {
-            Long interval = (Long) event.getHazardAttribute(
+            Long interval = (Long) eventView.getHazardAttribute(
                     HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
             event.removeHazardAttribute(
                     HazardConstants.END_TIME_INTERVAL_BEFORE_UNTIL_FURTHER_NOTICE);
             if (interval == null) {
-                interval = configManager.getDefaultDuration(event);
+                interval = configManager.getDefaultDuration(eventView);
             }
-            long startTime = event.getStartTime().getTime();
-            updateEndTimeBoundariesForSingleEvent(event, startTime,
+            long startTime = eventView.getStartTime().getTime();
+            updateEndTimeBoundariesForSingleEvent(eventView, startTime,
                     startTime + interval);
             event.setEndTime(new Date(startTime + interval));
         }
@@ -2364,25 +2746,25 @@ public class SessionEventManager
      * "until further notice" mode. This is to be called whenever one or more
      * events have been added, removed, or had their hazard types changed.
      * 
-     * @param event
-     *            Event that has been added, removed, or modified.
+     * @param eventView
+     *            View of the event that has been added, removed, or modified.
      * @param removed
      *            Flag indicating whether or not the change is the removal of
      *            the event.
      */
     private void updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
-            ObservedHazardEvent event, boolean removed) {
+            IHazardEventView eventView, boolean removed) {
 
         /*
          * Assume the event should be removed from the set unless it is not
-         * being removed from the session, and it has a hazard type that allows
-         * "until further notice".
+         * being removed from the session, it is not locked by someone else, and
+         * it has a hazard type that allows "until further notice".
          */
         boolean allowsUntilFurtherNotice = false;
         if (removed == false) {
             HazardTypeEntry hazardType = configManager.getHazardTypes()
-                    .get(HazardEventUtilities.getHazardType(event));
-            if ((hazardType != null)
+                    .get(HazardEventUtilities.getHazardType(eventView));
+            if (isEventNotLockedByOther(eventView) && (hazardType != null)
                     && hazardType.isAllowUntilFurtherNotice()) {
                 allowsUntilFurtherNotice = true;
             }
@@ -2395,15 +2777,16 @@ public class SessionEventManager
         boolean changed;
         if (allowsUntilFurtherNotice) {
             changed = identifiersOfEventsAllowingUntilFurtherNotice
-                    .add(event.getEventID());
+                    .add(eventView.getEventID());
         } else {
             changed = identifiersOfEventsAllowingUntilFurtherNotice
-                    .remove(event.getEventID());
+                    .remove(eventView.getEventID());
         }
-        if (changed && events.contains(event)) {
-            notificationSender.postNotificationAsync(new SessionEventModified(
-                    this, event, new EventAllowUntilFurtherNoticeModification(),
-                    Originator.OTHER));
+        if (changed && allEventViews.contains(eventView)) {
+            notificationSender.postNotificationAsync(
+                    new SessionEventModified(this, eventView,
+                            new EventAllowUntilFurtherNoticeModification(),
+                            Originator.OTHER));
         }
     }
 
@@ -2411,36 +2794,37 @@ public class SessionEventManager
      * Ensure that the end time "until further notice" mode, if present in the
      * specified event, is appropriate; if it is not, remove it.
      * 
-     * @param event
-     *            Event to be checked.
+     * @param eventView
+     *            View of the event to be checked.
      */
     private void ensureEventEndTimeUntilFurtherNoticeAppropriate(
-            IHazardEvent event, boolean logErrors) {
+            IHazardEventView eventView, boolean logErrors) {
 
         /*
          * If this event cannot have "until further notice", ensure it is not
          * one of its attributes.
          */
         if (identifiersOfEventsAllowingUntilFurtherNotice
-                .contains(event.getEventID()) == false) {
+                .contains(eventView.getEventID()) == false) {
 
             /*
              * If the attributes contains the flag, remove it. If it was set to
              * true, then reset the end time to an appropriate non-"until
              * further notice" value.
              */
-            Boolean untilFurtherNotice = (Boolean) event.getHazardAttribute(
+            Boolean untilFurtherNotice = (Boolean) eventView.getHazardAttribute(
                     HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
             if (untilFurtherNotice != null) {
+                ObservedHazardEvent event = getSessionEventForView(eventView);
                 event.removeHazardAttribute(
                         HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE);
                 if (untilFurtherNotice.equals(Boolean.TRUE)) {
-                    setEventEndTimeForUntilFurtherNotice(event, false);
+                    setEventEndTimeForUntilFurtherNotice(eventView, false);
                     if (logErrors) {
-                        statusHandler.error("event " + event.getEventID()
+                        statusHandler.error("event " + eventView.getEventID()
                                 + " found to have \"until further notice\" set, "
                                 + "which is illegal for events of type "
-                                + event.getHazardType());
+                                + eventView.getHazardType());
                     }
                 }
             }
@@ -2448,7 +2832,7 @@ public class SessionEventManager
     }
 
     private void filterEventsForConfig(
-            Collection<? extends IHazardEvent> events) {
+            Collection<? extends IHazardEventView> eventViews) {
         ISettings settings = configManager.getSettings();
         Set<String> siteIDs = configManager
                 .getSettingsValue(SETTING_HAZARD_SITES, settings);
@@ -2464,21 +2848,21 @@ public class SessionEventManager
          * adds the pending status to the set of statuses.
          */
         statuses.add(HazardStatus.PENDING);
-        Iterator<? extends IHazardEvent> it = events.iterator();
-        while (it.hasNext()) {
-            IHazardEvent event = it.next();
-            if (!statuses.contains(event.getStatus())) {
-                it.remove();
-            } else if (!siteIDs.contains(event.getSiteID())) {
-                it.remove();
+        Iterator<? extends IHazardEventView> iterator = eventViews.iterator();
+        while (iterator.hasNext()) {
+            IHazardEventView eventView = iterator.next();
+            if (!statuses.contains(eventView.getStatus())) {
+                iterator.remove();
+            } else if (!siteIDs.contains(eventView.getSiteID())) {
+                iterator.remove();
             } else {
-                String key = HazardEventUtilities.getHazardType(event);
+                String key = HazardEventUtilities.getHazardType(eventView);
                 /*
                  * Check for null key ensures we don't filter out events for
                  * which a type has not yet been defined.
                  */
                 if (key != null && !phenSigs.contains(key)) {
-                    it.remove();
+                    iterator.remove();
                 }
             }
         }
@@ -2578,7 +2962,7 @@ public class SessionEventManager
          * that were being managed previously are not included in the events
          * returned from the query.
          */
-        Set<ObservedHazardEvent> leftoverEvents = new HashSet<>(events);
+        Set<IHazardEventView> leftoverEventViews = new HashSet<>(allEventViews);
         Set<String> selectedEventIdentifiers = new HashSet<>();
         for (Entry<String, HazardHistoryList> entry : eventsMap.entrySet()) {
 
@@ -2598,9 +2982,9 @@ public class SessionEventManager
              * it was selected before.
              */
             String eventIdentifier = event.getEventID();
-            ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
-            if (oldEvent != null) {
-                leftoverEvents.remove(oldEvent);
+            IHazardEventView oldEventView = getEventById(eventIdentifier);
+            if (oldEventView != null) {
+                leftoverEventViews.remove(oldEventView);
                 if (oldSelectedEventIdentifiers.contains(eventIdentifier)) {
                     selectedEventIdentifiers.add(eventIdentifier);
                 }
@@ -2608,20 +2992,18 @@ public class SessionEventManager
             }
 
             /*
-             * Add the event, and if it has ever been issued, set its
-             * has-been-issued flag.
+             * If the event has ever been issued, set its has-been-issued flag.
+             * Then add the event.
              */
             try {
-                IHazardEvent addedEvent = addEvent(event, false,
-                        Originator.DATABASE);
                 for (IHazardEvent historicalEvent : historyList) {
                     if (HazardStatus.issuedButNotEndedOrElapsed(
                             historicalEvent.getStatus())) {
-                        addedEvent.addHazardAttribute(HazardConstants.ISSUED,
-                                true);
+                        event.addHazardAttribute(HazardConstants.ISSUED, true);
                         break;
                     }
                 }
+                addEvent(event, false, Originator.DATABASE);
             } catch (HazardEventServiceException e) {
                 statusHandler.error(
                         "Should never occur since hazard event did not need "
@@ -2645,15 +3027,16 @@ public class SessionEventManager
                 historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
                         historyList.size());
             }
+            identifiersOfPersistedEvents.add(eventIdentifier);
         }
 
         /*
          * For the remaining old events (those not included in the ones returned
          * by the query), filter them for the current settings.
          */
-        filterEventsForConfig(leftoverEvents);
-        for (ObservedHazardEvent event : leftoverEvents) {
-            String eventIdentifier = event.getEventID();
+        filterEventsForConfig(leftoverEventViews);
+        for (IHazardEventView eventView : leftoverEventViews) {
+            String eventIdentifier = eventView.getEventID();
             if (oldSelectedEventIdentifiers.contains(eventIdentifier)) {
                 selectedEventIdentifiers.add(eventIdentifier);
             }
@@ -2662,7 +3045,7 @@ public class SessionEventManager
         /*
          * Schedule expiration tasks for the events.
          */
-        for (ObservedHazardEvent event : events) {
+        for (ObservedHazardEvent event : allEvents) {
             scheduleExpirationTask(event);
         }
 
@@ -2676,7 +3059,7 @@ public class SessionEventManager
     }
 
     @Override
-    public ObservedHazardEvent addEvent(IHazardEvent event,
+    public IHazardEventView addEvent(IReadableHazardEvent event,
             IOriginator originator) throws HazardEventServiceException {
         HazardStatus status = event.getStatus();
         if (((status == null) || (status == HazardStatus.PENDING))
@@ -2688,7 +3071,10 @@ public class SessionEventManager
     }
 
     /**
-     * Add the specified hazard event.
+     * Add the specified hazard event to the session; must be a brand new hazard
+     * event with no identifier, or else an event that is from the database, but
+     * does not have an identifier equal to any existing events being managed by
+     * this session.
      * <p>
      * <strong>NOTE</strong>: This method is called whenever an event is added
      * to the current session, regardless of the source of the event. Additional
@@ -2698,9 +3084,7 @@ public class SessionEventManager
      * </p>
      * 
      * @param event
-     *            Event to be added (or if the event has an identifier that is
-     *            already in use by an existing event, to be used in place of
-     *            the existing event).
+     *            Event to be added.
      * @param select
      *            Flag indicating whether or not it should be selected.
      * @param originator
@@ -2709,8 +3093,9 @@ public class SessionEventManager
      * @throws HazardEventServiceException
      *             If a problem occurred while attempting to add the event.
      */
-    protected ObservedHazardEvent addEvent(IHazardEvent event, boolean select,
-            IOriginator originator) throws HazardEventServiceException {
+    private IHazardEventView addEvent(IReadableHazardEvent event,
+            boolean select, IOriginator originator)
+                    throws HazardEventServiceException {
 
         /*
          * Create the new event and ensure that its modify flag does not change
@@ -2732,11 +3117,11 @@ public class SessionEventManager
          */
         String eventID = oevent.getEventID();
         if ((eventID != null) && (eventID.length() > 0)) {
-            ObservedHazardEvent existingEvent = getEventById(eventID);
-            if (existingEvent != null) {
-                mergeHazardEvents(oevent, existingEvent, false, false, true,
-                        false, originator);
-                return existingEvent;
+            IHazardEventView existingEventView = getEventById(eventID);
+            if (existingEventView != null) {
+                throw new IllegalArgumentException(
+                        "attempted to add an event that is "
+                                + "already being managed by session; use mergeHazardEvents() instead");
             }
         } else {
             oevent.setEventID(HazardServicesEventIdUtil.getNewEventID());
@@ -2852,19 +3237,27 @@ public class SessionEventManager
          * this fact if it does, and record any saved times for the event if it
          * has been issued.
          */
-        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(oevent, false);
-        updateSavedTimesForEventIfIssued(oevent, false);
+        HazardEventView eventView = new HazardEventView(oevent);
+        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(eventView,
+                false);
+        updateSavedTimesForEventIfIssued(eventView, false);
 
         /*
          * Add the event to the collection of managed events.
          */
-        events.add(oevent);
+        allEvents.add(oevent);
+        allEventViews.add(eventView);
+
+        /*
+         * Create a view for the new hazard event, and associate the two.
+         */
+        viewsForHazardEvents.put(oevent, eventView);
 
         /*
          * Notify listeners that the event has been added.
          */
         notificationSender.postNotificationAsync(
-                new SessionEventsAdded(this, oevent, originator));
+                new SessionEventsAdded(this, eventView, originator));
 
         /*
          * Set the issued flag as appropriate.
@@ -2893,45 +3286,62 @@ public class SessionEventManager
         /*
          * Create the event metadata for the new event.
          */
-        updateEventMetadata(oevent);
+        updateEventMetadata(eventView);
 
         oevent.setModifiedNotAllowedToChange(false);
-        return oevent;
+        return eventView;
     }
 
     @Override
-    public void mergeHazardEvents(IHazardEvent newEvent,
-            ObservedHazardEvent oldEvent, boolean forceMerge,
-            boolean keepVisualFeatures, boolean persistOnStatusChange,
-            boolean useModifiedValue, IOriginator originator) {
+    public EventPropertyChangeResult mergeHazardEvents(
+            IReadableHazardEvent newEvent, IHazardEventView oldEvent,
+            boolean forceMerge, boolean keepVisualFeatures,
+            boolean persistOnStatusChange, boolean useModifiedValue,
+            IOriginator originator) {
+
+        ObservedHazardEvent sessionEvent = getSessionEventForView(oldEvent);
+        if (sessionEvent == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+
+        /*
+         * Make sure that the event is locked if it needs to be.
+         */
+        if (originator.isNotLockedByOthersRequired()
+                && isEventInDatabase(sessionEvent)
+                && (sessionManager.getLockManager()
+                        .lockHazardEvent(oldEvent.getEventID()) == false)) {
+            showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
+                    originator, oldEvent.getEventID());
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
 
         sessionManager.startBatchedChanges();
 
-        oldEvent.setSiteID(newEvent.getSiteID(), originator);
-        oldEvent.setUserName(newEvent.getUserName(), originator);
-        oldEvent.setWorkStation(newEvent.getWorkStation(), originator);
+        sessionEvent.setSiteID(newEvent.getSiteID(), originator);
+        sessionEvent.setWsId(newEvent.getWsId(), originator);
 
         /*
          * Set the hazard type, time range, and geometry via the session manager
          * if not a forced merge.
          */
         if (forceMerge) {
-            oldEvent.setHazardType(newEvent.getPhenomenon(),
+            sessionEvent.setHazardType(newEvent.getPhenomenon(),
                     newEvent.getSignificance(), newEvent.getSubType(),
                     originator);
-            oldEvent.setTimeRange(newEvent.getStartTime(),
+            sessionEvent.setTimeRange(newEvent.getStartTime(),
                     newEvent.getEndTime(), originator);
-            oldEvent.setGeometry(newEvent.getGeometry(), originator);
+            sessionEvent.setGeometry(newEvent.getGeometry(), originator);
         } else {
-            setEventType(oldEvent, newEvent.getPhenomenon(),
+            setEventType(sessionEvent, newEvent.getPhenomenon(),
                     newEvent.getSignificance(), newEvent.getSubType(),
                     originator);
-            setEventTimeRange(oldEvent, newEvent.getStartTime(),
+            setEventTimeRange(sessionEvent, newEvent.getStartTime(),
                     newEvent.getEndTime(), originator);
-            setEventGeometry(oldEvent, newEvent.getGeometry(), originator);
+            setEventGeometry(sessionEvent, newEvent.getGeometry(), originator);
         }
 
-        oldEvent.setCreationTime(newEvent.getCreationTime(), originator);
+        sessionEvent.setCreationTime(newEvent.getCreationTime(), originator);
 
         /*
          * If the keep visual features flag is set, only use the visual features
@@ -2942,11 +3352,11 @@ public class SessionEventManager
         if ((keepVisualFeatures == false)
                 || ((newEvent.getVisualFeatures() != null)
                         && (newEvent.getVisualFeatures().isEmpty() == false))) {
-            oldEvent.setVisualFeatures(newEvent.getVisualFeatures(),
+            sessionEvent.setVisualFeatures(newEvent.getVisualFeatures(),
                     originator);
         }
 
-        oldEvent.setHazardMode(newEvent.getHazardMode(), originator);
+        sessionEvent.setHazardMode(newEvent.getHazardMode(), originator);
 
         /*
          * Get a copy of the old attributes, and the new ones, then transfer any
@@ -2954,7 +3364,7 @@ public class SessionEventManager
          * new attributes) from the old to the new. Then set the resulting map
          * as the old hazard's attributes.
          */
-        Map<String, Serializable> oldAttr = oldEvent.getHazardAttributes();
+        Map<String, Serializable> oldAttr = sessionEvent.getHazardAttributes();
         if (oldAttr == null) {
             oldAttr = Collections.emptyMap();
         }
@@ -2967,7 +3377,7 @@ public class SessionEventManager
                 newAttr.put(key, oldAttr.get(key));
             }
         }
-        oldEvent.setHazardAttributes(newAttr, originator);
+        sessionEvent.setHazardAttributes(newAttr, originator);
 
         /*
          * Change the status only if the event is not already ended (this could
@@ -2975,18 +3385,20 @@ public class SessionEventManager
          * as the previous status. If the status of the old event is changed,
          * update its saved end time/duration if it is issued.
          */
-        if ((isEnded(oldEvent) == false) && (oldEvent.getStatus()
+        if ((isEnded(sessionEvent) == false) && (sessionEvent.getStatus()
                 .equals(newEvent.getStatus()) == false)) {
-            oldEvent.setStatus(newEvent.getStatus(), true,
-                    persistOnStatusChange, Originator.OTHER);
+            sessionEvent.setStatus(newEvent.getStatus(), true,
+                    persistOnStatusChange, originator);
             updateSavedTimesForEventIfIssued(oldEvent, false);
         }
 
         if (useModifiedValue) {
-            oldEvent.setModified(newEvent.isModified());
+            sessionEvent.setModified(newEvent.isModified());
         }
 
         sessionManager.finishBatchedChanges();
+
+        return EventPropertyChangeResult.SUCCESS;
     }
 
     /**
@@ -2997,7 +3409,7 @@ public class SessionEventManager
      * @return <code>true</code> if the event has ended, <code>false</code>
      *         otherwise.
      */
-    private boolean isEnded(IHazardEvent event) {
+    private boolean isEnded(IReadableHazardEvent event) {
         return (event.getStatus() == HazardStatus.ENDED);
     }
 
@@ -3011,7 +3423,7 @@ public class SessionEventManager
      *         {@link HazardStatus#ELAPSED} or if the current CAVE clock time is
      *         later than the event's end time, <code>false</code> otherwise.
      */
-    private boolean isElapsed(IHazardEvent event) {
+    private boolean isElapsed(IReadableHazardEvent event) {
         Date currTime = SimulatedTime.getSystemTime().getTime();
         HazardStatus status = event.getStatus();
         if ((status == HazardStatus.ELAPSED)
@@ -3022,10 +3434,10 @@ public class SessionEventManager
         return false;
     }
 
-    private boolean isPastExpirationTime(IHazardEvent event) {
+    private boolean isPastExpirationTime(IHazardEventView eventView) {
         long currTimeLong = SimulatedTime.getSystemTime().getMillis();
 
-        Long expirationTimeLong = (Long) event
+        Long expirationTimeLong = (Long) eventView
                 .getHazardAttribute(HazardConstants.EXPIRATION_TIME);
         if ((expirationTimeLong != null)
                 && (expirationTimeLong < currTimeLong)) {
@@ -3044,7 +3456,7 @@ public class SessionEventManager
      * @param event
      *            Hazard event added to or modified in the database.
      */
-    void handleEventAdditionToDatabase(HazardEvent event) {
+    protected void handleEventAdditionToDatabase(HazardEvent event) {
 
         /*
          * TODO: Remove once the HISTORICAL attribute is no longer being used.
@@ -3054,20 +3466,65 @@ public class SessionEventManager
         event.removeHazardAttribute(HazardEventManager.HISTORICAL);
 
         /*
-         * If the event is being managed already, merge the new version with the
-         * existing one, and if it is a historical snapshot, post a notification
-         * indicating that the history list for this event has changed. If it is
-         * not already being managed, add it to the session.
+         * If the event is being managed already, ensure that if
+         * interoperability is responsible, the event's lock (if any) is broken.
+         * Also merge the new version with the existing one, and if it is a
+         * historical snapshot, post a notification indicating that the history
+         * list for this event has changed. If it is not already being managed,
+         * add it to the session.
          */
         String eventIdentifier = event.getEventID();
-        ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
-        if (oldEvent != null) {
-            mergeHazardEvents(event, oldEvent, true, true, false, true,
+        IHazardEventView oldEventView = getEventById(eventIdentifier);
+        if (oldEventView != null) {
+
+            /*
+             * TODO: What happens if a Hazard Services client that locked an
+             * event is not running? Its lock will still be considered active,
+             * and since it's not around to receive notification that the event
+             * was changed elsewhere, it will not release its lock. This needs
+             * to be resolved, as it's a potentially big hole in the
+             * implementation.
+             */
+            LockStatus status = sessionManager.getLockManager()
+                    .getHazardEventLockStatus(eventIdentifier);
+            if (status == LockStatus.LOCKED_BY_ME) {
+                WsId eventWsId = event.getWsId();
+                if (eventWsId.getProgName().equals(HazardConstants.INGEST)) {
+                    messenger.getWarner().warnUser("Hazard Lock Broken",
+                            "Interoperability has updated hazard event "
+                                    + eventIdentifier
+                                    + ". This has broken your hazard lock and any unsaved "
+                                    + "changes may have be lost.");
+                    if (sessionManager.getLockManager()
+                            .unlockHazardEvent(eventIdentifier) == false) {
+                        statusHandler.warn(
+                                "Could not unlock events in response to interoperability breakage of lock.");
+                    }
+                } else if (event.getStatus() == HazardStatus.ELAPSED) {
+                    messenger.getWarner().warnUser("Hazard Lock Broken",
+                            "The hazard event " + eventIdentifier
+                                    + " has elapsed. This has broken your hazard lock and "
+                                    + "any unsaved changes may have be lost.");
+                    if (sessionManager.getLockManager()
+                            .unlockHazardEvent(eventIdentifier) == false) {
+                        statusHandler.warn(
+                                "Could not unlock events in response to elapsing of event causing breakage of lock.");
+                    }
+                } else if (HazardEventUtilities.compareWsIds(event.getWsId(),
+                        VizApp.getWsId()) == false) {
+                    statusHandler
+                            .error("Received persistence notification for hazard event "
+                                    + eventIdentifier
+                                    + " that originated from some other source than "
+                                    + "interoperability. That event should have been locked.");
+                }
+            }
+
+            mergeHazardEvents(event, oldEventView, true, true, false, true,
                     Originator.DATABASE);
             if (event.isLatestVersion() == false) {
                 notificationSender.postNotificationAsync(
-                        new SessionEventHistoryModified(this,
-                                getEventById(event.getEventID()),
+                        new SessionEventHistoryModified(this, oldEventView,
                                 Originator.DATABASE));
             }
         } else {
@@ -3101,6 +3558,7 @@ public class SessionEventManager
             historicalVersionCountsForEventIdentifiers.put(eventIdentifier,
                     dbManager.getHistorySizeByEventID(eventIdentifier, false));
         }
+        identifiersOfPersistedEvents.add(eventIdentifier);
     }
 
     /**
@@ -3109,7 +3567,7 @@ public class SessionEventManager
      * @param event
      *            Hazard event removed from the database.
      */
-    void handleEventRemovalFromDatabase(HazardEvent event) {
+    protected void handleEventRemovalFromDatabase(HazardEvent event) {
 
         /*
          * TODO: Remove once the HISTORICAL attribute is no longer being used.
@@ -3150,10 +3608,13 @@ public class SessionEventManager
      *            Identifier of the event for which all copies were removed from
      *            the database.
      */
-    void handleEventRemovalAllCopiesFromDatabase(String eventIdentifier) {
-        ObservedHazardEvent oldEvent = getEventById(eventIdentifier);
-        if (oldEvent != null) {
-            removeEvent(oldEvent, false, Originator.DATABASE);
+    protected void handleEventRemovalAllCopiesFromDatabase(
+            String eventIdentifier) {
+        IHazardEventView oldEventView = getEventById(eventIdentifier);
+        if (oldEventView != null) {
+            sessionManager.startBatchedChanges();
+            deleteEvent(oldEventView, false, Originator.DATABASE);
+            sessionManager.finishBatchedChanges();
         }
     }
 
@@ -3164,12 +3625,13 @@ public class SessionEventManager
      * @param event
      *            Event that has changed its geometry.
      */
-    void handleEventGeometryChangeFromUndoOrRedo(ObservedHazardEvent event) {
-        updateHazardAreas(event);
+    protected void handleEventGeometryChangeFromUndoOrRedo(
+            ObservedHazardEvent event) {
+        updateHazardAreas(getViewForSessionEvent(event));
     }
 
     @Override
-    public void removeEvent(ObservedHazardEvent event, boolean confirm,
+    public void removeEvent(IHazardEventView event, boolean confirm,
             IOriginator originator) {
         if ((confirm == false)
                 || (getEventsToBeDeleted(Lists.newArrayList(event))
@@ -3181,42 +3643,51 @@ public class SessionEventManager
     }
 
     @Override
-    public void removeEvents(Collection<ObservedHazardEvent> events,
+    public void removeEvents(Collection<? extends IHazardEventView> events,
             boolean confirm, IOriginator originator) {
 
         /*
-         * Avoid concurrent modification since events is backed by this.events
+         * Avoid concurrent modification since events is backed by the
+         * object-scoped events.
          */
-        Collection<ObservedHazardEvent> eventsToRemove = (confirm
+        Collection<? extends IHazardEventView> eventsToRemove = (confirm
                 ? getEventsToBeDeleted(events)
-                : new ArrayList<ObservedHazardEvent>(events));
+                : new ArrayList<IHazardEventView>(events));
         sessionManager.startBatchedChanges();
-        for (ObservedHazardEvent event : eventsToRemove) {
-            deleteEvent(event, true, originator);
+        for (IHazardEventView eventView : eventsToRemove) {
+            deleteEvent(eventView, true, originator);
         }
         sessionManager.finishBatchedChanges();
+    }
+
+    @Override
+    public void resetEvents(IOriginator originator) {
+        for (IHazardEventView event : getEvents()) {
+            deleteEvent(event, true, Originator.OTHER);
+        }
     }
 
     /**
      * Confirm deletion of the specified hazard events, if necessary.
      * 
      * @param events
-     *            Events for which to confirm deletion if necessary.
-     * @return Hazard events to be deleted.
+     *            Views of the events for which to confirm deletion if
+     *            necessary.
+     * @return Views of the events to be deleted.
      */
-    private Collection<ObservedHazardEvent> getEventsToBeDeleted(
-            Collection<ObservedHazardEvent> events) {
-        Map<ObservedHazardEvent, String> identifiersForEventsRequiringConfirmation = new HashMap<>(
+    private Collection<? extends IHazardEventView> getEventsToBeDeleted(
+            Collection<? extends IHazardEventView> events) {
+        Map<IHazardEventView, String> identifiersForEventsRequiringConfirmation = new HashMap<>(
                 events.size(), 1.0f);
-        Collection<ObservedHazardEvent> eventsToDelete = new LinkedHashSet<>(
+        Collection<IHazardEventView> eventsToDelete = new LinkedHashSet<>(
                 events.size(), 1.0f);
-        for (ObservedHazardEvent event : events) {
-            if (event.getStatus().equals(HazardStatus.PROPOSED)) {
-                identifiersForEventsRequiringConfirmation.put(event,
-                        event.getDisplayEventID());
-            } else if ((event.getStatus().equals(HazardStatus.POTENTIAL))
-                    || (event.getStatus().equals(HazardStatus.PENDING))) {
-                eventsToDelete.add(event);
+        for (IHazardEventView eventView : events) {
+            if (eventView.getStatus().equals(HazardStatus.PROPOSED)) {
+                identifiersForEventsRequiringConfirmation.put(eventView,
+                        eventView.getDisplayEventID());
+            } else if ((eventView.getStatus().equals(HazardStatus.POTENTIAL))
+                    || (eventView.getStatus().equals(HazardStatus.PENDING))) {
+                eventsToDelete.add(eventView);
             }
         }
         if ((identifiersForEventsRequiringConfirmation.isEmpty() == false)
@@ -3233,27 +3704,53 @@ public class SessionEventManager
     }
 
     /**
-     * Remove the specified hazard event.
+     * Remove the specified hazard event. If lock status needs to be checked and
+     * the event is locked by another workstation, the user is notified.
      * <p>
      * <strong>NOTE</strong>: This method is called whenever an event is removed
      * from the current session, regardless of the source of the change.
      * Additional logic (method calls, etc.) may therefore be added to this
      * method's implementation as necessary if said logic must be run whenever
-     * an event is removed.
+     * an event is removed. If lock status is specified as to be checked, the
+     * event is locked by another workstation, and the user initiated this
+     * attempt, the user is notified of the failure.
+     * </p>
+     * 
+     * @param eventView
+     *            View of the event to be deleted.
+     * @param deleteFromDatabase
+     *            Flag indicating whether or not the event should also be
+     *            deleted from the database.
+     * @param originator
+     *            Originator of the change.
      */
-    private void deleteEvent(IHazardEvent event, boolean delete,
-            IOriginator originator) {
-        if (events.contains(event)) {
+    private EventPropertyChangeResult deleteEvent(IHazardEventView eventView,
+            boolean deleteFromDatabase, IOriginator originator) {
+        EventPropertyChangeResult result = EventPropertyChangeResult.SUCCESS;
+        if (allEventViews.contains(eventView)) {
+            if (originator.isNotLockedByOthersRequired()
+                    && (isEventNotLockedByOther(eventView) == false)) {
+                showWarningMessageAboutLockedEvents("Cannot Remove", "removed",
+                        originator, eventView.getEventID());
+                return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+            }
 
             /*
              * Deselect the event if it was selected, remove it from the checked
              * event identifiers set if it was there, and remove it.
              */
-            String eventIdentifier = event.getEventID();
+            String eventIdentifier = eventView.getEventID();
             sessionManager.getSelectionManager().removeEventFromSelectedEvents(
                     eventIdentifier, Originator.OTHER);
             checkedEventIdentifiers.remove(eventIdentifier);
-            events.remove(event);
+            ObservedHazardEvent event = getSessionEventForView(eventView);
+            allEvents.remove(event);
+            allEventViews.remove(eventView);
+
+            /*
+             * Remove the view for the deleted hazard event.
+             */
+            viewsForHazardEvents.remove(event);
 
             /*
              * TODO this should never delete operation issued events.
@@ -3262,11 +3759,11 @@ public class SessionEventManager
              * TODO this should not delete the whole list, just any pending or
              * proposed items on the end of the list.
              */
-            if (delete) {
+            if (deleteFromDatabase) {
                 dbManager.removeAllCopiesOfEvent(eventIdentifier);
             }
-            updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(
-                    (ObservedHazardEvent) event, true);
+            updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(eventView,
+                    true);
             megawidgetSpecifiersForEventIdentifiers.remove(eventIdentifier);
             metadataReloadTriggeringIdentifiersForEventIdentifiers
                     .remove(eventIdentifier);
@@ -3279,7 +3776,9 @@ public class SessionEventManager
             scriptFilesForEventIdentifiers.remove(eventIdentifier);
             eventModifyingScriptsForEventIdentifiers.remove(eventIdentifier);
             notificationSender.postNotificationAsync(
-                    new SessionEventsRemoved(this, event, originator));
+                    new SessionEventsRemoved(this, eventView, originator));
+        } else {
+            result = EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
         }
 
         /*
@@ -3287,21 +3786,25 @@ public class SessionEventManager
          * the hazard event, since they are no longer needed.
          */
         latestVersionsFromDatabaseForEventIdentifiers
-                .remove(event.getEventID());
-        historicalVersionCountsForEventIdentifiers.remove(event.getEventID());
+                .remove(eventView.getEventID());
+        historicalVersionCountsForEventIdentifiers
+                .remove(eventView.getEventID());
+        identifiersOfPersistedEvents.remove(eventView.getEventID());
+        return result;
     }
 
     @Override
-    public void sortEvents(Comparator<ObservedHazardEvent> comparator,
+    public void sortEvents(Comparator<IReadableHazardEvent> comparator,
             IOriginator originator) {
-        Collections.sort(events, comparator);
+        Collections.sort(allEvents, comparator);
+        Collections.sort(allEventViews, comparator);
         notificationSender.postNotificationAsync(
                 new SessionEventsOrderingModified(this, originator));
     }
 
     @Override
-    public List<ObservedHazardEvent> getEvents() {
-        return new ArrayList<ObservedHazardEvent>(events);
+    public List<IHazardEventView> getEvents() {
+        return new ArrayList<>(allEventViews);
     }
 
     /**
@@ -3320,12 +3823,14 @@ public class SessionEventManager
      */
     protected void hazardEventModified(
             AbstractSessionEventModified notification) {
-        ObservedHazardEvent event = notification.getEvent();
+        IHazardEventView eventView = notification.getEvent();
+        ObservedHazardEvent event = getSessionEventForView(eventView);
         sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
                 event.getEventID(), notification.getOriginator());
-        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(event, false);
-        ensureEventEndTimeUntilFurtherNoticeAppropriate(event, false);
-        if (events.contains(event)) {
+        updateIdentifiersOfEventsAllowingUntilFurtherNoticeSet(eventView,
+                false);
+        ensureEventEndTimeUntilFurtherNoticeAppropriate(eventView, false);
+        if (allEventViews.contains(eventView)) {
             notificationSender.postNotificationAsync(notification);
         }
     }
@@ -3338,10 +3843,10 @@ public class SessionEventManager
      *            Event that has experienced a change.
      */
     protected void hazardEventModifiedFlagChanged(ObservedHazardEvent event) {
-        if (events.contains(event)) {
+        if (allEvents.contains(event)) {
             notificationSender.postNotificationAsync(new SessionEventModified(
-                    this, event, new EventUnsavedChangesModification(),
-                    Originator.OTHER));
+                    this, getViewForSessionEvent(event),
+                    new EventUnsavedChangesModification(), Originator.OTHER));
             if (event.isModified()
                     && (event.getStatus() == HazardStatus.POTENTIAL)) {
                 event.setStatus(HazardStatus.PENDING, false, Originator.OTHER);
@@ -3361,10 +3866,10 @@ public class SessionEventManager
      */
     protected void hazardEventAttributeModified(
             SessionEventModified notification) {
-        IHazardEvent event = notification.getEvent();
+        IHazardEventView eventView = notification.getEvent();
         sessionManager.getSelectionManager().setLastAccessedSelectedEvent(
-                event.getEventID(), notification.getOriginator());
-        if (events.contains(notification.getEvent())) {
+                eventView.getEventID(), notification.getOriginator());
+        if (allEventViews.contains(eventView)) {
             notificationSender.postNotificationAsync(notification);
         }
     }
@@ -3385,14 +3890,15 @@ public class SessionEventManager
         /*
          * Persist and deselect the event as necessary.
          */
-        persistAndDeselectEventDueToStatusChange(notification.getEvent(),
-                persist, notification.getOriginator());
+        persistAndDeselectEventDueToStatusChange(
+                getSessionEventForView(notification.getEvent()), persist,
+                notification.getOriginator());
 
         /*
          * If the event is being managed, post the notification about the status
          * change.
          */
-        if (events.contains(notification.getEvent())) {
+        if (allEventViews.contains(notification.getEvent())) {
             notificationSender.postNotificationAsync(notification);
         }
 
@@ -3494,7 +4000,10 @@ public class SessionEventManager
 
             /*
              * If there is a "latest version" stored in the database, then
-             * remove it before adding to the history list.
+             * remove it before adding to the history list. Note that the entry
+             * in the map for latest versions is not removed at this point, as
+             * it will be removed when the notification comes from the database
+             * that a removal occurred.
              * 
              * TODO: Remove the use of the HISTORICAL attribute once saving
              * latest version capability is restored.
@@ -3509,6 +4018,7 @@ public class SessionEventManager
                     true);
             eventCopy.addHazardAttribute(HazardEventManager.HISTORICAL, true);
             dbManager.storeEvents(eventCopy);
+            identifiersOfPersistedEvents.add(event.getEventID());
             scheduleExpirationTask(event);
         } catch (Throwable e) {
             statusHandler.handle(Priority.PROBLEM, e.getLocalizedMessage(), e);
@@ -3627,20 +4137,17 @@ public class SessionEventManager
     }
 
     @Override
-    public boolean canChangeType(ObservedHazardEvent event) {
-        if (hasEverBeenIssued(event)) {
-            return false;
-        }
-        return true;
+    public boolean canEventTypeBeChanged(IReadableHazardEvent event) {
+        return (hasEverBeenIssued(event) == false);
     }
 
-    private boolean hasEverBeenIssued(IHazardEvent event) {
+    private boolean hasEverBeenIssued(IReadableHazardEvent event) {
         return Boolean.TRUE
                 .equals(event.getHazardAttribute(HazardConstants.ISSUED));
     }
 
     @Override
-    public Map<String, Collection<IHazardEvent>> getConflictingEventsForSelectedEvents() {
+    public Map<String, Collection<IHazardEventView>> getConflictingEventsForSelectedEvents() {
         return Collections
                 .unmodifiableMap(conflictingEventsForSelectedEventIdentifiers);
     }
@@ -3716,13 +4223,14 @@ public class SessionEventManager
      * Get an allowable end time range for the specified event given the
      * specified end time.
      * 
-     * @parma event Event for which to determine the allowable range.
+     * @parma eventView View of the event for which to determine the allowable
+     *        range.
      * @param endTime
      *            Event end time.
      * @return Allowable range for the event's end times.
      */
     private Range<Long> getEndTimeRangeForIssuedEventBasedOnEndTime(
-            IHazardEvent event, long endTime) {
+            IHazardEventView eventView, long endTime) {
 
         /*
          * If the end time is "until further notice", limit the end times to
@@ -3738,9 +4246,9 @@ public class SessionEventManager
          * or expanded after issuance.
          */
         return Range.closed(
-                (configManager.isAllowTimeShrink(event)
+                (configManager.isAllowTimeShrink(eventView)
                         ? HazardConstants.MIN_TIME : endTime),
-                (configManager.isAllowTimeExpand(event)
+                (configManager.isAllowTimeExpand(eventView)
                         ? HazardConstants.MAX_TIME : endTime));
     }
 
@@ -3748,22 +4256,24 @@ public class SessionEventManager
      * Get the allowable end time range for the specified event with the
      * specified start and end times that has been issued but is not yet ending.
      * 
-     * @parma event Event for which to determine the allowable range.
+     * @parma eventView View of the event for which to determine the allowable
+     *        range.
      * @param startTime
      *            Event start time.
      * @param endTime
      *            Event end time.
      * @return Allowable range for the event's end times.
      */
-    private Range<Long> getEndTimeRangeForIssuedEvent(IHazardEvent event,
-            long startTime, long endTime) {
+    private Range<Long> getEndTimeRangeForIssuedEvent(
+            IHazardEventView eventView, long startTime, long endTime) {
 
         /*
          * If the end time is "until further notice", limit the end times to
          * just that value.
          */
         if (endTime == HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
-            return getEndTimeRangeForIssuedEventBasedOnEndTime(event, endTime);
+            return getEndTimeRangeForIssuedEventBasedOnEndTime(eventView,
+                    endTime);
         }
 
         /*
@@ -3771,14 +4281,14 @@ public class SessionEventManager
          * boundary one way; if it is a duration-type event, find it another
          * way.
          */
-        if (configManager.getDurationChoices(event).isEmpty()) {
+        if (configManager.getDurationChoices(eventView).isEmpty()) {
 
             /*
              * Determine the end time of the event when it was last issued, and
              * use that as a potential end time boundary.
              */
             endTime = endTimesOrDurationsForIssuedEventIdentifiers
-                    .get(event.getEventID());
+                    .get(eventView.getEventID());
         } else {
 
             /*
@@ -3792,13 +4302,13 @@ public class SessionEventManager
              * start time.
              */
             endTime = startTime + endTimesOrDurationsForIssuedEventIdentifiers
-                    .get(event.getEventID());
+                    .get(eventView.getEventID());
         }
 
         /*
          * Given the modified end time, get the range.
          */
-        return getEndTimeRangeForIssuedEventBasedOnEndTime(event, endTime);
+        return getEndTimeRangeForIssuedEventBasedOnEndTime(eventView, endTime);
     }
 
     /**
@@ -3819,26 +4329,28 @@ public class SessionEventManager
      * off, sending off a notification of the change if one is made to the
      * boundaries.
      * 
-     * @param event
+     * @param eventView
      *            Event to have its end time boundaries modified.
+     * @param newStartTime
+     *            New start time, in epoch time in milliseconds.
      * @param newEndTime
      *            New end time, in epoch time in milliseconds; if this is equal
      *            to
      *            {@link HazardConstants#UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS}
      *            , then "until further notice" has been turned on.
      */
-    private void updateEndTimeBoundariesForSingleEvent(IHazardEvent event,
-            long newStartTime, long newEndTime) {
+    private void updateEndTimeBoundariesForSingleEvent(
+            IHazardEventView eventView, long newStartTime, long newEndTime) {
         Range<Long> endTimeRange = null;
-        switch (event.getStatus()) {
+        switch (eventView.getStatus()) {
         case POTENTIAL:
         case PENDING:
         case PROPOSED:
             endTimeRange = getEndTimeRangeForPreIssuedEvent(newEndTime);
             break;
         case ISSUED:
-            endTimeRange = getEndTimeRangeForIssuedEvent(event, newStartTime,
-                    newEndTime);
+            endTimeRange = getEndTimeRangeForIssuedEvent(eventView,
+                    newStartTime, newEndTime);
             break;
         case ELAPSED:
         case ENDING:
@@ -3846,13 +4358,13 @@ public class SessionEventManager
             endTimeRange = getEndTimeRangeForEndingEvent(newEndTime);
         }
         if (endTimeRange.equals(endTimeBoundariesForEventIdentifiers
-                .get(event.getEventID())) == false) {
-            endTimeBoundariesForEventIdentifiers.put(event.getEventID(),
+                .get(eventView.getEventID())) == false) {
+            endTimeBoundariesForEventIdentifiers.put(eventView.getEventID(),
                     endTimeRange);
-            if (events.contains(event)) {
+            if (allEventViews.contains(eventView)) {
                 notificationSender.postNotificationAsync(
                         new SessionEventsTimeRangeBoundariesModified(this,
-                                Sets.newHashSet(event.getEventID()),
+                                Sets.newHashSet(eventView.getEventID()),
                                 Originator.OTHER));
             }
         }
@@ -3861,8 +4373,8 @@ public class SessionEventManager
     /**
      * Set the specified event's start and end time ranges as specified.
      * 
-     * @param event
-     *            Event to have its ranges modified.
+     * @param eventView
+     *            View of the event to have its ranges modified.
      * @param startTimeRange
      *            New allowable range of start times.
      * @param endTimeRange
@@ -3870,10 +4382,10 @@ public class SessionEventManager
      * @return True if the new ranges are different from the previous ranges,
      *         false otherwise.
      */
-    private boolean setEventTimeRangeBoundaries(IHazardEvent event,
+    private boolean setEventTimeRangeBoundaries(IHazardEventView eventView,
             Range<Long> startTimeRange, Range<Long> endTimeRange) {
         boolean changed = false;
-        String eventID = event.getEventID();
+        String eventID = eventView.getEventID();
         if (startTimeRange.equals(
                 startTimeBoundariesForEventIdentifiers.get(eventID)) == false) {
             startTimeBoundariesForEventIdentifiers.put(eventID, startTimeRange);
@@ -3891,15 +4403,15 @@ public class SessionEventManager
      * Update the allowable ranges for start and end time of the specified event
      * to be correct given the event's status and other relevant properties.
      * 
-     * @param event
-     *            Event for which to update the start and end time allowable
-     *            ranges.
+     * @param eventView
+     *            View of the event for which to update the start and end time
+     *            allowable ranges.
      * @param currentTime
      *            Current CAVE time, as far as the event is concerned.
      * @return True if the time boundaries were modified, false otherwise.
      */
-    private boolean updateTimeBoundariesForSingleEvent(IHazardEvent event,
-            long currentTime) {
+    private boolean updateTimeBoundariesForSingleEvent(
+            IHazardEventView eventView, long currentTime) {
 
         /*
          * Handle pre-issued hazard events differently from ones that have been
@@ -3912,28 +4424,28 @@ public class SessionEventManager
          */
         Range<Long> startTimeRange = null;
         Range<Long> endTimeRange = null;
-        long startTime = event.getStartTime().getTime();
-        long endTime = event.getEndTime().getTime();
-        switch (event.getStatus()) {
+        long startTime = eventView.getStartTime().getTime();
+        long endTime = eventView.getEndTime().getTime();
+        switch (eventView.getStatus()) {
         case POTENTIAL:
         case PENDING:
         case PROPOSED:
             startTimeRange = Range.closed(
-                    (configManager.isAllowAnyStartTime(event)
+                    (configManager.isAllowAnyStartTime(eventView)
                             ? HazardConstants.MIN_TIME : currentTime),
-                    (configManager.isStartTimeIsCurrentTime(event) ? currentTime
-                            : HazardConstants.MAX_TIME));
+                    (configManager.isStartTimeIsCurrentTime(eventView)
+                            ? currentTime : HazardConstants.MAX_TIME));
             endTimeRange = getEndTimeRangeForPreIssuedEvent(endTime);
             break;
         case ISSUED:
             boolean startTimeIsCurrentTime = configManager
-                    .isStartTimeIsCurrentTime(event);
+                    .isStartTimeIsCurrentTime(eventView);
             startTimeRange = Range.closed(
                     (startTimeIsCurrentTime ? startTime
                             : HazardConstants.MIN_TIME),
                     (startTimeIsCurrentTime ? startTime
                             : HazardConstants.MAX_TIME));
-            endTimeRange = getEndTimeRangeForIssuedEvent(event, startTime,
+            endTimeRange = getEndTimeRangeForIssuedEvent(eventView, startTime,
                     endTime);
             break;
         case ELAPSED:
@@ -3946,7 +4458,8 @@ public class SessionEventManager
         /*
          * Use the generated ranges.
          */
-        return setEventTimeRangeBoundaries(event, startTimeRange, endTimeRange);
+        return setEventTimeRangeBoundaries(eventView, startTimeRange,
+                endTimeRange);
     }
 
     /**
@@ -3969,13 +4482,13 @@ public class SessionEventManager
      * A notification is sent off of the changes made if any boundaries are
      * changed.
      * 
-     * @param event
+     * @param eventView
      *            Event that has just been issued.
      * @param issueTime
      *            Issue time, as epoch time in milliseconds.
      */
     private void updateTimeRangeBoundariesOfJustIssuedEvent(
-            ObservedHazardEvent event, long issueTime) {
+            IHazardEventView eventView, long issueTime) {
 
         /*
          * Get the old start time, and then get the actual issuance time for the
@@ -3984,7 +4497,7 @@ public class SessionEventManager
          * latter, since the start time should never be less than when the event
          * was last issued.
          */
-        long startTime = event.getStartTime().getTime();
+        long startTime = eventView.getStartTime().getTime();
         issueTime = roundTimeDownToNearestMinute(new Date(issueTime));
         if (startTime < issueTime) {
             startTime = issueTime;
@@ -3997,7 +4510,7 @@ public class SessionEventManager
          * similar: either the issue time, or unlimited.
          */
         boolean startTimeIsIssueTime = configManager
-                .isStartTimeIsCurrentTime(event);
+                .isStartTimeIsCurrentTime(eventView);
         Range<Long> startTimeRange = Range.closed(
                 (startTimeIsIssueTime ? issueTime : HazardConstants.MIN_TIME),
                 (startTimeIsIssueTime ? issueTime : HazardConstants.MAX_TIME));
@@ -4009,16 +4522,16 @@ public class SessionEventManager
          * change the end time so that the duration remains the same as it was
          * before.
          */
-        long endTime = event.getEndTime().getTime();
+        long endTime = eventView.getEndTime().getTime();
         if (endTime != HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS) {
-            if (configManager.getDurationChoices(event).isEmpty()) {
+            if (configManager.getDurationChoices(eventView).isEmpty()) {
                 if (endTime
                         - startTime < HazardConstants.TIME_RANGE_MINIMUM_INTERVAL) {
                     endTime = startTime
                             + HazardConstants.TIME_RANGE_MINIMUM_INTERVAL;
                 }
             } else {
-                endTime += startTime - event.getStartTime().getTime();
+                endTime += startTime - eventView.getStartTime().getTime();
             }
         }
 
@@ -4026,29 +4539,30 @@ public class SessionEventManager
          * Get the allowable range for the end time.
          */
         Range<Long> endTimeRange = getEndTimeRangeForIssuedEventBasedOnEndTime(
-                event, endTime);
+                eventView, endTime);
 
         /*
          * Use the new ranges; if these are different from the previous ranges,
          * post a notification to that effect.
          */
-        if (setEventTimeRangeBoundaries(event, startTimeRange, endTimeRange)) {
+        if (setEventTimeRangeBoundaries(eventView, startTimeRange,
+                endTimeRange)) {
             postTimeRangeBoundariesModifiedNotification(
-                    Sets.newHashSet(event.getEventID()));
+                    Sets.newHashSet(eventView.getEventID()));
         }
 
         /*
          * Set the new start and end times.
          */
-        event.setTimeRange(new Date(startTime), new Date(endTime),
-                Originator.OTHER);
+        getSessionEventForView(eventView).setTimeRange(new Date(startTime),
+                new Date(endTime), Originator.OTHER);
 
         /*
          * Make a record of the event's start and its end time/duration at
          * issuance time, which now becomes the most recent issuance for this
          * event.
          */
-        updateSavedTimesForEventIfIssued(event, false);
+        updateSavedTimesForEventIfIssued(eventView, false);
     }
 
     /**
@@ -4059,16 +4573,16 @@ public class SessionEventManager
      * having just been issued. A notification is sent off of the changes made
      * if any boundaries are changed.
      * 
-     * @param singleEvent
-     *            Event that has been added, removed, or modified. If
-     *            <code>null</code>, all events should be updated. In this case,
-     *            the assumption is made that no events have been removed.
+     * @param singleEventView
+     *            View of the event that has been added, removed, or modified.
+     *            If <code>null</code>, all events should be updated. In this
+     *            case, the assumption is made that no events have been removed.
      * @param removed
      *            Flag indicating whether or not the change is the removal of
      *            the event; this is ignored if <code>event</code> is
      *            <code>null</code>.
      */
-    private void updateTimeBoundariesForEvents(IHazardEvent singleEvent,
+    private void updateTimeBoundariesForEvents(IHazardEventView singleEventView,
             boolean removed) {
 
         /*
@@ -4078,25 +4592,25 @@ public class SessionEventManager
          */
         long currentTime = SimulatedTime.getSystemTime().getTime().getTime();
         Set<String> identifiersWithChangedBoundaries = new HashSet<>();
-        if (singleEvent == null) {
+        if (singleEventView == null) {
             Set<String> identifiersWithExpiredTimes = new HashSet<>();
-            for (ObservedHazardEvent thisEvent : events) {
+            for (IHazardEventView eventView : allEventViews) {
 
                 /*
                  * Round the current time down to the previous minute if this
                  * event has minute-level time resolution.
                  */
                 long eventCurrentTime = (timeResolutionsForEventIdentifiers
-                        .get(thisEvent.getEventID()) == TimeResolution.MINUTES
+                        .get(eventView.getEventID()) == TimeResolution.MINUTES
                                 ? roundTimeDownToNearestMinute(currentTime)
                                 : currentTime);
-                if (updateTimeBoundariesForSingleEvent(thisEvent,
+                if (updateTimeBoundariesForSingleEvent(eventView,
                         eventCurrentTime)) {
                     identifiersWithChangedBoundaries
-                            .add(thisEvent.getEventID());
+                            .add(eventView.getEventID());
                 }
-                if (isPastExpirationTime(thisEvent) == true) {
-                    identifiersWithExpiredTimes.add(thisEvent.getEventID());
+                if (isPastExpirationTime(eventView) == true) {
+                    identifiersWithExpiredTimes.add(eventView.getEventID());
                 }
             }
 
@@ -4124,15 +4638,16 @@ public class SessionEventManager
              */
             if (removed) {
                 startTimeBoundariesForEventIdentifiers
-                        .remove(singleEvent.getEventID());
+                        .remove(singleEventView.getEventID());
                 endTimeBoundariesForEventIdentifiers
-                        .remove(singleEvent.getEventID());
-            } else if (updateTimeBoundariesForSingleEvent(singleEvent,
-                    (timeResolutionsForEventIdentifiers.get(
-                            singleEvent.getEventID()) == TimeResolution.MINUTES
+                        .remove(singleEventView.getEventID());
+            } else if (updateTimeBoundariesForSingleEvent(singleEventView,
+                    (timeResolutionsForEventIdentifiers.get(singleEventView
+                            .getEventID()) == TimeResolution.MINUTES
                                     ? roundTimeDownToNearestMinute(currentTime)
                                     : currentTime))) {
-                identifiersWithChangedBoundaries.add(singleEvent.getEventID());
+                identifiersWithChangedBoundaries
+                        .add(singleEventView.getEventID());
             }
         }
 
@@ -4145,7 +4660,8 @@ public class SessionEventManager
             postTimeRangeBoundariesModifiedNotification(
                     identifiersWithChangedBoundaries);
             for (String identifier : identifiersWithChangedBoundaries) {
-                ObservedHazardEvent thisEvent = getEventById(identifier);
+                ObservedHazardEvent thisEvent = getSessionEventForView(
+                        getEventById(identifier));
                 long startTime = thisEvent.getStartTime().getTime();
                 long endTime = thisEvent.getEndTime().getTime();
                 long duration = endTime - startTime;
@@ -4239,25 +4755,25 @@ public class SessionEventManager
      * Update the saved absolute or relative end time (the latter being
      * duration) for the specified event if the latter is issued.
      * 
-     * @param event
-     *            Event that needs its saved end time or duration updated to
-     *            reflect its current state.
+     * @param eventView
+     *            View of the event that needs its saved end time or duration
+     *            updated to reflect its current state.
      * @param removed
      *            Flag indicating whether or not the event has been removed.
      */
-    private void updateSavedTimesForEventIfIssued(IHazardEvent event,
+    private void updateSavedTimesForEventIfIssued(IHazardEventView eventView,
             boolean removed) {
-        String eventId = event.getEventID();
+        String eventId = eventView.getEventID();
         if (removed) {
             endTimesOrDurationsForIssuedEventIdentifiers.remove(eventId);
-        } else if (event.getStatus() == HazardStatus.ISSUED) {
-            if (configManager.getDurationChoices(event).isEmpty()) {
+        } else if (eventView.getStatus() == HazardStatus.ISSUED) {
+            if (configManager.getDurationChoices(eventView).isEmpty()) {
                 endTimesOrDurationsForIssuedEventIdentifiers.put(eventId,
-                        event.getEndTime().getTime());
+                        eventView.getEndTime().getTime());
             } else {
                 endTimesOrDurationsForIssuedEventIdentifiers.put(eventId,
-                        event.getEndTime().getTime()
-                                - event.getStartTime().getTime());
+                        eventView.getEndTime().getTime()
+                                - eventView.getStartTime().getTime());
             }
         }
     }
@@ -4265,12 +4781,13 @@ public class SessionEventManager
     /**
      * Update the duration choices list associated with the specified event.
      * 
-     * @param event
-     *            Event for which the duration choices are to be updated.
+     * @param eventView
+     *            View of the event for which the duration choices are to be
+     *            updated.
      * @param removed
      *            Flag indicating whether or not the event has been removed.
      */
-    private void updateDurationChoicesForEvent(IHazardEvent event,
+    private void updateDurationChoicesForEvent(IHazardEventView eventView,
             boolean removed) {
 
         /*
@@ -4278,7 +4795,7 @@ public class SessionEventManager
          * with it. Otherwise, update the choices.
          */
         if (removed) {
-            durationChoicesForEventIdentifiers.remove(event.getEventID());
+            durationChoicesForEventIdentifiers.remove(eventView.getEventID());
         } else {
 
             /*
@@ -4286,7 +4803,7 @@ public class SessionEventManager
              * them of any that do not fit within the allowable end time range.
              */
             List<String> durationChoices = configManager
-                    .getDurationChoices(event);
+                    .getDurationChoices(eventView);
             if (durationChoices.isEmpty() == false) {
 
                 /*
@@ -4295,7 +4812,7 @@ public class SessionEventManager
                  * choices are specified in the list used to generate it.
                  */
                 Map<String, Long> deltasForDurations = getDeltasForDurationChoices(
-                        event, durationChoices);
+                        eventView, durationChoices);
                 if (deltasForDurations == null) {
                     return;
                 }
@@ -4306,9 +4823,9 @@ public class SessionEventManager
                  * time, the sum falls within the allowable end time range. If
                  * it does, add it to the list of approved choices.
                  */
-                long startTime = event.getStartTime().getTime();
+                long startTime = eventView.getStartTime().getTime();
                 Range<Long> endTimeRange = endTimeBoundariesForEventIdentifiers
-                        .get(event.getEventID());
+                        .get(eventView.getEventID());
                 List<String> allowableDurationChoices = new ArrayList<>(
                         durationChoices.size());
                 for (Map.Entry<String, Long> entry : deltasForDurations
@@ -4324,7 +4841,7 @@ public class SessionEventManager
             /*
              * Cache the list of approved choices.
              */
-            durationChoicesForEventIdentifiers.put(event.getEventID(),
+            durationChoicesForEventIdentifiers.put(eventView.getEventID(),
                     durationChoices);
         }
     }
@@ -4339,14 +4856,14 @@ public class SessionEventManager
      * comments within the method.
      * </p>
      * 
-     * @param event
+     * @param eventView
      *            Event that has been added, removed, or modified.
      * @param removed
      *            Flag indicating whether or not the change is the removal of
      *            the event.
      */
-    void updateConflictingEventsForSelectedEventIdentifiers(IHazardEvent event,
-            boolean removed) {
+    protected void updateConflictingEventsForSelectedEventIdentifiers(
+            IHazardEventView eventView, boolean removed) {
 
         /*
          * TODO: If this is found to take too much time, an optimization could
@@ -4362,16 +4879,16 @@ public class SessionEventManager
          * rebuilt whenever this method is called in response to a change of
          * some sort.
          */
-        Map<String, Collection<IHazardEvent>> oldMap = new HashMap<>(
+        Map<String, Collection<IHazardEventView>> oldMap = new HashMap<>(
                 conflictingEventsForSelectedEventIdentifiers);
         conflictingEventsForSelectedEventIdentifiers.clear();
 
-        Collection<ObservedHazardEvent> selectedEvents = sessionManager
+        Collection<? extends IHazardEventView> selectedEventViews = sessionManager
                 .getSelectionManager().getSelectedEvents();
 
-        for (IHazardEvent eventToCheck : selectedEvents) {
+        for (IHazardEventView eventToCheck : selectedEventViews) {
 
-            Map<IHazardEvent, Collection<String>> conflictingHazards = null;
+            Map<IHazardEventView, Collection<String>> conflictingHazards = null;
             try {
                 conflictingHazards = getConflictingEvents(eventToCheck,
                         eventToCheck.getStartTime(), eventToCheck.getEndTime(),
@@ -4399,22 +4916,22 @@ public class SessionEventManager
     }
 
     @Override
-    public Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> getAllConflictingEvents()
+    public Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> getAllConflictingEvents()
             throws HazardEventServiceException {
 
-        Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictingHazardMap = new HashMap<>();
+        Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictingHazardMap = new HashMap<>();
         /*
          * Find the union of the session events and those retrieved from the
          * hazard event manager. Ignore "Ended" events.
          */
-        List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
+        List<IHazardEventView> eventsToCheck = getEventsToCheckForConflicts(
                 new HazardEventQueryRequest(CAVEMode.OPERATIONAL
                         .equals(CAVEMode.getMode()) == false),
                 EnumSet.allOf(HazardStatus.class));
 
-        for (IHazardEvent eventToCheck : eventsToCheck) {
+        for (IHazardEventView eventToCheck : eventsToCheck) {
 
-            Map<IHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
+            Map<IHazardEventView, Collection<String>> conflictingHazards = getConflictingEvents(
                     eventToCheck, eventToCheck.getStartTime(),
                     eventToCheck.getEndTime(),
                     eventToCheck.getFlattenedGeometry(),
@@ -4430,12 +4947,12 @@ public class SessionEventManager
     }
 
     @Override
-    public Map<IHazardEvent, Collection<String>> getConflictingEvents(
-            final IHazardEvent eventToCompare, final Date startTime,
+    public Map<IHazardEventView, Collection<String>> getConflictingEvents(
+            final IHazardEventView event, final Date startTime,
             final Date endTime, final Geometry geometry, String phenSigSubtype)
                     throws HazardEventServiceException {
 
-        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
+        Map<IHazardEventView, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
         /*
          * A hazard type may not always be assigned to an event yet.
@@ -4459,8 +4976,7 @@ public class SessionEventManager
                     String ugcLabel = hazardTypeEntry.getUgcLabel();
 
                     List<IGeometryData> hatchedAreasForEvent = new ArrayList<>(
-                            geoMapUtilities
-                                    .buildHazardAreaForEvent(eventToCompare)
+                            geoMapUtilities.buildHazardAreaForEvent(event)
                                     .values());
 
                     /*
@@ -4471,25 +4987,24 @@ public class SessionEventManager
                             (CAVEMode.getMode()
                                     .equals(CAVEMode.OPERATIONAL) == false),
                             HazardConstants.HAZARD_EVENT_START_TIME, ">",
-                            eventToCompare.getStartTime())
+                            event.getStartTime())
                                     .and(HazardConstants.HAZARD_EVENT_END_TIME,
-                                            "<", eventToCompare.getEndTime())
+                                            "<", event.getEndTime())
                                     .and(HazardConstants.PHEN_SIG,
                                             hazardConflictList);
                     Set<HazardStatus> allowableStatuses = EnumSet
                             .of(HazardStatus.ISSUED, HazardStatus.ENDING);
 
-                    List<IHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
+                    List<IHazardEventView> eventsToCheck = getEventsToCheckForConflicts(
                             queryRequest, allowableStatuses);
 
                     /*
                      * Loop over the existing events.
                      */
                     TimeRange modifiedEventTimeRange = new TimeRange(
-                            eventToCompare.getStartTime(),
-                            eventToCompare.getEndTime());
+                            event.getStartTime(), event.getEndTime());
 
-                    for (IHazardEvent eventToCheck : eventsToCheck) {
+                    for (IHazardEventView eventToCheck : eventsToCheck) {
 
                         /*
                          * Test the events for overlap in time. If they do not
@@ -4503,7 +5018,7 @@ public class SessionEventManager
                         if (modifiedEventTimeRange
                                 .overlaps(eventToCheckTimeRange)) {
                             if (!eventToCheck.getEventID()
-                                    .equals(eventToCompare.getEventID())) {
+                                    .equals(event.getEventID())) {
 
                                 String otherEventPhenSigSubtype = HazardEventUtilities
                                         .getHazardType(eventToCheck);
@@ -4523,8 +5038,8 @@ public class SessionEventManager
                                                                 eventToCheck)
                                                         .values());
 
-                                        conflictingHazardsMap.putAll(
-                                                buildConflictMap(eventToCompare,
+                                        conflictingHazardsMap
+                                                .putAll(buildConflictMap(event,
                                                         eventToCheck,
                                                         hatchedAreasForEvent,
                                                         hatchedAreasEventToCheck,
@@ -4575,7 +5090,7 @@ public class SessionEventManager
      *             If a problem occurs while attempting to fetch the events to
      *             be checked.
      */
-    private List<IHazardEvent> getEventsToCheckForConflicts(
+    private List<IHazardEventView> getEventsToCheckForConflicts(
             final HazardEventQueryRequest queryRequest,
             Set<HazardStatus> allowableStatuses)
                     throws HazardEventServiceException {
@@ -4585,18 +5100,17 @@ public class SessionEventManager
          * compiling a list of those that have not ended or elapsed, as well as
          * set of all these non-ended/elapsed event's identifiers.
          */
-        List<IHazardEvent> eventsToCheck = new ArrayList<IHazardEvent>(
-                getEvents());
+        List<IHazardEventView> eventsToCheck = new ArrayList<>(getEvents());
         Set<String> eventIdentifiersToBeChecked = new HashSet<>(
                 eventsToCheck.size(), 1.0f);
 
-        for (IHazardEvent sessionEvent : new ArrayList<IHazardEvent>(
+        for (IHazardEventView sessionEventView : new ArrayList<>(
                 eventsToCheck)) {
-            if ((sessionEvent.getStatus() != HazardStatus.ENDED)
-                    && (sessionEvent.getStatus() != HazardStatus.ELAPSED)) {
-                eventIdentifiersToBeChecked.add(sessionEvent.getEventID());
+            if ((sessionEventView.getStatus() != HazardStatus.ENDED)
+                    && (sessionEventView.getStatus() != HazardStatus.ELAPSED)) {
+                eventIdentifiersToBeChecked.add(sessionEventView.getEventID());
             } else {
-                eventsToCheck.remove(sessionEvent);
+                eventsToCheck.remove(sessionEventView);
             }
         }
 
@@ -4616,7 +5130,7 @@ public class SessionEventManager
                     && (entry.getValue().getStatus() != HazardStatus.ELAPSED)
                     && allowableStatuses
                             .contains(entry.getValue().getStatus())) {
-                eventsToCheck.add(entry.getValue());
+                eventsToCheck.add(getEventById(entry.getValue().getEventID()));
             }
         }
 
@@ -4632,6 +5146,8 @@ public class SessionEventManager
                 .unregisterIntraNotificationHandler(eventsRemovedHandler);
         notificationSender
                 .unregisterIntraNotificationHandler(eventChangeHandler);
+        notificationSender
+                .unregisterIntraNotificationHandler(eventLockChangeHandler);
         notificationSender.unregisterIntraNotificationHandler(
                 productGenerationCompletionHandler);
         notificationSender
@@ -4657,9 +5173,9 @@ public class SessionEventManager
      * of conflicting areas (zones, counties, etc). Polygons are a special case
      * in which the polygon is the hatched area.
      * 
-     * @param firstEvent
+     * @param firstEventView
      *            The first of the two events to compare for conflicts
-     * @param secondEvent
+     * @param secondEventView
      *            The second of the two events to compare for conflicts
      * @param hatchedAreasFirstEvent
      *            The hatched areas associated with the first event
@@ -4676,46 +5192,46 @@ public class SessionEventManager
      * 
      */
     @SuppressWarnings("unchecked")
-    private Map<IHazardEvent, Collection<String>> buildConflictMap(
-            IHazardEvent firstEvent, IHazardEvent secondEvent,
+    private Map<IHazardEventView, Collection<String>> buildConflictMap(
+            IHazardEventView firstEventView, IHazardEventView secondEventView,
             List<IGeometryData> hatchedAreasFirstEvent,
             List<IGeometryData> hatchedAreasSecondEvent,
             String firstEventLabelParameter, String secondEventLabelParameter) {
 
-        Map<IHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
+        Map<IHazardEventView, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
-        if (geoMapUtilities.isNonHatching(firstEvent)
-                || geoMapUtilities.isNonHatching(secondEvent)) {
+        if (geoMapUtilities.isNonHatching(firstEventView)
+                || geoMapUtilities.isNonHatching(secondEventView)) {
             return conflictingHazardsMap;
         }
 
         Set<String> forecastZoneSet = new HashSet<>();
 
-        if (!geoMapUtilities.isWarngenHatching(firstEvent)
-                && !geoMapUtilities.isWarngenHatching(secondEvent)) {
+        if (!geoMapUtilities.isWarngenHatching(firstEventView)
+                && !geoMapUtilities.isWarngenHatching(secondEventView)) {
 
             Set<IGeometryData> commonHatchedAreas = new HashSet<>();
             commonHatchedAreas.addAll(hatchedAreasFirstEvent);
             commonHatchedAreas.retainAll(hatchedAreasSecondEvent);
 
             if (!commonHatchedAreas.isEmpty()) {
-                HashMap<String, Serializable> firstHazardAreaMap = (HashMap<String, Serializable>) firstEvent
+                HashMap<String, Serializable> firstHazardAreaMap = (HashMap<String, Serializable>) firstEventView
                         .getHazardAttribute(HAZARD_AREA);
-                HashMap<String, Serializable> secondHazardAreaMap = (HashMap<String, Serializable>) secondEvent
+                HashMap<String, Serializable> secondHazardAreaMap = (HashMap<String, Serializable>) secondEventView
                         .getHazardAttribute(HAZARD_AREA);
                 forecastZoneSet.addAll(firstHazardAreaMap.keySet());
                 forecastZoneSet.retainAll(secondHazardAreaMap.keySet());
 
-                conflictingHazardsMap.put(secondEvent, forecastZoneSet);
+                conflictingHazardsMap.put(secondEventView, forecastZoneSet);
             }
         } else {
             String labelFieldName = null;
             List<IGeometryData> geoWithLabelInfo = null;
 
-            if (!geoMapUtilities.isWarngenHatching(firstEvent)) {
+            if (!geoMapUtilities.isWarngenHatching(firstEventView)) {
                 labelFieldName = firstEventLabelParameter;
                 geoWithLabelInfo = hatchedAreasFirstEvent;
-            } else if (!geoMapUtilities.isWarngenHatching(secondEvent)) {
+            } else if (!geoMapUtilities.isWarngenHatching(secondEventView)) {
                 labelFieldName = secondEventLabelParameter;
                 geoWithLabelInfo = hatchedAreasSecondEvent;
             }
@@ -4733,10 +5249,10 @@ public class SessionEventManager
                         if (labelFieldName != null) {
                             HashMap<String, Serializable> hazardAreaMap = null;
                             if (geoWithLabelInfo == hatchedAreasFirstEvent) {
-                                hazardAreaMap = (HashMap<String, Serializable>) firstEvent
+                                hazardAreaMap = (HashMap<String, Serializable>) firstEventView
                                         .getHazardAttribute(HAZARD_AREA);
                             } else {
-                                hazardAreaMap = (HashMap<String, Serializable>) secondEvent
+                                hazardAreaMap = (HashMap<String, Serializable>) secondEventView
                                         .getHazardAttribute(HAZARD_AREA);
                             }
 
@@ -4750,7 +5266,7 @@ public class SessionEventManager
             }
 
             if (conflictFound) {
-                conflictingHazardsMap.put(secondEvent, forecastZoneSet);
+                conflictingHazardsMap.put(secondEventView, forecastZoneSet);
             }
 
         }
@@ -4758,35 +5274,121 @@ public class SessionEventManager
         return conflictingHazardsMap;
     };
 
+    /*
+     * TODO: This method is probably not necessary since it does absolutely
+     * nothing. It would also be elegant to remove it when endEvent() is removed
+     * (see below).
+     */
     @Override
-    public void endEvent(ObservedHazardEvent event, IOriginator originator) {
+    public void issueEvent(IHazardEventView event, IOriginator originator) {
+    }
+
+    @Override
+    public EventPropertyChangeResult initiateEventEndingProcess(
+            IHazardEventView event, IOriginator originator) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+        if (event.getStatus() != HazardStatus.ISSUED) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+        }
+
+        /*
+         * Lock the event, as ending status is an interim (modified) state.
+         */
+        if ((originator.isNotLockedByOthersRequired() == false)
+                || (isEventNotLockedByOther(event)
+                        && sessionManager.getLockManager()
+                                .lockHazardEvent(event.getEventID()))) {
+            sessionEvent.setStatus(HazardStatus.ENDING, false, originator);
+            return EventPropertyChangeResult.SUCCESS;
+        } else {
+            showWarningMessageAboutLockedEvents("Cannot End", "ended",
+                    originator, event.getEventID());
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
+    }
+
+    @Override
+    public EventPropertyChangeResult revertEventEndingProcess(
+            IHazardEventView event, IOriginator originator) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
+        }
+        if (event.getStatus() != HazardStatus.ENDING) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+        }
+        if (originator.isNotLockedByOthersRequired()
+                && isEventNotLockedByOther(event)) {
+            sessionEvent.setStatus(HazardStatus.ISSUED, false, originator);
+            return EventPropertyChangeResult.SUCCESS;
+        } else {
+            showWarningMessageAboutLockedEvents("Cannot Revert", "reverted",
+                    originator, event.getEventID());
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
+    }
+
+    /*
+     * TODO: This method is probably not necessary. See the to-do comments
+     * inside the method for details.
+     */
+    @Override
+    public void endEvent(IHazardEventView event, IOriginator originator) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return;
+        }
         sessionManager.startBatchedChanges();
+
+        /*
+         * TODO: Is this necessary?
+         */
         sessionManager.getSelectionManager().removeEventFromSelectedEvents(
                 event.getEventID(), Originator.OTHER);
-        event.setStatus(HazardStatus.ENDED, true, true, originator);
+
+        /*
+         * TODO: Is this call necessary? This method is only called from
+         * SessionProductManager.issue(), which already should, via the
+         * mergeHazardEvents() call it makes a few lines up from the call to
+         * this method, have changed the status to ended.
+         */
+        sessionEvent.setStatus(HazardStatus.ENDED, true, true, originator);
         sessionManager.finishBatchedChanges();
     }
 
     @Override
-    public void issueEvent(ObservedHazardEvent event, IOriginator originator) {
-    }
-
-    @Override
-    public Set<String> getEventIdsAllowingProposal() {
-        List<ObservedHazardEvent> selectedEvents = sessionManager
+    public Set<String> getSelectedEventIdsAllowingProposal() {
+        List<? extends IHazardEventView> selectedEventViews = sessionManager
                 .getSelectionManager().getSelectedEvents();
-        Set<String> set = new HashSet<String>(selectedEvents.size());
-        for (ObservedHazardEvent event : selectedEvents) {
-            HazardStatus status = event.getStatus();
-            if (isProposedStateAllowed(event, status)) {
-                set.add(event.getEventID());
+        Set<String> set = new HashSet<String>(selectedEventViews.size());
+        for (IHazardEventView eventView : selectedEventViews) {
+            if (isProposedStateAllowed(eventView)) {
+                set.add(eventView.getEventID());
             }
         }
         return Collections.unmodifiableSet(set);
     }
 
     @Override
-    public void proposeEvent(ObservedHazardEvent event,
+    public void setPotentialEventsToPending(
+            Collection<? extends IHazardEventView> events) {
+        for (IHazardEventView event : events) {
+            if (event.getStatus() == HazardStatus.POTENTIAL) {
+                ObservedHazardEvent sessionEvent = getSessionEventForView(
+                        event);
+                if (sessionEvent == null) {
+                    continue;
+                }
+                sessionEvent.setStatus(HazardStatus.PENDING, false,
+                        Originator.OTHER);
+            }
+        }
+    }
+
+    private EventPropertyChangeResult doProposeEvent(IHazardEventView event,
             IOriginator originator) {
 
         /*
@@ -4795,108 +5397,294 @@ public class SessionEventManager
          * persisted manually (since no status change means it was not persisted
          * by the setStatus() invocation).
          */
-        HazardStatus status = event.getStatus();
-        if (isProposedStateAllowed(event, status)) {
-            if (event.setStatus(HazardStatus.PROPOSED, true, true,
-                    originator) == false) {
-                persistAndDeselectEventDueToStatusChange(event, true,
-                        originator);
+        if (isProposedStateAllowed(event)) {
+            ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+            if (sessionEvent == null) {
+                return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
             }
+            sessionEvent.setStatus(HazardStatus.PROPOSED, true, true,
+                    originator);
+            return EventPropertyChangeResult.SUCCESS;
+        } else if (isEventNotLockedByOther(event)) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+        } else {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
+    }
+
+    /**
+     * If the specified origin of the specified abortive action is user input,
+     * show the user a warning message about the specified events being unable
+     * to have the specified action performed upon them because they were
+     * locked.
+     * 
+     * @param title
+     *            Title of the warning message.
+     * @param abortedAction
+     *            Action that could not be completed due to the lock status, in
+     *            the form of a past-tense verb, such as "proposed".
+     * @param originator
+     *            Originator of the aborted action.
+     * @param eventIdentifiers
+     *            Identifiers of the events that were found to be locked.
+     */
+    private void showWarningMessageAboutLockedEvents(String title,
+            String abortedAction, IOriginator originator,
+            String... eventIdentifiers) {
+        if ((originator.isDirectResultOfUserInput() == false)
+                || (eventIdentifiers.length == 0)) {
+            return;
+        }
+        if (eventIdentifiers.length == 1) {
+            messenger.getWarner().warnUser(title,
+                    "Event " + eventIdentifiers[0] + " could not be "
+                            + abortedAction
+                            + " because it has been locked by another user.");
+        } else {
+            messenger.getWarner().warnUser(title,
+                    "The following events could not be " + abortedAction
+                            + " because they were locked by other user(s):\n"
+                            + Joiner.on("\n").join(eventIdentifiers));
+        }
+    }
+
+    /**
+     * If the specified origin of the specified abortive action is user input,
+     * show the user a warning message about any specified events associated
+     * with a failure due to lock status in the specified map.
+     * 
+     * @param title
+     *            Title of the warning message.
+     * @param abortedAction
+     *            Action that could not be completed due to the lock status, in
+     *            the form of a past-tense verb, such as "proposed".
+     * @param originator
+     *            Originator of the aborted action.
+     * @param resultsForEventIdentifiers
+     *            Map pairing identifiers of the events that had the action
+     *            attempted with the results of those attempts.
+     */
+    private void showWarningAboutAnyEventIdentifierActionsAbortedDueToLocks(
+            String title, String abortedAction, IOriginator originator,
+            Map<String, EventPropertyChangeResult> resultsForEventIdentifiers) {
+
+        /*
+         * If at least one event could not be proposed to due the fact that it
+         * was found to be locked, compile a list of all the events that were
+         * found to be locked, and inform the user.
+         */
+        if (resultsForEventIdentifiers.containsValue(
+                EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS)) {
+            List<String> identifiersOfLockedEvents = new ArrayList<>(
+                    resultsForEventIdentifiers.size());
+            for (Map.Entry<String, EventPropertyChangeResult> entry : resultsForEventIdentifiers
+                    .entrySet()) {
+                if (entry
+                        .getValue() == EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS) {
+                    identifiersOfLockedEvents.add(entry.getKey());
+                }
+            }
+            showWarningMessageAboutLockedEvents(title, abortedAction,
+                    originator, identifiersOfLockedEvents.toArray(
+                            new String[identifiersOfLockedEvents.size()]));
         }
     }
 
     @Override
-    public void proposeEvents(Collection<ObservedHazardEvent> events,
+    public EventPropertyChangeResult proposeEvent(IHazardEventView event,
             IOriginator originator) {
-        sessionManager.startBatchedChanges();
-        for (ObservedHazardEvent observedHazardEvent : events) {
-            proposeEvent(observedHazardEvent, originator);
+        EventPropertyChangeResult result = doProposeEvent(event, originator);
+        if (result == EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS) {
+            showWarningMessageAboutLockedEvents("Cannot Propose", "proposed",
+                    originator, event.getEventID());
         }
-        sessionManager.finishBatchedChanges();
+        return result;
     }
 
-    private boolean isProposedStateAllowed(ObservedHazardEvent event,
-            HazardStatus status) {
-        return ((HazardStatus.hasEverBeenIssued(status) == false)
-                && HazardEventUtilities.isHazardTypeValid(event));
+    @Override
+    public Map<String, EventPropertyChangeResult> proposeEvents(
+            Collection<? extends IHazardEventView> events,
+            IOriginator originator) {
+
+        /*
+         * Attempt to propose each event, recording the result of each attempt.
+         */
+        sessionManager.startBatchedChanges();
+        Map<String, EventPropertyChangeResult> resultsForEventIdentifiers = new HashMap<>(
+                events.size(), 1.0f);
+        for (IHazardEventView eventView : events) {
+            resultsForEventIdentifiers.put(eventView.getEventID(),
+                    doProposeEvent(eventView, originator));
+        }
+        sessionManager.finishBatchedChanges();
+
+        showWarningAboutAnyEventIdentifierActionsAbortedDueToLocks(
+                "Cannot Propose", "proposed", originator,
+                resultsForEventIdentifiers);
+
+        return resultsForEventIdentifiers;
+    }
+
+    @Override
+    public boolean isProposedStateAllowed(IHazardEventView event) {
+        return ((HazardStatus.hasEverBeenIssued(event.getStatus()) == false)
+                && HazardEventUtilities.isHazardTypeValid(event)
+                && isEventNotLockedByOther(event));
+    }
+
+    @Override
+    public void breakEventLock(IHazardEventView event) {
+
+        /*
+         * Notify the user if there is no lock to break and do nothing more.
+         */
+        LockInfo info = sessionManager.getLockManager()
+                .getHazardEventLockInfo(event.getEventID());
+        if (info.getLockStatus() != LockStatus.LOCKED_BY_OTHER) {
+            messenger.getWarner().warnUser("Cannot Break Lock",
+                    (info.getLockStatus() == LockStatus.LOCKABLE
+                            ? "There is no lock to break for hazard event "
+                                    + event.getEventID() + "."
+                            : "Cannot break the lock for hazard event "
+                                    + event.getEventID()
+                                    + " as it is held by you."));
+            return;
+        }
+
+        /*
+         * Get user confirmation, since breaking the lock has potentially
+         * non-trivial consequences if done by mistake.
+         */
+        if (messenger.getQuestionAnswerer().getUserAnswerToQuestion(
+                "Are you sure you want to break this hazard lock that is currently held by "
+                        + info.getWorkstation().getUserName() + "?")) {
+            if (sessionManager.getLockManager()
+                    .breakHazardEventLock(event.getEventID()) == false) {
+                messenger.getWarner().warnUser("Cannot Break Lock",
+                        "Could not break the lock for event "
+                                + event.getEventID() + ".");
+            }
+        }
     }
 
     @Override
     public void setHighResolutionGeometriesVisibleForSelectedEvents(
             IOriginator originator) {
-
-        for (ObservedHazardEvent selectedEvent : sessionManager
-                .getSelectionManager().getSelectedEvents()) {
-            makeHighResolutionVisible(selectedEvent, originator);
+        List<String> identifiersOfLockedEvents = new ArrayList<>();
+        for (IHazardEventView event : sessionManager.getSelectionManager()
+                .getSelectedEvents()) {
+            if (isVisibleGeometrySetToHighResolution(event) == false) {
+                if ((isEventInDatabase(event) == false) || sessionManager
+                        .getLockManager().lockHazardEvent(event.getEventID())) {
+                    makeHighResolutionVisible(getSessionEventForView(event),
+                            originator);
+                } else {
+                    identifiersOfLockedEvents.add(event.getEventID());
+                }
+            }
         }
+        showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
+                originator, identifiersOfLockedEvents
+                        .toArray(new String[identifiersOfLockedEvents.size()]));
     }
 
     @Override
     public void setHighResolutionGeometryVisibleForCurrentEvent(
             IOriginator originator) {
-        makeHighResolutionVisible(getCurrentEvent(), originator);
-
+        ObservedHazardEvent event = getSessionEventForView(getCurrentEvent());
+        if ((event != null)
+                && (isVisibleGeometrySetToHighResolution(event) == false)) {
+            if ((isEventInDatabase(event) == false) || sessionManager
+                    .getLockManager().lockHazardEvent(event.getEventID())) {
+                makeHighResolutionVisible(event, originator);
+            } else {
+                showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
+                        originator, event.getEventID());
+            }
+        }
     }
 
     @Override
     public boolean setLowResolutionGeometriesVisibleForSelectedEvents(
             IOriginator originator) {
-        for (ObservedHazardEvent selectedEvent : sessionManager
-                .getSelectionManager().getSelectedEvents()) {
+        List<String> identifiersOfLockedEvents = new ArrayList<>();
+        boolean result = true;
+        for (IHazardEventView event : sessionManager.getSelectionManager()
+                .getSelectedEvents()) {
             Geometry lowResolutionGeometry;
             try {
-                lowResolutionGeometry = buildLowResolutionEventGeometry(
-                        selectedEvent);
+                lowResolutionGeometry = buildLowResolutionEventGeometry(event);
             } catch (HazardGeometryOutsideCWAException e) {
-                warnUserOfGeometryOutsideCWA(selectedEvent);
-                return false;
+                warnUserOfGeometryOutsideCwa(event);
+                result = false;
+                continue;
             }
-            setLowResolutionGeometry(selectedEvent, lowResolutionGeometry,
-                    originator);
+            if (isVisibleGeometrySetToLowResolutionAndGeometry(event,
+                    lowResolutionGeometry) == false) {
+                if ((isEventInDatabase(event) == false) || sessionManager
+                        .getLockManager().lockHazardEvent(event.getEventID())) {
+                    setLowResolutionGeometry(getSessionEventForView(event),
+                            lowResolutionGeometry, originator);
+                } else {
+                    identifiersOfLockedEvents.add(event.getEventID());
+                    result = false;
+                }
+            }
         }
-
-        return true;
+        showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
+                originator, identifiersOfLockedEvents
+                        .toArray(new String[identifiersOfLockedEvents.size()]));
+        return result;
     }
 
     @Override
     public boolean setLowResolutionGeometryVisibleForCurrentEvent(
             IOriginator originator) {
-        ObservedHazardEvent hazardEvent = getCurrentEvent();
-        Geometry lowResolutionGeometry;
-        try {
-            lowResolutionGeometry = buildLowResolutionEventGeometry(
-                    hazardEvent);
-        } catch (HazardGeometryOutsideCWAException e) {
-            warnUserOfGeometryOutsideCWA(hazardEvent);
-            return false;
+        IHazardEventView eventView = getCurrentEvent();
+        ObservedHazardEvent event = getSessionEventForView(eventView);
+        if (event != null) {
+            Geometry lowResolutionGeometry;
+            try {
+                lowResolutionGeometry = buildLowResolutionEventGeometry(
+                        eventView);
+            } catch (HazardGeometryOutsideCWAException e) {
+                warnUserOfGeometryOutsideCwa(eventView);
+                return false;
+            }
+            if (isVisibleGeometrySetToLowResolutionAndGeometry(event,
+                    lowResolutionGeometry) == false) {
+                if ((isEventInDatabase(event) == false) || sessionManager
+                        .getLockManager().lockHazardEvent(event.getEventID())) {
+                    setLowResolutionGeometry(getSessionEventForView(eventView),
+                            lowResolutionGeometry, originator);
+                } else {
+                    showWarningMessageAboutLockedEvents("Cannot Modify",
+                            "modified", originator, event.getEventID());
+                    return false;
+                }
+            }
+            return true;
         }
-        setLowResolutionGeometry(hazardEvent, lowResolutionGeometry,
-                originator);
-        return true;
+        return false;
     }
 
-    /*
-     * (non-Javadoc)
+    /**
+     * Update the hazard areas of the specified event.
      * 
-     * @see
-     * com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager
-     * #updateHazardAreas
-     * (com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent)
+     * @param event
+     *            Event for which to update the areas.
      */
-    @Override
-    public void updateHazardAreas(IHazardEvent event) {
+    protected void updateHazardAreas(IHazardEventView event) {
         if (event.getHazardType() != null) {
-            Map<String, String> ugcHatchingAlgorithms = buildInitialHazardAreas(
-                    event);
-            event.addHazardAttribute(HAZARD_AREA,
-                    (Serializable) ugcHatchingAlgorithms);
+            getSessionEventForView(event).addHazardAttribute(HAZARD_AREA,
+                    (Serializable) buildInitialHazardAreas(event));
         }
     }
 
     @Override
-    public boolean canEventAreaBeChanged(ObservedHazardEvent hazardEvent) {
-        return ((hazardEvent.getStatus() != HazardStatus.ELAPSED)
-                && (hazardEvent.getStatus() != HazardStatus.ENDED));
+    public boolean canEventAreaBeChanged(IReadableHazardEvent event) {
+        return ((event.getStatus() != HazardStatus.ELAPSED)
+                && (event.getStatus() != HazardStatus.ENDED));
     }
 
     @Override
@@ -4905,13 +5693,13 @@ public class SessionEventManager
     }
 
     @Override
-    public void setCurrentEvent(ObservedHazardEvent event) {
-        this.currentEvent = event;
+    public void setCurrentEvent(IHazardEventView event) {
+        this.currentEvent = getSessionEventForView(event);
     }
 
     @Override
-    public ObservedHazardEvent getCurrentEvent() {
-        return currentEvent;
+    public IHazardEventView getCurrentEvent() {
+        return getViewForSessionEvent(currentEvent);
     }
 
     @Override
@@ -4920,9 +5708,14 @@ public class SessionEventManager
     }
 
     @Override
-    public boolean isEventChecked(IHazardEvent event) {
-        for (ObservedHazardEvent filteredEvent : getEventsForCurrentSettings()) {
-            if (filteredEvent.getEventID().equals(event.getEventID())) {
+    public boolean isEventHistorical(IHazardEventView event) {
+        return (getSessionEventForView(event) == null);
+    }
+
+    @Override
+    public boolean isEventChecked(IHazardEventView event) {
+        for (IHazardEventView filteredEventView : getEventsForCurrentSettings()) {
+            if (filteredEventView.getEventID().equals(event.getEventID())) {
                 return checkedEventIdentifiers.contains(event.getEventID());
             }
         }
@@ -4930,7 +5723,16 @@ public class SessionEventManager
     }
 
     @Override
-    public void setEventChecked(IHazardEvent event, boolean checked,
+    public boolean isEventModified(IHazardEventView event) {
+        ObservedHazardEvent sessionEvent = getSessionEventForView(event);
+        if (sessionEvent == null) {
+            return false;
+        }
+        return sessionEvent.isModified();
+    }
+
+    @Override
+    public void setEventChecked(IHazardEventView event, boolean checked,
             IOriginator originator) {
         String eventIdentifier = event.getEventID();
         boolean oldChecked = checkedEventIdentifiers.contains(eventIdentifier);
@@ -4947,35 +5749,39 @@ public class SessionEventManager
     }
 
     @Override
-    public void updateSelectedHazardUGCs() {
+    public void updateSelectedHazardUgcs() {
 
-        for (IHazardEvent hazardEvent : sessionManager.getSelectionManager()
-                .getSelectedEvents()) {
-            String hazardType = HazardEventUtilities.getHazardType(hazardEvent);
+        for (IHazardEventView hazardEventView : sessionManager
+                .getSelectionManager().getSelectedEvents()) {
+            String hazardType = HazardEventUtilities
+                    .getHazardType(hazardEventView);
 
             if (hazardType != null) {
-                List<String> ugcs = updateUGCs(hazardEvent);
+                List<String> ugcs = updateUgcs(hazardEventView);
                 if (ugcs.isEmpty()) {
                     throw new ProductGenerationException(
                             "No UGCs included in hazard.  Check inclusions in HazardTypes.py");
                 }
-                hazardEvent.addHazardAttribute(HazardConstants.UGCS,
-                        (Serializable) ugcs);
+                ObservedHazardEvent hazardEvent = getSessionEventForView(
+                        hazardEventView);
+                if (hazardEvent != null) {
+                    hazardEvent.addHazardAttribute(HazardConstants.UGCS,
+                            (Serializable) ugcs);
+                }
             }
         }
-
     }
 
     @Override
     public boolean isValidGeometryChange(IAdvancedGeometry geometry,
-            ObservedHazardEvent hazardEvent, boolean checkGeometryValidity) {
+            IReadableHazardEvent event, boolean checkGeometryValidity) {
         if (checkGeometryValidity && (geometry.isValid() == false)) {
             statusHandler.warn("Invalid geometry: "
                     + geometry.getValidityProblemDescription()
                     + "; geometry modification undone.");
             return false;
-        } else if (isEventForThisSite(hazardEvent) == false) {
-            statusHandler.warn("Event " + hazardEvent.getEventID()
+        } else if (isEventForThisSite(event) == false) {
+            statusHandler.warn("Event " + event.getEventID()
                     + " is not for the active site and cannot be modified.");
             return false;
         }
@@ -4985,8 +5791,7 @@ public class SessionEventManager
          * geometry contains a single point, and that said point is contained by
          * at least one of its non-point geometries.
          */
-        if (configManager
-                .isPointIdentifierRequired(hazardEvent.getHazardType())) {
+        if (configManager.isPointIdentifierRequired(event.getHazardType())) {
             List<Geometry> jtsGeometries = AdvancedGeometryUtilities
                     .getJtsGeometryList(geometry);
             Point point = null;
@@ -4995,7 +5800,7 @@ public class SessionEventManager
             for (Geometry jtsGeometry : jtsGeometries) {
                 if (jtsGeometry instanceof Point) {
                     if (point != null) {
-                        statusHandler.warn("Event " + hazardEvent.getEventID()
+                        statusHandler.warn("Event " + event.getEventID()
                                 + " has more than one point geometry; geometry modification undone.");
                         return false;
                     }
@@ -5005,7 +5810,7 @@ public class SessionEventManager
                 }
             }
             if (point == null) {
-                statusHandler.warn("Event " + hazardEvent.getEventID()
+                statusHandler.warn("Event " + event.getEventID()
                         + " has no point geometry; geometry modification undone.");
                 return false;
             }
@@ -5016,7 +5821,7 @@ public class SessionEventManager
                 }
             }
             if (pointContained == false) {
-                statusHandler.warn("Event " + hazardEvent.getEventID()
+                statusHandler.warn("Event " + event.getEventID()
                         + " must have at least "
                         + "one areal geometry containing its point; geometry modification undone.");
                 return false;
@@ -5027,14 +5832,14 @@ public class SessionEventManager
          * If the hazard has been issued and does not allow area change, ensure
          * that the new geometry is no larger than the previous one.
          */
-        if (hasEverBeenIssued(hazardEvent)) {
+        if (hasEverBeenIssued(event)) {
             HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
-                    .get(HazardEventUtilities.getHazardType(hazardEvent));
+                    .get(HazardEventUtilities.getHazardType(event));
             if ((hazardTypeEntry != null)
                     && (hazardTypeEntry.isAllowAreaChange() == false)) {
                 Geometry issuedGeometry = AdvancedGeometryUtilities
                         .getUnionOfPolygonalElements(
-                                hazardEvent.getFlattenedGeometry())
+                                event.getFlattenedGeometry())
                         .buffer(GEOMETRY_BUFFER_DISTANCE);
                 Geometry currentGeometry = AdvancedGeometryUtilities
                         .getUnionOfPolygonalElements(AdvancedGeometryUtilities
@@ -5052,13 +5857,13 @@ public class SessionEventManager
 
     @Override
     public Map<String, String> buildInitialHazardAreas(
-            IHazardEvent hazardEvent) {
-        if (geoMapUtilities.isNonHatching(hazardEvent)) {
+            IReadableHazardEvent event) {
+        if (geoMapUtilities.isNonHatching(event)) {
             return Collections.emptyMap();
         }
-        List<String> ugcs = buildUGCs(hazardEvent);
+        List<String> ugcs = buildUgcs(event);
         String hazardArea;
-        if (geoMapUtilities.isWarngenHatching(hazardEvent)) {
+        if (geoMapUtilities.isWarngenHatching(event)) {
             hazardArea = HAZARD_AREA_INTERSECTION;
         } else {
             hazardArea = HAZARD_AREA_ALL;
@@ -5072,11 +5877,11 @@ public class SessionEventManager
     }
 
     @Override
-    public void addOrRemoveEnclosingUGCs(Coordinate location,
+    public void addOrRemoveEnclosingUgcs(Coordinate location,
             IOriginator originator) {
-        List<ObservedHazardEvent> selectedEvents = sessionManager
+        List<? extends IHazardEventView> selectedEventViews = sessionManager
                 .getSelectionManager().getSelectedEvents();
-        if (selectedEvents.size() != 1) {
+        if (selectedEventViews.size() != 1) {
 
             /*
              * TODO: This message is annoying to have pop up all the time when
@@ -5088,38 +5893,48 @@ public class SessionEventManager
                     "Cannot add or remove UGCs unless exactly one hazard event is selected.");
             return;
         }
-        ObservedHazardEvent hazardEvent = selectedEvents.get(0);
-        String hazardType = hazardEvent.getHazardType();
+        IHazardEventView hazardEventView = selectedEventViews.get(0);
+        String hazardType = hazardEventView.getHazardType();
         if (hazardType == null) {
             messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
                     "Cannot add or remove UGCs for a hazard with an undefined type.");
             return;
         }
-        if (HazardStatus.endingEndedOrElapsed(hazardEvent.getStatus())) {
+        if (HazardStatus.endingEndedOrElapsed(hazardEventView.getStatus())) {
             messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
                     "Cannot add or remove UGCs for an ending, ended, or elapsed hazard.");
             return;
         }
 
-        if ((hazardEvent.getStatus().equals(HazardStatus.PENDING) == false)
-                && geoMapUtilities.isPointBasedHatching(hazardEvent)) {
+        if ((hazardEventView.getStatus().equals(HazardStatus.PENDING) == false)
+                && geoMapUtilities.isPointBasedHatching(hazardEventView)) {
             messenger.getWarner().warnUser(GEOMETRY_MODIFICATION_ERROR,
                     "Can only add or remove UGCs for point hazards when they are pending.");
             return;
         }
-        if (userConfirmationAsNecessary(hazardEvent) == false) {
-            return;
-        }
-        makeHighResolutionVisible(hazardEvent, originator);
 
         /*
          * Ensure that the event is for this site.
          */
-        if (isEventForThisSite(hazardEvent) == false) {
-            statusHandler.error("Event " + hazardEvent.getEventID()
+        if (isEventForThisSite(hazardEventView) == false) {
+            statusHandler.error("Event " + hazardEventView.getEventID()
                     + " is not for the active site and cannot be modified.");
             return;
         }
+
+        if (userConfirmationAsNecessary(hazardEventView) == false) {
+            return;
+        }
+
+        if (isEventInDatabase(hazardEventView)
+                && (sessionManager.getLockManager().lockHazardEvent(
+                        hazardEventView.getEventID()) == false)) {
+            showWarningMessageAboutLockedEvents("Cannot Modify", "modified",
+                    originator, hazardEventView.getEventID());
+            return;
+        }
+        ObservedHazardEvent event = getSessionEventForView(hazardEventView);
+        makeHighResolutionVisible(event, originator);
 
         /*
          * Get the modified hazard areas and geometry resulting from adding or
@@ -5127,7 +5942,7 @@ public class SessionEventManager
          * error occurred during the toggling, so do nothing more.
          */
         Pair<Map<String, String>, Geometry> newHazardAreasAndGeometry = geoMapUtilities
-                .addOrRemoveEnclosingUgcs(hazardEvent, location);
+                .addOrRemoveEnclosingUgcs(hazardEventView, location);
         if (newHazardAreasAndGeometry == null) {
             return;
         }
@@ -5138,19 +5953,20 @@ public class SessionEventManager
          */
         Geometry modifiedGeometry = newHazardAreasAndGeometry.getSecond();
         if (modifiedGeometry != null) {
-            if (isValidGeometryChange(AdvancedGeometryUtilities
-                    .createGeometryWrapper(modifiedGeometry, 0), hazardEvent,
-                    true) == false) {
+            if (isValidGeometryChange(
+                    AdvancedGeometryUtilities
+                            .createGeometryWrapper(modifiedGeometry, 0),
+                    hazardEventView, true) == false) {
                 return;
             }
-            hazardEvent.setGeometry(AdvancedGeometryUtilities
+            event.setGeometry(AdvancedGeometryUtilities
                     .createGeometryWrapper(modifiedGeometry, 0), originator);
         }
 
         /*
          * Use the returned hazard areas as the new ones for the hazard event.
          */
-        hazardEvent.addHazardAttribute(HAZARD_AREA,
+        event.addHazardAttribute(HAZARD_AREA,
                 (Serializable) newHazardAreasAndGeometry.getFirst(), true,
                 originator);
     }
@@ -5162,20 +5978,19 @@ public class SessionEventManager
     }
 
     private Geometry buildLowResolutionEventGeometry(
-            ObservedHazardEvent selectedEvent) {
+            IHazardEventView eventView) {
 
         /*
          * Get the hazard type.
          */
         HazardTypes hazardTypes = configManager.getHazardTypes();
-        HazardTypeEntry hazardType = hazardTypes
-                .get(selectedEvent.getHazardType());
+        HazardTypeEntry hazardType = hazardTypes.get(eventView.getHazardType());
 
         /*
          * By default, just set the low-resolution geometry to the be the
          * original flattened.
          */
-        Geometry result = selectedEvent.getFlattenedGeometry();
+        Geometry result = eventView.getFlattenedGeometry();
 
         /*
          * No clipping if no low-resolution computation is needed, or for
@@ -5184,17 +5999,17 @@ public class SessionEventManager
         if ((hazardType != null)
                 && (configManager.getSiteID()
                         .equals(HazardConstants.NATIONAL) == false)
-                && (geoMapUtilities.isNonHatching(selectedEvent) == false)) {
+                && (geoMapUtilities.isNonHatching(eventView) == false)) {
 
             /*
              * Clip WarnGen style or GFE style if appropriate.
              */
-            if (geoMapUtilities.isWarngenHatching(selectedEvent)) {
-                result = geoMapUtilities.applyWarngenClipping(selectedEvent,
+            if (geoMapUtilities.isWarngenHatching(eventView)) {
+                result = geoMapUtilities.applyWarngenClipping(eventView,
                         hazardType);
             } else if (geoMapUtilities
-                    .isPointBasedHatching(selectedEvent) == false) {
-                result = geoMapUtilities.applyGfeClipping(selectedEvent);
+                    .isPointBasedHatching(eventView) == false) {
+                result = geoMapUtilities.applyGfeClipping(eventView);
             }
             result = (Geometry) result.clone();
 
@@ -5231,15 +6046,22 @@ public class SessionEventManager
         return result;
     }
 
-    private void warnUserOfGeometryOutsideCWA(
-            ObservedHazardEvent selectedEvent) {
+    private void warnUserOfGeometryOutsideCwa(IHazardEventView eventView) {
         StringBuffer warningMessage = new StringBuffer();
-        warningMessage.append("Event ").append(selectedEvent.getEventID())
+        warningMessage.append("Event ").append(eventView.getEventID())
                 .append(" ");
         warningMessage
                 .append("has no hazard areas inside of the forecast area.\n");
         messenger.getWarner().warnUser("Product geometry calculation error",
                 warningMessage.toString());
+    }
+
+    private boolean isVisibleGeometrySetToLowResolutionAndGeometry(
+            IReadableHazardEvent hazardEvent, Geometry lowResolutionGeometry) {
+        return (LOW_RESOLUTION_GEOMETRY_IS_VISIBLE
+                .equals(hazardEvent.getHazardAttribute(VISIBLE_GEOMETRY))
+                && lowResolutionGeometry.equals(hazardEvent
+                        .getHazardAttribute(LOW_RESOLUTION_GEOMETRY)));
     }
 
     private void setLowResolutionGeometry(ObservedHazardEvent selectedEvent,
@@ -5250,30 +6072,36 @@ public class SessionEventManager
                 lowResolutionGeometry, originator);
     }
 
+    private boolean isVisibleGeometrySetToHighResolution(
+            IReadableHazardEvent hazardEvent) {
+        return HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE
+                .equals(hazardEvent.getHazardAttribute(VISIBLE_GEOMETRY));
+    }
+
     private void makeHighResolutionVisible(ObservedHazardEvent hazardEvent,
             IOriginator originator) {
         hazardEvent.addHazardAttribute(VISIBLE_GEOMETRY,
                 HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE, originator);
-
     }
 
-    private List<String> buildUGCs(IHazardEvent hazardEvent) {
-        if (geoMapUtilities.isPointBasedHatching(hazardEvent)) {
-            return buildFromDBStrategyUGCs(hazardEvent);
+    private List<String> buildUgcs(IReadableHazardEvent event) {
+        if (geoMapUtilities.isPointBasedHatching(event)) {
+            return buildFromDbStrategyUgcs(event);
         } else {
-            return buildIntersectionStrategyUGCs(hazardEvent);
+            return buildIntersectionStrategyUgcs(event);
         }
     }
 
-    private List<String> updateUGCs(IHazardEvent hazardEvent) {
-        if (geoMapUtilities.isPointBasedHatching(hazardEvent)) {
-            return buildPointBasedStrategyUGCs(hazardEvent);
+    private List<String> updateUgcs(IHazardEventView eventView) {
+        if (geoMapUtilities.isPointBasedHatching(eventView)) {
+            return buildPointBasedStrategyUgcs(eventView);
         } else {
-            return buildIntersectionStrategyUGCs(hazardEvent);
+            return buildIntersectionStrategyUgcs(eventView);
         }
     }
 
-    private List<String> buildPointBasedStrategyUGCs(IHazardEvent hazardEvent) {
+    private List<String> buildPointBasedStrategyUgcs(
+            IHazardEventView hazardEvent) {
         List<String> result = new ArrayList<>();
         @SuppressWarnings("unchecked")
         Map<String, String> hazardAreas = (Map<String, String>) hazardEvent
@@ -5287,7 +6115,8 @@ public class SessionEventManager
         return result;
     }
 
-    private List<String> buildFromDBStrategyUGCs(IHazardEvent hazardEvent) {
+    private List<String> buildFromDbStrategyUgcs(
+            IReadableHazardEvent hazardEvent) {
         List<String> result = new ArrayList<>();
         @SuppressWarnings("unchecked")
         Map<String, Serializable> forecastPoint = (Map<String, Serializable>) hazardEvent
@@ -5339,8 +6168,8 @@ public class SessionEventManager
         return result;
     }
 
-    private List<String> buildIntersectionStrategyUGCs(
-            IHazardEvent hazardEvent) {
+    private List<String> buildIntersectionStrategyUgcs(
+            IReadableHazardEvent hazardEvent) {
         return new ArrayList<>(geoMapUtilities
                 .getIntersectingMapGeometriesForUgcs(hazardEvent).keySet());
     }
@@ -5389,8 +6218,10 @@ public class SessionEventManager
     }
 
     @Override
-    public void saveEvents(List<IHazardEvent> events, boolean addToHistory,
-            boolean treatAsIssuance) {
+    public Map<String, EventPropertyChangeResult> saveEvents(
+            List<? extends IHazardEventView> events, boolean addToHistory,
+            boolean keepLocked, boolean treatAsIssuance,
+            IOriginator originator) {
 
         /*
          * TODO: Remove this when "persistenceBehavior" is removed from startup
@@ -5404,7 +6235,7 @@ public class SessionEventManager
         String persistenceBehavior = configManager.getStartUpConfig()
                 .getPersistenceBehavior();
         if ("none".equals(persistenceBehavior)) {
-            return;
+            return Collections.emptyMap();
         } else if ("history".equals(persistenceBehavior)) {
             forceHistorical = true;
         }
@@ -5413,16 +6244,33 @@ public class SessionEventManager
          * Get copies of the events to be saved that are database-friendly.
          */
         List<HazardEvent> dbEvents = new ArrayList<>(events.size());
-        for (IHazardEvent event : events) {
+        Map<HazardEvent, IHazardEventView> viewsForDbEvents = new IdentityHashMap<>(
+                events.size());
+        Set<String> eventIdentifiers = new HashSet<>(events.size(), 1.0f);
+        Map<String, EventPropertyChangeResult> resultsForEventIdentifiers = new HashMap<>(
+                events.size(), 1.0f);
+        for (IHazardEventView eventView : events) {
+
+            /*
+             * Ensure the event is being managed.
+             */
+            ObservedHazardEvent event = getSessionEventForView(eventView);
+            if (event == null) {
+                resultsForEventIdentifiers.put(eventView.getEventID(),
+                        EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND);
+                continue;
+            }
 
             /*
              * If the event has a status of "potential", log an error and skip
              * it.
              */
-            if (HazardStatus.POTENTIAL.equals(event.getStatus())) {
+            if (HazardStatus.POTENTIAL.equals(eventView.getStatus())) {
                 statusHandler.warn("Attempted to save hazard event "
-                        + event.getEventID() + " to database, but "
+                        + eventView.getEventID() + " to database, but "
                         + "cannot due to its status of \"potential\".");
+                resultsForEventIdentifiers.put(eventView.getEventID(),
+                        EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE);
                 continue;
             }
 
@@ -5445,6 +6293,8 @@ public class SessionEventManager
             HazardEvent persistableEvent = createEventCopyToBePersisted(event,
                     (addToHistory || forceHistorical), false);
             dbEvents.add(persistableEvent);
+            viewsForDbEvents.put(persistableEvent, eventView);
+            eventIdentifiers.add(persistableEvent.getEventID());
         }
 
         /*
@@ -5466,7 +6316,9 @@ public class SessionEventManager
         /*
          * Save the events to the database, deleting the latest versions of the
          * same events if the events to be persisted are being added to their
-         * respective history lists.
+         * respective history lists. Note that there is no need to remove the
+         * latest version from the map at this point, since it will be removed
+         * when the notification of the deletion arrives.
          */
         if (dbEvents.isEmpty() == false) {
             if (addToHistory) {
@@ -5484,11 +6336,71 @@ public class SessionEventManager
                 }
             }
             dbManager.storeEvents(dbEvents);
+            for (HazardEvent event : dbEvents) {
+                resultsForEventIdentifiers.put(event.getEventID(),
+                        (isEventNotLockedByOther(viewsForDbEvents.get(event))
+                                ? EventPropertyChangeResult.SUCCESS
+                                : EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS));
+                identifiersOfPersistedEvents.add(event.getEventID());
+            }
         }
+        showWarningAboutAnyEventIdentifierActionsAbortedDueToLocks(
+                "Cannot Save", "saved", originator, resultsForEventIdentifiers);
+
+        /*
+         * If adding to the history list or if the keep-locked flag is false,
+         * unlock the hazard events just saved. Otherwise, make sure all events
+         * that are to be kept locked are already locked, and lock any that are
+         * not.
+         */
+        if (addToHistory || (keepLocked == false)) {
+            if (sessionManager.getLockManager()
+                    .unlockHazardEvents(eventIdentifiers) == false) {
+                if (originator.isDirectResultOfUserInput()) {
+                    messenger.getWarner()
+                            .warnUser("Cannot Unlock",
+                                    (eventIdentifiers.size() == 1
+                                            ? "Event "
+                                                    + eventIdentifiers
+                                                            .iterator().next()
+                                                    + " could not be unlocked."
+                                            : "The following events could not be unlocked:\n"
+                                                    + Joiner.on("\n").join(
+                                                            eventIdentifiers)));
+                }
+            }
+        } else {
+            Set<String> eventIdentifiersToBeLocked = new HashSet<>(
+                    eventIdentifiers.size(), 1.0f);
+            for (String eventIdentifier : eventIdentifiers) {
+                if (sessionManager.getLockManager().getHazardEventLockStatus(
+                        eventIdentifier) == LockStatus.LOCKABLE) {
+                    eventIdentifiersToBeLocked.add(eventIdentifier);
+                }
+            }
+            if (eventIdentifiersToBeLocked.isEmpty() == false) {
+                if (sessionManager.getLockManager().lockHazardEvents(
+                        eventIdentifiersToBeLocked) == false) {
+                    if (originator.isDirectResultOfUserInput()) {
+                        messenger.getWarner().warnUser("Cannot Lock",
+                                (eventIdentifiersToBeLocked.size() == 1
+                                        ? "Event "
+                                                + eventIdentifiersToBeLocked
+                                                        .iterator().next()
+                                                + " could not be re-locked."
+                                        : "The following events could not be re-locked:\n"
+                                                + Joiner.on("\n").join(
+                                                        eventIdentifiersToBeLocked)));
+                    }
+                }
+            }
+        }
+
+        return resultsForEventIdentifiers;
     }
 
     @Override
-    public void copyEvents(List<IHazardEvent> events) {
+    public void copyEvents(List<? extends IHazardEventView> events) {
 
         sessionManager.startBatchedChanges();
 
@@ -5496,29 +6408,27 @@ public class SessionEventManager
          * Create a copy of each of the events.
          */
         Set<String> eventIdentifiers = new HashSet<>(events.size(), 1.0f);
-        for (IHazardEvent event : events) {
+        for (IHazardEventView eventView : events) {
 
             /*
              * Create a copy of the event, with no identifier, type, or visual
              * features, with pending status, and with the current client's user
              * name and workstation.
              */
-            BaseHazardEvent newEvent = new BaseHazardEvent(getCurrentEvent());
+            BaseHazardEvent newEvent = new BaseHazardEvent(eventView);
             newEvent.setEventID(null);
             newEvent.setStatus(HazardStatus.PENDING);
             newEvent.setPhenomenon(null);
             newEvent.setSignificance(null);
             newEvent.setSubType(null);
             newEvent.setVisualFeatures(null);
-            newEvent.setUserName(
-                    LocalizationManager.getInstance().getCurrentUser());
-            newEvent.setWorkStation(VizApp.getHostName());
+            newEvent.setWsId(VizApp.getWsId());
 
             /*
              * Remove any type-specifc session attributes from the copy.
              */
             for (String sessionAttribute : configManager
-                    .getSessionAttributes(event.getHazardType())) {
+                    .getSessionAttributes(eventView.getHazardType())) {
                 newEvent.removeHazardAttribute(sessionAttribute);
             }
 
@@ -5544,7 +6454,7 @@ public class SessionEventManager
                         .getEventID());
             } catch (HazardEventServiceException e) {
                 statusHandler.error("Error attempting to copy hazard event "
-                        + event.getEventID() + ".", e);
+                        + eventView.getEventID() + ".", e);
             }
         }
 
@@ -5558,13 +6468,45 @@ public class SessionEventManager
     }
 
     @Override
-    public void revertEventToLastSaved(String eventIdentifier) {
-        if (getHistoricalVersionCountForEvent(eventIdentifier) > 0) {
-            HazardHistoryList list = getEventHistoryById(eventIdentifier);
-            mergeHazardEvents(list.get(list.size() - 1),
-                    getEventById(eventIdentifier), false, false, false, true,
-                    Originator.OTHER);
+    public EventPropertyChangeResult revertEventToLastSaved(String identifier,
+            IOriginator originator) {
+        IHazardEventView event = getEventById(identifier);
+        if (event == null) {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_EVENT_NOT_FOUND;
         }
+        if (originator.isNotLockedByOthersRequired()
+                && (sessionManager.getLockManager().getHazardEventLockStatus(
+                        identifier) != LockStatus.LOCKED_BY_ME)) {
+            if (originator.isDirectResultOfUserInput()) {
+                messenger.getWarner().warnUser("Cannot Revert",
+                        "Event " + identifier
+                                + " could not be reverted to last saved because "
+                                + "you do not have a lock on it.");
+            }
+            return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+        }
+        if (getHistoricalVersionCountForEvent(identifier) > 0) {
+            List<IHazardEventView> list = getEventHistoryById(identifier);
+            mergeHazardEvents(list.get(list.size() - 1), event, false, false,
+                    false, true, Originator.OTHER);
+            if (sessionManager.getLockManager()
+                    .unlockHazardEvent(identifier) == false) {
+                if (originator.isDirectResultOfUserInput()) {
+                    messenger.getWarner().warnUser("Cannot Unlock",
+                            "Cannot unlock event " + identifier
+                                    + "after reverting to last saved.");
+                    return EventPropertyChangeResult.FAILURE_DUE_TO_LOCK_STATUS;
+                }
+            }
+            return EventPropertyChangeResult.SUCCESS;
+        } else {
+            return EventPropertyChangeResult.FAILURE_DUE_TO_BAD_VALUE;
+        }
+    }
+
+    @Override
+    public boolean isEventInDatabase(IReadableHazardEvent event) {
+        return identifiersOfPersistedEvents.contains(event.getEventID());
     }
 
     /**
@@ -5580,7 +6522,7 @@ public class SessionEventManager
      *            the event was just issued.
      * @return Persistence-friendly copy of the event.
      */
-    private HazardEvent createEventCopyToBePersisted(IHazardEvent event,
+    private HazardEvent createEventCopyToBePersisted(IReadableHazardEvent event,
             boolean addToHistory, boolean justIssued) {
         HazardEvent dbEvent = dbManager.createEvent(event);
 
@@ -5664,7 +6606,7 @@ public class SessionEventManager
      * @return True if the event's site ID matches the session's current site
      *         ID, false otherwise
      */
-    private boolean isEventForThisSite(IHazardEvent event) {
+    private boolean isEventForThisSite(IReadableHazardEvent event) {
         return event.getSiteID().equals(configManager.getSiteID());
     }
 }

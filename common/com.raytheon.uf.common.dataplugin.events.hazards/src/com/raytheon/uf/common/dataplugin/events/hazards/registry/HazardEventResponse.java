@@ -32,8 +32,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
-import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager.Include;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
@@ -41,6 +39,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.registry.xmladapters.Thr
 import com.raytheon.uf.common.serialization.XmlGenericMapAdapter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+
+import oasis.names.tc.ebxml.regrep.xsd.rim.v4.RegistryObjectType;
 
 /**
  * 
@@ -55,6 +55,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 29, 2015 6895      Ben.Phillippe Refactored Hazard Service data access
  * Aug 20, 2015 6895      Ben.Phillippe Routing registry requests through request
  *                                      server
+ * Jan 26, 2016 7623      Ben.Phillippe Implemented locking of HazardEvents
  * Feb 16, 2017 29138     Chris.Golden  Revamped to slim down the response so
  *                                      that it does not carry extra
  *                                      serialized objects with it that are not
@@ -82,14 +83,14 @@ public class HazardEventResponse {
     /**
      * List of hazard events.
      */
-    @XmlElement
+    @XmlElement(required = false, nillable = true)
     @DynamicSerializeElement
     private List<HazardEvent> events = new ArrayList<>();
 
     /**
      * List of actual registry objects that encapsulate the hazard events.
      */
-    @XmlElement
+    @XmlElement(required = false, nillable = true)
     @DynamicSerializeElement
     private List<RegistryObjectType> registryObjects = new ArrayList<>();
 
@@ -104,7 +105,7 @@ public class HazardEventResponse {
     /**
      * List of any errors that occurred during the web service call.
      */
-    @XmlElement
+    @XmlElement(required = false, nillable = true)
     @DynamicSerializeElement
     @XmlJavaTypeAdapter(value = ThrowableXmlAdapter.class)
     private List<Throwable> exceptions = new ArrayList<>();
@@ -169,7 +170,8 @@ public class HazardEventResponse {
      *            Versions of hazard events to be included.
      * @return New instance.
      */
-    public static HazardEventResponse createIncludingAsSpecified(Include include) {
+    public static HazardEventResponse createIncludingAsSpecified(
+            Include include) {
         return new HazardEventResponse(include, false);
     }
 
@@ -355,9 +357,8 @@ public class HazardEventResponse {
                 for (HazardEvent event : events) {
                     HazardEvent lastEvent = latestEventsForEventIdentifiers
                             .get(event.getEventID());
-                    if ((lastEvent == null)
-                            || (event.getInsertTime().compareTo(
-                                    lastEvent.getInsertTime()) > 0)) {
+                    if ((lastEvent == null) || (event.getInsertTime()
+                            .compareTo(lastEvent.getInsertTime()) > 0)) {
                         latestEventsForEventIdentifiers.put(event.getEventID(),
                                 event);
                     }

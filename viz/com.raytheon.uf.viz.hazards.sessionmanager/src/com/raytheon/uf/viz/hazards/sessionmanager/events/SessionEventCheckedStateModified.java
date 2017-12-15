@@ -9,15 +9,15 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
  * Description: Notification that will be sent out to notify all components that
- * the checked state flag for a a particular hazard event has changed.
+ * the checked state flag for a particular hazard event has changed.
  * 
  * <pre>
  * 
@@ -28,6 +28,8 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Mar 15, 2017   15528    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -48,9 +50,8 @@ public class SessionEventCheckedStateModified
      * @param originator
      *            Originator of the change.
      */
-    public SessionEventCheckedStateModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, IOriginator originator) {
+    public SessionEventCheckedStateModified(ISessionEventManager eventManager,
+            IHazardEventView event, IOriginator originator) {
         super(eventManager, event, originator);
     }
 

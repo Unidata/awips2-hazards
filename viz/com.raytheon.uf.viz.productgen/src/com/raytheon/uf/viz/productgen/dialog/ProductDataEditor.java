@@ -57,7 +57,7 @@ import org.eclipse.swt.widgets.Spinner;
 import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
@@ -128,6 +128,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
  *                                      megawidgets can be wrapped within a scrollable Composite
  *                                      megawidget instead, which will handle Label-wrapping behavior
  *                                      more correctly.
+ * 12/12/2016  21504      Robert.Blum   Added method to set the enabled state of the Save button.
+ * Dec 17, 2017  20739    Chris.Golden  Refactored away access to directly mutable session events.
  * </pre>
  * 
  * @author jsanchez
@@ -233,7 +235,7 @@ public class ProductDataEditor extends AbstractDataEditor {
         this.siteId = siteId;
         displayExpirationControls = true;
         for (IEvent event : product.getEventSet()) {
-            IHazardEvent hazard = (IHazardEvent) event;
+            IReadableHazardEvent hazard = (IReadableHazardEvent) event;
             HazardTypeEntry hazardTypeEntry = hazardTypes
                     .get(HazardEventUtilities.getHazardType(hazard));
             if ((hazardTypeEntry != null) && (hazardTypeEntry
@@ -932,5 +934,14 @@ public class ProductDataEditor extends AbstractDataEditor {
             }
         }
         return incompleteFields;
+    }
+
+    /**
+     * Sets the enabled state of the save button.
+     * 
+     * @param enabled
+     */
+    public void setSaveButtonState(boolean enabled) {
+        saveButton.setEnabled(enabled);
     }
 }

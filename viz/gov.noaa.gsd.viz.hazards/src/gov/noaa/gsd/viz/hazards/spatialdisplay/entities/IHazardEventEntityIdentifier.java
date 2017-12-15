@@ -9,14 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
 
-import gov.noaa.gsd.common.visuals.SpatialEntity;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
 
 /**
  * Description: Interface describing the methods that must be implemented by
  * classes acting as identifiers for {@link SpatialEntity} objects used to
- * represent {@link IHazardEvent} objects in the spatial display.
+ * represent {@link IHazardEventView} objects in the spatial display.
  * 
  * <pre>
  * 
@@ -24,6 +24,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jun 27, 2016   19537    Chris.Golden Initial creation.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden

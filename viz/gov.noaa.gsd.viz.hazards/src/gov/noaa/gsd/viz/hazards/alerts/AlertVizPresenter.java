@@ -21,7 +21,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardAlertsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.HazardEventExpirationPopUpAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardAlert;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
@@ -37,14 +36,15 @@ import net.engio.mbassy.listener.Handler;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Sep 09, 2013  1325      daniel.s.schaffer@noaa.gov      Initial creation
- * 
- * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Sep 09, 2013  1325      daniel.s.schaffer Initial creation
+ * Dec 03, 2013 2182       daniel.s.schaffer Refactoring - eliminated IHazardsIF
  * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
+ *                                           mutable session events.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -56,8 +56,7 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
 
     private IUFStatusHandler statusHandler;
 
-    public AlertVizPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public AlertVizPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
 

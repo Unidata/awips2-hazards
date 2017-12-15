@@ -65,6 +65,7 @@ Hydrology_River = {
     "defaultDuration": 28800000, 
     "visibleColumns": [
         "Event ID",
+        "Lock Status",
         "Hazard Type", 
         "Status", 
         "Stream",
@@ -88,6 +89,11 @@ Hydrology_River = {
             "fieldName": "displayEventID", 
             "sortDir": "none"
         }, 
+        "Lock Status": {
+            "type": "string",
+            "fieldName": "lockStatus",
+            "sortDir": "none",
+        },
         "Hazard Type": {
             "type": "string", 
             "fieldName": "type",

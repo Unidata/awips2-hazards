@@ -18,7 +18,8 @@ from MapsDatabaseAccessor import MapsDatabaseAccessor
 from HazardConstants import *
 from GeneralConstants import *
 from EventSet import EventSet
- 
+from HazardEventLockUtils import HazardEventLockUtils
+
 class Recommender(RecommenderTemplate.Recommender):
 
     def __init__(self):
@@ -37,6 +38,7 @@ Please click CANCEL and manually draw an inundation area.
         self.logger.addHandler(UFStatusHandler.UFStatusHandler(
             'gov.noaa.gsd.common.utilities', 'DamBreakFloodRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
+        self.hazardEventLockUtils = None
 
         
     def defineScriptMetadata(self):
@@ -117,8 +119,6 @@ Please click CANCEL and manually draw an inundation area.
         @return: List of objects that will be later converted to Java IEvent
         objects
         """
-        # for a unit test these will fail as we will not have JEP available, so
-        # we import them in here
         import EventFactory
         import EventSetFactory
 
@@ -126,22 +126,33 @@ Please click CANCEL and manually draw an inundation area.
 
         currentEvents = HazardDataAccess.getCurrentEvents(eventSet)
         damOrLeveeName = dialogInputMap.get("damOrLeveeName")
+
+        if self.hazardEventLockUtils is None:
+            caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+            practice = True
+            if caveMode == 'OPERATIONAL':
+                practice = False
+            self.hazardEventLockUtils = HazardEventLockUtils(practice)
+
+        lockedHazardIds = self.hazardEventLockUtils.getLockedEvents()
         
         newEventSet = EventSetFactory.createEventSet()
         hazardEvent = None
         for currentEvent in currentEvents:
+            locked = currentEvent.getEventID() in lockedHazardIds
             if currentEvent.getHazardAttributes().get("damOrLeveeName") == damOrLeveeName:
                 if currentEvent.getStatus() == "ISSUED":
                     if ("WARNING" in urgencyLevel and currentEvent.getSignificance() != "W") or \
                        ("WATCH" in urgencyLevel and currentEvent.getSignificance() != "A"):
-                        currentEvent.setStatus('ending')
-                        newEventSet.add(currentEvent)
-                        break
+                        if not locked:
+                            currentEvent.setStatus('ending')
+                            newEventSet.add(currentEvent)
+                            break
                     else:
                         # current Event and urgency level match
                         # return empty eventSet
                         return newEventSet
-                else:
+                elif not locked:
                     # Current Event is not issue, update it.
                     hazardEvent = currentEvent
 

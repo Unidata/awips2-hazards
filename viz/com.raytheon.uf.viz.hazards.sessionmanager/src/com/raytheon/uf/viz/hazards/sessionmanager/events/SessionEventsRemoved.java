@@ -24,9 +24,8 @@ import java.util.Collection;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 import gov.noaa.gsd.common.utilities.IMergeable;
@@ -47,6 +46,8 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  *                                      more than one event being removed, and
  *                                      implemented merge() method.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
@@ -59,7 +60,7 @@ public class SessionEventsRemoved extends SessionEventsModified {
     /**
      * Events that have been removed.
      */
-    private final List<IHazardEvent> events;
+    private final List<IHazardEventView> events;
 
     // Public Constructors
 
@@ -73,9 +74,8 @@ public class SessionEventsRemoved extends SessionEventsModified {
      * @param originator
      *            Originator of the removal.
      */
-    public SessionEventsRemoved(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            IHazardEvent event, IOriginator originator) {
+    public SessionEventsRemoved(ISessionEventManager eventManager,
+            IHazardEventView event, IOriginator originator) {
         super(eventManager, originator);
         this.events = ImmutableList.of(event);
     }
@@ -90,9 +90,9 @@ public class SessionEventsRemoved extends SessionEventsModified {
      * @param originator
      *            Originator of the removal.
      */
-    public SessionEventsRemoved(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            Collection<IHazardEvent> events, IOriginator originator) {
+    public SessionEventsRemoved(ISessionEventManager eventManager,
+            Collection<? extends IHazardEventView> events,
+            IOriginator originator) {
         super(eventManager, originator);
         this.events = ImmutableList.copyOf(events);
     }
@@ -105,7 +105,7 @@ public class SessionEventsRemoved extends SessionEventsModified {
      * 
      * @return Events that were removed.
      */
-    public List<IHazardEvent> getEvents() {
+    public List<IHazardEventView> getEvents() {
         return events;
     }
 
@@ -125,7 +125,7 @@ public class SessionEventsRemoved extends SessionEventsModified {
              * minus any with identifiers of events that this notification
              * already has.
              */
-            List<IHazardEvent> newEvents = filterEventsToRemoveAnyWithIdentifiers(
+            List<IHazardEventView> newEvents = filterEventsToRemoveAnyWithIdentifiers(
                     ((SessionEventsRemoved) modified).getEvents(),
                     getEventIdentifiers(getEvents()));
 
@@ -133,7 +133,8 @@ public class SessionEventsRemoved extends SessionEventsModified {
              * Create a list that is a concatenation of the two lists, old ones
              * first, and use that to build a replacement for this notification.
              */
-            List<IHazardEvent> combinedEvents = new ArrayList<>(getEvents());
+            List<IHazardEventView> combinedEvents = new ArrayList<>(
+                    getEvents());
             combinedEvents.addAll(newEvents);
             return IMergeable.Helper.getSuccessObjectCancellationResult(
                     new SessionEventsRemoved(getEventManager(), combinedEvents,

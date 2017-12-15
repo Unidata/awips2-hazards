@@ -13,7 +13,7 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
@@ -53,6 +53,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * Sep 27, 2017  38072     Chris.Golden Changed methods used to get tool
  *                                      parameters or show tool results to
  *                                      use new arguments.
+ * Dec 17, 2017  20739     Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -117,7 +119,7 @@ public interface IMessenger {
      * </p>
      */
     public interface IRiseCrestFallEditor {
-        public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
+        public IHazardEventView getRiseCrestFallEditor(IHazardEventView event,
                 IEventApplier applier);
     }
 
@@ -194,7 +196,7 @@ public interface IMessenger {
      * Interface for applying the Graphical Editor changes without closing.
      */
     public interface IEventApplier {
-        public void apply(IHazardEvent event);
+        public void apply(IHazardEventView event);
     }
 
     /**
@@ -234,7 +236,7 @@ public interface IMessenger {
      *         the forecaster the ability to manipulate the rise-crest-fall
      *         values for that event.
      */
-    public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEvent event);
+    public IRiseCrestFallEditor getRiseCrestFallEditor(IHazardEventView event);
 
     /**
      * Returns a product viewer chooser.

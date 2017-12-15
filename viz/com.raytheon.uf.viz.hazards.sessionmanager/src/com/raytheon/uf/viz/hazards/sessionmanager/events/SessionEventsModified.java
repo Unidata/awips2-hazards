@@ -27,8 +27,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 
@@ -45,6 +44,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNo
  * Jun 11, 2013    1257    bsteffen     Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Added helper methods for subclasses.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
@@ -57,7 +58,7 @@ public class SessionEventsModified extends OriginatedSessionNotification {
     /**
      * Event manager.
      */
-    private final ISessionEventManager<ObservedHazardEvent> eventManager;
+    private final ISessionEventManager eventManager;
 
     // Public Methods
 
@@ -69,8 +70,7 @@ public class SessionEventsModified extends OriginatedSessionNotification {
      * @param originator
      *            Originator of the change.
      */
-    public SessionEventsModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
+    public SessionEventsModified(ISessionEventManager eventManager,
             IOriginator originator) {
         super(originator);
         this.eventManager = eventManager;
@@ -89,7 +89,7 @@ public class SessionEventsModified extends OriginatedSessionNotification {
      * 
      * @return Event manager.
      */
-    public ISessionEventManager<ObservedHazardEvent> getEventManager() {
+    public ISessionEventManager getEventManager() {
         return eventManager;
     }
 
@@ -103,7 +103,7 @@ public class SessionEventsModified extends OriginatedSessionNotification {
      * @return Set of identifiers.
      */
     protected Set<String> getEventIdentifiers(
-            Collection<? extends IHazardEvent> events) {
+            Collection<? extends IHazardEventView> events) {
 
         /*
          * TODO: When moving to Java 8, remove the code below that is not
@@ -111,7 +111,7 @@ public class SessionEventsModified extends OriginatedSessionNotification {
          * below it.
          */
         Set<String> eventIdentifiers = new HashSet<>(events.size(), 1.0f);
-        for (IHazardEvent event : events) {
+        for (IHazardEventView event : events) {
             eventIdentifiers.add(event.getEventID());
         }
         return eventIdentifiers;
@@ -129,16 +129,17 @@ public class SessionEventsModified extends OriginatedSessionNotification {
      *            Identifiers of events to be filtered out of the list.
      * @return Filtered list.
      */
-    protected List<IHazardEvent> filterEventsToRemoveAnyWithIdentifiers(
-            List<IHazardEvent> events, Set<String> eventIdentifiers) {
+    protected List<IHazardEventView> filterEventsToRemoveAnyWithIdentifiers(
+            List<? extends IHazardEventView> events,
+            Set<String> eventIdentifiers) {
 
         /*
          * TODO: When moving to Java 8, remove the code below that is not
          * commented out, and then uncomment the commented out code immediately
          * below it.
          */
-        List<IHazardEvent> prunedEvents = new ArrayList<>(events.size());
-        for (IHazardEvent event : events) {
+        List<IHazardEventView> prunedEvents = new ArrayList<>(events.size());
+        for (IHazardEventView event : events) {
             if (eventIdentifiers.contains(event.getEventID()) == false) {
                 prunedEvents.add(event);
             }

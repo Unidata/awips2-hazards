@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.events.impl;
 
-import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
@@ -35,6 +33,8 @@ import com.raytheon.uf.viz.core.notification.NotificationMessage;
 import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.viz.core.mode.CAVEMode;
+
+import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 
 /**
  * An INotificationObserver that keeps the session event manager in sync with
@@ -76,13 +76,16 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 13, 2017 33142      Chris.Golden Added handling of notifications from
  *                                      the database that all copies of a
  *                                      hazard event were removed.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class SessionHazardNotificationListener implements INotificationObserver {
+public class SessionHazardNotificationListener
+        implements INotificationObserver {
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SessionHazardNotificationListener.class);
 
@@ -119,13 +122,13 @@ public class SessionHazardNotificationListener implements INotificationObserver 
          */
         IRunnableAsynchronousScheduler scheduler = this.scheduler.get();
         if (scheduler == null) {
-            NotificationManagerJob.removeObserver(
-                    HazardNotification.HAZARD_TOPIC, this);
+            NotificationManagerJob
+                    .removeObserver(HazardNotification.HAZARD_TOPIC, this);
         } else {
             scheduler.schedule(new Runnable() {
                 @Override
                 public void run() {
-                    ISessionEventManager<ObservedHazardEvent> manager = SessionHazardNotificationListener.this.manager
+                    ISessionEventManager manager = SessionHazardNotificationListener.this.manager
                             .get();
                     if ((manager == null) || manager.isShutDown()) {
                         NotificationManagerJob.removeObserver(
@@ -137,7 +140,8 @@ public class SessionHazardNotificationListener implements INotificationObserver 
                         try {
                             Object payload = message.getMessagePayload();
                             if (payload instanceof HazardNotification) {
-                                handleNotification((HazardNotification) payload);
+                                handleNotification(
+                                        (HazardNotification) payload);
                             }
                         } catch (NotificationException e) {
                             statusHandler.handle(Priority.ERROR,
@@ -177,8 +181,8 @@ public class SessionHazardNotificationListener implements INotificationObserver 
             manager.handleEventRemovalFromDatabase(newEvent);
             break;
         case DELETE_ALL:
-            manager.handleEventRemovalAllCopiesFromDatabase(newEvent
-                    .getEventID());
+            manager.handleEventRemovalAllCopiesFromDatabase(
+                    newEvent.getEventID());
             break;
         case UPDATE:
         case STORE:

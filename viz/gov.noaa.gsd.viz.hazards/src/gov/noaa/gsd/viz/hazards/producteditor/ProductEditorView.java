@@ -9,9 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.producteditor;
 
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +22,9 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.productgen.dialog.ProductEditor;
 import com.raytheon.viz.ui.VizWorkbenchManager;
+
+import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 /**
  * Product editor view, an implementation of IProductEditorView that provides an
@@ -51,17 +51,22 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
  * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted
  *                                      expiration product.
  * Mar 30, 2016  8837      Robert.Blum  Added changeSite() for service backup.
+ * Dec 12, 2016 21504      Robert.Blum  Updates for disabling IssueAll and Save 
+ *                                      when events become locked on the Product Editor.
+ * Apr 05, 2017 32733      Robert.Blum  Removed unused parameter.
  * Apr 27, 2017 11853      Chris.Golden Made names of methods more consistent, and
  *                                      added a method to check to see if the
  *                                      product editor is open. Also made thread usage
  *                                      more consistent.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
+ *                                      session events.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public final class ProductEditorView implements
-        IProductEditorView<Action, RCPMainUserInterfaceElement> {
+public final class ProductEditorView
+        implements IProductEditorView<Action, RCPMainUserInterfaceElement> {
 
     // Private Static Constants
 
@@ -123,7 +128,7 @@ public final class ProductEditorView implements
 
     @Override
     public boolean isProductEditorOpen() {
-        return (productEditor != null);
+        return (productEditor != null ? productEditor.isOpen() : false);
     }
 
     @Override
@@ -137,8 +142,9 @@ public final class ProductEditorView implements
         VizApp.runSync(new Runnable() {
             @Override
             public void run() {
-                productEditor = new ProductEditor(VizWorkbenchManager
-                        .getInstance().getCurrentWindow().getShell(),
+                productEditor = new ProductEditor(
+                        VizWorkbenchManager.getInstance().getCurrentWindow()
+                                .getShell(),
                         generatedProductsList, siteId, hazardTypes);
             }
         });
@@ -202,5 +208,12 @@ public final class ProductEditorView implements
         if (productEditor != null) {
             productEditor.changeSite(site);
         }
+    }
+
+    @Override
+    public void handleHazardEventLock() {
+        productEditor.setHazardEventLocked(true);
+        productEditor.updateButtons();
+        productEditor.disableSaveButtons();
     }
 }

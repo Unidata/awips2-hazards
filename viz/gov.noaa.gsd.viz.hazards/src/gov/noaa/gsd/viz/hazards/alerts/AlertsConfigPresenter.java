@@ -9,15 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.alerts;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-
 import java.util.EnumSet;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
 
 /**
  * Alerts presenter, used to mediate between the model and the alerts view.
@@ -32,21 +31,22 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEven
  *                                           including the passing in of the event
  *                                           bus so that the latter is no longer a
  *                                           singleton.
- * Nov 04, 2013 2182     daniel.s.schaffer@noaa.gov      Started refactoring
- * 
- * Dec 03, 2013 2182     daniel.s.schaffer@noaa.gov Refactoring - eliminated IHazardsIF
+ * Nov 04, 2013 2182       daniel.s.schaffer Started refactoring
+ * Dec 03, 2013 2182       daniel.s.schaffer Refactoring - eliminated IHazardsIF
  * May 17, 2014 2925       Chris.Golden      Added newly required implementation of
  *                                           reinitialize(), and made initialize()
  *                                           protected as it is called by setView().
  * Dec 05, 2014 4124       Chris.Golden      Changed to work with newly parameterized
  *                                           config manager.
+ * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
+ *                                           mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class AlertsConfigPresenter extends
-        HazardServicesPresenter<IAlertsConfigView<?, ?>> {
+public class AlertsConfigPresenter
+        extends HazardServicesPresenter<IAlertsConfigView<?, ?>> {
 
     // Public Constructors
 
@@ -58,8 +58,7 @@ public class AlertsConfigPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public AlertsConfigPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public AlertsConfigPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }

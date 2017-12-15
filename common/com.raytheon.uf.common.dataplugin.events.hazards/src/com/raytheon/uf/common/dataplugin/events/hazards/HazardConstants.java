@@ -121,6 +121,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Oct 05, 2016 22870     Chris.Golden  Added frame change to triggers.
  * Oct 19, 2016 21873     Chris.Golden  Added time resolution.
  * Dec 16, 2016 27006     bkowal        Added {@link #REPLACED_HAZARD_TYPE}.
+ * Dec 19, 2016 21504     Robert.Blum   Added constants for hazard locking.
  * Feb 01, 2017 15556     Chris.Golden  Removed obsolete elements, and added constants for the
  *                                      console refactor.
  * Feb 16, 2017 29138     Chris.Golden  Removed unneeded visibility-in-history-list constant and
@@ -136,6 +137,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Apr 04, 2017 32732     Chris.Golden  Added constant for indicating whether or not the origin
  *                                      (user name and workstation identifier) should be updated
  *                                      when a recommender returns modified event(s).
+ * Apr 05, 2017 32733     Robert.Blum   Added REQUEST.
  * May 24, 2017 15561     Chris.Golden  Removed unneeded Significance enumerated type and
  *                                      associated methods.
  * May 31, 2017 34684     Chris.Golden  Added selection as a recommender execution trigger type,
@@ -151,7 +153,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      spatial input is required.
  * Oct 02, 2017 38506     Chris.Golden  Added GENERIC_PROPERTY constant.
  * Dec 13, 2017 40923     Chris.Golden  Added constants for returning modified hazard event from
- *                                      metadata fetch.
+ *                                      metadata fetch, and one for indicating that events to be
+ *                                      saved to database from a recommender execution are to
+ *                                      remain locked.
  * </pre>
  * 
  * @author mnash
@@ -245,6 +249,8 @@ public final class HazardConstants {
     public static final String RECOMMENDER_RESULT_SAVE_TO_DATABASE = "saveToDatabase";
 
     public static final String RECOMMENDER_RESULT_SAVE_TO_HISTORY = "saveToHistory";
+
+    public static final String RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE = "lockEvents";
 
     public static final String RECOMMENDER_RESULT_TREAT_AS_ISSUANCE = "treatAsIssuance";
 
@@ -1019,6 +1025,8 @@ public final class HazardConstants {
 
     public static final String WORKSTATION = "workStation";
 
+    public static final String WSID = "wsID";
+
     /*
      * The following are related to hazard event metadata and recommender
      * dialogs.
@@ -1428,4 +1436,10 @@ public final class HazardConstants {
     public static final String NATIONAL = "National";
 
     public static final String PURGE_HOURS = "purgeHours";
+
+    public static final String LOCK_STATUS = "lockStatus";
+
+    public static final String INGEST = "Ingest";
+
+    public static final String REQUEST = "Request";
 }

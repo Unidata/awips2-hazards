@@ -12,13 +12,13 @@ package gov.noaa.gsd.viz.hazards.utilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.InvalidGeometryException;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.GeometryFactory;
@@ -46,7 +46,11 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  * Sep 12, 2016 15934      Chris.Golden Folded functionality back into the spatial
  *                                      presenter, leaving only deprecated methods being
  *                                      used by obsolete auto-tests.
+ * Dec 19, 2016 21504      Robert.Blum  HazardEvents now hold a WsID instead of username/
+ *                                      workstation.
  * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
+ *                                      session events.
  * </pre>
  * 
  * @author Dan Schaffer
@@ -64,7 +68,7 @@ public class HazardEventBuilder {
     /**
      * Session manager to be used when adding events.
      */
-    private final ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager;
+    private final ISessionManager<ObservedSettings> sessionManager;
 
     // Public Constructors
 
@@ -75,7 +79,7 @@ public class HazardEventBuilder {
      *            Session manager to be used when adding events.
      */
     public HazardEventBuilder(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager) {
+            ISessionManager<ObservedSettings> sessionManager) {
         this.sessionManager = sessionManager;
     }
 
@@ -121,14 +125,13 @@ public class HazardEventBuilder {
      *             maintained at this time.
      */
     @Deprecated
-    public ObservedHazardEvent addEvent(IHazardEvent event,
-            IOriginator originator) throws HazardEventServiceException {
+    public IHazardEventView addEvent(IHazardEvent event, IOriginator originator)
+            throws HazardEventServiceException {
 
         /*
          * Update the event user and workstation based on who created the event.
          */
-        event.setUserName(LocalizationManager.getInstance().getCurrentUser());
-        event.setWorkStation(VizApp.getHostName());
+        event.setWsId(VizApp.getWsId());
 
         /*
          * If the geometry is to be added to the selected hazard, do this and do
@@ -140,21 +143,24 @@ public class HazardEventBuilder {
                 && (sessionManager.getSelectionManager().getSelectedEvents()
                         .size() == 1)) {
 
-            ObservedHazardEvent existingEvent = sessionManager
+            IHazardEventView existingEvent = sessionManager
                     .getSelectionManager().getSelectedEvents().get(0);
 
             IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
             IAdvancedGeometry newGeometries = event.getGeometry();
 
-            existingEvent.setGeometry(AdvancedGeometryUtilities
-                    .createCollection(existingGeometries, newGeometries));
+            sessionManager.getEventManager().changeEventProperty(existingEvent,
+                    ISessionEventManager.SET_EVENT_GEOMETRY,
+                    AdvancedGeometryUtilities.createCollection(
+                            existingGeometries, newGeometries));
 
             /*
              * Remove the context menu contribution key so that the now-modified
              * hazard event will not allow the use of select-by-area to modify
              * its geometry.
              */
-            existingEvent.removeHazardAttribute(
+            sessionManager.getEventManager().changeEventProperty(existingEvent,
+                    ISessionEventManager.REMOVE_EVENT_ATTRIBUTE,
                     HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
             return existingEvent;
         }

@@ -11,7 +11,7 @@ from ProbUtils import ProbUtils
 import logging, UFStatusHandler
 import matplotlib.pyplot as plt
 import LogUtils
-from HazardConstants import SAVE_TO_DATABASE_KEY, SET_ORIGIN_KEY, SELECTED_TIME_KEY
+from HazardConstants import SAVE_TO_HISTORY_KEY, SAVE_TO_DATABASE_KEY, KEEP_SAVED_TO_DATABASE_LOCKED_KEY, SET_ORIGIN_KEY, SELECTED_TIME_KEY
 
 import math, time
 from math import *
@@ -201,7 +201,8 @@ class Recommender(RecommenderTemplate.Recommender):
         self.setOriginDict = {}
         resultEventSet.addAttribute(SET_ORIGIN_KEY, self.setOriginDict)
         self.saveToDatabase = True
-        
+        self.saveToHistory = False
+        self.keepLocked = True
         
         # IF there are any editable objects, we do not want to set the selected time ahead for
         #   a timeInterval update
@@ -239,6 +240,14 @@ class Recommender(RecommenderTemplate.Recommender):
             # React to the change in selection state, if that is what
             # triggered this execution of the recommender.
             if trigger == 'hazardEventSelection':
+                
+                # Ensure that if the event has been deselected, or if
+                # it has been selected but has previously been issued,
+                # the changes made to its activate-related attributes
+                # do not keep it locked. 
+                if event.get('selected') is False or event.getStatus() != 'PENDING':
+                    self.keepLocked = False
+                
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
                 #print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
                 self.probUtils.setActivation(event)
@@ -248,7 +257,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
                 print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
                 self.flush()
-                self.setVisualFeatures(event)
+                # self.setVisualFeatures(event)
                 resultEventSet.add(event)
                 continue
             
@@ -266,6 +275,10 @@ class Recommender(RecommenderTemplate.Recommender):
                 continue
                 
             elif trigger == 'hazardEventModification':
+
+                if 'status' in self.attributeIdentifiers and event.getStatus() in ['ELAPSED', 'ENDED', 'ISSUED']:
+                    self.keepLocked = False
+                
                 changes = self.adjustForEventModification(event, eventSetAttrs, resultEventSet)
                 #if not changes:
                 # Handle other dialog buttons
@@ -316,9 +329,15 @@ class Recommender(RecommenderTemplate.Recommender):
             print "SR setting lastSelectedTime to --- YG --", self.lastSelectedTime
             self.flush()
             resultEventSet.add(event)
-            
-        if self.saveToDatabase:
+        
+        # Save to history list if appropriate; otherwise, if needed, save to database,
+        # and in the latter case, note whether to keep the event locked or not. (For
+        # saves to history, the lock is automatically let go.)    
+        if self.saveToHistory:
+            resultEventSet.addAttribute(SAVE_TO_HISTORY_KEY, True)
+        elif self.saveToDatabase:
             resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
+            resultEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, self.keepLocked)
 
         self.printEventSet("*****\nFinishing SwathRecommender", eventSet, eventLevel=1)
         return resultEventSet      
@@ -365,10 +384,11 @@ class Recommender(RecommenderTemplate.Recommender):
         # Make sure that already elapsed events are never processed.
         if event.getStatus() == "ELAPSED":
             # elapsed event may need to be added again so that the other UI can see it 
-            event.setStatus('ELAPSED')
-            event.set('statusForHiddenField', 'ELAPSED')
-            resultEventSet.add(event)            
-            return False  
+#             event.setStatus('ELAPSED')
+#             event.set('statusForHiddenField', 'ELAPSED')
+#             resultEventSet.add(event)            
+#             self.keepLocked = False
+            return False
         
         # Make sure that triggers resulting from database changes are never
         # processed.
@@ -390,6 +410,8 @@ class Recommender(RecommenderTemplate.Recommender):
             event.setStatus('ELAPSED')
             event.set('statusForHiddenField', 'ELAPSED')
             resultEventSet.add(event)
+            self.saveToHistory = True
+            self.keepLocked = False
             return False
 
         # Skip ending, previously ended, and potential events 
@@ -402,7 +424,10 @@ class Recommender(RecommenderTemplate.Recommender):
             event.setStatus('ENDED')
             event.set('statusForHiddenField', 'ENDED')
             resultEventSet.add(event)
+            self.saveToHistory = True
+            self.keepLocked = False
             # BUG ALERT?? Should we still process it?
+
         return True
     
     def beginGraphDraw(self, event, trigger):
@@ -666,6 +691,8 @@ class Recommender(RecommenderTemplate.Recommender):
             event.setStatus('ELAPSED')
             event.set('statusForHiddenField', 'ELAPSED')
             resultEventSet.add(event)
+            self.saveToHistory = True
+            self.keepLocked = False
             return        
 
     def ensureLastGraphProbZeroAndUneditable(self, event):

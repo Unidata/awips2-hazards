@@ -19,15 +19,14 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventManager;
 import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.viz.core.mode.CAVEMode;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
 
 /**
  * This is the preferred method of obtaining a new ISessionManager. This
@@ -42,15 +41,17 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jun 11, 2013 1257       bsteffen    Initial creation
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Jun 11, 2013 1257       bsteffen     Initial creation
  * Dec 05, 2014 4124       Chris.Golden Changed to work with parameterized config manager.
  * Nov 10, 2015 12762      Chris.Golden Added code to implement and use new recommender
  *                                      manager.
  * May 06, 2016 18202      Robert.Blum  Changes for operational mode.
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
+ *                                      events.
  * </pre>
  * 
  * @author bsteffen
@@ -59,7 +60,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
 
 public class SessionManagerFactory {
 
-    public static ISessionManager<ObservedHazardEvent, ObservedSettings> getSessionManager(
+    public static ISessionManager<ObservedSettings> getSessionManager(
             IMessenger messenger,
             ISpatialContextProvider spatialContextProvider,
             IDisplayResourceContextProvider displayResourceContextProvider,
@@ -68,7 +69,7 @@ public class SessionManagerFactory {
         boolean practice = !CAVEMode.OPERATIONAL.equals(CAVEMode.getMode());
         return new SessionManager(PathManagerFactory.getPathManager(),
                 new HazardEventManager(practice), spatialContextProvider,
-                displayResourceContextProvider, frameContextProvider,
-                messenger, eventBus);
+                displayResourceContextProvider, frameContextProvider, messenger,
+                eventBus);
     }
 }

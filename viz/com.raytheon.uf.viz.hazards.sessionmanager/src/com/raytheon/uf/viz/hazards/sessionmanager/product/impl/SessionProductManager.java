@@ -55,7 +55,11 @@ import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.HazardEventM
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.dataplugin.hazards.interoperability.registry.services.client.InteroperabilityRequestServices;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
@@ -83,7 +87,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.ProductGener
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.ISessionNotificationSender.IIntraNotificationHandler;
 import com.raytheon.uf.viz.hazards.sessionmanager.impl.SessionManager;
@@ -249,6 +252,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Nov 17, 2016 26313      Chris.Golden Changed to work with the new capacity of hazard types to be associated
  *                                      with more than one UGC type.
  * Nov 23, 2016 26423      Robert.Blum  Fixed issue with filtered out events.
+ * Dec 12, 2016 21504      Robert.Blum  Updates for locking hazards during product generation.
  * Feb 01, 2017 15556      Chris.Golden Changed to use new selection manager.
  * Feb 17, 2017 21676      Chris.Golden Changed to use session event manager's new merge method.
  * Feb 17, 2017 29138      Chris.Golden Changed to use more efficient query of database hazards.
@@ -265,6 +269,8 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Oct 23, 2017 21730      Chris.Golden Adjusted implementations of IIntraNotificationHander to
  *                                      adjust their isSynchronous() methods to take the new
  *                                      parameter.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
+ *                                      events.
  * </pre>
  * 
  * @author bsteffen
@@ -289,9 +295,9 @@ public class SessionProductManager implements ISessionProductManager {
      */
     private final ISessionConfigurationManager<ObservedSettings> configManager;
 
-    private final ISessionEventManager<ObservedHazardEvent> eventManager;
+    private final ISessionEventManager eventManager;
 
-    private final ISessionSelectionManager<ObservedHazardEvent> selectionManager;
+    private final ISessionSelectionManager selectionManager;
 
     private final ISessionNotificationSender notificationSender;
 
@@ -393,8 +399,8 @@ public class SessionProductManager implements ISessionProductManager {
     public SessionProductManager(SessionManager sessionManager,
             ISessionTimeManager timeManager,
             ISessionConfigurationManager<ObservedSettings> configManager,
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ISessionSelectionManager<ObservedHazardEvent> selectionManager,
+            ISessionEventManager eventManager,
+            ISessionSelectionManager selectionManager,
             ISessionNotificationSender notificationSender,
             IMessenger messenger) {
         this.sessionManager = sessionManager;
@@ -495,8 +501,8 @@ public class SessionProductManager implements ISessionProductManager {
              * the product generator.
              */
             boolean includeAll = false;
-            Set<IHazardEvent> productEvents = new HashSet<>();
-            for (ObservedHazardEvent e : eventManager
+            Set<IReadableHazardEvent> productEvents = new HashSet<>();
+            for (IHazardEventView e : eventManager
                     .getEventsForCurrentSettings()) {
                 if (HazardEventUtilities.isHazardTypeValid(e) == false) {
                     continue;
@@ -526,7 +532,7 @@ public class SessionProductManager implements ISessionProductManager {
              * Find all the hazard types that are includeAll for this product
              * generator. Then add any unselected hazards of those types.
              */
-            Set<IHazardEvent> possibleProductEvents = new HashSet<>();
+            Set<IReadableHazardEvent> possibleProductEvents = new HashSet<>();
             if (includeAll) {
                 Set<String> includeAllHazardTypes = new HashSet<>();
                 for (String[] pair : entry.getValue().getAllowedHazards()) {
@@ -544,7 +550,7 @@ public class SessionProductManager implements ISessionProductManager {
                  * Add all possible events from the includeAllHazardTypes that
                  * are not currently selected.
                  */
-                for (ObservedHazardEvent e : eventManager
+                for (IHazardEventView e : eventManager
                         .getEventsForCurrentSettings()) {
                     boolean isSelected = selectedEventIdentifiers
                             .contains(e.getEventID());
@@ -611,10 +617,10 @@ public class SessionProductManager implements ISessionProductManager {
         for (GeneratedProductList genProdList : generatedProductsList) {
             ProductGeneratorEntry entry = pgt.get(genProdList.getProductInfo());
 
-            Set<IHazardEvent> productEvents = new HashSet<>();
-            Set<IHazardEvent> possibleProductEvents = new HashSet<>();
+            Set<IReadableHazardEvent> productEvents = new HashSet<>();
+            Set<IReadableHazardEvent> possibleProductEvents = new HashSet<>();
 
-            for (ObservedHazardEvent e : eventManager
+            for (IHazardEventView e : eventManager
                     .getEventsForCurrentSettings()) {
                 if (HazardEventUtilities.isHazardTypeValid(e) == false) {
                     continue;
@@ -787,7 +793,7 @@ public class SessionProductManager implements ISessionProductManager {
             GeneratedProductList generatedProductList = new GeneratedProductList();
 
             EventSet<IEvent> genProductListEventSet = new EventSet<>();
-            Set<IHazardEvent> prodGenInfoHazardEvents = new HashSet<IHazardEvent>();
+            Set<IReadableHazardEvent> prodGenInfoHazardEvents = new HashSet<>();
             for (ProductData productData : allProductData) {
                 EventSet<IEvent> productEventSet = new EventSet<>();
                 GeneratedProduct product = new GeneratedProduct(
@@ -900,7 +906,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
 
         // Ensure nothing has elapsed while the product editor was sitting open.
-        List<IHazardEvent> eventsToCheck = new ArrayList<>(
+        List<IReadableHazardEvent> eventsToCheck = new ArrayList<>(
                 productGeneratorInformation.getProductEvents());
         boolean shouldContinue = areValidEvents(eventsToCheck, issue);
 
@@ -933,7 +939,7 @@ public class SessionProductManager implements ISessionProductManager {
              * selected. For example, two FA.A's, one selected, one not, and the
              * user adds the second one via the product staging dialog.
              */
-            for (ObservedHazardEvent sessionEvent : eventManager.getEvents()) {
+            for (IHazardEventView sessionEvent : eventManager.getEvents()) {
 
                 /*
                  * Update Hazard Events with product information returned from
@@ -941,7 +947,7 @@ public class SessionProductManager implements ISessionProductManager {
                  */
                 for (IEvent ev : productGeneratorInformation
                         .getGeneratedProducts().getEventSet()) {
-                    IHazardEvent updatedEvent = (IHazardEvent) ev;
+                    IReadableHazardEvent updatedEvent = (IReadableHazardEvent) ev;
                     try {
                         if (checkForConflicts(updatedEvent)) {
                             statusHandler.info(
@@ -968,16 +974,17 @@ public class SessionProductManager implements ISessionProductManager {
                          * This ensures that the "replaces" string is removed
                          * for the next generation of a product.
                          */
-                        sessionEvent.removeHazardAttribute(
+                        eventManager.changeEventProperty(sessionEvent,
+                                ISessionEventManager.REMOVE_EVENT_ATTRIBUTE,
                                 HazardConstants.REPLACES);
 
                         /*
                          * Update the userName and workstation. Should be set to
                          * the last person who issued the product/hazard.
                          */
-                        sessionEvent.setUserName(LocalizationManager
-                                .getInstance().getCurrentUser());
-                        sessionEvent.setWorkStation(VizApp.getHostName());
+                        eventManager.changeEventProperty(sessionEvent,
+                                ISessionEventManager.SET_EVENT_WORKSTATION_IDENTIFIER,
+                                VizApp.getWsId());
 
                         if (updatedEvent.getStatus()
                                 .equals(HazardStatus.ENDED)) {
@@ -1127,7 +1134,7 @@ public class SessionProductManager implements ISessionProductManager {
         /*
          * Ensure that the events are valid.
          */
-        List<ObservedHazardEvent> selectedEvents = selectionManager
+        List<? extends IHazardEventView> selectedEvents = selectionManager
                 .getSelectedEvents();
         if (!areValidEvents(selectedEvents, issue)) {
             setPreviewOrIssueOngoing(issue, false);
@@ -1137,11 +1144,7 @@ public class SessionProductManager implements ISessionProductManager {
         /*
          * Ensure that any events that are potential are made pending.
          */
-        for (ObservedHazardEvent event : selectedEvents) {
-            if (event.getStatus() == HazardStatus.POTENTIAL) {
-                event.setStatus(HazardStatus.PENDING, false, Originator.OTHER);
-            }
-        }
+        eventManager.setPotentialEventsToPending(selectedEvents);
 
         /*
          * Compile the preliminary product generation information and cache it.
@@ -1164,7 +1167,7 @@ public class SessionProductManager implements ISessionProductManager {
      */
     @Override
     public void generateProducts(String productGeneratorName) {
-        List<ObservedHazardEvent> selectedEvents = selectionManager
+        List<? extends IHazardEventView> selectedEvents = selectionManager
                 .getSelectedEvents();
         if (!areValidEvents(selectedEvents, false)) {
             return;
@@ -1201,11 +1204,11 @@ public class SessionProductManager implements ISessionProductManager {
     }
 
     private boolean isAtLeastOneSelectedAllowed(String productGeneratorName,
-            Collection<ObservedHazardEvent> selectedEvents) {
+            Collection<? extends IHazardEventView> selectedEvents) {
         ProductGeneratorTable pgTable = configManager
                 .getProductGeneratorTable();
         ProductGeneratorEntry pgEntry = pgTable.get(productGeneratorName);
-        for (ObservedHazardEvent selectedEvent : selectedEvents) {
+        for (IHazardEventView selectedEvent : selectedEvents) {
             for (String[] allowedHazards : pgEntry.getAllowedHazards()) {
                 if (selectedEvent.getHazardType().equals(allowedHazards[0])) {
                     return true;
@@ -1217,15 +1220,15 @@ public class SessionProductManager implements ISessionProductManager {
 
     private Collection<ProductGeneratorInformation> productGeneratorInfoFromName(
             String productGeneratorName,
-            Collection<ObservedHazardEvent> selectedEvents) {
+            Collection<? extends IHazardEventView> selectedEvents) {
         Collection<ProductGeneratorInformation> allProductGeneratorInfo = new ArrayList<>();
         ProductGeneratorInformation productGeneratorInfo = new ProductGeneratorInformation();
         productGeneratorInfo.setProductGeneratorName(productGeneratorName);
 
         productGeneratorInfo
-                .setPossibleProductEvents(new HashSet<IHazardEvent>());
-        productGeneratorInfo
-                .setProductEvents(new HashSet<IHazardEvent>(selectedEvents));
+                .setPossibleProductEvents(new HashSet<IReadableHazardEvent>());
+        productGeneratorInfo.setProductEvents(
+                new HashSet<IReadableHazardEvent>(selectedEvents));
         productGeneratorInfo
                 .setProductFormats(configManager.getProductGeneratorTable()
                         .getProductFormats(productGeneratorName));
@@ -1239,6 +1242,11 @@ public class SessionProductManager implements ISessionProductManager {
 
     private void generate(boolean issue,
             Collection<ProductGeneratorInformation> allProductGeneratorInfo) {
+        if (lockEventsForProductGeneration(allProductGeneratorInfo) == false) {
+            // Failed to lock all hazards
+            return;
+        }
+
         /*
          * See if staging is required; if it is, request it and do nothing more.
          */
@@ -1261,7 +1269,8 @@ public class SessionProductManager implements ISessionProductManager {
      * Ensure selected hazards meet criteria for product generation
      */
     private boolean areValidEvents(
-            Collection<? extends IHazardEvent> selectedEvents, boolean issue) {
+            Collection<? extends IReadableHazardEvent> selectedEvents,
+            boolean issue) {
         String site = configManager.getSiteID();
 
         if (selectedEvents.isEmpty()) {
@@ -1272,7 +1281,7 @@ public class SessionProductManager implements ISessionProductManager {
         List<String> invalidSiteEventIds = new ArrayList<>();
         List<String> invalidTypeEventIds = new ArrayList<>();
         List<String> invalidStatusEventIds = new ArrayList<>();
-        for (IHazardEvent event : selectedEvents) {
+        for (IReadableHazardEvent event : selectedEvents) {
             if (HazardEventUtilities.isHazardTypeValid(event) == false) {
                 invalidTypeEventIds.add(event.getEventID());
             }
@@ -1307,7 +1316,7 @@ public class SessionProductManager implements ISessionProductManager {
             if (invalidStatusEventIds.isEmpty() == false) {
                 formatEventIdList(invalidStatusEventIds, sb);
                 sb.append(invalidStatusEventIds.size() > 1 ? "have" : "has");
-                sb.append(" Ended or Elapsed hazard status\n\n.");
+                sb.append(" Ended or Elapsed hazard status,\n\n");
             }
 
             sb.append("Product Generation halted.");
@@ -1376,14 +1385,14 @@ public class SessionProductManager implements ISessionProductManager {
                 }
             }
 
-            Set<IHazardEvent> selectedEvents = new HashSet<>();
-            for (IHazardEvent hazardEvent : matchingProductGeneratorInformation
+            Set<IReadableHazardEvent> selectedEvents = new HashSet<>();
+            for (IReadableHazardEvent hazardEvent : matchingProductGeneratorInformation
                     .getProductEvents()) {
                 if (selectedEventIDs.contains(hazardEvent.getEventID())) {
                     selectedEvents.add(hazardEvent);
                 }
             }
-            for (IHazardEvent hazardEvent : matchingProductGeneratorInformation
+            for (IReadableHazardEvent hazardEvent : matchingProductGeneratorInformation
                     .getPossibleProductEvents()) {
                 if (selectedEventIDs.contains(hazardEvent.getEventID())) {
 
@@ -1456,10 +1465,14 @@ public class SessionProductManager implements ISessionProductManager {
             if ((info.getPossibleProductEvents() != null)
                     && (info.getPossibleProductEvents().isEmpty() == false)) {
                 info.getProductEvents().addAll(info.getPossibleProductEvents());
-                Set<ObservedHazardEvent> selectedEvents = new HashSet<>(
+                Set<IHazardEventView> selectedEvents = new HashSet<>(
                         selectionManager.getSelectedEvents());
-                for (IHazardEvent hevent : info.getProductEvents()) {
-                    selectedEvents.add((ObservedHazardEvent) hevent);
+                for (IReadableHazardEvent hevent : info.getProductEvents()) {
+                    IHazardEventView event = eventManager
+                            .getEventById(hevent.getEventID());
+                    if (event != null) {
+                        selectedEvents.add(event);
+                    }
                 }
                 selectionManager.setSelectedEvents(selectedEvents,
                         Originator.OTHER);
@@ -1505,9 +1518,9 @@ public class SessionProductManager implements ISessionProductManager {
                     || selectedEventIdentifiers.isEmpty()) {
                 continue;
             }
-            Set<IHazardEvent> selectedEvents = new HashSet<>();
+            Set<IReadableHazardEvent> selectedEvents = new HashSet<>();
             for (String eventId : selectedEventIdentifiers) {
-                IHazardEvent event = eventManager.getEventById(eventId);
+                IHazardEventView event = eventManager.getEventById(eventId);
                 if (event != null) {
                     selectedEvents.add(event);
                 }
@@ -1516,6 +1529,11 @@ public class SessionProductManager implements ISessionProductManager {
             info.setPossibleProductEvents(Sets.difference(
                     info.getPossibleProductEvents(), selectedEvents));
             allMatchingProductGeneratorInfo.add(info);
+        }
+
+        if (!lockEventsForProductGeneration(allMatchingProductGeneratorInfo)) {
+            // Failed to lock all hazards
+            return false;
         }
 
         /*
@@ -1670,7 +1688,7 @@ public class SessionProductManager implements ISessionProductManager {
          * Update the UGC information in the Hazard Event
          */
         try {
-            eventManager.updateSelectedHazardUGCs();
+            eventManager.updateSelectedHazardUgcs();
         } catch (ProductGenerationException e) {
             messenger.getWarner().warnUser("Product Generation Error",
                     productGeneratorInformation.getProductGeneratorName()
@@ -1706,11 +1724,11 @@ public class SessionProductManager implements ISessionProductManager {
                 events.addAttribute(entry.getKey(), entry.getValue());
             }
         }
-        for (IHazardEvent event : productGeneratorInformation
+        for (IReadableHazardEvent event : productGeneratorInformation
                 .getProductEvents()) {
-            event = new BaseHazardEvent(event);
-            for (Entry<String, Serializable> entry : event.getHazardAttributes()
-                    .entrySet()) {
+            IHazardEvent newEvent = new BaseHazardEvent(event);
+            for (Entry<String, Serializable> entry : newEvent
+                    .getHazardAttributes().entrySet()) {
                 if (entry.getValue() instanceof Date) {
                     entry.setValue(((Date) entry.getValue()).getTime());
                 }
@@ -1723,27 +1741,27 @@ public class SessionProductManager implements ISessionProductManager {
             Geometry geometryCollection = null;
             List<Geometry> polygonGeometries = new ArrayList<>();
 
-            String headline = configManager.getHeadline(event);
-            event.addHazardAttribute(HazardConstants.HEADLINE, headline);
-            if (event.getHazardAttribute(
+            String headline = configManager.getHeadline(newEvent);
+            newEvent.addHazardAttribute(HazardConstants.HEADLINE, headline);
+            if (newEvent.getHazardAttribute(
                     HazardConstants.FORECAST_POINT) != null) {
-                event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                newEvent.addHazardAttribute(HazardConstants.GEO_TYPE,
                         HazardConstants.POINT_TYPE);
             } else {
-                geometryCollection = event.getProductGeometry();
+                geometryCollection = newEvent.getProductGeometry();
 
                 for (int i = 0; i < geometryCollection
                         .getNumGeometries(); ++i) {
                     Geometry geometry = geometryCollection.getGeometryN(i);
 
                     if (geometry instanceof Puntal) {
-                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                        newEvent.addHazardAttribute(HazardConstants.GEO_TYPE,
                                 HazardConstants.POINT_TYPE);
                     } else if (geometry instanceof Lineal) {
-                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                        newEvent.addHazardAttribute(HazardConstants.GEO_TYPE,
                                 HazardConstants.LINE_TYPE);
                     } else if (geometry instanceof Polygonal) {
-                        event.addHazardAttribute(HazardConstants.GEO_TYPE,
+                        newEvent.addHazardAttribute(HazardConstants.GEO_TYPE,
                                 HazardConstants.AREA_TYPE);
                         polygonGeometries.add(geometry);
                     } else {
@@ -1756,14 +1774,14 @@ public class SessionProductManager implements ISessionProductManager {
                 } /* end loop over geometryCollection */
 
             } /* if not a polygon event type */
-            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
+            newEvent.removeHazardAttribute(HazardConstants.HAZARD_EVENT_TYPE);
 
             /*
              * Make descriptions of portions of counties if we have any polygon
              * geometries for this event.
              */
             HazardTypeEntry hazardTypeEntry = configManager.getHazardTypes()
-                    .get(HazardEventUtilities.getHazardType(event));
+                    .get(HazardEventUtilities.getHazardType(newEvent));
             Set<String> ugcTypes = hazardTypeEntry.getUgcTypes();
             if (ugcTypes.contains(MAPDATA_COUNTY)
                     && polygonGeometries.size() > 0) {
@@ -1774,7 +1792,7 @@ public class SessionProductManager implements ISessionProductManager {
                 }
                 if (!configManager.getSiteID().equals(NATIONAL)) {
                     partsOfCounty.addPortionsDescriptionToEvent(
-                            geometryCollection, event,
+                            geometryCollection, newEvent,
                             configManager.getSiteID());
                 }
             }
@@ -1783,22 +1801,23 @@ public class SessionProductManager implements ISessionProductManager {
              * Need to re-initialize product information when issuing
              */
             if (issue) {
-                event.removeHazardAttribute(HazardConstants.EXPIRATION_TIME);
-                event.removeHazardAttribute(HazardConstants.ISSUE_TIME);
-                event.removeHazardAttribute(HazardConstants.VTEC_CODES);
-                event.removeHazardAttribute(HazardConstants.ETNS);
-                event.removeHazardAttribute(HazardConstants.PILS);
+                newEvent.removeHazardAttribute(HazardConstants.EXPIRATION_TIME);
+                newEvent.removeHazardAttribute(HazardConstants.ISSUE_TIME);
+                newEvent.removeHazardAttribute(HazardConstants.VTEC_CODES);
+                newEvent.removeHazardAttribute(HazardConstants.ETNS);
+                newEvent.removeHazardAttribute(HazardConstants.PILS);
             }
-            event.removeHazardAttribute(HazardConstants.ISSUED);
-            event.removeHazardAttribute(HazardConstants.HAZARD_EVENT_CATEGORY);
+            newEvent.removeHazardAttribute(HazardConstants.ISSUED);
+            newEvent.removeHazardAttribute(
+                    HazardConstants.HAZARD_EVENT_CATEGORY);
 
             /*
              * TODO: Remove this once the HAZARD_EVENT_SELECTED attribute has
              * been entirely done away with.
              */
-            event.removeHazardAttribute(HAZARD_EVENT_SELECTED);
+            newEvent.removeHazardAttribute(HAZARD_EVENT_SELECTED);
 
-            events.add(event);
+            events.add(newEvent);
         } /* end loop over information.getProductEvents */
         return events;
     }
@@ -1851,8 +1870,8 @@ public class SessionProductManager implements ISessionProductManager {
                 Iterator<IEvent> iterator = product.getEventSet().iterator();
                 while (iterator.hasNext()) {
                     IEvent event = iterator.next();
-                    if (event instanceof IHazardEvent) {
-                        IHazardEvent hazardEvent = (IHazardEvent) event;
+                    if (event instanceof IReadableHazardEvent) {
+                        IReadableHazardEvent hazardEvent = (IReadableHazardEvent) event;
                         String eventID = hazardEvent.getEventID();
                         eventIDs.add(eventID);
                         Map<String, Serializable> attributes = hazardEvent
@@ -1915,7 +1934,7 @@ public class SessionProductManager implements ISessionProductManager {
         }
     }
 
-    private boolean checkForConflicts(IHazardEvent hazardEvent)
+    private boolean checkForConflicts(IReadableHazardEvent hazardEvent)
             throws HazardEventServiceException {
         boolean practice = (CAVEMode.OPERATIONAL.equals(caveMode) == false);
         InteroperabilityRequestServices services = InteroperabilityRequestServices
@@ -2109,13 +2128,12 @@ public class SessionProductManager implements ISessionProductManager {
                                         /*
                                          * FIXME??? We've had sequencing issues
                                          * with these next 2 lines of code in
-                                         * the past. We need the affected
-                                         * IHazardEvents to always finish
-                                         * storage before calling issue()
-                                         * otherwise server-side
-                                         * interoperability code will not be
-                                         * able to tie the decoded
-                                         * ActiveTableRecords to an IHazardEvent
+                                         * the past. We need the affected hazard
+                                         * events to always finish storage
+                                         * before calling issue() otherwise
+                                         * server-side interoperability code
+                                         * will not be able to tie the decoded
+                                         * ActiveTableRecords to a hazard event
                                          * and will instead create an
                                          * unnecessary duplicate event.
                                          */
@@ -2223,7 +2241,7 @@ public class SessionProductManager implements ISessionProductManager {
         // Get all the events that will be issued and create a String to be
         // used on the confirmation dialog.
         if (productGeneratorInformation.getProductEvents() != null) {
-            for (IHazardEvent hazardEvent : productGeneratorInformation
+            for (IReadableHazardEvent hazardEvent : productGeneratorInformation
                     .getProductEvents()) {
                 sb.append(hazardEvent.getDisplayEventID()).append(" ").append(
                         HazardEventUtilities.getHazardPhenSig(hazardEvent))
@@ -2250,5 +2268,51 @@ public class SessionProductManager implements ISessionProductManager {
                                 mode, time, eventIdentifiers)));
         messenger.getProductViewerChooser()
                 .getProductViewerChooser(productData);
+    }
+
+    /**
+     * Attempts to lock all the necessary hazards for product generation.
+     * 
+     * @param allProductGeneratorInfo
+     * @return
+     */
+    private boolean lockEventsForProductGeneration(
+            Collection<ProductGeneratorInformation> allProductGeneratorInfo) {
+        Set<String> eventIdsToLock = new HashSet<>();
+        Set<String> eventIdsLockedByOthers = new HashSet<>();
+        for (ProductGeneratorInformation prodInfo : allProductGeneratorInfo) {
+            Set<IReadableHazardEvent> events = prodInfo.getProductEvents();
+            events.addAll(prodInfo.getPossibleProductEvents());
+            for (IReadableHazardEvent event : events) {
+                LockInfo info = sessionManager.getLockManager()
+                        .getHazardEventLockInfo(event.getEventID());
+                if (info.getLockStatus() == LockStatus.LOCKED_BY_OTHER) {
+                    eventIdsLockedByOthers.add(event.getEventID());
+                } else if (eventManager.isEventInDatabase(event)) {
+                    eventIdsToLock.add(event.getEventID());
+                }
+            }
+        }
+
+        // Need locks on all the events in order to preview
+        if (eventIdsLockedByOthers.isEmpty() == false) {
+            messenger.getWarner().warnUser("Product Generation Error",
+                    "Could not lock all the required hazards for product generation. "
+                            + "The following events are locked by other workstations: "
+                            + eventIdsLockedByOthers);
+            sessionManager.setPreviewOngoing(false);
+            return false;
+        }
+        /*
+         * Lock the events
+         */
+        boolean success = sessionManager.getLockManager()
+                .lockHazardEventsForProductGeneration(eventIdsToLock);
+        if (!success) {
+            messenger.getWarner().warnUser("Product Generation Error",
+                    "Could not lock all the required hazards for product generation.");
+            sessionManager.setPreviewOngoing(false);
+        }
+        return success;
     }
 }

@@ -24,7 +24,7 @@ import java.util.Map;
 
 import org.eclipse.core.runtime.jobs.Job;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.IHazardSessionAlertsManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -32,6 +32,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ISettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
@@ -69,6 +70,7 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  * Apr 06, 2016  8837      Robert.Blum  Added setupEventIdDisplay().
  * Jun 23, 2016 19537      Chris.Golden Added use of spatial context provider.
  * Jul 27, 2016 19924      Chris.Golden Added use of display resource context provider.
+ * Dec 12, 2016 21504      Robert.Blum  Added method to retrieve the new lock manager.
  * Dec 14, 2016 22119      Kevin.Bisanz Add flags to export config, ProductText, and
  *                                      ProductData individually.
  * Feb 01, 2017 15556      Chris.Golden Added selection manager.
@@ -84,14 +86,15 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  * Sep 27, 2017 38072      Chris.Golden Removed getter for the event bus, as it should not
  *                                      be publicly accessible; and added methods to start
  *                                      and stop batching of messages.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
+ *                                      events.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
-        extends IUndoRedoable {
+public interface ISessionManager<S extends ISettings> extends IUndoRedoable {
 
     /**
      * Get the runnable asynchronous scheduler used to enqueue tasks on the
@@ -106,14 +109,14 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * 
      * @return
      */
-    public ISessionEventManager<E> getEventManager();
+    public ISessionEventManager getEventManager();
 
     /**
      * Get a manager for interacting with the selection set.
      * 
      * @return
      */
-    public ISessionSelectionManager<E> getSelectionManager();
+    public ISessionSelectionManager getSelectionManager();
 
     /**
      * Get a manager for interacting with the times
@@ -135,6 +138,13 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * @return
      */
     public ISessionProductManager getProductManager();
+
+    /**
+     * Get a manager for interacting with the locks.
+     * 
+     * @return
+     */
+    public ISessionLockManager getLockManager();
 
     /**
      * Get a manager for handling alerting.
@@ -316,13 +326,14 @@ public interface ISessionManager<E extends IHazardEvent, S extends ISettings>
      * TODO: Remove the <code>mutableProperties</code> parameter once event
      * modifying scripts are removed.
      * 
-     * @param event
-     *            Hazard event for which the command was invoked.
+     * @param eventView
+     *            View for the hazard event for which the command was invoked.
      * @param identifier
      *            Identifier of the command that was invoked.
      * @param mutableProperties
      *            Mutable properties to be passed to the script, if one is run.
      */
-    public void eventCommandInvoked(E event, String identifier,
+    public void eventCommandInvoked(IHazardEventView eventView,
+            String identifier,
             Map<String, Map<String, Object>> mutableProperties);
 }

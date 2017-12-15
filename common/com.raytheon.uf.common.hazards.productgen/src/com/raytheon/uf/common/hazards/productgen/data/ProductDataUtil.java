@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.hazards.productgen.EditableEntryMap;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataRequest.ProductRequestType;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
@@ -52,7 +52,9 @@ import com.raytheon.uf.common.status.UFStatus;
  * Jul 19, 2016   19207    Robert.Blum  Changes to view products for specific events.
  * Aug 26, 2016   19223    Kevin.Bisanz Changes to get correctable products for
  *                                      specific events.
- * Nov 07, 2016 22119      Kevin.Bisanz Changes to export/import product data by officeID.
+ * Nov 07, 2016   22119    Kevin.Bisanz Changes to export/import product data by officeID.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * 
  * </pre>
  * 
@@ -207,7 +209,7 @@ public class ProductDataUtil {
      */
     public static List<ProductData> retrieveCorrectableProductData(String mode,
             Date currentTime) {
-        List<IHazardEvent> events = null;
+        List<IHazardEventView> events = null;
         return retrieveCorrectableProductDataForEvents(mode, currentTime,
                 events);
     }
@@ -221,7 +223,7 @@ public class ProductDataUtil {
      * @return
      */
     public static List<ProductData> retrieveCorrectableProductDataForEvents(
-            String mode, Date currentTime, List<IHazardEvent> events) {
+            String mode, Date currentTime, List<IHazardEventView> events) {
         ArrayList<String> eventIDs = getEventIdsFromEvents(events);
         ProductDataResponse response = sendRequest(mode, null, eventIDs, null,
                 null, null, null, ProductRequestType.RETRIEVE_CORRECTABLE,
@@ -280,11 +282,13 @@ public class ProductDataUtil {
      * @return
      */
     public static List<ProductData> retrieveViewableProductDataForEvents(
-            String mode, Date currentTime, Collection<String> eventIdentifiers) {
+            String mode, Date currentTime,
+            Collection<String> eventIdentifiers) {
         ProductDataResponse response = sendRequest(mode, null,
-                (eventIdentifiers == null ? null : new ArrayList<>(
-                eventIdentifiers)), null, null, null, null,
-                ProductRequestType.RETRIEVE_VIEWABLE, currentTime);
+                (eventIdentifiers == null ? null
+                        : new ArrayList<>(eventIdentifiers)),
+                null, null, null, null, ProductRequestType.RETRIEVE_VIEWABLE,
+                currentTime);
         if (response != null && response.getData() != null) {
             return response.getData();
         }
@@ -358,7 +362,7 @@ public class ProductDataUtil {
      * @return
      */
     private static ArrayList<String> getEventIdsFromEvents(
-            List<IHazardEvent> events) {
+            List<IHazardEventView> events) {
         /*
          * An ArrayList is returned (vs List) because the return value is
          * eventually passed to this.sendRequest(..) which expects an ArrayList.
@@ -366,7 +370,7 @@ public class ProductDataUtil {
         ArrayList<String> eventIDs = null;
         if (events != null) {
             eventIDs = new ArrayList<>(events.size());
-            for (IHazardEvent event : events) {
+            for (IHazardEventView event : events) {
                 eventIDs.add(event.getEventID());
             }
         }

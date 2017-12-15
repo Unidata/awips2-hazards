@@ -58,7 +58,7 @@ Event-Driven Tools
          EventDrivenTools.append(cpEntry)  
 '''
 
-_CENTRAL_PROCESSOR = True 
+_CENTRAL_PROCESSOR = False 
 
 _RUNCR = True
 

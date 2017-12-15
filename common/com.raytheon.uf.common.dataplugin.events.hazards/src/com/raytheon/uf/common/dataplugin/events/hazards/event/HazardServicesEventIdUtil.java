@@ -37,7 +37,7 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Hazard Id format is "ZZ-YYYY-SSS-999999"
  * ZZ     : 2 Character Application ID
  * YYYY   : 4 Character Year
- * SSS    : 3 Character Site ID
+ * SSS... : 3+ Character Site ID
  * 999999 : 6 Numeric Character Serial Event ID
  * 
  * SOFTWARE HISTORY
@@ -45,7 +45,6 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 03, 2015 8836       Chris.Cody  Initial creation
- *  
  * Aug 20, 2015 6895     Ben.Phillippe Routing registry requests through
  *                                     request server
  * Oct 27, 2015 12077    Ben.Phillippe Removed unnecessary status message
@@ -55,6 +54,8 @@ import com.raytheon.uf.common.time.SimulatedTime;
  * Jun 07, 2016 15561     Chris.Golden Removed constraint upon site identifier
  *                                     for hazard identifiers (used to require
  *                                     it to be three characters).
+ * Jan 23, 2018 20739     Chris.Golden Changed to allow for site identifiers
+ *                                     of more than three characters.
  * </pre>
  * 
  * @author Chris.Cody
@@ -70,25 +71,23 @@ public class HazardServicesEventIdUtil {
      * value of <Event Class>.getDisplayEventId(...).
      * 
      * <pre>
-     * ALWAYS_FULL    Always returns the full ID (default) 
-     * FULL_ON_DIFF   Always return the full id if there is any difference 
-     *                between the current settings for: APP_ID, siteId or year.
-     * PROG_ON_DIFF   Build a progressively larger Display Id based on the largest
-     *                difference between the Current Settings and the given Event Id.
-     *                Different App = Full ID             "ZZ-YYYY-SSS-999999"
-     *                Different Year = Year Level ID:     "YYYY-SSS-999999"
-     *                (Same App)
-     *                Different Site = Site Level ID:     "SSS-999999"
-     *                (Same App, Same Year)
-     *                Same App, Site and Year: Serial ID: "999999"
-     * ALWAYS_SITE    Always display the Site Id and Serial Id "SSS-999999"
-     * ONLY_SERIAL    Only displays the Serial ID despite other differences.
+     * ALWAYS_FULL Always returns the full ID (default) FULL_ON_DIFF Always
+     * return the full id if there is any difference between the current
+     * settings for: APP_ID, siteId or year. PROG_ON_DIFF Build a progressively
+     * larger Display Id based on the largest difference between the Current
+     * Settings and the given Event Id. Different App = Full ID
+     * "ZZ-YYYY-SSS...-999999" Different Year = Year Level ID:
+     * "YYYY-SSS...-999999" (Same App) Different Site = Site Level ID:
+     * "SSS...-999999" (Same App, Same Year) Same App, Site and Year: Serial ID:
+     * "999999" ALWAYS_SITE Always display the Site Id and Serial Id
+     * "SSS...-999999" ONLY_SERIAL Only displays the Serial ID despite other
+     * differences.
      */
     public enum IdDisplayType {
         ALWAYS_FULL, FULL_ON_DIFF, PROG_ON_DIFF, ALWAYS_SITE, ONLY_SERIAL
     }
 
-    public static final int FULL_ID_LEN = 18;
+    public static final int FULL_ID_MIN_LEN = 18;
 
     public static final int APP_ID_IDX = 0;
 
@@ -100,9 +99,7 @@ public class HazardServicesEventIdUtil {
 
     public static final int SITE_ID_IDX = 8;
 
-    public static final int SITE_ID_LEN = 3;
-
-    public static final int SERIAL_ID_IDX = 12;
+    public static final int SITE_ID_MIN_LEN = 3;
 
     public static final int SERIAL_ID_LEN = 6;
 
@@ -139,7 +136,7 @@ public class HazardServicesEventIdUtil {
 
     /**
      * Set up the Site Id for the Hazard Event Id. This defaults to an Id
-     * Display Type of ALWAYS_FULL..
+     * Display Type of FULL_ON_DIFF.
      * 
      * @param newIsPracticeMode
      * @param newSiteId
@@ -147,9 +144,8 @@ public class HazardServicesEventIdUtil {
      */
     public static synchronized void setupHazardEventId(
             boolean newIsPracticeMode, String newSiteId)
-            throws HazardEventServiceException {
+                    throws HazardEventServiceException {
         setupHazardEventId(newIsPracticeMode, newSiteId,
-        // IdDisplayType.ALWAYS_FULL);
                 IdDisplayType.FULL_ON_DIFF);
     }
 
@@ -216,7 +212,7 @@ public class HazardServicesEventIdUtil {
      * @return Application Id
      */
     public static final String getAppId() {
-        return (APP_ID);
+        return APP_ID;
     }
 
     /**
@@ -227,7 +223,7 @@ public class HazardServicesEventIdUtil {
     private static String getCurrentYear() {
         long systemTimeLong = SimulatedTime.getSystemTime().getMillis();
         Date systemDate = new Date(systemTimeLong);
-        return (YEAR_FORMAT.format(systemDate));
+        return YEAR_FORMAT.format(systemDate);
     }
 
     /**
@@ -237,7 +233,7 @@ public class HazardServicesEventIdUtil {
      */
     public static String getSiteId() {
         if (siteId == null) {
-            return (INVALID_SITE_ID);
+            return INVALID_SITE_ID;
         }
 
         return (siteId);
@@ -252,8 +248,8 @@ public class HazardServicesEventIdUtil {
      */
     private static synchronized String getNextEventIdNumber()
             throws HazardEventServiceException {
-        String queriedEventId = HazardEventRequestServices.getServices(
-                isPracticeMode).requestEventId(siteId);
+        String queriedEventId = HazardEventRequestServices
+                .getServices(isPracticeMode).requestEventId(siteId);
         if ((queriedEventId != null) && (queriedEventId.isEmpty() == false)) {
             int idLen = queriedEventId.length();
             if (idLen < DEFAULT_SERIAL_ID_LEN) {
@@ -292,8 +288,7 @@ public class HazardServicesEventIdUtil {
                     + SEP + getNextEventIdNumber());
         } else {
             throw (new HazardEventServiceException(
-                    "Error Invalid Site Id value: "
-                            + eventSiteId
+                    "Error Invalid Site Id value: " + eventSiteId
                             + " Unable to generate Hazard Services Event Id values."));
         }
     }
@@ -302,24 +297,24 @@ public class HazardServicesEventIdUtil {
      * Parse App Id portion from Full Event Id
      * 
      * @param fullId
-     *            Full Hazard Event Id "ZZ-YYYY-SSS-999999"
+     *            Full Hazard Event Id "ZZ-YYYY...-SSS-999999"
      * @return App Id sub String
      */
     public static String getAppIdFromFullId(String fullId) {
         if (fullId != null) {
-            if (FULL_ID_LEN == fullId.length()) {
-                return (fullId.substring(APP_ID_IDX, (APP_ID_IDX + APP_ID_LEN)));
+            if (fullId.length() >= FULL_ID_MIN_LEN) {
+                return fullId.substring(APP_ID_IDX, APP_ID_IDX + APP_ID_LEN);
             }
             if (ignoreErrorIdValues == false) {
-                statusHandler.handle(Priority.ERROR, "Invalid Event ID value: "
-                        + fullId);
+                statusHandler.handle(Priority.ERROR,
+                        "Invalid Event ID value: " + fullId);
             }
         } else {
             if (ignoreErrorIdValues == false) {
                 statusHandler.handle(Priority.ERROR, "NULL Event ID value!");
             }
         }
-        return (INVALID_APP_ID);
+        return INVALID_APP_ID;
     }
 
     /**
@@ -331,8 +326,8 @@ public class HazardServicesEventIdUtil {
      */
     public static String getYearFromFullId(String fullId) {
         if (fullId != null) {
-            if (FULL_ID_LEN == fullId.length()) {
-                return (fullId.substring(YEAR_IDX, (YEAR_IDX + YEAR_LEN)));
+            if (fullId.length() >= FULL_ID_MIN_LEN) {
+                return fullId.substring(YEAR_IDX, YEAR_IDX + YEAR_LEN);
             } else {
                 if (ignoreErrorIdValues == false) {
                     statusHandler.handle(Priority.ERROR,
@@ -342,7 +337,7 @@ public class HazardServicesEventIdUtil {
         } else {
             statusHandler.handle(Priority.ERROR, "NULL Event ID value!");
         }
-        return (INVALID_YEAR);
+        return INVALID_YEAR;
     }
 
     /**
@@ -354,19 +349,20 @@ public class HazardServicesEventIdUtil {
      */
     public static String getSiteIdFromFullId(String fullId) {
         if (fullId != null) {
-            if (FULL_ID_LEN == fullId.length()) {
-                return (fullId.substring(SITE_ID_IDX,
-                        (SITE_ID_IDX + SITE_ID_LEN)));
-            } else {
-                if (ignoreErrorIdValues == false) {
-                    statusHandler.handle(Priority.ERROR,
-                            "Invalid Event ID value: " + fullId);
+            if (fullId.length() >= FULL_ID_MIN_LEN) {
+                int endIndex = fullId.indexOf(SEP, SITE_ID_IDX);
+                if (endIndex != -1) {
+                    return fullId.substring(SITE_ID_IDX, endIndex);
                 }
+            }
+            if (ignoreErrorIdValues == false) {
+                statusHandler.handle(Priority.ERROR,
+                        "Invalid Event ID value: " + fullId);
             }
         } else {
             statusHandler.handle(Priority.ERROR, "NULL Event ID value!");
         }
-        return (INVALID_SITE_ID);
+        return INVALID_SITE_ID;
     }
 
     /**
@@ -378,20 +374,22 @@ public class HazardServicesEventIdUtil {
      */
     public static String getSerialIdFromFullId(String fullId) {
         if (fullId != null) {
-            if (FULL_ID_LEN == fullId.length()) {
-                String serial = fullId.substring(SERIAL_ID_IDX,
-                        (SERIAL_ID_IDX + SERIAL_ID_LEN));
-                return serial.replaceFirst("^0+(?!$)", "");
-            } else {
-                if (ignoreErrorIdValues == false) {
-                    statusHandler.handle(Priority.ERROR,
-                            "Invalid Event ID value: " + fullId);
+            if (fullId.length() >= FULL_ID_MIN_LEN) {
+                int startIndex = fullId.indexOf(SEP, SITE_ID_IDX) + 1;
+                if (startIndex != -1) {
+                    String serial = fullId.substring(startIndex,
+                            startIndex + SERIAL_ID_LEN);
+                    return serial.replaceFirst("^0+(?!$)", "");
                 }
+            }
+            if (ignoreErrorIdValues == false) {
+                statusHandler.handle(Priority.ERROR,
+                        "Invalid Event ID value: " + fullId);
             }
         } else {
             statusHandler.handle(Priority.ERROR, "NULL Event ID value!");
         }
-        return (INVALID_SERIAL_ID);
+        return INVALID_SERIAL_ID;
     }
 
     /**
@@ -421,23 +419,26 @@ public class HazardServicesEventIdUtil {
     /**
      * Check to see if the given it is a Valid ID.
      * 
-     * A valid Event Id must be in the form: ZZ-YYYY-SSS-999999 This does not
+     * A valid Event Id must be in the form: ZZ-YYYY-SSS...-999999 This does not
      * check to see if it is for a valid Application, Site, or Year.
      * 
      * @param fullId
-     *            Full Hazard Event Id "ZZ-YYYY-SSS-999999" to check
+     *            Full Hazard Event Id "ZZ-YYYY-SSS...-999999" to check
      * @return true if this is a valid ID
      */
     public static boolean isValidId(String fullId) {
         if (fullId == null) {
-            return (false);
+            return false;
         }
 
         int len = fullId.length();
-        if (len != FULL_ID_LEN) {
-            return (false);
+        if (len < FULL_ID_MIN_LEN) {
+            return false;
         }
 
+        /*
+         * TODO: What the heck? Perhaps use regular expression?
+         */
         char sepChar = SEP.toCharArray()[0];
         char[] charArray = fullId.toCharArray();
         if (Character.isAlphabetic(charArray[0]) == false) {
@@ -473,25 +474,31 @@ public class HazardServicesEventIdUtil {
         if (Character.isAlphabetic(charArray[10]) == false) {
             return (false);
         }
-        if (charArray[11] != sepChar) {
+        int index = 11;
+        while ((index < len) && (charArray[index] != sepChar)) {
+            if (Character.isAlphabetic(charArray[index++]) == false) {
+                return false;
+            }
+        }
+        if (index + HazardServicesEventIdUtil.SERIAL_ID_LEN >= len) {
             return (false);
         }
-        if (Character.isDigit(charArray[12]) == false) {
+        if (Character.isDigit(charArray[index + 1]) == false) {
             return (false);
         }
-        if (Character.isDigit(charArray[13]) == false) {
+        if (Character.isDigit(charArray[index + 2]) == false) {
             return (false);
         }
-        if (Character.isDigit(charArray[14]) == false) {
+        if (Character.isDigit(charArray[index + 3]) == false) {
             return (false);
         }
-        if (Character.isDigit(charArray[15]) == false) {
+        if (Character.isDigit(charArray[index + 4]) == false) {
             return (false);
         }
-        if (Character.isDigit(charArray[16]) == false) {
+        if (Character.isDigit(charArray[index + 5]) == false) {
             return (false);
         }
-        if (Character.isDigit(charArray[17]) == false) {
+        if (Character.isDigit(charArray[index + 6]) == false) {
             return (false);
         }
 
@@ -544,25 +551,26 @@ public class HazardServicesEventIdUtil {
      * @param idDisplayType
      * @return
      */
-    public static String getDisplayId(String fullId, IdDisplayType idDisplayType) {
+    public static String getDisplayId(String fullId,
+            IdDisplayType idDisplayType) {
 
-        if ((fullId == null) || (fullId.length() != FULL_ID_LEN)) {
+        if ((fullId == null) || (fullId.length() < FULL_ID_MIN_LEN)) {
             if (ignoreErrorIdValues == false) {
                 statusHandler.handle(Priority.ERROR,
                         "Unable to format Event ID display value. Invalid Event ID value: "
                                 + fullId);
             }
-            return (fullId);
+            return fullId;
         }
 
         if (idDisplayType == IdDisplayType.ALWAYS_FULL) {
-            return (fullId);
+            return fullId;
         }
         if (idDisplayType == IdDisplayType.ALWAYS_SITE) {
-            return (fullId.substring(SITE_ID_IDX));
+            return fullId.substring(SITE_ID_IDX);
         }
         if (idDisplayType == IdDisplayType.ONLY_SERIAL) {
-            return (getSerialIdFromFullId(fullId));
+            return getSerialIdFromFullId(fullId);
         }
 
         String curAppId = getAppId();
@@ -574,20 +582,20 @@ public class HazardServicesEventIdUtil {
         if ((!curAppId.equals(idAppId)) || (!curSiteId.equals(idSiteId))
                 || (!curYear.equals(idYear))) {
             if ((idDisplayType == IdDisplayType.FULL_ON_DIFF)) {
-                return (fullId);
-            } else if ((idDisplayType == IdDisplayType.PROG_ON_DIFF)) {
+                return fullId;
+            } else if (idDisplayType == IdDisplayType.PROG_ON_DIFF) {
                 if (!curAppId.equals(idAppId)) {
-                    return (fullId.substring(APP_ID_IDX));
+                    return fullId.substring(APP_ID_IDX);
                 } else if (!curSiteId.equals(idSiteId)) {
-                    return (fullId.substring(SITE_ID_IDX));
+                    return fullId.substring(SITE_ID_IDX);
                 } else if (!curYear.equals(idYear)) {
-                    return (fullId.substring(YEAR_IDX));
+                    return fullId.substring(YEAR_IDX);
                 } else {
-                    return (getSerialIdFromFullId(fullId));
+                    return getSerialIdFromFullId(fullId);
                 }
             }
         } else {
-            return (getSerialIdFromFullId(fullId));
+            return getSerialIdFromFullId(fullId);
         }
 
         return (fullId);

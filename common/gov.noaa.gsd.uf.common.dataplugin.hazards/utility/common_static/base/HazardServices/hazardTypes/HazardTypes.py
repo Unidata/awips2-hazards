@@ -81,6 +81,14 @@
 #                            and "selection".  (Note that any hazard event attributes that may
 #                            be specific to a hazard type, e.g. "cta", may be made triggers as
 #                            well within a hazard type's metadata generation script.) 
+# regenMetadataUponSelection True:  Always regenerate metadata for a hazard event of this type
+#                                   whenever said event is selected by the user.
+#                            False: Only regenerate metadata (rerun the metadata generation
+#                                   script) for hazard events of this type when necessary. This
+#                                   is the better choice for any hazard event types that do not
+#                                   need to change metadata state in some way based upon
+#                                   selection.
+#                            Defaults to False if not specified.
 #     startTimeIsCurrentTime Affects unissued and issued; if true, start time is never
 #                            editable by the user, and must be the current CAVE clock
 #                            time.  Default is False.
@@ -2116,6 +2124,7 @@ HazardTypes = {
               'allowUntilFurtherNotice': True,
               'allowAnyStartTime': True,
               'modifyRecommenders': modRecsDict,
+              'regenMetadataUponSelection': True,
               'allowOverlappingPolygons': True,
               'sessionAttributes': SESSION_ATTRS + ["editable"],
               "timeResolution": "seconds",
@@ -2145,6 +2154,7 @@ HazardTypes = {
               'allowUntilFurtherNotice': False,
               'allowAnyStartTime': True,
               'modifyRecommenders': modRecsDict,
+              'regenMetadataUponSelection': True,
               'allowOverlappingPolygons': True,
               'sessionAttributes':  SESSION_ATTRS + ["editable"],
               "timeResolution": "seconds",

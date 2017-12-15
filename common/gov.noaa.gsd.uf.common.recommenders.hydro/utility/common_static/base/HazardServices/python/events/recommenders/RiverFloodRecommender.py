@@ -85,6 +85,7 @@ import time
 import re
 from EventSet import EventSet
 from Bridge import Bridge
+from HazardEventLockUtils import HazardEventLockUtils
 
 from HazardConstants import *
 import HazardDataAccess
@@ -128,6 +129,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def __init__(self):
         self._riverProFloodRecommender = None
         self._riverForecastUtils = RiverForecastUtils()
+        self.hazardEventLockUtils = None
         
     def defineScriptMetadata(self):
         """
@@ -147,14 +149,14 @@ class Recommender(RecommenderTemplate.Recommender):
         """
         @return: A dialog definition to solicit user input before running tool
         """
-        selectedPointID = None
+        selectedPointId = None
         if SELECTED_POINT_ID in eventSet.getAttributes():
-            selectedPointID = eventSet.getAttribute(SELECTED_POINT_ID)
+            selectedPointId = eventSet.getAttribute(SELECTED_POINT_ID)
 
         dialogDict = {"title": "Flood Recommender"}
         
         # Only add the filter widgets when running for all points
-        if selectedPointID is None:
+        if selectedPointId is None:
             choiceFieldDict = {}
             choiceFieldDict["fieldType"] = "RadioButtons"
             choiceFieldDict["fieldName"] = "forecastType"
@@ -175,7 +177,7 @@ class Recommender(RecommenderTemplate.Recommender):
         warningThreshCutOff["minValue"] = 1
         warningThreshCutOff["maxValue"] = 72
 
-        if selectedPointID is None:
+        if selectedPointId is None:
             fieldDicts = [choiceFieldDict, includeNonFloodPointDict, warningThreshCutOff]
             valueDict = {"forecastType":"Warning",
                          "includePointsBelowAdvisory":False,
@@ -204,6 +206,16 @@ class Recommender(RecommenderTemplate.Recommender):
         
         @return: A list of potential events. 
         """
+
+        sessionAttributes = eventSet.getAttributes()
+        sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
+
+        if self.hazardEventLockUtils is None:
+            caveMode = sessionAttributes.get('hazardMode','PRACTICE').upper()
+            practice = True
+            if caveMode == 'OPERATIONAL':
+                practice = False
+            self.hazardEventLockUtils = HazardEventLockUtils(practice)
         
         self._setHazardPolygonDict(eventSet.getAttribute("localizedSiteID"))
 
@@ -211,26 +223,25 @@ class Recommender(RecommenderTemplate.Recommender):
             self._riverProFloodRecommender = RiverProFloodRecommender()
         
         self._warningThreshold = dialogInputMap.get("warningThreshold")
-        sessionAttributes = eventSet.getAttributes()
-        
-        sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
+
         inputMap = JUtil.pyDictToJavaMap({"includeNonFloodPoints": True})
-        selectedPointID = None
+        selectedPointId = None
         if SELECTED_POINT_ID in sessionAttributes:
-            selectedPointID = sessionAttributes.get(SELECTED_POINT_ID)
+            selectedPointId = sessionAttributes.get(SELECTED_POINT_ID)
             
         selectedPointIdList = []
-        if selectedPointID is not None:
+        if selectedPointId is not None:
             dialogInputMap['forecastType'] = "ALL"
-            inputMap.put(SELECTED_POINT_ID, selectedPointID)
-            selectedPointIdList.append(selectedPointID)
+            inputMap.put(SELECTED_POINT_ID, selectedPointId)
+            selectedPointIdList.append(selectedPointId)
         
         javaEventList = self._riverProFloodRecommender.getRecommendation(
                         sessionMap, inputMap)
 
         recommendedEventSet = EventSet(javaEventList)  
         currentEvents = HazardDataAccess.getCurrentEvents(eventSet)        
-        toBeDeleted, mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventSet, selectedPointIdList)
+        lockedPointIds = self.getLockedPointIds(currentEvents)
+        toBeDeleted, mergedEventSet = self.mergeHazardEvents(currentEvents, recommendedEventSet, selectedPointIdList, lockedPointIds)
         filteredEventSet = self.filterHazards(mergedEventSet, currentEvents, dialogInputMap)
         self.addFloodPolygons(filteredEventSet)
         toBeDeletedIdentifiers = [toBeDeletedEvent.getEventID() for toBeDeletedEvent in toBeDeleted]
@@ -279,6 +290,22 @@ class Recommender(RecommenderTemplate.Recommender):
     def toString(self):
         return "RiverFloodRecommender"
 
+    def getLockedPointIds(self, currentEvents):
+        
+        lockedHazardIds = self.hazardEventLockUtils.getLockedEvents()
+        
+        # Get the pointIDs from the locked current events. Then don't recommend anything
+        # new for those pointIDs.
+        lockedPointIds = []
+        for currentEvent in currentEvents:
+            if currentEvent.getEventID() in lockedHazardIds:
+
+                # Event is locked, get the pointID
+                pointId = currentEvent.get("pointID", None)
+                if pointId:
+                    lockedPointIds.append(pointId)
+        return lockedPointIds
+
     def _setHazardPolygonDict(self, siteID):
         if self._riverProFloodRecommender is None:
             self._riverProFloodRecommender = RiverProFloodRecommender()
@@ -319,32 +346,22 @@ class Recommender(RecommenderTemplate.Recommender):
             hrs = self._getWarningThreshold()
         return startEpoch + datetime.timedelta(hours=hrs).total_seconds()
     
-    def mergeHazardEvents(self, currentEvents, recommendedEventSet, selectedPointIdList):        
-        mergedEvents = EventSet(None)
-        deleteEvents = set()
-        
-        # Remove non-issued FL.* hazards from the currentEvents
-        # that do not match a pointID in the recommendedEvents
-        # but only if the recommender was not run against a specific point ID.
-        for currentEvent in currentEvents:
-            foundCurrentPointID = False
-            for recommendedEvent in recommendedEventSet:
-                if currentEvent.get(POINT_ID) == recommendedEvent.get(POINT_ID):
-                    foundCurrentPointID = True
-                    break
-            if not foundCurrentPointID and len(selectedPointIdList) == 0:
-                if currentEvent.getPhenomenon() == "FL":
-                    if currentEvent.getStatus() in ['POTENTIAL', 'PENDING']:
-                        # Not in recommended events and pending - remove it
-                        deleteEvents.add(currentEvent)
-                    else:
-                        # Not in recommended events and issued - set to ending
-                        currentEvent.setStatus('ending')
-                        mergedEvents.add(currentEvent)
+    def mergeHazardEvents(self, currentEvents, recommendedEventSet, selectedPointIdList, lockedPointIdList):        
+
+        # Remove non-issued events that are to still in the recommendations.
+        if len(selectedPointIdList) == 0:
+            currentEvents, mergedEvents, deleteEvents = self.removePendingOrPotentialEvents(currentEvents, recommendedEventSet, lockedPointIdList)
+        else:
+            mergedEvents = EventSet(None)
+            deleteEvents = set()
 
         for recommendedEvent in recommendedEventSet:
-            # If flood stage is missing you cannot create a hazard, skip it
             pointID = recommendedEvent.get(POINT_ID)
+            if pointID in lockedPointIdList:
+                # Don't recommend new hazards/updates for locked pointIDs
+                continue
+
+            # If flood stage is missing you cannot create a hazard, skip it
             riverForecastPoint = self._riverProFloodRecommender.getRiverForecastPoint(pointID)
             if riverForecastPoint.getFloodStage() == MISSING_VALUE:
                 continue
@@ -355,22 +372,14 @@ class Recommender(RecommenderTemplate.Recommender):
             
             # Look for an event that already exists
             found = False
-            pendingCurrentEvent = None
-            haveWarning = False
             for currentEvent in currentEvents:
                 if currentEvent.get(POINT_ID) == recommendedEvent.get(POINT_ID):
-                    # If ended, then simply add the new recommended one
-                    if currentEvent.getStatus() == 'ELAPSED' or currentEvent.getStatus() == 'ENDED':
-                        continue 
-                    elif currentEvent.getHazardType() != recommendedEvent.getHazardType():
-                        # Handle transitions to new hazard type
+                    found = True
+                    if currentEvent.getHazardType() != recommendedEvent.getHazardType():
                         if currentEvent.getStatus() in ['POTENTIAL', 'PENDING']:
                             # Never issued - delete it
                             deleteEvents.add(currentEvent)
-                        elif currentEvent.getStatus() == 'ENDING':
-                            # Issued - set it to ending
-                            currentEvent.setStatus('ending')
-                            mergedEvents.add(currentEvent)
+                            mergedEvents.add(recommendedEvent)
                         elif currentEvent.getStatus() == 'ISSUED':
                             if currentEvent.getSignificance() == 'W':
                                 if recommendedEvent.getHazardType() == 'FL.Y':
@@ -380,55 +389,83 @@ class Recommender(RecommenderTemplate.Recommender):
                                         currentEvent.setStatus('ending')
                                         mergedEvents.add(currentEvent)
                                 elif recommendedEvent.getHazardType() == 'HY.S':
+                                    # Add the HY.S
+                                    mergedEvents.add(recommendedEvent)
                                     currentEvent.setStatus('ending')
                                     mergedEvents.add(currentEvent)
-                                continue
-                            elif currentEvent.getSignificance() == 'A':
-                                # Watch should be ended if a HY.S is recommended or
-                                # it is being replaced with a Warning/Advisory.
-                                if recommendedEvent.getSignificance() in ['W', 'Y'] or recommendedEvent.getHazardType() == 'HY.S':
-                                    if haveWarning == False:
-                                        pendingCurrentEvent = currentEvent
-                                else:
-                                    deleteEvents.add(recommendedEvent)
-                                continue
-                            elif currentEvent.getSignificance() == 'Y':
-                                # Advisory can be upgraded to Watch or Warning
-                                currentEvent.setStatus('ending')  
+                            elif currentEvent.getSignificance() in ['A', 'Y']:
+                                # Watch/Advisory should be ended if any other hazard type is recommended.
+                                self.addReplacementAttributes(recommendedEvent, currentEvent)
                                 mergedEvents.add(recommendedEvent)
+                                currentEvent.setStatus('ending')
                                 mergedEvents.add(currentEvent)
-                                continue   
+                                continue
+                            else:
+                                # None Ended/Elapsed HY.S - Add the recommendedEvent
+                                mergedEvents.add(recommendedEvent)
                         else:
-                            # PROPOSED - leave as is?
-                            # Will result in 2 pending hazards for same point ID
-                            mergedEvents.add(currentEvent)
-                        mergedEvents.add(recommendedEvent)
+                            # currentEvent is proposed
+                            mergedEvents.add(recommendedEvent)
                     else:
                         # Update the current event
                         currentEvent = self.updateEventFromRecommendedEvent(currentEvent, recommendedEvent)
                         mergedEvents.add(currentEvent)
-                        if currentEvent.getStatus() in ['POTENTIAL', 'PENDING'] \
-                                and currentEvent.getSignificance() in ['W', 'Y']:
-                            mergedEvents.add(currentEvent)
-                            pendingCurrentEvent = None
-                            haveWarning = True
-                            found = True
-                            continue
-                    found = True
-            if pendingCurrentEvent and haveWarning == False:
-                bridge = Bridge()
-                cHeadline = bridge.getHazardTypes(hazardType=pendingCurrentEvent.getHazardType()).get('headline')
-                rHeadline = bridge.getHazardTypes(hazardType=recommendedEvent.getHazardType()).get('headline')
-
-                recommendedEvent.set('replaces', cHeadline)
-                pendingCurrentEvent.setStatus('ending')
-                pendingCurrentEvent.set('replacedBy', rHeadline)
-                mergedEvents.add(pendingCurrentEvent)
             if not found:
                 mergedEvents.add(recommendedEvent)
-                
         return list(deleteEvents), mergedEvents
-                            
+
+    def removePendingOrPotentialEvents(self, currentEvents, recommendedEventSet, lockedPointIdList):
+                    
+        # Remove non-issued FL.* hazards from the currentEvents
+        # that do not match a pointID in the recommendedEvents
+        # but only if the recommender was not run against a specific point ID.
+        newCurrentEvents = EventSet(None)
+        mergedEvents = EventSet(None)
+        deleteEvents = set()
+        for currentEvent in currentEvents:
+
+            changedEvent = False
+            foundCurrentPointId = False
+            for recommendedEvent in recommendedEventSet:
+                if currentEvent.get(POINT_ID) == recommendedEvent.get(POINT_ID):
+                    foundCurrentPointId = True
+                    break
+
+            if not foundCurrentPointId:
+
+                # Cannot removed locked hazards
+                if currentEvent.get("pointID", None) not in lockedPointIdList:
+                    if currentEvent.getPhenomenon() == "FL":
+                        if currentEvent.getStatus() in ['POTENTIAL', 'PENDING']:
+                            # Not in recommended events and pending - remove it
+                            deleteEvents.add(currentEvent)
+                        else:
+                            # Not in recommended events and issued - set to ending
+                            currentEvent.setStatus('ending')
+                            mergedEvents.add(currentEvent)
+                        changedEvent = True
+
+            if changedEvent is False:
+                newCurrentEvents.add(currentEvent)
+
+        return newCurrentEvents, mergedEvents, deleteEvents
+
+    def addReplacementAttributes(self, recommendedEvent, currentEvent):
+        '''
+            Populates the "replaces" and "replacedBy" attributes of the events
+            that are replacing each other.
+
+            @param recommendedEvent: The Event being recommended.
+            @param currentEvent: The current event with the same pointID as the
+                                 recommended event.
+        '''
+        recHazardType = recommendedEvent.getHazardType()
+        curHazardType = currentEvent.getHazardType()
+        cHeadline = self.bridge.getHazardTypes(hazardType=curHazardType).get('headline')
+        rHeadline = self.bridge.getHazardTypes(hazardType=recHazardType).get('headline')
+        recommendedEvent.set('replaces', cHeadline)
+        currentEvent.set('replacedBy', rHeadline)
+                                    
     def setHazardType(self, hazardEvent):        
         pointID = hazardEvent.get(POINT_ID)
 

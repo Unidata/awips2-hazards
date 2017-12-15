@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import gov.noaa.gsd.common.utilities.TimeResolution;
-
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +26,8 @@ import java.util.Map;
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types.HazardAlertsConfig;
@@ -41,6 +41,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.StartUpConfig;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+
+import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
  * Manages all settings and configuration files for a session.
@@ -104,6 +106,8 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Oct 12, 2016 21873      Chris.Golden Added code to track the time resolutions of all 
  *                                      managed hazard events.
  * Feb 01, 2017 15556      Chris.Golden Added originator parameter for setting site ID.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
+ *                                      session events.
  * </pre>
  * 
  * @author bsteffen
@@ -192,22 +196,22 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * <p>
      * <strong>Note</strong>: This method does not ever return a cached object;
      * it creates a new metadata object each time it is invoked. The method
-     * {@link ISessionEventManager#getMegawidgetSpecifiers(IHazardEvent)} should
-     * be used if a cached copy of the megawidget specifier manager is desired.
+     * {@link ISessionEventManager#getMegawidgetSpecifiers(IHazardEventView)}
+     * should be used if a cached copy of the megawidget specifier manager is
+     * desired.
      * </p>
      * 
-     * @param hazardEvent
+     * @param event
      *            Hazard event for which to retrieve the metadata.
      * @return Metadata.
      */
-    public HazardEventMetadata getMetadataForHazardEvent(
-            IHazardEvent hazardEvent);
+    public HazardEventMetadata getMetadataForHazardEvent(IHazardEvent event);
 
     /**
      * Run the event modifying script with the specified entry-point function
      * name.
      * 
-     * @param hazardEvent
+     * @param event
      *            Hazard event to which to apply the script.
      * @param scriptFile
      *            Script file in which to find the entry-point function.
@@ -219,8 +223,8 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *            Listener to be notified if the event modifying script runs
      *            successfully.
      */
-    public void runEventModifyingScript(IHazardEvent hazardEvent,
-            File scriptFile, String functionName,
+    public void runEventModifyingScript(IHazardEvent event, File scriptFile,
+            String functionName,
             Map<String, Map<String, Object>> mutableProperties,
             IEventModifyingScriptJobListener listener);
 
@@ -259,7 +263,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param event
      * @return
      */
-    public Color getColor(IHazardEvent event);
+    public Color getColor(IReadableHazardEvent event);
 
     /**
      * Get the border width to use when displaying an event.
@@ -268,7 +272,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param selected
      * @return
      */
-    public double getBorderWidth(IHazardEvent event, boolean selected);
+    public double getBorderWidth(IReadableHazardEvent event, boolean selected);
 
     /**
      * Get the border style to use when displaying an event.
@@ -276,7 +280,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param event
      * @return
      */
-    public LineStyle getBorderStyle(IHazardEvent event);
+    public LineStyle getBorderStyle(IReadableHazardEvent event);
 
     /**
      * Get the headline from the hazardTypes configuration file for an event.
@@ -284,7 +288,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param event
      * @return
      */
-    public String getHeadline(IHazardEvent event);
+    public String getHeadline(IReadableHazardEvent event);
 
     /**
      * Get the default duration from the hazard types configuration file for an
@@ -294,7 +298,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *            Event for which to fetch the default duration.
      * @return Default duration in millliseconds.
      */
-    public long getDefaultDuration(IHazardEvent event);
+    public long getDefaultDuration(IReadableHazardEvent event);
 
     /**
      * Get the duration selector choices from the hazard types configuration
@@ -303,7 +307,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * <strong>Note</strong>: The list of choices that is returned is the
      * complete list as specified for the event's type. If the list should be
      * pruned so that it only includes choices available for the event's current
-     * status, {@link ISessionEventManager#getDurationChoices(IHazardEvent)}
+     * status, {@link ISessionEventManager#getDurationChoices(IHazardEventView)}
      * should be used instead.
      * </p>
      * 
@@ -315,7 +319,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *         class. If the specified event does not use a duration selector
      *         for its end time, an empty list is returned.
      */
-    public List<String> getDurationChoices(IHazardEvent event);
+    public List<String> getDurationChoices(IReadableHazardEvent event);
 
     /**
      * Get the time resolution used for the specified event.
@@ -324,7 +328,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *            Event for which to get the time resolution.
      * @return Time resolution.
      */
-    public TimeResolution getTimeResolution(IHazardEvent event);
+    public TimeResolution getTimeResolution(IReadableHazardEvent event);
 
     /**
      * Get the identifier of the recommender that is triggered by a change to
@@ -337,7 +341,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @return Recommender identifier to be run in response, or
      *         <code>null</code> if no recommender is triggered by this change.
      */
-    public String getRecommenderTriggeredByChange(IHazardEvent event,
+    public String getRecommenderTriggeredByChange(IReadableHazardEvent event,
             HazardEventFirstClassAttribute change);
 
     /**
@@ -348,7 +352,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *            Event for which to fetch the flag.
      * @return True if the event's start time should be the CAVE current time.
      */
-    public boolean isStartTimeIsCurrentTime(IHazardEvent event);
+    public boolean isStartTimeIsCurrentTime(IReadableHazardEvent event);
 
     /**
      * Get the start-time-is-unrestricted flag from the hazard types
@@ -358,7 +362,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      *            Event for which to fetch the flag.
      * @return True if the event's start time is unrestricted.
      */
-    public boolean isAllowAnyStartTime(IHazardEvent event);
+    public boolean isAllowAnyStartTime(IReadableHazardEvent event);
 
     /**
      * Get allow-time-to-expand flag from the hazard types configuration file
@@ -369,7 +373,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @return True if the (issued) event's end time should be allowed to be
      *         pushed farther into the future.
      */
-    public boolean isAllowTimeExpand(IHazardEvent event);
+    public boolean isAllowTimeExpand(IReadableHazardEvent event);
 
     /**
      * Get allow-time-to-shrink flag from the hazard types configuration file
@@ -380,7 +384,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @return True if the (issued) event's end time should be allowed to be
      *         pushed closer to the start time.
      */
-    public boolean isAllowTimeShrink(IHazardEvent event);
+    public boolean isAllowTimeShrink(IReadableHazardEvent event);
 
     /**
      * Get the recommender identifier associated with the specified hazard type
@@ -436,7 +440,7 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @param event
      * @return
      */
-    public String getHazardCategory(IHazardEvent event);
+    public String getHazardCategory(IReadableHazardEvent event);
 
     /**
      * Get the product generator table.
@@ -486,12 +490,12 @@ public interface ISessionConfigurationManager<S extends ISettings> {
     /**
      * Validate the specified hazard event.
      * 
-     * @param hazardEvent
+     * @param event
      *            Hazard event to be validated.
      * @return Description of validation problems if the hazard event is
      *         invalid, or <code>null</code> if the event validates properly.
      */
-    public String validateHazardEvent(IHazardEvent hazardEvent);
+    public String validateHazardEvent(IReadableHazardEvent event);
 
     /**
      * Execute any shutdown needed.

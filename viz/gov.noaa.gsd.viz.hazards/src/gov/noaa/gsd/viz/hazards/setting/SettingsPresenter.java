@@ -9,13 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-
 import java.util.EnumSet;
-
-import net.engio.mbassy.listener.Handler;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.viz.core.IDisplayPane;
@@ -24,10 +18,13 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.MapCenter;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import net.engio.mbassy.listener.Handler;
 
 /**
  * Settings presenter, used to mediate between the model and the settings view.
@@ -56,13 +53,15 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  *                                           would necessitate the recreation of the
  *                                           dialog.
  * Nov 17, 2015 11776      Roger.Ferrel      Use the {@link ISaveAs} interface.
+ * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
+ *                                           mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SettingsPresenter extends
-        HazardServicesPresenter<ISettingsView<?, ?>> implements IOriginator {
+public class SettingsPresenter
+        extends HazardServicesPresenter<ISettingsView<?, ?>> {
 
     // Public Constructors
 
@@ -74,8 +73,7 @@ public class SettingsPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SettingsPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public SettingsPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }
@@ -91,10 +89,8 @@ public class SettingsPresenter extends
     @Override
     public void modelChanged(EnumSet<HazardConstants.Element> changed) {
         if (changed.contains(HazardConstants.Element.SETTINGS)) {
-            getView()
-                    .setSettings(
-                            getModel().getConfigurationManager()
-                                    .getAvailableSettings());
+            getView().setSettings(getModel().getConfigurationManager()
+                    .getAvailableSettings());
         }
         if (changed.contains(HazardConstants.Element.CURRENT_SETTINGS)) {
             getView().setCurrentSettings(
@@ -116,9 +112,8 @@ public class SettingsPresenter extends
 
                 @Override
                 public void saveAsPerformed() {
-                    getView().setSettings(
-                            getModel().getConfigurationManager()
-                                    .getAvailableSettings());
+                    getView().setSettings(getModel().getConfigurationManager()
+                            .getAvailableSettings());
                 }
             });
         }
@@ -157,9 +152,10 @@ public class SettingsPresenter extends
     protected void initialize(ISettingsView<?, ?> view) {
         ObservedSettings settings = getModel().getConfigurationManager()
                 .getSettings();
-        view.initialize(this, getModel().getConfigurationManager()
-                .getAvailableSettings(), getModel().getConfigurationManager()
-                .getFilterConfig(), settings);
+        view.initialize(this,
+                getModel().getConfigurationManager().getAvailableSettings(),
+                getModel().getConfigurationManager().getFilterConfig(),
+                settings);
     }
 
     @Override
@@ -185,8 +181,8 @@ public class SettingsPresenter extends
         IDisplayPane pane = editor.getActiveDisplayPane();
         IRenderableDisplay display = pane.getRenderableDisplay();
         double[] params = new double[3];
-        double[] center = pane.getDescriptor().pixelToWorld(
-                display.getExtent().getCenter());
+        double[] center = pane.getDescriptor()
+                .pixelToWorld(display.getExtent().getCenter());
         for (int j = 0; j < center.length; j++) {
             params[j] = center[j];
         }

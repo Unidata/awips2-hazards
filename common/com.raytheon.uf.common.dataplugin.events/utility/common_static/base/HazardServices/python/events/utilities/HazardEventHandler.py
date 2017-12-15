@@ -27,13 +27,17 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    12/02/13        2527          bkowal         Initial Creation.
+#    12/02/13         2527         bkowal         Initial Creation.
+#    12/14/17        20739         Chris.Golden   Added abilty to convert to
+#                                                 and from a read-only hazard
+#                                                 event.
 #
 
-from com.raytheon.uf.common.dataplugin.events.hazards.event import BaseHazardEvent
+from com.raytheon.uf.common.dataplugin.events.hazards.event import IReadableHazardEvent
 from com.raytheon.uf.common.dataplugin.events.hazards.event import IHazardEvent
 from com.raytheon.uf.common.python import PyJavaUtil
 
+from ReadableHazardEvent import ReadableHazardEvent
 from HazardEvent import HazardEvent
 from Event import Event
 
@@ -43,10 +47,9 @@ def pyHazardEventToJavaHazardEvent(val):
     return True, val.toJavaObj()
 
 def javaHazardEventToPyHazardEvent(obj, customConverter=None):
-    if _isJavaConvertible(obj) == False:
+    if PyJavaUtil.isSubclass(obj, IHazardEvent):
+        return True, HazardEvent(obj)
+    elif PyJavaUtil.isSubclass(obj, IReadableHazardEvent):
+        return True, ReadableHazardEvent(obj)
+    else:
         return False, obj
-    event = HazardEvent(obj)
-    return True, event
-
-def _isJavaConvertible(obj):
-    return PyJavaUtil.isSubclass(obj, IHazardEvent)

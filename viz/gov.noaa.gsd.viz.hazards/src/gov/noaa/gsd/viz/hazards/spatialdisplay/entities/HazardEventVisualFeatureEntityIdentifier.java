@@ -9,15 +9,15 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.common.visuals.VisualFeature;
-
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 
 /**
  * Description: Identifier for a {@link SpatialEntity} generated from a
  * {@link VisualFeature} that is part of the representation of a
- * {@link IHazardEvent} in the spatial display.
+ * {@link IHazardEventView} in the spatial display.
  * 
  * <pre>
  * 
@@ -27,6 +27,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jun 15, 2016   19537    Chris.Golden Initial creation.
  * Jun 27, 2016   19537    Chris.Golden Revamped class hierarchy.
  * Aug 28, 2016   19537    Chris.Golden Added toString() method.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -81,16 +83,22 @@ public class HazardEventVisualFeatureEntityIdentifier implements
             return false;
         }
         HazardEventVisualFeatureEntityIdentifier otherIdentifier = (HazardEventVisualFeatureEntityIdentifier) other;
-        return (((eventIdentifier == otherIdentifier.eventIdentifier) || ((eventIdentifier != null) && eventIdentifier
-                .equals(otherIdentifier.eventIdentifier))) && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier) || ((visualFeatureIdentifier != null) && visualFeatureIdentifier
-                .equals(otherIdentifier.visualFeatureIdentifier))));
+        return (((eventIdentifier == otherIdentifier.eventIdentifier)
+                || ((eventIdentifier != null) && eventIdentifier
+                        .equals(otherIdentifier.eventIdentifier)))
+                && ((visualFeatureIdentifier == otherIdentifier.visualFeatureIdentifier)
+                        || ((visualFeatureIdentifier != null)
+                                && visualFeatureIdentifier.equals(
+                                        otherIdentifier.visualFeatureIdentifier))));
     }
 
     @Override
     public int hashCode() {
-        return (int) (((eventIdentifier == null ? 0L : (long) eventIdentifier
-                .hashCode()) + (visualFeatureIdentifier == null ? 0L
-                : (long) visualFeatureIdentifier.hashCode())) % Integer.MAX_VALUE);
+        return (int) (((eventIdentifier == null ? 0L
+                : (long) eventIdentifier.hashCode())
+                + (visualFeatureIdentifier == null ? 0L
+                        : (long) visualFeatureIdentifier.hashCode()))
+                % Integer.MAX_VALUE);
     }
 
     @Override

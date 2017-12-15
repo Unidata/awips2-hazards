@@ -7,13 +7,13 @@
  */
 package gov.noaa.gsd.viz.hazards.producteditor;
 
-import gov.noaa.gsd.viz.mvp.IView;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-
 import java.util.List;
 
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
+
+import gov.noaa.gsd.viz.mvp.IView;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 /**
  * Description: Defines the interface a concrete Product Editor View must
@@ -39,9 +39,13 @@ import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
  * Dec 04, 2015 12981      Roger.Ferrel Checks to prevent issuing unwanted
  *                                      expiration product.
  * Mar 30, 2016  8837      Robert.Blum  Added changeSite() for service backup.
+ * Dec 12, 2016 21504      Robert.Blum  Updates for hazard locking.
+ * Apr 05, 2017 32733      Robert.Blum  Removed unused parameter.
  * Apr 27, 2017 11853      Chris.Golden Made names of methods more consistent, and
  *                                      added a method to check to see if the
  *                                      product editor is open.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
+ *                                      session events.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -64,14 +68,6 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      * Close the product editor dialog.
      */
     public void closeProductEditor();
-
-    /**
-     * Determine whether or not the product editor is open.
-     * 
-     * @return <code>true</code> if the product editor is open,
-     *         <code>false</code> otherwise.
-     */
-    public boolean isProductEditorOpen();
 
     /**
      * Get the generated products list.
@@ -108,4 +104,17 @@ public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
      * @param site
      */
     public void changeSite(String site);
+
+    /**
+     * Return whether or not the Product Editor is currently open.
+     * 
+     * @return
+     */
+    public boolean isProductEditorOpen();
+
+    /**
+     * Updates the Product Editor to handle the situation when events become
+     * locked and the products are no longer valid.
+     */
+    public void handleHazardEventLock();
 }

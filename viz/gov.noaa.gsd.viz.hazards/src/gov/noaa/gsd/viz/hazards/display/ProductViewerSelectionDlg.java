@@ -20,9 +20,6 @@
 
 package gov.noaa.gsd.viz.hazards.display;
 
-import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
-
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -54,9 +51,13 @@ import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+
+import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.viz.hazards.display.action.ProductAction;
 
 /**
  * 
@@ -82,6 +83,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 17, 2016 20594/663  sstewart     Changed default sort order, fixed expiration time
  *                                      sort order, and keep dialog open upon selecting 
  *                                      a product to view.
+ * Dec 21, 2016 21504      Robert.Blum  Cant correct hazards that are locked.
  * Feb 01, 2017 15556      Chris.Golden Minor changes to support console refactor.
  * Jun 30, 2017 19223      Chris.Golden Changed to use new HazardConstants constant.
  * </pre>
@@ -94,9 +96,12 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
     private enum ColumnTitle {
         PRODUCT_CATEGORY("Product Category", null), ISSUE_TIME("Issue Time",
                 "00:00Z 00-MMM-00"), EVENT_IDS("Event IDs",
-                "MM-0000-MMM-000000"), HAZARD_IDS("Hazard Type",
-                "FA.W.MMMMMMMMMMMM"), VTEC("VTEC", "[MMM, MMM]"), EXP_TIME(
-                "Expiration Time", "00:00Z 00-MMM-00"), USER("User Name", null);
+                        "MM-0000-MMM-000000"), HAZARD_IDS("Hazard Type",
+                                "FA.W.MMMMMMMMMMMM"), VTEC("VTEC",
+                                        "[MMM, MMM]"), EXP_TIME(
+                                                "Expiration Time",
+                                                "00:00Z 00-MMM-00"), USER(
+                                                        "User Name", null);
 
         private final String title;
 
@@ -161,8 +166,8 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
      * @param viewData
      */
     public ProductViewerSelectionDlg(Shell parentShell,
-            HazardServicesPresenter<?> presenter,
-            List<ProductData> productData, boolean viewData) {
+            HazardServicesPresenter<?> presenter, List<ProductData> productData,
+            boolean viewData) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.NONE);
         this.presenter = presenter;
         this.productData = productData;
@@ -183,7 +188,8 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
      * @param productData
      */
     public ProductViewerSelectionDlg(Shell parentShell,
-            HazardServicesPresenter<?> presenter, List<ProductData> productData) {
+            HazardServicesPresenter<?> presenter,
+            List<ProductData> productData) {
         this(parentShell, presenter, productData, true);
     }
 
@@ -262,18 +268,33 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
         // Create the row data objects
         for (ProductData tempData : productData) {
             if (mode.equalsIgnoreCase(tempData.getMode())) {
+
+                // Skip it if it is locked my someone else
+                List<String> eventIdList = tempData.getEventIDs();
+                boolean lockedByOther = false;
+                for (String eventId : eventIdList) {
+                    LockStatus status = presenter.getSessionManager()
+                            .getLockManager().getHazardEventLockStatus(eventId);
+                    if (status == LockStatus.LOCKED_BY_OTHER) {
+                        lockedByOther = true;
+                        break;
+                    }
+                }
+                if (lockedByOther) {
+                    continue;
+                }
+
                 ProductViewerRowData rd = new ProductViewerRowData();
 
                 // Set the product category column data
-                String productID = tempData.getProductGeneratorName().replace(
-                        "_ProductGenerator", "");
+                String productID = tempData.getProductGeneratorName()
+                        .replace("_ProductGenerator", "");
                 rd.setProductCategory(productID);
 
                 // Set the issue time column data
                 rd.setIssueDate(tempData.getIssueTime());
 
                 // Sort the event IDs
-                List<String> eventIdList = tempData.getEventIDs();
                 Collections.sort(eventIdList);
 
                 // Set the event IDs column data
@@ -308,8 +329,8 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
     private void createButtonRow(Composite mainComposite) {
         Composite buttonRowComp = new Composite(mainComposite, SWT.NONE);
         buttonRowComp.setLayout(new GridLayout(2, true));
-        buttonRowComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
-                false));
+        buttonRowComp.setLayoutData(
+                new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         if (viewData) {
@@ -526,9 +547,10 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
             int value = 0;
             if (ColumnTitle.ISSUE_TIME.getText().equals(sortText)) {
                 value = o1.getIssueDate().compareTo(o2.getIssueDate());
-            } else if (ColumnTitle.PRODUCT_CATEGORY.getText().equals(sortText)) {
-                value = o1.getProductCategory().compareTo(
-                        o2.getProductCategory());
+            } else if (ColumnTitle.PRODUCT_CATEGORY.getText()
+                    .equals(sortText)) {
+                value = o1.getProductCategory()
+                        .compareTo(o2.getProductCategory());
             } else if (ColumnTitle.EVENT_IDS.getText().equals(sortText)) {
                 value = o1.getEventIds().compareTo(o2.getEventIds());
             } else if (ColumnTitle.HAZARD_IDS.getText().equals(sortText)) {
@@ -545,8 +567,8 @@ public class ProductViewerSelectionDlg extends CaveSWTDialog {
             } else if (ColumnTitle.EXP_TIME.getText().equals(sortText)) {
                 long o1ExpTime = o1.getExpirationTime();
                 long o2ExpTime = o2.getExpirationTime();
-                value = Long.valueOf(o1ExpTime).compareTo(
-                        Long.valueOf(o2ExpTime));
+                value = Long.valueOf(o1ExpTime)
+                        .compareTo(Long.valueOf(o2ExpTime));
             } else if (ColumnTitle.USER.getText().equals(sortText)) {
                 String o1Name = o1.getUserName();
                 String o2Name = o2.getUserName();

@@ -174,6 +174,7 @@ FILENAME_KEY = "fileName"
 
 SAVE_TO_HISTORY_KEY = "saveToHistory"
 SAVE_TO_DATABASE_KEY = "saveToDatabase"
+KEEP_SAVED_TO_DATABASE_LOCKED_KEY = "lockEvents"
 TREAT_AS_ISSUANCE_KEY = "treatAsIssuance"
 SET_ORIGIN_KEY = "setOrigin"
 DELETE_EVENT_IDENTIFIERS_KEY = "deleteEventIdentifiers"

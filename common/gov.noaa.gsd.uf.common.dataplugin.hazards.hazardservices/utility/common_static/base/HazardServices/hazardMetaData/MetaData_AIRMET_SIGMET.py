@@ -648,9 +648,9 @@ class MetaData(CommonMetaData.MetaData):
                         "label":"Modifier:",
                         "expandHorizontally": False,
                         "choices": modifiers,
+                        "values": "None",
                         }                       
                        ],
-            "values": "None of the Above",
                   }
         
         return modifier

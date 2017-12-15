@@ -76,6 +76,8 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Oct 21, 2016 22489      Robert.Blum  Added accurateCities flag.
  * Nov 17, 2016 26313      Chris.Golden Changed UGC type to be a set of
  *                                      zero or more types.
+ * Dec 20, 2017 20739      Chris.Golden Added regenMetadataUponSelection
+ *                                      flag.
  * </pre>
  * 
  * @author bsteffen
@@ -141,6 +143,8 @@ public class HazardTypeEntry {
 
     private Map<String, List<String>> modifyRecommenders;
 
+    private boolean regenMetadataUponSelection = false;
+
     private String[] sessionAttributes;
 
     private TimeResolution timeResolution;
@@ -152,6 +156,15 @@ public class HazardTypeEntry {
     public void setModifyRecommenders(
             Map<String, List<String>> modifyRecommenders) {
         this.modifyRecommenders = modifyRecommenders;
+    }
+
+    public boolean isRegenMetadataUponSelection() {
+        return regenMetadataUponSelection;
+    }
+
+    public void setRegenMetadataUponSelection(
+            boolean regenMetadataUponSelection) {
+        this.regenMetadataUponSelection = regenMetadataUponSelection;
     }
 
     public String getHeadline() {

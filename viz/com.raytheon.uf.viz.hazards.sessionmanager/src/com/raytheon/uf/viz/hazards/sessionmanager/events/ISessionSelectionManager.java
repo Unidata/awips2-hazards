@@ -13,7 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
@@ -44,23 +44,25 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 09, 2017   15556    Chris.Golden Initial creation.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface ISessionSelectionManager<E extends IHazardEvent> {
+public interface ISessionSelectionManager {
 
     /**
      * Determine whether or not the specified event has its current and/or at
      * least one of its historical versions currently selected.
      * 
-     * @param event
-     *            Event to be checked.
+     * @param eventView
+     *            View of the event to be checked.
      * @return <code>true</code> if the event is selected, <code>false</code>
      *         otherwise.
      */
-    public boolean isSelected(E event);
+    public boolean isSelected(IHazardEventView eventView);
 
     /**
      * Determine whether or not the specified event has its current and/or at
@@ -89,12 +91,12 @@ public interface ISessionSelectionManager<E extends IHazardEvent> {
      * current versions of any event for which either the current version, one
      * or more historical versions, or both are selected.
      * 
-     * @return Selected events in canonical order. The list is an unmodifiable
-     *         view, so it will always stay up to date with the latest
-     *         selection. Attempts to modify it will result in an
+     * @return Views of selected events in canonical order. The list is an
+     *         unmodifiable view, so it will always stay up to date with the
+     *         latest selection. Attempts to modify it will result in an
      *         {@link UnsupportedOperationException}.
      */
-    public List<E> getSelectedEvents();
+    public List<IHazardEventView> getSelectedEvents();
 
     /**
      * Get the event identifiers of selected events as a set. This method
@@ -165,12 +167,13 @@ public interface ISessionSelectionManager<E extends IHazardEvent> {
      * others remain unselected.
      * </p>
      * 
-     * @param selectedEvents
-     *            New selected events.
+     * @param selectedEventViews
+     *            Views of new selected events.
      * @param originator
      *            Originator of the change.
      */
-    public void setSelectedEvents(Collection<E> selectedEvents,
+    public void setSelectedEvents(
+            Collection<? extends IHazardEventView> selectedEventViews,
             IOriginator originator);
 
     /**
@@ -349,5 +352,6 @@ public interface ISessionSelectionManager<E extends IHazardEvent> {
      *            Originator of the change.
      */
     public void setLastAccessedSelectedEventVersion(
-            Pair<String, Integer> eventVersionIdentifier, IOriginator originator);
+            Pair<String, Integer> eventVersionIdentifier,
+            IOriginator originator);
 }

@@ -24,7 +24,7 @@ import java.util.Map;
 import com.raytheon.uf.common.dataplugin.events.EventSet;
 import com.raytheon.uf.common.dataplugin.events.datastorage.IEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEvent;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQueryRequest;
@@ -43,7 +43,9 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQuery
  * May 29, 2015   6895    Ben.Phillippe Refactored Hazard Service data access
  * Aug 20, 2015   6895    Ben.Phillippe Routing registry requests through
  *                                      request server
+ * Jan 26, 2016   7623    Ben.Phillippe Implemented locking of HazardEvents
  * Mar 14, 2016  12145    mduff         Cleaned up error handling.
+ * Dec 12, 2016  21504    Robert.Blum   Moved locking code to SessionLockManager.
  * Feb 16, 2017  29138    Chris.Golden  Revamped to allow for the querying of
  *                                      historical versions of events, or
  *                                      latest (non-historical) versions, or
@@ -55,6 +57,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQuery
  *                                      events by site ID.
  * Apr 13, 2017  33142    Chris.Golden  Added ability to delete all events
  *                                      with a particular event identifier.
+ * Dec 17, 2017  20739    Chris.Golden  Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author mnash
@@ -62,7 +66,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.request.HazardEventQuery
  */
 
 public interface IHazardEventManager extends
-        IEventManager<IHazardEvent, HazardEvent, HazardHistoryList> {
+        IEventManager<IReadableHazardEvent, HazardEvent, HazardHistoryList> {
 
     /**
      * Execute the specified query of the registry for history lists of hazard
@@ -131,8 +135,8 @@ public interface IHazardEventManager extends
      *            last item).
      * @return Map of event identifiers to their history lists.
      */
-    Map<String, HazardHistoryList> getHistoryBySignificance(
-            String significance, boolean includeLatestVersion);
+    Map<String, HazardHistoryList> getHistoryBySignificance(String significance,
+            boolean includeLatestVersion);
 
     /**
      * Retrieve the history lists of all hazards with specified phenomenon and

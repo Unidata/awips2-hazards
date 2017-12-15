@@ -46,7 +46,7 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.hazards.hydro.HydrographForecast;
 import com.raytheon.uf.common.hazards.hydro.HydrographObserved;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
@@ -58,11 +58,13 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IEventApplier;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.viz.ui.dialogs.CalendarDialog;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
+import gov.noaa.gsd.viz.hazards.UIOriginator;
 import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
 
 /**
@@ -93,6 +95,7 @@ import gov.noaa.gsd.viz.hazards.risecrestfall.EventRegion.EventType;
  * Aug 16, 2016   15017    Robert.Blum Updates for setting the crest value/time correctly.
  * Oct 05, 2016   22586    mduff       Added getDoubleValue so when values are set as Float by Python we don't 
  *                                     get ClassCastExceptions.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly mutable session events.
  * </pre>
  * 
  * @author mpduff
@@ -157,7 +160,9 @@ public class GraphicalEditor extends CaveSWTDialog
 
     private Button fallMsgChk;
 
-    private final IHazardEvent event;
+    private final IHazardEventView event;
+
+    private final ISessionEventManager eventManager;
 
     private SimpleDateFormat dateFormat;
 
@@ -177,11 +182,12 @@ public class GraphicalEditor extends CaveSWTDialog
 
     private final IEventApplier applier;
 
-    public GraphicalEditor(Shell parentShell, IHazardEvent event,
-            IEventApplier applier) {
+    public GraphicalEditor(Shell parentShell, IHazardEventView event,
+            ISessionEventManager eventManager, IEventApplier applier) {
         super(parentShell,
                 SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL | SWT.RESIZE);
         this.event = event;
+        this.eventManager = eventManager;
         this.applier = applier;
     }
 
@@ -792,7 +798,7 @@ public class GraphicalEditor extends CaveSWTDialog
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (handleApply()) {
-                    applier.apply((IHazardEvent) getReturnValue());
+                    applier.apply((IHazardEventView) getReturnValue());
                     close();
                 }
             }
@@ -806,7 +812,7 @@ public class GraphicalEditor extends CaveSWTDialog
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (handleApply()) {
-                    applier.apply((IHazardEvent) getReturnValue());
+                    applier.apply((IHazardEventView) getReturnValue());
                 }
             }
         });
@@ -887,24 +893,27 @@ public class GraphicalEditor extends CaveSWTDialog
 
         Date beginDate = convertTimeToDate(beginTime);
         if (beginDate == null) {
-            this.event.setStartTime(new Date(HazardConstants.MISSING_VALUE));
-        } else {
-            this.event.setStartTime(beginDate);
+            beginDate = new Date(HazardConstants.MISSING_VALUE);
+        }
+        if (eventManager.changeEventProperty(this.event,
+                ISessionEventManager.SET_EVENT_START_TIME, beginDate,
+                UIOriginator.RISE_CREST_FALL_EDITOR) != ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+            return false;
         }
 
         Date endDate = convertTimeToDate(endTime);
+        boolean endTimeUntilFurtherNotice = false;
         if (endDate == null) {
-            this.event.setEndTime(new Date(
-                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS));
-            newAttributes.put(
-                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                    true);
-        } else {
-            this.event.setEndTime(endDate);
-            newAttributes.put(
-                    HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
-                    false);
+            endDate = new Date(
+                    HazardConstants.UNTIL_FURTHER_NOTICE_TIME_VALUE_MILLIS);
+            endTimeUntilFurtherNotice = true;
         }
+        eventManager.changeEventProperty(this.event,
+                ISessionEventManager.SET_EVENT_END_TIME, endDate,
+                UIOriginator.RISE_CREST_FALL_EDITOR);
+        newAttributes.put(
+                HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
+                endTimeUntilFurtherNotice);
 
         Double crestValue = Double.valueOf(HazardConstants.MISSING_VALUE);
         if (this.crestValTxt.getText().isEmpty() == false) {
@@ -929,7 +938,9 @@ public class GraphicalEditor extends CaveSWTDialog
                             .get(HazardConstants.CREST_STAGE_FORECAST))));
         }
 
-        this.event.setHazardAttributes(newAttributes);
+        eventManager.changeEventProperty(this.event,
+                ISessionEventManager.SET_EVENT_ATTRIBUTES, newAttributes,
+                UIOriginator.RISE_CREST_FALL_EDITOR);
 
         setReturnValue(event);
         return true;
@@ -962,7 +973,7 @@ public class GraphicalEditor extends CaveSWTDialog
     }
 
     @Override
-    public IHazardEvent getRiseCrestFallEditor(IHazardEvent event,
+    public IHazardEventView getRiseCrestFallEditor(IHazardEventView event,
             IEventApplier applier) {
         // TODO Here because it's required by the interface
         return null;
@@ -1031,7 +1042,9 @@ public class GraphicalEditor extends CaveSWTDialog
                 // Not issued yet, just set it to current time.
                 beginDate = currentCal.getTime();
                 beginTime = beginDate.getTime();
-                event.setStartTime(beginDate);
+                eventManager.changeEventProperty(event,
+                        ISessionEventManager.SET_EVENT_START_TIME, beginDate,
+                        UIOriginator.RISE_CREST_FALL_EDITOR);
                 setBeginTime(beginTime);
             }
         }

@@ -27,12 +27,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
+import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventParameterDescriber;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.Pair;
@@ -50,16 +51,17 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModificat
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTypeModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager.EventType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastAccessedEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionPreviewOrIssueOngoingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.OriginatedSessionNotification;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.VisibleTimeRangeChanged;
@@ -172,11 +174,16 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  * Oct 19, 2016   21873    Chris.Golden      Added time resolution tracking tied to events.
  * Dec 16, 2016   27006    bkowal            Adjust the available event types when an event
  *                                           is a replacement for another event.
+ * Dec 19, 2016   21504    Robert.Blum       Updates for hazard locking.
  * Feb 01, 2017   15556    Chris.Golden      Changed to work with new selection manager.
  *                                           Added awareness of selection of historical
  *                                           snapshots of events, so that the view may
  *                                           display such snapshots differently from the
  *                                           way it displays current events.
+ * Apr 05, 2017   32733    Robert.Blum       Changed lock status modified handler to
+ *                                           deal with new version of notification that
+ *                                           notifies of one or more lock statuses
+ *                                           changing.
  * Apr 20, 2017   33376    Chris.Golden      Fixed bug causing the Until Further Notice
  *                                           checkbox to always be disabled, even when an
  *                                           event that allows UFN is being displayed in
@@ -189,9 +196,18 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  * Jun 27, 2017   20347    Chris.Golden      Hazard detail view now pops up if a hazard
  *                                           event is changed to status ending and it is
  *                                           selected.
+ * Aug 14, 2017   29814    Robert.Blum       Update HID button status when lock statuses
+ *                                           change.
  * Sep 27, 2017   38072    Chris.Golden      Changed to use new SessionEventModified
  *                                           notification. Also moved to Java 8 streams.
  * Dec 07, 2017   41886    Chris.Golden      Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden      Refactored away access to directly mutable
+ *                                           session events. Also added code to use the
+ *                                           regenMetadataUponSelection flag for hazard
+ *                                           types to remove any megawidget specifier
+ *                                           manager that is associated with an event
+ *                                           that has been deselected if the flag for
+ *                                           that event's type is true.
  * </pre>
  * 
  * @author Chris.Golden
@@ -243,6 +259,12 @@ public class HazardDetailPresenter
         private final boolean conflicting;
 
         /**
+         * Lock status. This will be <code>null</code> if the event does not
+         * need to show a lock status.
+         */
+        private final LockStatus lockStatus;
+
+        /**
          * Timestamp indicating when the event was persisted to the database, or
          * <code>null</code> if the event is not a historical snapshot.
          */
@@ -258,15 +280,20 @@ public class HazardDetailPresenter
          * @param conflicting
          *            Flag indicating whether or not the event has a conflict
          *            with at least one other event.
+         * @param lockStatus
+         *            Lock status. This may be <code>null</code> if the event
+         *            does not need to show a lock status.
          * @param persistTimestamp
          *            Timestamp indicating when the event was persisted to the
          *            database, or <code>null</code> if the event is not a
          *            historical snapshot.
          */
         private DisplayableEventIdentifier(String description,
-                boolean conflicting, Date persistTimestamp) {
+                boolean conflicting, LockStatus lockStatus,
+                Date persistTimestamp) {
             this.description = description;
             this.conflicting = conflicting;
+            this.lockStatus = lockStatus;
             this.persistTimestamp = persistTimestamp;
         }
 
@@ -290,6 +317,16 @@ public class HazardDetailPresenter
          */
         public final boolean isConflicting() {
             return conflicting;
+        }
+
+        /**
+         * Get the lock status of the event, if any.
+         * 
+         * @return Lock status; if <code>null</code>, no lock status needs to be
+         *         shown.
+         */
+        public final LockStatus getLockStatus() {
+            return lockStatus;
         }
 
         /**
@@ -441,7 +478,7 @@ public class HazardDetailPresenter
      * if any, as last fetched. This is kept up to date elsewhere, so it does
      * not need to be refreshed by this object. (It is also unmodifiable here.)
      */
-    private final Map<String, Collection<IHazardEvent>> conflictingEventsForSelectedEventIdentifiers;
+    private final Map<String, Collection<IHazardEventView>> conflictingEventsForSelectedEventIdentifiers;
 
     /**
      * Tab text describers, used to generate the title text for a particular
@@ -525,13 +562,14 @@ public class HazardDetailPresenter
                 String value) {
             ensureNotHistorical(identifier);
             selectedCategory = value;
-            ObservedHazardEvent event = getEventByIdentifier(
+            IHazardEventView event = getEventByIdentifier(
                     identifier.getFirst());
             if (event != null) {
-                getModel().getEventManager().setEventCategory(event,
+                getModel().getEventManager().changeEventProperty(event,
+                        ISessionEventManager.SET_EVENT_CATEGORY,
                         selectedCategory,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
-                updateSelectedEventDisplayablesIfChanged();
+                updateSelectedEventDisplayablesAndVisibleEventIfChanged();
                 if (identifier.equals(visibleEventVersionIdentifier)) {
                     updateViewTypeList(event, identifier);
                 }
@@ -559,7 +597,7 @@ public class HazardDetailPresenter
              * Ensure that the event is around.
              */
             ensureNotHistorical(identifier);
-            ObservedHazardEvent event = getEventByIdentifier(
+            IHazardEventView event = getEventByIdentifier(
                     identifier.getFirst());
             if (event == null) {
                 return;
@@ -570,8 +608,9 @@ public class HazardDetailPresenter
              */
             String[] components = HazardEventUtilities
                     .getHazardPhenSigSubType(value);
-            getModel().getEventManager().setEventType(event, components[0],
-                    components[1], components[2],
+            getModel().getEventManager().changeEventProperty(event,
+                    ISessionEventManager.SET_EVENT_TYPE,
+                    new EventType(components[0], components[1], components[2]),
                     UIOriginator.HAZARD_INFORMATION_DIALOG);
 
             /*
@@ -616,13 +655,14 @@ public class HazardDetailPresenter
              * notify the view of the reset to the original values.
              */
             ensureNotHistorical(identifier);
-            ObservedHazardEvent event = getEventByIdentifier(
+            IHazardEventView event = getEventByIdentifier(
                     identifier.getFirst());
             if ((event != null)
-                    && (getModel().getEventManager().setEventTimeRange(event,
-                            new Date(value.getStart().getTime()),
-                            new Date(value.getEnd().getTime()),
-                            UIOriginator.HAZARD_INFORMATION_DIALOG) == false)) {
+                    && (getModel().getEventManager().changeEventProperty(event,
+                            ISessionEventManager.SET_EVENT_TIME_RANGE,
+                            new Pair<>(new Date(value.getStart().getTime()),
+                                    new Date(value.getEnd().getTime())),
+                            UIOriginator.HAZARD_INFORMATION_DIALOG) != ISessionEventManager.EventPropertyChangeResult.SUCCESS)) {
                 updateViewTimeRange(event, identifier);
             }
         }
@@ -645,12 +685,13 @@ public class HazardDetailPresenter
         public void stateChanged(Pair<String, Integer> qualifier,
                 String identifier, Serializable value) {
             ensureNotHistorical(qualifier);
-            ObservedHazardEvent event = getEventByIdentifier(
-                    qualifier.getFirst());
+            IHazardEventView event = getEventByIdentifier(qualifier.getFirst());
             if (event != null) {
-                event.addHazardAttribute(identifier, value,
+                getModel().getEventManager().changeEventProperty(event,
+                        ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                        new Pair<>(identifier, value),
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
-                updateSelectedEventDisplayablesIfChanged();
+                updateSelectedEventDisplayablesAndVisibleEventIfChanged();
             }
         }
 
@@ -658,12 +699,13 @@ public class HazardDetailPresenter
         public void statesChanged(Pair<String, Integer> qualifier,
                 Map<String, Serializable> valuesForIdentifiers) {
             ensureNotHistorical(qualifier);
-            ObservedHazardEvent event = getEventByIdentifier(
-                    qualifier.getFirst());
+            IHazardEventView event = getEventByIdentifier(qualifier.getFirst());
             if (event != null) {
-                event.addHazardAttributes(valuesForIdentifiers,
+                getModel().getEventManager().changeEventProperty(event,
+                        ISessionEventManager.ADD_EVENT_ATTRIBUTES,
+                        valuesForIdentifiers,
                         UIOriginator.HAZARD_INFORMATION_DIALOG);
-                updateSelectedEventDisplayablesIfChanged();
+                updateSelectedEventDisplayablesAndVisibleEventIfChanged();
             }
         }
     };
@@ -677,7 +719,7 @@ public class HazardDetailPresenter
 
         @Override
         public void commandInvoked(EventScriptInfo identifier) {
-            ObservedHazardEvent event = getEventByIdentifier(
+            IHazardEventView event = getEventByIdentifier(
                     identifier.getEventIdentifier());
             if (event != null) {
                 getModel().eventCommandInvoked(event,
@@ -717,8 +759,7 @@ public class HazardDetailPresenter
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public HazardDetailPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public HazardDetailPresenter(ISessionManager<ObservedSettings> model,
             IHazardDetailHandler hazardDetailHandler,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
@@ -862,7 +903,7 @@ public class HazardDetailPresenter
          */
         Set<String> eventIdentifiers = new HashSet<>(change.getEvents().size(),
                 1.0f);
-        for (IHazardEvent event : change.getEvents()) {
+        for (IHazardEventView event : change.getEvents()) {
             eventIdentifiers.add(event.getEventID());
         }
         for (Iterator<Pair<String, Integer>> iterator = specifierManagersForSelectedEventVersions
@@ -910,6 +951,39 @@ public class HazardDetailPresenter
          */
         if (selectedEventVersionIdentifiers
                 .equals(this.selectedEventVersionIdentifiers) == false) {
+
+            /*
+             * Find the event version identifiers that are being deselected.
+             */
+            Set<Pair<String, Integer>> deselectedEventVersionIdentifiers = Sets
+                    .difference(
+                            new HashSet<>(this.selectedEventVersionIdentifiers),
+                            new HashSet<>(selectedEventVersionIdentifiers));
+            for (Pair<String, Integer> deselectedEventVersionIdentifier : deselectedEventVersionIdentifiers) {
+
+                /*
+                 * If the deselected event is of a type that requires that
+                 * metadata be regenerated upon selection, remove the metadata
+                 * specifier manager so that it gets regenerated when the event
+                 * is next selected.
+                 */
+                if (deselectedEventVersionIdentifier.getSecond() == null) {
+                    IHazardEventView event = getModel().getEventManager()
+                            .getEventById(deselectedEventVersionIdentifier
+                                    .getFirst());
+                    if (event != null) {
+                        HazardTypeEntry hazardTypeEntry = getModel()
+                                .getConfigurationManager().getHazardTypes()
+                                .get(HazardEventUtilities.getHazardType(event));
+                        if ((hazardTypeEntry != null) && hazardTypeEntry
+                                .isRegenMetadataUponSelection()) {
+                            getView().getMetadataChanger()
+                                    .removeMegawidgetSpecifierManager(
+                                            deselectedEventVersionIdentifier);
+                        }
+                    }
+                }
+            }
 
             /*
              * Remember the new selected events list, and get the visible event.
@@ -1009,7 +1083,7 @@ public class HazardDetailPresenter
         if (detailViewShowing == false) {
             return;
         }
-        updateSelectedEventDisplayablesIfChanged();
+        updateSelectedEventDisplayablesAndVisibleEventIfChanged();
     }
 
     /**
@@ -1062,6 +1136,34 @@ public class HazardDetailPresenter
     }
 
     /**
+     * Respond to one or more events' lock statuses having changed.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventsLockStatusModified(
+            SessionEventsLockStatusModified change) {
+        if (detailViewShowing == false) {
+            return;
+        }
+        if (isVisibleEventVersionInCollection(change.getEventIdentifiers())) {
+            updateSelectedEventDisplayablesIfChanged();
+            IHazardEventView event = getVisibleEvent();
+            if (event != null) {
+                updateViewCategoryEditability(event,
+                        visibleEventVersionIdentifier);
+                updateViewTypeEditability(event, visibleEventVersionIdentifier);
+                updateViewTimeRangeEditability(event,
+                        visibleEventVersionIdentifier);
+                updateViewMetadataSpecifiersEditability(event,
+                        visibleEventVersionIdentifier);
+                updateViewButtonsEnabledStates();
+            }
+        }
+    }
+
+    /**
      * Respond to an event's time range boundaries having changed.
      * 
      * @param change
@@ -1072,7 +1174,7 @@ public class HazardDetailPresenter
             SessionEventsTimeRangeBoundariesModified change) {
         if (detailViewShowing && isVisibleEventVersionInCollection(
                 change.getEventIdentifiers())) {
-            IHazardEvent event = getVisibleEvent();
+            IHazardEventView event = getVisibleEvent();
             if (event != null) {
                 updateViewTimeRangeBoundaries(event,
                         visibleEventVersionIdentifier);
@@ -1091,7 +1193,7 @@ public class HazardDetailPresenter
     public void sessionEventScriptMutablePropertiesModified(
             SessionEventScriptExtraDataAvailable change) {
         String eventIdentifier = change.getEvent().getEventID();
-        ObservedHazardEvent event = getEventByIdentifier(eventIdentifier);
+        IHazardEventView event = getEventByIdentifier(eventIdentifier);
         if (event != null) {
             getView().getMetadataChanger().changeMegawidgetMutableProperties(
                     new Pair<String, Integer>(eventIdentifier, null),
@@ -1220,7 +1322,7 @@ public class HazardDetailPresenter
          * and if the event having its type changed is currently visible.
          */
         if (isNotOrigin(change) && isVisibleEventVersionModified(change)) {
-            IHazardEvent event = getVisibleEvent();
+            IHazardEventView event = getVisibleEvent();
             if ((event != null) && (updatedElements
                     .contains(ViewElement.TYPE_VALUE) == false)) {
                 updateViewType(event, visibleEventVersionIdentifier);
@@ -1228,7 +1330,7 @@ public class HazardDetailPresenter
             }
             if (updatedElements.contains(
                     ViewElement.SELECTED_EVENT_DISPLAYABLES) == false) {
-                updateSelectedEventDisplayablesIfChanged();
+                updateSelectedEventDisplayablesAndVisibleEventIfChanged();
                 updatedElements.add(ViewElement.SELECTED_EVENT_DISPLAYABLES);
             }
         }
@@ -1248,10 +1350,12 @@ public class HazardDetailPresenter
             Set<ViewElement> updatedElements) {
         if (detailViewShowing && isNotOrigin(change)
                 && isVisibleEventVersionModified(change)) {
-            IHazardEvent event = getVisibleEvent();
+            IHazardEventView event = getVisibleEvent();
             if ((event != null) && (updatedElements
                     .contains(ViewElement.TIME_RANGE) == false)) {
                 updateViewTimeRange(event, visibleEventVersionIdentifier);
+                updateViewTimeRangeEditability(event,
+                        visibleEventVersionIdentifier);
                 updatedElements.add(ViewElement.TIME_RANGE);
             }
         }
@@ -1270,7 +1374,7 @@ public class HazardDetailPresenter
     private void sessionEventMetadataSpecifiersModified(
             SessionEventModified change, Set<ViewElement> updatedElements) {
         String eventIdentifier = change.getEvent().getEventID();
-        ObservedHazardEvent event = getEventByIdentifier(eventIdentifier);
+        IHazardEventView event = getEventByIdentifier(eventIdentifier);
         if ((event != null) && (updatedElements
                 .contains(ViewElement.METADATA_SPECIFIERS) == false)) {
             Pair<String, Integer> identifier = new Pair<>(eventIdentifier,
@@ -1321,7 +1425,7 @@ public class HazardDetailPresenter
             Set<ViewElement> updatedElements) {
         if (detailViewShowing) {
             if (isVisibleEventVersionModified(change)) {
-                IHazardEvent event = getVisibleEvent();
+                IHazardEventView event = getVisibleEvent();
                 if (updatedElements
                         .contains(ViewElement.CATEGORY_EDITABILITY) == false) {
                     updateViewCategoryEditability(event,
@@ -1341,7 +1445,7 @@ public class HazardDetailPresenter
             }
             if (updatedElements.contains(
                     ViewElement.SELECTED_EVENT_DISPLAYABLES) == false) {
-                updateSelectedEventDisplayablesIfChanged();
+                updateSelectedEventDisplayablesAndVisibleEventIfChanged();
                 updatedElements.add(ViewElement.SELECTED_EVENT_DISPLAYABLES);
             }
             if (updatedElements
@@ -1373,7 +1477,7 @@ public class HazardDetailPresenter
             Set<ViewElement> updatedElements) {
         if (detailViewShowing && isNotOrigin(change)
                 && isVisibleEventVersionModified(change)) {
-            IHazardEvent event = getVisibleEvent();
+            IHazardEventView event = getVisibleEvent();
             if (event != null) {
                 if (modification.getAttributeKeys()
                         .contains(HazardConstants.HAZARD_EVENT_CATEGORY)) {
@@ -1400,7 +1504,7 @@ public class HazardDetailPresenter
             }
             if (updatedElements.contains(
                     ViewElement.SELECTED_EVENT_DISPLAYABLES) == false) {
-                updateSelectedEventDisplayablesIfChanged();
+                updateSelectedEventDisplayablesAndVisibleEventIfChanged();
                 updatedElements.add(ViewElement.SELECTED_EVENT_DISPLAYABLES);
             }
         }
@@ -1506,8 +1610,7 @@ public class HazardDetailPresenter
     private List<DisplayableEventIdentifier> compileSelectedEventDisplayables() {
         List<Pair<String, Integer>> selectedEventVersionIdentifiers = getModel()
                 .getSelectionManager().getSelectedEventVersionIdentifiersList();
-        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                .getEventManager();
+        ISessionEventManager eventManager = getModel().getEventManager();
         if (selectedEventVersionIdentifiers.isEmpty() == false) {
             List<DisplayableEventIdentifier> list = new ArrayList<>(
                     selectedEventVersionIdentifiers.size());
@@ -1520,7 +1623,7 @@ public class HazardDetailPresenter
                  */
                 boolean conflict = false;
                 if (showConflicts && (identifier.getSecond() == null)) {
-                    Collection<IHazardEvent> conflictingEvents = conflictingEventsForSelectedEventIdentifiers
+                    Collection<IHazardEventView> conflictingEvents = conflictingEventsForSelectedEventIdentifiers
                             .get(identifier.getFirst());
                     conflict = ((conflictingEvents != null)
                             && (conflictingEvents.size() > 0));
@@ -1530,7 +1633,7 @@ public class HazardDetailPresenter
                  * Get the hazard event, either the current version or a
                  * historical snapshot depending upon which is selected.
                  */
-                IHazardEvent event = null;
+                IHazardEventView event = null;
                 if (identifier.getSecond() == null) {
                     event = eventManager.getEventById(identifier.getFirst());
                 } else {
@@ -1555,8 +1658,9 @@ public class HazardDetailPresenter
                 }
 
                 list.add(new DisplayableEventIdentifier(buffer.toString(),
-                        conflict, (identifier.getSecond() != null
-                                ? event.getInsertTime() : null)));
+                        conflict, getEventLockStatus(identifier),
+                        (identifier.getSecond() != null ? event.getInsertTime()
+                                : null)));
             }
             return list;
         }
@@ -1565,8 +1669,11 @@ public class HazardDetailPresenter
 
     /**
      * Update the selected event displayables if they have changed.
+     * 
+     * @return <code>true</code> if an update was required and was performed,
+     *         <code>false</code> otherwise.
      */
-    private void updateSelectedEventDisplayablesIfChanged() {
+    private boolean updateSelectedEventDisplayablesIfChanged() {
 
         /*
          * Rebuild the list of selected event displayables; if it has changed,
@@ -1576,6 +1683,22 @@ public class HazardDetailPresenter
         if (selectedEventDisplayables.equals(eventDisplayables) == false) {
             selectedEventDisplayables = eventDisplayables;
             updateViewSelectedEvents();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Update the selected event displayables and the visible event if the
+     * former have changed.
+     */
+    private void updateSelectedEventDisplayablesAndVisibleEventIfChanged() {
+
+        /*
+         * Rebuild the list of selected event displayables; if it has changed,
+         * notify the view.
+         */
+        if (updateSelectedEventDisplayablesIfChanged()) {
             updateViewVisibleEvent(false);
         }
     }
@@ -1598,7 +1721,8 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewEndTimeUntilFurtherNoticeEnabled(IHazardEvent event,
+    private void updateViewEndTimeUntilFurtherNoticeEnabled(
+            IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
 
         /*
@@ -1607,7 +1731,7 @@ public class HazardDetailPresenter
          * check with the configuration manager to see if the event type allows
          * until further notice.
          */
-        if (event instanceof ObservedHazardEvent) {
+        if (getModel().getEventManager().isEventHistorical(event) == false) {
             getView().getMetadataChanger().setEnabled(eventVersionIdentifier,
                     HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE,
                     eventIdentifiersAllowingUntilFurtherNotice.contains(
@@ -1641,7 +1765,7 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewCategoryList(IHazardEvent event,
+    private void updateViewCategoryList(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
 
         /*
@@ -1651,7 +1775,7 @@ public class HazardDetailPresenter
          */
         selectedCategory = getModel().getConfigurationManager()
                 .getHazardCategory(event);
-        if (event instanceof ObservedHazardEvent) {
+        if (getModel().getEventManager().isEventHistorical(event) == false) {
             boolean hasPointId = (event
                     .getHazardAttribute(HazardConstants.POINTID) != null);
             getView().getCategoryChanger()
@@ -1677,7 +1801,7 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewCategory(IHazardEvent event,
+    private void updateViewCategory(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
         selectedCategory = getModel().getConfigurationManager()
                 .getHazardCategory(event);
@@ -1693,12 +1817,13 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewCategoryEditability(IHazardEvent event,
+    private void updateViewCategoryEditability(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
-        if (event instanceof ObservedHazardEvent) {
+        if (getModel().getEventManager().isEventHistorical(event) == false) {
             HazardStatus status = event.getStatus();
             getView().getCategoryChanger().setEditable(eventVersionIdentifier,
-                    (HazardStatus.hasEverBeenIssued(status) == false));
+                    ((HazardStatus.hasEverBeenIssued(status) == false)
+                            && isEventNotLockedByOther(event.getEventID())));
         } else {
             getView().getCategoryChanger().setEditable(eventVersionIdentifier,
                     false);
@@ -1714,7 +1839,7 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewTypeList(IHazardEvent event,
+    private void updateViewTypeList(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
 
         /*
@@ -1726,7 +1851,7 @@ public class HazardDetailPresenter
         if (selectedType == null) {
             selectedType = BLANK_TYPE_CHOICE;
         }
-        if (event instanceof ObservedHazardEvent) {
+        if (getModel().getEventManager().isEventHistorical(event) == false) {
 
             /*
              * If the hazard event is not yet issued, it can have a wide variety
@@ -1797,14 +1922,15 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewTypeEditability(IHazardEvent event,
+    private void updateViewTypeEditability(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
-        if (event instanceof ObservedHazardEvent) {
+        if (getModel().getEventManager().isEventHistorical(event) == false) {
             HazardStatus status = event.getStatus();
             getView().getTypeChanger().setEditable(eventVersionIdentifier,
                     (status != HazardStatus.ELAPSED)
                             && (status != HazardStatus.ENDING)
-                            && (status != HazardStatus.ENDED));
+                            && (status != HazardStatus.ENDED)
+                            && isEventNotLockedByOther(event.getEventID()));
         } else {
             getView().getTypeChanger().setEditable(eventVersionIdentifier,
                     false);
@@ -1819,7 +1945,7 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewType(IHazardEvent event,
+    private void updateViewType(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
         String selectedType = event.getHazardType();
         getView().getTypeChanger().setState(eventVersionIdentifier,
@@ -1845,7 +1971,7 @@ public class HazardDetailPresenter
      *            Flag indicating whether or not to include the original type in
      *            the list of possible types.
      */
-    private void updateReplacedEventTypeChoices(IHazardEvent event,
+    private void updateReplacedEventTypeChoices(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier, String originalType,
             String choiceToSelect, boolean includeOriginalType) {
         List<String> possibleReplacementTypes = getModel()
@@ -1874,28 +2000,45 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewTimeRange(IHazardEvent event,
+    private void updateViewTimeRange(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
         getView().getTimeRangeChanger().setState(eventVersionIdentifier,
                 new TimeRange(event.getStartTime().getTime(),
                         event.getEndTime().getTime()));
+    }
+
+    /**
+     * Update the view to use the current time range editability for the event
+     * version.
+     * 
+     * @param event
+     *            Event for which the update should occur.
+     * @param eventVersionIdentifier
+     *            Identifier of the event version.
+     */
+    private void updateViewTimeRangeEditability(IHazardEventView event,
+            Pair<String, Integer> eventVersionIdentifier) {
 
         /*
          * TODO: For Redmine issue #26716, we need to allow time sliders to be
          * disabled on a per-hazard-type basis. Once we get there, replace the
          * "false" below with:
          * 
-         * (event is instance of ObservedHazardEvent)
+         * ((getModel().getEventManager().isEventHistorical(event) == false) &&
+         * isEventNotLockedByOther(event.getEventID())
          * 
          * with:
          * 
-         * ((event is instance of ObservedHazardEvent) && (event type allows
+         * ((getModel().getEventManager().isEventHistorical(event) == false) &&
+         * isEventNotLockedByOther(event.getEventID()) && (event type allows
          * time sliders to be moved))
          * 
          * What should exactly happen with the HID? Should the entry fields be
          * disabled as well?
          */
-        boolean editable = (event instanceof ObservedHazardEvent);
+        boolean editable = ((getModel().getEventManager()
+                .isEventHistorical(event) == false)
+                && isEventNotLockedByOther(event.getEventID()));
         getView().getTimeRangeChanger().setEditable(eventVersionIdentifier,
                 editable);
         getView().getMetadataChanger().setEditable(eventVersionIdentifier,
@@ -1912,10 +2055,10 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewTimeRangeBoundaries(IHazardEvent event,
+    private void updateViewTimeRangeBoundaries(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
         Map<TimeRangeBoundary, Range<Long>> map = new HashMap<>(2, 1.0f);
-        if (event instanceof ObservedHazardEvent) {
+        if (getModel().getEventManager().isEventHistorical(event) == false) {
             Range<Long> bounds = getModel().getEventManager()
                     .getStartTimeBoundariesForEventIds()
                     .get(event.getEventID());
@@ -1948,7 +2091,7 @@ public class HazardDetailPresenter
      * @param eventVersionIdentifier
      *            Identifier of the event version.
      */
-    private void updateViewDurations(IHazardEvent event,
+    private void updateViewDurations(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
         getView().getTimeResolutionChanger().setState(null,
                 getModel().getEventManager().getTimeResolutionsForEventIds()
@@ -1970,7 +2113,7 @@ public class HazardDetailPresenter
      *            unchanged as a result of this call, should reinitialize its
      *            components.
      */
-    private void updateViewMetadataSpecifiers(IHazardEvent event,
+    private void updateViewMetadataSpecifiers(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier,
             boolean reinitializeIfUnchanged) {
         getView().getMetadataChanger().setMegawidgetSpecifierManager(
@@ -1978,8 +2121,38 @@ public class HazardDetailPresenter
                 specifierManagersForSelectedEventVersions
                         .get(visibleEventVersionIdentifier),
                 new HashMap<>(event.getHazardAttributes()),
-                (eventVersionIdentifier.getSecond() == null),
+                isMetadataEditable(eventVersionIdentifier),
                 reinitializeIfUnchanged);
+    }
+
+    /**
+     * Update the view to use the current metadata specifier manager
+     * editability.
+     * 
+     * @param event
+     *            Event for which the update should occur.
+     * @param eventVersionIdentifier
+     *            Identifier of the event version.
+     */
+    private void updateViewMetadataSpecifiersEditability(IHazardEventView event,
+            Pair<String, Integer> eventVersionIdentifier) {
+        getView().getMetadataChanger().setEditable(eventVersionIdentifier, null,
+                isMetadataEditable(eventVersionIdentifier));
+    }
+
+    /**
+     * Determine whether or not the metadata specifiers should be editable for
+     * the specified event.
+     * 
+     * @param eventVersionIdentifier
+     *            Identifier of the event version.
+     * @return <code>true</code> if the event's metadata specifiers are to be
+     *         editable, <code>false</code> otherwise.
+     */
+    private boolean isMetadataEditable(
+            Pair<String, Integer> eventVersionIdentifier) {
+        return ((eventVersionIdentifier.getSecond() == null)
+                && isEventNotLockedByOther(eventVersionIdentifier.getFirst()));
     }
 
     /**
@@ -1994,7 +2167,7 @@ public class HazardDetailPresenter
      *            Names of the attributes to be updated, or <code>null</code> if
      *            all attributes should be updated.
      */
-    private void updateViewMetadataValues(IHazardEvent event,
+    private void updateViewMetadataValues(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier, Set<String> names) {
 
         /*
@@ -2035,7 +2208,7 @@ public class HazardDetailPresenter
      *            Identifier of the event version for which the cache is to be
      *            checked.
      */
-    private void cacheMetadataSpecifiers(IHazardEvent event,
+    private void cacheMetadataSpecifiers(IHazardEventView event,
             Pair<String, Integer> eventVersionIdentifier) {
         if (specifierManagersForSelectedEventVersions
                 .containsKey(eventVersionIdentifier) == false) {
@@ -2057,19 +2230,19 @@ public class HazardDetailPresenter
          * not making this determination only based on the visible event within
          * the selected events).
          */
-        IHazardEvent event = getVisibleEvent();
+        IHazardEventView event = getVisibleEvent();
         boolean enable = ((event != null)
-                && (event instanceof ObservedHazardEvent)
+                && (getModel().getEventManager()
+                        .isEventHistorical(event) == false)
                 && (HazardEventUtilities.getHazardType(event) != null)
                 && (getModel().isPreviewOngoing() == false)
                 && (getModel().isIssueOngoing() == false)
                 && (event.getStatus() != HazardStatus.ENDED)
-                && (event.getStatus() != HazardStatus.ELAPSED));
+                && (event.getStatus() != HazardStatus.ELAPSED)
+                && isEventNotLockedByOther(event.getEventID()));
         getView().getButtonInvoker().setEnabled(Command.PREVIEW, enable);
-        getView().getButtonInvoker().setEnabled(Command.PROPOSE,
-                (enable && getModel().getEventManager()
-                        .getEventIdsAllowingProposal()
-                        .contains(visibleEventVersionIdentifier.getFirst())));
+        getView().getButtonInvoker().setEnabled(Command.PROPOSE, (enable
+                && getModel().getEventManager().isProposedStateAllowed(event)));
         getView().getButtonInvoker().setEnabled(Command.ISSUE, enable);
     }
 
@@ -2082,7 +2255,7 @@ public class HazardDetailPresenter
      *            should reinitialize its components.
      */
     private void updateViewVisibleEvent(boolean reinitializeIfUnchanged) {
-        IHazardEvent event = getVisibleEvent();
+        IHazardEventView event = getVisibleEvent();
         if (event != null) {
             cacheMetadataSpecifiers(event, visibleEventVersionIdentifier);
             updateViewVisibleTimeRange();
@@ -2092,6 +2265,8 @@ public class HazardDetailPresenter
             updateViewTypeEditability(event, visibleEventVersionIdentifier);
             updateViewTimeRangeBoundaries(event, visibleEventVersionIdentifier);
             updateViewTimeRange(event, visibleEventVersionIdentifier);
+            updateViewTimeRangeEditability(event,
+                    visibleEventVersionIdentifier);
             updateViewMetadataSpecifiers(event, visibleEventVersionIdentifier,
                     reinitializeIfUnchanged);
             updateViewEndTimeUntilFurtherNoticeEnabled(event,
@@ -2126,13 +2301,9 @@ public class HazardDetailPresenter
      */
     private void propose() {
 
-        Collection<ObservedHazardEvent> events = getModel()
-                .getSelectionManager().getSelectedEvents();
-
-        for (ObservedHazardEvent event : events) {
-            getModel().getEventManager().proposeEvent(event,
-                    UIOriginator.HAZARD_INFORMATION_DIALOG);
-        }
+        getModel().getEventManager().proposeEvents(
+                getModel().getSelectionManager().getSelectedEvents(),
+                UIOriginator.HAZARD_INFORMATION_DIALOG);
 
         hazardDetailHandler.closeProductEditor();
     }
@@ -2152,14 +2323,14 @@ public class HazardDetailPresenter
      * @return Currently visible event, or <code>null</code> if there is no
      *         visible event.
      */
-    private IHazardEvent getVisibleEvent() {
+    private IHazardEventView getVisibleEvent() {
         if (visibleEventVersionIdentifier == null) {
             return null;
         } else if (visibleEventVersionIdentifier.getSecond() == null) {
             return getEventByIdentifier(
                     visibleEventVersionIdentifier.getFirst());
         } else {
-            HazardHistoryList historyList = getModel().getEventManager()
+            List<IHazardEventView> historyList = getModel().getEventManager()
                     .getEventHistoryById(
                             visibleEventVersionIdentifier.getFirst());
             return historyList.get(visibleEventVersionIdentifier.getSecond());
@@ -2174,7 +2345,7 @@ public class HazardDetailPresenter
      * @return Event with the specified identifier, or <code>null</code> if
      *         there is no such event.
      */
-    private ObservedHazardEvent getEventByIdentifier(String identifier) {
+    private IHazardEventView getEventByIdentifier(String identifier) {
         return getModel().getEventManager().getEventById(identifier);
     }
 
@@ -2193,6 +2364,40 @@ public class HazardDetailPresenter
         if (eventVersionIdentifier.getSecond() != null) {
             throw new IllegalArgumentException(
                     "cannot change state of historical event");
+        }
+    }
+
+    /**
+     * Determine whether or not the specified event is currently not locked by
+     * someone else.
+     * 
+     * @param eventIdentifier
+     *            Event identifier.
+     * @return <code>true</code> if the event is not locked by someone else,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isEventNotLockedByOther(String eventIdentifier) {
+        LockStatus status = getEventLockStatus(
+                new Pair<String, Integer>(eventIdentifier, null));
+        return (status != LockStatus.LOCKED_BY_OTHER);
+    }
+
+    /**
+     * Get the lock status of the specified event version.
+     * 
+     * @param eventVersionIdentifier
+     *            Event version identifier.
+     * @return Lock status of the event version, or <code>null</code> if the
+     *         version is not lockable.
+     */
+    private LockStatus getEventLockStatus(
+            Pair<String, Integer> eventVersionIdentifier) {
+        if (eventVersionIdentifier.getSecond() == null) {
+            return getModel().getLockManager()
+                    .getHazardEventLockInfo(eventVersionIdentifier.getFirst())
+                    .getLockStatus();
+        } else {
+            return null;
         }
     }
 

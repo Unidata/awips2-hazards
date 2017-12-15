@@ -10,7 +10,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 import gov.noaa.gsd.common.utilities.MergeResult;
@@ -27,6 +26,8 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * May 12, 2014    2925    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -46,8 +47,7 @@ public class SessionSelectedEventConflictsModified
      *            Originator of the change.
      */
     public SessionSelectedEventConflictsModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            IOriginator originator) {
+            ISessionEventManager eventManager, IOriginator originator) {
         super(eventManager, originator);
     }
 

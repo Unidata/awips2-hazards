@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.megawidgets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,8 +26,10 @@ import org.eclipse.swt.widgets.Widget;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
+import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
 
 /**
@@ -155,6 +158,18 @@ import gov.noaa.gsd.viz.megawidgets.displaysettings.IDisplaySettings;
  *                                           editability.
  * Oct 10, 2017   39151     Chris Golden     Added use of a side effects processor, if
  *                                           one is supplied at construction time.
+ * Nov 22, 2017   21504     Chris.Golden     Augmented to allow read-only and disabled
+ *                                           megawidgets to be remembered when the
+ *                                           entire set of megawidgets is being made
+ *                                           read-only or disabled, so that they may
+ *                                           be left read-only or disabled when
+ *                                           set-wide editability or enabling is
+ *                                           restored.
+ * Jan 19, 2018   20739     Chris.Golden     Corrected bugs with setting enabled state
+ *                                           and editability caused by parent
+ *                                           megawidgets changing their children's
+ *                                           states before the latter were recorded,
+ *                                           and/or after the latter were changed.
  * </pre>
  * 
  * @author Chris.Golden
@@ -192,6 +207,13 @@ public class MegawidgetManager {
     private Map<String, Object> state;
 
     /**
+     * Set of all base megawidgets, that is, the megawidgets that have no parent
+     * other than this manager. All other megawidgets managed by this object are
+     * descendants of these base megawidgets.
+     */
+    private final Set<? extends IMegawidget> baseMegawidgets;
+
+    /**
      * Map pairing megawidget identifiers with their megawidgets, with entries
      * for all megawidgets that are being managed.
      */
@@ -226,6 +248,28 @@ public class MegawidgetManager {
      * megawidgets.
      */
     private final Map<String, SwtWrapperMegawidget> swtWrappersForIdentifiers = new HashMap<>();
+
+    /**
+     * Map of megawidgets to their enabled state flags prior to the last call to
+     * {@link #setEnabled(boolean)} with a parameter of <code>false</code> that
+     * altered the enabled state. If the most recent call to
+     * <code>setEnabled()</code> had the parameter <code>true</code>, this map
+     * will be empty. Otherwise, it will contain the enabled state flag values
+     * as they were prior to the setting of the enabled state to
+     * <code>false</code> manager-wide.
+     */
+    private final Map<IMegawidget, Boolean> lastEnabledStateForMegawidgets = new HashMap<>();
+
+    /**
+     * Map of control megawidgets to their editability flags prior to the last
+     * call to {@link #setEditable(boolean)} with a parameter of
+     * <code>false</code> that altered the editability. If the most recent call
+     * to <code>setEditable()</code> had the parameter <code>true</code>, this
+     * map will be empty. Otherwise, it will contain the editability flag values
+     * as they were prior to the setting of editability to <code>false</code>
+     * manager-wide.
+     */
+    private final Map<IControl, Boolean> lastEditabilityForControls = new HashMap<>();
 
     /**
      * Side effects applier, or <code>null</code> if there are no side effects
@@ -511,8 +555,8 @@ public class MegawidgetManager {
             Map<String, Object> state,
             IMegawidgetManagerListener managerListener)
                     throws MegawidgetException {
-        construct(parent, IMenu.class, specifierManager, state, managerListener,
-                null, 0L, 0L);
+        baseMegawidgets = construct(parent, IMenu.class, specifierManager,
+                state, managerListener, null, 0L, 0L);
     }
 
     /**
@@ -700,6 +744,7 @@ public class MegawidgetManager {
          * visually.
          */
         ControlComponentHelper.alignMegawidgetsElements(baseMegawidgets);
+        this.baseMegawidgets = baseMegawidgets;
         parent.layout();
     }
 
@@ -744,11 +789,34 @@ public class MegawidgetManager {
      *            be enabled or disabled.
      */
     public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-        for (IMegawidget megawidget : megawidgetsForIdentifiers.values()) {
-            megawidget.setEnabled(enabled);
+        if (this.enabled == enabled) {
+            return;
         }
+
+        /*
+         * If disabling all megawidgets, record the enabled state of them before
+         * disabling them.
+         */
+        if (enabled == false) {
+            for (IMegawidget megawidget : megawidgetsForIdentifiers.values()) {
+                lastEnabledStateForMegawidgets.put(megawidget,
+                        megawidget.isEnabled());
+            }
+        }
+
+        /*
+         * Enable or disable all megawidgets, working from the parents down to
+         * the leaf children so that setting of a parent's enabled state does
+         * not override the setting of a child's enabled state after that child
+         * has had its state set directly by this method.
+         */
+        this.enabled = enabled;
+        for (IMegawidget megawidget : baseMegawidgets) {
+            setMegawidgetEnabled(megawidget, enabled);
+        }
+
         propertyProgrammaticallyChanged = true;
+        applySideEffects(null, false);
     }
 
     /**
@@ -770,13 +838,36 @@ public class MegawidgetManager {
      *            are to be editable.
      */
     public void setEditable(boolean editable) {
-        this.editable = editable;
-        for (IMegawidget megawidget : megawidgetsForIdentifiers.values()) {
-            if (megawidget instanceof IControl) {
-                ((IControl) megawidget).setEditable(editable);
+        if (this.editable == editable) {
+            return;
+        }
+
+        /*
+         * If making all megawidgets uneditable, record the editability of them
+         * before doing so.
+         */
+        if (editable == false) {
+            for (IMegawidget megawidget : megawidgetsForIdentifiers.values()) {
+                if (megawidget instanceof IControl) {
+                    lastEditabilityForControls.put((IControl) megawidget,
+                            ((IControl) megawidget).isEditable());
+                }
             }
         }
+
+        /*
+         * Set the editability of all megawidgets, working from the parents down
+         * to the leaf children so that setting of a parent's editability state
+         * does not override the setting of a child's editability state after
+         * that child has had its state set directly by this method.
+         */
+        this.editable = editable;
+        for (IMegawidget megawidget : baseMegawidgets) {
+            setMegawidgetEditable(megawidget, editable);
+        }
+
         propertyProgrammaticallyChanged = true;
+        applySideEffects(null, false);
     }
 
     /**
@@ -830,7 +921,7 @@ public class MegawidgetManager {
          * compile a set of the identifiers of all the megawidgets that
          * experienced a state change, and apply side effects.
          */
-        if ((sideEffectsApplier != null) && (valuesForChangedStates != null)
+        if ((sideEffectsApplier != null)
                 && (valuesForChangedStates.isEmpty() == false)) {
             Set<String> megawidgetsWithStateChanged = new HashSet<>(
                     valuesForChangedStates.size());
@@ -1328,7 +1419,7 @@ public class MegawidgetManager {
      *            alter editability when overall editability of the manager is
      *            <code>false</code>.
      * @return Map of state identifiers to their new values for those states
-     *         that were changed as a result of this call.
+     *         that were changed as a result of this call. This may be empty.
      * @throws MegawidgetPropertyException
      *             If a problem occurs while attempting to set the mutable
      *             properties.
@@ -1358,9 +1449,9 @@ public class MegawidgetManager {
             }
 
             /*
-             * Set the megawidget's mutable properties, not including any
-             * changes to editability if the manager is uneditable right now and
-             * if override of editability is not desired.
+             * Remove any changes to editability from the mutable properties
+             * being set if the manager is uneditable right now and if override
+             * of editability is not desired.
              */
             Map<String, Object> megawidgetMutableProperties = mutableProperties
                     .get(identifier);
@@ -1368,59 +1459,113 @@ public class MegawidgetManager {
                 megawidgetMutableProperties
                         .remove(IControlSpecifier.MEGAWIDGET_EDITABLE);
             }
+
+            /*
+             * Determine whether or not the megawidget is stateful and an
+             * attempt to set its state is occurring. If so, record the earlier
+             * state so that it can be compared to the state after the setting
+             * of the mutable properties. If not, remove any changes to state
+             * from the mutable properties.
+             */
+            boolean stateBeingSet = ((megawidgetMutableProperties.containsKey(
+                    StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES))
+                    && (megawidget instanceof IStateful));
+            Map<String, Object> oldStatesForStateIdentifiers = null;
+            IStateful statefulMegawidget = null;
+            if (stateBeingSet) {
+                statefulMegawidget = (IStateful) megawidget;
+                List<String> stateIdentifiers = ((IStatefulSpecifier) statefulMegawidget
+                        .getSpecifier()).getStateIdentifiers();
+                oldStatesForStateIdentifiers = new HashMap<>(
+                        stateIdentifiers.size(), 1.0f);
+                for (String stateIdentifier : stateIdentifiers) {
+                    try {
+                        oldStatesForStateIdentifiers.put(stateIdentifier,
+                                statefulMegawidget.getState(stateIdentifier));
+                    } catch (MegawidgetStateException e) {
+                        throw new IllegalStateException(
+                                "should not occur: valid state identifier "
+                                        + "rejected as invalid",
+                                e);
+                    }
+                }
+            } else {
+                megawidgetMutableProperties.remove(
+                        StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
+            }
+
+            /*
+             * Set the mutable properties.
+             */
             megawidget.setMutableProperties(megawidgetMutableProperties);
 
             /*
-             * Ensure that the state, if changed, is kept track of within this
-             * instance's state variable.
+             * Ensure that the state, if it has indeed changed, is kept track of
+             * within this instance's state variable.
              */
-            if (megawidgetMutableProperties.containsKey(
-                    StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES)) {
+            if (stateBeingSet) {
 
                 /*
-                 * Handle the values whether they are a single value, or a map
-                 * of values. The former is only possible if this is a
-                 * single-state megawidget.
+                 * Get the list of state identifiers that the mutable property
+                 * changes included changes to.
                  */
                 Object values = megawidgetMutableProperties.get(
                         StatefulMegawidgetSpecifier.MEGAWIDGET_STATE_VALUES);
-                Map<String, Object> map = null;
+                Set<String> identifiersOfStatesBeingSet = null;
                 if (values instanceof Map) {
                     try {
-                        map = (HashMap<String, Object>) values;
-                    } catch (Exception e) {
+                        identifiersOfStatesBeingSet = ((Map<String, ?>) values)
+                                .keySet();
+                    } catch (ClassCastException e) {
                         throw new IllegalStateException(
-                                "Should not occur; state "
-                                        + "values should have already been checked by "
-                                        + "megawidget.setMutableProperties()");
+                                "should not occur; state values as supplied "
+                                        + "by megawidget should be in map with "
+                                        + "keys of type String",
+                                e);
                     }
                 } else {
-                    map = new HashMap<>(1, 1.0f);
-                    map.put(identifier, values);
+                    identifiersOfStatesBeingSet = Sets.newHashSet(identifier);
                 }
 
                 /*
-                 * Iterate through the state identifiers, setting each value as
-                 * the state for the corresponding identifier. Note that the
-                 * state is fetched from the megawidget, instead of taken from
-                 * the mutable properties map, just to ensure that any type
+                 * Iterate through the state identifiers, making a record for
+                 * the manager of each value that has actually changed as the
+                 * state for the corresponding identifier. Note that the state
+                 * is fetched from the megawidget, instead of taken from the
+                 * mutable properties map, just to ensure that any type
                  * conversions have already been performed. For example, if the
                  * side effects applier used JSON to store values, a long
                  * integer may have been erroneously converted to a double.
                  */
-                IStateful statefulMegawidget = (IStateful) megawidget;
-                for (String stateIdentifier : map.keySet()) {
-                    Object value = null;
+                for (String stateIdentifier : identifiersOfStatesBeingSet) {
+
+                    /*
+                     * Get the new state and compare it to the previous state
+                     * for this identifier. If they are the same, do nothing
+                     * more with said state.
+                     */
+                    Object newState = null;
                     try {
-                        value = convertMegawidgetStateToStateElement(
-                                stateIdentifier,
-                                statefulMegawidget.getState(stateIdentifier));
-                    } catch (Exception e) {
+                        newState = statefulMegawidget.getState(stateIdentifier);
+                    } catch (MegawidgetStateException e) {
                         throw new IllegalStateException(
-                                "Should not occur; state "
-                                        + "identifiers should already have been checked "
-                                        + "by megawidget.setMutableProperties()");
+                                "should not occur: valid state identifier "
+                                        + "rejected as invalid",
+                                e);
                     }
+                    if (Utils.equal(
+                            oldStatesForStateIdentifiers.get(stateIdentifier),
+                            newState)) {
+                        continue;
+                    }
+
+                    /*
+                     * Get the manager-friendly new value that the state of the
+                     * megawidget holds, and commit it. Also remember it so that
+                     * a notification of the change can be sent out.
+                     */
+                    Object value = convertMegawidgetStateToStateElement(
+                            stateIdentifier, newState);
                     commitStateElementChange(stateIdentifier, value);
                     valuesForChangedStates.put(stateIdentifier, value);
                 }
@@ -1490,6 +1635,55 @@ public class MegawidgetManager {
                     map.put(keys[j], newMap);
                     map = newMap;
                 }
+            }
+        }
+    }
+
+    /**
+     * Set the specified megawidget's enabled state to be disabled if the
+     * specified value is <code>false</code>, or to the value stored for that
+     * megawidget within {@link #lastEnabledStateForMegawidgets} if the
+     * specified value is <code>true</code>. Then do the same recursively for
+     * any children if the megawidget is a parent.
+     *
+     * @param megawidget
+     *            Megawidget to have its enabled state set.
+     * @param enabled
+     *            Value to be used for the enabled state, as explained above.
+     */
+    private void setMegawidgetEnabled(IMegawidget megawidget, boolean enabled) {
+        megawidget.setEnabled(enabled
+                ? lastEnabledStateForMegawidgets.get(megawidget) : false);
+        if (megawidget instanceof IParent) {
+            for (IMegawidget childMegawidget : ((IParent<?>) megawidget)
+                    .getChildren()) {
+                setMegawidgetEnabled(childMegawidget, enabled);
+            }
+        }
+    }
+
+    /**
+     * Set the specified megawidget's editable state to be uneditable if the
+     * specified value is <code>false</code>, or to the value stored for that
+     * megawidget within {@link #lastEditabilityForControls} if the specified
+     * value is <code>true</code>. Then do the same recursively for any children
+     * if the megawidget is a parent.
+     *
+     * @param megawidget
+     *            Megawidget to have its editability set.
+     * @param editable
+     *            Value to be used for editability, as explained above.
+     */
+    private void setMegawidgetEditable(IMegawidget megawidget,
+            boolean editable) {
+        if (megawidget instanceof IControl) {
+            ((IControl) megawidget).setEditable(editable
+                    ? this.lastEditabilityForControls.get(megawidget) : false);
+        }
+        if (megawidget instanceof IParent) {
+            for (IMegawidget childMegawidget : ((IParent<?>) megawidget)
+                    .getChildren()) {
+                setMegawidgetEditable(childMegawidget, editable);
             }
         }
     }
@@ -1661,6 +1855,48 @@ public class MegawidgetManager {
             }
 
             /*
+             * Remove any mutable properties setting enabled state and/or
+             * editability to true if the global enabled and/or editable flags
+             * are currently false. This removes the problem of the applier
+             * attempting to make megawidgets enabled and/or editable when it is
+             * not possible to do so.
+             * 
+             * Note that this is done after postprocessing (above) to allow the
+             * postprocessor, if one exists, to see any enabled state or
+             * editability values that may have been generated by the side
+             * effects applier, regardless of whether they are appropriate from
+             * the perspective of this manager.
+             */
+            if ((enabled == false) || (editable == false)) {
+                for (Iterator<Map.Entry<String, Map<String, Object>>> iterator = changedProperties
+                        .entrySet().iterator(); iterator.hasNext();) {
+
+                    /*
+                     * Get the megawidget mutable properties in this entry, and
+                     * remove any changes to enabled state or editability as
+                     * appropriate.
+                     */
+                    Map.Entry<String, Map<String, Object>> entry = iterator
+                            .next();
+                    if (enabled == false) {
+                        entry.getValue().remove(ISpecifier.MEGAWIDGET_ENABLED);
+                    }
+                    if (editable == false) {
+                        entry.getValue()
+                                .remove(IControlSpecifier.MEGAWIDGET_EDITABLE);
+                    }
+
+                    /*
+                     * If removing said changes leaves the mutable properties
+                     * map empty for this megawidget, remove the entry entirely.
+                     */
+                    if (entry.getValue().isEmpty()) {
+                        iterator.remove();
+                    }
+                }
+            }
+
+            /*
              * Make the new mutable properties take effect.
              */
             Map<String, Object> valuesForChangedStates = null;
@@ -1678,7 +1914,8 @@ public class MegawidgetManager {
             /*
              * Notify if appropriate.
              */
-            if ((valuesForChangedStates != null) && (managerListener != null)) {
+            if ((valuesForChangedStates.isEmpty() == false)
+                    && (managerListener != null)) {
                 notifyListenerOfStateChanges(valuesForChangedStates);
             }
         }

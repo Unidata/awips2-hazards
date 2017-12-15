@@ -39,7 +39,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
@@ -74,10 +74,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsTimeRangeBoundariesModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
@@ -169,6 +169,7 @@ import net.engio.mbassy.listener.Handler;
  *                                           settings.
  * Oct 27, 2016   22956    Ben.Phillippe     Update console on site ID change
  * Dec 14, 2016   22119    Kevin.Bisanz      Add Export Product Edits menu.
+ * Dec 19, 2016   21504    Robert.Blum       Adapted to hazard locking.
  * Feb 01, 2017   15556    Chris.Golden      Complete refactoring to address MVP
  *                                           design concerns, untangle spaghetti, and
  *                                           add history list viewing.
@@ -179,6 +180,10 @@ import net.engio.mbassy.listener.Handler;
  *                                           to update the console row when a hazard
  *                                           event's site identifier, workstation, or
  *                                           user name are modified.
+ * Apr 05, 2017   32733    Robert.Blum       Changed lock status modified handler to
+ *                                           deal with new version of notification that
+ *                                           notifies of one or more lock statuses
+ *                                           changing.
  * Jun 08, 2017   16373    Chris.Golden      Removed product viewer selection dialog 
  *                                           usage, as the product view and presenter
  *                                           take care of this now.
@@ -191,6 +196,8 @@ import net.engio.mbassy.listener.Handler;
  * Sep 27, 2017   38072    Chris.Golden      Changed to use new SessionEventModified
  *                                           notification.
  * Dec 07, 2017   41886    Chris.Golden      Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden      Refactored away access to directly
+ *                                           mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -665,8 +672,7 @@ public class ConsolePresenter
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ConsolePresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public ConsolePresenter(ISessionManager<ObservedSettings> model,
             IConsoleHandler consoleHandler,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
@@ -961,7 +967,7 @@ public class ConsolePresenter
              */
             for (Map.Entry<String, Set<Integer>> entry : historicalIndicesForEventIdentifiers
                     .entrySet()) {
-                ObservedHazardEvent event = getModel().getEventManager()
+                IHazardEventView event = getModel().getEventManager()
                         .getEventById(entry.getKey());
                 if (event != null) {
                     tabularEntityManager.replaceEntitiesForEvent(event,
@@ -981,7 +987,7 @@ public class ConsolePresenter
      */
     @Handler
     public void sessionEventsAdded(SessionEventsAdded change) {
-        for (IHazardEvent event : change.getEvents()) {
+        for (IHazardEventView event : change.getEvents()) {
             tabularEntityManager.addEntitiesForEvent(event);
         }
     }
@@ -994,7 +1000,7 @@ public class ConsolePresenter
      */
     @Handler
     public void sessionEventsRemoved(SessionEventsRemoved change) {
-        for (IHazardEvent event : change.getEvents()) {
+        for (IHazardEventView event : change.getEvents()) {
             tabularEntityManager.removeEntitiesForEvent(event);
         }
     }
@@ -1056,6 +1062,24 @@ public class ConsolePresenter
     public void sessionEventHistoryModified(
             SessionEventHistoryModified change) {
         tabularEntityManager.updateChildEntityListForEvent(change.getEvent());
+    }
+
+    /**
+     * Respond to one or more events' lock statuses changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventsLockStatusModified(
+            SessionEventsLockStatusModified change) {
+        for (String eventIdentifier : change.getEventIdentifiers()) {
+            IHazardEventView event = getModel().getEventManager()
+                    .getEventById(eventIdentifier);
+            if (event != null) {
+                tabularEntityManager.replaceRootEntityForEvent(event);
+            }
+        }
     }
 
     // Protected Methods
@@ -1455,7 +1479,7 @@ public class ConsolePresenter
      */
     private void checkForConflicts() {
         try {
-            Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> conflictMap = getModel()
+            Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictMap = getModel()
                     .getEventManager().getAllConflictingEvents();
             if (conflictMap.isEmpty() == false) {
                 consoleHandler.showUserConflictingHazardsWarning(conflictMap);

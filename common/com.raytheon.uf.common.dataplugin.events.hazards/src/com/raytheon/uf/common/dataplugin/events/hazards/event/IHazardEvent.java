@@ -19,19 +19,19 @@
  **/
 package com.raytheon.uf.common.dataplugin.events.hazards.event;
 
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.VisualFeature;
-import gov.noaa.gsd.common.visuals.VisualFeaturesList;
-
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Map;
 
-import com.raytheon.uf.common.dataplugin.events.IEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
+import com.raytheon.uf.common.message.WsId;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature;
+import gov.noaa.gsd.common.visuals.VisualFeaturesList;
 
 /**
  * Interface describing the methods that must be implemented by a class that
@@ -64,6 +64,7 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      visual features.
  * Sep 12, 2016 15934      Chris.Golden Changed hazard events to use advanced
  *                                      geometries instead of JTS geometries.
+ * Dec 19, 2016 21504      Robert.Blum  Changed userName and workstation to WsId.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag.
  * Feb 16, 2017 29138      Chris.Golden Removed the visible-in-history-list flag
  *                                      since use of the history list is being
@@ -74,17 +75,13 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      hazard event, since this flag must be
  *                                      persisted as part of the hazard event.
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
+ * Dec 11, 2017 20739      Chris.Golden Changed to extend {@link IHazardEventView}.
  * </pre>
  * 
  * @author mnash
  * @version 1.0
  */
-
-public interface IHazardEvent extends IEvent {
-
-    public enum Source {
-        USER, RECOMMENDER
-    };
+public interface IHazardEvent extends IReadableHazardEvent {
 
     public Comparator<IHazardEvent> SORT_BY_PERSIST_TIME = new Comparator<IHazardEvent>() {
         @Override
@@ -97,15 +94,6 @@ public interface IHazardEvent extends IEvent {
     };
 
     /**
-     * Determine whether or not the hazard event is currently in a modified
-     * state.
-     * 
-     * @return <code>true</code> if the hazard event is modified,
-     *         <code>false</code> otherwise.
-     */
-    public boolean isModified();
-
-    /**
      * Set the flag indicating whether or not the hazard event is currently in a
      * modified state.
      * 
@@ -115,62 +103,20 @@ public interface IHazardEvent extends IEvent {
      */
     public void setModified(boolean modified);
 
-    public Geometry getFlattenedGeometry();
-
-    public Geometry getProductGeometry();
-
-    public IAdvancedGeometry getGeometry();
-
-    /**
-     * Get the visual feature with the specified identifier.
-     * 
-     * @param identifier
-     *            Identifier of the visual feature.
-     * @return Visual feature with this identifier.
-     */
-    public VisualFeature getVisualFeature(String identifier);
-
-    /**
-     * Get the list of visual features.
-     * 
-     * @return List of visual features.
-     */
-    public VisualFeaturesList getVisualFeatures();
-
-    public String getSiteID();
-
     public void setSiteID(String site);
-
-    public String getEventID();
 
     public void setEventID(String eventId);
 
-    public String getDisplayEventID();
-
-    public HazardStatus getStatus();
-
     public void setStatus(HazardStatus state);
-
-    public String getPhenomenon();
 
     public void setPhenomenon(String phenomenon);
 
-    public String getSignificance();
-
     public void setSignificance(String significance);
-
-    public String getSubType();
 
     public void setSubType(String subtype);
 
-    public String getHazardType();
-
     public void setHazardType(String phenomenon, String significance,
             String subtype);
-
-    public String getPhensig();
-
-    public Date getCreationTime();
 
     public void setCreationTime(Date date);
 
@@ -180,15 +126,7 @@ public interface IHazardEvent extends IEvent {
 
     public void setInsertTime(Date date);
 
-    public Date getInsertTime();
-
-    public void setUserName(String userName);
-
-    public String getUserName();
-
-    public void setWorkStation(String workStation);
-
-    public String getWorkStation();
+    public void setWsId(WsId wsId);
 
     public void setTimeRange(Date startTime, Date endTime);
 
@@ -215,15 +153,9 @@ public interface IHazardEvent extends IEvent {
 
     public void setProductGeometry(Geometry geom);
 
-    public ProductClass getHazardMode();
-
     public void setHazardMode(ProductClass mode);
 
-    public Source getSource();
-
     public void setSource(Source source);
-
-    public Map<String, Serializable> getHazardAttributes();
 
     public void setHazardAttributes(Map<String, Serializable> attributes);
 
@@ -232,6 +164,4 @@ public interface IHazardEvent extends IEvent {
     public void addHazardAttributes(Map<String, Serializable> attributes);
 
     public void removeHazardAttribute(String key);
-
-    public Serializable getHazardAttribute(String key);
 }

@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
-
 import java.io.Serializable;
 import java.util.Map;
 
 import com.raytheon.uf.common.util.Pair;
+
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 
 /**
  * Description: Interface describing the methods required in an HMI component
@@ -42,6 +42,11 @@ import com.raytheon.uf.common.util.Pair;
  * Feb 03, 2017   15556    Chris.Golden Changed the event identifier to be an
  *                                      event version identifier, and added
  *                                      editability parameter.
+ * Dec 20, 2017   20739    Chris.Golden Added code to allow the removal of 
+ *                                      megawidget specifier managers that were
+ *                                      cached so that they can be forced to be
+ *                                      regenerated whenever a hazard event is
+ *                                      reselected.
  * </pre>
  * 
  * @author Chris.Golden
@@ -89,4 +94,15 @@ public interface IMetadataStateChanger extends
     public void changeMegawidgetMutableProperties(
             Pair<String, Integer> qualifier,
             Map<String, Map<String, Object>> mutableProperties);
+
+    /**
+     * Remove the megawidget specifier manager that is associated with the
+     * specified event version identifier.
+     * 
+     * @param qualifier
+     *            Event version identifier for which the megawidget specifiers
+     *            are to be removed.
+     */
+    public void removeMegawidgetSpecifierManager(
+            Pair<String, Integer> qualifier);
 }

@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.entities;
 
-import gov.noaa.gsd.common.visuals.SpatialEntity;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import gov.noaa.gsd.common.visuals.SpatialEntity;
 
 /**
  * Description: Identifier for a {@link SpatialEntity} generated to represent
- * the hatching of a {@link IHazardEvent} in the spatial display.
+ * the hatching of a {@link IHazardEventView} in the spatial display.
  * 
  * <pre>
  * 
@@ -24,13 +24,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * ------------ ---------- ------------ --------------------------
  * Jun 15, 2016   19537    Chris.Golden Initial creation.
  * Aug 28, 2016   19537    Chris.Golden Added toString() method.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class HazardEventHatchingEntityIdentifier extends
-        HazardEventEntityIdentifier {
+public class HazardEventHatchingEntityIdentifier
+        extends HazardEventEntityIdentifier {
 
     // Private Variables
 
@@ -73,14 +75,16 @@ public class HazardEventHatchingEntityIdentifier extends
             return false;
         }
         HazardEventHatchingEntityIdentifier otherIdentifier = (HazardEventHatchingEntityIdentifier) other;
-        return ((ugcIdentifier == otherIdentifier.ugcIdentifier) || ((ugcIdentifier != null) && ugcIdentifier
-                .equals(otherIdentifier.ugcIdentifier)));
+        return ((ugcIdentifier == otherIdentifier.ugcIdentifier)
+                || ((ugcIdentifier != null) && ugcIdentifier
+                        .equals(otherIdentifier.ugcIdentifier)));
     }
 
     @Override
     public int hashCode() {
-        return (int) (((ugcIdentifier == null ? 0L : (long) ugcIdentifier
-                .hashCode()) + super.hashCode()) % Integer.MAX_VALUE);
+        return (int) (((ugcIdentifier == null ? 0L
+                : (long) ugcIdentifier.hashCode()) + super.hashCode())
+                % Integer.MAX_VALUE);
     }
 
     @Override

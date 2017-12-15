@@ -20,6 +20,11 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Mar 03, 2016   14004    Chris.Golden Initial creation.
+ * Dec 17, 2017   20739    Chris.Golden Added methods to determine whether
+ *                                      or not they are the result of direct
+ *                                      user input, and whether or not they
+ *                                      require hazard events to not be
+ *                                      locked by other workstations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,9 +67,19 @@ public class RecommenderOriginator implements IOriginator {
     }
 
     @Override
+    public boolean isDirectResultOfUserInput() {
+        return false;
+    }
+
+    @Override
+    public boolean isNotLockedByOthersRequired() {
+        return true;
+    }
+
+    @Override
     public boolean equals(Object other) {
-        return ((other instanceof RecommenderOriginator) && name
-                .equals(((RecommenderOriginator) other).name));
+        return ((other instanceof RecommenderOriginator)
+                && name.equals(((RecommenderOriginator) other).name));
     }
 
     @Override

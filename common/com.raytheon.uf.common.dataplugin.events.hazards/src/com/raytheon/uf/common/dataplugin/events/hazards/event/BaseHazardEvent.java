@@ -31,6 +31,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.ProductClass;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil.IdDisplayType;
+import com.raytheon.uf.common.message.WsId;
 import com.vividsolutions.jts.geom.Geometry;
 
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
@@ -75,6 +76,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      AdvancedGeometryUtilities.
  * Oct 27, 2016 22956     Ben.Phillippe Changed getDisplayEventID to use
  *                                      FULL_ON_DIFF.
+ * Dec 12, 2016 21504      Robert.Blum  Updates to correctly revert non-issued
+ *                                      hazards.
  * Feb 01, 2017 15556      Chris.Golden Added visible-in-history-list flag. Also
  *                                      added insert time record.
  * Feb 16, 2017 29138      Chris.Golden Removed the visible-in-history-list flag
@@ -86,6 +89,8 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      hazard event, since this flag must be
  *                                      persisted as part of the hazard event.
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author mnash
@@ -126,9 +131,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     private Source source;
 
-    private String userName;
-
-    private String workStation;
+    private WsId wsId;
 
     private Map<String, Serializable> attributes;
 
@@ -137,7 +140,7 @@ public class BaseHazardEvent implements IHazardEvent {
         attributes.put(VISIBLE_GEOMETRY, HIGH_RESOLUTION_GEOMETRY_IS_VISIBLE);
     }
 
-    public BaseHazardEvent(IHazardEvent event) {
+    public BaseHazardEvent(IReadableHazardEvent event) {
         this();
         setModified(event.isModified());
         setEventID(event.getEventID());
@@ -153,8 +156,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setStatus(event.getStatus());
         setHazardMode(event.getHazardMode());
         setSource(event.getSource());
-        setWorkStation(event.getWorkStation());
-        setUserName(event.getUserName());
+        setWsId(event.getWsId());
         if (event.getHazardAttributes() != null) {
             getHazardAttributes().putAll(event.getHazardAttributes());
         }
@@ -378,7 +380,7 @@ public class BaseHazardEvent implements IHazardEvent {
 
     @Override
     public void setHazardAttributes(Map<String, Serializable> attributes) {
-        this.attributes = attributes;
+        this.attributes = new HashMap<>(attributes);
     }
 
     @Override
@@ -429,6 +431,7 @@ public class BaseHazardEvent implements IHazardEvent {
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((subtype == null) ? 0 : subtype.hashCode());
         result = prime * result + (modified ? 1 : 0);
+        result = prime * result + ((wsId == null) ? 0 : wsId.hashCode());
         return result;
     }
 
@@ -530,6 +533,13 @@ public class BaseHazardEvent implements IHazardEvent {
         } else if (!subtype.equals(other.subtype)) {
             return false;
         }
+        if (wsId == null) {
+            if (other.wsId != null) {
+                return false;
+            }
+        } else if (!wsId.equals(other.wsId)) {
+            return false;
+        }
         return (modified == other.modified);
     }
 
@@ -559,22 +569,12 @@ public class BaseHazardEvent implements IHazardEvent {
     }
 
     @Override
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public WsId getWsId() {
+        return wsId;
     }
 
     @Override
-    public String getUserName() {
-        return userName;
-    }
-
-    @Override
-    public void setWorkStation(String workStation) {
-        this.workStation = workStation;
-    }
-
-    @Override
-    public String getWorkStation() {
-        return workStation;
+    public void setWsId(WsId wsId) {
+        this.wsId = wsId;
     }
 }

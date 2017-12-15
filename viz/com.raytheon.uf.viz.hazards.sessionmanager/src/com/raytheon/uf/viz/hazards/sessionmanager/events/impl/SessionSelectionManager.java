@@ -27,6 +27,7 @@ import java.util.TreeSet;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Sets;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionLastAccessedEventModified;
@@ -53,13 +54,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
  *                                      they are selected.
  * Sep 27, 2017   38072    Chris.Golden Now makes use of batching of
  *                                      notifications.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to
+ *                                      directly mutable session
+ *                                      events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SessionSelectionManager
-        implements ISessionSelectionManager<ObservedHazardEvent> {
+public class SessionSelectionManager implements ISessionSelectionManager {
 
     // Private Static Constants
 
@@ -91,7 +94,7 @@ public class SessionSelectionManager
      * either a current version, one or more historical versions, or both, are
      * selected.
      */
-    private final List<ObservedHazardEvent> selectedEvents = new ArrayList<>();
+    private final List<IHazardEventView> selectedEvents = new ArrayList<>();
 
     /**
      * Identifiers of the events found within {@link #selectedEvents}.
@@ -160,8 +163,8 @@ public class SessionSelectionManager
     // Public Methods
 
     @Override
-    public boolean isSelected(ObservedHazardEvent event) {
-        return isSelected(event.getEventID());
+    public boolean isSelected(IHazardEventView eventView) {
+        return isSelected(eventView.getEventID());
     }
 
     @Override
@@ -176,7 +179,7 @@ public class SessionSelectionManager
     }
 
     @Override
-    public List<ObservedHazardEvent> getSelectedEvents() {
+    public List<IHazardEventView> getSelectedEvents() {
         return Collections.unmodifiableList(selectedEvents);
     }
 
@@ -204,13 +207,13 @@ public class SessionSelectionManager
 
     @Override
     public void setSelectedEvents(
-            Collection<ObservedHazardEvent> selectedEvents,
+            Collection<? extends IHazardEventView> selectedEventViews,
             IOriginator originator) {
 
         Set<String> selectedEventIdentifiers = new HashSet<>(
-                selectedEvents.size());
-        for (ObservedHazardEvent event : selectedEvents) {
-            selectedEventIdentifiers.add(event.getEventID());
+                selectedEventViews.size());
+        for (IHazardEventView eventView : selectedEventViews) {
+            selectedEventIdentifiers.add(eventView.getEventID());
         }
 
         setSelectedEventIdentifiers(selectedEventIdentifiers, originator);
@@ -230,16 +233,16 @@ public class SessionSelectionManager
          * a corresponding list of selected events.
          */
         Set<String> toBeSelected = selectedEventIdentifiers;
-        List<ObservedHazardEvent> selectedEvents = new ArrayList<>(
+        List<IHazardEventView> selectedEvents = new ArrayList<>(
                 toBeSelected.size());
         selectedEventIdentifiers = new LinkedHashSet<>(toBeSelected.size(),
                 1.0f);
         Set<Pair<String, Integer>> selectedCurrentAndHistoricalEventIdentifiers = new LinkedHashSet<>(
                 toBeSelected.size() * 2, 1.0f);
-        for (ObservedHazardEvent event : eventManager.getEvents()) {
-            String eventIdentifier = event.getEventID();
+        for (IHazardEventView eventView : eventManager.getEvents()) {
+            String eventIdentifier = eventView.getEventID();
             if (toBeSelected.contains(eventIdentifier)) {
-                selectedEvents.add(event);
+                selectedEvents.add(eventView);
                 selectedEventIdentifiers.add(eventIdentifier);
                 Pair<String, Integer> currentIdentifier = new Pair<>(
                         eventIdentifier, null);
@@ -303,16 +306,16 @@ public class SessionSelectionManager
          * will be selected. Then iterate through the session events in
          * canonical order, adding to these sets and lists as appropriate.
          */
-        List<ObservedHazardEvent> selectedEvents = new ArrayList<>(
+        List<IHazardEventView> selectedEvents = new ArrayList<>(
                 toBeSelected.size());
         Set<String> selectedEventIdentifiers = new LinkedHashSet<>(
                 toBeSelected.size(), 1.0f);
         Set<Pair<String, Integer>> selectedCurrentAndHistoricalEventIdentifiers = new LinkedHashSet<>(
                 toBeSelected.size(), 1.0f);
-        for (ObservedHazardEvent event : eventManager.getEvents()) {
-            String eventIdentifier = event.getEventID();
+        for (IHazardEventView eventView : eventManager.getEvents()) {
+            String eventIdentifier = eventView.getEventID();
             if (eventsToBeSelected.contains(eventIdentifier)) {
-                selectedEvents.add(event);
+                selectedEvents.add(eventView);
                 selectedEventIdentifiers.add(eventIdentifier);
                 if (currentEventsToBeSelected.contains(eventIdentifier)) {
                     selectedCurrentAndHistoricalEventIdentifiers.add(
@@ -485,7 +488,7 @@ public class SessionSelectionManager
                         selectedEventVersionIdentifier.getFirst(), null)) ? 1
                                 : 0)
                 + (selectedIndices != null ? selectedIndices.size() : 0);
-        ObservedHazardEvent removedEvent = null;
+        IHazardEventView removedEventView = null;
         if (numSelectedVersions == 1) {
             int removalIndex = selectedEventIdentifiersOrdered
                     .indexOf(selectedEventVersionIdentifier.getFirst());
@@ -493,7 +496,7 @@ public class SessionSelectionManager
                 selectedEventIdentifiers
                         .remove(selectedEventVersionIdentifier.getFirst());
                 selectedEventIdentifiersOrdered.remove(removalIndex);
-                removedEvent = selectedEvents.remove(removalIndex);
+                removedEventView = selectedEvents.remove(removalIndex);
             } else {
                 throw new IllegalStateException(
                         "event to be deselected not found in list of selected session events");
@@ -532,7 +535,7 @@ public class SessionSelectionManager
          */
         notificationSender
                 .postNotificationAsync(new SessionSelectedEventsModified(this,
-                        (removedEvent != null
+                        (removedEventView != null
                                 ? Sets.newHashSet(selectedEventVersionIdentifier
                                         .getFirst())
                                 : Collections.<String> emptySet()),
@@ -543,9 +546,9 @@ public class SessionSelectionManager
          * Update information about conflicts for selected events if no version
          * of this event is selected any longer.
          */
-        if (removedEvent != null) {
+        if (removedEventView != null) {
             eventManager.updateConflictingEventsForSelectedEventIdentifiers(
-                    removedEvent, true);
+                    removedEventView, true);
         }
 
         notificationSender.finishAccumulatingAsyncNotifications();
@@ -704,8 +707,8 @@ public class SessionSelectionManager
     /**
      * Set the selection lists and sets to those specified.
      * 
-     * @param selectedEvents
-     *            Current versions of events that are to be selected.
+     * @param selectedEventViews
+     *            Views of current versions of events that are to be selected.
      * @param selectedEventIdentifiers
      *            Idenifiers of the selected hazard events; must iterate in the
      *            order in which the identifiers are to be used.
@@ -725,7 +728,7 @@ public class SessionSelectionManager
      *            within <code>selectedEventIdentifiers</code>.
      */
     private void setSelectedEventIdentifiers(
-            List<ObservedHazardEvent> selectedEvents,
+            List<IHazardEventView> selectedEventViews,
             Set<String> selectedEventIdentifiers,
             Set<Pair<String, Integer>> selectedCurrentAndHistoricalEventIdentifiers,
             IOriginator originator,
@@ -754,7 +757,7 @@ public class SessionSelectionManager
          * new identifiers.
          */
         this.selectedEvents.clear();
-        this.selectedEvents.addAll(selectedEvents);
+        this.selectedEvents.addAll(selectedEventViews);
         this.selectedEventIdentifiers.clear();
         this.selectedEventIdentifiers.addAll(selectedEventIdentifiers);
         this.selectedEventIdentifiersOrdered.clear();
@@ -899,12 +902,12 @@ public class SessionSelectionManager
          */
         int insertionIndex = 0;
         int currentAndHistoricalInsertionIndex = 0;
-        ObservedHazardEvent selectedEvent = null;
-        for (ObservedHazardEvent event : eventManager.getEvents()) {
-            String eventIdentifier = event.getEventID();
+        IHazardEventView selectedEventView = null;
+        for (IHazardEventView eventView : eventManager.getEvents()) {
+            String eventIdentifier = eventView.getEventID();
             if (eventIdentifier
                     .equals(selectedEventVersionIdentifier.getFirst())) {
-                selectedEvent = event;
+                selectedEventView = eventView;
                 if (selectedEventVersionIdentifier.getSecond() != null) {
                     if (selectedCurrentAndHistoricalEventIdentifiers
                             .contains(new Pair<>(eventIdentifier, null))) {
@@ -940,11 +943,11 @@ public class SessionSelectionManager
          * and the combination current and historical versions as appropriate.
          */
         boolean addOverallEvent = false;
-        if (selectedEvent != null) {
+        if (selectedEventView != null) {
             if (selectedEventIdentifiers.contains(
                     selectedEventVersionIdentifier.getFirst()) == false) {
                 addOverallEvent = true;
-                selectedEvents.add(insertionIndex, selectedEvent);
+                selectedEvents.add(insertionIndex, selectedEventView);
                 selectedEventIdentifiers
                         .add(selectedEventVersionIdentifier.getFirst());
                 selectedEventIdentifiersOrdered.add(insertionIndex,
@@ -992,7 +995,7 @@ public class SessionSelectionManager
          * Update information about conflicts for selected events.
          */
         eventManager.updateConflictingEventsForSelectedEventIdentifiers(
-                selectedEvent, false);
+                selectedEventView, false);
 
         notificationSender.finishAccumulatingAsyncNotifications();
     }
@@ -1067,15 +1070,15 @@ public class SessionSelectionManager
         int insertionIndex = 0;
         int currentAndHistoricalInsertionIndex = 0;
         Pair<String, Integer> lastAdded = null;
-        for (ObservedHazardEvent event : eventManager.getEvents()) {
+        for (IHazardEventView eventView : eventManager.getEvents()) {
 
             /*
              * If this overall event has not yet been selected, insert it into
              * the selection set.
              */
-            String eventIdentifier = event.getEventID();
+            String eventIdentifier = eventView.getEventID();
             boolean selectedSomething = false;
-            if (newlySelectedEventIdentifiers.remove(event.getEventID())) {
+            if (newlySelectedEventIdentifiers.remove(eventView.getEventID())) {
 
                 /*
                  * Add the event and its identifier to the appropriate lists and
@@ -1084,7 +1087,7 @@ public class SessionSelectionManager
                 this.selectedEventIdentifiers.add(eventIdentifier);
                 this.selectedEventIdentifiersOrdered.add(insertionIndex,
                         eventIdentifier);
-                this.selectedEvents.add(insertionIndex, event);
+                this.selectedEvents.add(insertionIndex, eventView);
                 insertionIndex++;
                 selectedSomething = true;
             }
@@ -1299,16 +1302,17 @@ public class SessionSelectionManager
          */
         int removalIndex = 0;
         int currentAndHistoricalRemovalIndex = 0;
-        for (ObservedHazardEvent event : eventManager.getEvents()) {
+        for (IHazardEventView eventView : eventManager.getEvents()) {
 
             /*
              * If this overall event is to be deselected, removal it from the
              * selection set. Otherwise, if it is selected, increment the
              * removal index to bypass it.
              */
-            String eventIdentifier = event.getEventID();
+            String eventIdentifier = eventView.getEventID();
             boolean deselectedSomething = false;
-            if (newlyDeselectedEventIdentifiers.remove(event.getEventID())) {
+            if (newlyDeselectedEventIdentifiers
+                    .remove(eventView.getEventID())) {
 
                 /*
                  * Remove the event and its identifier from the appropriate

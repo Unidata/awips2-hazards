@@ -10,6 +10,7 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 
 import gov.noaa.gsd.common.utilities.IMergeable;
 
@@ -28,6 +29,8 @@ import gov.noaa.gsd.common.utilities.IMergeable;
  * ------------ ---------- ----------- --------------------------
  * Sep 20, 2017   38072    Chris.Golden Initial creation.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  *
  * @author Chris.Golden
@@ -44,7 +47,7 @@ public interface IEventModification extends IMergeable<IEventModification> {
      * @param targetEvent
      *            Event to which to apply the modification.
      */
-    public void apply(IHazardEvent sourceEvent, IHazardEvent targetEvent);
+    public void apply(IHazardEventView sourceEvent, IHazardEvent targetEvent);
     //
     // /*
     // * If this method is not overridden in implementations, it returns a merge

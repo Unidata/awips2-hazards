@@ -41,14 +41,17 @@ import com.google.common.collect.Lists;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.BaseHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.hydro.RiverForecastManager;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
@@ -69,12 +72,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManage
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventCheckedStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsRemoved;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionSelectedEventsModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
@@ -210,6 +213,7 @@ import net.engio.mbassy.listener.Handler;
  * Oct 19, 2016 21873      Chris.Golden      Adjusted selected time rounding to work with different
  *                                           hazard event types' different time resolutions.
  * Nov 03, 2016 22960      bkowal            Notify the user if a gage is not selected.
+ * Dec 12, 2016 21504      Robert.Blum       Updates for hazard locking.
  * Dec 14, 2016 26813      bkowal            Use the active Hazard Services site when determining
  *                                           which counties to render for "Select by Area".
  * Feb 01, 2017 15556      Chris.Golden      Changed to use new selection manager. Also changed to
@@ -220,6 +224,9 @@ import net.engio.mbassy.listener.Handler;
  *                                           exceptions that could occur if the user added or
  *                                           removed vertices from a spatial entity soon after
  *                                           starting Hazard Services.
+ * Apr 05, 2017 32733      Robert.Blum       Changed lock status modified handler to deal with new
+ *                                           version of notification that notifies of one or more
+ *                                           lock statuses changing.
  * Mar 16, 2017 15528      Chris.Golden      Added notification handler for checked-status changes
  *                                           to hazard events, now that checked status is being
  *                                           tracked by the event manager instead of as part of
@@ -236,13 +243,15 @@ import net.engio.mbassy.listener.Handler;
  * Oct 23, 2017 21730      Chris.Golden      Added use of default hazard type for manually created
  *                                           hazard events.
  * Dec 07, 2017 41886      Chris.Golden      Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly mutable session
+ *                                           events.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SpatialPresenter extends
-        HazardServicesPresenter<ISpatialView<?, ?>> implements IOriginator {
+public class SpatialPresenter
+        extends HazardServicesPresenter<ISpatialView<?, ?>> {
 
     // Public Enumerated Types
 
@@ -529,10 +538,10 @@ public class SpatialPresenter extends
     /**
      * Comparator to be used to send selected events to the front of the list.
      */
-    private final Comparator<ObservedHazardEvent> sendSelectedToFront = new Comparator<ObservedHazardEvent>() {
+    private final Comparator<IReadableHazardEvent> sendSelectedToFront = new Comparator<IReadableHazardEvent>() {
 
         @Override
-        public int compare(ObservedHazardEvent o1, ObservedHazardEvent o2) {
+        public int compare(IReadableHazardEvent o1, IReadableHazardEvent o2) {
             boolean s1 = selectedEventIdentifiers.contains(o1.getEventID());
             boolean s2 = selectedEventIdentifiers.contains(o2.getEventID());
             if (s1) {
@@ -551,7 +560,7 @@ public class SpatialPresenter extends
     /**
      * Comparator to be used to send selected events to the back of the list.
      */
-    private final Comparator<ObservedHazardEvent> sendSelectedToBack = Collections
+    private final Comparator<IReadableHazardEvent> sendSelectedToBack = Collections
             .reverseOrder(sendSelectedToFront);
 
     /**
@@ -571,8 +580,7 @@ public class SpatialPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public SpatialPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public SpatialPresenter(ISessionManager<ObservedSettings> model,
             ISpatialDisplayHandler displayHandler,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
@@ -613,11 +621,9 @@ public class SpatialPresenter extends
          * Iterate through the events that have changed selection state, and
          * regenerate and replace each of their spatial entities.
          */
-        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                .getEventManager();
+        ISessionEventManager eventManager = getModel().getEventManager();
         for (String eventIdentifier : change.getEventIdentifiers()) {
-            ObservedHazardEvent event = eventManager
-                    .getEventById(eventIdentifier);
+            IHazardEventView event = eventManager.getEventById(eventIdentifier);
             if (event != null) {
                 spatialEntityManager.replaceEntitiesForEvent(event, false,
                         false);
@@ -672,6 +678,25 @@ public class SpatialPresenter extends
             SessionEventCheckedStateModified change) {
         spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
                 false);
+    }
+
+    /**
+     * Respond to one or more events' lock statuses changing.
+     * 
+     * @param change
+     *            Change that occurred.
+     */
+    @Handler
+    public void sessionEventsLockStatusModified(
+            SessionEventsLockStatusModified change) {
+        for (String eventIdentifier : change.getEventIdentifiers()) {
+            IHazardEventView event = getModel().getEventManager()
+                    .getEventById(eventIdentifier);
+            if (event != null) {
+                spatialEntityManager.replaceEntitiesForEvent(event, false,
+                        false);
+            }
+        }
     }
 
     /**
@@ -780,9 +805,8 @@ public class SpatialPresenter extends
          * entities, or do nothing for an event if the time change does not
          * warrant it.
          */
-        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                .getEventManager();
-        for (ObservedHazardEvent event : eventManager.getEvents()) {
+        ISessionEventManager eventManager = getModel().getEventManager();
+        for (IHazardEventView event : eventManager.getEvents()) {
             EventDisplayChange action = spatialEntityManager
                     .getSpatialEntityActionForEventWithChangedSelectedTime(
                             event, lastSelectedTime, newSelectedTime);
@@ -978,10 +1002,10 @@ public class SpatialPresenter extends
          * If a spatial entity identifier was chosen and it is for a hazard
          * event, use that event as the current event; otherwise, use no event.
          */
-        final ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                .getEventManager();
-        ISessionSelectionManager<ObservedHazardEvent> selectionManager = getModel()
+        final ISessionEventManager eventManager = getModel().getEventManager();
+        ISessionSelectionManager selectionManager = getModel()
                 .getSelectionManager();
+        ISessionLockManager lockManager = getModel().getLockManager();
         if (entityIdentifier instanceof IHazardEventEntityIdentifier) {
             eventManager.setCurrentEvent(
                     ((IHazardEventEntityIdentifier) entityIdentifier)
@@ -1014,7 +1038,9 @@ public class SpatialPresenter extends
          * any,
          */
         List<IContributionItem> spatialItems = new ArrayList<>();
-        if (eventManager.isCurrentEvent()) {
+        if (eventManager.isCurrentEvent() && (lockManager
+                .getHazardEventLockStatus(eventManager.getCurrentEvent()
+                        .getEventID()) != LockStatus.LOCKED_BY_OTHER)) {
             GeometryResolution resolution = getGeometryResolutionForEvent(
                     eventManager.getCurrentEvent());
             if (resolution == GeometryResolution.LOW) {
@@ -1051,9 +1077,13 @@ public class SpatialPresenter extends
          */
         EnumSet<GeometryResolution> resolutionsFound = EnumSet
                 .noneOf(GeometryResolution.class);
-        List<ObservedHazardEvent> selectedEvents = selectionManager
+        List<IHazardEventView> selectedEvents = selectionManager
                 .getSelectedEvents();
-        for (ObservedHazardEvent event : selectedEvents) {
+        for (IHazardEventView event : selectedEvents) {
+            if (lockManager.getHazardEventLockStatus(
+                    event.getEventID()) == LockStatus.LOCKED_BY_OTHER) {
+                continue;
+            }
             GeometryResolution resolution = getGeometryResolutionForEvent(
                     event);
             if (resolution != null) {
@@ -1096,10 +1126,12 @@ public class SpatialPresenter extends
          * process.
          */
         if (selectedEvents.size() == 1) {
-            ObservedHazardEvent event = selectedEvents.get(0);
+            IHazardEventView event = selectedEvents.get(0);
             List<?> contextMenuEntries = (List<?>) event.getHazardAttribute(
                     HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
-            if (contextMenuEntries != null) {
+            if ((lockManager.getHazardEventLockStatus(
+                    event.getEventID()) != LockStatus.LOCKED_BY_OTHER)
+                    && contextMenuEntries != null) {
                 ISessionConfigurationManager<ObservedSettings> configManager = getModel()
                         .getConfigurationManager();
                 for (Object contextMenuEntry : contextMenuEntries) {
@@ -1207,7 +1239,8 @@ public class SpatialPresenter extends
      * @param geometry
      *            New geometry that has been created.
      */
-    private IHazardEvent handleUserShapeCreation(IAdvancedGeometry geometry) {
+    private IHazardEventView handleUserShapeCreation(
+            IAdvancedGeometry geometry) {
         return buildHazardEvent(geometry, true);
     }
 
@@ -1257,9 +1290,8 @@ public class SpatialPresenter extends
              */
             IHazardEventEntityIdentifier hazardIdentifier = (IHazardEventEntityIdentifier) context
                     .getIdentifier();
-            ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                    .getEventManager();
-            ObservedHazardEvent event = eventManager
+            ISessionEventManager eventManager = getModel().getEventManager();
+            IHazardEventView event = eventManager
                     .getEventById(hazardIdentifier.getEventIdentifier());
             if (event != null) {
 
@@ -1281,8 +1313,19 @@ public class SpatialPresenter extends
                                 getTimeAtResolutionForEvent(event.getEventID(),
                                         context.getSelectedTime()),
                                 context.getGeometry());
-                        event.setVisualFeature(feature,
-                                UIOriginator.SPATIAL_DISPLAY);
+
+                        /*
+                         * Replace the visual feature; if the replacement is
+                         * rejected, redraw the event containing the visual
+                         * feature.
+                         */
+                        if (eventManager.changeEventProperty(event,
+                                ISessionEventManager.REPLACE_EVENT_VISUAL_FEATURE,
+                                feature,
+                                UIOriginator.SPATIAL_DISPLAY) != ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+                            spatialEntityManager.replaceEntitiesForEvent(event,
+                                    false, true);
+                        }
                     }
                 } else {
 
@@ -1301,9 +1344,10 @@ public class SpatialPresenter extends
                      * Attempt to set the event geometry; if the geometry is
                      * rejected, redraw the event containing the geometry.
                      */
-                    if (eventManager.setEventGeometry(event,
+                    if (eventManager.changeEventProperty(event,
+                            ISessionEventManager.SET_EVENT_GEOMETRY,
                             context.getGeometry(),
-                            UIOriginator.SPATIAL_DISPLAY) == false) {
+                            UIOriginator.SPATIAL_DISPLAY) != ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
                         spatialEntityManager.replaceEntitiesForEvent(event,
                                 false, true);
                     }
@@ -1341,20 +1385,24 @@ public class SpatialPresenter extends
          * the change. Otherwise, create a new hazard event.
          */
         String eventIdentifier = null;
-        ISessionEventManager<ObservedHazardEvent> eventManager = getModel()
-                .getEventManager();
+        ISessionEventManager eventManager = getModel().getEventManager();
         if (context.getIdentifier() != null) {
             eventIdentifier = ((IHazardEventEntityIdentifier) context
                     .getIdentifier()).getEventIdentifier();
-            eventManager.setEventGeometry(
-                    eventManager.getEventById(eventIdentifier), newGeometry,
-                    UIOriginator.SPATIAL_DISPLAY);
+            if (eventManager.changeEventProperty(
+                    eventManager.getEventById(eventIdentifier),
+                    ISessionEventManager.SET_EVENT_GEOMETRY, newGeometry,
+                    UIOriginator.SPATIAL_DISPLAY) != ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+                spatialEntityManager.replaceEntitiesForEvent(
+                        eventManager.getEventById(eventIdentifier), false,
+                        true);
+            }
         } else {
 
             /*
              * Create the event.
              */
-            IHazardEvent hazardEvent = buildHazardEvent(newGeometry, false);
+            IHazardEventView hazardEvent = buildHazardEvent(newGeometry, false);
             if (hazardEvent == null) {
                 return;
             }
@@ -1366,15 +1414,25 @@ public class SpatialPresenter extends
              * as well as the add/remove shapes menu item as a context menu
              * possibility.
              */
-            hazardEvent.addHazardAttribute(
-                    HazardConstants.GEOMETRY_REFERENCE_KEY,
-                    context.getDatabaseTableName());
-            hazardEvent.addHazardAttribute(
-                    HazardConstants.GEOMETRY_MAP_NAME_KEY, context.getLegend());
-            hazardEvent.addHazardAttribute(
-                    HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
-                    Lists.newArrayList(
-                            HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES));
+            eventManager.changeEventProperty(hazardEvent,
+                    ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                    new Pair<String, Serializable>(
+                            HazardConstants.GEOMETRY_REFERENCE_KEY,
+                            context.getDatabaseTableName()),
+                    UIOriginator.SPATIAL_DISPLAY);
+            eventManager.changeEventProperty(hazardEvent,
+                    ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                    new Pair<String, Serializable>(
+                            HazardConstants.GEOMETRY_MAP_NAME_KEY,
+                            context.getLegend()),
+                    UIOriginator.SPATIAL_DISPLAY);
+            eventManager.changeEventProperty(hazardEvent,
+                    ISessionEventManager.ADD_EVENT_ATTRIBUTE,
+                    new Pair<String, Serializable>(
+                            HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                            Lists.newArrayList(
+                                    HazardConstants.CONTEXT_MENU_ADD_REMOVE_SHAPES)),
+                    UIOriginator.SPATIAL_DISPLAY);
         }
 
         selectByAreaGeometriesForEventIdentifiers.put(eventIdentifier,
@@ -1409,7 +1467,7 @@ public class SpatialPresenter extends
          * event identifiers, since this method may be called as Hazard Services
          * is closing.
          */
-        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getModel();
+        ISessionManager<ObservedSettings> sessionManager = getModel();
         if (sessionManager != null) {
             getModel().getSelectionManager().setSelectedEventIdentifiers(
                     eventIdentifiers, UIOriginator.SPATIAL_DISPLAY);
@@ -1423,7 +1481,7 @@ public class SpatialPresenter extends
      *            Location selected by the user.
      */
     private void handleUserLocationSelection(Coordinate location) {
-        getModel().getEventManager().addOrRemoveEnclosingUGCs(location,
+        getModel().getEventManager().addOrRemoveEnclosingUgcs(location,
                 UIOriginator.SPATIAL_DISPLAY);
     }
 
@@ -1514,7 +1572,7 @@ public class SpatialPresenter extends
      * Set the undo and redo enabled state as appropriate.
      */
     private void setUndoRedoEnableState() {
-        ISessionManager<ObservedHazardEvent, ObservedSettings> sessionManager = getModel();
+        ISessionManager<ObservedSettings> sessionManager = getModel();
         if (sessionManager == null) {
             return;
         }
@@ -1533,7 +1591,7 @@ public class SpatialPresenter extends
      *         event has no type.
      */
     private GeometryResolution getGeometryResolutionForEvent(
-            ObservedHazardEvent event) {
+            IHazardEventView event) {
         if (event.getHazardType() == null) {
             return null;
         }
@@ -1603,8 +1661,8 @@ public class SpatialPresenter extends
         /*
          * If there is not exactly one selected event, do nothing.
          */
-        List<ObservedHazardEvent> selectedEvents = getModel()
-                .getSelectionManager().getSelectedEvents();
+        List<IHazardEventView> selectedEvents = getModel().getSelectionManager()
+                .getSelectedEvents();
         if (selectedEvents.size() != 1) {
             return null;
         }
@@ -1613,7 +1671,7 @@ public class SpatialPresenter extends
          * If the event's geometry was created using select-by-area, then get
          * the necessary information and return it.
          */
-        ObservedHazardEvent event = selectedEvents.get(0);
+        IHazardEventView event = selectedEvents.get(0);
         if (event.getHazardAttributes()
                 .containsKey(HazardConstants.GEOMETRY_REFERENCE_KEY)) {
             String eventIdentifier = event.getEventID();
@@ -1646,7 +1704,7 @@ public class SpatialPresenter extends
      * @return Hazard event, or <code>null</code> if the geometry was checked
      *         and found to be invalid.
      */
-    private IHazardEvent buildHazardEvent(IAdvancedGeometry geometry,
+    private IHazardEventView buildHazardEvent(IAdvancedGeometry geometry,
             boolean checkValidity) {
         if (checkValidity && (geometry.isValid() == false)) {
             statusHandler.handle(Priority.WARN,
@@ -1672,13 +1730,12 @@ public class SpatialPresenter extends
      *         from the event manager, or <code>null</code> if a problem
      *         occurred.
      */
-    private ObservedHazardEvent addEvent(IHazardEvent event) {
+    private IHazardEventView addEvent(IHazardEvent event) {
 
         /*
          * Update the event user and workstation based on who created the event.
          */
-        event.setUserName(LocalizationManager.getInstance().getCurrentUser());
-        event.setWorkStation(VizApp.getHostName());
+        event.setWsId(VizApp.getWsId());
 
         /*
          * If the geometry is to be added to the selected hazard, do this and do
@@ -1690,7 +1747,7 @@ public class SpatialPresenter extends
                 && (getModel().getSelectionManager().getSelectedEvents()
                         .size() == 1)) {
 
-            ObservedHazardEvent existingEvent = getModel().getSelectionManager()
+            IHazardEventView existingEvent = getModel().getSelectionManager()
                     .getSelectedEvents().get(0);
 
             /*
@@ -1709,10 +1766,16 @@ public class SpatialPresenter extends
              */
             if (getModel().getEventManager().isValidGeometryChange(geometry,
                     existingEvent, true)) {
-                getModel().getEventManager().setEventGeometry(existingEvent,
-                        geometry, UIOriginator.SPATIAL_DISPLAY);
-                existingEvent.removeHazardAttribute(
-                        HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY);
+                if (getModel().getEventManager().changeEventProperty(
+                        existingEvent, ISessionEventManager.SET_EVENT_GEOMETRY,
+                        geometry,
+                        UIOriginator.SPATIAL_DISPLAY) == ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+                    getModel().getEventManager().changeEventProperty(
+                            existingEvent,
+                            ISessionEventManager.REMOVE_EVENT_ATTRIBUTE,
+                            HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                            UIOriginator.SPATIAL_DISPLAY);
+                }
             }
 
             return existingEvent;
@@ -1720,9 +1783,10 @@ public class SpatialPresenter extends
 
         try {
             getModel().startBatchedChanges();
-            ObservedHazardEvent addedEvent = getModel().getEventManager()
+            IHazardEventView addedEvent = getModel().getEventManager()
                     .addEvent(event, UIOriginator.SPATIAL_DISPLAY);
-            getModel().getEventManager().setEventTypeToDefault(addedEvent,
+            getModel().getEventManager().changeEventProperty(addedEvent,
+                    ISessionEventManager.SET_EVENT_TYPE_TO_DEFAULT, null,
                     UIOriginator.SPATIAL_DISPLAY);
             return addedEvent;
         } catch (HazardEventServiceException e) {
@@ -1756,11 +1820,11 @@ public class SpatialPresenter extends
      * Center and zoom the display given the currently selected hazard events.
      */
     private void updateCenteringAndZoomLevel() {
-        List<ObservedHazardEvent> selectedEvents = getModel()
-                .getSelectionManager().getSelectedEvents();
+        List<IHazardEventView> selectedEvents = getModel().getSelectionManager()
+                .getSelectedEvents();
         if (selectedEvents.isEmpty() == false) {
             List<Geometry> geometriesOfSelected = new ArrayList<>();
-            for (ObservedHazardEvent selectedEvent : selectedEvents) {
+            for (IHazardEventView selectedEvent : selectedEvents) {
                 geometriesOfSelected.add(selectedEvent.getFlattenedGeometry());
             }
             Geometry[] asArray = new Geometry[geometriesOfSelected.size()];

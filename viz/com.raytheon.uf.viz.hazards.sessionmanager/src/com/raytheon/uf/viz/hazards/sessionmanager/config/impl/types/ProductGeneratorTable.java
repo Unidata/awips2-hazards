@@ -21,10 +21,9 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl.types;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map.Entry;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
 
 /**
@@ -34,24 +33,27 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductFormats;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * May 29, 2013 1257       bsteffen    Initial creation
- * Apr 24, 2014 1480       jsanchez    Added getProductFormats method.
- * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator init costs immediately
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * May 29, 2013 1257       bsteffen     Initial creation
+ * Apr 24, 2014 1480       jsanchez     Added getProductFormats method.
+ * Feb 15, 2015 2271       Dan Schaffer Incur recommender/product generator
+ *                                      init costs immediately
  * May 18, 2015 8227       Chris.Cody   Remove NullRecommender
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 
-public class ProductGeneratorTable extends
-        HashMap<String, ProductGeneratorEntry> {
+public class ProductGeneratorTable
+        extends HashMap<String, ProductGeneratorEntry> {
 
     private static final long serialVersionUID = -6842654894871115837L;
 
-    public String getProduct(IHazardEvent event) {
+    public String getProduct(IReadableHazardEvent event) {
         String key = HazardEventUtilities.getHazardType(event);
         for (Entry<String, ProductGeneratorEntry> entry : entrySet()) {
             for (String[] pair : entry.getValue().getAllowedHazards()) {
@@ -68,10 +70,10 @@ public class ProductGeneratorTable extends
 
         ProductGeneratorEntry entry = get(productGeneratorName);
         if (entry != null) {
-            productFormats.setIssueFormats(Arrays.asList(entry
-                    .getIssueFormatters()));
-            productFormats.setPreviewFormats(Arrays.asList(entry
-                    .getPreviewFormatters()));
+            productFormats
+                    .setIssueFormats(Arrays.asList(entry.getIssueFormatters()));
+            productFormats.setPreviewFormats(
+                    Arrays.asList(entry.getPreviewFormatters()));
         }
 
         return productFormats;

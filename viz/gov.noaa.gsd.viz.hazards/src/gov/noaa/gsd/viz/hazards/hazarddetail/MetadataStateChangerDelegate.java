@@ -9,16 +9,16 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import java.io.Serializable;
+import java.util.Map;
+
+import com.raytheon.uf.common.util.Pair;
+
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.viz.hazards.ui.QualifiedPrincipalRunnableTask;
 import gov.noaa.gsd.viz.hazards.ui.QualifiedStateChangerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ViewPartQualifiedWidgetDelegateHelper;
 import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-
-import java.io.Serializable;
-import java.util.Map;
-
-import com.raytheon.uf.common.util.Pair;
 
 /**
  * A metadata state changer delegate, used by a {@link HazardDetailView} object
@@ -43,13 +43,17 @@ import com.raytheon.uf.common.util.Pair;
  *                                      a hazard event is selected, it triggers
  *                                      the reinitialization.
  * Feb 03, 2017   15556    Chris.Golden Added editability parameter.
+ * Dec 20, 2017   20739    Chris.Golden Added code to allow the removal of 
+ *                                      megawidget specifier managers that were
+ *                                      cached so that they can be forced to be
+ *                                      regenerated whenever a hazard event is
+ *                                      reselected.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-class MetadataStateChangerDelegate
-        extends
+class MetadataStateChangerDelegate extends
         QualifiedStateChangerDelegate<Pair<String, Integer>, String, Serializable, IMetadataStateChanger>
         implements IMetadataStateChanger {
 
@@ -77,28 +81,45 @@ class MetadataStateChangerDelegate
             final MegawidgetSpecifierManager specifierManager,
             final Map<String, Serializable> metadataStates,
             final boolean editable, final boolean reinitializeIfUnchanged) {
-        runOrScheduleTask(new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
+        runOrScheduleTask(
+                new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
 
-            @Override
-            public void run() {
-                getPrincipal().setMegawidgetSpecifierManager(
-                        eventVersionIdentifier, specifierManager,
-                        metadataStates, editable, reinitializeIfUnchanged);
-            }
-        });
+                    @Override
+                    public void run() {
+                        getPrincipal().setMegawidgetSpecifierManager(
+                                eventVersionIdentifier, specifierManager,
+                                metadataStates, editable,
+                                reinitializeIfUnchanged);
+                    }
+                });
     }
 
     @Override
     public void changeMegawidgetMutableProperties(
             final Pair<String, Integer> eventVersionIdentifier,
             final Map<String, Map<String, Object>> mutableProperties) {
-        runOrScheduleTask(new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
+        runOrScheduleTask(
+                new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
 
-            @Override
-            public void run() {
-                getPrincipal().changeMegawidgetMutableProperties(
-                        eventVersionIdentifier, mutableProperties);
-            }
-        });
+                    @Override
+                    public void run() {
+                        getPrincipal().changeMegawidgetMutableProperties(
+                                eventVersionIdentifier, mutableProperties);
+                    }
+                });
+    }
+
+    @Override
+    public void removeMegawidgetSpecifierManager(
+            final Pair<String, Integer> eventVersionIdentifier) {
+        runOrScheduleTask(
+                new QualifiedPrincipalRunnableTask<Pair<String, Integer>, String, IMetadataStateChanger>() {
+
+                    @Override
+                    public void run() {
+                        getPrincipal().removeMegawidgetSpecifierManager(
+                                eventVersionIdentifier);
+                    }
+                });
     }
 }

@@ -24,6 +24,8 @@ Prob_WFO = {
     "displayName": "Probabilistic Convective",
     "possibleSites": ["National"],
     "visibleSites": ["National"],
+
+    "eventIdDisplayType": "ONLY_SERIAL",
     
     "deselectAfterIssuing": True,
     
@@ -46,6 +48,7 @@ Prob_WFO = {
     "timeResolution": "seconds",
     "visibleColumns": [
         "Event ID",
+        "Lock Status",
         "Object ID",
         "Hazard Type",
         "Status",
@@ -69,6 +72,11 @@ Prob_WFO = {
             "fieldName": "displayEventID",
             "sortDir": "none",
             "width": 100
+        },
+        "Lock Status": {
+            "type": "string",
+            "fieldName": "lockStatus",
+            "sortDir": "none",
         },
         "Hazard Type": {
             "type": "string",

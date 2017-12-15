@@ -36,6 +36,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardStatus;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.collections.HazardHistoryList;
+import com.raytheon.uf.common.message.WsId;
 import com.vividsolutions.jts.geom.Geometry;
 
 /**
@@ -66,13 +67,17 @@ import com.vividsolutions.jts.geom.Geometry;
  * Aug 03, 2015 8836       Chris.Cody   Changes for a configurable Event Id
  * Aug 26, 2015 9386       mduff        Fixed getPhenSig method.
  * Oct 13, 2015 12494      Chris Golden Reworked to allow hazard types to include
- *                                      only phenomenon (i.e. no significance) where
- *                                      appropriate.
+ *                                      only phenomenon (i.e. no significance)
+ *                                      where appropriate.
  * Feb 16, 2017 29138      Chris.Golden Changed to work with new version of the
  *                                      hazard event manager.
- * Apr 13, 2017 33142      Chris.Golden Added method to construct a string holding a
- *                                      hazard type given an array of strings giving
- *                                      the phen, sig, etc.
+ * Mar 06, 2017 21504      Robert.Blum  Added compareWsIds() to compare two such
+ *                                      objects ignoring their thread identifiers.
+ * Apr 13, 2017 33142      Chris.Golden Added method to construct a string
+ *                                      holding a hazard type given an array of
+ *                                      strings giving the phen, sig, etc.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author bsteffen
@@ -85,8 +90,8 @@ public class HazardEventUtilities {
     /**
      * Hazard event attribute describer.
      */
-    private static class HazardEventAttributeDescriber implements
-            IHazardEventParameterDescriber {
+    private static class HazardEventAttributeDescriber
+            implements IHazardEventParameterDescriber {
 
         // Private Variables
 
@@ -110,7 +115,7 @@ public class HazardEventUtilities {
         // Public Methods
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             Serializable value = event.getHazardAttribute(name);
             if (value != null) {
                 return value.toString();
@@ -170,7 +175,7 @@ public class HazardEventUtilities {
     private static final IHazardEventParameterDescriber HAZARD_EVENT_ID_DESCRIBER = new IHazardEventParameterDescriber() {
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             return event.getDisplayEventID();
         }
     };
@@ -181,7 +186,7 @@ public class HazardEventUtilities {
     private static final IHazardEventParameterDescriber HAZARD_SITE_ID_DESCRIBER = new IHazardEventParameterDescriber() {
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             return event.getSiteID();
         }
     };
@@ -192,7 +197,7 @@ public class HazardEventUtilities {
     private static final IHazardEventParameterDescriber HAZARD_STATUS_DESCRIBER = new IHazardEventParameterDescriber() {
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             return event.getStatus().getValue();
         }
     };
@@ -203,7 +208,7 @@ public class HazardEventUtilities {
     private static final IHazardEventParameterDescriber HAZARD_PHEN_DESCRIBER = new IHazardEventParameterDescriber() {
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             return event.getPhenomenon();
         }
     };
@@ -214,7 +219,7 @@ public class HazardEventUtilities {
     private static final IHazardEventParameterDescriber HAZARD_SIG_DESCRIBER = new IHazardEventParameterDescriber() {
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             return event.getSignificance();
         }
     };
@@ -225,7 +230,7 @@ public class HazardEventUtilities {
     private static final IHazardEventParameterDescriber HAZARD_SUBTYPE_DESCRIBER = new IHazardEventParameterDescriber() {
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             return event.getSubType();
         }
     };
@@ -236,7 +241,7 @@ public class HazardEventUtilities {
     private static final IHazardEventParameterDescriber HAZARD_TYPE_DESCRIBER = new IHazardEventParameterDescriber() {
 
         @Override
-        public String getDescription(IHazardEvent event) {
+        public String getDescription(IReadableHazardEvent event) {
             return getHazardType(event);
         }
     };
@@ -245,9 +250,10 @@ public class HazardEventUtilities {
      * Default hazard event describers list.
      */
     private static final List<IHazardEventParameterDescriber> DEFAULT_HAZARD_DESCRIBERS;
+
     static {
-        List<IHazardEventParameterDescriber> describers = Lists.newArrayList(
-                HAZARD_EVENT_ID_DESCRIBER, HAZARD_TYPE_DESCRIBER);
+        List<IHazardEventParameterDescriber> describers = Lists
+                .newArrayList(HAZARD_EVENT_ID_DESCRIBER, HAZARD_TYPE_DESCRIBER);
         DEFAULT_HAZARD_DESCRIBERS = ImmutableList.copyOf(describers);
     }
 
@@ -255,8 +261,10 @@ public class HazardEventUtilities {
      * Map of hazard event parameter names to their describers.
      */
     private static final Map<String, IHazardEventParameterDescriber> HAZARD_PARAMETER_DESCRIBERS_FOR_NAMES;
+
     static {
-        Map<String, IHazardEventParameterDescriber> map = new HashMap<>(7, 1.0f);
+        Map<String, IHazardEventParameterDescriber> map = new HashMap<>(7,
+                1.0f);
         map.put(DESCRIBER_KEY_HAZARD_EVENT_ID, HAZARD_EVENT_ID_DESCRIBER);
         map.put(DESCRIBER_KEY_HAZARD_SITE_ID, HAZARD_SITE_ID_DESCRIBER);
         map.put(DESCRIBER_KEY_HAZARD_STATUS, HAZARD_STATUS_DESCRIBER);
@@ -309,7 +317,7 @@ public class HazardEventUtilities {
      * @return Full type as a string, with each component separated from the
      *         next by a period (.), or <code>null</code> if there is no type.
      */
-    public static String getHazardType(IHazardEvent event) {
+    public static String getHazardType(IReadableHazardEvent event) {
         return getHazardType(event.getPhenomenon(), event.getSignificance(),
                 event.getSubType());
     }
@@ -321,7 +329,7 @@ public class HazardEventUtilities {
      *            Hazard event.
      * @return True if the hazard event has a valid type, false otherwise.
      */
-    public static boolean isHazardTypeValid(IHazardEvent event) {
+    public static boolean isHazardTypeValid(IReadableHazardEvent event) {
         return (event.getPhenomenon() != null);
     }
 
@@ -333,7 +341,7 @@ public class HazardEventUtilities {
      *            Hazard event.
      * @return Phen-sig.
      */
-    public static String getHazardPhenSig(IHazardEvent event) {
+    public static String getHazardPhenSig(IReadableHazardEvent event) {
         String sig = event.getSignificance();
         return event.getPhenomenon() + (sig != null ? "." + sig : "");
     }
@@ -352,7 +360,8 @@ public class HazardEventUtilities {
      * @return Full type as a string, with each component separated from the
      *         next by a period (.), or <code>null</code> if there is no type.
      */
-    public static String getHazardType(String phen, String sig, String subType) {
+    public static String getHazardType(String phen, String sig,
+            String subType) {
         if (phen == null) {
             return null;
         }
@@ -448,7 +457,8 @@ public class HazardEventUtilities {
             event.setPhenomenon(hazardType.substring(0, endPhen));
             int endSig = hazardType.indexOf('.', endPhen + 1);
             if (endSig > 0) {
-                event.setSignificance(hazardType.substring(endPhen + 1, endSig));
+                event.setSignificance(
+                        hazardType.substring(endPhen + 1, endSig));
                 event.setSubType(hazardType.substring(endSig + 1));
             } else {
                 event.setSignificance(hazardType.substring(endPhen + 1));
@@ -499,8 +509,8 @@ public class HazardEventUtilities {
         String value = "";
         boolean createNew = false;
         if (HazardConstants.NEW_ACTION.equals(action) == false) {
-            Map<String, HazardHistoryList> map = manager.getHistoryBySiteID(
-                    site, true);
+            Map<String, HazardHistoryList> map = manager
+                    .getHistoryBySiteID(site, true);
             for (Entry<String, HazardHistoryList> entry : map.entrySet()) {
                 HazardHistoryList list = entry.getValue();
                 for (IHazardEvent ev : list) {
@@ -534,6 +544,30 @@ public class HazardEventUtilities {
         hazardEvent.addHazardAttribute(LOW_RESOLUTION_GEOMETRY, geom);
     }
 
+    /**
+     * Compare two workstation info objects, ignoring the {@link WsId#threadID}
+     * field.
+     * 
+     * @param wsId1
+     *            First object to compare.
+     * @param wsId2
+     *            Second object to compare.
+     * @return <code>true</code> if the two objects are equivalent (ignoring the
+     *         thread identifier fields), <code>false</code> otherwise.
+     */
+    public static boolean compareWsIds(WsId wsId1, WsId wsId2) {
+        if (wsId1.getNetworkId().equals(wsId2.getNetworkId()) == false) {
+            return false;
+        } else if (wsId1.getUserName().equals(wsId2.getUserName()) == false) {
+            return false;
+        } else if (wsId1.getProgName().equals(wsId2.getProgName()) == false) {
+            return false;
+        } else if (wsId1.getPid() != wsId2.getPid()) {
+            return false;
+        }
+        return true;
+    }
+
     // Private Static Methods.
 
     /**
@@ -552,7 +586,8 @@ public class HazardEventUtilities {
             if (etn1 != null && etn1.isEmpty() == false) {
                 for (String etn2 : etns2) {
                     if (etn2 != null && etn2.isEmpty() == false) {
-                        if (Integer.valueOf(etn1).equals(Integer.valueOf(etn2))) {
+                        if (Integer.valueOf(etn1)
+                                .equals(Integer.valueOf(etn2))) {
                             return false;
                         }
                     }

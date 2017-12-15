@@ -18,8 +18,8 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 import gov.noaa.gsd.common.utilities.IMergeable;
@@ -38,6 +38,8 @@ import gov.noaa.gsd.common.utilities.Merger;
  * ------------ ---------- ------------ --------------------------
  * Sep 20, 2017   38072    Chris.Golden Initial creation.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  *
  * @author Chris.Golden
@@ -71,9 +73,8 @@ public class SessionEventModified extends AbstractSessionEventModified {
      * @param originator
      *            Originator of the change.
      */
-    public SessionEventModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, IEventModification modification,
+    public SessionEventModified(ISessionEventManager eventManager,
+            IHazardEventView event, IEventModification modification,
             IOriginator originator) {
         super(eventManager, event, originator);
         this.modifications = ImmutableList.of(modification);
@@ -93,9 +94,8 @@ public class SessionEventModified extends AbstractSessionEventModified {
      * @param originator
      *            Originator of the change.
      */
-    public SessionEventModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
-            ObservedHazardEvent event, List<IEventModification> modifications,
+    public SessionEventModified(ISessionEventManager eventManager,
+            IHazardEventView event, List<IEventModification> modifications,
             IOriginator originator) {
         super(eventManager, event, originator);
         this.modifications = ImmutableList.copyOf(modifications);

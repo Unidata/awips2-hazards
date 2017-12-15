@@ -37,6 +37,7 @@ WSW = {
     "defaultDuration": 28800000, 
     "visibleColumns": [
         "Event ID",
+        "Lock Status",
         "Hazard Type", 
         "Status",
         "Start Time", 
@@ -55,6 +56,11 @@ WSW = {
             "fieldName": "displayEventID", 
             "sortDir": "none"
         }, 
+        "Lock Status": {
+            "type": "string",
+            "fieldName": "lockStatus",
+            "sortDir": "none",
+        },
         "Hazard Type": {
             "type": "string", 
             "fieldName": "type", 

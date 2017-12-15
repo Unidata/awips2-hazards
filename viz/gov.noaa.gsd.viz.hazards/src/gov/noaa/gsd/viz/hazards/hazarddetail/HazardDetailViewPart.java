@@ -45,6 +45,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
+import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.TimeRange;
@@ -58,7 +59,6 @@ import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
-import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailView.TimeRangeBoundary;
 import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
 import gov.noaa.gsd.viz.megawidgets.CheckBoxMegawidget;
 import gov.noaa.gsd.viz.megawidgets.ComboBoxMegawidget;
@@ -255,7 +255,7 @@ import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
  *                                           has its interdependency script reinitialize
  *                                           if unchanged, so that when a hazard event is
  *                                           selected, it triggers the reinitialization.
- * Oct 05, 2016   22300    Kevin.Bisanz      initialize() returns earlier if called
+ * Oct 05, 2016  22300     Kevin.Bisanz      initialize() returns earlier if called
  *                                           multiple times.
  * Oct 19, 2016  21873     Chris.Golden      Added time resolution tracking tied to events.
  *                                           This means having four different time-tracking
@@ -263,12 +263,17 @@ import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
  *                                           explicit-end-time-type hazard event with
  *                                           either time resolution, or duration-time-type
  *                                           hazard event with either time resolution.
+ * Dec 12, 2016  21504     Robert.Blum       Updates for hazard locking.
  * Feb 01, 2017  15556     Chris.Golden      Added awareness of selection of historical
  *                                           snapshots of events, so that the view may
  *                                           display such snapshots differently from the
  *                                           way it displays current events.
  * Oct 10, 2017  39151     Chris.Golden      Changed to allow interdependency scripts to
  *                                           alter the editability of time megawidgets.
+ * Dec 20, 2017  20739     Chris.Golden      Added code to allow the removal of megawidget
+ *                                           specifier managers that were cached so that
+ *                                           they can be forced to be regenerated whenever
+ *                                           a hazard event is reselected.
  * </pre>
  * 
  * @author Chris.Golden
@@ -429,6 +434,21 @@ public class HazardDetailViewPart extends DockTrackingViewPart
      * Conflict image icon file name.
      */
     private static final String CONFLICT_ICON_IMAGE_FILE_NAME = "hidConflict.png";
+
+    /**
+     * Unlocked image icon file name.
+     */
+    private static final String UNLOCKED_ICON_IMAGE_FILE_NAME = "unlocked.png";
+
+    /**
+     * Locked image icon file name.
+     */
+    private static final String LOCKED_ICON_IMAGE_FILE_NAME = "locked.png";
+
+    /**
+     * Locked by workstation image icon file name.
+     */
+    private static final String LOCKED_BY_WORKSTATION_ICON_IMAGE_FILE_NAME = "lockedByWorkstation.png";
 
     /**
      * Historical snapshot tooltip text prefix.
@@ -633,6 +653,27 @@ public class HazardDetailViewPart extends DockTrackingViewPart
             CONFLICT_ICON_IMAGE_FILE_NAME, Display.getCurrent());
 
     /**
+     * Unlocked tab image icon.
+     */
+    private final Image UNLOCKED_TAB_ICON = IconUtil.getImage(
+            HazardServicesActivator.getDefault().getBundle(),
+            UNLOCKED_ICON_IMAGE_FILE_NAME, Display.getCurrent());
+
+    /**
+     * Locked tab image icon.
+     */
+    private final Image LOCKED_TAB_ICON = IconUtil.getImage(
+            HazardServicesActivator.getDefault().getBundle(),
+            LOCKED_ICON_IMAGE_FILE_NAME, Display.getCurrent());
+
+    /**
+     * Locked by workstation tab image icon.
+     */
+    private final Image LOCKED_BY_WORKSTATION_TAB_ICON = IconUtil.getImage(
+            HazardServicesActivator.getDefault().getBundle(),
+            LOCKED_BY_WORKSTATION_ICON_IMAGE_FILE_NAME, Display.getCurrent());
+
+    /**
      * Conflict unselected tab background color.
      */
     private final Color CONFLICT_UNSELECTED_TAB_COLOR = new Color(
@@ -656,7 +697,8 @@ public class HazardDetailViewPart extends DockTrackingViewPart
      * when this window is disposed of.
      */
     private final Set<Resource> resources = Sets.newHashSet(CONFLICT_TAB_ICON,
-            CONFLICT_UNSELECTED_TAB_COLOR, CONFLICT_SELECTED_TAB_COLOR);
+            CONFLICT_UNSELECTED_TAB_COLOR, CONFLICT_SELECTED_TAB_COLOR,
+            UNLOCKED_TAB_ICON, LOCKED_TAB_ICON, LOCKED_BY_WORKSTATION_TAB_ICON);
 
     /**
      * Standard unselected tab background color for the event tab folder.
@@ -1586,6 +1628,12 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                 Map<String, Map<String, Object>> mutableProperties) {
             changeMetadataMutableProperties(qualifier, mutableProperties);
         }
+
+        @Override
+        public void removeMegawidgetSpecifierManager(
+                Pair<String, Integer> qualifier) {
+            removeMetadataSpecifierManager(qualifier);
+        }
     };
 
     /**
@@ -1597,8 +1645,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart
     private ICommandInvocationHandler<EventScriptInfo> notifierInvocationHandler;
 
     /**
-     * Button invoker, for the buttons at the bottom of the view part. The
-     * identifier is that of the hazard event coupled with that of the notifier.
+     * Notifier invoker, for any notifier megawidgets included in the metadata
+     * megawidgets. The identifier is that of the hazard event coupled with that
+     * of the notifier.
      */
     private final ICommandInvoker<EventScriptInfo> notifierInvoker = new ICommandInvoker<EventScriptInfo>() {
 
@@ -2335,6 +2384,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart
      *            Displayables for the tabs; each one is the displayable for the
      *            event version identifier in <code>choices</code> at the
      *            corresponding index.
+     * @param visibleEventVersionIdentifier
+     *            Event version identifier associated with the tab page that is
+     *            to be visible.
      */
     private void setTabs(List<Pair<String, Integer>> choices,
             List<DisplayableEventIdentifier> choiceDisplayables,
@@ -2425,7 +2477,16 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                     tabItems[j].setForeground(null);
                     tabItems[j].setFont(null);
                 } else {
-                    tabItems[j].setImage(null);
+                    tabItems[j].setImage(choiceDisplayables.get(j)
+                            .getLockStatus() == LockStatus.LOCKED_BY_ME
+                                    ? LOCKED_BY_WORKSTATION_TAB_ICON
+                                    : (choiceDisplayables.get(j)
+                                            .getLockStatus() == LockStatus.LOCKED_BY_OTHER
+                                                    ? LOCKED_TAB_ICON
+                                                    : (choiceDisplayables.get(j)
+                                                            .getLockStatus() == LockStatus.LOCKABLE
+                                                                    ? UNLOCKED_TAB_ICON
+                                                                    : null)));
                     tabItems[j].setToolTipText(null);
                     tabItems[j].setSelectionForeground(null);
                     tabItems[j].setForeground(null);
@@ -2907,7 +2968,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart
     private void setMetadataSpecifierManager(
             Pair<String, Integer> eventVersionIdentifier,
             MegawidgetSpecifierManager specifierManager,
-            Map<String, Serializable> metadataStates, final boolean editable,
+            Map<String, Serializable> metadataStates, boolean editable,
             boolean reinitializeIfUnchanged) {
 
         /*
@@ -2989,8 +3050,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                                 public void commandInvoked(
                                         MegawidgetManager manager,
                                         String identifier) {
-                                    if (editable
-                                            && (notifierInvocationHandler != null)) {
+                                    if (notifierInvocationHandler != null) {
                                         notifierInvocationHandler
                                                 .commandInvoked(
                                                         new EventScriptInfo(
@@ -3005,8 +3065,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                                 public void stateElementChanged(
                                         MegawidgetManager manager,
                                         String identifier, Object state) {
-                                    if (editable
-                                            && (metadataChangeHandler != null)) {
+                                    if (metadataChangeHandler != null) {
                                         metadataChangeHandler.stateChanged(
                                                 visibleEventVersionIdentifier,
                                                 identifier,
@@ -3018,8 +3077,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                                 public void stateElementsChanged(
                                         MegawidgetManager manager,
                                         Map<String, ?> statesForIdentifiers) {
-                                    if (editable
-                                            && (metadataChangeHandler != null)) {
+                                    if (metadataChangeHandler != null) {
                                         Map<String, Serializable> map = new HashMap<>(
                                                 statesForIdentifiers.size());
                                         for (Map.Entry<String, ?> entry : statesForIdentifiers
@@ -3150,6 +3208,20 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                                 + e, e);
             }
         }
+    }
+
+    /**
+     * Remove any megawidget specifier manager associated with the specified
+     * event version identifier.
+     * 
+     * @param eventVersionIdentifier
+     *            Identifier of the event version associated with the megawidget
+     *            manager to be removed.
+     */
+    private void removeMetadataSpecifierManager(
+            Pair<String, Integer> eventVersionIdentifier) {
+        megawidgetManagersForEventVersionIdentifiers
+                .remove(eventVersionIdentifier);
     }
 
     /**
@@ -3299,7 +3371,9 @@ public class HazardDetailViewPart extends DockTrackingViewPart
      * @param eventVersionIdentifier
      *            Event version identifier.
      * @param metadataIdentifier
-     *            Identifier of the metadata element to be set.
+     *            Identifier of the metadata element to be set; if
+     *            <code>null</code>, all metadata elements are to have their
+     *            editability set.
      * @param editable
      *            Flag indicating whether or not the element should be editable.
      */
@@ -3310,7 +3384,13 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                 .equals(visibleEventVersionIdentifier) == false)) {
             return;
         }
-        if (metadataIdentifier.equals(
+        if (metadataIdentifier == null) {
+            MegawidgetManager megawidgetManager = megawidgetManagersForEventVersionIdentifiers
+                    .get(eventVersionIdentifier);
+            if (megawidgetManager != null) {
+                megawidgetManager.setEditable(editable);
+            }
+        } else if (metadataIdentifier.equals(
                 HazardConstants.HAZARD_EVENT_END_TIME_UNTIL_FURTHER_NOTICE)) {
             setEndTimeUntilFurtherNoticeEditableState(
                     (eventVersionIdentifiersWithReadOnlyTimeMegawidgetsDueToScripts

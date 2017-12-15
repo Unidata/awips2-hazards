@@ -9,9 +9,6 @@
  */
 package gov.noaa.gsd.common.visuals;
 
-import gov.noaa.gsd.common.utilities.Utils;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -24,6 +21,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.colormap.Color;
 
+import gov.noaa.gsd.common.utilities.Utils;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+
 /**
  * Description: Visual feature, instances of which provide arbitrary drawable,
  * and optionally editable, elements for a spatial display that vary over time.
@@ -34,7 +34,7 @@ import com.raytheon.uf.common.colormap.Color;
  * different visual characteristics or geometries at different times. To get a
  * concrete representation of a visual feature at a particular point in time,
  * the
- * {@link #getStateAtTime(SpatialEntity, Object, boolean, Date, Color, double, BorderStyle, double, String, double, double, double, double, int)}
+ * {@link #getStateAtTime(SpatialEntity, Object, boolean, boolean, Date, Color, double, BorderStyle, double, String, double, double, double, double, int)}
  * method is used to generate a {@link SpatialEntity} if appropriate.
  * 
  * <pre>
@@ -83,6 +83,7 @@ import com.raytheon.uf.common.colormap.Color;
  *                                      annotations concerning serialization,
  *                                      since the latter is done at the level of
  *                                      the visual features list now.
+ * Nov 22, 2017   21504    Chris.Golden Updates for hazard locking.
  * </pre>
  * 
  * @author Chris.Golden
@@ -145,7 +146,8 @@ public class VisualFeature implements Serializable {
          * @param alpha
          *            Alpha comnponent.
          */
-        public SerializableColor(float red, float green, float blue, float alpha) {
+        public SerializableColor(float red, float green, float blue,
+                float alpha) {
             super(red, green, blue, alpha);
         }
 
@@ -156,8 +158,8 @@ public class VisualFeature implements Serializable {
          *            Color to be copied.
          */
         public SerializableColor(Color color) {
-            super(color.getRed(), color.getGreen(), color.getBlue(), color
-                    .getAlpha());
+            super(color.getRed(), color.getGreen(), color.getBlue(),
+                    color.getAlpha());
         }
 
         // Private Methods
@@ -195,8 +197,8 @@ public class VisualFeature implements Serializable {
          * @throws ClassNotFoundException
          *             If the class of a serialized object cannot be found.
          */
-        private void readObject(ObjectInputStream stream) throws IOException,
-                ClassNotFoundException {
+        private void readObject(ObjectInputStream stream)
+                throws IOException, ClassNotFoundException {
             setRed(stream.readFloat());
             setGreen(stream.readFloat());
             setBlue(stream.readFloat());
@@ -414,7 +416,8 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<FillStyle> FILL_STYLE_FETCHER = new IPropertyFetcher<FillStyle>() {
 
         @Override
-        public FillStyle getPropertyValue(VisualFeature visualFeature, Date time) {
+        public FillStyle getPropertyValue(VisualFeature visualFeature,
+                Date time) {
             TemporallyVariantProperty<FillStyle> property = visualFeature
                     .getFillStyle();
             return (property == null ? null : property.getProperty(time));
@@ -493,7 +496,8 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Integer> TEXT_SIZE_FETCHER = new IPropertyFetcher<Integer>() {
 
         @Override
-        public Integer getPropertyValue(VisualFeature visualFeature, Date time) {
+        public Integer getPropertyValue(VisualFeature visualFeature,
+                Date time) {
             TemporallyVariantProperty<Integer> property = visualFeature
                     .getTextSize();
             return (property == null ? null : property.getProperty(time));
@@ -534,7 +538,8 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> ROTATABLE_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature, Date time) {
+        public Boolean getPropertyValue(VisualFeature visualFeature,
+                Date time) {
             TemporallyVariantProperty<Boolean> property = visualFeature
                     .getRotatable();
             return (property == null ? null : property.getProperty(time));
@@ -547,7 +552,8 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature, Date time) {
+        public Boolean getPropertyValue(VisualFeature visualFeature,
+                Date time) {
             TemporallyVariantProperty<Boolean> property = visualFeature
                     .getMultiGeometryPointsDraggable();
             return (property == null ? null : property.getProperty(time));
@@ -560,7 +566,8 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> SCALEABLE_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature, Date time) {
+        public Boolean getPropertyValue(VisualFeature visualFeature,
+                Date time) {
             TemporallyVariantProperty<Boolean> property = visualFeature
                     .getScaleable();
             return (property == null ? null : property.getProperty(time));
@@ -573,7 +580,8 @@ public class VisualFeature implements Serializable {
     private static final IPropertyFetcher<Boolean> TOPMOST_FETCHER = new IPropertyFetcher<Boolean>() {
 
         @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature, Date time) {
+        public Boolean getPropertyValue(VisualFeature visualFeature,
+                Date time) {
             TemporallyVariantProperty<Boolean> property = visualFeature
                     .getTopmost();
             return (property == null ? null : property.getProperty(time));
@@ -816,8 +824,8 @@ public class VisualFeature implements Serializable {
                 && Utils.equal(multiGeometryPointsDraggable,
                         otherFeature.multiGeometryPointsDraggable)
                 && Utils.equal(rotatable, otherFeature.rotatable)
-                && Utils.equal(scaleable, otherFeature.scaleable) && Utils
-                    .equal(topmost, otherFeature.topmost));
+                && Utils.equal(scaleable, otherFeature.scaleable)
+                && Utils.equal(topmost, otherFeature.topmost));
     }
 
     @Override
@@ -829,14 +837,13 @@ public class VisualFeature implements Serializable {
                 + Utils.getHashCode(borderThickness)
                 + Utils.getHashCode(borderStyle) + Utils.getHashCode(fillStyle)
                 + Utils.getHashCode(diameter) + Utils.getHashCode(symbolShape)
-                + Utils.getHashCode(label)
-                + Utils.getHashCode(textOffsetLength)
+                + Utils.getHashCode(label) + Utils.getHashCode(textOffsetLength)
                 + Utils.getHashCode(textOffsetDirection)
                 + Utils.getHashCode(textSize) + Utils.getHashCode(textColor)
                 + Utils.getHashCode(dragCapability)
                 + Utils.getHashCode(multiGeometryPointsDraggable)
-                + Utils.getHashCode(rotatable) + Utils.getHashCode(scaleable) + Utils
-                    .getHashCode(topmost)) % Integer.MAX_VALUE);
+                + Utils.getHashCode(rotatable) + Utils.getHashCode(scaleable)
+                + Utils.getHashCode(topmost)) % Integer.MAX_VALUE);
     }
 
     /**
@@ -1118,6 +1125,9 @@ public class VisualFeature implements Serializable {
      * @param selected
      *            Flag indicating whether or not the item represented by this
      *            object is currently selected.
+     * @param editable
+     *            Flag indicating whether or not the item represented by this
+     *            object is currently editable.
      * @param time
      *            Time for which to get the state of this object.
      * @param hazardColor
@@ -1172,10 +1182,10 @@ public class VisualFeature implements Serializable {
      *         provided by the caller.
      */
     public <I> SpatialEntity<I> getStateAtTime(SpatialEntity<I> spatialEntity,
-            I identifier, boolean selected, Date time, Color hazardColor,
-            double hazardBorderThickness, BorderStyle hazardBorderStyle,
-            double hazardPointDiameter, String hazardLabel,
-            double hazardSinglePointTextOffsetLength,
+            I identifier, boolean selected, boolean editable, Date time,
+            Color hazardColor, double hazardBorderThickness,
+            BorderStyle hazardBorderStyle, double hazardPointDiameter,
+            String hazardLabel, double hazardSinglePointTextOffsetLength,
             double hazardSinglePointTextOffsetDirection,
             double hazardMultiPointTextOffsetLength,
             double hazardMultiPointTextOffsetDirection, int hazardTextSize) {
@@ -1185,8 +1195,10 @@ public class VisualFeature implements Serializable {
          * visible, create nothing.
          */
         if ((visibilityConstraints == VisibilityConstraints.NEVER)
-                || ((visibilityConstraints == VisibilityConstraints.UNSELECTED) && selected)
-                || ((visibilityConstraints == VisibilityConstraints.SELECTED) && (selected == false))) {
+                || ((visibilityConstraints == VisibilityConstraints.UNSELECTED)
+                        && selected)
+                || ((visibilityConstraints == VisibilityConstraints.SELECTED)
+                        && (selected == false))) {
             return null;
         }
 
@@ -1204,18 +1216,14 @@ public class VisualFeature implements Serializable {
          */
         double textOffsetLength = getTextOffsetLength(time);
         double textOffsetDirection = getTextOffsetDirection(time);
-        return SpatialEntity.build(
-                spatialEntity,
-                identifier,
-                geometry,
+        return SpatialEntity.build(spatialEntity, identifier, geometry,
                 getColor(getBorderColor(time), hazardColor),
                 getColor(getFillColor(time), hazardColor),
                 getDouble(getBorderThickness(time), hazardBorderThickness),
                 getBorderStyle(getBorderStyle(time), hazardBorderStyle),
                 getFillStyle(time),
                 getDouble(getDiameter(time), hazardPointDiameter),
-                getSymbolShape(time),
-                getString(getLabel(time), hazardLabel),
+                getSymbolShape(time), getString(getLabel(time), hazardLabel),
                 getDouble(textOffsetLength, hazardSinglePointTextOffsetLength),
                 getDouble(textOffsetDirection,
                         hazardSinglePointTextOffsetDirection),
@@ -1224,9 +1232,10 @@ public class VisualFeature implements Serializable {
                         hazardMultiPointTextOffsetDirection),
                 getInteger(getTextSize(time), hazardTextSize),
                 getColor(getTextColor(time), hazardColor),
-                getDragCapability(time), isMultiGeometryPointsDraggable(time),
-                (isRotatable(time) && selected),
-                (isScaleable(time) && selected), isTopmost(time));
+                (editable ? getDragCapability(time) : DragCapability.NONE),
+                (editable && isMultiGeometryPointsDraggable(time)),
+                (selected && editable && isRotatable(time)),
+                (selected && editable && isScaleable(time)), isTopmost(time));
     }
 
     /**
@@ -1579,7 +1588,8 @@ public class VisualFeature implements Serializable {
      * @param borderColor
      *            New value; may be <code>null</code>.
      */
-    void setBorderColor(TemporallyVariantProperty<SerializableColor> borderColor) {
+    void setBorderColor(
+            TemporallyVariantProperty<SerializableColor> borderColor) {
         this.borderColor = borderColor;
     }
 
@@ -1659,7 +1669,8 @@ public class VisualFeature implements Serializable {
      * @param textOffsetLength
      *            New value; may be <code>null</code>.
      */
-    void setTextOffsetLength(TemporallyVariantProperty<Double> textOffsetLength) {
+    void setTextOffsetLength(
+            TemporallyVariantProperty<Double> textOffsetLength) {
         this.textOffsetLength = textOffsetLength;
     }
 

@@ -27,6 +27,7 @@ import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
 import com.raytheon.uf.common.dataplugin.events.hazards.datastorage.IHazardEventManager;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardServicesEventIdUtil;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.dataplugin.events.hazards.request.ClearPracticeHazardVtecTableRequest;
 import com.raytheon.uf.common.hazards.productgen.data.HazardSiteDataRequest;
@@ -62,9 +63,10 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionSelectionManage
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionAutoCheckConflictsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionHatchingToggled;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionPreviewOrIssueOngoingModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.SessionSelectionManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.locks.ISessionLockManager;
+import com.raytheon.uf.viz.hazards.sessionmanager.locks.SessionLockManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
@@ -144,6 +146,7 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  * Nov 14, 2016 22119      Kevin.Bisanz Prompt before exporting site data.
  * Dec 14, 2016 22119      Kevin.Bisanz Add flags to export config, ProductText, and ProductData
  *                                      individually.
+ * Dec 12, 2016 21504      Robert.Blum  Added SessionLockManager instance.
  * Feb 01, 2017 15556      Chris.Golden Changed construction of time manager to take this object.
  *                                      Also added use of new session selection manager.
  * Feb 16, 2017 29138      Chris.Golden Changed to allow recommenders to specify that they want
@@ -182,13 +185,13 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  *                                      batching of messages. Also switched over to receiving
  *                                      intra-managerial notifications instead of listening on
  *                                      the event bus for notifications.
+ * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session events.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class SessionManager
-        implements ISessionManager<ObservedHazardEvent, ObservedSettings> {
+public class SessionManager implements ISessionManager<ObservedSettings> {
 
     /**
      * Scheduler to be used to ensure that result notifications are published on
@@ -237,9 +240,9 @@ public class SessionManager
 
     private final SessionNotificationSender sender;
 
-    private final ISessionEventManager<ObservedHazardEvent> eventManager;
+    private final ISessionEventManager eventManager;
 
-    private final ISessionSelectionManager<ObservedHazardEvent> selectionManager;
+    private final ISessionSelectionManager selectionManager;
 
     private final ISessionTimeManager timeManager;
 
@@ -248,6 +251,8 @@ public class SessionManager
     private final ISessionProductManager productManager;
 
     private final ISessionRecommenderManager recommenderManager;
+
+    private final ISessionLockManager lockManager;
 
     private final IHazardSessionAlertsManager alertsManager;
 
@@ -287,6 +292,7 @@ public class SessionManager
         timeManager = new SessionTimeManager(this, sender);
         configManager = new SessionConfigurationManager(this, pathManager,
                 timeManager, sender);
+        lockManager = new SessionLockManager(this, sender, messenger);
         SessionEventManager eventManager = new SessionEventManager(this,
                 timeManager, configManager, hazardEventManager, sender,
                 messenger);
@@ -322,12 +328,12 @@ public class SessionManager
     }
 
     @Override
-    public ISessionEventManager<ObservedHazardEvent> getEventManager() {
+    public ISessionEventManager getEventManager() {
         return eventManager;
     }
 
     @Override
-    public ISessionSelectionManager<ObservedHazardEvent> getSelectionManager() {
+    public ISessionSelectionManager getSelectionManager() {
         return selectionManager;
     }
 
@@ -349,6 +355,11 @@ public class SessionManager
     @Override
     public ISessionRecommenderManager getRecommenderManager() {
         return recommenderManager;
+    }
+
+    @Override
+    public ISessionLockManager getLockManager() {
+        return lockManager;
     }
 
     @Override
@@ -375,6 +386,8 @@ public class SessionManager
     public void shutdown() {
 
         eventManager.shutdown();
+
+        lockManager.shutdown();
 
         timeManager.shutdown();
 
@@ -425,9 +438,7 @@ public class SessionManager
     public void reset() {
 
         startBatchedChanges();
-        for (ObservedHazardEvent event : eventManager.getEvents()) {
-            eventManager.removeEvent(event, false, Originator.OTHER);
-        }
+        eventManager.resetEvents(Originator.OTHER);
         finishBatchedChanges();
 
         hazardManager.removeAllEvents();
@@ -483,49 +494,52 @@ public class SessionManager
     }
 
     @Override
-    public void undo() {
-        Collection<ObservedHazardEvent> events = selectionManager
+    public boolean undo() {
+        Collection<? extends IHazardEventView> events = selectionManager
                 .getSelectedEvents();
         if (events.size() == 1) {
-            events.iterator().next().undo();
+            return (eventManager.undo(events.iterator()
+                    .next()) == ISessionEventManager.EventPropertyChangeResult.SUCCESS);
         }
+        return false;
     }
 
     @Override
-    public void redo() {
-        Collection<ObservedHazardEvent> events = selectionManager
+    public boolean redo() {
+        Collection<? extends IHazardEventView> events = selectionManager
                 .getSelectedEvents();
         if (events.size() == 1) {
-            events.iterator().next().redo();
+            return (eventManager.redo(events.iterator()
+                    .next()) == ISessionEventManager.EventPropertyChangeResult.SUCCESS);
         }
+        return false;
     }
 
     @Override
-    public Boolean isUndoable() {
-        Collection<ObservedHazardEvent> hazardEvents = selectionManager
+    public boolean isUndoable() {
+        Collection<? extends IHazardEventView> hazardEvents = selectionManager
                 .getSelectedEvents();
 
         /*
          * Limited to single selected hazard events.
          */
         if (hazardEvents.size() == 1) {
-            return hazardEvents.iterator().next().isUndoable();
+            return eventManager.isUndoable(hazardEvents.iterator().next());
         }
 
         return false;
     }
 
     @Override
-    public Boolean isRedoable() {
-
-        Collection<ObservedHazardEvent> hazardEvents = selectionManager
+    public boolean isRedoable() {
+        Collection<? extends IHazardEventView> hazardEvents = selectionManager
                 .getSelectedEvents();
 
         /*
          * Limit to single selection.
          */
         if (hazardEvents.size() == 1) {
-            return hazardEvents.iterator().next().isRedoable();
+            return eventManager.isRedoable(hazardEvents.iterator().next());
         }
 
         return false;
@@ -682,8 +696,7 @@ public class SessionManager
     }
 
     @Override
-    public void eventCommandInvoked(ObservedHazardEvent event,
-            String identifier,
+    public void eventCommandInvoked(IHazardEventView event, String identifier,
             Map<String, Map<String, Object>> mutableProperties) {
         eventManager.eventCommandInvoked(event, identifier, mutableProperties);
         recommenderManager.eventCommandInvoked(event.getEventID(), identifier);
@@ -703,7 +716,7 @@ public class SessionManager
          * validity. If one is found to be invalid, display a warning to the
          * user and return false to indicate that validation failed.
          */
-        for (ObservedHazardEvent event : selectionManager.getSelectedEvents()) {
+        for (IHazardEventView event : selectionManager.getSelectedEvents()) {
             String errorMessage = configManager.validateHazardEvent(event);
             if (errorMessage != null) {
                 messenger.getWarner().warnUser("Invalid Hazard Event",

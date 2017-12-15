@@ -7,12 +7,6 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
-import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
-import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,11 +20,15 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
-import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ISessionProductManager.StagingRequired;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInformation;
+
+import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
+import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 
 /**
  * Product staging presenter, used to mediate between the model and the product
@@ -79,14 +77,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGeneratorInform
  *                                           config manager.
  * Feb 24, 2016  13929     Robert.Blum       Remove first part of staging dialog.
  * Feb 01, 2017  15556     Chris.Golden      Changed to work with new selection manager.
+ * Dec 17, 2017  20739     Chris.Golden      Refactored away access to directly mutable
+ *                                           session events.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
-public class ProductStagingPresenter extends
-        HazardServicesPresenter<IProductStagingViewDelegate<?, ?>> implements
-        IOriginator {
+public class ProductStagingPresenter
+        extends HazardServicesPresenter<IProductStagingViewDelegate<?, ?>> {
 
     // Public Enumerated Types
 
@@ -134,8 +133,8 @@ public class ProductStagingPresenter extends
                 Map<String, Object> valuesForIdentifiers) {
             for (Map.Entry<String, Object> entry : valuesForIdentifiers
                     .entrySet()) {
-                metadataMapsForProductGeneratorNames.get(qualifier).put(
-                        entry.getKey(), (Serializable) entry.getValue());
+                metadataMapsForProductGeneratorNames.get(qualifier)
+                        .put(entry.getKey(), (Serializable) entry.getValue());
             }
         }
     };
@@ -169,8 +168,7 @@ public class ProductStagingPresenter extends
      * @param eventBus
      *            Event bus used to signal changes.
      */
-    public ProductStagingPresenter(
-            ISessionManager<ObservedHazardEvent, ObservedSettings> model,
+    public ProductStagingPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
         super(model, eventBus);
     }

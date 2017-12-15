@@ -731,7 +731,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 identifiersOfEventsToSaveToHistory.append(recommendedEvent.getEventID())
 
         for e in mergedEvents:
-           #print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
+            print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
                     
         return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
     

@@ -47,7 +47,12 @@
         
 	<bean id="GetRegistryInfoHandler"
 		class="com.raytheon.uf.edex.hazards.handlers.GetRegistryInfoHandler" />
-		
+
+    <bean id="HazardEventLockHandler"
+        class="com.raytheon.uf.edex.hazards.handlers.HazardEventLockHandler">
+        <constructor-arg ref="brokerConnectionsProvider" />
+    </bean>
+    		
 	<bean id="SpatialQueryHandler" class="com.raytheon.uf.edex.hazards.handlers.SpatialQueryHandler"/>
 	
 	<bean id="StoreHazardEventVtecHandler"
@@ -147,6 +152,12 @@
         <constructor-arg
             value="com.raytheon.uf.common.dataplugin.events.hazards.request.UpdateGenericRegistryObjectRequest" />
         <constructor-arg ref="UpdateGenericRegistryObjectHandler" />
+    </bean>
+
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.dataplugin.events.hazards.request.LockRequest" />
+        <constructor-arg ref="HazardEventLockHandler" />
     </bean>
     
 	<bean factory-bean="handlerRegistry" factory-method="register">

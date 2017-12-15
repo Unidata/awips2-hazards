@@ -12,7 +12,7 @@ package gov.noaa.gsd.viz.hazards.console;
 import java.util.Collection;
 import java.util.Map;
 
-import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
 
 /**
  * Description: Interface describing the methods that must be implemented by
@@ -28,6 +28,8 @@ import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
  * Jun 08, 2017   16373    Chris.Golden Removed product viewer selection dialog 
  *                                      usage, as the product view and presenter
  *                                      take care of this now.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -44,7 +46,7 @@ public interface IConsoleHandler {
      *            the names of any geometry areas that conflict.
      */
     public void showUserConflictingHazardsWarning(
-            Map<IHazardEvent, Map<IHazardEvent, Collection<String>>> areasForConflictingEventsForEvents);
+            Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> areasForConflictingEventsForEvents);
 
     /**
      * Handle notification that the console was disposed of.

@@ -34,6 +34,12 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  * Oct 09, 2014    4042    Chris.Golden Added product staging dialog.
  * Dec 05, 2014    4124    Chris.Golden Added new UI elements.
  * Feb 01, 2017   15556    Chris.Golden Removed unneeded UI element.
+ * Dec 17, 2017   20739    Chris.Golden Added methods to determine whether
+ *                                      or not they are the result of direct
+ *                                      user input, and whether or not they
+ *                                      require hazard events to not be
+ *                                      locked by other workstations. Also
+ *                                      added rise/crest/fall editor.
  * </pre>
  * 
  * @author mnash
@@ -41,5 +47,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
  */
 
 public enum UIOriginator implements IOriginator {
-    SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, STAGING_DIALOG, SETTINGS_MENU, SETTINGS_DIALOG, CONSOLE,
+    SPATIAL_DISPLAY, HAZARD_INFORMATION_DIALOG, STAGING_DIALOG, SETTINGS_MENU, SETTINGS_DIALOG, CONSOLE, RISE_CREST_FALL_EDITOR;
+
+    @Override
+    public boolean isDirectResultOfUserInput() {
+        return true;
+    }
+
+    @Override
+    public boolean isNotLockedByOthersRequired() {
+        return true;
+    }
 }

@@ -10,24 +10,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager.events;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionNotification;
-
-/**
- * Description: Notification indicating that the ordering of events has changed.
- * 
- * <pre>
- * 
- * SOFTWARE HISTORY
- * 
- * Date         Ticket#    Engineer     Description
- * ------------ ---------- ------------ --------------------------
- * Aug 18, 2016   19537    Chris.Golden Initial creation.
- * </pre>
- * 
- * @author Chris.Golden
- * @version 1.0
- */
-
-import com.raytheon.uf.viz.hazards.sessionmanager.events.impl.ObservedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 
 import gov.noaa.gsd.common.utilities.MergeResult;
@@ -45,6 +27,8 @@ import gov.noaa.gsd.common.utilities.MergeResult;
  * Aug 15, 2016   19537    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Implemented merge() method.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
+ *                                      mutable session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,8 +46,7 @@ public class SessionEventsOrderingModified extends SessionEventsModified {
      * @param originator
      *            Originator of the change.
      */
-    public SessionEventsOrderingModified(
-            ISessionEventManager<ObservedHazardEvent> eventManager,
+    public SessionEventsOrderingModified(ISessionEventManager eventManager,
             IOriginator originator) {
         super(eventManager, originator);
     }

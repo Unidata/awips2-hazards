@@ -26,10 +26,14 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Feb 6, 2014            mnash     Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Feb 06, 2014            mnash        Initial creation.
+ * Dec 17, 2017  20739     Chris.Golden Added methods to determine whether
+ *                                      or not they are the result of direct
+ *                                      user input, and whether or not they
+ *                                      require hazard events to not be
+ *                                      locked by other workstations.
  * </pre>
  * 
  * @author mnash
@@ -37,4 +41,24 @@ package com.raytheon.uf.viz.hazards.sessionmanager.originator;
  */
 
 public interface IOriginator {
+
+    /**
+     * Determine whether or not this originator was a direct result of user
+     * input.
+     * 
+     * @return <code>true</code> if the user directly caused actions with this
+     *         originator, <code>false</code> otherwise.
+     */
+    public boolean isDirectResultOfUserInput();
+
+    /**
+     * Determine whether or not actions with this originator should, when
+     * applying to hazard events, require that the event not be locked by
+     * another workstation.
+     * 
+     * @return <code>true</code> if a hazard event change with this originator
+     *         requires that the event not be locked by another workstation,
+     *         <code>false</code> otherwise.
+     */
+    public boolean isNotLockedByOthersRequired();
 }
