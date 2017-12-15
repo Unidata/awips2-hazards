@@ -138,7 +138,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %dir /awips2/edex/conf
 /awips2/edex/conf/*
 /awips2/edex/data/utility/common_static/*
-/awips2/edex/data/utility/edex_static/base/HazardServices
+/awips2/edex/data/utility/edex_static/base/HazardServices/*
 /awips2/edex/lib/*
 /awips2/edex/util_filelist.%{name}.txt
 %defattr(755,awips,fxalpha,755)

@@ -58,15 +58,15 @@ Event-Driven Tools
          EventDrivenTools.append(cpEntry)  
 '''
 
-'''
 _CENTRAL_PROCESSOR = True 
-_RUNCR = False
+
+_RUNCR = True
 
 EventDrivenTools = []
 
 if _CENTRAL_PROCESSOR:
     cpEntry =  { "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender"],
-                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
+                      "triggerType": "TIME_INTERVAL", "intervalMinutes": 2 }
     EventDrivenTools.append(cpEntry)
     
     if _RUNCR:
@@ -79,8 +79,5 @@ else:
      cpEntry = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "SwathRecommender" ], 
                         "triggerType": "DATA_LAYER_CHANGE"}
      EventDrivenTools.append(cpEntry)
-'''
 
-_CENTRAL_PROCESSOR = False 
 
-EventDrivenTools = []    
