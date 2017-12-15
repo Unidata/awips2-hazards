@@ -12,6 +12,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 import java.io.Serializable;
 import java.util.Map;
 
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -30,6 +31,11 @@ import jep.JepException;
  * Aug 19, 2014    4243    Chris.Golden Initial creation.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with JsonConverter
  *                                      static methods.
+ * Dec 15, 2017   40923    Chris.Golden Added use of MetaDataAndHazardEvent
+ *                                      for passing both the metadata 
+ *                                      dictionary as JSON and the hazard
+ *                                      event back to this class's
+ *                                      doExecute().
  * </pre>
  * 
  * @author Chris.Golden
@@ -112,12 +118,17 @@ public class MetaDataScriptExecutor
             throws JepException {
         script.set(HAZARD_EVENT, hazardEvent);
         script.set(ENVIRONMENTAL_DICT, environment);
-        String result = (String) script.getValue(INVOKE_FUNCTION);
+        MetaDataAndHazardEvent result = (MetaDataAndHazardEvent) script
+                .getValue(INVOKE_FUNCTION);
+        Map<String, Object> metaData = null;
         try {
-            return JsonConverter.fromJson(result);
+            metaData = JsonConverter.fromJson(result.getFirst());
         } catch (Exception e) {
             statusHandler.error("Could not get hazard metadata.", e);
             return null;
         }
+        metaData.put(HazardConstants.MODIFIED_HAZARD_EVENT_KEY,
+                result.getSecond());
+        return metaData;
     }
 }

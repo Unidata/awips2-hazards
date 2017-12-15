@@ -45,6 +45,8 @@ class MetaData(MetaData_AIRMET_SIGMET.MetaData):
 def applyInterdependencies(triggerIdentifiers, mutableProperties):
     
     AMChanges = MetaData_AIRMET_SIGMET.applyInterdependencies(triggerIdentifiers, mutableProperties)
+    if AMChanges is None:
+        AMChanges = {}
     
     import sys
     CommonMetaData.writelines(sys.stderr, ['Hello World [SIGMET] !\n'])

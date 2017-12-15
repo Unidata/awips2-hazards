@@ -202,6 +202,8 @@ class AviationUtils:
                 tops = "\nAbove FL450"
             elif cloudTop == 'topsTo':
                 tops = "\nTo FL" + str(cloudTopText)
+            else:
+                tops = "\nN/A"                
             
             motion = "\n" + str(direction)+"@"+str(speed)+"kts"                        
             label = area + tops + motion       

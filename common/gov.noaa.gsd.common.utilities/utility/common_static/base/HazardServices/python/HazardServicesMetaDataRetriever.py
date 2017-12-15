@@ -12,7 +12,9 @@ JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)
 from GeometryHandler import shapelyToJTS, jtsToShapely
 JUtil.registerPythonToJava(shapelyToJTS)
 JUtil.registerJavaToPython(jtsToShapely)
-    
+
+from com.raytheon.uf.viz.hazards.sessionmanager.config.impl import MetaDataAndHazardEvent
+
 def getMetaData(javaHazardEvent, javaMetaDict):
     """
     @param javaHazardEvent: Hazard event from Java.  
@@ -39,10 +41,20 @@ def getMetaData(javaHazardEvent, javaMetaDict):
     if hasattr(metaObject, "execute") and callable(getattr(metaObject, "execute")):
         metaData = metaObject.execute(hazardEvent, metaDict)
         metaData[METADATA_FILE_PATH_KEY] = filePath
-        metaData = json.dumps(metaData)
-        return metaData
+
+        # If there is a HazardEvent object in the dictionary because
+        # the generation process modified it, then it must be removed
+        # temporarily while JSONing the dictionary, as HazardEvent
+        # objects are not JSONable. Then it is re-added to the
+        # dictionary before being returned.
+        if METADATA_MODIFIED_HAZARD_EVENT in metaData:
+            modifiedHazardEvent = JUtil.pyValToJavaObj(metaData[METADATA_MODIFIED_HAZARD_EVENT])
+            del metaData[METADATA_MODIFIED_HAZARD_EVENT]
+        else:
+            modifiedHazardEvent = None
+        return MetaDataAndHazardEvent(json.dumps(metaData), modifiedHazardEvent)
     else:
-        return '{"' + METADATA_KEY + '": [] }'
+        return MetaDataAndHazardEvent('{"' + METADATA_KEY + '": [] }', None)
 
 def validate(javaHazardEvent):
     """
