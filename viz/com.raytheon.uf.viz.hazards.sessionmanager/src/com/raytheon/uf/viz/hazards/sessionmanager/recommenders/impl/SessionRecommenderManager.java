@@ -205,6 +205,10 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      to result in more batching and less individual
  *                                      runs.
  * Dec 07, 2017   41886    Chris.Golden Removed Java 8/JDK 1.8 usage.
+ * Jan 17, 2018   45580    Chris.Golden Changed to use the same event-set-construction
+ *                                      algorithm for building event sets for dialog
+ *                                      and spatial parameter gathering, and for actual
+ *                                      recommender execution.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1199,6 +1203,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * that a recommender is indeed currently running.
      */
     private void runRecommenderGatheringParametersAsNecessary() {
+
         /*
          * Get the recommender metadata, and determine whether or not dialog
          * info and/or spatial info are needed.
@@ -1212,14 +1217,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
 
         /*
          * Create the event set to be used if dialog and/or spatial info is to
-         * be fetched, and add the execution context to it.
+         * be fetched; if no event set can be created, cancel the running of the
+         * recommender.
          */
         EventSet<IEvent> eventSet = null;
         if (getDialogInfoNeeded || getSpatialInfoNeeded) {
-            eventSet = new EventSet<>();
-            eventSet.addAttribute(HazardConstants.CENTER_POINT_LAT_LON,
-                    getCenterPointAsDictionary());
-            addContextAsEventSetAttributes(runningContext, eventSet);
+            eventSet = createEventSet();
+            if (eventSet == null) {
+                cancelRunningRecommender();
+                return;
+            }
         }
 
         /*
@@ -1280,69 +1287,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             Map<String, Serializable> dialogInfo) {
 
         /*
-         * Get the recommender metadata, and decide what events are to be
-         * included in the event set based upon its values.
+         * Create the event set, and if the creation fails, cancel the running
+         * of the recommender.
          */
-        Map<String, Serializable> metadata = getRecommenderMetadata(
-                runningRecommenderIdentifier);
-        Boolean onlyIncludeTriggerEvent = (Boolean) metadata.get(
-                HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS);
-        List<String> includeEventTypesList = (List<String>) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES);
-        Set<String> includeEventTypes = (includeEventTypesList != null
-                ? new HashSet<>(includeEventTypesList) : null);
-        Boolean includeDataLayerTimes = (Boolean) metadata.get(
-                HazardConstants.RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES);
-        Boolean includeCwaGeometry = (Boolean) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_CWA_GEOMETRY);
-
-        /*
-         * Create the event set, determine which events are to be added to it
-         * based upon the recommender metadata retrieved above, and add a copy
-         * of each such event to the set.
-         */
-        EventSet<IEvent> eventSet = new EventSet<>();
-        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((runningContext
-                .getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE)
-                || (runningContext
-                        .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
-                || (runningContext
-                        .getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
-
-            /*
-             * Since the recommender is meant to only be passed the triggering
-             * hazard event(s), place only those into the input event set. If
-             * they cannot be found, they may have been removed after they
-             * caused the triggering of the recommender run. If none are found,
-             * cancel the running of the recommender.
-             */
-            for (String eventIdentifier : runningContext
-                    .getEventIdentifiers()) {
-                ObservedHazardEvent event = sessionManager.getEventManager()
-                        .getEventById(eventIdentifier);
-                if (event != null) {
-                    eventSet.add(createBaseHazardEvent(event));
-                }
-            }
-            if (eventSet.isEmpty()) {
-                cancelRunningRecommender();
-                return;
-            }
-        } else {
-
-            /*
-             * Include all events that belong (either every event in the
-             * session, or only those events with the right hazard types) in the
-             * input event set.
-             */
-            Collection<ObservedHazardEvent> hazardEvents = sessionManager
-                    .getEventManager().getEvents();
-            for (ObservedHazardEvent event : hazardEvents) {
-                if ((includeEventTypes == null)
-                        || includeEventTypes.contains(event.getHazardType())) {
-                    eventSet.add(createBaseHazardEvent(event));
-                }
-            }
+        EventSet<IEvent> eventSet = createEventSet();
+        if (eventSet == null) {
+            cancelRunningRecommender();
+            return;
         }
 
         /*
@@ -1359,46 +1310,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         }
 
         /*
-         * Add the execution context parameters to the event set.
-         */
-        addContextAsEventSetAttributes(runningContext, eventSet);
-
-        /*
-         * Add session information to event set.
-         */
-        long currentTime = sessionManager.getTimeManager().getCurrentTime()
-                .getTime();
-        eventSet.addAttribute(HazardConstants.CURRENT_TIME, currentTime);
-        eventSet.addAttribute(HazardConstants.SELECTED_TIME, sessionManager
-                .getTimeManager().getSelectedTime().getLowerBound());
-        eventSet.addAttribute(HazardConstants.FRAMES_INFO,
-                getFramesInfoAsDictionary());
-
-        /*
-         * If the data times are to be included, add them to the event set as
-         * well, using a list of just the current time if none are available.
-         */
-        final String toolName = (String) metadata
-                .get(HazardConstants.RECOMMENDER_METADATA_TOOL_NAME);
-        if (Boolean.TRUE.equals(includeDataLayerTimes)) {
-            List<Long> dataLayerTimes = sessionManager
-                    .getDisplayResourceContextProvider()
-                    .getTimeMatchBasisDataLayerTimes();
-            Serializable times = (dataLayerTimes == null
-                    ? Lists.newArrayList(currentTime)
-                    : (dataLayerTimes instanceof Serializable
-                            ? (Serializable) dataLayerTimes
-                            : new ArrayList<>(dataLayerTimes)));
-            eventSet.addAttribute(HazardConstants.DATA_TIMES, times);
-        }
-        if (Boolean.TRUE.equals(includeCwaGeometry)) {
-            eventSet.addAttribute(HazardConstants.CWA_GEOMETRY,
-                    sessionManager.getEventManager().getCwaGeometry());
-        }
-
-        /*
          * Get the engine to initiate the execution of the recommender.
          */
+        final String toolName = (String) getRecommenderMetadata(
+                runningRecommenderIdentifier)
+                        .get(HazardConstants.RECOMMENDER_METADATA_TOOL_NAME);
         recommenderEngine.runExecuteRecommender(runningRecommenderIdentifier,
                 eventSet, visualFeatures, dialogInfo,
                 new IPythonJobListener<EventSet<IEvent>>() {
@@ -1689,6 +1605,122 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             metadataForRecommenders.put(recommenderIdentifier, metadata);
         }
         return metadata;
+    }
+
+    /**
+     * Create an event set to run a recommender or to fetch dialog or spaital
+     * parameters.
+     * 
+     * @return Event set that was created, or <code>null</code> if no event set
+     *         could be created.
+     */
+    @SuppressWarnings("unchecked")
+    private EventSet<IEvent> createEventSet() {
+
+        /*
+         * Get the recommender metadata, and decide what events are to be
+         * included in the event set based upon its values.
+         */
+        Map<String, Serializable> metadata = getRecommenderMetadata(
+                runningRecommenderIdentifier);
+        Boolean onlyIncludeTriggerEvent = (Boolean) metadata.get(
+                HazardConstants.RECOMMENDER_METADATA_ONLY_INCLUDE_TRIGGER_EVENTS);
+        List<String> includeEventTypesList = (List<String>) metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_EVENT_TYPES);
+        Set<String> includeEventTypes = (includeEventTypesList != null
+                ? new HashSet<>(includeEventTypesList) : null);
+        Boolean includeDataLayerTimes = (Boolean) metadata.get(
+                HazardConstants.RECOMMENDER_METADATA_INCLUDE_DATA_LAYER_TIMES);
+        Boolean includeCwaGeometry = (Boolean) metadata
+                .get(HazardConstants.RECOMMENDER_METADATA_INCLUDE_CWA_GEOMETRY);
+
+        /*
+         * Create the event set, determine which events are to be added to it
+         * based upon the recommender metadata retrieved above, and add a copy
+         * of each such event to the set.
+         */
+        EventSet<IEvent> eventSet = new EventSet<>();
+        if (Boolean.TRUE.equals(onlyIncludeTriggerEvent) && ((runningContext
+                .getTrigger() == Trigger.HAZARD_EVENT_VISUAL_FEATURE_CHANGE)
+                || (runningContext
+                        .getTrigger() == Trigger.HAZARD_EVENT_MODIFICATION)
+                || (runningContext
+                        .getTrigger() == Trigger.HAZARD_EVENT_SELECTION))) {
+
+            /*
+             * Since the recommender is meant to only be passed the triggering
+             * hazard event(s), place only those into the input event set. If
+             * they cannot be found, they may have been removed after they
+             * caused the triggering of the recommender run. If none are found,
+             * return nothing, since the event set cannot be created.
+             */
+            for (String eventIdentifier : runningContext
+                    .getEventIdentifiers()) {
+                ObservedHazardEvent event = sessionManager.getEventManager()
+                        .getEventById(eventIdentifier);
+                if (event != null) {
+                    eventSet.add(createBaseHazardEvent(event));
+                }
+            }
+            if (eventSet.isEmpty()) {
+                return null;
+            }
+        } else {
+
+            /*
+             * Include all events that belong (either every event in the
+             * session, or only those events with the right hazard types) in the
+             * input event set.
+             */
+            Collection<ObservedHazardEvent> hazardEvents = sessionManager
+                    .getEventManager().getEvents();
+            for (ObservedHazardEvent event : hazardEvents) {
+                if ((includeEventTypes == null)
+                        || includeEventTypes.contains(event.getHazardType())) {
+                    eventSet.add(createBaseHazardEvent(event));
+                }
+            }
+        }
+
+        /*
+         * Add the execution context parameters to the event set.
+         */
+        addContextAsEventSetAttributes(runningContext, eventSet);
+
+        /*
+         * Add session information to event set.
+         */
+        long currentTime = sessionManager.getTimeManager().getCurrentTime()
+                .getTime();
+        eventSet.addAttribute(HazardConstants.CENTER_POINT_LAT_LON,
+                getCenterPointAsDictionary());
+        eventSet.addAttribute(HazardConstants.CURRENT_TIME, currentTime);
+        eventSet.addAttribute(HazardConstants.SELECTED_TIME, sessionManager
+                .getTimeManager().getSelectedTime().getLowerBound());
+        eventSet.addAttribute(HazardConstants.FRAMES_INFO,
+                getFramesInfoAsDictionary());
+
+        /*
+         * If the data times are to be included, add them to the event set as
+         * well, using a list of just the current time if none are available.
+         */
+        if (Boolean.TRUE.equals(includeDataLayerTimes)) {
+            List<Long> dataLayerTimes = sessionManager
+                    .getDisplayResourceContextProvider()
+                    .getTimeMatchBasisDataLayerTimes();
+            Serializable times = (dataLayerTimes == null
+                    ? Lists.newArrayList(currentTime)
+                    : (dataLayerTimes instanceof Serializable
+                            ? (Serializable) dataLayerTimes
+                            : new ArrayList<>(dataLayerTimes)));
+            eventSet.addAttribute(HazardConstants.DATA_TIMES, times);
+        }
+        if (Boolean.TRUE.equals(includeCwaGeometry)) {
+            eventSet.addAttribute(HazardConstants.CWA_GEOMETRY,
+                    sessionManager.getEventManager().getCwaGeometry());
+        }
+
+        return eventSet;
     }
 
     /**
