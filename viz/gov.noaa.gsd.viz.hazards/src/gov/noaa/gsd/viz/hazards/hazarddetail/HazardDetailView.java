@@ -17,12 +17,13 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.internal.WorkbenchPage;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.time.TimeRange;
 import com.raytheon.uf.common.util.Pair;
@@ -33,7 +34,7 @@ import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.DisplayableEventIdentifier;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
@@ -137,6 +138,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IWidget;
  *                                           snapshots of events, so that the view may
  *                                           display such snapshots differently from the
  *                                           way it displays current events.
+ * Jan 17, 2018  33428     Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -145,7 +148,7 @@ import gov.noaa.gsd.viz.mvp.widgets.IWidget;
 @SuppressWarnings("restriction")
 public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
         implements
-        IHazardDetailViewDelegate<Action, RCPMainUserInterfaceElement> {
+        IHazardDetailViewDelegate<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -698,9 +701,9 @@ public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
     }
 
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        if (type == RcpMainUiElement.TOOLBAR) {
 
             /*
              * Create the actions.
@@ -728,9 +731,12 @@ public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
                 }
             };
             hazardDetailToggleAction.setChecked(showing);
-            return Lists.newArrayList(hazardDetailToggleAction);
+            Map<String, List<? extends IAction>> map = new HashMap<>(1, 1.0f);
+            map.put(HAZARD_DETAIL_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(hazardDetailToggleAction));
+            return map;
         }
-        return Collections.emptyList();
+        return Collections.emptyMap();
     }
 
     @Override

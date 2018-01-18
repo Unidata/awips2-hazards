@@ -44,6 +44,8 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
  * Apr 29, 2016   16373    mpduff       Initial creation.
  * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
  *                                      mutable session events.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author mpduff
@@ -51,7 +53,7 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
  */
 
 public class ProductPresenter
-        extends HazardServicesPresenter<IProductView<?, ?>> {
+        extends HazardServicesPresenter<IProductView<?, ?, ?>> {
 
     public ProductPresenter(ISessionManager<ObservedSettings> model,
             BoundedReceptionEventBus<Object> eventBus) {
@@ -67,13 +69,13 @@ public class ProductPresenter
     }
 
     @Override
-    protected void initialize(IProductView<?, ?> view) {
+    protected void initialize(IProductView<?, ?, ?> view) {
         List<Tool> listOfProductTools = getProductTools();
         view.initialize(this, listOfProductTools);
     }
 
     @Override
-    protected void reinitialize(IProductView<?, ?> view) {
+    protected void reinitialize(IProductView<?, ?, ?> view) {
 
         /*
          * No action.

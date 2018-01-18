@@ -9,15 +9,24 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.LinearRing;
+import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElementFactory;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
-
-import java.util.ArrayList;
-
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Base class from which to derive classes used to handle input in
@@ -32,12 +41,23 @@ import com.vividsolutions.jts.geom.Coordinate;
  * ------------ ---------- ------------ --------------------------
  * Sep 21, 2016   15934    Chris.Golden Initial creation (refactored out of
  *                                      DrawingInputHandler).
+ * Jan 17, 2018   33428    Chris.Golden Added method to be used by subclasses
+ *                                      to turn points into geometries.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class IncrementalDrawingInputHandler extends DrawingInputHandler {
+public abstract class IncrementalDrawingInputHandler
+        extends DrawingInputHandler {
+
+    // Private Static Constants
+
+    /**
+     * Distance tolerance used for topology preserving simplification of paths
+     * and polygons.
+     */
+    private static final double SIMPLIFIER_DISTANCE_TOLERANCE = 0.0001;
 
     // Private Variables
 
@@ -101,8 +121,8 @@ public class IncrementalDrawingInputHandler extends DrawingInputHandler {
             ghostPoints.add(location);
         }
         AbstractDrawableComponent ghost = getDrawableFactory().create(
-                DrawableType.LINE, getDrawingAttributes(), "Line",
-                "LINE_SOLID", ghostPoints, null);
+                DrawableType.LINE, getDrawingAttributes(), "Line", "LINE_SOLID",
+                ghostPoints, null);
         ((Line) ghost).setLinePoints(ghostPoints);
         getSpatialDisplay().setGhostOfDrawableBeingEdited(ghost);
     }
@@ -131,5 +151,51 @@ public class IncrementalDrawingInputHandler extends DrawingInputHandler {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Create a geometry of the specified type from the specified points.
+     * 
+     * @param shapeType
+     *            Type of shape the points make up.
+     * @param points
+     *            Points to be used to construct the shape.
+     * @return Geometry that was created, or <code>null</code> if no valid
+     *         geometry could be created given the parameters.
+     */
+    protected IAdvancedGeometry createShapeFromPoints(GeometryType shapeType,
+            List<Coordinate> points) {
+
+        /*
+         * Do nothing if user hasn't drawn enough points to create a path or
+         * polygon.
+         */
+        if (points.size() < (shapeType == GeometryType.LINE ? 2 : 3)) {
+            return null;
+        }
+
+        /*
+         * Simplify the number of points in the path or polygon.
+         * 
+         * TODO: This may eventually need to be user-configurable.
+         */
+        Geometry newGeometry = null;
+        GeometryFactory geometryFactory = AdvancedGeometryUtilities
+                .getGeometryFactory();
+        if (shapeType == GeometryType.POLYGON) {
+            AdvancedGeometryUtilities.addDuplicateLastCoordinate(points);
+            LinearRing linearRing = geometryFactory.createLinearRing(
+                    points.toArray(new Coordinate[points.size()]));
+            Geometry polygon = geometryFactory.createPolygon(linearRing, null);
+            newGeometry = TopologyPreservingSimplifier.simplify(polygon,
+                    SIMPLIFIER_DISTANCE_TOLERANCE);
+        } else {
+            LineString lineString = geometryFactory.createLineString(
+                    points.toArray(new Coordinate[points.size()]));
+            newGeometry = TopologyPreservingSimplifier.simplify(lineString,
+                    SIMPLIFIER_DISTANCE_TOLERANCE);
+        }
+
+        return AdvancedGeometryUtilities.createGeometryWrapper(newGeometry, 0);
     }
 }

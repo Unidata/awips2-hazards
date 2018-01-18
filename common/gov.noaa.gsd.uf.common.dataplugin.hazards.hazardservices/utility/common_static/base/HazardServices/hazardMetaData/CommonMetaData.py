@@ -2916,12 +2916,31 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     print 'triggerIdentifiers', triggerIdentifiers
     returnDict = {}
 
-    # Ensure that no matter what else, the time range megawidget is made editable or read-only
-    # as appropriate. 
-    editableTimeRange = False
-    if "activate" in mutableProperties:
-        editableTimeRange = mutableProperties["activate"].get("values", False)
-    returnDict["__startTime__:__endTime__"] = { "editable": editableTimeRange }
+    # List of megawidgets that must be made editable or uneditable depending upon the activate
+    # value.
+    editabilityChangeableMegawidgets = ["resetMotionVector", "convectiveProbTrendDraw",
+                "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2",
+                "convectiveProbTrendBell", "convectiveProbTrendPlus5", "convectiveProbTrendMinus5",
+                "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
+                "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail",
+                "convectiveStormCharsTorn", "__startTime__:__endTime__"]
+    
+    # If activate has changed value, ensure the the appropriate megawidgets are editable or
+    # uneditable.
+    if triggerIdentifiers and "activate" in triggerIdentifiers:
+        editable = False
+        if "activate" in mutableProperties:
+            editable = mutableProperties["activate"].get("values", False)
+        for key in editabilityChangeableMegawidgets:
+            returnDict[key] = { 'editable' : editable }
+            
+    # If activateModify has changed value, ensure the Modify button is enabled or disabled
+    # as appropriate.
+    if triggerIdentifiers and "activateModify" in triggerIdentifiers:
+        editable = True
+        if "activateModify" in mutableProperties:
+            editable = mutableProperties["activateModify"].get("values", True)
+        returnDict['modifyButton'] = { 'editable' : editable }
     
     modifyButtonChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'modifyButton' in triggerIdentifiers 
     print "modifyButtonChosen", modifyButtonChosen
@@ -2987,7 +3006,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         convectMutables = convectiveFilter(mutableProperties, 'convective')
         
         if len(convectTriggers) == 0:
-            return {}
+            return returnDict
         
         
         ######################################################

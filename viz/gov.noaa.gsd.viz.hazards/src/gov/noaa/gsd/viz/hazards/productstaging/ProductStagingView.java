@@ -9,8 +9,17 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import org.eclipse.jface.action.IAction;
+import org.eclipse.ui.PlatformUI;
+
+import com.raytheon.uf.viz.core.VizApp;
+
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.productstaging.ProductStagingPresenter.Command;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvocationHandlerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.QualifiedStateChangeHandlerDelegate;
@@ -18,15 +27,6 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
 import gov.noaa.gsd.viz.mvp.widgets.IWidget;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import org.eclipse.jface.action.Action;
-import org.eclipse.ui.PlatformUI;
-
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Description: Product staging view, which creates and uses a
@@ -53,13 +53,15 @@ import com.raytheon.uf.viz.core.VizApp;
  *                                           specified for the products (again, if
  *                                           applicable).
  * Feb 24, 2016   13929    Robert.Blum       Remove first part of staging dialog.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public class ProductStagingView implements
-        IProductStagingViewDelegate<Action, RCPMainUserInterfaceElement> {
+        IProductStagingViewDelegate<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -114,14 +116,13 @@ public class ProductStagingView implements
     }
 
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        return Collections.emptyList();
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        return Collections.emptyMap();
     }
 
     @Override
-    public void showStagingDialog(
-            List<String> productNames,
+    public void showStagingDialog(List<String> productNames,
             Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames,
             long minimumVisibleTime, long maximumVisibleTime) {
         if (productStagingDialog == null) {
@@ -141,17 +142,17 @@ public class ProductStagingView implements
     @Override
     public void setProductMetadataChangeHandler(
             IQualifiedStateChangeHandler<String, String, Object> handler) {
-        productStagingDialog
-                .setProductMetadataChangeHandler(new QualifiedStateChangeHandlerDelegate<String, String, Object>(
+        productStagingDialog.setProductMetadataChangeHandler(
+                new QualifiedStateChangeHandlerDelegate<String, String, Object>(
                         handler, RUNNABLE_ASYNC_SCHEDULER));
     }
 
     @Override
     public void setButtonInvocationHandler(
             ICommandInvocationHandler<Command> handler) {
-        productStagingDialog
-                .setButtonInvocationHandler(new CommandInvocationHandlerDelegate<Command>(
-                        handler, RUNNABLE_ASYNC_SCHEDULER));
+        productStagingDialog.setButtonInvocationHandler(
+                new CommandInvocationHandlerDelegate<Command>(handler,
+                        RUNNABLE_ASYNC_SCHEDULER));
     }
 
     // Private Methods

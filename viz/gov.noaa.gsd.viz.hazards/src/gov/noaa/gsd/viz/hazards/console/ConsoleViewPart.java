@@ -28,7 +28,7 @@ import gov.noaa.gsd.common.utilities.Sort;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
-import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.hazards.toolbar.TextComboAction;
 import gov.noaa.gsd.viz.hazards.ui.DockTrackingViewPart;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
@@ -83,6 +83,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           enabled state of a row menu's menu item
  *                                           after it is displayed.
  * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new name for the
+ *                                           {@link TextComboAction}.
  * </pre>
  * 
  * @author Chris.Golden
@@ -248,7 +250,7 @@ public class ConsoleViewPart extends DockTrackingViewPart
      *            Selected time mode action.
      */
     public void setToolBarActions(final Map<String, Action> map,
-            ComboAction selectedTimeModeAction) {
+            TextComboAction selectedTimeModeAction) {
         if (body != null) {
             body.setToolBarActions(map, selectedTimeModeAction);
         }

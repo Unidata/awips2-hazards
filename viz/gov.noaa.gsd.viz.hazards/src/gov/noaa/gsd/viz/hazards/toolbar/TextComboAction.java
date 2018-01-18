@@ -14,25 +14,26 @@ import org.eclipse.ui.IActionBars;
 
 /**
  * Abstract class from which may be derived classes encapsulating toolbar combo
- * boxes.
+ * boxes holding text strings.
  * 
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo.
- * Jul 15, 2013      585   Chris.Golden      Added code to allow toolbar manager
- *                                           to be set after construction, so
- *                                           that this action may be created
- *                                           before the toolbar manager to which
- *                                           it will be assigned exists.
- * Oct 03, 2016    22299   Kevin.Bisanz      Implemented IActionBarsAware.
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Apr 04, 2013            Chris.Golden  Initial induction into repo.
+ * Jul 15, 2013      585   Chris.Golden  Added code to allow toolbar manager
+ *                                       to be set after construction, so
+ *                                       that this action may be created
+ *                                       before the toolbar manager to which
+ *                                       it will be assigned exists.
+ * Oct 03, 2016    22299   Kevin.Bisanz  Implemented IActionBarsAware.
+ * Jan 17, 2018    33428   Chris.Golden  Changed name to be text-specific.
  * </pre>
  * 
  * @author Chris.Golden
  */
-public abstract class ComboAction extends PulldownAction
+public abstract class TextComboAction extends PulldownAction
         implements IContributionManagerAware, IActionBarsAware {
 
     // Private Static Constants
@@ -78,19 +79,13 @@ public abstract class ComboAction extends PulldownAction
      * @param description
      *            Description of this action.
      */
-    public ComboAction(String description) {
+    public TextComboAction(String description) {
         super(PLACEHOLDER_TEXT);
         this.description = description;
         setToolTipText(description + PLACEHOLDER_TOOLTIP_TEXT_SUFFIX);
     }
 
     // Public Methods
-
-    @Override
-    public void setContributionManager(
-            IContributionManager contributionManager) {
-        this.contributionManager = contributionManager;
-    }
 
     /**
      * Set the visual state to indicate the specified choice is the current
@@ -119,6 +114,12 @@ public abstract class ComboAction extends PulldownAction
          */
         setToolTipText(
                 description + DESCRIPTION_VALUE_SEPARATOR_TEXT + choiceText);
+    }
+
+    @Override
+    public void setContributionManager(
+            IContributionManager contributionManager) {
+        this.contributionManager = contributionManager;
     }
 
     @Override

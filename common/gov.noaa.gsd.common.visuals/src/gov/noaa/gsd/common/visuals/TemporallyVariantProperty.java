@@ -50,7 +50,8 @@ import com.google.common.collect.TreeRangeMap;
  * @author Chris.Golden
  * @version 1.0
  */
-class TemporallyVariantProperty<P extends Serializable> implements Serializable {
+class TemporallyVariantProperty<P extends Serializable>
+        implements Serializable {
 
     // Private Static Constants
 
@@ -121,8 +122,9 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
          * potentially infinite and certainly wasteful recursion will occur.
          */
         if ((defaultProperty != otherProperty.defaultProperty)
-                && ((defaultProperty == null) || (compareAvoidingRecursion(
-                        defaultProperty, otherProperty.defaultProperty) == false))) {
+                && ((defaultProperty == null)
+                        || (compareAvoidingRecursion(defaultProperty,
+                                otherProperty.defaultProperty) == false))) {
             return false;
         }
 
@@ -195,8 +197,8 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
      * @param property
      *            Property value associated with the time range encompassing the
      *            specified time; must not be <code>null</code>.
-     * @return True if the property was added or made the default property,
-     *         false otherwise.
+     * @return <code>true</code> if the property was added or made the default
+     *         property, <code>false</code> otherwise.
      */
     boolean addPropertyForTimeRangeEncompassingTime(Date time, P property) {
         if (propertiesForTimeRanges != null) {
@@ -234,9 +236,9 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
      * @return Map of time ranges to property values.
      */
     Map<Range<Date>, P> getPropertiesForTimeRanges() {
-        return (propertiesForTimeRanges == null ? Collections
-                .<Range<Date>, P> emptyMap() : propertiesForTimeRanges
-                .asMapOfRanges());
+        return (propertiesForTimeRanges == null
+                ? Collections.<Range<Date>, P> emptyMap()
+                : propertiesForTimeRanges.asMapOfRanges());
     }
 
     // Private Methods
@@ -273,8 +275,8 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
      *             If the class of a serialized object cannot be found.
      */
     @SuppressWarnings("unchecked")
-    private void readObject(ObjectInputStream stream) throws IOException,
-            ClassNotFoundException {
+    private void readObject(ObjectInputStream stream)
+            throws IOException, ClassNotFoundException {
         defaultProperty = (P) stream.readObject();
         ImmutableMap<Range<Date>, P> map = (ImmutableMap<Range<Date>, P>) stream
                 .readObject();
@@ -296,8 +298,8 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
      *            First object to be compared; may be <code>null</code>.
      * @param object2
      *            Second object to be compared; may be <code>null</code>.
-     * @return True if the two objects are equivalent or are both
-     *         <code>null</code>, false otherwise.
+     * @return <code>true</code> if the two objects are equivalent or are both
+     *         <code>null</code>, <code>false</code> otherwise.
      */
     private boolean compareAvoidingRecursion(Object object1, Object object2) {
 
@@ -310,8 +312,8 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
             if (object2 instanceof VisualFeature == false) {
                 return false;
             }
-            return ((VisualFeature) object1).getIdentifier().equals(
-                    ((VisualFeature) object2).getIdentifier());
+            return ((VisualFeature) object1).getIdentifier()
+                    .equals(((VisualFeature) object2).getIdentifier());
         }
         return (object1 == null ? object2 == null : object1.equals(object2));
     }
@@ -326,12 +328,13 @@ class TemporallyVariantProperty<P extends Serializable> implements Serializable 
      * @param object
      *            Object for which to generate the hash code, or
      *            <code>null</code>.
-     * 
-     * @return Hash code of the object, or 0 if the object is <code>null</code>.
+     * @return Hash code of the object, or <code>0</code> if the object is
+     *         <code>null</code>.
      */
     private long getHashCodeAvoidingRecursion(Object object) {
         return (object == null ? 0L
-                : (object instanceof VisualFeature ? ((VisualFeature) object)
-                        .getIdentifier().hashCode() : object.hashCode()));
+                : (object instanceof VisualFeature
+                        ? ((VisualFeature) object).getIdentifier().hashCode()
+                        : object.hashCode()));
     }
 }

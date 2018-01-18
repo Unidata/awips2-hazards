@@ -50,6 +50,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModifica
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventCreationTimeModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIdentifierModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIssuanceCountModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventOriginModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
@@ -189,6 +190,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      event manager. Instances of this class
  *                                      are no longer exposed to others besides
  *                                      those in the same package.
+ * Jan 26, 2018 33428      Chris.Golden Added issuance count.
  * </pre>
  * 
  * @author bsteffen
@@ -303,6 +305,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     }
 
     @Override
+    public int getIssuanceCount() {
+        return delegate.getIssuanceCount();
+    }
+
+    @Override
     public String getPhenomenon() {
         return delegate.getPhenomenon();
     }
@@ -410,6 +417,11 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
         if (changed(getStatus(), status)) {
             setStatus(status, true, true, Originator.OTHER);
         }
+    }
+
+    @Override
+    public void setIssuanceCount(int count) {
+        setIssuanceCount(count, true, Originator.OTHER);
     }
 
     @Override
@@ -526,6 +538,10 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
     public void setStatus(HazardStatus status, boolean persist,
             IOriginator originator) {
         setStatus(status, true, persist, originator);
+    }
+
+    public void setIssuanceCount(int count, IOriginator originator) {
+        setIssuanceCount(count, true, originator);
     }
 
     public void setPhenomenon(String phenomenon, IOriginator originator) {
@@ -680,6 +696,31 @@ public class ObservedHazardEvent implements IHazardEvent, IUndoRedoable {
                             new SessionEventModified(eventManager, eventView,
                                     new EventStatusModification(), originator),
                             persist);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    protected boolean setIssuanceCount(int count, boolean notify,
+            IOriginator originator) {
+        if (getIssuanceCount() != count) {
+            delegate.setIssuanceCount(count);
+            if (notify) {
+
+                /*
+                 * Notify the event manager, but do not treat this as something
+                 * that should set the modified flag, since issuances should not
+                 * be considered modifications, and in fact may result in the
+                 * modified flag being reset to false.
+                 */
+                IHazardEventView eventView = eventManager
+                        .getViewForSessionEvent(this);
+                if (eventView != null) {
+                    eventManager.hazardEventModified(new SessionEventModified(
+                            eventManager, eventView,
+                            new EventIssuanceCountModification(), originator));
                 }
             }
             return true;

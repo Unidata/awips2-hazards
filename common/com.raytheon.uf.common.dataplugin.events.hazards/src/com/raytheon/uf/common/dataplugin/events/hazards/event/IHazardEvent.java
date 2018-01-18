@@ -76,6 +76,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      persisted as part of the hazard event.
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * Dec 11, 2017 20739      Chris.Golden Changed to extend {@link IHazardEventView}.
+ * Jan 26, 2018 33428      Chris.Golden Added issuance count.
  * </pre>
  * 
  * @author mnash
@@ -108,6 +109,8 @@ public interface IHazardEvent extends IReadableHazardEvent {
     public void setEventID(String eventId);
 
     public void setStatus(HazardStatus state);
+
+    public void setIssuanceCount(int count);
 
     public void setPhenomenon(String phenomenon);
 

@@ -9,23 +9,26 @@
  */
 package gov.noaa.gsd.viz.hazards.alerts;
 
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
-import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
-
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.jsonutilities.DictList;
+import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 
 /**
  * Alerts view, an implementation of <code>IAlertsView</code> that provides an
@@ -38,13 +41,15 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
  * Jul 15, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class AlertsConfigView implements
-        IAlertsConfigView<Action, RCPMainUserInterfaceElement> {
+public class AlertsConfigView
+        implements IAlertsConfigView<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -135,9 +140,9 @@ public class AlertsConfigView implements
      * @return List of contributions; this may be empty if none are to be made.
      */
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        if (type == RcpMainUiElement.TOOLBAR) {
             alertsToggleAction = new BasicAction("",
                     ALERTS_TOOLBAR_IMAGE_FILE_NAME, Action.AS_CHECK_BOX,
                     ALERTS_TOOLTIP_DESCRIPTION) {
@@ -145,15 +150,19 @@ public class AlertsConfigView implements
                 public void run() {
                     if (isChecked() && (alertDialog == null)) {
                         presenter.showAlertDetail();
-                    } else if ((isChecked() == false) && (alertDialog != null)) {
+                    } else if ((isChecked() == false)
+                            && (alertDialog != null)) {
                         closeAlertDetail();
                     }
                 }
             };
             alertsToggleAction.setEnabled(false);
-            return Lists.newArrayList(alertsToggleAction);
+            Map<String, List<? extends IAction>> map = new HashMap<>(1, 1.0f);
+            map.put(ALERTS_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(alertsToggleAction));
+            return map;
         }
-        return Collections.emptyList();
+        return Collections.emptyMap();
     }
 
     /**
@@ -169,8 +178,10 @@ public class AlertsConfigView implements
     @Override
     public final void showAlertDetail(DictList fields, Dict values) {
         if (alertDialog == null) {
-            alertDialog = new AlertsConfigDialog(presenter, PlatformUI.getWorkbench()
-                    .getActiveWorkbenchWindow().getShell(), fields, values);
+            alertDialog = new AlertsConfigDialog(
+                    presenter, PlatformUI.getWorkbench()
+                            .getActiveWorkbenchWindow().getShell(),
+                    fields, values);
             alertDialog.open();
             alertDialog.getShell().addDisposeListener(dialogDisposeListener);
             alertsToggleAction.setChecked(true);

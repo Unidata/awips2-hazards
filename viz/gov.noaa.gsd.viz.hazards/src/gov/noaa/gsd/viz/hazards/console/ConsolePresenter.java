@@ -198,13 +198,15 @@ import net.engio.mbassy.listener.Handler;
  * Dec 07, 2017   41886    Chris.Golden      Removed Java 8/JDK 1.8 usage.
  * Dec 17, 2017   20739    Chris.Golden      Refactored away access to directly
  *                                           mutable session events.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class ConsolePresenter
-        extends HazardServicesPresenter<IConsoleView<?, ?>> {
+        extends HazardServicesPresenter<IConsoleView<?, ?, ?>> {
 
     // Public Enumerated Types
 
@@ -1085,7 +1087,7 @@ public class ConsolePresenter
     // Protected Methods
 
     @Override
-    protected final void initialize(IConsoleView<?, ?> view) {
+    protected final void initialize(IConsoleView<?, ?, ?> view) {
 
         /*
          * Determine whether the time line navigation buttons should be in the
@@ -1171,7 +1173,7 @@ public class ConsolePresenter
     }
 
     @Override
-    protected final void reinitialize(IConsoleView<?, ?> view) {
+    protected final void reinitialize(IConsoleView<?, ?, ?> view) {
 
         /*
          * No action.

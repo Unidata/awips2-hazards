@@ -33,13 +33,22 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           provide far better separation of
  *                                           concerns between model, view, view
  *                                           delegate, and presenter.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IHazardDetailViewDelegate<C, E extends Enum<E>> extends
-        IView<C, E>, IHazardDetailView {
+public interface IHazardDetailViewDelegate<I, C, E extends Enum<E>>
+        extends IView<I, C, E>, IHazardDetailView {
+
+    // Public Static Constants
+
+    /**
+     * Hazard detail toggle identifier.
+     */
+    public static final String HAZARD_DETAIL_TOGGLE_IDENTIFIER = "hazardDetailToggle";
 
     // Public Methods
 

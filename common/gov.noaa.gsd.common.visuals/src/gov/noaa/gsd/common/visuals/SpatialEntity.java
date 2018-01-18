@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.common.visuals;
 
+import com.raytheon.uf.common.colormap.Color;
+import com.vividsolutions.jts.geom.Geometry;
+
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-
-import com.raytheon.uf.common.colormap.Color;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Description: Spatial entity, instances of which provide arbitrary drawable,
@@ -22,7 +22,7 @@ import com.vividsolutions.jts.geom.Geometry;
  * parameter <code>I</code> provides the type of the entity's identifier.
  * <p>
  * Spatial entities may be created via the
- * {@link #build(SpatialEntity, Object, IAdvancedGeometry, Color, Color, double, BorderStyle, FillStyle, double, SymbolShape, String, double, double, double, double, int, Color, DragCapability, boolean, boolean, boolean, boolean)
+ * {@link #build(SpatialEntity, Object, IAdvancedGeometry, Color, Color, double, BorderStyle, FillStyle, double, SymbolShape, String, double, double, double, double, int, Color, DragCapability, boolean, boolean, boolean, boolean, boolean)
  * build()} static method, or using one of the {@link VisualFeature} class's
  * <code>getStateAtTime()</code> static methods.
  * </p>
@@ -54,6 +54,8 @@ import com.vividsolutions.jts.geom.Geometry;
  *                                      Also added toString() method.
  * Sep 12, 2016   15934    Chris.Golden Changed to use advanced geometries instead
  *                                      of JTS geometries.
+ * Jan 17, 2018   33428    Chris.Golden Added editable-via-geometry-operations
+ *                                      flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -149,6 +151,12 @@ public class SpatialEntity<I> {
     private boolean multiGeometryPointsDraggable;
 
     /**
+     * Flag indicating whether or not the entity is editable using geometry
+     * operations (replacement, union, intersection, or subtraction).
+     */
+    private boolean editableUsingGeometryOps;
+
+    /**
      * Flag indicating whether or not the entity is rotatable.
      */
     private boolean rotatable;
@@ -226,6 +234,10 @@ public class SpatialEntity<I> {
      *            in <code>dragCapability</code> for such points, but has no
      *            effect on a <code>geometry</code> consisting of a single
      *            point.
+     * @param editableUsingGeometryOps
+     *            Flag indicating whether or not the entity is editable using
+     *            geometry operations (replacement, union, intersection, or
+     *            subtraction).
      * @param rotatable
      *            Rotatable flag to be used.
      * @param scaleable
@@ -245,9 +257,9 @@ public class SpatialEntity<I> {
             String label, double singlePointTextOffsetLength,
             double singlePointTextOffsetDirection,
             double multiPointTextOffsetLength,
-            double multiPointTextOffsetDirection, int textSize,
-            Color textColor, DragCapability dragCapability,
-            boolean multiGeometryPointsDraggable, boolean rotatable,
+            double multiPointTextOffsetDirection, int textSize, Color textColor,
+            DragCapability dragCapability, boolean multiGeometryPointsDraggable,
+            boolean editableUsingGeometryOps, boolean rotatable,
             boolean scaleable, boolean topmost) {
 
         /*
@@ -310,7 +322,8 @@ public class SpatialEntity<I> {
                 (original == null ? null : original.getTextOffsetLength()),
                 textOffsetLength);
         spatialEntity.setTextOffsetLength(textOffsetLength);
-        double textOffsetDirection = (pointGeometry ? singlePointTextOffsetDirection
+        double textOffsetDirection = (pointGeometry
+                ? singlePointTextOffsetDirection
                 : multiPointTextOffsetDirection);
         spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.getTextOffsetDirection()),
@@ -326,14 +339,17 @@ public class SpatialEntity<I> {
                 (original == null ? null : original.getDragCapability()),
                 dragCapability);
         spatialEntity.setDragCapability(dragCapability);
-        spatialEntity = createIfNeeded(
-                original,
-                spatialEntity,
-                (original == null ? null : original
-                        .isMultiGeometryPointsDraggable()),
+        spatialEntity = createIfNeeded(original, spatialEntity,
+                (original == null ? null
+                        : original.isMultiGeometryPointsDraggable()),
                 multiGeometryPointsDraggable);
         spatialEntity
                 .setMultiGeometryPointsDraggable(multiGeometryPointsDraggable);
+        spatialEntity = createIfNeeded(original, spatialEntity,
+                (original == null ? null
+                        : original.isEditableUsingGeometryOps()),
+                editableUsingGeometryOps);
+        spatialEntity.setEditableUsingGeometryOps(editableUsingGeometryOps);
         spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.isRotatable()), rotatable);
         spatialEntity.setRotatable(rotatable);
@@ -418,6 +434,7 @@ public class SpatialEntity<I> {
         textColor = other.textColor;
         dragCapability = other.dragCapability;
         multiGeometryPointsDraggable = other.multiGeometryPointsDraggable;
+        editableUsingGeometryOps = other.editableUsingGeometryOps;
         rotatable = other.rotatable;
         scaleable = other.scaleable;
         topmost = other.topmost;
@@ -447,8 +464,10 @@ public class SpatialEntity<I> {
                 && Utils.equal(textColor, otherEntity.textColor)
                 && Utils.equal(dragCapability, otherEntity.dragCapability)
                 && (multiGeometryPointsDraggable == otherEntity.multiGeometryPointsDraggable)
+                && (editableUsingGeometryOps == otherEntity.editableUsingGeometryOps)
                 && (rotatable == otherEntity.rotatable)
-                && (scaleable == otherEntity.scaleable) && (topmost == otherEntity.topmost));
+                && (scaleable == otherEntity.scaleable)
+                && (topmost == otherEntity.topmost));
     }
 
     @Override
@@ -463,8 +482,9 @@ public class SpatialEntity<I> {
                 + Utils.getHashCode(textColor)
                 + Utils.getHashCode(dragCapability)
                 + (multiGeometryPointsDraggable ? 1L : 0L)
-                + (rotatable ? 1L : 0L) + (scaleable ? 1L : 0L) + (topmost ? 1L
-                    : 0L)) % Integer.MAX_VALUE);
+                + (editableUsingGeometryOps ? 1L : 0L) + (rotatable ? 1L : 0L)
+                + (scaleable ? 1L : 0L) + (topmost ? 1L : 0L))
+                % Integer.MAX_VALUE);
     }
 
     @Override
@@ -622,6 +642,17 @@ public class SpatialEntity<I> {
      */
     public boolean isMultiGeometryPointsDraggable() {
         return multiGeometryPointsDraggable;
+    }
+
+    /**
+     * Determine whether the entity is editable using geometry operations
+     * (replacement, union, intersection, and subtraction).
+     * 
+     * @return <code>true</code> if the entity is editable using geometry
+     *         operations, otherwise <code>false</code>.
+     */
+    public boolean isEditableUsingGeometryOps() {
+        return editableUsingGeometryOps;
     }
 
     /**
@@ -815,7 +846,18 @@ public class SpatialEntity<I> {
     }
 
     /**
-     * Set the flag indicating whether or not the feature is rotatable.
+     * Set the flag indicating whether or not the entity is editable using
+     * geometry operations (replacement, union, intersection, and subtraction).
+     * 
+     * @param editableUsingGeometryOps
+     *            New value.
+     */
+    private void setEditableUsingGeometryOps(boolean editableUsingGeometryOps) {
+        this.editableUsingGeometryOps = editableUsingGeometryOps;
+    }
+
+    /**
+     * Set the flag indicating whether or not the entity is rotatable.
      * 
      * @param rotatable
      *            New value.
@@ -825,7 +867,7 @@ public class SpatialEntity<I> {
     }
 
     /**
-     * Set the flag indicating whether or not the feature is scaleable.
+     * Set the flag indicating whether or not the entity is scaleable.
      * 
      * @param scaleable
      *            New value.
@@ -835,7 +877,7 @@ public class SpatialEntity<I> {
     }
 
     /**
-     * Set the flag indicating whether or not the feature is topmost.
+     * Set the flag indicating whether or not the entity is topmost.
      * 
      * @param topmost
      *            New value.

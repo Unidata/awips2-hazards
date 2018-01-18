@@ -9,13 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Event;
 
 import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
+
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 
 /**
  * Description: Base class from which to derive classes used to handle input in
@@ -26,14 +26,15 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
  * SOFTWARE HISTORY
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
- * Jul 05, 2016   19537    Chris.Godlen Initial creation (adapted from old
+ * Jul 05, 2016   19537    Chris.Golden Initial creation (adapted from old
  *                                      NonDrawingAction inner class).
+ * Jan 17, 2018   33428    Chris.Golden Made abstract as originally intended.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class NonDrawingInputHandler extends BaseInputHandler {
+public abstract class NonDrawingInputHandler extends BaseInputHandler {
 
     // Private Variables
 

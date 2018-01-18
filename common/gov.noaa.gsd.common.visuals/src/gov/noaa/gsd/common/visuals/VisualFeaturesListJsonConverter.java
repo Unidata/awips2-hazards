@@ -56,6 +56,9 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  *                                      flag.
  * Sep 12, 2016   15934    Chris.Golden Changed to work with advanced geometries
  *                                      now used by visual features.
+ * Jan 17, 2018   33428    Chris.Golden Added support for flag that indicates
+ *                                      whether or not visual feature is
+ *                                      editable via geometry operations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -162,6 +165,12 @@ public class VisualFeaturesListJsonConverter {
      * are draggable.
      */
     public static final String KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE = "multiGeometryPointsDraggable";
+
+    /**
+     * Key for the editable using geometry operations flag in a JSON object
+     * representing a visual feature.
+     */
+    public static final String KEY_EDITABLE_USING_GEOMETRY_OPS = "editableUsingGeometryOps";
 
     /**
      * Key for the rotatable flag in a JSON object representing a visual
@@ -281,6 +290,7 @@ public class VisualFeaturesListJsonConverter {
             .put(KEY_TEXT_SIZE, TYPE_INTEGER).put(KEY_TEXT_COLOR, TYPE_COLOR)
             .put(KEY_DRAGGABILITY, TYPE_DRAGGABILITY)
             .put(KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE, TYPE_BOOLEAN)
+            .put(KEY_EDITABLE_USING_GEOMETRY_OPS, TYPE_BOOLEAN)
             .put(KEY_ROTATABLE, TYPE_BOOLEAN).put(KEY_SCALEABLE, TYPE_BOOLEAN)
             .put(KEY_TOPMOST, TYPE_BOOLEAN).build();
 

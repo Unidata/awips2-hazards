@@ -9,11 +9,6 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorType;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -26,6 +21,11 @@ import com.raytheon.viz.ui.VizWorkbenchManager;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay.CursorType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 
 /**
  * Description: Input handler for select-by-area mode.
@@ -105,11 +105,12 @@ public class SelectByAreaInputHandler extends BaseInputHandler {
             SelectByAreaDbMapResource vizResource,
             Set<Geometry> selectedGeometries, IEntityIdentifier identifier) {
         this.vizResource = vizResource;
-        this.selectedGeometries = (selectedGeometries == null ? new ArrayList<Geometry>()
+        this.selectedGeometries = (selectedGeometries == null
+                ? new ArrayList<Geometry>()
                 : new ArrayList<>(selectedGeometries));
         this.identifier = identifier;
-        vizResource.setSelectedGeometries(Collections
-                .unmodifiableList(this.selectedGeometries));
+        vizResource.setSelectedGeometries(
+                Collections.unmodifiableList(this.selectedGeometries));
     }
 
     @Override
@@ -133,6 +134,7 @@ public class SelectByAreaInputHandler extends BaseInputHandler {
         if (mouseButton == 2) {
             return false;
         } else if (mouseButton == 1) {
+
             AbstractEditor editor = (AbstractEditor) VizWorkbenchManager
                     .getInstance().getActiveEditor();
 
@@ -184,8 +186,8 @@ public class SelectByAreaInputHandler extends BaseInputHandler {
          * If a geometry is found and it is not already selected, add it to the
          * list of selected geometries and tell the viz resource to update.
          */
-        if ((geometry != null)
-                && (isContainedInSelectedGeometries(geometry, false) == false)) {
+        if ((geometry != null) && (isContainedInSelectedGeometries(geometry,
+                false) == false)) {
             selectedGeometries.add(geometry);
             vizResource.issueRefresh();
         }

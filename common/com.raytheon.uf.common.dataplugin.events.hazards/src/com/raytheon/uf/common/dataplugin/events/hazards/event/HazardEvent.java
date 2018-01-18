@@ -128,6 +128,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesListAdapter;
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
  *                                      mutable session events.
+ * Jan 26, 2018 33428      Chris.Golden Added issuance count.
  * </pre>
  * 
  * @author mnash
@@ -184,6 +185,14 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @XmlAttribute
     @SlotAttribute(HazardConstants.HAZARD_EVENT_STATUS)
     private HazardStatus status;
+
+    /**
+     * Number of times that the event has been issued.
+     */
+    @DynamicSerializeElement
+    @XmlAttribute
+    @SlotAttribute(HazardConstants.HAZARD_EVENT_ISSUANCE_COUNT)
+    private int issuanceCount;
 
     /**
      * Phenomenon that is being recorded
@@ -333,6 +342,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
         setStatus(event.getStatus());
+        setIssuanceCount(event.getIssuanceCount());
         setHazardMode(event.getHazardMode());
         setSource(event.getSource());
         setWsId(event.getWsId());
@@ -400,6 +410,16 @@ public class HazardEvent implements IHazardEvent, IValidator {
     @Override
     public void setStatus(HazardStatus state) {
         this.status = state;
+    }
+
+    @Override
+    public int getIssuanceCount() {
+        return issuanceCount;
+    }
+
+    @Override
+    public void setIssuanceCount(int count) {
+        this.issuanceCount = count;
     }
 
     @Override
@@ -669,6 +689,7 @@ public class HazardEvent implements IHazardEvent, IValidator {
         result = prime * result
                 + ((startTime == null) ? 0 : startTime.hashCode());
         result = prime * result + ((status == null) ? 0 : status.hashCode());
+        result = prime * result + issuanceCount;
         result = prime * result + ((subType == null) ? 0 : subType.hashCode());
         result = prime * result
                 + ((uniqueID == null) ? 0 : uniqueID.hashCode());
@@ -778,6 +799,9 @@ public class HazardEvent implements IHazardEvent, IValidator {
             return false;
         }
         if (status != other.status) {
+            return false;
+        }
+        if (issuanceCount != other.issuanceCount) {
             return false;
         }
         if (subType == null) {

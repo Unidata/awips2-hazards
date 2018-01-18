@@ -33,9 +33,10 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *
  * SOFTWARE HISTORY
  *
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Dec 11, 2017   20739    golden      Initial creation.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Dec 11, 2017   20739    Chris.Golden Initial creation.
+ * Jan 26, 2018   33428    Chris.Golden Added issuance count.
  * </pre>
  *
  * @author golden
@@ -65,6 +66,8 @@ public interface IReadableHazardEvent extends IEvent {
     public String getDisplayEventID();
 
     public HazardStatus getStatus();
+
+    public int getIssuanceCount();
 
     public String getPhenomenon();
 

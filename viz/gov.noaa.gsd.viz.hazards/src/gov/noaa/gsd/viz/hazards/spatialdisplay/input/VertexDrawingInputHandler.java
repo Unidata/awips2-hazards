@@ -9,14 +9,15 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.vividsolutions.jts.geom.Coordinate;
+
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
 
 /**
  * Description: Vertex drawing input handler, for drawing points, lines and
@@ -30,6 +31,9 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 05, 2016   19537    Chris.Golden Initial creation (adapted from the old
  *                                      VertexHazardDrawingAction inner class).
  * Sep 21, 2016   15934    Chris.Golden Changed to use new superclass.
+ * Jan 17, 2018   33428    Chris.Golden Changed to supply an advanced geometry
+ *                                      instead of a list of points when the
+ *                                      user finishes drawing the shape.
  * </pre>
  * 
  * @author Chris.Golden
@@ -116,11 +120,12 @@ public class VertexDrawingInputHandler extends IncrementalDrawingInputHandler {
          * spatial display.
          */
         if (getShapeType() == GeometryType.POINT) {
-            getSpatialDisplay().handleUserCreationOfPointShape(
-                    location,
-                    (button == 3 ? SequencePosition.LAST
-                            : (getPoints().size() == 1 ? SequencePosition.FIRST
-                                    : SequencePosition.INTERIOR)));
+            getSpatialDisplay()
+                    .handleUserCreationOfPointShape(location,
+                            (button == 3 ? SequencePosition.LAST
+                                    : (getPoints().size() == 1
+                                            ? SequencePosition.FIRST
+                                            : SequencePosition.INTERIOR)));
             if (button == 3) {
                 getPoints().clear();
             }
@@ -128,8 +133,11 @@ public class VertexDrawingInputHandler extends IncrementalDrawingInputHandler {
             hideGhost();
             List<Coordinate> pointsCopy = new ArrayList<>(getPoints());
             getPoints().clear();
-            getSpatialDisplay().handleUserMultiPointDrawingActionComplete(
-                    getShapeType(), pointsCopy);
+            IAdvancedGeometry geometry = createShapeFromPoints(getShapeType(),
+                    pointsCopy);
+            if (geometry != null) {
+                getSpatialDisplay().handleUserDrawingActionComplete(geometry);
+            }
         }
         return true;
     }

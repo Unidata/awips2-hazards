@@ -19,13 +19,13 @@
  **/
 package gov.noaa.gsd.viz.hazards.product;
 
-import gov.noaa.gsd.viz.mvp.IView;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
+
+import gov.noaa.gsd.viz.mvp.IView;
 
 /**
  * Interface for the product view.
@@ -34,17 +34,28 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 29, 2016   16373    mpduff      Initial creation
- * 
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Apr 29, 2016   16373    mpduff       Initial creation.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
 
-public interface IProductView<C, E extends Enum<E>> extends IView<C, E> {
+public interface IProductView<I, C, E extends Enum<E>> extends IView<I, C, E> {
+
+    // Public Static Constants
+
+    /**
+     * Product pull-down identifier.
+     */
+    public static final String PRODUCT_PULL_DOWN_IDENTIFIER = "productPullDown";
+
+    // Public Methods
+
     /**
      * Initialize the view.
      * 

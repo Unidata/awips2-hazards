@@ -9,6 +9,44 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.widgets.Display;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.IGraphicsTarget;
+import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
+import com.raytheon.uf.viz.core.drawables.FillPatterns;
+import com.raytheon.uf.viz.core.drawables.IShadedShape;
+import com.raytheon.uf.viz.core.drawables.PaintProperties;
+import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.map.IMapDescriptor;
+import com.raytheon.viz.core.rsc.jts.JTSCompiler;
+import com.raytheon.viz.core.rsc.jts.JTSCompiler.JTSGeometryData;
+import com.raytheon.viz.ui.VizWorkbenchManager;
+import com.raytheon.viz.ui.editor.AbstractEditor;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.Point;
+
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
@@ -47,44 +85,6 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
 import gov.noaa.nws.ncep.ui.pgen.gfa.IGfa;
-
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.RGB;
-import org.eclipse.swt.widgets.Display;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.IGraphicsTarget;
-import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
-import com.raytheon.uf.viz.core.drawables.FillPatterns;
-import com.raytheon.uf.viz.core.drawables.IShadedShape;
-import com.raytheon.uf.viz.core.drawables.PaintProperties;
-import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.map.IMapDescriptor;
-import com.raytheon.viz.core.rsc.jts.JTSCompiler;
-import com.raytheon.viz.core.rsc.jts.JTSCompiler.JTSGeometryData;
-import com.raytheon.viz.ui.VizWorkbenchManager;
-import com.raytheon.viz.ui.editor.AbstractEditor;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.Point;
 
 /**
  * Description: Manager of the {@link IDrawable} objects used by the spatial
@@ -137,6 +137,8 @@ import com.vividsolutions.jts.geom.Point;
  *                                      resolution shape is in use, and thus
  *                                      recreating it does nothing but cause
  *                                      a performance hit.
+ * Jan 17, 2018   33428    Chris.Golden Changed to use new method name from
+ *                                      {@link IDrawable}.
  * </pre>
  * 
  * @author Chris.Golden
@@ -155,9 +157,10 @@ class DrawableManager {
      */
     private enum HandlebarTypeRenderer {
 
-        MOVE_VERTEX(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK)
-                .getRGB(), Display.getCurrent().getSystemColor(SWT.COLOR_GRAY)
-                .getRGB(), 1.7f, 1.3f, PointStyle.DISC),
+        MOVE_VERTEX(
+                Display.getCurrent().getSystemColor(SWT.COLOR_BLACK).getRGB(),
+                Display.getCurrent().getSystemColor(SWT.COLOR_GRAY).getRGB(),
+                1.7f, 1.3f, PointStyle.DISC),
 
         SCALE(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK).getRGB(),
                 Display.getCurrent().getSystemColor(SWT.COLOR_GRAY).getRGB(),
@@ -250,7 +253,8 @@ class DrawableManager {
      * objects that can handle alpha transparency instead of the usual
      * {@link LineDisplayElement}.
      */
-    private class DefaultVectorElementContainer extends DefaultElementContainer {
+    private class DefaultVectorElementContainer
+            extends DefaultElementContainer {
 
         // Private Variables
 
@@ -315,9 +319,8 @@ class DrawableManager {
              * Create the displayables if they have not already been created, or
              * if not currently zooming and the zoom level has changed.
              */
-            if ((displayEls == null)
-                    || ((paintProps.isZooming() == false) && (paintProps
-                            .getZoomLevel() != zoomLevel))) {
+            if ((displayEls == null) || ((paintProps.isZooming() == false)
+                    && (paintProps.getZoomLevel() != zoomLevel))) {
                 needsCreate = true;
                 zoomLevel = paintProps.getZoomLevel();
                 factory.setLayerDisplayAttributes(dprops.getLayerMonoColor(),
@@ -476,8 +479,8 @@ class DrawableManager {
      * {@link DrawableManager#drawablesForSpatialEntities} change while an
      * instance of this iterator is being used.
      */
-    private class DrawableIterator implements
-            Iterator<AbstractDrawableComponent> {
+    private class DrawableIterator
+            implements Iterator<AbstractDrawableComponent> {
 
         // Private Variables
 
@@ -872,8 +875,7 @@ class DrawableManager {
      *         drawable to be removed (because it was replaced),
      *         <code>false</code> otherwise.
      */
-    boolean addDrawablesForSpatialEntities(
-            SpatialEntityType type,
+    boolean addDrawablesForSpatialEntities(SpatialEntityType type,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> spatialEntities) {
         boolean result = false;
         for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntities) {
@@ -912,8 +914,7 @@ class DrawableManager {
      * @return <code>true</code> if the replacement caused the currently-edited
      *         drawable to be removed, <code>false</code> otherwise.
      */
-    boolean replaceDrawablesForSpatialEntities(
-            SpatialEntityType type,
+    boolean replaceDrawablesForSpatialEntities(SpatialEntityType type,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> oldSpatialEntities,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> newSpatialEntities) {
         boolean result = removeDrawablesForSpatialEntities(type,
@@ -945,8 +946,7 @@ class DrawableManager {
      * @return <code>true</code> if the removal caused the currently-edited
      *         drawable to be removed, <code>false</code> otherwise.
      */
-    boolean removeDrawablesForSpatialEntities(
-            SpatialEntityType type,
+    boolean removeDrawablesForSpatialEntities(SpatialEntityType type,
             List<? extends SpatialEntity<? extends IEntityIdentifier>> spatialEntities) {
         boolean result = false;
         for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntities) {
@@ -1050,8 +1050,8 @@ class DrawableManager {
                         .get(location);
                 if (combinableDrawables == null) {
                     combinableDrawables = new ArrayList<>();
-                    textDrawablesForLocations
-                            .put(location, combinableDrawables);
+                    textDrawablesForLocations.put(location,
+                            combinableDrawables);
                 } else if (combinableDrawables.isEmpty() == false) {
                     locationsNeedingUpdate.add(location);
                 }
@@ -1095,7 +1095,8 @@ class DrawableManager {
     boolean replaceDrawablesForSpatialEntity(SpatialEntityType type,
             SpatialEntity<? extends IEntityIdentifier> oldSpatialEntity,
             SpatialEntity<? extends IEntityIdentifier> newSpatialEntity) {
-        boolean result = removeDrawablesForSpatialEntity(type, oldSpatialEntity);
+        boolean result = removeDrawablesForSpatialEntity(type,
+                oldSpatialEntity);
         result |= addDrawablesForSpatialEntity(type, newSpatialEntity);
         return result;
     }
@@ -1208,7 +1209,8 @@ class DrawableManager {
                  * If the drawable has been combined with other drawables, note
                  * that it needs to be removed from the amalgamation.
                  */
-                if (amalgamatedDrawablesForTextDrawables.containsKey(drawable)) {
+                if (amalgamatedDrawablesForTextDrawables
+                        .containsKey(drawable)) {
 
                     /*
                      * Add this amalgamated drawable to the set of those that
@@ -1236,8 +1238,7 @@ class DrawableManager {
      *            Modified version of <code>drawable</code> that is to be used
      *            to generate any new bounding box.
      */
-    void updateBoundingBoxDrawable(
-            AbstractDrawableComponent associatedDrawable,
+    void updateBoundingBoxDrawable(AbstractDrawableComponent associatedDrawable,
             AbstractDrawableComponent modifiedDrawable) {
 
         /*
@@ -1266,7 +1267,8 @@ class DrawableManager {
                 indexForBoundingBoxDrawableInsertion = j + 1;
             }
             if ((drawable instanceof BoundingBoxDrawable)
-                    && (((BoundingBoxDrawable) drawable).getBoundedDrawable() == associatedDrawable)) {
+                    && (((BoundingBoxDrawable) drawable)
+                            .getBoundedDrawable() == associatedDrawable)) {
                 boundingBoxDrawable = (BoundingBoxDrawable) drawable;
                 indexForBoundingBoxDrawableInsertion = j;
                 break;
@@ -1285,10 +1287,11 @@ class DrawableManager {
         /*
          * Create a new bounding box, if appropriate.
          */
-        boundingBoxDrawable = (modifiedDrawable instanceof MultiPointDrawable ? drawableBuilder
-                .buildBoundingBoxDrawable(
+        boundingBoxDrawable = (modifiedDrawable instanceof MultiPointDrawable
+                ? drawableBuilder.buildBoundingBoxDrawable(
                         (MultiPointDrawable<?>) modifiedDrawable,
-                        (MultiPointDrawable<?>) associatedDrawable) : null);
+                        (MultiPointDrawable<?>) associatedDrawable)
+                : null);
         if (boundingBoxDrawable != null) {
             reactiveDrawables.add(boundingBoxDrawable);
             spatialEntitiesForDrawables.put(boundingBoxDrawable, spatialEntity);
@@ -1313,8 +1316,8 @@ class DrawableManager {
      * @return Drawable currently being edited.
      */
     DrawableElement getDrawableBeingEdited() {
-        return (drawableBeingEdited == null ? null : drawableBeingEdited
-                .getPrimaryDE());
+        return (drawableBeingEdited == null ? null
+                : drawableBeingEdited.getPrimaryDE());
     }
 
     /**
@@ -1392,7 +1395,8 @@ class DrawableManager {
      *            Flag indicating whether or not the drawable that is to be
      *            highlit is currently active.
      */
-    void setHighlitDrawable(AbstractDrawableComponent drawable, boolean active) {
+    void setHighlitDrawable(AbstractDrawableComponent drawable,
+            boolean active) {
         highlitDrawable = drawable;
         highlitDrawableActive = active;
 
@@ -1422,7 +1426,8 @@ class DrawableManager {
         /*
          * Clear the lists of pixel-space locations for all handlebar types.
          */
-        for (List<double[]> list : locationsForHandlebarTypeRenderers.values()) {
+        for (List<double[]> list : locationsForHandlebarTypeRenderers
+                .values()) {
             list.clear();
         }
 
@@ -1435,14 +1440,15 @@ class DrawableManager {
         if (points != null) {
             for (ManipulationPoint point : points) {
                 double[] pixelPoint = spatialDisplay.getDescriptor()
-                        .worldToPixel(
-                                new double[] { point.getLocation().x,
-                                        point.getLocation().y });
+                        .worldToPixel(new double[] { point.getLocation().x,
+                                point.getLocation().y });
                 locationsForHandlebarTypeRenderers
-                        .get(point instanceof VertexManipulationPoint ? HandlebarTypeRenderer.MOVE_VERTEX
-                                : (point instanceof RotationManipulationPoint ? HandlebarTypeRenderer.ROTATE
-                                        : HandlebarTypeRenderer.SCALE)).add(
-                                pixelPoint);
+                        .get(point instanceof VertexManipulationPoint
+                                ? HandlebarTypeRenderer.MOVE_VERTEX
+                                : (point instanceof RotationManipulationPoint
+                                        ? HandlebarTypeRenderer.ROTATE
+                                        : HandlebarTypeRenderer.SCALE))
+                        .add(pixelPoint);
             }
         }
     }
@@ -1454,12 +1460,14 @@ class DrawableManager {
      *            Geometry to test for intersection in geographic space.
      * @return List of drawables which intersect this geometry.
      */
-    List<AbstractDrawableComponent> getIntersectingDrawables(Geometry geometry) {
+    List<AbstractDrawableComponent> getIntersectingDrawables(
+            Geometry geometry) {
         Iterator<AbstractDrawableComponent> iterator = getDrawablesIterator();
         List<AbstractDrawableComponent> intersectingDrawables = new ArrayList<>();
         while (iterator.hasNext()) {
             AbstractDrawableComponent drawable = iterator.next();
-            Geometry drawableGeometry = getHitTestGeometry((IDrawable<?>) drawable);
+            Geometry drawableGeometry = getHitTestGeometry(
+                    (IDrawable<?>) drawable);
             if ((drawableGeometry != null)
                     && geometry.intersects(drawableGeometry)) {
                 intersectingDrawables.add(drawable);
@@ -1541,14 +1549,15 @@ class DrawableManager {
                     if (activeIdentifiers
                             .contains(((IDrawable<?>) containingDrawable)
                                     .getIdentifier())) {
-                        drawable = (containingDrawable instanceof BoundingBoxDrawable ? ((BoundingBoxDrawable) containingDrawable)
-                                .getBoundedDrawable() : containingDrawable);
+                        drawable = (containingDrawable instanceof BoundingBoxDrawable
+                                ? ((BoundingBoxDrawable) containingDrawable)
+                                        .getBoundedDrawable()
+                                : containingDrawable);
                         active = true;
                         break;
-                    } else if ((drawable == null)
-                            && reactiveIdentifiers
-                                    .contains(((IDrawable<?>) containingDrawable)
-                                            .getIdentifier())) {
+                    } else if ((drawable == null) && reactiveIdentifiers
+                            .contains(((IDrawable<?>) containingDrawable)
+                                    .getIdentifier())) {
                         drawable = containingDrawable;
                     }
                 }
@@ -1558,18 +1567,23 @@ class DrawableManager {
              * If no drawable has been found, try to find the closest drawable.
              */
             if (drawable == null) {
-                AbstractDrawableComponent nearestDrawable = getNearestDrawable(location);
+                AbstractDrawableComponent nearestDrawable = getNearestDrawable(
+                        location);
                 if ((nearestDrawable != null)
                         && (activeIdentifiers
                                 .contains(((IDrawable<?>) nearestDrawable)
-                                        .getIdentifier()) || reactiveIdentifiers
+                                        .getIdentifier())
+                        || reactiveIdentifiers
                                 .contains(((IDrawable<?>) nearestDrawable)
                                         .getIdentifier()))
-                        && (isDrawableModifiable(nearestDrawable) || isDrawableBoundingBox(nearestDrawable))) {
-                    drawable = (nearestDrawable instanceof BoundingBoxDrawable ? ((BoundingBoxDrawable) nearestDrawable)
-                            .getBoundedDrawable() : nearestDrawable);
-                    active = activeIdentifiers
-                            .contains(((IDrawable<?>) drawable).getIdentifier());
+                        && (isDrawableModifiable(nearestDrawable)
+                                || isDrawableBoundingBox(nearestDrawable))) {
+                    drawable = (nearestDrawable instanceof BoundingBoxDrawable
+                            ? ((BoundingBoxDrawable) nearestDrawable)
+                                    .getBoundedDrawable()
+                            : nearestDrawable);
+                    active = activeIdentifiers.contains(
+                            ((IDrawable<?>) drawable).getIdentifier());
                 }
             }
 
@@ -1591,8 +1605,8 @@ class DrawableManager {
                                     .getJtsGeometry(((IDrawable<?>) drawable)
                                             .getGeometry()));
                     Point mouseScreenPoint = AdvancedGeometryUtilities
-                            .getGeometryFactory().createPoint(
-                                    mouseScreenLocation);
+                            .getGeometryFactory()
+                            .createPoint(mouseScreenLocation);
                     for (int j = 0; j < coordinates.size(); j++) {
 
                         /*
@@ -1609,8 +1623,8 @@ class DrawableManager {
                                     coords[1]);
                         }
                         LineString lineString = AdvancedGeometryUtilities
-                                .getGeometryFactory().createLineString(
-                                        screenCoordinates);
+                                .getGeometryFactory()
+                                .createLineString(screenCoordinates);
                         double distance = mouseScreenPoint.distance(lineString);
 
                         /*
@@ -1634,8 +1648,8 @@ class DrawableManager {
                         .getManipulationPoints();
                 double minDistance = Double.MAX_VALUE;
                 for (ManipulationPoint point : manipulationPoints) {
-                    double[] screen = editor.translateInverseClick(point
-                            .getLocation());
+                    double[] screen = editor
+                            .translateInverseClick(point.getLocation());
                     Coordinate pixelLocation = new Coordinate(screen[0],
                             screen[1]);
                     double distance = mouseScreenLocation
@@ -1672,8 +1686,9 @@ class DrawableManager {
          * Iterate through the drawables, checking each in turn.
          */
         Geometry clickPointWithSlop = getClickPointWithSlop(
-                AdvancedGeometryUtilities.getGeometryFactory().createPoint(
-                        point), x, y);
+                AdvancedGeometryUtilities.getGeometryFactory()
+                        .createPoint(point),
+                x, y);
         if (clickPointWithSlop == null) {
             return Collections.emptyList();
         }
@@ -1688,7 +1703,8 @@ class DrawableManager {
              */
             if ((drawable instanceof IDrawable)
                     && (drawable instanceof TextDrawable == false)) {
-                Geometry drawableGeometry = getHitTestGeometry((IDrawable<?>) drawable);
+                Geometry drawableGeometry = getHitTestGeometry(
+                        (IDrawable<?>) drawable);
 
                 if (drawableGeometry != null) {
                     boolean contains = false;
@@ -1759,7 +1775,7 @@ class DrawableManager {
         if (drawable instanceof DECollection) {
             drawable = ((DECollection) drawable).getItemAt(0);
         }
-        return ((IDrawable<?>) drawable).isEditable();
+        return ((IDrawable<?>) drawable).isVertexEditable();
     }
 
     /**
@@ -1807,7 +1823,8 @@ class DrawableManager {
         }
         IDrawable<?> castDrawable = (IDrawable<?>) drawable;
         return (castDrawable.isMovable() || castDrawable.isRotatable()
-                || castDrawable.isResizable() || castDrawable.isEditable());
+                || castDrawable.isResizable()
+                || castDrawable.isVertexEditable());
     }
 
     /**
@@ -1836,8 +1853,8 @@ class DrawableManager {
      *         <code>false</code> otherwise.
      */
     boolean isPolygon(AbstractDrawableComponent drawable) {
-        return ((drawable instanceof PathDrawable) && ((PathDrawable) drawable)
-                .isClosedLine());
+        return ((drawable instanceof PathDrawable)
+                && ((PathDrawable) drawable).isClosedLine());
     }
 
     /**
@@ -1924,10 +1941,10 @@ class DrawableManager {
              * the drawable over the top of this one to indicate in a gentler
              * way that the drawable is highlit.)
              */
-            AbstractDrawableComponent drawable = getDrawableToBeRendered(drawablesIterator
-                    .next());
-            if ((drawable == null)
-                    || ((drawable == highlitDrawable) && highlitDrawableActive)) {
+            AbstractDrawableComponent drawable = getDrawableToBeRendered(
+                    drawablesIterator.next());
+            if ((drawable == null) || ((drawable == highlitDrawable)
+                    && highlitDrawableActive)) {
                 continue;
             }
 
@@ -2012,9 +2029,9 @@ class DrawableManager {
                     for (int i = 0; i < coords.length; ++i) {
                         screenCoord = editor.translateInverseClick(coords[i]);
                         Point geometryPoint = AdvancedGeometryUtilities
-                                .getGeometryFactory().createPoint(
-                                        new Coordinate(screenCoord[0],
-                                                screenCoord[1]));
+                                .getGeometryFactory()
+                                .createPoint(new Coordinate(screenCoord[0],
+                                        screenCoord[1]));
 
                         double distance = clickScreenPoint
                                 .distance(geometryPoint);
@@ -2051,12 +2068,13 @@ class DrawableManager {
                         .getCentroid(drawable.getGeometry());
                 double[] screenCoords = ((AbstractEditor) VizWorkbenchManager
                         .getInstance().getActiveEditor())
-                        .translateInverseClick(coordinate);
+                                .translateInverseClick(coordinate);
                 if (screenCoords == null) {
                     return null;
                 }
-                geometry = getClickPointWithSlop(AdvancedGeometryUtilities
-                        .getGeometryFactory().createPoint(coordinate),
+                geometry = getClickPointWithSlop(
+                        AdvancedGeometryUtilities.getGeometryFactory()
+                                .createPoint(coordinate),
                         (int) (screenCoords[0] + 0.5),
                         (int) (screenCoords[1] + 0.5));
                 if (geometry != null) {
@@ -2102,17 +2120,13 @@ class DrawableManager {
         Coordinate loc = point.getCoordinate();
         Coordinate offsetLoc = null;
         for (int j = 0; j < 4; j++) {
-            offsetLoc = editor
-                    .translateClick(
-                            x
-                                    + (SpatialDisplay.SLOP_DISTANCE_PIXELS * ((j % 2) * (j == 1 ? 1
-                                            : -1))),
-                            y
-                                    + (SpatialDisplay.SLOP_DISTANCE_PIXELS * (((j + 1) % 2) * (j == 0 ? 1
-                                            : -1))));
+            offsetLoc = editor.translateClick(
+                    x + (SpatialDisplay.SLOP_DISTANCE_PIXELS
+                            * ((j % 2) * (j == 1 ? 1 : -1))),
+                    y + (SpatialDisplay.SLOP_DISTANCE_PIXELS
+                            * (((j + 1) % 2) * (j == 0 ? 1 : -1))));
             if (offsetLoc != null) {
-                return point.buffer(Math.sqrt(Math
-                        .pow(loc.x - offsetLoc.x, 2.0)
+                return point.buffer(Math.sqrt(Math.pow(loc.x - offsetLoc.x, 2.0)
                         + Math.pow(loc.y - offsetLoc.y, 2.0)));
             }
         }
@@ -2177,9 +2191,10 @@ class DrawableManager {
             }
         }
         if (handled == false) {
-            statusHandler.error("Unexpected DrawableElement of type "
-                    + drawable.getClass().getSimpleName()
-                    + "; do not know how to create its displayables.",
+            statusHandler.error(
+                    "Unexpected DrawableElement of type "
+                            + drawable.getClass().getSimpleName()
+                            + "; do not know how to create its displayables.",
                     new IllegalStateException());
             return Collections.emptyList();
         }
@@ -2198,8 +2213,8 @@ class DrawableManager {
         if (element instanceof ISinglePoint) {
             PgenRangeRecord rng = null;
             if (element instanceof IText) {
-                rng = factory
-                        .findTextBoxRange((IText) element, paintProperties);
+                rng = factory.findTextBoxRange((IText) element,
+                        paintProperties);
             } else if (element instanceof ISymbol) {
                 rng = factory.findSymbolRange((ISymbol) element,
                         paintProperties);
@@ -2248,9 +2263,10 @@ class DrawableManager {
             element.createRange(pts, closed);
 
         } else {
-            statusHandler.error("Unexpected DrawableElement of type "
-                    + element.getClass().getSimpleName()
-                    + "; do not know how to set its range record.",
+            statusHandler.error(
+                    "Unexpected DrawableElement of type "
+                            + element.getClass().getSimpleName()
+                            + "; do not know how to set its range record.",
                     new IllegalStateException());
         }
     }
@@ -2298,8 +2314,8 @@ class DrawableManager {
          * Remove any locations from the needing-updates set if they have source
          * text drawables numbering 1 or less.
          */
-        for (Iterator<Coordinate> iterator = locationsNeedingUpdate.iterator(); iterator
-                .hasNext();) {
+        for (Iterator<Coordinate> iterator = locationsNeedingUpdate
+                .iterator(); iterator.hasNext();) {
             List<TextDrawable> textDrawables = textDrawablesForLocations
                     .get(iterator.next());
             if ((textDrawables == null) || (textDrawables.size() < 2)) {
@@ -2353,8 +2369,8 @@ class DrawableManager {
             for (Map.Entry<Coordinate, Set<TextDrawable>> entry : newTextDrawablesForLocations
                     .entrySet()) {
                 if (entry.getValue().remove(drawable)) {
-                    textDrawablesForLocations.get(entry.getKey()).add(
-                            (TextDrawable) drawable);
+                    textDrawablesForLocations.get(entry.getKey())
+                            .add((TextDrawable) drawable);
                     if (entry.getValue().isEmpty()) {
                         locationCompleted = entry.getKey();
                     }
@@ -2485,7 +2501,8 @@ class DrawableManager {
         if (amalgamatedTextDrawable != null) {
             List<TextDrawable> sourceTextDrawables = textDrawablesForAmalgamatedDrawables
                     .get(amalgamatedTextDrawable);
-            if (sourceTextDrawables.get(sourceTextDrawables.size() - 1) == drawable) {
+            if (sourceTextDrawables
+                    .get(sourceTextDrawables.size() - 1) == drawable) {
                 return amalgamatedTextDrawable;
             } else {
                 return null;
@@ -2535,7 +2552,8 @@ class DrawableManager {
      *            Drawable for which to remove any rendering; if
      *            <code>null</code>, no removal will be attempted.
      */
-    private void removeRenderingForDrawable(AbstractDrawableComponent drawable) {
+    private void removeRenderingForDrawable(
+            AbstractDrawableComponent drawable) {
         if (drawable == null) {
             return;
         }
@@ -2605,8 +2623,8 @@ class DrawableManager {
                             .get(textDrawable.getLocation());
                     if (textDrawables == null) {
                         textDrawables = new ArrayList<>();
-                        newTextDrawablesForLocations.put(
-                                textDrawable.getLocation(), textDrawables);
+                        newTextDrawablesForLocations
+                                .put(textDrawable.getLocation(), textDrawables);
                     }
                     textDrawables.add(textDrawable);
                 }
@@ -2708,7 +2726,8 @@ class DrawableManager {
                 try {
                     for (AbstractDrawableComponent hatchedArea : hatchedAreas) {
                         if ((hatchedArea instanceof PathDrawable)
-                                && ((PathDrawable) hatchedArea).isClosedLine()) {
+                                && ((PathDrawable) hatchedArea)
+                                        .isClosedLine()) {
                             PathDrawable polygon = (PathDrawable) hatchedArea;
                             Color[] colors = polygon.getColors();
                             JTSGeometryData data = groupCompiler
@@ -2790,8 +2809,8 @@ class DrawableManager {
         for (Map.Entry<HandlebarTypeRenderer, List<double[]>> entry : locationsForHandlebarTypeRenderers
                 .entrySet()) {
             if (entry.getValue().isEmpty() == false) {
-                entry.getKey()
-                        .render(entry.getValue(), target, paintProperties);
+                entry.getKey().render(entry.getValue(), target,
+                        paintProperties);
             }
         }
     }

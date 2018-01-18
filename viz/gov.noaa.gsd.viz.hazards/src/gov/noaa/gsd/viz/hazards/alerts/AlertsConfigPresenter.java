@@ -40,13 +40,15 @@ import gov.noaa.gsd.viz.hazards.display.HazardServicesPresenter;
  *                                           config manager.
  * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
  *                                           mutable session events.
+ * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class AlertsConfigPresenter
-        extends HazardServicesPresenter<IAlertsConfigView<?, ?>> {
+        extends HazardServicesPresenter<IAlertsConfigView<?, ?, ?>> {
 
     // Public Constructors
 
@@ -82,12 +84,12 @@ public class AlertsConfigPresenter
     // Protected Methods
 
     @Override
-    protected final void initialize(IAlertsConfigView<?, ?> view) {
+    protected final void initialize(IAlertsConfigView<?, ?, ?> view) {
         getView().initialize(this);
     }
 
     @Override
-    protected final void reinitialize(IAlertsConfigView<?, ?> view) {
+    protected final void reinitialize(IAlertsConfigView<?, ?, ?> view) {
 
         /*
          * No action.

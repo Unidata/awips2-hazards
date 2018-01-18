@@ -9,11 +9,11 @@
  */
 package gov.noaa.gsd.viz.hazards.productstaging;
 
-import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
-import gov.noaa.gsd.viz.mvp.IView;
-
 import java.util.List;
 import java.util.Map;
+
+import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
+import gov.noaa.gsd.viz.mvp.IView;
 
 /**
  * Description: Interface that a delegate for the product staging view must
@@ -28,14 +28,16 @@ import java.util.Map;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 06, 2014    4042    Chris.Golden Initial creation.
- * Feb 24, 2016    13929   Robert.Blum  Remove first part of staging dialog.
+ * Feb 24, 2016   13929    Robert.Blum  Remove first part of staging dialog.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IProductStagingViewDelegate<C, E extends Enum<E>> extends
-        IView<C, E>, IProductStagingView {
+public interface IProductStagingViewDelegate<I, C, E extends Enum<E>>
+        extends IView<I, C, E>, IProductStagingView {
 
     // Public Methods
 
@@ -56,8 +58,7 @@ public interface IProductStagingViewDelegate<C, E extends Enum<E>> extends
      *            Maximum visible time for any widgets displaying time
      *            graphically.
      */
-    public void showStagingDialog(
-            List<String> productNames,
+    public void showStagingDialog(List<String> productNames,
             Map<String, MegawidgetSpecifierManager> megawidgetSpecifierManagersForProductNames,
             long minimumVisibleTime, long maximumVisibleTime);
 

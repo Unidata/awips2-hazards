@@ -7,6 +7,20 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableMap;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.Ellipse;
@@ -22,20 +36,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.display.FillPatternList.FillPattern;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
-
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableMap;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * 
@@ -106,6 +106,8 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 21, 2016 15934      Chris.Golden Added support for ellipse drawing.
  * Sep 29, 2016 15928      Chris.Golden Added method to create bounding box drawables
  *                                      as necessary.
+ * Jan 17, 2018 33428      Chris.Golden Changed to work with new version of
+ *                                      {@link IDrawable}.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -144,6 +146,7 @@ public class DrawableBuilder {
      * border.
      */
     private static final Map<SymbolShape, String> PGEN_OUTER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS;
+
     static {
         Map<SymbolShape, String> map = new HashMap<>(2, 1.0f);
         map.put(SymbolShape.CIRCLE, DOT);
@@ -160,6 +163,7 @@ public class DrawableBuilder {
      * PGEN symbol shape name is used, but with a reduced size scale.
      */
     private static final Map<SymbolShape, String> PGEN_INNER_SYMBOLS_FOR_VISUAL_FEATURE_SYMBOLS;
+
     static {
         Map<SymbolShape, String> map = new HashMap<>(1, 1.0f);
         map.put(SymbolShape.STAR, FILLED_STAR);
@@ -173,6 +177,7 @@ public class DrawableBuilder {
      * the same scale, they end up about the same size.
      */
     private static final Map<SymbolShape, Double> PGEN_SIZE_MULTIPLIERS_FOR_VISUAL_FEATURE_SYMBOLS;
+
     static {
         Map<SymbolShape, Double> map = new HashMap<>(2, 1.0f);
         map.put(SymbolShape.CIRCLE, 1.0);
@@ -210,7 +215,8 @@ public class DrawableBuilder {
          */
         List<AbstractDrawableComponent> drawableComponents = new ArrayList<>();
         boolean createDrawableAttributes = true;
-        if (spatialEntity.getIdentifier() instanceof HazardEventHatchingEntityIdentifier == false) {
+        if (spatialEntity
+                .getIdentifier() instanceof HazardEventHatchingEntityIdentifier == false) {
 
             /*
              * If the spatial entity has a geometry collection, create a
@@ -223,13 +229,13 @@ public class DrawableBuilder {
                 List<IAdvancedGeometry> subGeometries = ((AdvancedGeometryCollection) geometry)
                         .getChildren();
                 for (int j = 0; j < subGeometries.size(); j++) {
-                    drawableComponents.add(buildDrawable(spatialEntity,
-                            subGeometries.get(j),
-                            (subGeometries.size() == 1 ? -1 : j)));
+                    drawableComponents.add(
+                            buildDrawable(spatialEntity, subGeometries.get(j),
+                                    (subGeometries.size() == 1 ? -1 : j)));
                 }
             } else {
-                drawableComponents.add(buildDrawable(spatialEntity, geometry,
-                        -1));
+                drawableComponents
+                        .add(buildDrawable(spatialEntity, geometry, -1));
             }
         }
 
@@ -244,10 +250,10 @@ public class DrawableBuilder {
                         (spatialEntity.getFillColor().getAlpha() > 0.0));
                 this.drawingAttributes = drawingAttributes;
                 drawingAttributes.setSizeScale(2);
-                drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
-                        .getLabel()));
-                drawingAttributes
-                        .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+                drawingAttributes.setLabel(
+                        convertNewlinesToArray(spatialEntity.getLabel()));
+                drawingAttributes.setTextPosition(
+                        getTextPositionForSpatialEntity(spatialEntity));
             }
             drawableComponents.add(buildText(spatialEntity,
                     (createDrawableAttributes == false)));
@@ -266,8 +272,8 @@ public class DrawableBuilder {
      */
     private boolean hasNonEmptyLabel(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity) {
-        return ((spatialEntity.getLabel() != null) && (spatialEntity.getLabel()
-                .trim().isEmpty() == false));
+        return ((spatialEntity.getLabel() != null)
+                && (spatialEntity.getLabel().trim().isEmpty() == false));
     }
 
     /**
@@ -330,8 +336,8 @@ public class DrawableBuilder {
         }
         List<String> labelsList = new ArrayList<>(labels);
         Collections.reverse(labelsList);
-        amalgamatedTextDrawable.setText(labels.toArray(new String[labelsList
-                .size()]));
+        amalgamatedTextDrawable
+                .setText(labels.toArray(new String[labelsList.size()]));
         return amalgamatedTextDrawable;
     }
 
@@ -401,12 +407,12 @@ public class DrawableBuilder {
             List<Coordinate> boundingBoxPoints = new ArrayList<>(
                     (int) ((totalDistance * 2.0) + 0.5) + 5);
             for (int j = 0; j < cornerPoints.size() + 1; j++) {
-                Coordinate cornerPoint = cornerPoints.get(j
-                        % cornerPoints.size());
+                Coordinate cornerPoint = cornerPoints
+                        .get(j % cornerPoints.size());
                 boundingBoxPoints.add(cornerPoint);
                 if (j < cornerPoints.size()) {
-                    Coordinate nextCornerPoint = cornerPoints.get((j + 1)
-                            % cornerPoints.size());
+                    Coordinate nextCornerPoint = cornerPoints
+                            .get((j + 1) % cornerPoints.size());
                     int numInterimPoints = (int) ((distancesBetweenCornerPoints
                             .get(j) * 2.0) + 0.5);
                     if (numInterimPoints < 2) {
@@ -417,9 +423,9 @@ public class DrawableBuilder {
                     double yIncrement = (nextCornerPoint.y - cornerPoint.y)
                             / numInterimPoints;
                     for (int k = 1; k < numInterimPoints; k++) {
-                        boundingBoxPoints.add(new Coordinate(cornerPoint.x
-                                + (xIncrement * k), cornerPoint.y
-                                + (yIncrement * k)));
+                        boundingBoxPoints.add(
+                                new Coordinate(cornerPoint.x + (xIncrement * k),
+                                        cornerPoint.y + (yIncrement * k)));
                     }
                 }
             }
@@ -428,10 +434,8 @@ public class DrawableBuilder {
              * Create the JTS geometry representing the bounding box.
              */
             Geometry boundingBox = AdvancedGeometryUtilities
-                    .getGeometryFactory().createPolygon(
-                            boundingBoxPoints
-                                    .toArray(new Coordinate[boundingBoxPoints
-                                            .size()]));
+                    .getGeometryFactory().createPolygon(boundingBoxPoints
+                            .toArray(new Coordinate[boundingBoxPoints.size()]));
 
             /*
              * Create the drawable to be used as the bounding box.
@@ -519,12 +523,12 @@ public class DrawableBuilder {
             drawingAttributes.setColors(new Color[] { color, color });
             drawingAttributes.setDottedLineStyle();
             if (geometry.isPotentiallyCurved()) {
-                hatchedAreas.add(new EllipseDrawable(spatialEntity
-                        .getIdentifier(), drawingAttributes, (Ellipse) geometry
-                        .copyOf()));
-            } else {
-                hatchedAreas.add(new PathDrawable(
+                hatchedAreas.add(new EllipseDrawable(
                         spatialEntity.getIdentifier(), drawingAttributes,
+                        (Ellipse) geometry.copyOf()));
+            } else {
+                hatchedAreas.add(new PathDrawable(spatialEntity.getIdentifier(),
+                        drawingAttributes,
                         (GeometryWrapper) geometry.copyOf()));
             }
         }
@@ -562,8 +566,8 @@ public class DrawableBuilder {
                         .get(spatialEntity.getSymbolShape());
         double innerDiameter = outerDiameter;
         Color borderColor = getColor(spatialEntity.getBorderColor());
-        Color fillColor = (spatialEntity.getFillColor().getAlpha() == 0.0f ? Color.BLACK
-                : getColor(spatialEntity.getFillColor()));
+        Color fillColor = (spatialEntity.getFillColor().getAlpha() == 0.0f
+                ? Color.BLACK : getColor(spatialEntity.getFillColor()));
 
         /*
          * If the inner symbol is the same as the outer one, then use a reduced
@@ -623,22 +627,22 @@ public class DrawableBuilder {
                 SymbolDrawableAttributes.Element.OUTER);
         this.drawingAttributes = drawingAttributes;
         drawingAttributes.setSolidLineStyle();
-        drawingAttributes.setLineWidth((float) spatialEntity
-                .getBorderThickness());
+        drawingAttributes
+                .setLineWidth((float) spatialEntity.getBorderThickness());
         drawingAttributes.setColors(new Color[] { color, color });
         if (hasNonEmptyLabel(spatialEntity)) {
-            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
-                    .getLabel()));
+            drawingAttributes
+                    .setLabel(convertNewlinesToArray(spatialEntity.getLabel()));
         }
         drawingAttributes.setSizeScale(sizeScale);
-        drawingAttributes
-                .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+        drawingAttributes.setTextPosition(
+                getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
         SymbolDrawable outerPoint = new SymbolDrawable(
                 spatialEntity.getIdentifier(), drawingAttributes, symbol,
                 geometry);
-        outerPoint
-                .setMovable((spatialEntity.getDragCapability() != DragCapability.NONE)
+        outerPoint.setMovable(
+                (spatialEntity.getDragCapability() != DragCapability.NONE)
                         && ((geometryIndex == -1) || spatialEntity
                                 .isMultiGeometryPointsDraggable()));
         return outerPoint;
@@ -717,25 +721,26 @@ public class DrawableBuilder {
         } else {
             drawingAttributes.setDottedLineStyle();
         }
-        drawingAttributes.setLineWidth((float) spatialEntity
-                .getBorderThickness());
+        drawingAttributes
+                .setLineWidth((float) spatialEntity.getBorderThickness());
         Color color = getColor(spatialEntity.getBorderColor());
         drawingAttributes.setColors(new Color[] { color, color });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
         if (hasNonEmptyLabel(spatialEntity)) {
-            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
-                    .getLabel()));
+            drawingAttributes
+                    .setLabel(convertNewlinesToArray(spatialEntity.getLabel()));
         }
-        drawingAttributes
-                .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+        drawingAttributes.setTextPosition(
+                getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
         drawableComponent = new PathDrawable(spatialEntity.getIdentifier(),
                 drawingAttributes, (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setMovable((dragCapability == DragCapability.WHOLE)
                 || (dragCapability == DragCapability.ALL));
-        drawableComponent.setEditable((dragCapability == DragCapability.PART)
-                || (dragCapability == DragCapability.ALL));
+        drawableComponent
+                .setVertexEditable((dragCapability == DragCapability.PART)
+                        || (dragCapability == DragCapability.ALL));
         drawableComponent.setResizable(spatialEntity.isScaleable());
         drawableComponent.setRotatable(spatialEntity.isRotatable());
 
@@ -779,26 +784,27 @@ public class DrawableBuilder {
         } else {
             drawingAttributes.setDottedLineStyle();
         }
-        drawingAttributes.setLineWidth((float) spatialEntity
-                .getBorderThickness());
+        drawingAttributes
+                .setLineWidth((float) spatialEntity.getBorderThickness());
         Color borderColor = getColor(spatialEntity.getBorderColor());
         Color fillColor = getColor(spatialEntity.getFillColor());
         drawingAttributes.setColors(new Color[] { borderColor, fillColor });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
         if (hasNonEmptyLabel(spatialEntity)) {
-            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
-                    .getLabel()));
+            drawingAttributes
+                    .setLabel(convertNewlinesToArray(spatialEntity.getLabel()));
         }
-        drawingAttributes
-                .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+        drawingAttributes.setTextPosition(
+                getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
         drawableComponent = new PathDrawable(spatialEntity.getIdentifier(),
                 drawingAttributes, (GeometryWrapper) geometry.copyOf());
         DragCapability dragCapability = spatialEntity.getDragCapability();
         drawableComponent.setMovable((dragCapability == DragCapability.WHOLE)
                 || (dragCapability == DragCapability.ALL));
-        drawableComponent.setEditable((dragCapability == DragCapability.PART)
-                || (dragCapability == DragCapability.ALL));
+        drawableComponent
+                .setVertexEditable((dragCapability == DragCapability.PART)
+                        || (dragCapability == DragCapability.ALL));
         drawableComponent.setResizable(spatialEntity.isScaleable());
         drawableComponent.setRotatable(spatialEntity.isRotatable());
 
@@ -842,18 +848,18 @@ public class DrawableBuilder {
         } else {
             drawingAttributes.setDottedLineStyle();
         }
-        drawingAttributes.setLineWidth((float) spatialEntity
-                .getBorderThickness());
+        drawingAttributes
+                .setLineWidth((float) spatialEntity.getBorderThickness());
         Color borderColor = getColor(spatialEntity.getBorderColor());
         Color fillColor = getColor(spatialEntity.getFillColor());
         drawingAttributes.setColors(new Color[] { borderColor, fillColor });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
         if (hasNonEmptyLabel(spatialEntity)) {
-            drawingAttributes.setLabel(convertNewlinesToArray(spatialEntity
-                    .getLabel()));
+            drawingAttributes
+                    .setLabel(convertNewlinesToArray(spatialEntity.getLabel()));
         }
-        drawingAttributes
-                .setTextPosition(getTextPositionForSpatialEntity(spatialEntity));
+        drawingAttributes.setTextPosition(
+                getTextPositionForSpatialEntity(spatialEntity));
         drawingAttributes.setGeometryIndex(geometryIndex);
         drawableComponent = new EllipseDrawable(spatialEntity.getIdentifier(),
                 drawingAttributes, (Ellipse) geometry.copyOf());
@@ -931,7 +937,8 @@ public class DrawableBuilder {
      */
     private TextPositioner getTextPositionForSpatialEntity(
             SpatialEntity<? extends IEntityIdentifier> spatialEntity) {
-        return (spatialEntity.getTextOffsetLength() == 0.0 ? TextPositioner.CENTERED
+        return (spatialEntity.getTextOffsetLength() == 0.0
+                ? TextPositioner.CENTERED
                 : TextPositioner.getInstance(
                         spatialEntity.getTextOffsetDirection(),
                         spatialEntity.getTextOffsetLength()));

@@ -9,12 +9,6 @@
  */
 package gov.noaa.gsd.common.visuals;
 
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryBinaryTranslator;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -23,6 +17,12 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
+
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryBinaryTranslator;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
 
 /**
  * Description: Helper class for {@link VisualFeaturesList} providing methods to
@@ -37,6 +37,9 @@ import com.google.common.collect.Range;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 10, 2017   28892    Chris.Golden Initial creation.
+ * Jan 17, 2018   33428    Chris.Golden Added support for flag that indicates
+ *                                      whether or not visual feature is
+ *                                      editable via geometry operations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -96,9 +99,9 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
             PrimitiveAndStringBinaryTranslator.writeString(
                     visualFeature.getIdentifier(), outputStream,
                     ByteOrder.BIG_ENDIAN);
-            PrimitiveAndStringBinaryTranslator.writeShort((short) visualFeature
-                    .getVisibilityConstraints().ordinal(), outputStream,
-                    ByteOrder.BIG_ENDIAN);
+            PrimitiveAndStringBinaryTranslator.writeShort(
+                    (short) visualFeature.getVisibilityConstraints().ordinal(),
+                    outputStream, ByteOrder.BIG_ENDIAN);
 
             /*
              * Add the temporally variant properties. Note that all the
@@ -119,15 +122,18 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
             serializeProperty(visualFeature.getDiameter(), outputStream);
             serializeProperty(visualFeature.getSymbolShape(), outputStream);
             serializeProperty(visualFeature.getLabel(), outputStream);
-            serializeProperty(visualFeature.getTextOffsetLength(), outputStream);
+            serializeProperty(visualFeature.getTextOffsetLength(),
+                    outputStream);
             serializeProperty(visualFeature.getTextOffsetDirection(),
                     outputStream);
             serializeProperty(visualFeature.getTextSize(), outputStream);
             serializeProperty(visualFeature.getTextColor(), outputStream);
             serializeProperty(visualFeature.getDragCapability(), outputStream);
-            serializeProperty(visualFeature.getRotatable(), outputStream);
             serializeProperty(visualFeature.getMultiGeometryPointsDraggable(),
                     outputStream);
+            serializeProperty(visualFeature.getEditableUsingGeometryOps(),
+                    outputStream);
+            serializeProperty(visualFeature.getRotatable(), outputStream);
             serializeProperty(visualFeature.getScaleable(), outputStream);
             serializeProperty(visualFeature.getTopmost(), outputStream);
         }
@@ -146,7 +152,7 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
      */
     private static <P extends Serializable> void serializeProperty(
             TemporallyVariantProperty<P> property, OutputStream outputStream)
-            throws IOException {
+                    throws IOException {
 
         /*
          * Add a number indicating how many properties there are and of what
@@ -165,8 +171,9 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
         Map<Range<Date>, P> propertiesForTimeRanges = property
                 .getPropertiesForTimeRanges();
         PrimitiveAndStringBinaryTranslator.writeShort(
-                (short) (defaultProperty == null ? propertiesForTimeRanges
-                        .size() : (propertiesForTimeRanges.size() + 1) * -1),
+                (short) (defaultProperty == null
+                        ? propertiesForTimeRanges.size()
+                        : (propertiesForTimeRanges.size() + 1) * -1),
                 outputStream, ByteOrder.BIG_ENDIAN);
 
         /*
@@ -183,11 +190,11 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
          */
         for (Map.Entry<Range<Date>, P> entry : propertiesForTimeRanges
                 .entrySet()) {
-            PrimitiveAndStringBinaryTranslator.writeLong(entry.getKey()
-                    .lowerEndpoint().getTime(), outputStream,
+            PrimitiveAndStringBinaryTranslator.writeLong(
+                    entry.getKey().lowerEndpoint().getTime(), outputStream,
                     ByteOrder.BIG_ENDIAN);
-            PrimitiveAndStringBinaryTranslator.writeLong(entry.getKey()
-                    .upperEndpoint().getTime(), outputStream,
+            PrimitiveAndStringBinaryTranslator.writeLong(
+                    entry.getKey().upperEndpoint().getTime(), outputStream,
                     ByteOrder.BIG_ENDIAN);
             serializePropertyValue(entry.getValue(), outputStream);
         }
@@ -212,12 +219,12 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
          * is.
          */
         if (propertyValue instanceof Boolean) {
-            PrimitiveAndStringBinaryTranslator.writeBoolean(
-                    (Boolean) propertyValue, outputStream);
-        } else if (propertyValue instanceof Integer) {
             PrimitiveAndStringBinaryTranslator
-                    .writeInteger((Integer) propertyValue, outputStream,
-                            ByteOrder.BIG_ENDIAN);
+                    .writeBoolean((Boolean) propertyValue, outputStream);
+        } else if (propertyValue instanceof Integer) {
+            PrimitiveAndStringBinaryTranslator.writeInteger(
+                    (Integer) propertyValue, outputStream,
+                    ByteOrder.BIG_ENDIAN);
         } else if (propertyValue instanceof Double) {
             PrimitiveAndStringBinaryTranslator.writeDouble(
                     (Double) propertyValue, outputStream, ByteOrder.BIG_ENDIAN);
@@ -229,9 +236,9 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
                     (short) ((BorderStyle) propertyValue).ordinal(),
                     outputStream);
         } else if (propertyValue instanceof FillStyle) {
-            PrimitiveAndStringBinaryTranslator
-                    .writeByte((short) ((FillStyle) propertyValue).ordinal(),
-                            outputStream);
+            PrimitiveAndStringBinaryTranslator.writeByte(
+                    (short) ((FillStyle) propertyValue).ordinal(),
+                    outputStream);
         } else if (propertyValue instanceof SymbolShape) {
             PrimitiveAndStringBinaryTranslator.writeByte(
                     (short) ((SymbolShape) propertyValue).ordinal(),
@@ -256,22 +263,28 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
             } else {
                 PrimitiveAndStringBinaryTranslator.writeBoolean(false,
                         outputStream);
-                PrimitiveAndStringBinaryTranslator.writeByte(
-                        VisualFeaturesListBinarySerializer
-                                .translateColorComponentToInteger(color
-                                        .getRed()), outputStream);
-                PrimitiveAndStringBinaryTranslator.writeByte(
-                        VisualFeaturesListBinarySerializer
-                                .translateColorComponentToInteger(color
-                                        .getGreen()), outputStream);
-                PrimitiveAndStringBinaryTranslator.writeByte(
-                        VisualFeaturesListBinarySerializer
-                                .translateColorComponentToInteger(color
-                                        .getBlue()), outputStream);
-                PrimitiveAndStringBinaryTranslator.writeByte(
-                        VisualFeaturesListBinarySerializer
-                                .translateColorComponentToInteger(color
-                                        .getAlpha()), outputStream);
+                PrimitiveAndStringBinaryTranslator
+                        .writeByte(VisualFeaturesListBinarySerializer
+                                .translateColorComponentToInteger(
+                                        color.getRed()),
+                                outputStream);
+                PrimitiveAndStringBinaryTranslator
+                        .writeByte(
+                                VisualFeaturesListBinarySerializer
+                                        .translateColorComponentToInteger(
+                                                color.getGreen()),
+                                outputStream);
+                PrimitiveAndStringBinaryTranslator
+                        .writeByte(VisualFeaturesListBinarySerializer
+                                .translateColorComponentToInteger(
+                                        color.getBlue()),
+                                outputStream);
+                PrimitiveAndStringBinaryTranslator
+                        .writeByte(
+                                VisualFeaturesListBinarySerializer
+                                        .translateColorComponentToInteger(
+                                                color.getAlpha()),
+                                outputStream);
             }
         } else if (propertyValue instanceof IAdvancedGeometry) {
             AdvancedGeometryBinaryTranslator.serializeToBinaryStream(

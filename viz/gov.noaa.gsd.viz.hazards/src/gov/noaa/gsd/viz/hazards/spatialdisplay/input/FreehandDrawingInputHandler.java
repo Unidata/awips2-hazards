@@ -9,12 +9,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
-import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import com.vividsolutions.jts.geom.Coordinate;
+
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 
 /**
  * Description: Freehand drawing input handler, for drawing freehand lines and
@@ -28,12 +29,16 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Jul 05, 2016   19537    Chris.Golden Initial creation (adapted from the old
  *                                      FreeHandHazardDrawingAction inner class).
  * Sep 21, 2016   15934    Chris.Golden Changed to use new superclass.
+ * Jan 17, 2018   33428    Chris.Golden Changed to supply an advanced geometry
+ *                                      instead of a list of points when the
+ *                                      user finishes drawing the shape.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class FreehandDrawingInputHandler extends IncrementalDrawingInputHandler {
+public class FreehandDrawingInputHandler
+        extends IncrementalDrawingInputHandler {
 
     // Public Constructors
 
@@ -69,10 +74,13 @@ public class FreehandDrawingInputHandler extends IncrementalDrawingInputHandler 
          * Hand the list of points off to the spatial display.
          */
         List<Coordinate> points = getPoints();
-        List<Coordinate> pointsCopy = new ArrayList<Coordinate>(points);
+        List<Coordinate> pointsCopy = new ArrayList<>(points);
         points.clear();
-        getSpatialDisplay().handleUserMultiPointDrawingActionComplete(
-                getShapeType(), new ArrayList<Coordinate>(pointsCopy));
+        IAdvancedGeometry geometry = createShapeFromPoints(getShapeType(),
+                pointsCopy);
+        if (geometry != null) {
+            getSpatialDisplay().handleUserDrawingActionComplete(geometry);
+        }
         return true;
     }
 

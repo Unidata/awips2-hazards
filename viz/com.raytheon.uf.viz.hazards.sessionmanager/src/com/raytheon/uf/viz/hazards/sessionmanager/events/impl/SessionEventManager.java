@@ -626,6 +626,9 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      is more properly the reason mergeHazardEvents() exists.
  *                                      Also fixed bug in mergeHazardEvents() that used an origin
  *                                      of OTHER regardless of the actual origin.
+ * Jan 17, 2018   33428    Chris.Golden Changed to use new version of method to get union of
+ *                                      polygonal elements of geometry. Also added use of new
+ *                                      first-class attribute of hazard event, issuance count.
  * </pre>
  * 
  * @author bsteffen
@@ -1994,12 +1997,15 @@ public class SessionEventManager implements ISessionEventManager {
                         boolean wasReissued = false;
                         if (hazardStatus.equals(HazardStatus.PENDING)
                                 || hazardStatus.equals(HazardStatus.PROPOSED)) {
+                            oEvent.setIssuanceCount(1);
                             oEvent.setStatus(HazardStatus.ISSUED);
                             wasPreIssued = true;
                         } else if (isChangeToEndedStatusNeeded(hazardEvent)) {
                             oEvent.setStatus(HazardStatus.ENDED);
                         } else if (hazardStatus.equals(HazardStatus.ISSUED)) {
                             wasReissued = true;
+                            oEvent.setIssuanceCount(
+                                    oEvent.getIssuanceCount() + 1);
                         }
 
                         /*
@@ -3391,6 +3397,7 @@ public class SessionEventManager implements ISessionEventManager {
                     persistOnStatusChange, originator);
             updateSavedTimesForEventIfIssued(oldEvent, false);
         }
+        sessionEvent.setIssuanceCount(newEvent.getIssuanceCount(), originator);
 
         if (useModifiedValue) {
             sessionEvent.setModified(newEvent.isModified());
@@ -5838,12 +5845,15 @@ public class SessionEventManager implements ISessionEventManager {
             if ((hazardTypeEntry != null)
                     && (hazardTypeEntry.isAllowAreaChange() == false)) {
                 Geometry issuedGeometry = AdvancedGeometryUtilities
-                        .getUnionOfPolygonalElements(
-                                event.getFlattenedGeometry())
+                        .getUnionOfGeometryElements(
+                                event.getFlattenedGeometry(),
+                                AdvancedGeometryUtilities.GeometryTypesForUnion.POLYGONAL)
                         .buffer(GEOMETRY_BUFFER_DISTANCE);
                 Geometry currentGeometry = AdvancedGeometryUtilities
-                        .getUnionOfPolygonalElements(AdvancedGeometryUtilities
-                                .getJtsGeometry(geometry));
+                        .getUnionOfGeometryElements(
+                                AdvancedGeometryUtilities
+                                        .getJtsGeometry(geometry),
+                                AdvancedGeometryUtilities.GeometryTypesForUnion.POLYGONAL);
                 if (issuedGeometry.covers(currentGeometry) == false) {
                     statusHandler
                             .warn("This hazard event cannot be expanded in area.  "

@@ -48,36 +48,77 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * Jul 12, 2013    585     Chris.Golden      Changed to support loading from bundle.
- * Aug 06, 2013   1265     bryon.lawrence    Added support for undo/redo.
- * Aug  9, 2013 1921       daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
- * Aug 29, 2013   1921     bryon.lawrence    Removed JSON parameter from
+ * Jul 12, 2013     585    Chris.Golden      Changed to support loading from bundle.
+ * Aug 06, 2013    1265    bryon.lawrence    Added support for undo/redo.
+ * Aug  9, 2013    1921    daniel.s.schaffer@noaa.gov  Support of replacement of JSON with POJOs
+ * Aug 29, 2013    1921    bryon.lawrence    Removed JSON parameter from
  *                                           loadGeometryOverlayForSelectedEvent().
- * Nov 27, 2013   1462     bryon.lawrence    Updated drawEvents to support display
+ * Nov 27, 2013    1462    bryon.lawrence    Updated drawEvents to support display
  *                                           of hazard hatched areas.
- * Dec 05, 2014   4124     Chris.Golden      Changed to work with ObservedSettings.
- * Dec 13, 2014 4959       Dan Schaffer      Spatial Display cleanup and other bug fixes
- * Feb 27, 2015 6000       Dan Schaffer      Improved centering behavior
- * Mar 16, 2016 15676      Chris.Golden      Changed to make visual features work.
+ * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
+ * Dec 13, 2014    4959    Dan Schaffer      Spatial Display cleanup and other bug fixes
+ * Feb 27, 2015    6000    Dan Schaffer      Improved centering behavior
+ * Mar 16, 2016   15676    Chris.Golden      Changed to make visual features work.
  *                                           Will be refactored to remove numerous
  *                                           existing kludges.
- * Mar 24, 2016 15676      Chris.Golden      Changed method that draws spatial entities
+ * Mar 24, 2016   15676    Chris.Golden      Changed method that draws spatial entities
  *                                           to take another parameter.
- * Jun 23, 2016 19537      Chris.Golden      Removed storm-track-specific code.
- * Jul 25, 2016 19537      Chris.Golden      Removed a number of methods that got
+ * Jun 23, 2016   19537    Chris.Golden      Removed storm-track-specific code.
+ * Jul 25, 2016   19537    Chris.Golden      Removed a number of methods that got
  *                                           refactored away as the move toward MVP
  *                                           compliance continues.
- * Aug 23, 2016 19537      Chris.Golden      Continued spatial display refactor.
- * Sep 12, 2016 15934      Chris.Golden      Changed to work with advanced geometries.
- * Dec 14, 2016 26813      bkowal            Use the active Hazard Services site when
+ * Aug 23, 2016   19537    Chris.Golden      Continued spatial display refactor.
+ * Sep 12, 2016   15934    Chris.Golden      Changed to work with advanced geometries.
+ * Dec 14, 2016   26813    bkowal            Use the active Hazard Services site when
  *                                           determining which counties to render for
  *                                           "Select by Area".
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code, and to provide
+ *                                           new enhanced geometry-operation-based
+ *                                           edits.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
+public interface ISpatialView<I, C, E extends Enum<E>> extends IView<I, C, E> {
+
+    // Public Static Constants
+
+    /**
+     * Undo identifier.
+     */
+    public static final String UNDO_IDENTIFIER = "undo";
+
+    /**
+     * Redo identifier.
+     */
+    public static final String REDO_IDENTIFIER = "redo";
+
+    /**
+     * Add new event to selected toggle identifier.
+     */
+    public static final String ADD_NEW_EVENT_TO_SELECTED_TOGGLE_IDENTIFIER = "addNewEventToSelectedToggle";
+
+    /**
+     * Move and select choice identifier.
+     */
+    public static final String MOVE_AND_SELECT_CHOICE_IDENTIFIER = "moveAndSelectChoice";
+
+    /**
+     * Drawing choice identifier.
+     */
+    public static final String DRAWING_CHOICE_IDENTIFIER = "drawingChoice";
+
+    /**
+     * Geometry edit mode choice identifier.
+     */
+    public static final String GEOMETRY_EDIT_MODE_CHOICE_IDENTIFIER = "geometryEditModeChoice";
+
+    /**
+     * Select-by-area pulldown choice identifier.
+     */
+    public static final String SELECT_BY_AREA_PULLDOWN_CHOICE_IDENTIFIER = "selectByAreaPulldownChoice";
 
     // Public Methods
 
@@ -208,11 +249,20 @@ public interface ISpatialView<C, E extends Enum<E>> extends IView<C, E> {
             SelectByAreaContext context);
 
     /**
-     * Set the enabled state of the edit polygon buttons.
+     * Set the enabled state of the various combine-geometry operation buttons.
      * 
      * @param enable
-     *            Flag indicating whether or not edit polygon buttons should be
-     *            enabled.
+     *            Flag indicating whether or not combine-geometry operation
+     *            buttons should be enabled.
+     * @param rememberSelectedAction
+     *            If <code>true</code> and <code>enable</code> is
+     *            <code>false</code>, then remember the combine-geometry
+     *            operation that was active immediately prior to the last time
+     *            that this method was called with <code>enable</code> set to
+     *            <code>false</code> (which may be this invocation). If
+     *            <code>false</code>, any such record of a previously-active
+     *            operation is discarded.
      */
-    public void setEditMultiPointGeometryEnabled(boolean enable);
+    public void setCombineGeometryOperationsEnabled(boolean enable,
+            boolean rememberSelectedAction);
 }

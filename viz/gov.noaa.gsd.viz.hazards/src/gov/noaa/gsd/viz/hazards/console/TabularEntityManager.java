@@ -93,6 +93,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IListStateChangeHandler;
  *                                      column cells when an event is locked,
  *                                      instead of the event's workstation and
  *                                      user name.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -301,7 +303,7 @@ class TabularEntityManager {
     /**
      * View associated with the presenter using this manager.
      */
-    private IConsoleView<?, ?> view;
+    private IConsoleView<?, ?, ?> view;
 
     /**
      * List of root tabular entities representing current hazard event versions.
@@ -486,7 +488,7 @@ class TabularEntityManager {
      * @param view
      *            View to be used.
      */
-    void setView(IConsoleView<?, ?> view) {
+    void setView(IConsoleView<?, ?, ?> view) {
         this.view = view;
         view.getTreeContentsChanger().set(null, tabularEntities);
     }

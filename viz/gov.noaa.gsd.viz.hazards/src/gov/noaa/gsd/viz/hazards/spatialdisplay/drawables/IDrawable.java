@@ -7,6 +7,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import com.vividsolutions.jts.geom.Coordinate;
+
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ScaleManipulationPoint.Direction;
@@ -14,13 +21,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
-
-import java.awt.Color;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * 
@@ -50,6 +50,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             translation (offsetting by deltas).
  * Sep 29, 2016 15928      Chris.Golden        Added Utilities static class, as well
  *                                             as new methods to be implemented.
+ * Jan 17, 2018 33428      Chris.Golden        Changed to provide more accurate
+ *                                             method names.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -152,7 +154,8 @@ public interface IDrawable<G extends IAdvancedGeometry> {
                 } else {
                     manipulationPoints.add(new ScaleManipulationPoint(
                             (AbstractDrawableComponent) drawable, thisPoint,
-                            center, (j == 0 ? Direction.SOUTHEAST
+                            center,
+                            (j == 0 ? Direction.SOUTHEAST
                                     : (j == 1 ? Direction.NORTHEAST
                                             : (j == 2 ? Direction.NORTHWEST
                                                     : Direction.SOUTHWEST)))));
@@ -163,12 +166,13 @@ public interface IDrawable<G extends IAdvancedGeometry> {
                  * this corner point and the next.
                  */
                 if (drawable.isResizable()) {
-                    Coordinate nextPoint = cornerPoints.get((j + 1)
-                            % cornerPoints.size());
+                    Coordinate nextPoint = cornerPoints
+                            .get((j + 1) % cornerPoints.size());
                     manipulationPoints.add(new ScaleManipulationPoint(
                             (AbstractDrawableComponent) drawable,
                             new Coordinate((thisPoint.x + nextPoint.x) / 2.0,
-                                    (thisPoint.y + nextPoint.y) / 2.0), center,
+                                    (thisPoint.y + nextPoint.y) / 2.0),
+                            center,
                             (j == 0 ? Direction.EAST
                                     : (j == 1 ? Direction.NORTH
                                             : (j == 2 ? Direction.WEST
@@ -207,20 +211,23 @@ public interface IDrawable<G extends IAdvancedGeometry> {
     public int getGeometryIndex();
 
     /**
-     * Determine whether or not the shape is editable.
+     * Determine whether or not the shape's individual vertices (if any) are
+     * editable.
      * 
-     * @return <code>true</code> if the user can edit this shape,
-     *         <code>false</code> otherwise.
+     * @return <code>true</code> if the user can edit this shape's individual
+     *         vertices, <code>false</code> otherwise.
      */
-    public boolean isEditable();
+    public boolean isVertexEditable();
 
     /**
-     * Set the editable status of this shape.
+     * Set the flag indicating whether or not the shape's individual vertices
+     * (if any) are editable.
      * 
      * @param editable
-     *            Flag indicating whether or not this shape is editable.
+     *            Flag indicating whether or not this shape's individual
+     *            vertices are editable.
      */
-    public void setEditable(boolean editable);
+    public void setVertexEditable(boolean editable);
 
     /**
      * Determine whether or not the shape is resizable.

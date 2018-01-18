@@ -59,13 +59,15 @@ import net.engio.mbassy.listener.Handler;
  * Jun 08, 2017   16373    Chris.Golden Corrected spelling of RUN_RECOMMENDER.
  * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly mutable
  *                                      session events.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class HazardTypeFirstPresenter
-        extends HazardServicesPresenter<IHazardTypeFirstViewDelegate<?, ?>> {
+        extends HazardServicesPresenter<IHazardTypeFirstViewDelegate<?, ?, ?>> {
 
     // Package-Private Enumerated Types
 
@@ -306,7 +308,7 @@ public class HazardTypeFirstPresenter
     // Protected Methods
 
     @Override
-    protected void initialize(IHazardTypeFirstViewDelegate<?, ?> view) {
+    protected void initialize(IHazardTypeFirstViewDelegate<?, ?, ?> view) {
 
         /*
          * Initialize the view, giving it the categories.
@@ -327,7 +329,7 @@ public class HazardTypeFirstPresenter
     }
 
     @Override
-    protected void reinitialize(IHazardTypeFirstViewDelegate<?, ?> view) {
+    protected void reinitialize(IHazardTypeFirstViewDelegate<?, ?, ?> view) {
 
         /*
          * No action.

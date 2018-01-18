@@ -9,12 +9,6 @@
  */
 package gov.noaa.gsd.common.visuals;
 
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
-import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryBinaryTranslator;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -23,6 +17,12 @@ import java.util.Date;
 import java.util.List;
 
 import com.google.common.collect.Range;
+
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator;
+import gov.noaa.gsd.common.utilities.PrimitiveAndStringBinaryTranslator.ByteOrder;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryBinaryTranslator;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
 
 /**
  * Description: Helper class for {@link VisualFeaturesList} providing methods to
@@ -40,13 +40,16 @@ import com.google.common.collect.Range;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Feb 10, 2017   28892    Chris.Golden Initial creation.
+ * Jan 17, 2018   33428    Chris.Golden Added support for flag that indicates
+ *                                      whether or not visual feature is
+ *                                      editable via geometry operations.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-class VisualFeaturesListBinaryDeserializer extends
-        VisualFeaturesListDeserializer {
+class VisualFeaturesListBinaryDeserializer
+        extends VisualFeaturesListDeserializer {
 
     // Package-Private Static Methods
 
@@ -69,8 +72,8 @@ class VisualFeaturesListBinaryDeserializer extends
          * Read the length of the list, and create the list with that capacity,
          * or return nothing if the length is 0.
          */
-        int length = PrimitiveAndStringBinaryTranslator.readInteger(
-                bytesInputStream, ByteOrder.BIG_ENDIAN);
+        int length = PrimitiveAndStringBinaryTranslator
+                .readInteger(bytesInputStream, ByteOrder.BIG_ENDIAN);
         if (length == 0) {
             return null;
         }
@@ -98,8 +101,8 @@ class VisualFeaturesListBinaryDeserializer extends
              * Read the identifier and ensure it is valid and unique, then
              * create the visual feature.
              */
-            String identifier = PrimitiveAndStringBinaryTranslator.readString(
-                    bytesInputStream, ByteOrder.BIG_ENDIAN);
+            String identifier = PrimitiveAndStringBinaryTranslator
+                    .readString(bytesInputStream, ByteOrder.BIG_ENDIAN);
             if (identifier.isEmpty()) {
                 throw new IOException(
                         "expected valid unique string identifier for visual feature at index "
@@ -146,36 +149,38 @@ class VisualFeaturesListBinaryDeserializer extends
                     SerializableColor.class, bytesInputStream));
             visualFeature.setFillColor(deserializeProperty(
                     SerializableColor.class, bytesInputStream));
-            visualFeature.setBorderThickness(deserializeProperty(Double.class,
-                    bytesInputStream));
-            visualFeature.setBorderStyle(deserializeProperty(BorderStyle.class,
-                    bytesInputStream));
-            visualFeature.setFillStyle(deserializeProperty(FillStyle.class,
-                    bytesInputStream));
-            visualFeature.setDiameter(deserializeProperty(Double.class,
-                    bytesInputStream));
-            visualFeature.setSymbolShape(deserializeProperty(SymbolShape.class,
-                    bytesInputStream));
-            visualFeature.setLabel(deserializeProperty(String.class,
-                    bytesInputStream));
-            visualFeature.setTextOffsetLength(deserializeProperty(Double.class,
-                    bytesInputStream));
-            visualFeature.setTextOffsetDirection(deserializeProperty(
-                    Double.class, bytesInputStream));
-            visualFeature.setTextSize(deserializeProperty(Integer.class,
-                    bytesInputStream));
+            visualFeature.setBorderThickness(
+                    deserializeProperty(Double.class, bytesInputStream));
+            visualFeature.setBorderStyle(
+                    deserializeProperty(BorderStyle.class, bytesInputStream));
+            visualFeature.setFillStyle(
+                    deserializeProperty(FillStyle.class, bytesInputStream));
+            visualFeature.setDiameter(
+                    deserializeProperty(Double.class, bytesInputStream));
+            visualFeature.setSymbolShape(
+                    deserializeProperty(SymbolShape.class, bytesInputStream));
+            visualFeature.setLabel(
+                    deserializeProperty(String.class, bytesInputStream));
+            visualFeature.setTextOffsetLength(
+                    deserializeProperty(Double.class, bytesInputStream));
+            visualFeature.setTextOffsetDirection(
+                    deserializeProperty(Double.class, bytesInputStream));
+            visualFeature.setTextSize(
+                    deserializeProperty(Integer.class, bytesInputStream));
             visualFeature.setTextColor(deserializeProperty(
                     SerializableColor.class, bytesInputStream));
             visualFeature.setDragCapability(deserializeProperty(
                     DragCapability.class, bytesInputStream));
-            visualFeature.setRotatable(deserializeProperty(Boolean.class,
-                    bytesInputStream));
-            visualFeature.setMultiGeometryPointsDraggable(deserializeProperty(
-                    Boolean.class, bytesInputStream));
-            visualFeature.setScaleable(deserializeProperty(Boolean.class,
-                    bytesInputStream));
-            visualFeature.setTopmost(deserializeProperty(Boolean.class,
-                    bytesInputStream));
+            visualFeature.setMultiGeometryPointsDraggable(
+                    deserializeProperty(Boolean.class, bytesInputStream));
+            visualFeature.setEditableUsingGeometryOps(
+                    deserializeProperty(Boolean.class, bytesInputStream));
+            visualFeature.setRotatable(
+                    deserializeProperty(Boolean.class, bytesInputStream));
+            visualFeature.setScaleable(
+                    deserializeProperty(Boolean.class, bytesInputStream));
+            visualFeature.setTopmost(
+                    deserializeProperty(Boolean.class, bytesInputStream));
 
             visualFeatures.add(visualFeature);
         }
@@ -213,7 +218,7 @@ class VisualFeaturesListBinaryDeserializer extends
      */
     private static <P extends Serializable> TemporallyVariantProperty<P> deserializeProperty(
             Class<P> propertyClass, ByteArrayInputStream bytesInputStream)
-            throws IOException {
+                    throws IOException {
 
         /*
          * Get the number of variant properties that make up the temporally
@@ -253,10 +258,10 @@ class VisualFeaturesListBinaryDeserializer extends
          */
         for (int index = 0; index < propertyVariantCount; index++) {
             Range<Date> timeRange = Range.closedOpen(
-                    new Date(PrimitiveAndStringBinaryTranslator.readLong(
-                            bytesInputStream, ByteOrder.BIG_ENDIAN)),
-                    new Date(PrimitiveAndStringBinaryTranslator.readLong(
-                            bytesInputStream, ByteOrder.BIG_ENDIAN)));
+                    new Date(PrimitiveAndStringBinaryTranslator
+                            .readLong(bytesInputStream, ByteOrder.BIG_ENDIAN)),
+                    new Date(PrimitiveAndStringBinaryTranslator
+                            .readLong(bytesInputStream, ByteOrder.BIG_ENDIAN)));
             property.addPropertyForTimeRange(timeRange,
                     deserializePropertyValue(propertyClass, bytesInputStream));
         }
@@ -280,7 +285,7 @@ class VisualFeaturesListBinaryDeserializer extends
     @SuppressWarnings("unchecked")
     private static <P extends Serializable> P deserializePropertyValue(
             Class<P> propertyClass, ByteArrayInputStream bytesInputStream)
-            throws IOException {
+                    throws IOException {
 
         /*
          * Deserialize the property value differently depending upon what its
@@ -296,8 +301,8 @@ class VisualFeaturesListBinaryDeserializer extends
             return (P) Double.valueOf(PrimitiveAndStringBinaryTranslator
                     .readDouble(bytesInputStream, ByteOrder.BIG_ENDIAN));
         } else if (String.class.isAssignableFrom(propertyClass)) {
-            return (P) PrimitiveAndStringBinaryTranslator.readString(
-                    bytesInputStream, ByteOrder.BIG_ENDIAN);
+            return (P) PrimitiveAndStringBinaryTranslator
+                    .readString(bytesInputStream, ByteOrder.BIG_ENDIAN);
         } else if (BorderStyle.class.isAssignableFrom(propertyClass)) {
             try {
                 return (P) BorderStyle
@@ -331,12 +336,12 @@ class VisualFeaturesListBinaryDeserializer extends
                 throw new IOException("unknown drag capability", e);
             }
         } else if (List.class.isAssignableFrom(propertyClass)) {
-            int length = PrimitiveAndStringBinaryTranslator.readShort(
-                    bytesInputStream, ByteOrder.BIG_ENDIAN);
+            int length = PrimitiveAndStringBinaryTranslator
+                    .readShort(bytesInputStream, ByteOrder.BIG_ENDIAN);
             List<String> list = new ArrayList<>(length);
             for (int index = 0; index < length; index++) {
-                list.add(PrimitiveAndStringBinaryTranslator.readString(
-                        bytesInputStream, ByteOrder.BIG_ENDIAN));
+                list.add(PrimitiveAndStringBinaryTranslator
+                        .readString(bytesInputStream, ByteOrder.BIG_ENDIAN));
             }
             return (P) list;
         } else if (SerializableColor.class.isAssignableFrom(propertyClass)) {
@@ -346,14 +351,18 @@ class VisualFeaturesListBinaryDeserializer extends
                 return (P) VisualFeature.COLOR_OF_EVENT_TYPE;
             }
             return (P) new SerializableColor(
-                    translateColorComponentToFloat(PrimitiveAndStringBinaryTranslator
-                            .readByte(bytesInputStream)),
-                    translateColorComponentToFloat(PrimitiveAndStringBinaryTranslator
-                            .readByte(bytesInputStream)),
-                    translateColorComponentToFloat(PrimitiveAndStringBinaryTranslator
-                            .readByte(bytesInputStream)),
-                    translateColorComponentToFloat(PrimitiveAndStringBinaryTranslator
-                            .readByte(bytesInputStream)));
+                    translateColorComponentToFloat(
+                            PrimitiveAndStringBinaryTranslator
+                                    .readByte(bytesInputStream)),
+                    translateColorComponentToFloat(
+                            PrimitiveAndStringBinaryTranslator
+                                    .readByte(bytesInputStream)),
+                    translateColorComponentToFloat(
+                            PrimitiveAndStringBinaryTranslator
+                                    .readByte(bytesInputStream)),
+                    translateColorComponentToFloat(
+                            PrimitiveAndStringBinaryTranslator
+                                    .readByte(bytesInputStream)));
         } else if (IAdvancedGeometry.class.isAssignableFrom(propertyClass)) {
             return (P) AdvancedGeometryBinaryTranslator
                     .deserializeFromBinaryStream(bytesInputStream);
@@ -366,8 +375,7 @@ class VisualFeaturesListBinaryDeserializer extends
              * of property.
              */
             throw new IllegalStateException(
-                    "internal error: property of type \""
-                            + propertyClass
+                    "internal error: property of type \"" + propertyClass
                             + "\" could not be deserialized as it is of an unexpected type");
         }
     }

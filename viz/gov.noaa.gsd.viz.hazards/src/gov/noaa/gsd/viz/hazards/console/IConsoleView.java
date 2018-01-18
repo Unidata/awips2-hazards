@@ -52,13 +52,102 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Jun 26, 2017   19207    Chris.Golden      Removed obsolete product viewer selection
  *                                           code.
  * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IConsoleView<C, E extends Enum<E>>
-        extends IView<C, E>, IConsoleTree {
+public interface IConsoleView<I, C, E extends Enum<E>>
+        extends IView<I, C, E>, IConsoleTree {
+
+    // Public Static Constants
+
+    /**
+     * Change site action identifier.
+     */
+    public static final String CHANGE_SITE_IDENTIFIER = "changeSite";
+
+    /**
+     * Export hazard site configuration action identifier.
+     */
+    public static final String EXPORT_HAZARD_SITE_CONFIG_IDENTIFIER = "exportHazardSiteConfig";
+
+    /**
+     * Export hazard site product edits action identifier.
+     */
+    public static final String EXPORT_HAZARD_SITE_PRODUCT_EDITS_IDENTIFIER = "exportHazardSiteProductEdits";
+
+    /**
+     * Check hazard conflicts action identifier.
+     */
+    public static final String CHECK_HAZARD_CONFLICTS_IDENTIFIER = "checkHazardConflicts";
+
+    /**
+     * Auto-check hazard conflicts action identifier.
+     */
+    public static final String AUTO_CHECK_HAZARD_CONFLICTS_TOGGLE_IDENTIFIER = "autoCheckHazardConflicts";
+
+    /**
+     * Show hatched areas action identifier.
+     */
+    public static final String SHOW_HATCHED_AREAS_TOGGLE_IDENTIFIER = "showHatchedAreas";
+
+    /**
+     * Change VTEC format action identifier.
+     */
+    public static final String CHANGE_VTEC_FORMAT_IDENTIFIER = "changeVtecFormat";
+
+    /**
+     * Show history lists action identifier.
+     */
+    public static final String SHOW_HISTORY_LISTS_TOGGLE_IDENTIFIER = "showHistoryLists";
+
+    /**
+     * Reset events action identifier.
+     */
+    public static final String RESET_EVENTS_IDENTIFIER = "resetEvents";
+
+    /**
+     * Zoom out button identifier.
+     */
+    public static final String ZOOM_OUT_IDENTIFIER = "zoomOut";
+
+    /**
+     * Page back button identifier.
+     */
+    public static final String PAGE_BACKWARD_IDENTIFIER = "backwardDay";
+
+    /**
+     * Pan back button identifier.
+     */
+    public static final String PAN_BACKWARD_IDENTIFIER = "backward";
+
+    /**
+     * Show current time button identifier.
+     */
+    public static final String CURRENT_TIME_IDENTIFIER = "currentTime";
+
+    /**
+     * Pan forward button identifier.
+     */
+    public static final String PAN_FORWARD_IDENTIFIER = "forward";
+
+    /**
+     * Page forward button identifier.
+     */
+    public static final String PAGE_FORWARD_IDENTIFIER = "forwardDay";
+
+    /**
+     * Zoom in button identifier.
+     */
+    public static final String ZOOM_IN_IDENTIFIER = "zoomIn";
+
+    /**
+     * Selected time mode choice identifier.
+     */
+    public static final String SELECTED_TIME_MODE_IDENTIFIER = "selectedTimeMode";
 
     // Public Methods
 
@@ -107,8 +196,8 @@ public interface IConsoleView<C, E extends Enum<E>>
      * @param type
      *            Type of main UI contributions to accept from the contributors.
      */
-    public void acceptContributionsToMainUI(
-            List<? extends IMainUiContributor<C, E>> contributors, E type);
+    public void acceptContributionsToMainUi(
+            List<? extends IMainUiContributor<I, C, E>> contributors, E type);
 
     /**
      * Set the command invocation handler.

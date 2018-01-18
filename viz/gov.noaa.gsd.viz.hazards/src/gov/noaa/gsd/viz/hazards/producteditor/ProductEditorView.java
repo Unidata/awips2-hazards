@@ -12,8 +12,9 @@ package gov.noaa.gsd.viz.hazards.producteditor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
 import com.raytheon.uf.common.hazards.productgen.GeneratedProductList;
@@ -23,7 +24,7 @@ import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.productgen.dialog.ProductEditor;
 import com.raytheon.viz.ui.VizWorkbenchManager;
 
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 
 /**
@@ -60,13 +61,15 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  *                                      more consistent.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
  *                                      session events.
+ * Jan 17, 2018 33428      Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public final class ProductEditorView
-        implements IProductEditorView<Action, RCPMainUserInterfaceElement> {
+        implements IProductEditorView<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -121,9 +124,9 @@ public final class ProductEditorView
     }
 
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        return Collections.emptyList();
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        return Collections.emptyMap();
     }
 
     @Override

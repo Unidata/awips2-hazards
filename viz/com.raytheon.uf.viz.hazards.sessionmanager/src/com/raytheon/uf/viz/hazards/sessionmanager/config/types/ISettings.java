@@ -31,6 +31,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * May 10, 2016   18515    Chris.Golden Added "deselect after issuing" flag.
  * Oct 19, 2016   21873    Chris.Golden Added time resolution.
  * Oct 23, 2017   21730    Chris.Golden Added defaultType.
+ * Jan 17, 2018   33428    Chris.Golden Removed no-longer-needed flag indicating
+ *                                      whether a new geometry should be added to
+ *                                      a selected event's geometry.
  * </pre>
  * 
  * @author Chris.Golden
@@ -113,11 +116,7 @@ public interface ISettings {
 
     public Boolean getAddToSelected();
 
-    public Boolean getAddGeometryToSelected();
-
     public void setAddToSelected(Boolean addToSelected);
-
-    public void setAddGeometryToSelected(Boolean addGeometryToSelected);
 
     public Set<String> getPerspectiveIDs();
 

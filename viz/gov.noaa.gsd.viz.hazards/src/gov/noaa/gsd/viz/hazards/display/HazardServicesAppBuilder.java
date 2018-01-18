@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
-import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -39,6 +39,7 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
@@ -331,6 +332,8 @@ import net.engio.mbassy.bus.error.PublicationError;
  * Dec 07, 2017 41886      Chris.Golden        Removed Java 8/JDK 1.8 usage.
  * Dec 17, 2017 20739      Chris.Golden        Refactored away access to directly mutable session
  *                                             events.
+ * Jan 17, 2018 33428      Chris.Golden        Changed to work with new, more flexible toolbar
+ *                                             contribution code.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -655,8 +658,6 @@ public class HazardServicesAppBuilder
      * </p>
      */
     private IContinueCanceller continueCanceller;
-
-    private final IMainUiContributor<Action, RCPMainUserInterfaceElement> appBuilderMenubarContributor = null;
 
     /**
      * Rise-crest-fall editor for the user.
@@ -1374,15 +1375,12 @@ public class HazardServicesAppBuilder
      */
     private void buildMenuBar() {
         ConsoleView consoleView = (ConsoleView) consolePresenter.getView();
-        List<IMainUiContributor<Action, RCPMainUserInterfaceElement>> contributors = Lists
+        List<IMainUiContributor<String, IAction, RcpMainUiElement>> contributors = Lists
                 .newArrayList();
         contributors.add(consoleView);
         contributors.add((ToolsView) toolsPresenter.getView());
-        if (appBuilderMenubarContributor != null) {
-            contributors.add(appBuilderMenubarContributor);
-        }
-        consoleView.acceptContributionsToMainUI(contributors,
-                RCPMainUserInterfaceElement.MENUBAR);
+        consoleView.acceptContributionsToMainUi(contributors,
+                RcpMainUiElement.MENUBAR);
     }
 
     /**
@@ -1390,7 +1388,7 @@ public class HazardServicesAppBuilder
      */
     private void buildToolBar() {
         ConsoleView consoleView = (ConsoleView) consolePresenter.getView();
-        List<IView<Action, RCPMainUserInterfaceElement>> contributors = Lists
+        List<IView<String, IAction, RcpMainUiElement>> contributors = Lists
                 .newArrayList();
         contributors.add((SettingsView) settingsPresenter.getView());
         contributors.add((ToolsView) toolsPresenter.getView());
@@ -1401,8 +1399,8 @@ public class HazardServicesAppBuilder
         contributors.add((AlertsConfigView) alertsConfigPresenter.getView());
         contributors.add((SpatialView) spatialPresenter.getView());
         contributors.add(consoleView);
-        consoleView.acceptContributionsToMainUI(contributors,
-                RCPMainUserInterfaceElement.TOOLBAR);
+        consoleView.acceptContributionsToMainUi(contributors,
+                RcpMainUiElement.TOOLBAR);
     }
 
     /**
@@ -1468,7 +1466,7 @@ public class HazardServicesAppBuilder
     @SuppressWarnings("rawtypes")
     private void createAlertVizPresenter() {
         if (alertVizPresenter == null) {
-            IView<?, ?> alertVizView = new IView() {
+            IView<?, ?, ?> alertVizView = new IView() {
 
                 @Override
                 public void dispose() {
@@ -1479,12 +1477,12 @@ public class HazardServicesAppBuilder
                 }
 
                 @Override
-                public List<?> contributeToMainUI(Enum type) {
+                public Map<?, ?> contributeToMainUi(Enum type) {
 
                     /*
                      * No contributions here.
                      */
-                    return Lists.newArrayList();
+                    return Maps.newHashMap();
                 }
 
             };
@@ -1557,7 +1555,7 @@ public class HazardServicesAppBuilder
      * We'll have to see if we ever want to recreate it.
      */
     private void createSpatialDisplay(SpatialDisplay spatialDisplay) {
-        ISpatialView<Action, RCPMainUserInterfaceElement> spatialView = new SpatialView(
+        ISpatialView<String, IAction, RcpMainUiElement> spatialView = new SpatialView(
                 spatialDisplay);
         if (spatialPresenter == null) {
             spatialPresenter = new SpatialPresenter(sessionManager, this,

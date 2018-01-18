@@ -46,12 +46,15 @@ import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
  *                                      product editor is open.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
  *                                      session events.
+ * Jan 17, 2018 33428      Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author Bryon.Lawrence
  * @version 1.0
  */
-public interface IProductEditorView<C, E extends Enum<E>> extends IView<C, E> {
+public interface IProductEditorView<I, C, E extends Enum<E>>
+        extends IView<I, C, E> {
 
     // Public Methods
 

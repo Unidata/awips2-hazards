@@ -48,12 +48,25 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                      geometries.
  * Nov 17, 2016   26313    Chris.Golden Moved method to union polygonal elements
  *                                      of a geometry into this class.
+ * Jan 17, 2018   33428    Chris.Golden Changed method for getting union of
+ *                                      polygonal elements to be more general,
+ *                                      and made another version that works with
+ *                                      a list.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class AdvancedGeometryUtilities {
+
+    // Public Enumerated Types
+
+    /**
+     * Types of geometries to include in a union.
+     */
+    public enum GeometryTypesForUnion {
+        ALL, POLYGONAL, NON_POLYGONAL
+    };
 
     // Private Static Constants
 
@@ -352,18 +365,52 @@ public class AdvancedGeometryUtilities {
      * multipolygons that comprise part or all of the geometry.
      * 
      * @param geometry
-     *            Geometry to have its polygonal elements unioned.
-     * @return Union of any polygonal elements of the geometry.
+     *            Geometry to have its elements unioned.
+     * @param typesToInclude
+     *            Types of geometries to include.
+     * @return Union of any elements of the geometry that were requested; may be
+     *         <code>null</code> if there are no such elements.
      */
-    public static Geometry getUnionOfPolygonalElements(Geometry geometry) {
+    public static Geometry getUnionOfGeometryElements(Geometry geometry,
+            GeometryTypesForUnion typesToInclude) {
         Geometry result = null;
+        boolean polygonal = (typesToInclude == GeometryTypesForUnion.POLYGONAL);
         for (int j = 0; j < geometry.getNumGeometries(); j++) {
             Geometry subGeometry = geometry.getGeometryN(j);
-            if (subGeometry instanceof Polygonal) {
+            if ((typesToInclude == GeometryTypesForUnion.ALL)
+                    || (subGeometry instanceof Polygonal == polygonal)) {
                 if (result == null) {
                     result = subGeometry;
                 } else {
                     result = result.union(subGeometry);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Given the specified list of geometries, create a union of any polygons
+     * and/or multipolygons that comprise part or all of the list.
+     * 
+     * @param geometries
+     *            List of geometries to have its elements unioned.
+     * @param typesToInclude
+     *            Types of geometries to include.
+     * @return Union of any elements of the list that were requested; may be
+     *         <code>null</code> if there are no such elements.
+     */
+    public static Geometry getUnionOfGeometryElements(List<Geometry> geometries,
+            GeometryTypesForUnion typesToInclude) {
+        Geometry result = null;
+        boolean polygonal = (typesToInclude == GeometryTypesForUnion.POLYGONAL);
+        for (Geometry geometry : geometries) {
+            if ((typesToInclude == GeometryTypesForUnion.ALL)
+                    || (geometry instanceof Polygonal == polygonal)) {
+                if (result == null) {
+                    result = geometry;
+                } else {
+                    result = result.union(geometry);
                 }
             }
         }

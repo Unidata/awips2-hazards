@@ -9,12 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
-import gov.noaa.gsd.common.utilities.geometry.Ellipse;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-
 import java.util.List;
 
 import com.vividsolutions.jts.geom.Coordinate;
+
+import gov.noaa.gsd.common.utilities.geometry.Ellipse;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 
 /**
  * Description: Ellipse drawable shape.
@@ -27,6 +27,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Sep 21, 2016   15934    Chris.Golden  Initial creation.
  * Sep 29, 2016   15928    Chris.Golden  Added method to get manipulation
  *                                       points.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new version of
+ *                                      {@link IDrawable}.
  * </pre>
  * 
  * @author Chris.Golden
@@ -67,13 +69,14 @@ public class EllipseDrawable extends MultiPointDrawable<Ellipse> {
     // Public Methods
 
     @Override
-    public boolean isEditable() {
+    public boolean isVertexEditable() {
         return false;
     }
 
     @Override
-    public void setEditable(boolean editable) {
-        throw new UnsupportedOperationException("ellipses cannot be editable");
+    public void setVertexEditable(boolean editable) {
+        throw new UnsupportedOperationException(
+                "ellipses do not have vertices to edit");
     }
 
     @Override
@@ -90,8 +93,9 @@ public class EllipseDrawable extends MultiPointDrawable<Ellipse> {
     @Override
     public void offsetBy(double x, double y) {
         Coordinate centerPoint = getGeometry().getCenterPoint();
-        setGeometry(new Ellipse(new Coordinate(centerPoint.x + x, centerPoint.y
-                + y), getGeometry().getWidth(), getGeometry().getHeight(),
+        setGeometry(new Ellipse(
+                new Coordinate(centerPoint.x + x, centerPoint.y + y),
+                getGeometry().getWidth(), getGeometry().getHeight(),
                 getGeometry().getUnits(), getGeometry().getRotation()));
     }
 

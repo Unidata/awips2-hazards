@@ -9,14 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import java.awt.Color;
+
+import com.vividsolutions.jts.geom.Coordinate;
+
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-
-import java.awt.Color;
-
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Base class for input handlers used to modify drawables (possibly
@@ -29,12 +29,13 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 29, 2016   15928    Chris.Golden Initial creation.
+ * Jan 17, 2018   33428    Chris.Golden Made abstract as originally intended.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ModificationCapableInputHandler<M extends ManipulationPoint>
+public abstract class ModificationCapableInputHandler<M extends ManipulationPoint>
         extends NonDrawingInputHandler {
 
     // Private Static Constants

@@ -9,16 +9,16 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 
 /**
  * Description: Path drawable shape, used for both lines and polygons.
@@ -30,6 +30,8 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  * ------------ ---------- ------------- --------------------------
  * Sep 21, 2016   15934    Chris.Golden  Initial creation.
  * Sep 29, 2016   15928    Chris.Golden  Added use of manipulation points.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new version of
+ *                                      {@link IDrawable}.
  * </pre>
  * 
  * @author Chris.Golden
@@ -72,18 +74,18 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
      */
     protected PathDrawable(PathDrawable other) {
         super(other);
-        setEditable(other.editable);
+        setVertexEditable(other.editable);
     }
 
     // Public Methods
 
     @Override
-    public boolean isEditable() {
+    public boolean isVertexEditable() {
         return editable;
     }
 
     @Override
-    public void setEditable(boolean editable) {
+    public void setVertexEditable(boolean editable) {
         this.editable = editable;
         updateManipulationPoints();
     }
@@ -102,10 +104,10 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
 
     @Override
     public void offsetBy(double x, double y) {
-        setGeometry(new GeometryWrapper(AffineTransformation
-                .translationInstance(x, y).transform(
-                        getGeometry().getGeometry()), getGeometry()
-                .getRotation()));
+        setGeometry(new GeometryWrapper(
+                AffineTransformation.translationInstance(x, y)
+                        .transform(getGeometry().getGeometry()),
+                getGeometry().getRotation()));
     }
 
     // Protected Methods
@@ -121,7 +123,7 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
          */
         List<Coordinate[]> coordinates = null;
         int numCoordinates = 0;
-        if (isEditable()) {
+        if (isVertexEditable()) {
             coordinates = AdvancedGeometryUtilities
                     .getCoordinates(getGeometry().getGeometry());
             for (Coordinate[] ringCoordinates : coordinates) {
@@ -164,8 +166,8 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
                 } else if (firstCoordinate.equals(coordinate)) {
                     continue;
                 }
-                manipulationPoints.add(new VertexManipulationPoint(this,
-                        coordinate, j, k));
+                manipulationPoints.add(
+                        new VertexManipulationPoint(this, coordinate, j, k));
             }
         }
 

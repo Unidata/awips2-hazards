@@ -29,9 +29,10 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *
  * SOFTWARE HISTORY
  *
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Dec 11, 2017   20739    golden      Initial creation.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Dec 11, 2017   20739    Chris.Golden Initial creation.
+ * Jan 26, 2018   33428    Chris.Golden Added issuance count.
  * </pre>
  *
  * @author golden
@@ -117,6 +118,11 @@ public class HazardEventView implements IHazardEventView {
     @Override
     public HazardStatus getStatus() {
         return event.getStatus();
+    }
+
+    @Override
+    public int getIssuanceCount() {
+        return event.getIssuanceCount();
     }
 
     @Override

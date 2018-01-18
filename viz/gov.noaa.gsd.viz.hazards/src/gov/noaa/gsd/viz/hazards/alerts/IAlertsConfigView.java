@@ -23,13 +23,22 @@ import gov.noaa.gsd.viz.mvp.IView;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IAlertsConfigView<C, E extends Enum<E>> extends IView<C, E> {
+public interface IAlertsConfigView<I, C, E extends Enum<E>>
+        extends IView<I, C, E> {
+
+    // Public Static Constants
+
+    /**
+     * Alerts toggle identifier.
+     */
+    public static final String ALERTS_TOGGLE_IDENTIFIER = "alertsToggle";
 
     // Public Methods
 

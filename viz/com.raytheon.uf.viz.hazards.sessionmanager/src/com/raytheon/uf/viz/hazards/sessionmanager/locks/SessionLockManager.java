@@ -203,17 +203,6 @@ public class SessionLockManager
 
     // Public Methods
 
-    private void printStackTrace(String message) {
-        System.err.println(message);
-        int count = 0;
-        for (StackTraceElement element : new Exception().getStackTrace()) {
-            System.err.println("    " + element);
-            if (count++ > 6) {
-                break;
-            }
-        }
-    }
-
     @Override
     public boolean lockHazardEvent(String eventId) {
         return lockHazardEvents(Sets.newHashSet(eventId));
@@ -221,15 +210,11 @@ public class SessionLockManager
 
     @Override
     public boolean lockHazardEvents(Set<String> eventIds) {
-        printStackTrace(
-                "Locking hazard event(s) " + Joiner.on(", ").join(eventIds));
         return doLockHazardEvents(eventIds, false);
     }
 
     @Override
     public boolean lockHazardEventsForProductGeneration(Set<String> eventIds) {
-        printStackTrace("Locking (for product generation) hazard event(s) "
-                + Joiner.on(", ").join(eventIds));
         return doLockHazardEvents(eventIds, true);
     }
 
@@ -240,8 +225,6 @@ public class SessionLockManager
 
     @Override
     public boolean unlockHazardEvents(Set<String> eventIds) {
-        printStackTrace(
-                "Unlocking hazard event(s) " + Joiner.on(", ").join(eventIds));
 
         /*
          * Iterate through the events, determining which are locked by this
@@ -295,7 +278,6 @@ public class SessionLockManager
 
     @Override
     public boolean breakHazardEventLock(String eventId) {
-        printStackTrace("Breaking lock of hazard event " + eventId);
         try {
             return sendLockRequest(LockRequestType.BREAK,
                     Lists.newArrayList(eventId)).isSuccess();

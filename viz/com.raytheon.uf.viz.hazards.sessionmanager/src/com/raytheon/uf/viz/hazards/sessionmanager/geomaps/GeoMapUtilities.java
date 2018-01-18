@@ -149,6 +149,8 @@ import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
  *                                      intersect them.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
  *                                      events.
+ * Jan 17, 2018 33428      Chris.Golden Changed to use new version of method to get union of
+ *                                      polygonal elements of geometry.
  * </pre>
  * 
  * @author blawrenc
@@ -346,7 +348,8 @@ public class GeoMapUtilities {
             Geometry modifiedHazardBaseGeometry = hazardEventBaseGeometry;
             if (isPointBasedHatching(hazardEvent) == false) {
                 modifiedHazardBaseGeometry = AdvancedGeometryUtilities
-                        .getUnionOfPolygonalElements(hazardEventBaseGeometry);
+                        .getUnionOfGeometryElements(hazardEventBaseGeometry,
+                                AdvancedGeometryUtilities.GeometryTypesForUnion.POLYGONAL);
             }
 
             /*

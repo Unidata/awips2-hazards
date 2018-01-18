@@ -91,6 +91,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  * May 24, 2017 15561      Chris.Golden Added getPhensig() method.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly
  *                                      mutable session events.
+ * Jan 26, 2018 33428      Chris.Golden Added issuance count.
  * </pre>
  * 
  * @author mnash
@@ -116,6 +117,8 @@ public class BaseHazardEvent implements IHazardEvent {
     private String eventId;
 
     private HazardStatus hazardState;
+
+    private int issuanceCount;
 
     private String phenomenon;
 
@@ -154,6 +157,7 @@ public class BaseHazardEvent implements IHazardEvent {
         setSignificance(event.getSignificance());
         setSubType(event.getSubType());
         setStatus(event.getStatus());
+        setIssuanceCount(event.getIssuanceCount());
         setHazardMode(event.getHazardMode());
         setSource(event.getSource());
         setWsId(event.getWsId());
@@ -243,6 +247,16 @@ public class BaseHazardEvent implements IHazardEvent {
     @Deprecated
     public void setStatus(String state) {
         setStatus(HazardStatus.valueOf(String.valueOf(state).toUpperCase()));
+    }
+
+    @Override
+    public int getIssuanceCount() {
+        return issuanceCount;
+    }
+
+    @Override
+    public void setIssuanceCount(int count) {
+        this.issuanceCount = count;
     }
 
     @Override
@@ -420,6 +434,7 @@ public class BaseHazardEvent implements IHazardEvent {
         result = prime * result + ((source == null) ? 0 : source.hashCode());
         result = prime * result
                 + ((hazardState == null) ? 0 : hazardState.hashCode());
+        result = prime * result + issuanceCount;
         result = prime * result
                 + ((creationTime == null) ? 0 : creationTime.hashCode());
         result = prime * result
@@ -489,6 +504,9 @@ public class BaseHazardEvent implements IHazardEvent {
             return false;
         }
         if (hazardState != other.hazardState) {
+            return false;
+        }
+        if (issuanceCount != other.issuanceCount) {
             return false;
         }
         if (creationTime == null) {

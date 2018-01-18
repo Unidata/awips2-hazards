@@ -156,6 +156,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      metadata fetch, and one for indicating that events to be
  *                                      saved to database from a recommender execution are to
  *                                      remain locked.
+ * Jan 26, 2018 33428     Chris.Golden  Added issuance count.
  * </pre>
  * 
  * @author mnash
@@ -931,6 +932,8 @@ public final class HazardConstants {
      * State key in hazard
      */
     public static final String HAZARD_EVENT_STATUS = "status";
+
+    public static final String HAZARD_EVENT_ISSUANCE_COUNT = "issuanceCount";
 
     public static final String HAZARD_EVENT_SELECTION = "selection";
 

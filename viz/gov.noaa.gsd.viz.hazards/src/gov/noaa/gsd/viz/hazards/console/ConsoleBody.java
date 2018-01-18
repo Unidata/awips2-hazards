@@ -53,7 +53,7 @@ import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
 import gov.noaa.gsd.viz.hazards.console.ConsoleView.ITemporallyAware;
 import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
-import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.hazards.toolbar.TextComboAction;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IListStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
@@ -77,6 +77,8 @@ import gov.noaa.gsd.viz.widgets.WidgetUtilities;
  *                                      enabled state of a row menu's menu item
  *                                      after it is displayed.
  * Aug 08, 2017   22583    Chris.Golden Add service backup banner.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      (for positioning) toolbar contributions.
  * </pre>
  * 
  * @author Chris.Golden
@@ -256,7 +258,7 @@ class ConsoleBody implements IConsoleTree {
      * Selected time mode action, built for the toolbar and passed to this
      * object if appropriate.
      */
-    private ComboAction selectedTimeModeAction = null;
+    private TextComboAction selectedTimeModeAction = null;
 
     /**
      * Localized site.
@@ -427,7 +429,7 @@ class ConsoleBody implements IConsoleTree {
      *            Selected time mode action.
      */
     void setToolBarActions(final Map<String, Action> map,
-            ComboAction selectedTimeModeAction) {
+            TextComboAction selectedTimeModeAction) {
         actionsForButtonIdentifiers.clear();
         actionsForButtonIdentifiers.putAll(map);
         ITemporalDisplay temporalDisplay = consoleTree.getTemporalDisplay();
@@ -632,25 +634,26 @@ class ConsoleBody implements IConsoleTree {
         SelectionListener buttonListener = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (e.widget.getData().equals(ConsoleView.BUTTON_ZOOM_OUT)) {
+                if (e.widget.getData()
+                        .equals(ConsoleView.ZOOM_OUT_IDENTIFIER)) {
                     consoleTree.getTemporalDisplay().zoomTimeOut();
                 } else if (e.widget.getData()
-                        .equals(ConsoleView.BUTTON_PAGE_BACKWARD)) {
+                        .equals(IConsoleView.PAGE_BACKWARD_IDENTIFIER)) {
                     consoleTree.getTemporalDisplay().pageTimeBack();
                 } else if (e.widget.getData()
-                        .equals(ConsoleView.BUTTON_PAN_BACKWARD)) {
+                        .equals(IConsoleView.PAN_BACKWARD_IDENTIFIER)) {
                     consoleTree.getTemporalDisplay().panTimeBack();
                 } else if (e.widget.getData()
-                        .equals(ConsoleView.BUTTON_CURRENT_TIME)) {
+                        .equals(IConsoleView.CURRENT_TIME_IDENTIFIER)) {
                     consoleTree.getTemporalDisplay().showCurrentTime();
                 } else if (e.widget.getData()
-                        .equals(ConsoleView.BUTTON_PAN_FORWARD)) {
+                        .equals(IConsoleView.PAN_FORWARD_IDENTIFIER)) {
                     consoleTree.getTemporalDisplay().panTimeForward();
                 } else if (e.widget.getData()
-                        .equals(ConsoleView.BUTTON_PAGE_FORWARD)) {
+                        .equals(IConsoleView.PAGE_FORWARD_IDENTIFIER)) {
                     consoleTree.getTemporalDisplay().pageTimeForward();
                 } else if (e.widget.getData()
-                        .equals(ConsoleView.BUTTON_ZOOM_IN)) {
+                        .equals(IConsoleView.ZOOM_IN_IDENTIFIER)) {
                     consoleTree.getTemporalDisplay().zoomTimeIn();
                 }
             }
@@ -693,7 +696,7 @@ class ConsoleBody implements IConsoleTree {
          */
         serviceBackupLabel = new Label(serviceBackupPanel, SWT.CENTER);
         FontData[] fontData = serviceBackupLabel.getFont().getFontData();
-        fontData[0].setHeight((int) ((((double) fontData[0].getHeight())
+        fontData[0].setHeight((int) (((fontData[0].getHeight())
                 * SERVICE_BACKUP_FONT_MULTIPLIER) + 0.5));
         fontData[0].setStyle(SWT.BOLD);
         Font bannerFont = new Font(Display.getCurrent(), fontData[0]);
@@ -741,19 +744,19 @@ class ConsoleBody implements IConsoleTree {
          * Update the buttons along the bottom of the view if they exist.
          */
         if (comboBoxPanel.isDisposed() == false) {
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_ZOOM_OUT)
+            buttonsForIdentifiers.get(IConsoleView.ZOOM_OUT_IDENTIFIER)
                     .setEnabled(zoomedOutRange <= WidgetUtilities
                             .getTimeLineRulerMaximumVisibleTimeRange());
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_ZOOM_IN)
+            buttonsForIdentifiers.get(IConsoleView.ZOOM_IN_IDENTIFIER)
                     .setEnabled(zoomedInRange >= WidgetUtilities
                             .getTimeLineRulerMinimumVisibleTimeRange());
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_PAGE_BACKWARD)
+            buttonsForIdentifiers.get(IConsoleView.PAGE_BACKWARD_IDENTIFIER)
                     .setEnabled(lowerVisibleValue > HazardConstants.MIN_TIME);
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_PAN_BACKWARD)
+            buttonsForIdentifiers.get(IConsoleView.PAN_BACKWARD_IDENTIFIER)
                     .setEnabled(lowerVisibleValue > HazardConstants.MIN_TIME);
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_PAN_FORWARD)
+            buttonsForIdentifiers.get(IConsoleView.PAN_FORWARD_IDENTIFIER)
                     .setEnabled(upperVisibleValue < HazardConstants.MAX_TIME);
-            buttonsForIdentifiers.get(ConsoleView.BUTTON_PAGE_FORWARD)
+            buttonsForIdentifiers.get(IConsoleView.PAGE_FORWARD_IDENTIFIER)
                     .setEnabled(upperVisibleValue < HazardConstants.MAX_TIME);
         }
 
@@ -761,20 +764,23 @@ class ConsoleBody implements IConsoleTree {
          * Update the toolbar buttons if they exist.
          */
         if (actionsForButtonIdentifiers
-                .get(ConsoleView.BUTTON_ZOOM_OUT) != null) {
-            actionsForButtonIdentifiers.get(ConsoleView.BUTTON_ZOOM_OUT)
+                .get(ConsoleView.ZOOM_OUT_IDENTIFIER) != null) {
+            actionsForButtonIdentifiers.get(IConsoleView.ZOOM_OUT_IDENTIFIER)
                     .setEnabled(zoomedOutRange <= WidgetUtilities
                             .getTimeLineRulerMaximumVisibleTimeRange());
-            actionsForButtonIdentifiers.get(ConsoleView.BUTTON_ZOOM_IN)
+            actionsForButtonIdentifiers.get(IConsoleView.ZOOM_IN_IDENTIFIER)
                     .setEnabled(zoomedInRange >= WidgetUtilities
                             .getTimeLineRulerMinimumVisibleTimeRange());
-            actionsForButtonIdentifiers.get(ConsoleView.BUTTON_PAGE_BACKWARD)
+            actionsForButtonIdentifiers
+                    .get(IConsoleView.PAGE_BACKWARD_IDENTIFIER)
                     .setEnabled(lowerVisibleValue > HazardConstants.MIN_TIME);
-            actionsForButtonIdentifiers.get(ConsoleView.BUTTON_PAN_BACKWARD)
+            actionsForButtonIdentifiers
+                    .get(IConsoleView.PAN_BACKWARD_IDENTIFIER)
                     .setEnabled(lowerVisibleValue > HazardConstants.MIN_TIME);
-            actionsForButtonIdentifiers.get(ConsoleView.BUTTON_PAN_FORWARD)
+            actionsForButtonIdentifiers.get(IConsoleView.PAN_FORWARD_IDENTIFIER)
                     .setEnabled(upperVisibleValue < HazardConstants.MAX_TIME);
-            actionsForButtonIdentifiers.get(ConsoleView.BUTTON_PAGE_FORWARD)
+            actionsForButtonIdentifiers
+                    .get(IConsoleView.PAGE_FORWARD_IDENTIFIER)
                     .setEnabled(upperVisibleValue < HazardConstants.MAX_TIME);
         }
     }

@@ -43,12 +43,14 @@ import gov.noaa.gsd.viz.mvp.Presenter;
  *                                           superclass.
  * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
  *                                           mutable session events.
+ * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class HazardServicesPresenter<V extends IView<?, ?>> extends
+public abstract class HazardServicesPresenter<V extends IView<?, ?, ?>> extends
         Presenter<ISessionManager<ObservedSettings>, HazardConstants.Element, V, Object> {
 
     // Public Constructors

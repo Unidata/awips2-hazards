@@ -11,28 +11,17 @@ package gov.noaa.gsd.viz.hazards.setting;
 
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_TYPES;
-import gov.noaa.gsd.viz.hazards.UIOriginator;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
-import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
-import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
-import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
-import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
-import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
-import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
-import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
@@ -47,7 +36,6 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.core.VizApp;
@@ -56,6 +44,19 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
+
+import gov.noaa.gsd.viz.hazards.UIOriginator;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
+import gov.noaa.gsd.viz.hazards.display.action.CurrentSettingsAction;
+import gov.noaa.gsd.viz.hazards.display.action.StaticSettingsAction;
+import gov.noaa.gsd.viz.hazards.jsonutilities.Dict;
+import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
+import gov.noaa.gsd.viz.hazards.utilities.MegawidgetSettingsConversionUtils;
+import gov.noaa.gsd.viz.megawidgets.HierarchicalBoundedChoicesMegawidgetSpecifier;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetException;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManager;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetManagerAdapter;
+import gov.noaa.gsd.viz.megawidgets.MegawidgetStateException;
 
 /**
  * Settings view, an implementation of ISettingsView that provides an SWT-based
@@ -90,13 +91,15 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  *                                           settings menu.
  * Feb 01, 2017   15556    Chris.Golden      Changed to work with settings changes
  *                                           as part of console refactor.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SettingsView implements
-        ISettingsView<Action, RCPMainUserInterfaceElement> {
+public class SettingsView
+        implements ISettingsView<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -135,7 +138,7 @@ public class SettingsView implements
      * Settings pulldown menu action.
      */
     private class SettingsPulldownAction extends PulldownAction {
-        
+
         /**
          * Callback to be executed if a save-as is performed.
          */
@@ -182,8 +185,8 @@ public class SettingsView implements
                     if (configManager.containsUserLevelSettings()) {
                         String displayName = configManager.getSettings()
                                 .getDisplayName();
-                        boolean answer = MessageDialog.openQuestion(Display
-                                .getCurrent().getActiveShell(),
+                        boolean answer = MessageDialog.openQuestion(
+                                Display.getCurrent().getActiveShell(),
                                 "User Settings",
                                 "Are you sure you want to delete user settings for \""
                                         + displayName + "\"?");
@@ -192,13 +195,13 @@ public class SettingsView implements
                             List<Settings> availableSettings = configManager
                                     .getAvailableSettings();
                             String newSettingsId = null;
-                            
+
                             /*
                              * Display any non-USER localized settings.
                              */
                             for (Settings settings : availableSettings) {
-                                if (displayName.equals(settings
-                                        .getDisplayName())) {
+                                if (displayName
+                                        .equals(settings.getDisplayName())) {
                                     newSettingsId = settings.getSettingsID();
                                     break;
                                 }
@@ -211,18 +214,20 @@ public class SettingsView implements
                              * Need to select a new setting since the current
                              * one was deleted, fire off the action.
                              */
-                            presenter
-                                    .publish(new StaticSettingsAction(
-                                            StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
-                                            newSettingsId));
+                            presenter.publish(new StaticSettingsAction(
+                                    StaticSettingsAction.ActionType.SETTINGS_CHOSEN,
+                                    newSettingsId));
                             setSettings(availableSettings);
                         }
                     } else {
-                        MessageDialog.openInformation(Display.getCurrent()
-                                .getActiveShell(), "User settings",
-                                "No user settings to delete for \""
-                                        + configManager.getSettings()
-                                                .getDisplayName() + "\".");
+                        MessageDialog
+                                .openInformation(
+                                        Display.getCurrent().getActiveShell(),
+                                        "User settings",
+                                        "No user settings to delete for \""
+                                                + configManager.getSettings()
+                                                        .getDisplayName()
+                                                + "\".");
                     }
                 }
             }
@@ -289,8 +294,8 @@ public class SettingsView implements
                 for (int j = 0; j < settingNames.size(); j++) {
                     MenuItem item = new MenuItem(menu, SWT.PUSH);
                     item.setText(settingNames.get(j));
-                    item.setData(settingIdentifiersForNames.get(settingNames
-                            .get(j)));
+                    item.setData(settingIdentifiersForNames
+                            .get(settingNames.get(j)));
                     item.addSelectionListener(listener);
                 }
                 settingsChanged = false;
@@ -378,8 +383,8 @@ public class SettingsView implements
                                      * presenter.
                                      */
                                     try {
-                                        presenter
-                                                .publish(new CurrentSettingsAction(
+                                        presenter.publish(
+                                                new CurrentSettingsAction(
                                                         currentSettings,
                                                         UIOriginator.SETTINGS_MENU));
                                     } catch (Exception e) {
@@ -394,9 +399,9 @@ public class SettingsView implements
                                     + "megawidget construction problem: " + e,
                             e);
                 } catch (Exception e) {
-                    statusHandler
-                            .error("Failed to convert the Current Settings to Java map.",
-                                    e);
+                    statusHandler.error(
+                            "Failed to convert the Current Settings to Java map.",
+                            e);
                 }
             }
 
@@ -405,18 +410,17 @@ public class SettingsView implements
              */
             if (filtersChanged) {
                 try {
-                    megawidgetManager
-                            .setState(MegawidgetSettingsConversionUtils
-                                    .settingsPOJOToMap(currentSettings));
+                    megawidgetManager.setState(MegawidgetSettingsConversionUtils
+                            .settingsPOJOToMap(currentSettings));
                 } catch (MegawidgetStateException e) {
-                    statusHandler.error(
-                            "SettingsView.FiltersPulldownAction.doGetMenu(): Failed to "
+                    statusHandler
+                            .error("SettingsView.FiltersPulldownAction.doGetMenu(): Failed to "
                                     + "accept new current setting parameters: "
                                     + e, e);
                 } catch (Exception e) {
-                    statusHandler
-                            .error("Failed to convert the Current Settings to a Java Map!",
-                                    e);
+                    statusHandler.error(
+                            "Failed to convert the Current Settings to a Java Map!",
+                            e);
                 }
                 filtersChanged = false;
             }
@@ -500,12 +504,12 @@ public class SettingsView implements
         Set<String> typesSet = new HashSet<>();
         for (int j = 0; j < treeState.size(); j++) {
             Map<?, ?> category = (Map<?, ?>) treeState.get(j);
-            List<?> children = (List<?>) category
-                    .get(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_CHILDREN);
+            List<?> children = (List<?>) category.get(
+                    HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_CHILDREN);
             for (Object child : children) {
                 if (child instanceof Map) {
-                    typesSet.add((String) ((Map<?, ?>) child)
-                            .get(HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_IDENTIFIER));
+                    typesSet.add((String) ((Map<?, ?>) child).get(
+                            HierarchicalBoundedChoicesMegawidgetSpecifier.CHOICE_IDENTIFIER));
                 } else {
                     typesSet.add((String) child);
                 }
@@ -558,15 +562,19 @@ public class SettingsView implements
     }
 
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        if (type == RcpMainUiElement.TOOLBAR) {
             settingsPulldownAction = new SettingsPulldownAction();
             filtersPulldownAction = new FiltersPulldownAction();
-            return Lists.newArrayList(settingsPulldownAction,
-                    filtersPulldownAction);
+            Map<String, List<? extends IAction>> map = new HashMap<>(2, 1.0f);
+            map.put(SETTINGS_PULLDOWN_IDENTIFIER,
+                    ImmutableList.of(settingsPulldownAction));
+            map.put(FILTERS_PULLDOWN_IDENTIFIER,
+                    ImmutableList.of(filtersPulldownAction));
+            return map;
         }
-        return Collections.emptyList();
+        return Collections.emptyMap();
     }
 
     @Override
@@ -578,9 +586,9 @@ public class SettingsView implements
             return;
         }
 
-        settingDialog = new SettingDialog(presenter, PlatformUI.getWorkbench()
-                .getActiveWorkbenchWindow().getShell(), settingsConfig,
-                settings);
+        settingDialog = new SettingDialog(presenter,
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
+                settingsConfig, settings);
         settingDialog.setSaveAs(saveAs);
         settingDialog.open();
         settingDialog.getShell().addDisposeListener(dialogDisposeListener);
@@ -633,7 +641,8 @@ public class SettingsView implements
     }
 
     @Override
-    public final void setCurrentSettings(final ObservedSettings currentSettings) {
+    public final void setCurrentSettings(
+            final ObservedSettings currentSettings) {
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {

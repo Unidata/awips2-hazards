@@ -15,15 +15,17 @@ package gov.noaa.gsd.viz.hazards.display;
  * <pre>
  * 
  * SOFTWARE HISTORY
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 04, 2013            Chris.Golden      Initial induction into repo
- * 
+ * Date         Ticket#    Engineer      Description
+ * ------------ ---------- ------------- --------------------------
+ * Apr 04, 2013            Chris.Golden  Initial induction into repo.
+ * Jan 17, 2018   33428    Chris.Golden  Changed name to be more properly
+ *                                       properly Pascal case (acronyms
+ *                                       have first letter capitalized).
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public enum RCPMainUserInterfaceElement {
+public enum RcpMainUiElement {
     MENUBAR, TOOLBAR
 }

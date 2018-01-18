@@ -208,13 +208,15 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  *                                           manager that is associated with an event
  *                                           that has been deselected if the flag for
  *                                           that event's type is true.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class HazardDetailPresenter
-        extends HazardServicesPresenter<IHazardDetailViewDelegate<?, ?>> {
+        extends HazardServicesPresenter<IHazardDetailViewDelegate<?, ?, ?>> {
 
     // Private Static Constants
 
@@ -1232,7 +1234,7 @@ public class HazardDetailPresenter
     // Protected Methods
 
     @Override
-    protected void initialize(IHazardDetailViewDelegate<?, ?> view) {
+    protected void initialize(IHazardDetailViewDelegate<?, ?, ?> view) {
 
         /*
          * Get the list of hazard event parameter describers that will be used
@@ -1294,7 +1296,7 @@ public class HazardDetailPresenter
     }
 
     @Override
-    protected void reinitialize(IHazardDetailViewDelegate<?, ?> view) {
+    protected void reinitialize(IHazardDetailViewDelegate<?, ?, ?> view) {
         detailViewShowing = getView().getDetailViewVisibilityChanger()
                 .getState(null);
     }

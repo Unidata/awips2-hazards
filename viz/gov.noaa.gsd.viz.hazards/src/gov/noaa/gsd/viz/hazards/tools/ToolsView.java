@@ -7,11 +7,13 @@
  */
 package gov.noaa.gsd.viz.hazards.tools;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
@@ -25,13 +27,13 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
@@ -56,11 +58,12 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
  * Jan 29, 2015   4375     Dan Schaffer      Console initiation of RVS product generation
  * Jan 30, 2015   3626     Chris.Golden      Added ability to pass event type when
  *                                           running a recommender.
- * Feb 15, 2015   2271     Dan Schaffer      Incur recommender/product generator init costs immediately
+ * Feb 15, 2015   2271     Dan Schaffer      Incur recommender/product generator init
+ *                                           costs immediately.
  * Jun 02, 2015   7138     Robert.Blum       Changed to use new Enums for Product Generators.
  * Nov 10, 2015  12762     Chris.Golden      Added support for use of new recommender manager.
- * Apr 01, 2016  16225     Chris.Golden      Added ability to cancel tasks that are scheduled to run
- *                                           at regular intervals.
+ * Apr 01, 2016  16225     Chris.Golden      Added ability to cancel tasks that are scheduled
+ *                                           o run at regular intervals.
  * Jun 08, 2017  16373     Chris.Golden      Corrected spelling of RUN_RECOMMENDER.
  * Aug 15, 2017   22757    Chris.Golden      Added ability for recommenders to specify
  *                                           either a message to display, or a dialog to
@@ -68,13 +71,15 @@ import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
  *                                           the returned event set).
  * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender
  *                                           manager.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class ToolsView
-        implements IToolsView<Action, RCPMainUserInterfaceElement> {
+        implements IToolsView<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -284,11 +289,14 @@ public class ToolsView
     }
 
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        if (type == RcpMainUiElement.TOOLBAR) {
             toolsPulldownAction = new ToolsPulldownAction();
-            return Lists.newArrayList(toolsPulldownAction);
+            Map<String, List<? extends IAction>> map = new HashMap<>(1, 1.0f);
+            map.put(TOOLS_PULLDOWN_IDENTIFIER,
+                    ImmutableList.of(toolsPulldownAction));
+            return map;
         } else {
             Action enableEventDrivenToolsExecutionAction = new BasicAction(
                     TOOLS_MENU_ITEM_RUN_EVENT_DRIVEN_TOOLS_TEXT, null,
@@ -299,7 +307,10 @@ public class ToolsView
                 }
             };
             enableEventDrivenToolsExecutionAction.setChecked(true);
-            return Lists.newArrayList(enableEventDrivenToolsExecutionAction);
+            Map<String, List<? extends IAction>> map = new HashMap<>(1, 1.0f);
+            map.put(EVENT_DRIVEN_TOOLS_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(enableEventDrivenToolsExecutionAction));
+            return map;
         }
     }
 

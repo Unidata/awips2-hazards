@@ -86,6 +86,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Feb 01, 2017 15556      Chris.Golden Changed to include set of changed settings
  *                                      elements when notifying of changes.
  * Oct 23, 2017 21730      Chris.Golden Added defaultType.
+ * Jan 17, 2018 33428      Chris.Golden Removed no-longer-needed flag indicating
+ *                                      whether a new geometry should be added to
+ *                                      a selected event's geometry.
  * </pre>
  * 
  * @author bsteffen
@@ -100,7 +103,7 @@ public class ObservedSettings implements ISettings {
      * Types of changes that may be made to a settings object.
      */
     public enum Type {
-        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, MAP_CENTER, DEFAULT_CATEGORY, DEFAULT_TYPE, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, ADD_GEOMETRY_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
+        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, MAP_CENTER, DEFAULT_CATEGORY, DEFAULT_TYPE, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
     };
 
     private SessionConfigurationManager configManager;
@@ -292,11 +295,6 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
-    public Boolean getAddGeometryToSelected() {
-        return delegate.getAddGeometryToSelected();
-    }
-
-    @Override
     public Set<String> getPerspectiveIDs() {
         return getSetCopy(delegate.getPerspectiveIDs());
     }
@@ -408,11 +406,6 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
-    public void setAddGeometryToSelected(Boolean addGeometryToSelected) {
-        setAddGeometryToSelected(addGeometryToSelected, true, Originator.OTHER);
-    }
-
-    @Override
     public void setEventIdDisplayType(String eventIdDisplayType) {
         setEventIdDisplayType(eventIdDisplayType, true, Originator.OTHER);
     }
@@ -466,8 +459,6 @@ public class ObservedSettings implements ISettings {
                 originator));
         changed.addAll(
                 setAddToSelected(other.getAddToSelected(), false, originator));
-        changed.addAll(setAddGeometryToSelected(
-                other.getAddGeometryToSelected(), false, originator));
         changed.addAll(setEventIdDisplayType(other.getEventIdDisplayType(),
                 false, originator));
         changed.addAll(setPerspectiveIDs(other.getPerspectiveIDs(), false,
@@ -576,11 +567,6 @@ public class ObservedSettings implements ISettings {
             changed.addAll(
                     setAddToSelected(update.getAddToSelected(), false, null));
         }
-        if (changed(getAddGeometryToSelected(),
-                persisted.getAddGeometryToSelected()) == false) {
-            changed.addAll(setAddGeometryToSelected(
-                    update.getAddGeometryToSelected(), false, null));
-        }
         if (changed(getEventIdDisplayType(),
                 persisted.getEventIdDisplayType()) == false) {
             changed.addAll(setEventIdDisplayType(update.getEventIdDisplayType(),
@@ -686,11 +672,6 @@ public class ObservedSettings implements ISettings {
     public void setAddToSelected(Boolean addToSelected,
             IOriginator originator) {
         setAddToSelected(addToSelected, true, originator);
-    }
-
-    public void setAddGeometryToSelected(Boolean addGeometryToSelected,
-            IOriginator originator) {
-        setAddGeometryToSelected(addGeometryToSelected, true, originator);
     }
 
     public void setEventIdDisplayType(String eventIdDisplayType,
@@ -876,16 +857,6 @@ public class ObservedSettings implements ISettings {
             delegate.setAddToSelected(addToSelected);
             settingsChanged(notify, Type.ADD_TO_SELECTED, originator);
             return EnumSet.of(Type.ADD_TO_SELECTED);
-        }
-        return EnumSet.noneOf(Type.class);
-    }
-
-    protected Set<Type> setAddGeometryToSelected(Boolean addGeometryToSelected,
-            boolean notify, IOriginator originator) {
-        if (changed(addGeometryToSelected, getAddGeometryToSelected())) {
-            delegate.setAddGeometryToSelected(addGeometryToSelected);
-            settingsChanged(notify, Type.ADD_GEOMETRY_TO_SELECTED, originator);
-            return EnumSet.of(Type.ADD_GEOMETRY_TO_SELECTED);
         }
         return EnumSet.noneOf(Type.class);
     }

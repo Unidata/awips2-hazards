@@ -53,6 +53,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.ToolType;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventAttributesModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIssuanceCountModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventVisualFeaturesModification;
@@ -218,6 +219,11 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      algorithm for building event sets for dialog
  *                                      and spatial parameter gathering, and for actual
  *                                      recommender execution.
+ * Jan 26, 2018   33428    Chris.Golden Added use of new first-class attribute of hazard
+ *                                      events, issuance count, to trigger recommenders
+ *                                      that are supposed to run when the hazard status
+ *                                      changes. This allows issuance and reissuance to
+ *                                      be treated symmetrically by recommenders.
  * </pre>
  * 
  * @author Chris.Golden
@@ -826,7 +832,16 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         modifiedAttributesForTriggeredRecommenders,
                         notification,
                         HazardEventFirstClassAttribute.TIME_RANGE);
-            } else if (modification instanceof EventStatusModification) {
+            } else if ((modification instanceof EventStatusModification)
+                    || ((modification instanceof EventIssuanceCountModification)
+                            && (notification.getEvent()
+                                    .getIssuanceCount() > 1))) {
+
+                /*
+                 * Note that changes in status, as well as issuance count
+                 * changes that indicate a reissuance, are both treated as
+                 * status changes in terms of triggering.
+                 */
                 addTriggeredRecommenderEntryForModifiedAttribute(
                         modifiedAttributesForTriggeredRecommenders,
                         notification, HazardEventFirstClassAttribute.STATUS);

@@ -9,8 +9,20 @@
  */
 package gov.noaa.gsd.viz.hazards.hazardtypefirst;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
+import org.eclipse.ui.PlatformUI;
+
+import com.google.common.collect.ImmutableList;
+import com.raytheon.uf.viz.core.VizApp;
+
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.hazardtypefirst.HazardTypeFirstPresenter.Command;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
 import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
@@ -20,15 +32,6 @@ import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvocationHandler;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IWidget;
-
-import java.util.Collections;
-import java.util.List;
-
-import org.eclipse.jface.action.Action;
-import org.eclipse.ui.PlatformUI;
-
-import com.google.common.collect.Lists;
-import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Description: Hazard type first view, a delegate for the hazard type first
@@ -40,6 +43,8 @@ import com.raytheon.uf.viz.core.VizApp;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 21, 2015    3626    Chris.Golden Initial creation.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -47,7 +52,7 @@ import com.raytheon.uf.viz.core.VizApp;
  * @see HazardTypeFirstDialog
  */
 public class HazardTypeFirstView implements
-        IHazardTypeFirstViewDelegate<Action, RCPMainUserInterfaceElement> {
+        IHazardTypeFirstViewDelegate<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -180,9 +185,9 @@ public class HazardTypeFirstView implements
     }
 
     @Override
-    public List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
+    public Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        if (type == RcpMainUiElement.TOOLBAR) {
 
             /*
              * Create the toolbar button to initiate the creation of a hazard
@@ -202,9 +207,12 @@ public class HazardTypeFirstView implements
             if (showDialogActionEnabled == false) {
                 showDialogAction.setEnabled(false);
             }
-            return Lists.newArrayList(showDialogAction);
+            Map<String, List<? extends IAction>> map = new HashMap<>(1, 1.0f);
+            map.put(HAZARD_TYPE_FIRST_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(showDialogAction));
+            return map;
         }
-        return Collections.emptyList();
+        return Collections.emptyMap();
     }
 
     @Override

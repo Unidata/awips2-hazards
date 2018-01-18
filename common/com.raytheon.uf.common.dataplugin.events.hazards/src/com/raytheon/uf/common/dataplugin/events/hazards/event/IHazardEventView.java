@@ -20,9 +20,9 @@ package com.raytheon.uf.common.dataplugin.events.hazards.event;
  *
  * SOFTWARE HISTORY
  *
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Dec 11, 2017   20739    golden      Initial creation.
+ * Date         Ticket#    Engineer     Description
+ * ------------ ---------- ------------ --------------------------
+ * Dec 11, 2017   20739    Chris.Golden Initial creation.
  * </pre>
  *
  * @author golden

@@ -9,18 +9,18 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
-import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
-import gov.noaa.nws.ncep.ui.pgen.elements.Line;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
+
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
+import gov.noaa.nws.ncep.ui.pgen.elements.Line;
 
 /**
  * Description: Multi-point drawable shape base class.
@@ -51,13 +51,15 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Sep 29, 2016 15928      Chris.Golden  Moved resizability and rotatability
  *                                       into this base class. Added use of
  *                                       manipulation points.
+ * Jan 17, 2018 33428      Chris.Golden  Changed to work with new version of
+ *                                       {@link IDrawable}.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
-        Line implements IDrawable<G> {
+public abstract class MultiPointDrawable<G extends IAdvancedGeometry>
+        extends Line implements IDrawable<G> {
 
     // Private Static Constants
 
@@ -194,10 +196,10 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry> extends
     }
 
     @Override
-    public abstract boolean isEditable();
+    public abstract boolean isVertexEditable();
 
     @Override
-    public abstract void setEditable(boolean editable);
+    public abstract void setVertexEditable(boolean editable);
 
     @Override
     public boolean isResizable() {

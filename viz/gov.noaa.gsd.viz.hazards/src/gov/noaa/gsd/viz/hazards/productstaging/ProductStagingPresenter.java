@@ -79,13 +79,15 @@ import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChangeHandler;
  * Feb 01, 2017  15556     Chris.Golden      Changed to work with new selection manager.
  * Dec 17, 2017  20739     Chris.Golden      Refactored away access to directly mutable
  *                                           session events.
+ * Jan 17, 2018  33428     Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author bryon.lawrence
  * @version 1.0
  */
 public class ProductStagingPresenter
-        extends HazardServicesPresenter<IProductStagingViewDelegate<?, ?>> {
+        extends HazardServicesPresenter<IProductStagingViewDelegate<?, ?, ?>> {
 
     // Public Enumerated Types
 
@@ -276,7 +278,7 @@ public class ProductStagingPresenter
      *            View to be initialized.
      */
     @Override
-    protected void initialize(IProductStagingViewDelegate<?, ?> view) {
+    protected void initialize(IProductStagingViewDelegate<?, ?, ?> view) {
 
         /*
          * No action.
@@ -284,7 +286,7 @@ public class ProductStagingPresenter
     }
 
     @Override
-    protected void reinitialize(IProductStagingViewDelegate<?, ?> view) {
+    protected void reinitialize(IProductStagingViewDelegate<?, ?, ?> view) {
 
         /*
          * No action.

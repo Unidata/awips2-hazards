@@ -55,13 +55,15 @@ import net.engio.mbassy.listener.Handler;
  * Nov 17, 2015 11776      Roger.Ferrel      Use the {@link ISaveAs} interface.
  * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
  *                                           mutable session events.
+ * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SettingsPresenter
-        extends HazardServicesPresenter<ISettingsView<?, ?>> {
+        extends HazardServicesPresenter<ISettingsView<?, ?, ?>> {
 
     // Public Constructors
 
@@ -149,7 +151,7 @@ public class SettingsPresenter
     // Protected Methods
 
     @Override
-    protected void initialize(ISettingsView<?, ?> view) {
+    protected void initialize(ISettingsView<?, ?, ?> view) {
         ObservedSettings settings = getModel().getConfigurationManager()
                 .getSettings();
         view.initialize(this,
@@ -159,7 +161,7 @@ public class SettingsPresenter
     }
 
     @Override
-    protected void reinitialize(ISettingsView<?, ?> view) {
+    protected void reinitialize(ISettingsView<?, ?, ?> view) {
 
         /*
          * No action.

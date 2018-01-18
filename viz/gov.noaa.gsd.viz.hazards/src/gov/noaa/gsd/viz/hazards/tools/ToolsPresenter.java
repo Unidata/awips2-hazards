@@ -56,12 +56,15 @@ import net.engio.mbassy.listener.Handler;
  * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender manager.
  * Dec 17, 2017   20739    Chris.Golden      Refactored away access to directly mutable
  *                                           session events.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
+public class ToolsPresenter
+        extends HazardServicesPresenter<IToolsView<?, ?, ?>> {
 
     // Public Constructors
 
@@ -81,19 +84,6 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
     }
 
     // Public Methods
-
-    /**
-     * Initialize the specified view in a subclass-specific manner.
-     * 
-     * @param view
-     *            View to be initialized.
-     */
-    @Override
-    protected void initialize(IToolsView<?, ?> view) {
-        List<Tool> toolList = getModel().getConfigurationManager().getSettings()
-                .getToolbarTools();
-        view.initialize(this, toolList);
-    }
 
     /**
      * Receive notification of a model change.
@@ -149,8 +139,17 @@ public class ToolsPresenter extends HazardServicesPresenter<IToolsView<?, ?>> {
         getView().showToolResults(type, jsonParams);
     }
 
+    // Protected Methods
+
     @Override
-    protected void reinitialize(IToolsView<?, ?> view) {
+    protected void initialize(IToolsView<?, ?, ?> view) {
+        List<Tool> toolList = getModel().getConfigurationManager().getSettings()
+                .getToolbarTools();
+        view.initialize(this, toolList);
+    }
+
+    @Override
+    protected void reinitialize(IToolsView<?, ?, ?> view) {
 
         /*
          * No action.

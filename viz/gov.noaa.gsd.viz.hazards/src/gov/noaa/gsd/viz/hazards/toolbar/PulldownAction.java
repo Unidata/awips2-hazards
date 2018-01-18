@@ -32,8 +32,8 @@ import org.eclipse.swt.widgets.ToolItem;
  * 
  * @author Chris.Golden
  */
-public abstract class PulldownAction extends BasicAction implements
-        IMenuCreator {
+public abstract class PulldownAction extends BasicAction
+        implements IMenuCreator {
 
     // Private Variables
 
@@ -55,57 +55,40 @@ public abstract class PulldownAction extends BasicAction implements
         setMenuCreator(this);
     }
 
+    /**
+     * Construct a standard instance.
+     * 
+     * @param text
+     *            Text for the action.
+     * @param icon
+     *            File name of the icon to be used.
+     */
     public PulldownAction(String text, String icon) {
         super(text, icon, Action.AS_DROP_DOWN_MENU, text);
         setMenuCreator(this);
-
     }
 
     // Public Methods
 
-    /**
-     * Get the menu for the specified parent.
-     * 
-     * @param parent
-     *            Parent control.
-     * @return Menu.
-     */
     @Override
     public final Menu getMenu(Control parent) {
         menu = doGetMenu(parent, menu);
         return menu;
     }
 
-    /**
-     * Get the menu for the specified parent.
-     * 
-     * @param parent
-     *            Parent menu.
-     * @return Menu.
-     */
     @Override
     public final Menu getMenu(Menu parent) {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * Run the action.
-     */
-    @Override
-    public final void run() {
-
-        // No action.
-    }
-
-    /**
+    /*
      * Run the action resulting from the specified event. This would not need
      * overriding were it not for the fact that without it, the user can only
      * click on the down-arrow on the menu button displayed for this action.
      * This implementation ensures that the user can click anywhere on the
      * button to drop down the menu.
      * 
-     * @param event
-     *            Event that triggered this invocation.
+     * @param event Event that triggered this invocation.
      */
     @Override
     public final void runWithEvent(Event event) {
@@ -119,9 +102,6 @@ public abstract class PulldownAction extends BasicAction implements
         }
     }
 
-    /**
-     * Dispose of the action.
-     */
     @Override
     public void dispose() {
         if (menu != null) {
@@ -129,7 +109,13 @@ public abstract class PulldownAction extends BasicAction implements
         }
     }
 
-    // Protected Methods
+    @Override
+    public final void run() {
+
+        /*
+         * No action.
+         */
+    }
 
     /**
      * Get the menu for the specified parent, possibly reusing the specified

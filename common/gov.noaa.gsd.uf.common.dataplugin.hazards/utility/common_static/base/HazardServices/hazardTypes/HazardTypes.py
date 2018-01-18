@@ -104,8 +104,10 @@
 #                            Default is False.
 #                 pointBased Indicates whether or not the hazard type is point-based. Default is
 #                            False.
-#            allowTimeChange Ignored by the GUI; used in VTEC processing
-#            allowAreaChange Ignored by the GUI; used in VTEC processing
+#            allowTimeChange Ignored by the GUI; used in VTEC processing. Default is False.
+#            allowAreaChange Used in VTEC processing, and also by the GUI to determine whether
+#                            area may be expanded or not for a previously issued event of this
+#                            type. Default is False.
 #         combinableSegments If False, hazard events are treated as separate ETN's i.e. they
 #                            are not combined into a single segment.  A hazard event can have
 #                            multiple polygons if needed. If True, Hazard Events can be combined

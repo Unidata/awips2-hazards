@@ -57,6 +57,7 @@
 #                                                 added insert time record and getter.
 #    05/24/17       15561          Chris.Golden   Added getPhensig() method.
 #    12/14/17       20739          Chris.Golden   Made subclass of ReadableHazardEvent.
+#    01/26/18       33428          Chris.Golden   Added issuance count.
 #
 
 import JUtil
@@ -95,6 +96,9 @@ class HazardEvent(ReadableHazardEvent):
             self.jobj.setStatus(HazardStatus.valueOf(str(hazardStatus).upper()))
         else :
             self.jobj.setStatus(HazardStatus.PENDING)
+    
+    def setIssuanceCount(self, issuanceCount):
+        self.jobj.setIssuanceCount(issuanceCount)
     
     def setPhenomenon(self, phenomenon):
         self.jobj.setPhenomenon(phenomenon)
@@ -179,6 +183,8 @@ class HazardEvent(ReadableHazardEvent):
             self.setSiteID(value)
         elif lowerKey == 'status':
             self.setStatus(value)
+        elif lowerKey == 'issuancecount':
+            self.setIssuanceCount(value)
         elif lowerKey == 'visibleinhistorylist':
             self.setVisibleInHistoryList(value)
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':

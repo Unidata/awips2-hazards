@@ -91,6 +91,9 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  *                                      deserializers into a new base class,
  *                                      VisualFeaturesListDeserializer, and made
  *                                      this class extend the new base class.
+ * Jan 17, 2018   33428    Chris.Golden Added support for flag that indicates
+ *                                      whether or not visual feature is
+ *                                      editable via geometry operations.
  * </pre>
  * 
  * @author Chris.Golden
@@ -354,6 +357,16 @@ class VisualFeaturesListJsonDeserializer
                                     VisualFeaturesListJsonConverter.KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_EDITABLE_USING_GEOMETRY_OPS,
+                    new IPropertyDeserializer<Boolean>() {
+
+                        @Override
+                        public Boolean deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeBoolean(node, identifier,
+                                    VisualFeaturesListJsonConverter.KEY_EDITABLE_USING_GEOMETRY_OPS);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_ROTATABLE,
                     new IPropertyDeserializer<Boolean>() {
 
@@ -559,6 +572,16 @@ class VisualFeaturesListJsonDeserializer
                                 VisualFeature visualFeature) {
                             visualFeature
                                     .setMultiGeometryPointsDraggable(value);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_EDITABLE_USING_GEOMETRY_OPS,
+                    new IPropertyAssigner<Boolean>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<Boolean> value,
+                                VisualFeature visualFeature) {
+                            visualFeature.setEditableUsingGeometryOps(value);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_ROTATABLE,

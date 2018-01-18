@@ -7,11 +7,13 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +31,7 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.IPerspectiveDescriptor;
 
 import com.google.common.base.Predicate;
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
@@ -59,7 +61,7 @@ import com.vividsolutions.jts.geom.Geometry;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Toggle;
@@ -68,9 +70,12 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IHazardEventEntityIdenti
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaContext;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResource;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.selectbyarea.SelectByAreaDbMapResourceData;
+import gov.noaa.gsd.viz.hazards.toolbar.ActionChooserAction;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
+import gov.noaa.gsd.viz.hazards.toolbar.ImageComboChooserAction;
+import gov.noaa.gsd.viz.hazards.toolbar.ImageComboMainButtonAction;
+import gov.noaa.gsd.viz.hazards.toolbar.MostRecentlyUsedAction;
 import gov.noaa.gsd.viz.hazards.toolbar.PulldownAction;
-import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
 import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
@@ -156,13 +161,16 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Jun 30, 2017 21638      Chris.Golden      Only allow gage action menu item to be enabled
  *                                           if there is a recommender configured as the
  *                                           gage-point-first recommender.
+ * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code, and to provide new
+ *                                           enhanced geometry-operation-based edits.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SpatialView implements
-        ISpatialView<Action, RCPMainUserInterfaceElement>, IDisposeListener {
+        ISpatialView<String, IAction, RcpMainUiElement>, IDisposeListener {
 
     // Private Static Constants
 
@@ -223,26 +231,27 @@ public class SpatialView implements
     private static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(SpatialView.class);
 
-    // Private Enumerated Types
+    // Package-Private Enumerated Types
 
     /**
-     * Input modes.
+     * Geometry edit modes.
      */
-    private enum InputMode {
-        SELECT_OR_MODIFY("Select event", "arrow.png"), DRAW_POINT("Draw points",
-                "drawPoint.png"), DRAW_LINE("Draw path",
-                        "drawPath.png"), DRAW_POLYGON("Draw polygon",
-                                "drawPolygon.png"), DRAW_FREEHAND_POLYGON(
-                                        "Draw freehand polygon",
-                                        "drawFreehandPolygon.png"), DRAW_ELLIPSE(
-                                                "Draw ellipse",
-                                                "drawEllipse.png"), EDIT_POLYGON(
-                                                        "Edit polygon",
-                                                        "editPolygon.png"), EDIT_FREEHAND_POLYGON(
-                                                                "Edit polygon freehand",
-                                                                "editPolygonFreeHand.png");
+    enum GeometryEditMode {
+        NEW_EVENT("New", "New event", "newGeometry.png"), REPLACE_GEOMETRY(
+                "Replace", "Replace geometry",
+                "replaceGeometry.png"), UNION_GEOMETRY("Add", "Add to geometry",
+                        "unionGeometry.png"), INTERSECT_GEOMETRY("Intersect",
+                                "Intersect with geometry",
+                                "intersectGeometry.png"), SUBTRACT_GEOMETRY(
+                                        "Subtract", "Subtract from geometry",
+                                        "subtractGeometry.png");
 
         // Private Variables
+
+        /**
+         * Brief text description.
+         */
+        private final String briefDescription;
 
         /**
          * Text description.
@@ -260,18 +269,117 @@ public class SpatialView implements
         /**
          * Construct a standard instance.
          * 
+         * @param briefDescription
+         *            Brief text description.
          * @param description
          *            Text description.
          * @param iconFile
          *            Name of the file holding the icon to use to represent this
          *            mode in the toolbar.
          */
-        private InputMode(String description, String iconFile) {
+        private GeometryEditMode(String briefDescription, String description,
+                String iconFile) {
+            this.briefDescription = briefDescription;
             this.description = description;
             this.iconFile = iconFile;
         }
 
         // Public Methods
+
+        /**
+         * Get the brief text description.
+         * 
+         * @return Brief text description.
+         */
+        public String getBriefDescription() {
+            return briefDescription;
+        }
+
+        /**
+         * Get the text description.
+         * 
+         * @return Text description.
+         */
+        public String getDescription() {
+            return description;
+        }
+
+        /**
+         * Get the name of the file holding the icon to use to represent this
+         * mode in the toolbar.
+         * 
+         * @return Icon file name.
+         */
+        public String getIconFile() {
+            return iconFile;
+        }
+    };
+
+    // Private Enumerated Types
+
+    /**
+     * Input modes.
+     */
+    private enum InputMode {
+        SELECT_OR_MODIFY("Select", "Select event", "arrow.png"), DRAW_POINT(
+                "Points", "Draw points", "drawPoint.png"), DRAW_LINE("Path",
+                        "Draw path", "drawPath.png"), DRAW_POLYGON("Polygon",
+                                "Draw polygon",
+                                "drawPolygon.png"), DRAW_FREEHAND_POLYGON(
+                                        "Freehand Polygon",
+                                        "Draw freehand polygon",
+                                        "drawFreehandPolygon.png"), DRAW_ELLIPSE(
+                                                "Ellipse", "Draw ellipse",
+                                                "drawEllipse.png");
+
+        // Private Variables
+
+        /**
+         * Brief text description.
+         */
+        private final String briefDescription;
+
+        /**
+         * Text description.
+         */
+        private final String description;
+
+        /**
+         * Name of the file holding the icon to use to represent this mode in
+         * the toolbar.
+         */
+        private final String iconFile;
+
+        // Private Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param briefDescription
+         *            Brief text description.
+         * @param description
+         *            Text description.
+         * @param iconFile
+         *            Name of the file holding the icon to use to represent this
+         *            mode in the toolbar.
+         */
+        private InputMode(String briefDescription, String description,
+                String iconFile) {
+            this.briefDescription = briefDescription;
+            this.description = description;
+            this.iconFile = iconFile;
+        }
+
+        // Public Methods
+
+        /**
+         * Get the brief text description.
+         * 
+         * @return Brief text description.
+         */
+        public String getBriefDescription() {
+            return briefDescription;
+        }
 
         /**
          * Get the text description.
@@ -300,7 +408,7 @@ public class SpatialView implements
      */
     private class InputModeAction extends BasicAction {
 
-        // Private Constants
+        // Private Variables
 
         /**
          * Input mode.
@@ -316,15 +424,30 @@ public class SpatialView implements
          *            Input mode.
          */
         public InputModeAction(InputMode inputMode) {
-            super("", inputMode.getIconFile(), Action.AS_CHECK_BOX,
-                    inputMode.getDescription());
+            super(inputMode.getBriefDescription(), inputMode.getIconFile(),
+                    Action.AS_CHECK_BOX, inputMode.getDescription());
             this.inputMode = inputMode;
         }
 
         // Public Methods
 
+        /**
+         * Get the associated input mode.
+         * 
+         * @rerturn Input mode.
+         */
+        public InputMode getInputMode() {
+            return inputMode;
+        }
+
         @Override
         public void run() {
+
+            /*
+             * Ensure that the action is checked, in case the user clicked a
+             * button that was already checked.
+             */
+            setChecked(true);
 
             /*
              * Do nothing if the spatial display is gone, since this invocation
@@ -335,20 +458,33 @@ public class SpatialView implements
             }
 
             /*
-             * Determine whether or not the new-shape-being-drawn flag should be
-             * set.
+             * Determine whether or not geometry edit modes should be restricted
+             * due to the new input mode.
              */
-            switch (inputMode) {
-            case DRAW_POLYGON:
-            case DRAW_LINE:
-            case DRAW_POINT:
-            case DRAW_FREEHAND_POLYGON:
-            case DRAW_ELLIPSE:
-                drawingOfNewShapeInProgress = true;
-                break;
-            default:
-                drawingOfNewShapeInProgress = false;
-                break;
+            boolean restrictGeometryEditModes = ((inputMode == InputMode.DRAW_LINE)
+                    || (inputMode == InputMode.DRAW_POINT));
+
+            /*
+             * If the geometry edit modes need to be restricted, and this is not
+             * recursive (i.e. this is not happening because geometry edit mode
+             * was already changing), ensure that the geometry edit mode is set
+             * to something compatible with the new drawing tool choice.
+             */
+            if (restrictGeometryEditModes
+                    && (inputAndGeometryEditModesBeingManipulated == false)) {
+                GeometryEditModeAction action = currentGeometryEditChoiceAction
+                        .getPrincipal();
+                if ((action
+                        .getGeometryEditMode() == GeometryEditMode.INTERSECT_GEOMETRY)
+                        || (action
+                                .getGeometryEditMode() == GeometryEditMode.SUBTRACT_GEOMETRY)) {
+                    action = actionsForGeometryEditModes
+                            .get(GeometryEditMode.NEW_EVENT);
+                    inputAndGeometryEditModesBeingManipulated = true;
+                    currentGeometryEditChoiceAction.setPrincipal(action);
+                    action.run();
+                    inputAndGeometryEditModesBeingManipulated = false;
+                }
             }
 
             /*
@@ -395,14 +531,75 @@ public class SpatialView implements
                 spatialDisplay.setCurrentInputHandlerToDrawing(
                         InputHandlerType.ELLIPSE_DRAWING, GeometryType.POLYGON);
                 break;
-            case EDIT_POLYGON:
-                spatialDisplay.setCurrentInputHandlerToDrawing(
-                        InputHandlerType.VERTEX_DRAWING, GeometryType.LINE);
-                break;
-            case EDIT_FREEHAND_POLYGON:
-                spatialDisplay.setCurrentInputHandlerToDrawing(
-                        InputHandlerType.FREEHAND_DRAWING, GeometryType.LINE);
-                break;
+            }
+        }
+    }
+
+    /**
+     * Geometry edit modes.
+     */
+
+    /**
+     * Geometry edit mode.
+     */
+    private class GeometryEditModeAction extends BasicAction {
+
+        // Private Variables
+
+        /**
+         * Geometry edit mode.
+         */
+        private final GeometryEditMode geometryEditMode;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         * 
+         * @param geometryEditMode
+         *            Geometry edit mode.
+         */
+        public GeometryEditModeAction(GeometryEditMode geometryEditMode) {
+            super(geometryEditMode.getBriefDescription(),
+                    geometryEditMode.getIconFile(), Action.AS_PUSH_BUTTON,
+                    geometryEditMode.getDescription());
+            this.geometryEditMode = geometryEditMode;
+        }
+
+        // Public Methods
+
+        /**
+         * Get the associated input mode.
+         * 
+         * @rerturn Input mode.
+         */
+        public GeometryEditMode getGeometryEditMode() {
+            return geometryEditMode;
+        }
+
+        @Override
+        public void run() {
+            currentGeometryEditMode = this.geometryEditMode;
+
+            /*
+             * If the drawing modes need to be restricted, and this is not
+             * recursive (i.e. this is not happening because drawing mode was
+             * already changing), set the drawing mode to something compatible
+             * with the new geometry edit mode choice.
+             */
+            if ((currentGeometryEditMode != GeometryEditMode.NEW_EVENT)
+                    && (currentGeometryEditMode != GeometryEditMode.REPLACE_GEOMETRY)
+                    && (inputAndGeometryEditModesBeingManipulated == false)) {
+                InputModeAction action = mostRecentlyUsedDrawingAction
+                        .getPrincipal();
+                if ((action.getInputMode() == InputMode.DRAW_LINE)
+                        || (action.getInputMode() == InputMode.DRAW_POINT)) {
+                    action = actionsForInputModes.get(InputMode.DRAW_POLYGON);
+                    inputAndGeometryEditModesBeingManipulated = true;
+                    mostRecentlyUsedDrawingAction.setPrincipal(action);
+                    action.run();
+                    inputAndGeometryEditModesBeingManipulated = false;
+                }
             }
         }
     }
@@ -412,10 +609,14 @@ public class SpatialView implements
      */
     private class BasicSpatialAction extends BasicAction {
 
+        // Private Variables
+
         /**
          * Runnable to be executed for this action.
          */
         private final Runnable runnable;
+
+        // Private Constructors
 
         /**
          * Construct a standard instance.
@@ -438,6 +639,8 @@ public class SpatialView implements
             super(text, iconFileName, style, toolTipText);
             this.runnable = runnable;
         }
+
+        // Public Methods
 
         @Override
         public void run() {
@@ -920,15 +1123,8 @@ public class SpatialView implements
 
         @Override
         public void setEnabled(Toggle identifier, boolean enable) {
-            if (identifier == Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT) {
-                if (addNewGeometryToSelectedEventToggleAction != null) {
-                    addNewGeometryToSelectedEventToggleAction
-                            .setEnabled(enable);
-                }
-            } else {
-                throw new UnsupportedOperationException(
-                        "cannot change enabled state of toggle " + identifier);
-            }
+            throw new UnsupportedOperationException(
+                    "cannot change enabled state of toggle " + identifier);
         }
 
         @Override
@@ -945,11 +1141,7 @@ public class SpatialView implements
 
         @Override
         public void setState(Toggle identifier, Boolean value) {
-            if (identifier == Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT) {
-                if (addNewGeometryToSelectedEventToggleAction != null) {
-                    addNewGeometryToSelectedEventToggleAction.setChecked(value);
-                }
-            } else if (identifier == Toggle.ADD_CREATED_EVENTS_TO_SELECTED) {
+            if (identifier == Toggle.ADD_CREATED_EVENTS_TO_SELECTED) {
                 if (addNewEventToSelectedToggleAction != null) {
                     addNewEventToSelectedToggleAction.setChecked(value);
                 }
@@ -1053,19 +1245,45 @@ public class SpatialView implements
             InputMode.class);
 
     /**
+     * Most recently used drawing choice action.
+     */
+    private MostRecentlyUsedAction<InputModeAction> mostRecentlyUsedDrawingAction;
+
+    /**
      * Maps for select by area pulldown action.
      */
     private SelectByAreaMapsPulldownAction selectByAreaMapsPulldownAction;
 
     /**
-     * Add geometry to selected event action.
+     * Current geometry edit choice action.
      */
-    private Action addNewGeometryToSelectedEventToggleAction;
+    private ImageComboMainButtonAction<GeometryEditModeAction> currentGeometryEditChoiceAction;
 
     /**
-     * Flag indicating whether the drawing of a new shape is in progress.
+     * Previously selected geometry edit choice action; this will be other than
+     * <code>null</code> if a previous edit choice is being remembered so that
+     * it may be restored when
+     * {@link #setCombineGeometryOperationsEnabled(boolean, boolean)} is called
+     * with <code>true</code> as the first argument.
      */
-    private boolean drawingOfNewShapeInProgress;
+    private GeometryEditModeAction previousGeometryEditChoiceAction;
+
+    /**
+     * Map of geometry edit modes to their corresponding actions.
+     */
+    private final EnumMap<GeometryEditMode, GeometryEditModeAction> actionsForGeometryEditModes = new EnumMap<>(
+            GeometryEditMode.class);
+
+    /**
+     * Currently selected geometry edit mode.
+     */
+    private GeometryEditMode currentGeometryEditMode = GeometryEditMode.NEW_EVENT;
+
+    /**
+     * Flag indicating whether or not input and geometry edit modes are
+     * currently being manipulated in an interdependent manner.
+     */
+    private boolean inputAndGeometryEditModesBeingManipulated = false;
 
     /**
      * Select-by-area viz resource currently in use, if any.
@@ -1358,13 +1576,11 @@ public class SpatialView implements
     }
 
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        if (type == RcpMainUiElement.TOOLBAR) {
 
-            /*
-             * Create the actions.
-             */
+            Map<String, List<? extends IAction>> map = new HashMap<>(10, 1.0f);
             undoCommandAction = new BasicSpatialAction("", "undo.png",
                     Action.AS_PUSH_BUTTON, "Undo", new Runnable() {
 
@@ -1377,6 +1593,7 @@ public class SpatialView implements
                         }
                     });
             undoCommandAction.setEnabled(false);
+            map.put(UNDO_IDENTIFIER, ImmutableList.of(undoCommandAction));
             redoCommandAction = new BasicSpatialAction("", "redo.png",
                     Action.AS_PUSH_BUTTON, "Redo", new Runnable() {
 
@@ -1389,6 +1606,8 @@ public class SpatialView implements
                         }
                     });
             redoCommandAction.setEnabled(false);
+            map.put(REDO_IDENTIFIER, ImmutableList.of(redoCommandAction));
+
             addNewEventToSelectedToggleAction = new BasicSpatialAction("",
                     "addToSelected.png", Action.AS_CHECK_BOX,
                     "Add New Pending to Selected", new Runnable() {
@@ -1403,73 +1622,90 @@ public class SpatialView implements
                             }
                         }
                     });
+            map.put(ADD_NEW_EVENT_TO_SELECTED_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(addNewEventToSelectedToggleAction));
+
+            List<InputModeAction> drawingActions = new ArrayList<>();
+            InputModeAction drawVertexBasedPolygonChoiceAction = new InputModeAction(
+                    InputMode.DRAW_POLYGON);
+            actionsForInputModes.put(InputMode.DRAW_POLYGON,
+                    drawVertexBasedPolygonChoiceAction);
+            drawingActions.add(drawVertexBasedPolygonChoiceAction);
+            InputModeAction drawFreehandPolygonChoiceAction = new InputModeAction(
+                    InputMode.DRAW_FREEHAND_POLYGON);
+            actionsForInputModes.put(InputMode.DRAW_FREEHAND_POLYGON,
+                    drawFreehandPolygonChoiceAction);
+            drawingActions.add(drawFreehandPolygonChoiceAction);
+            InputModeAction drawEllipseChoiceAction = new InputModeAction(
+                    InputMode.DRAW_ELLIPSE);
+            actionsForInputModes.put(InputMode.DRAW_ELLIPSE,
+                    drawEllipseChoiceAction);
+            drawingActions.add(drawEllipseChoiceAction);
+            InputModeAction drawVertexPathChoiceAction = new InputModeAction(
+                    InputMode.DRAW_LINE);
+            actionsForInputModes.put(InputMode.DRAW_LINE,
+                    drawVertexPathChoiceAction);
+            drawingActions.add(drawVertexPathChoiceAction);
+            InputModeAction drawPointChoiceAction = new InputModeAction(
+                    InputMode.DRAW_POINT);
+            actionsForInputModes.put(InputMode.DRAW_POINT,
+                    drawPointChoiceAction);
+            drawingActions.add(drawPointChoiceAction);
+            mostRecentlyUsedDrawingAction = new MostRecentlyUsedAction<>(
+                    drawingActions.get(0));
+            ActionChooserAction<InputModeAction> drawingChoices = new ActionChooserAction<>(
+                    drawingActions, mostRecentlyUsedDrawingAction);
+            map.put(DRAWING_CHOICE_IDENTIFIER, ImmutableList
+                    .of(mostRecentlyUsedDrawingAction, drawingChoices));
+
+            List<GeometryEditModeAction> geometryEditActions = new ArrayList<>();
+            GeometryEditModeAction newEventAction = new GeometryEditModeAction(
+                    GeometryEditMode.NEW_EVENT);
+            actionsForGeometryEditModes.put(GeometryEditMode.NEW_EVENT,
+                    newEventAction);
+            geometryEditActions.add(newEventAction);
+            GeometryEditModeAction replaceGeometryAction = new GeometryEditModeAction(
+                    GeometryEditMode.REPLACE_GEOMETRY);
+            actionsForGeometryEditModes.put(GeometryEditMode.REPLACE_GEOMETRY,
+                    replaceGeometryAction);
+            geometryEditActions.add(replaceGeometryAction);
+            GeometryEditModeAction unionGeometryAction = new GeometryEditModeAction(
+                    GeometryEditMode.UNION_GEOMETRY);
+            actionsForGeometryEditModes.put(GeometryEditMode.UNION_GEOMETRY,
+                    unionGeometryAction);
+            geometryEditActions.add(unionGeometryAction);
+            GeometryEditModeAction intersectGeometryAction = new GeometryEditModeAction(
+                    GeometryEditMode.INTERSECT_GEOMETRY);
+            actionsForGeometryEditModes.put(GeometryEditMode.INTERSECT_GEOMETRY,
+                    intersectGeometryAction);
+            geometryEditActions.add(intersectGeometryAction);
+            GeometryEditModeAction subtractGeometryAction = new GeometryEditModeAction(
+                    GeometryEditMode.SUBTRACT_GEOMETRY);
+            actionsForGeometryEditModes.put(GeometryEditMode.SUBTRACT_GEOMETRY,
+                    subtractGeometryAction);
+            geometryEditActions.add(subtractGeometryAction);
+            currentGeometryEditChoiceAction = new ImageComboMainButtonAction<>(
+                    geometryEditActions.get(0));
+            ImageComboChooserAction<GeometryEditModeAction> geometryEditChoices = new ImageComboChooserAction<>(
+                    geometryEditActions, currentGeometryEditChoiceAction);
+            map.put(GEOMETRY_EDIT_MODE_CHOICE_IDENTIFIER, ImmutableList
+                    .of(currentGeometryEditChoiceAction, geometryEditChoices));
+
             InputModeAction moveAndSelectChoiceAction = new InputModeAction(
                     InputMode.SELECT_OR_MODIFY);
             moveAndSelectChoiceAction.setChecked(true);
             actionsForInputModes.put(InputMode.SELECT_OR_MODIFY,
                     moveAndSelectChoiceAction);
-            InputModeAction drawVertexBasedPolygonChoiceAction = new InputModeAction(
-                    InputMode.DRAW_POLYGON);
-            actionsForInputModes.put(InputMode.DRAW_POLYGON,
-                    drawVertexBasedPolygonChoiceAction);
-            InputModeAction drawFreehandPolygonChoiceAction = new InputModeAction(
-                    InputMode.DRAW_FREEHAND_POLYGON);
-            actionsForInputModes.put(InputMode.DRAW_FREEHAND_POLYGON,
-                    drawFreehandPolygonChoiceAction);
-            InputModeAction drawEllipseChoiceAction = new InputModeAction(
-                    InputMode.DRAW_ELLIPSE);
-            actionsForInputModes.put(InputMode.DRAW_ELLIPSE,
-                    drawEllipseChoiceAction);
-            InputModeAction drawVertexPathChoiceAction = new InputModeAction(
-                    InputMode.DRAW_LINE);
-            actionsForInputModes.put(InputMode.DRAW_LINE,
-                    drawVertexPathChoiceAction);
-            InputModeAction drawPointChoiceAction = new InputModeAction(
-                    InputMode.DRAW_POINT);
-            actionsForInputModes.put(InputMode.DRAW_POINT,
-                    drawPointChoiceAction);
-            InputModeAction editVertexBasedPolygonChoiceAction = new InputModeAction(
-                    InputMode.EDIT_POLYGON);
-            editVertexBasedPolygonChoiceAction.setEnabled(false);
-            actionsForInputModes.put(InputMode.EDIT_POLYGON,
-                    editVertexBasedPolygonChoiceAction);
-            InputModeAction editFreehandVertexBasedPolygonChoiceAction = new InputModeAction(
-                    InputMode.EDIT_FREEHAND_POLYGON);
-            editFreehandVertexBasedPolygonChoiceAction.setEnabled(false);
-            actionsForInputModes.put(InputMode.EDIT_FREEHAND_POLYGON,
-                    editFreehandVertexBasedPolygonChoiceAction);
+            map.put(MOVE_AND_SELECT_CHOICE_IDENTIFIER,
+                    ImmutableList.of(moveAndSelectChoiceAction));
+
             selectByAreaMapsPulldownAction = new SelectByAreaMapsPulldownAction();
+            map.put(SELECT_BY_AREA_PULLDOWN_CHOICE_IDENTIFIER,
+                    ImmutableList.of(selectByAreaMapsPulldownAction));
 
-            addNewGeometryToSelectedEventToggleAction = new BasicSpatialAction(
-                    "", "addGeometryToSelected.png", Action.AS_CHECK_BOX,
-                    "Add Geometry To Selected", new Runnable() {
-
-                        @Override
-                        public void run() {
-                            if (toggleChangeHandler != null) {
-                                toggleChangeHandler.stateChanged(
-                                        Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT,
-                                        addNewGeometryToSelectedEventToggleAction
-                                                .isChecked());
-                            }
-                        }
-                    });
-
-            /*
-             * Return the list of the actions created.
-             */
-            return Lists.newArrayList(undoCommandAction, redoCommandAction,
-                    new SeparatorAction(), addNewEventToSelectedToggleAction,
-                    new SeparatorAction(), moveAndSelectChoiceAction,
-                    drawVertexBasedPolygonChoiceAction,
-                    drawVertexPathChoiceAction, drawPointChoiceAction,
-                    drawFreehandPolygonChoiceAction, drawEllipseChoiceAction,
-                    editVertexBasedPolygonChoiceAction,
-                    editFreehandVertexBasedPolygonChoiceAction,
-                    selectByAreaMapsPulldownAction, new SeparatorAction(),
-                    addNewGeometryToSelectedEventToggleAction);
+            return map;
         }
-        return Collections.emptyList();
+        return Collections.emptyMap();
     }
 
     @Override
@@ -1480,16 +1716,58 @@ public class SpatialView implements
     }
 
     @Override
-    public void setEditMultiPointGeometryEnabled(final boolean enable) {
+    public void setCombineGeometryOperationsEnabled(final boolean enable,
+            final boolean rememberSelectedAction) {
         VizApp.runAsync(new Runnable() {
             @Override
             public void run() {
-                for (InputMode mode : EnumSet.of(InputMode.EDIT_POLYGON,
-                        InputMode.EDIT_FREEHAND_POLYGON)) {
-                    InputModeAction action = actionsForInputModes.get(mode);
+
+                /*
+                 * Enable or disable all the actions that are not "new event".
+                 */
+                for (GeometryEditMode mode : EnumSet
+                        .complementOf(EnumSet.of(GeometryEditMode.NEW_EVENT))) {
+                    GeometryEditModeAction action = actionsForGeometryEditModes
+                            .get(mode);
                     if (action != null) {
                         action.setEnabled(enable);
                     }
+                }
+
+                /*
+                 * If disabling, remember the previously selected edit choice if
+                 * appropriate, and ensure that "new event" is selected. If
+                 * enabling and there is a record of a previously selected edit
+                 * choice, ensure that choice is selected.
+                 */
+                if (enable == false) {
+                    if (rememberSelectedAction
+                            && (currentGeometryEditChoiceAction
+                                    .getPrincipal() != actionsForGeometryEditModes
+                                            .get(GeometryEditMode.NEW_EVENT))) {
+                        previousGeometryEditChoiceAction = currentGeometryEditChoiceAction
+                                .getPrincipal();
+                    }
+                    GeometryEditModeAction action = actionsForGeometryEditModes
+                            .get(GeometryEditMode.NEW_EVENT);
+                    inputAndGeometryEditModesBeingManipulated = true;
+                    currentGeometryEditChoiceAction.setPrincipal(action);
+                    action.run();
+                    inputAndGeometryEditModesBeingManipulated = false;
+                } else if (previousGeometryEditChoiceAction != null) {
+                    inputAndGeometryEditModesBeingManipulated = true;
+                    currentGeometryEditChoiceAction
+                            .setPrincipal(previousGeometryEditChoiceAction);
+                    previousGeometryEditChoiceAction.run();
+                    inputAndGeometryEditModesBeingManipulated = false;
+                }
+
+                /*
+                 * If the "remember" flag is false, forget any previously
+                 * recorded choice action.
+                 */
+                if (rememberSelectedAction == false) {
+                    previousGeometryEditChoiceAction = null;
                 }
             }
         });
@@ -1734,13 +2012,12 @@ public class SpatialView implements
     }
 
     /**
-     * Determine whether or not a new shape is being drawn.
+     * Get the geometry edit mode.
      * 
-     * @return <code>true</code> if a new shape is being drawn,
-     *         <code>false</code> otherwise.
+     * @return Geometry edit mode.
      */
-    boolean isDrawingOfNewShapeInProgress() {
-        return drawingOfNewShapeInProgress;
+    GeometryEditMode getGeometryEditMode() {
+        return currentGeometryEditMode;
     }
 
     // Private Methods

@@ -84,6 +84,8 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  *                                      since the latter is done at the level of
  *                                      the visual features list now.
  * Nov 22, 2017   21504    Chris.Golden Updates for hazard locking.
+ * Jan 17, 2018   33428    Chris.Golden Added editable-via-geometry-operations
+ *                                      flag.
  * </pre>
  * 
  * @author Chris.Golden
@@ -325,6 +327,11 @@ public class VisualFeature implements Serializable {
     public static final boolean DEFAULT_MULTI_GEOMETRY_POINTS_DRAGGABLE = true;
 
     /**
+     * Default editable using geometry operations flag.
+     */
+    public static final boolean DEFAULT_EDITABLE_USING_GEOMETRY_OPS = false;
+
+    /**
      * Default rotatable flag.
      */
     public static final boolean DEFAULT_ROTATABLE = false;
@@ -533,20 +540,6 @@ public class VisualFeature implements Serializable {
     };
 
     /**
-     * Rotatable flag fetcher.
-     */
-    private static final IPropertyFetcher<Boolean> ROTATABLE_FETCHER = new IPropertyFetcher<Boolean>() {
-
-        @Override
-        public Boolean getPropertyValue(VisualFeature visualFeature,
-                Date time) {
-            TemporallyVariantProperty<Boolean> property = visualFeature
-                    .getRotatable();
-            return (property == null ? null : property.getProperty(time));
-        }
-    };
-
-    /**
      * Draggable points within multi-geometry collection flag fetcher.
      */
     private static final IPropertyFetcher<Boolean> MULTI_GEOMETRY_POINTS_DRAGGABLE_FETCHER = new IPropertyFetcher<Boolean>() {
@@ -556,6 +549,34 @@ public class VisualFeature implements Serializable {
                 Date time) {
             TemporallyVariantProperty<Boolean> property = visualFeature
                     .getMultiGeometryPointsDraggable();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
+     * Editable using geometry operations flag fetcher.
+     */
+    private static final IPropertyFetcher<Boolean> EDITABLE_USING_GEOMETRY_OPS_FETCHER = new IPropertyFetcher<Boolean>() {
+
+        @Override
+        public Boolean getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<Boolean> property = visualFeature
+                    .getEditableUsingGeometryOps();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
+     * Rotatable flag fetcher.
+     */
+    private static final IPropertyFetcher<Boolean> ROTATABLE_FETCHER = new IPropertyFetcher<Boolean>() {
+
+        @Override
+        public Boolean getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<Boolean> property = visualFeature
+                    .getRotatable();
             return (property == null ? null : property.getProperty(time));
         }
     };
@@ -688,12 +709,6 @@ public class VisualFeature implements Serializable {
     private TemporallyVariantProperty<DragCapability> dragCapability;
 
     /**
-     * Flag indicating whether or not the feature is rotatable; may be
-     * <code>null</code>.
-     */
-    private TemporallyVariantProperty<Boolean> rotatable;
-
-    /**
      * Flag indicating whether or not, if {@link #geometry} is a collection of
      * multiple geometries, any point sub-geometries within that collection are
      * draggable. If <code>false</code>, this overrides any capabilities
@@ -702,6 +717,18 @@ public class VisualFeature implements Serializable {
      * <code>null</code>.
      */
     private TemporallyVariantProperty<Boolean> multiGeometryPointsDraggable;
+
+    /**
+     * Flag indicating whether or not the feature is editable using geometry
+     * operations; may be <code>null</code>.
+     */
+    private TemporallyVariantProperty<Boolean> editableUsingGeometryOps;
+
+    /**
+     * Flag indicating whether or not the feature is rotatable; may be
+     * <code>null</code>.
+     */
+    private TemporallyVariantProperty<Boolean> rotatable;
 
     /**
      * Flag indicating whether or not the feature is scaleable; may be
@@ -764,15 +791,16 @@ public class VisualFeature implements Serializable {
         this.textSize = original.textSize;
         this.textColor = original.textColor;
         this.dragCapability = original.dragCapability;
-        this.rotatable = original.rotatable;
         this.multiGeometryPointsDraggable = original.multiGeometryPointsDraggable;
+        this.editableUsingGeometryOps = original.editableUsingGeometryOps;
+        this.rotatable = original.rotatable;
         this.scaleable = original.scaleable;
         this.topmost = original.topmost;
 
         /*
          * Publicly mutable properties must be copied down to the point where
-         * immutable components are encountered. Geometries for all practical
-         * purposes immutable.
+         * immutable components are encountered. Geometries are for all
+         * practical purposes immutable.
          */
         this.geometry = new TemporallyVariantProperty<>(
                 original.geometry.getDefaultProperty());
@@ -823,6 +851,8 @@ public class VisualFeature implements Serializable {
                 && Utils.equal(dragCapability, otherFeature.dragCapability)
                 && Utils.equal(multiGeometryPointsDraggable,
                         otherFeature.multiGeometryPointsDraggable)
+                && Utils.equal(editableUsingGeometryOps,
+                        otherFeature.editableUsingGeometryOps)
                 && Utils.equal(rotatable, otherFeature.rotatable)
                 && Utils.equal(scaleable, otherFeature.scaleable)
                 && Utils.equal(topmost, otherFeature.topmost));
@@ -842,6 +872,7 @@ public class VisualFeature implements Serializable {
                 + Utils.getHashCode(textSize) + Utils.getHashCode(textColor)
                 + Utils.getHashCode(dragCapability)
                 + Utils.getHashCode(multiGeometryPointsDraggable)
+                + Utils.getHashCode(editableUsingGeometryOps)
                 + Utils.getHashCode(rotatable) + Utils.getHashCode(scaleable)
                 + Utils.getHashCode(topmost)) % Integer.MAX_VALUE);
     }
@@ -1061,12 +1092,26 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Determine whether the feature is editable using geometry operations for
+     * the specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return <code>true</code> if the feature is editable using geometry
+     *         operations at the specified time, otherwise <code>false</code>.
+     */
+    public boolean isEditableUsingGeometryOps(Date time) {
+        return getValue(EDITABLE_USING_GEOMETRY_OPS_FETCHER, time,
+                DEFAULT_EDITABLE_USING_GEOMETRY_OPS);
+    }
+
+    /**
      * Determine whether the feature is rotatable for the specified time.
      * 
      * @param time
      *            Time for which to check.
-     * @return True if the feature is rotatable at the specified time, otherwise
-     *         false.
+     * @return <code>true</code> if the feature is rotatable at the specified
+     *         time, otherwise <code>false</code>.
      */
     public boolean isRotatable(Date time) {
         return getValue(ROTATABLE_FETCHER, time, DEFAULT_ROTATABLE);
@@ -1077,8 +1122,8 @@ public class VisualFeature implements Serializable {
      * 
      * @param time
      *            Time for which to check.
-     * @return True if the feature is scaleable at the specified time, otherwise
-     *         false.
+     * @return <code>true</code> if the feature is scaleable at the specified
+     *         time, otherwise <code>false</code>.
      */
     public boolean isScaleable(Date time) {
         return getValue(SCALEABLE_FETCHER, time, DEFAULT_SCALEABLE);
@@ -1089,8 +1134,8 @@ public class VisualFeature implements Serializable {
      * 
      * @param time
      *            Time for which to check.
-     * @return True if the feature is topmost at the specified time, otherwise
-     *         false.
+     * @return <code>true</code> if the feature is topmost at the specified
+     *         time, otherwise <code>false</code>.
      */
     public boolean isTopmost(Date time) {
         return getValue(TOPMOST_FETCHER, time, DEFAULT_TOPMOST);
@@ -1234,6 +1279,7 @@ public class VisualFeature implements Serializable {
                 getColor(getTextColor(time), hazardColor),
                 (editable ? getDragCapability(time) : DragCapability.NONE),
                 (editable && isMultiGeometryPointsDraggable(time)),
+                (selected && editable && isEditableUsingGeometryOps(time)),
                 (selected && editable && isRotatable(time)),
                 (selected && editable && isScaleable(time)), isTopmost(time));
     }
@@ -1304,7 +1350,8 @@ public class VisualFeature implements Serializable {
                 getInteger(getTextSize(time), DEFAULT_TEXT_SIZE),
                 getColor(getTextColor(time), DEFAULT_TEXT_COLOR),
                 getDragCapability(time), isMultiGeometryPointsDraggable(time),
-                isRotatable(time), isScaleable(time), isTopmost(time));
+                isEditableUsingGeometryOps(time), isRotatable(time),
+                isScaleable(time), isTopmost(time));
     }
 
     /**
@@ -1317,9 +1364,10 @@ public class VisualFeature implements Serializable {
      *            Time for which to set the geometry of this object.
      * @param geometry
      *            New geometry to be used.
-     * @return True if the geometry was set successfully, false otherwise. The
-     *         latter will occur if <code>time</code> does not fall within a
-     *         time range for which a geometry has already been defined.
+     * @return <code>true</code> if the geometry was set successfully,
+     *         <code>false</code> otherwise. The latter will occur if
+     *         <code>time</code> does not fall within a time range for which a
+     *         geometry has already been defined.
      */
     public boolean setGeometry(Date time, IAdvancedGeometry geometry) {
         return this.geometry.addPropertyForTimeRangeEncompassingTime(time,
@@ -1520,6 +1568,17 @@ public class VisualFeature implements Serializable {
      */
     TemporallyVariantProperty<Boolean> getMultiGeometryPointsDraggable() {
         return multiGeometryPointsDraggable;
+    }
+
+    /**
+     * Get the flag indicating whether or not the feature is editable using
+     * geometry operations.
+     * 
+     * @return Flag indicating whether or not the feature is editable using
+     *         geometry operations; may be <code>null</code>.
+     */
+    TemporallyVariantProperty<Boolean> getEditableUsingGeometryOps() {
+        return editableUsingGeometryOps;
     }
 
     /**
@@ -1730,6 +1789,18 @@ public class VisualFeature implements Serializable {
     void setMultiGeometryPointsDraggable(
             TemporallyVariantProperty<Boolean> multiGeometryPointsDraggable) {
         this.multiGeometryPointsDraggable = multiGeometryPointsDraggable;
+    }
+
+    /**
+     * Set the flag indicating whether or not the feature is editable using
+     * geometry operations.
+     * 
+     * @param editableUsingGeometryOps
+     *            New value; may be <code>null</code>.
+     */
+    void setEditableUsingGeometryOps(
+            TemporallyVariantProperty<Boolean> editableUsingGeometryOps) {
+        this.editableUsingGeometryOps = editableUsingGeometryOps;
     }
 
     /**

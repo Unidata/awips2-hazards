@@ -7,17 +7,17 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
-import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
-import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
-import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
-import gov.noaa.nws.ncep.ui.pgen.elements.Text;
-
 import java.awt.Color;
 import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Joiner;
 import com.vividsolutions.jts.geom.Coordinate;
+
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
+import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
+import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 
 /**
  * Text label drawable in the spatial display.
@@ -52,6 +52,8 @@ import com.vividsolutions.jts.geom.Coordinate;
  *                                             (offsetting by deltas).
  * Sep 29, 2016 15928      Chris.Golden        Added offsetBy() method and use of
  *                                             manipulation points.
+ * Jan 17, 2018 33428      Chris.Golden        Changed to work with new version of
+ *                                             {@link IDrawable}.
  * </pre>
  * 
  * @author Bryon.Lawrence
@@ -179,13 +181,14 @@ public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
     }
 
     @Override
-    public boolean isEditable() {
+    public boolean isVertexEditable() {
         return false;
     }
 
     @Override
-    public void setEditable(boolean editable) {
-        throw new UnsupportedOperationException("text cannot be editable");
+    public void setVertexEditable(boolean editable) {
+        throw new UnsupportedOperationException(
+                "text does not have vertices to edit");
     }
 
     @Override
@@ -225,8 +228,8 @@ public class TextDrawable extends Text implements IDrawable<IAdvancedGeometry> {
 
     @Override
     public String toString() {
-        return getIdentifier() + " (text: \""
-                + Joiner.on("\\n").join(getText()) + "\")";
+        return getIdentifier() + " (text: \"" + Joiner.on("\\n").join(getText())
+                + "\")";
     }
 
     /**

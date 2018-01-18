@@ -9,10 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.hazardtypefirst;
 
+import java.util.List;
+
 import gov.noaa.gsd.viz.mvp.IView;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
-
-import java.util.List;
 
 /**
  * Description: Interface that a delegate for the hazard type first view must
@@ -27,13 +27,24 @@ import java.util.List;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Jan 21, 2015    3626    Chris.Golden Initial creation.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IHazardTypeFirstViewDelegate<C, E extends Enum<E>> extends
-        IView<C, E>, IHazardTypeFirstView {
+public interface IHazardTypeFirstViewDelegate<I, C, E extends Enum<E>>
+        extends IView<I, C, E>, IHazardTypeFirstView {
+
+    // Public Static Constants
+
+    /**
+     * Hazard type first toggle identifier.
+     */
+    public static final String HAZARD_TYPE_FIRST_TOGGLE_IDENTIFIER = "hazardTypeFirstToggle";
+
+    // Public Methods
 
     /**
      * Initialize the view delegate.

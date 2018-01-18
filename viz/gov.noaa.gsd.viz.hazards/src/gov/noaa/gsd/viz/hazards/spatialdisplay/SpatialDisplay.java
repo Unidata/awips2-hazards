@@ -8,7 +8,6 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -39,7 +38,6 @@ import org.eclipse.ui.PlatformUI;
 
 import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
-import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.GeometryType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
@@ -68,13 +66,11 @@ import com.raytheon.viz.ui.cmenu.IContextMenuContributor;
 import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.LineSegment;
-import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.LinearRing;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier;
+import com.vividsolutions.jts.geom.Puntal;
 
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
@@ -84,6 +80,7 @@ import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesAppBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SequencePosition;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialView.GeometryEditMode;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
@@ -231,6 +228,9 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
  *                                        a multi-geometry event to potentially strip away all the
  *                                        geometries making up said event except the one that was
  *                                        modified.
+ * Jan 17, 2018 33428      Chris.Golden   Changed to work with new, more flexible toolbar contribution
+ *                                        code, and to provide new enhanced geometry-operation-based
+ *                                        edits.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -368,12 +368,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
     static final String LAYER_NAME = "Hazard Services";
 
     // Private Static Constants
-
-    /**
-     * Distance tolerance used for topology preserving simplification of paths
-     * and polygons.
-     */
-    private static final double SIMPLIFIER_DISTANCE_TOLERANCE = 0.0001;
 
     /**
      * Default map scale name. Does not match any valid scale name. This is by
@@ -706,6 +700,12 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
      * Drawable manager assisting this spatial display.
      */
     private DrawableManager drawableManager;
+
+    /**
+     * List of points to be put together and used for an edit of an existing
+     * geometry using a geometry operation (replace, union, etc.).
+     */
+    private final List<Coordinate> pointsToBeUsedForGeometryEdit = new ArrayList<>();
 
     /**
      * Flag indicating whether or not this viz resource is acting as the basis
@@ -1241,12 +1241,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
 
     /**
      * Handle the user creation of a point shape.
-     * <p>
-     * TODO: When the deprecated method
-     * {@link #handleUserMultiPointDrawingActionComplete(GeometryType, List)} is
-     * removed, the <code>location</code> parameter should be turned into an
-     * {@link IAdvancedGeometry} for consistency's sake.
-     * </p>
      * 
      * @param location
      *            Location at which the point is to be created.
@@ -1257,22 +1251,56 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
      */
     public void handleUserCreationOfPointShape(Coordinate location,
             SequencePosition sequencePosition) {
-        spatialView.handleUserCreationOfShape(AdvancedGeometryUtilities
-                .createGeometryWrapper(AdvancedGeometryUtilities
-                        .getGeometryFactory().createPoint(location), 0));
 
         /*
-         * If this is the first point drawn in a sequence of points, tell the
-         * view that until further notice, subsequent created shapes should be
-         * added to the selected set. If it is the last point drawn in such a
-         * sequence, reset the input mode, which will as part of its routine
-         * tell the view that no more created events should be added to the
-         * selected set.
+         * If creating new events, add this point as a new event, and set flags
+         * appropriately to ensure that future points created in this same
+         * sequence are added to the selection set, or end the sequence if this
+         * is the last point. Otherwise, collect all the points that are
+         * created, and apply the collected points as an edit and end the
+         * sequence if this is the last point.
          */
-        if (sequencePosition == SequencePosition.FIRST) {
-            spatialView.handleSetAddCreatedEventsToSelected(true);
-        } else if (sequencePosition == SequencePosition.LAST) {
-            spatialView.handleUserResetOfInputMode();
+        if (spatialView
+                .getGeometryEditMode() == SpatialView.GeometryEditMode.NEW_EVENT) {
+
+            spatialView.handleUserCreationOfShape(AdvancedGeometryUtilities
+                    .createGeometryWrapper(AdvancedGeometryUtilities
+                            .getGeometryFactory().createPoint(location), 0));
+
+            if (sequencePosition == SequencePosition.FIRST) {
+                spatialView.handleSetAddCreatedEventsToSelected(true);
+            } else if (sequencePosition == SequencePosition.LAST) {
+                spatialView.handleUserResetOfInputMode();
+            }
+        } else {
+
+            if (sequencePosition == SequencePosition.FIRST) {
+                pointsToBeUsedForGeometryEdit.clear();
+            }
+
+            pointsToBeUsedForGeometryEdit.add(location);
+
+            if (sequencePosition == SequencePosition.LAST) {
+                if (pointsToBeUsedForGeometryEdit.isEmpty() == false) {
+                    applyGeometryEdit(
+                            AdvancedGeometryUtilities.createGeometryWrapper(
+                                    pointsToBeUsedForGeometryEdit.size() == 1
+                                            ? AdvancedGeometryUtilities
+                                                    .getGeometryFactory()
+                                                    .createPoint(
+                                                            pointsToBeUsedForGeometryEdit
+                                                                    .get(0))
+                                            : AdvancedGeometryUtilities
+                                                    .getGeometryFactory()
+                                                    .createMultiPoint(
+                                                            pointsToBeUsedForGeometryEdit
+                                                                    .toArray(
+                                                                            new Coordinate[pointsToBeUsedForGeometryEdit
+                                                                                    .size()])),
+                                    0.0));
+                }
+                spatialView.handleUserResetOfInputMode();
+            }
         }
     }
 
@@ -1284,36 +1312,6 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
     }
 
     /**
-     * Handle the completion of a multi-point drawing action, creating a
-     * multi-point shape.
-     * 
-     * @param shapeType
-     *            Type of shape being drawn; must be either
-     *            {@link GeometryType#LINE} or {@link GeometryType#POLYGON}.
-     * @param points
-     *            List of coordinates making up the shape.
-     * @deprecated When
-     *             {@link #handleUserDrawingActionComplete(IAdvancedGeometry)}
-     *             is used for creation of points, lines, and polygons, and when
-     *             multi-vertex edits are removed (the latter once improved
-     *             editing tools are added), this method should be removed.
-     *             There is no reason for the spatial display to be used to turn
-     *             a list of points into a geometry.
-     */
-    @Deprecated
-    public void handleUserMultiPointDrawingActionComplete(
-            GeometryType shapeType, List<Coordinate> points) {
-        if (spatialView.isDrawingOfNewShapeInProgress()) {
-            handleUserDrawNewShapeCompletion(shapeType, points);
-        } else {
-            handleUserMultiVertexEditCompletion(points);
-        }
-        spatialView.handleUserResetOfInputMode();
-        visualCuesNeedUpdatingAtNextRefresh();
-        issueRefresh();
-    }
-
-    /**
      * Handle the completion of a drawing action creating a geometry.
      * 
      * @param geometry
@@ -1322,7 +1320,12 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
      */
     public void handleUserDrawingActionComplete(IAdvancedGeometry geometry) {
         if (geometry != null) {
-            spatialView.handleUserCreationOfShape(geometry);
+            if (spatialView
+                    .getGeometryEditMode() == SpatialView.GeometryEditMode.NEW_EVENT) {
+                spatialView.handleUserCreationOfShape(geometry);
+            } else {
+                applyGeometryEdit(geometry);
+            }
         }
         spatialView.handleUserResetOfInputMode();
         visualCuesNeedUpdatingAtNextRefresh();
@@ -2138,7 +2141,7 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
      *            Type of geometry that is to be drawn by the requested handler.
      */
     void setCurrentInputHandlerToDrawing(InputHandlerType handlerType,
-            GeometryType geometryType) {
+            HazardConstants.GeometryType geometryType) {
         if (inputHandler != null) {
             inputHandler.reset();
         }
@@ -2326,224 +2329,165 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
     }
 
     /**
-     * Handle the completion of the drawing of the new shape by the user.
+     * Apply the specified geometry as an edit using the current geometry
+     * operation (replacement, union, intersection, or subtraction) to the
+     * selected geometry-operation-editable spatial entity. It is assumed that
+     * {@link SpatialView#getGeometryEditMode()} will return something other
+     * than {@link GeometryEditMode#NEW_EVENT} during the invocation of this
+     * method.
      * 
-     * @param shapeType
-     *            Type of shape the points make up.
-     * @param points
-     *            Points to be used to construct the shape.
+     * @param advancedGeometry
+     *            Geometry to be applied as an edit.
      */
-    private void handleUserDrawNewShapeCompletion(GeometryType shapeType,
-            List<Coordinate> points) {
+    private void applyGeometryEdit(IAdvancedGeometry advancedGeometry) {
 
         /*
-         * Do nothing if user hasn't drawn enough points to create a path or
-         * polygon.
+         * Find the spatial entity that is editable via geometry operations.
+         * There should be only one, since only one hazard event may be selected
+         * (for those that are representing base geometries) and it would have
+         * only one spatial entity, and for visual features, only one in a list
+         * of visual features is supposed to have this flag set to true.
          */
-        if (points.size() < (shapeType == GeometryType.LINE ? 2 : 3)) {
+        SpatialEntity<? extends IEntityIdentifier> entityToBeEdited = null;
+        for (SpatialEntity<? extends IEntityIdentifier> spatialEntity : spatialEntitiesForTypes
+                .get(SpatialEntityType.SELECTED)) {
+            if (spatialEntity.isEditableUsingGeometryOps()) {
+                entityToBeEdited = spatialEntity;
+                break;
+            }
+        }
+        if (entityToBeEdited == null) {
             return;
         }
 
         /*
-         * Simplify the number of points in the path or polygon.
-         * 
-         * TODO: This may eventually need to be user-configurable.
+         * If not replacing the old geometry, combine the old and new geometries
+         * as appropriate to the edit mode.
          */
-        Geometry newGeometry = null;
-        GeometryFactory geometryFactory = AdvancedGeometryUtilities
-                .getGeometryFactory();
-        if (shapeType == GeometryType.POLYGON) {
-            AdvancedGeometryUtilities.addDuplicateLastCoordinate(points);
-            LinearRing linearRing = geometryFactory.createLinearRing(
-                    points.toArray(new Coordinate[points.size()]));
-            Geometry polygon = geometryFactory.createPolygon(linearRing, null);
-            newGeometry = TopologyPreservingSimplifier.simplify(polygon,
-                    SIMPLIFIER_DISTANCE_TOLERANCE);
-        } else {
-            LineString lineString = geometryFactory.createLineString(
-                    points.toArray(new Coordinate[points.size()]));
-            newGeometry = TopologyPreservingSimplifier.simplify(lineString,
-                    SIMPLIFIER_DISTANCE_TOLERANCE);
-        }
+        if (spatialView
+                .getGeometryEditMode() != GeometryEditMode.REPLACE_GEOMETRY) {
 
-        /*
-         * Create the entity for the path or polygon.
-         */
-        spatialView.handleUserCreationOfShape(AdvancedGeometryUtilities
-                .createGeometryWrapper(newGeometry, 0));
-    }
+            /*
+             * Get the geometry that is to be applied, and the list of
+             * sub-geometries making up the geometry that is to be edited.
+             */
+            Geometry editGeometry = AdvancedGeometryUtilities
+                    .getJtsGeometry(advancedGeometry);
+            List<Geometry> geometries = AdvancedGeometryUtilities
+                    .getJtsGeometryList(entityToBeEdited.getGeometry());
 
-    /**
-     * Apply the specified path to the first selected polygon that is found as a
-     * multi-vertex edit. Note that the direction in which the user draws the
-     * replacement points matters. It is assumed they are drawing the
-     * replacement points in the same direction as the original polygon. For
-     * select-by-area and as recommended by the recommenders, this direction is
-     * clockwise.
-     * <p>
-     * TODO: There are a number of limitations with this method's current
-     * implementation. First, it does not allow paths (lines) to be modified,
-     * only polygons. Second, it only modifies the first polygon found within
-     * the geometry collection for the hazard event. And third, when attempting
-     * to find out where the new path joins at each end with the polygon being
-     * edited, it only finds the closest vertices in the polygon for each end of
-     * the path, not the closest points along the line segments making up the
-     * polygon. All these limitations should be corrected, or...
-     * </p>
-     * <p>
-     * It might be better to dispense with this approach entirely, and instead
-     * add a drop-down to the console toolbar allowing the choice of one of four
-     * drawing modes:
-     * </p>
-     * <ul>
-     * <li>New, meaning new hazard events are created with any lines, points, or
-     * polygons that are drawn.</li>
-     * <li>Add, meaning that any lines, points or polygons that are drawn are
-     * added to the currently selected hazard event. The results are ORed with
-     * the existing geometries.</li>
-     * <li>Intersect, meaning that any lines, points or polygons that are drawn
-     * are ANDed with the current geometry, thus resulting in a new geometry
-     * that is an intersection of what was there before and the new geometry.
-     * How would this work with points? With lines? Maybe points and lines are
-     * not allowed to be drawn in this mode?</li>
-     * <li>Remove, meaning that any lines, points and polygons that are drawn
-     * are ORed with the current geometry, and the result is removed from the
-     * current geometry, leaving only the parts of the old geometry that did not
-     * intersect with the new shapes. Again, maybe don't allow points or lines
-     * to be drawn in this mode?</li>
-     * </ul>
-     * <p>
-     * If this is done, we could remove the "Add new geometries to selected"
-     * button, as it would become superfluous. Also, of course, the last three
-     * of the above choices would be unavailable when either zero, or two or
-     * more, hazard events were selected.
-     * </p>
-     * 
-     * @param points
-     *            Latitude-longitude points making up the path to be applied.
-     */
-    private void handleUserMultiVertexEditCompletion(List<Coordinate> points) {
-        PathDrawable selectedPolygon = drawableManager
-                .getFirstReactivePolygon();
-        if (selectedPolygon == null) {
-            return;
-        }
-        Geometry geometry = selectedPolygon.getGeometry().getGeometry();
-        Polygon polygon = getFirstPolygon(geometry);
-        if (polygon != null) {
-            Coordinate[] origCoordinatesAsArray = polygon.getCoordinates();
-            List<Coordinate> origCoordinates = new ArrayList<>(
-                    Arrays.asList(origCoordinatesAsArray));
-            AdvancedGeometryUtilities
-                    .removeDuplicateLastCoordinate(origCoordinates);
-            int indexOfFirstPointToRemove = getIndexOfClosestPoint(
-                    origCoordinates, points.get(0));
-            int indexOfLastPointToRemove = getIndexOfClosestPoint(
-                    origCoordinates, points.get(points.size() - 1));
+            /*
+             * If the geometry to be applied is points or a line, it is assumed
+             * that the edit mode is union, as that is the only one of the three
+             * editing modes that would be allowable with a line or points.
+             */
+            if ((editGeometry instanceof Puntal)
+                    || (editGeometry instanceof Lineal)) {
 
-            List<Coordinate> newCoordinates = new ArrayList<>();
-
-            if (indexOfFirstPointToRemove <= indexOfLastPointToRemove) {
-                for (int i = 0; i < indexOfFirstPointToRemove; i++) {
-                    newCoordinates.add(origCoordinates.get(i));
+                for (int j = 0; j < editGeometry.getNumGeometries(); j++) {
+                    geometries.add(editGeometry.getGeometryN(j));
                 }
-                for (int i = 0; i < points.size(); i++) {
-                    newCoordinates.add(points.get(i));
-                }
+                advancedGeometry = AdvancedGeometryUtilities
+                        .createGeometryWrapper(AdvancedGeometryUtilities
+                                .getGeometryFactory()
+                                .createGeometryCollection(geometries.toArray(
+                                        new Geometry[geometries.size()])),
+                                0.0);
 
-                for (int i = indexOfLastPointToRemove + 1; i < origCoordinates
-                        .size(); i++) {
-                    newCoordinates.add(origCoordinates.get(i));
-                }
             } else {
 
                 /*
-                 * This deals with the case when the user chooses a section to
-                 * replace that bounds the first point of the original polygon
-                 * (i.e. the replacement section is crossing over from first to
-                 * last point or from last to first).
+                 * Get the polygonal and non-polygonal elements of the original
+                 * geometry, as any polygonal elements should be combined into a
+                 * single polygon or multi-polygon with these operations,
+                 * whereas any non-polygonal elements should be left alone by
+                 * unioning, and should be intersected and differenced
+                 * separately from the polygonal elements. Use the separated
+                 * elements by applying the operations to each of them in turn.
                  */
-                for (int i = 0; i < points.size(); i++) {
-                    newCoordinates.add(points.get(i));
+                Geometry polygonalGeometry = AdvancedGeometryUtilities
+                        .getUnionOfGeometryElements(geometries,
+                                AdvancedGeometryUtilities.GeometryTypesForUnion.POLYGONAL);
+                Geometry nonPolygonalGeometry = AdvancedGeometryUtilities
+                        .getUnionOfGeometryElements(geometries,
+                                AdvancedGeometryUtilities.GeometryTypesForUnion.NON_POLYGONAL);
+                if (spatialView
+                        .getGeometryEditMode() == GeometryEditMode.UNION_GEOMETRY) {
+                    if (polygonalGeometry == null) {
+                        polygonalGeometry = editGeometry;
+                    } else {
+                        polygonalGeometry = polygonalGeometry
+                                .union(editGeometry);
+                    }
+                } else if (spatialView
+                        .getGeometryEditMode() == GeometryEditMode.INTERSECT_GEOMETRY) {
+                    if (polygonalGeometry != null) {
+                        polygonalGeometry = polygonalGeometry
+                                .intersection(editGeometry);
+                    }
+                    if (nonPolygonalGeometry != null) {
+                        nonPolygonalGeometry = nonPolygonalGeometry
+                                .intersection(editGeometry);
+                    }
+                } else {
+                    if (polygonalGeometry != null) {
+                        polygonalGeometry = polygonalGeometry
+                                .difference(editGeometry);
+                    }
+                    if (nonPolygonalGeometry != null) {
+                        nonPolygonalGeometry = nonPolygonalGeometry
+                                .difference(editGeometry);
+                    }
                 }
-                for (int i = indexOfLastPointToRemove
-                        + 1; i < indexOfFirstPointToRemove; i++) {
-                    newCoordinates.add(origCoordinates.get(i));
-                }
-            }
 
-            /*
-             * Only modify the geometry if the result is a polygon.
-             */
-            if (newCoordinates.size() >= 3) {
-                AdvancedGeometryUtilities
-                        .addDuplicateLastCoordinate(newCoordinates);
-                GeometryFactory geometryFactory = AdvancedGeometryUtilities
-                        .getGeometryFactory();
-                IAdvancedGeometry newGeometry = AdvancedGeometryUtilities
-                        .createGeometryWrapper(
-                                geometryFactory.createPolygon(
-                                        geometryFactory.createLinearRing(
-                                                newCoordinates.toArray(
-                                                        new Coordinate[newCoordinates
-                                                                .size()])),
-                                null), 0);
-                if (checkGeometryValidity(newGeometry)) {
-                    handleUserModificationOfDrawable(selectedPolygon,
-                            buildModifiedGeometryForSpatialEntity(
-                                    selectedPolygon, newGeometry));
+                /*
+                 * Create a new geometry from the result, if the resulting
+                 * geometries are not empty.
+                 */
+                geometries = null;
+                if ((polygonalGeometry != null)
+                        && (polygonalGeometry.isEmpty() == false)) {
+                    geometries = AdvancedGeometryUtilities
+                            .getFlattenedGeometryList(polygonalGeometry);
+                }
+                if ((nonPolygonalGeometry != null)
+                        && (nonPolygonalGeometry.isEmpty() == false)) {
+                    List<Geometry> nonPolygonalGeometries = AdvancedGeometryUtilities
+                            .getFlattenedGeometryList(nonPolygonalGeometry);
+                    if (geometries != null) {
+                        geometries.addAll(nonPolygonalGeometries);
+                    } else {
+                        geometries = nonPolygonalGeometries;
+                    }
+                }
+                if (geometries != null) {
+                    advancedGeometry = AdvancedGeometryUtilities
+                            .createGeometryWrapper(
+                                    AdvancedGeometryUtilities
+                                            .getGeometryFactory()
+                                            .createGeometryCollection(
+                                                    geometries.toArray(
+                                                            new Geometry[geometries
+                                                                    .size()])),
+                                    0.0);
+                } else {
+                    advancedGeometry = null;
                 }
             }
         }
-    }
 
-    /**
-     * Extract the first polygon from the specified geometry, meaning either the
-     * geometry itself if it is a polygon, or the first polygon found when
-     * iterating through the geometry if it is a collection.
-     * 
-     * @param geometry
-     *            Geometry from which to get the first polygon.
-     * @return First polygon within the specified geometry, or <code>null</code>
-     *         if there is no polygon found.
-     */
-    private Polygon getFirstPolygon(Geometry geometry) {
-        if (geometry instanceof Polygon) {
-            return (Polygon) geometry;
-        } else if (geometry instanceof GeometryCollection) {
-            GeometryCollection geometryCollection = (GeometryCollection) geometry;
-            for (int j = 0; j < geometryCollection.getNumGeometries(); j++) {
-                Geometry subGeometry = geometryCollection.getGeometryN(j);
-                if (subGeometry instanceof Polygon) {
-                    return (Polygon) subGeometry;
-                }
-            }
+        /*
+         * If the operation application resulted in a geometry to be used for
+         * the spatial entity, pass it to the view.
+         */
+        if (advancedGeometry != null) {
+            spatialView.handleUserModificationOfSpatialEntity(
+                    entityToBeEdited.getIdentifier(), advancedGeometry);
+        } else {
+            statusHandler
+                    .warn("Geometry edit would result in an empty geometry; "
+                            + "reverting to original geometry.");
         }
-        return null;
-    }
-
-    /**
-     * Get the index of the closest point out of the specified coordinates to
-     * the given coordinate.
-     * 
-     * @param origCoordinates
-     *            Coordinates in which to find the closest point.
-     * @param coordinate
-     *            Coordinate for which the closest point is to be found.
-     * @return Index of the closest point in the specified coordinates.
-     */
-    private int getIndexOfClosestPoint(List<Coordinate> origCoordinates,
-            Coordinate coordinate) {
-        int result = 0;
-        double minDistance = coordinate.distance(origCoordinates.get(0));
-        for (int i = 1; i < origCoordinates.size(); i++) {
-            double distance = coordinate.distance(origCoordinates.get(i));
-            if (distance < minDistance) {
-                result = i;
-                minDistance = distance;
-            }
-        }
-        return result;
     }
 
     /**

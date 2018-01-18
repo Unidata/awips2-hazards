@@ -7,16 +7,16 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import java.util.Collections;
+import java.util.List;
+
+import com.vividsolutions.jts.geom.util.AffineTransformation;
+
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
 import gov.noaa.nws.ncep.ui.pgen.elements.Symbol;
-
-import java.util.Collections;
-import java.util.List;
-
-import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 /**
  * Single-lat-lon-location symbol drawable.
@@ -51,12 +51,14 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                             (offsetting by deltas).
  * Sep 29, 2016 15928      Chris.Golden        Added offsetBy() method and use of
  *                                             manipulation points.
+ * Jan 17, 2018 33428      Chris.Golden        Changed to work with new version of
+ *                                             {@link IDrawable}.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class SymbolDrawable extends Symbol implements
-        IDrawable<GeometryWrapper> {
+public class SymbolDrawable extends Symbol
+        implements IDrawable<GeometryWrapper> {
 
     // Private Variables
 
@@ -144,13 +146,14 @@ public class SymbolDrawable extends Symbol implements
     }
 
     @Override
-    public boolean isEditable() {
+    public boolean isVertexEditable() {
         return false;
     }
 
     @Override
-    public void setEditable(boolean editable) {
-        throw new UnsupportedOperationException("symbols cannot be editable");
+    public void setVertexEditable(boolean editable) {
+        throw new UnsupportedOperationException(
+                "symbols do not have vertices to edit");
     }
 
     @Override
@@ -212,10 +215,10 @@ public class SymbolDrawable extends Symbol implements
 
     @Override
     public void offsetBy(double x, double y) {
-        this.geometry = new GeometryWrapper(AffineTransformation
-                .translationInstance(x, y).transform(
-                        getGeometry().getGeometry()), getGeometry()
-                .getRotation());
+        this.geometry = new GeometryWrapper(
+                AffineTransformation.translationInstance(x, y)
+                        .transform(getGeometry().getGeometry()),
+                getGeometry().getRotation());
         setLocation(AdvancedGeometryUtilities.getCentroid(geometry));
     }
 

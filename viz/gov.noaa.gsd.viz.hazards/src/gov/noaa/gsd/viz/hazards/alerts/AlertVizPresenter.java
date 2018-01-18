@@ -45,12 +45,14 @@ import net.engio.mbassy.listener.Handler;
  *                                           config manager.
  * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly
  *                                           mutable session events.
+ * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
  * @version 1.0
  */
-public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
+public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?, ?>> {
 
     private List<HazardEventExpirationPopUpAlert> renderedAlerts;
 
@@ -89,14 +91,14 @@ public class AlertVizPresenter extends HazardServicesPresenter<IView<?, ?>> {
     }
 
     @Override
-    protected void initialize(IView<?, ?> view) {
+    protected void initialize(IView<?, ?, ?> view) {
         renderedAlerts = Lists.newArrayList();
         statusHandler = UFStatus.getHandler(getClass());
         alertAsNeeded(getModel().getAlertsManager().getActiveAlerts());
     }
 
     @Override
-    protected void reinitialize(IView<?, ?> view) {
+    protected void reinitialize(IView<?, ?, ?> view) {
 
         /*
          * No action.

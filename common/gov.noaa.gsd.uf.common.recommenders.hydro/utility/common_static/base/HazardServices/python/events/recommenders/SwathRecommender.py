@@ -251,8 +251,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
                 #print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
                 self.probUtils.setActivation(event)
-                self.setOriginDict[event.getEventID()] = False
                 self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
+                self.setOriginDict[event.getEventID()] = False
                 print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
                 print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
                 print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
@@ -505,6 +505,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #         print "SR calling setActivation for setting attributesAndGeometry"
 #         self.flush()
 #         self.probUtils.setActivation(event)              
+#         self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
 
 #     def checkUserOwned(self, event): 
 #         automationLevel = event.get('automationLevel')
@@ -526,6 +527,7 @@ class Recommender(RecommenderTemplate.Recommender):
 #         print "SR calling setActivation for setting userOwned"
 #         self.flush()
 #         self.probUtils.setActivation(event)
+#         self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
             
     def adjustForFrameChange(self, event, eventSetAttrs, resultEventSet):
         # Assumption is that D2D frame change was used to get to the latest data layer
@@ -587,6 +589,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         if 'status' in self.attributeIdentifiers:
             self.probUtils.setActivation(event)
+            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
             return True
 
         if 'resetMotionVector' in self.attributeIdentifiers: 
@@ -625,6 +628,7 @@ class Recommender(RecommenderTemplate.Recommender):
         # Handle Auto Shape
         if 'geometryAutomated' in self.attributeIdentifiers:
             self.probUtils.setActivation(event)
+            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
             return True
                 
         # Get Convective Attributes from the MetaData. 
@@ -1113,6 +1117,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "dragCapability": dragCapability,
               "scaleable": editable,
               "rotatable": editable,
+              "editableUsingGeometryOps": editable,
               "geometry": {
                   (polySt_ms, polyEt_ms): relocatedShape
                    }

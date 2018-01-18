@@ -245,13 +245,16 @@ import net.engio.mbassy.listener.Handler;
  * Dec 07, 2017 41886      Chris.Golden      Removed Java 8/JDK 1.8 usage.
  * Dec 17, 2017 20739      Chris.Golden      Refactored away access to directly mutable session
  *                                           events.
+ * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible toolbar
+ *                                           contribution code, and to provide new enhanced
+ *                                           geometry-operation-based edits.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
 public class SpatialPresenter
-        extends HazardServicesPresenter<ISpatialView<?, ?>> {
+        extends HazardServicesPresenter<ISpatialView<?, ?, ?>> {
 
     // Public Enumerated Types
 
@@ -266,7 +269,7 @@ public class SpatialPresenter
      * Toggles.
      */
     public enum Toggle {
-        ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT, ADD_CREATED_EVENTS_TO_SELECTED, ADD_CREATED_EVENTS_TO_SELECTED_OVERRIDE
+        ADD_CREATED_EVENTS_TO_SELECTED, ADD_CREATED_EVENTS_TO_SELECTED_OVERRIDE
     }
 
     /**
@@ -434,11 +437,10 @@ public class SpatialPresenter
 
         @Override
         public void stateChanged(Toggle identifier, Boolean value) {
-            if (identifier == Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT) {
-                getModel().getConfigurationManager().getSettings()
-                        .setAddGeometryToSelected(value,
-                                UIOriginator.SPATIAL_DISPLAY);
-            } else if (identifier == Toggle.ADD_CREATED_EVENTS_TO_SELECTED) {
+            if (getModel().getEventManager() == null) {
+                return;
+            }
+            if (identifier == Toggle.ADD_CREATED_EVENTS_TO_SELECTED) {
                 getModel().getConfigurationManager().getSettings()
                         .setAddToSelected(value, UIOriginator.SPATIAL_DISPLAY);
             } else {
@@ -514,20 +516,6 @@ public class SpatialPresenter
      * using the select-by-area process.
      */
     private final Map<String, Set<Geometry>> selectByAreaGeometriesForEventIdentifiers = new HashMap<String, Set<Geometry>>();
-
-    /**
-     * Flag indicating whether or not add-new-geometry-to-selected-event is
-     * currently in use. This is only used while {@link #settingsNotYetProvided}
-     * is <code>true</code>.
-     */
-    private boolean addNewGeometryToSelected = false;
-
-    /**
-     * Flag indicating whether or not settings have not yet been provided by the
-     * configuration manager. This would only be <code>true</code> during a
-     * short period while starting up.
-     */
-    private boolean settingsNotYetProvided = true;
 
     /**
      * Handler to be notified when the spatial display is disposed of, changes
@@ -630,6 +618,8 @@ public class SpatialPresenter
             }
         }
 
+        updateGeometryEditingActions(false);
+
         updateCenteringAndZoomLevel();
     }
 
@@ -665,6 +655,11 @@ public class SpatialPresenter
             spatialEntityManager.replaceEntitiesForEvent(change.getEvent(),
                     false, false);
         }
+
+        /*
+         * Update allowable geometry editing actions.
+         */
+        updateGeometryEditingActions(true);
     }
 
     /**
@@ -678,6 +673,7 @@ public class SpatialPresenter
             SessionEventCheckedStateModified change) {
         spatialEntityManager.replaceEntitiesForEvent(change.getEvent(), false,
                 false);
+        updateGeometryEditingActions(true);
     }
 
     /**
@@ -689,6 +685,7 @@ public class SpatialPresenter
     @Handler
     public void sessionEventsLockStatusModified(
             SessionEventsLockStatusModified change) {
+
         for (String eventIdentifier : change.getEventIdentifiers()) {
             IHazardEventView event = getModel().getEventManager()
                     .getEventById(eventIdentifier);
@@ -697,6 +694,8 @@ public class SpatialPresenter
                         false);
             }
         }
+
+        updateGeometryEditingActions(true);
     }
 
     /**
@@ -708,6 +707,7 @@ public class SpatialPresenter
     @Handler
     public void sessionEventsAdded(SessionEventsAdded change) {
         spatialEntityManager.addEntitiesForEvents(change.getEvents());
+        updateGeometryEditingActions(true);
     }
 
     /**
@@ -752,17 +752,6 @@ public class SpatialPresenter
      */
     @Handler
     public void settingsModified(SettingsModified change) {
-
-        /*
-         * Ensure that the new settings object has the correct value for add new
-         * geometry to selected.
-         */
-        ObservedSettings settings = getModel().getConfigurationManager()
-                .getSettings();
-        if (settingsNotYetProvided) {
-            settingsNotYetProvided = false;
-            settings.setAddGeometryToSelected(addNewGeometryToSelected);
-        }
 
         /*
          * Update the displayables if appropriate.
@@ -832,6 +821,11 @@ public class SpatialPresenter
             spatialEntityManager.updateEntitiesForToolVisualFeatures(
                     toolVisualFeatures, spatialInfoCollectingToolType);
         }
+
+        /*
+         * Update allowable geometry editing actions.
+         */
+        updateGeometryEditingActions(true);
     }
 
     /**
@@ -888,7 +882,7 @@ public class SpatialPresenter
          * perspective switch, this method may be called when they have been
          * deleted.
          */
-        ISpatialView<?, ?> spatialView = getView();
+        ISpatialView<?, ?, ?> spatialView = getView();
         if (spatialView == null) {
             return;
         }
@@ -906,12 +900,17 @@ public class SpatialPresenter
          */
         spatialEntityManager.recreateAllEntities(toolVisualFeatures,
                 spatialInfoCollectingToolType, force);
+
+        /*
+         * Update allowable geometry editing actions.
+         */
+        updateGeometryEditingActions(true);
     }
 
     // Protected Methods
 
     @Override
-    protected void initialize(ISpatialView<?, ?> view) {
+    protected void initialize(ISpatialView<?, ?, ?> view) {
         getView().initialize(this,
                 getModel().getConfigurationManager().getSiteID(),
                 getModel().getConfigurationManager().getSiteID(),
@@ -948,7 +947,7 @@ public class SpatialPresenter
     }
 
     @Override
-    protected void reinitialize(ISpatialView<?, ?> view) {
+    protected void reinitialize(ISpatialView<?, ?, ?> view) {
 
         /*
          * No action.
@@ -1341,13 +1340,20 @@ public class SpatialPresenter
                      */
 
                     /*
-                     * Attempt to set the event geometry; if the geometry is
-                     * rejected, redraw the event containing the geometry.
+                     * Attempt to set the event geometry; if it works, ensure
+                     * that select-by-area cannot be used with this event, and
+                     * if instead the geometry is rejected, redraw the event
+                     * containing the geometry.
                      */
                     if (eventManager.changeEventProperty(event,
                             ISessionEventManager.SET_EVENT_GEOMETRY,
                             context.getGeometry(),
-                            UIOriginator.SPATIAL_DISPLAY) != ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+                            UIOriginator.SPATIAL_DISPLAY) == ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
+                        eventManager.changeEventProperty(event,
+                                ISessionEventManager.REMOVE_EVENT_ATTRIBUTE,
+                                HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
+                                UIOriginator.SPATIAL_DISPLAY);
+                    } else {
                         spatialEntityManager.replaceEntitiesForEvent(event,
                                 false, true);
                     }
@@ -1738,49 +1744,8 @@ public class SpatialPresenter
         event.setWsId(VizApp.getWsId());
 
         /*
-         * If the geometry is to be added to the selected hazard, do this and do
-         * nothing with the new event.
+         * Add the event to the session.
          */
-        if ((Boolean.TRUE.equals(getModel().getConfigurationManager()
-                .getSettings().getAddGeometryToSelected()))
-                && (event.getHazardType() == null)
-                && (getModel().getSelectionManager().getSelectedEvents()
-                        .size() == 1)) {
-
-            IHazardEventView existingEvent = getModel().getSelectionManager()
-                    .getSelectedEvents().get(0);
-
-            /*
-             * Combine the existing and new geometry.
-             */
-            IAdvancedGeometry existingGeometries = existingEvent.getGeometry();
-            IAdvancedGeometry newGeometries = event.getGeometry();
-            IAdvancedGeometry geometry = AdvancedGeometryUtilities
-                    .createCollection(existingGeometries, newGeometries);
-
-            /*
-             * If the combined geometry is valid for the hazard event, make it
-             * the event's geometry, and remove the context menu contribution
-             * key so that the now-modified hazard event will not allow the use
-             * of select-by-area to modify its geometry.
-             */
-            if (getModel().getEventManager().isValidGeometryChange(geometry,
-                    existingEvent, true)) {
-                if (getModel().getEventManager().changeEventProperty(
-                        existingEvent, ISessionEventManager.SET_EVENT_GEOMETRY,
-                        geometry,
-                        UIOriginator.SPATIAL_DISPLAY) == ISessionEventManager.EventPropertyChangeResult.SUCCESS) {
-                    getModel().getEventManager().changeEventProperty(
-                            existingEvent,
-                            ISessionEventManager.REMOVE_EVENT_ATTRIBUTE,
-                            HazardConstants.CONTEXT_MENU_CONTRIBUTION_KEY,
-                            UIOriginator.SPATIAL_DISPLAY);
-                }
-            }
-
-            return existingEvent;
-        }
-
         try {
             getModel().startBatchedChanges();
             IHazardEventView addedEvent = getModel().getEventManager()
@@ -1851,39 +1816,42 @@ public class SpatialPresenter
         selectedEventIdentifiers.clear();
         selectedEventIdentifiers.addAll(
                 getModel().getSelectionManager().getSelectedEventIdentifiers());
+    }
+
+    /**
+     * Update the geometry editing actions available in response to the selected
+     * event(s) changing in some way. This method should be called only after
+     * spatial entities have been brought up to date to match the current state
+     * of the events, since it relies upon the latter to determine what types of
+     * geometry editing actions are possible.
+     * 
+     * @param rememberSelectedAction
+     *            Flag indicating whether or not to remember the geometry
+     *            editing action that was selected prior to this method call,
+     *            for potential restoration later. This flag is only meaningful
+     *            if this invocation determines that only a restricted number of
+     *            geometry editing actions should available, as in such cases it
+     *            indicates that the previously selected action should be
+     *            recorded so that it may be restored if and when this method is
+     *            subsequently invoked and finds that the full suite of geometry
+     *            editing actions should be available.
+     */
+    private void updateGeometryEditingActions(boolean rememberSelectedAction) {
 
         /*
-         * Enable the edit-multi-point-geometry buttons only if there is exactly
-         * one event selected.
+         * Determine whether or not geometry editing should be allowed.
          */
-        getView().setEditMultiPointGeometryEnabled(
-                selectedEventIdentifiers.size() == 1);
+        boolean editable = ((selectedEventIdentifiers.size() == 1)
+                && spatialEntityManager
+                        .isAtLeastOneSelectedSpatialEntityEditable());
 
         /*
-         * Enable the add-geometry-to-selected button only if there is exactly
-         * one event selected. This method may be called before settings have
-         * been supplied, so the logic here handles null settings objects.
+         * Enable the combination of geometries via various operations only if
+         * there is exactly one event selected and it has at least one spatial
+         * entity that is editable.
          */
-        ObservedSettings settings = getModel().getConfigurationManager()
-                .getSettings();
-        settingsNotYetProvided = (settings == null);
-        addNewGeometryToSelected = (settingsNotYetProvided ? false
-                : Boolean.TRUE.equals(settings.getAddGeometryToSelected()));
-        if (selectedEventIdentifiers.size() == 1) {
-            getView().getToggleChanger().setEnabled(
-                    Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT, true);
-            getView().getToggleChanger().setState(
-                    Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT,
-                    addNewGeometryToSelected);
-        } else {
-            if (addNewGeometryToSelected) {
-                settings.setAddGeometryToSelected(addNewGeometryToSelected);
-            }
-            getView().getToggleChanger().setEnabled(
-                    Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT, false);
-            getView().getToggleChanger().setState(
-                    Toggle.ADD_CREATED_GEOMETRY_TO_SELECTED_EVENT, false);
-        }
+        getView().setCombineGeometryOperationsEnabled(editable,
+                rememberSelectedAction);
     }
 
     /**

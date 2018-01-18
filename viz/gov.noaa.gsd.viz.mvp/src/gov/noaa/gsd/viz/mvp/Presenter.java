@@ -53,12 +53,14 @@ import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
  *                                        added new abstract doDispose() method that
  *                                        is called by dispose(), which is now final.
  * Dec 16, 2016   26573    Kevin.Bisanz   Unsubscribe from eventBus in dispose().
+ * Jan 17, 2018   33428    Chris.Golden   Changed to work with new, more flexible
+ *                                        toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?>, A> {
+public abstract class Presenter<M, E extends Enum<E>, V extends IView<?, ?, ?>, A> {
 
     // Private Variables
 

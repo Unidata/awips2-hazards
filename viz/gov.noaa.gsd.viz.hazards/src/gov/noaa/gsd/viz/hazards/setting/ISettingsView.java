@@ -9,14 +9,14 @@
  */
 package gov.noaa.gsd.viz.hazards.setting;
 
-import gov.noaa.gsd.viz.mvp.IView;
-
 import java.util.List;
 
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Field;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Settings;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
+
+import gov.noaa.gsd.viz.mvp.IView;
 
 /**
  * Interface describing the methods required for implementing a settings view,
@@ -31,13 +31,28 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.SettingsConfig;
  * Dec 05, 2014    4124    Chris.Golden      Changed to work with ObservedSettings.
  * Feb 23, 2015    3618    Chris.Golden      Added ability to close settings dialog
  *                                           from public method.
- * Nov 17, 2015   11776    Roger.Ferrel      Add {@link ISaveAs} argument to showSettingsDetail.
+ * Nov 17, 2015   11776    Roger.Ferrel      Add {@link ISaveAs} argument to
+ *                                           showSettingsDetail.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
+public interface ISettingsView<I, C, E extends Enum<E>> extends IView<I, C, E> {
+
+    // Public Static Constants
+
+    /**
+     * Settings pulldown identifier.
+     */
+    public static final String SETTINGS_PULLDOWN_IDENTIFIER = "settingsPulldown";
+
+    /**
+     * Filters pulldown identifier.
+     */
+    public static final String FILTERS_PULLDOWN_IDENTIFIER = "filtersPulldown";
 
     // Public Methods
 
@@ -50,9 +65,8 @@ public interface ISettingsView<C, E extends Enum<E>> extends IView<C, E> {
      * @param fields
      * @param currentSettings
      */
-    public void initialize(SettingsPresenter presenter,
-            List<Settings> settings, Field[] fields,
-            ObservedSettings currentSettings);
+    public void initialize(SettingsPresenter presenter, List<Settings> settings,
+            Field[] fields, ObservedSettings currentSettings);
 
     /**
      * Show the settings detail subview.

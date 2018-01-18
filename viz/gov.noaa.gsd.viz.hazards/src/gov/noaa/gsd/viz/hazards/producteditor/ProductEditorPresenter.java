@@ -85,13 +85,15 @@ import net.engio.mbassy.listener.Handler;
  * Apr 27, 2017    11853   Chris.Golden      Added public method to close product editor.
  * Dec 17, 2017    20739   Chris.Golden      Refactored away access to directly mutable
  *                                           session events.
+ * Jan 17, 2018    33428   Chris.Golden      Changed to work with new, more flexible
+ *                                           toolbar contribution code.
  * </pre>
  * 
  * @author Bryon.Lawrence
  * @version 1.0
  */
 public class ProductEditorPresenter
-        extends HazardServicesPresenter<IProductEditorView<?, ?>> {
+        extends HazardServicesPresenter<IProductEditorView<?, ?, ?>> {
 
     // Public Constructors
 
@@ -189,12 +191,12 @@ public class ProductEditorPresenter
     // Protected Methods
 
     @Override
-    protected void initialize(IProductEditorView<?, ?> view) {
+    protected void initialize(IProductEditorView<?, ?, ?> view) {
         view.initialize();
     }
 
     @Override
-    protected final void reinitialize(IProductEditorView<?, ?> view) {
+    protected final void reinitialize(IProductEditorView<?, ?, ?> view) {
 
         /*
          * No action.

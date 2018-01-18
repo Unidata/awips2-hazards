@@ -41,7 +41,6 @@ import org.eclipse.ui.internal.WorkbenchPage;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -52,18 +51,26 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.Sort;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.alerts.CountdownTimer;
+import gov.noaa.gsd.viz.hazards.alerts.IAlertsConfigView;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Command;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.TimeRangeType;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.Toggle;
 import gov.noaa.gsd.viz.hazards.console.ConsolePresenter.VtecFormatMode;
 import gov.noaa.gsd.viz.hazards.console.ITemporalDisplay.SelectedTimeMode;
 import gov.noaa.gsd.viz.hazards.display.HazardServicesActivator;
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
+import gov.noaa.gsd.viz.hazards.hazarddetail.IHazardDetailViewDelegate;
+import gov.noaa.gsd.viz.hazards.hazardtypefirst.IHazardTypeFirstViewDelegate;
+import gov.noaa.gsd.viz.hazards.product.IProductView;
+import gov.noaa.gsd.viz.hazards.setting.ISettingsView;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.ISpatialView;
 import gov.noaa.gsd.viz.hazards.toolbar.BasicAction;
-import gov.noaa.gsd.viz.hazards.toolbar.ComboAction;
+import gov.noaa.gsd.viz.hazards.toolbar.EnhancedActionContributionItem;
 import gov.noaa.gsd.viz.hazards.toolbar.IActionBarsAware;
 import gov.noaa.gsd.viz.hazards.toolbar.IContributionManagerAware;
 import gov.noaa.gsd.viz.hazards.toolbar.SeparatorAction;
+import gov.noaa.gsd.viz.hazards.toolbar.TextComboAction;
+import gov.noaa.gsd.viz.hazards.tools.IToolsView;
 import gov.noaa.gsd.viz.hazards.ui.BasicWidgetDelegateHelper;
 import gov.noaa.gsd.viz.hazards.ui.CommandInvokerDelegate;
 import gov.noaa.gsd.viz.hazards.ui.ListStateChangerDelegate;
@@ -150,6 +157,11 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           after it is displayed.
  * Aug 08, 2017   22583    Chris.Golden      Add service backup banner.
  * Dec 07, 2017   41886    Chris.Golden      Removed Java 8/JDK 1.8 usage.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to implement new, more flexible
+ *                                           toolbar contribution scheme, so that
+ *                                           toolbar buttons can be arranged as this
+ *                                           view sees fit, instead of being ordered
+ *                                           by their contributors.
  * </pre>
  * 
  * @author Chris.Golden
@@ -157,44 +169,9 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  */
 @SuppressWarnings("restriction")
 public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
-        implements IConsoleView<Action, RCPMainUserInterfaceElement> {
+        implements IConsoleView<String, IAction, RcpMainUiElement> {
 
     // Package-Private Static Constants
-
-    /**
-     * Zoom out button identifier.
-     */
-    static final String BUTTON_ZOOM_OUT = "zoomOut";
-
-    /**
-     * Page back button identifier.
-     */
-    static final String BUTTON_PAGE_BACKWARD = "backwardDay";
-
-    /**
-     * Pan back button identifier.
-     */
-    static final String BUTTON_PAN_BACKWARD = "backward";
-
-    /**
-     * Show current time button identifier.
-     */
-    static final String BUTTON_CURRENT_TIME = "currentTime";
-
-    /**
-     * Pan forward button identifier.
-     */
-    static final String BUTTON_PAN_FORWARD = "forward";
-
-    /**
-     * Page forward button identifier.
-     */
-    static final String BUTTON_PAGE_FORWARD = "forwardDay";
-
-    /**
-     * Zoom in button identifier.
-     */
-    static final String BUTTON_ZOOM_IN = "zoomIn";
 
     /**
      * List of button identifiers, each of which is also the name of the image
@@ -202,9 +179,10 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      * buttons.
      */
     static final ImmutableList<String> BUTTON_IDENTIFIERS = ImmutableList.of(
-            BUTTON_ZOOM_OUT, BUTTON_PAGE_BACKWARD, BUTTON_PAN_BACKWARD,
-            BUTTON_CURRENT_TIME, BUTTON_PAN_FORWARD, BUTTON_PAGE_FORWARD,
-            BUTTON_ZOOM_IN);
+            ZOOM_OUT_IDENTIFIER, PAGE_BACKWARD_IDENTIFIER,
+            PAN_BACKWARD_IDENTIFIER, CURRENT_TIME_IDENTIFIER,
+            PAN_FORWARD_IDENTIFIER, PAGE_FORWARD_IDENTIFIER,
+            ZOOM_IN_IDENTIFIER);
 
     /**
      * Zoom out button description.
@@ -403,10 +381,14 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      */
     private class CommandConsoleAction extends BasicAction {
 
+        // Private Variables
+
         /**
          * Command to be executed for this action.
          */
         private final Command command;
+
+        // Private Constructors
 
         /**
          * Construct a standard instance.
@@ -428,6 +410,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             this.command = command;
         }
 
+        // Public Methods
+
         @Override
         public void run() {
             RUNNABLE_ASYNC_SCHEDULER.schedule(new Runnable() {
@@ -447,10 +431,14 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
      */
     private class ToggleConsoleAction extends BasicAction {
 
+        // Private Variables
+
         /**
          * Toggle to have its state changed by this action.
          */
         private final Toggle toggle;
+
+        // Private Constructors
 
         /**
          * Construct a standard instance.
@@ -471,6 +459,8 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             super(text, iconFileName, IAction.AS_CHECK_BOX, toolTipText);
             this.toggle = toggle;
         }
+
+        // Public Methods
 
         @Override
         public void run() {
@@ -730,12 +720,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             }
         }
 
-        @Override
-        public void run() {
-            if (isChecked() && (siteStateChangeHandler != null)) {
-                siteStateChangeHandler.stateChanged(null, site);
-            }
-        }
+        // Public Methods
 
         /**
          * Set the currently chosen site to that specified.
@@ -747,6 +732,13 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
             MenuCreator menuCreator = (MenuCreator) getMenuCreator();
             if (menuCreator != null) {
                 menuCreator.setChosenAction(site);
+            }
+        }
+
+        @Override
+        public void run() {
+            if (isChecked() && (siteStateChangeHandler != null)) {
+                siteStateChangeHandler.stateChanged(null, site);
             }
         }
     }
@@ -818,7 +810,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     /**
      * Selected time mode combo action.
      */
-    private class SelectedTimeModeAction extends ComboAction
+    private class SelectedTimeModeAction extends TextComboAction
             implements ITemporallyAware {
 
         // Private Variables
@@ -1246,27 +1238,103 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public final void acceptContributionsToMainUI(
-            List<? extends IMainUiContributor<Action, RCPMainUserInterfaceElement>> contributors,
-            final RCPMainUserInterfaceElement type) {
+    public final void acceptContributionsToMainUi(
+            List<? extends IMainUiContributor<String, IAction, RcpMainUiElement>> contributors,
+            final RcpMainUiElement type) {
 
         /*
          * Iterate through the contributors, asking each in turn for its
          * contributions and adding them to the list of total contributions.
-         * When at least one contribution is made and the last contribution
-         * specified is not a separator, a separator is placed after the
-         * contributions to render them visually distinct from what comes next.
          */
-        final List<Action> totalContributions = new ArrayList<>();
-        for (IMainUiContributor<Action, RCPMainUserInterfaceElement> contributor : contributors) {
-            List<? extends Action> contributions = contributor
-                    .contributeToMainUI(type);
-            totalContributions.addAll(contributions);
-            if ((contributions.size() > 0)
-                    && ((contributions.get(contributions.size()
-                            - 1) instanceof SeparatorAction) == false)) {
-                totalContributions.add(new SeparatorAction());
+        Map<String, List<? extends IAction>> actionsForIdentifiers = new HashMap<>();
+        for (IMainUiContributor<String, IAction, RcpMainUiElement> contributor : contributors) {
+            actionsForIdentifiers.putAll(contributor.contributeToMainUi(type));
+        }
+
+        /*
+         * Create a list of actions to be used as contributions in the order
+         * they are to be displayed within the UI element, with separators
+         * between them as appropriate.
+         */
+        final List<IAction> allActions = new ArrayList<>();
+        SeparatorAction separatorAction = new SeparatorAction();
+        if (type == RcpMainUiElement.TOOLBAR) {
+            allActions.addAll(actionsForIdentifiers
+                    .get(ISettingsView.SETTINGS_PULLDOWN_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(ISettingsView.FILTERS_PULLDOWN_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(IToolsView.TOOLS_PULLDOWN_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(IProductView.PRODUCT_PULL_DOWN_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(actionsForIdentifiers
+                    .get(ISpatialView.DRAWING_CHOICE_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(ISpatialView.GEOMETRY_EDIT_MODE_CHOICE_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(ISpatialView.MOVE_AND_SELECT_CHOICE_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers.get(
+                    ISpatialView.SELECT_BY_AREA_PULLDOWN_CHOICE_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(
+                    actionsForIdentifiers.get(ISpatialView.UNDO_IDENTIFIER));
+            allActions.addAll(
+                    actionsForIdentifiers.get(ISpatialView.REDO_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(actionsForIdentifiers.get(
+                    ISpatialView.ADD_NEW_EVENT_TO_SELECTED_TOGGLE_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(actionsForIdentifiers.get(
+                    IHazardTypeFirstViewDelegate.HAZARD_TYPE_FIRST_TOGGLE_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(IAlertsConfigView.ALERTS_TOGGLE_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers.get(
+                    IHazardDetailViewDelegate.HAZARD_DETAIL_TOGGLE_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(
+                    actionsForIdentifiers.get(SELECTED_TIME_MODE_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(actionsForIdentifiers.get(ZOOM_OUT_IDENTIFIER));
+            allActions.addAll(
+                    actionsForIdentifiers.get(PAGE_BACKWARD_IDENTIFIER));
+            allActions
+                    .addAll(actionsForIdentifiers.get(PAN_BACKWARD_IDENTIFIER));
+            allActions
+                    .addAll(actionsForIdentifiers.get(CURRENT_TIME_IDENTIFIER));
+            allActions
+                    .addAll(actionsForIdentifiers.get(PAN_FORWARD_IDENTIFIER));
+            allActions
+                    .addAll(actionsForIdentifiers.get(PAGE_FORWARD_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers.get(ZOOM_IN_IDENTIFIER));
+        } else {
+            allActions
+                    .addAll(actionsForIdentifiers.get(CHANGE_SITE_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(EXPORT_HAZARD_SITE_CONFIG_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(EXPORT_HAZARD_SITE_PRODUCT_EDITS_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(actionsForIdentifiers
+                    .get(CHECK_HAZARD_CONFLICTS_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(AUTO_CHECK_HAZARD_CONFLICTS_TOGGLE_IDENTIFIER));
+            allActions.addAll(actionsForIdentifiers
+                    .get(SHOW_HATCHED_AREAS_TOGGLE_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(
+                    actionsForIdentifiers.get(CHANGE_VTEC_FORMAT_IDENTIFIER));
+            allActions.add(separatorAction);
+            allActions.addAll(actionsForIdentifiers
+                    .get(SHOW_HISTORY_LISTS_TOGGLE_IDENTIFIER));
+            if (CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false) {
+                allActions.add(separatorAction);
+                allActions.addAll(
+                        actionsForIdentifiers.get(RESET_EVENTS_IDENTIFIER));
             }
+            allActions.add(separatorAction);
+            allActions.addAll(actionsForIdentifiers
+                    .get(IToolsView.EVENT_DRIVEN_TOOLS_TOGGLE_IDENTIFIER));
         }
 
         /*
@@ -1284,7 +1352,7 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                 final IActionBars actionBars = getViewPart()
                         .getMainActionBarsManager();
                 IContributionManager contributionManager = (type
-                        .equals(RCPMainUserInterfaceElement.TOOLBAR)
+                        .equals(RcpMainUiElement.TOOLBAR)
                                 ? actionBars.getToolBarManager()
                                 : actionBars.getMenuManager());
                 contributionManager.removeAll();
@@ -1293,11 +1361,13 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                  * Iterate through the list of total contributions, passing each
                  * in turn to the manager.
                  */
-                for (Action contribution : totalContributions) {
+                for (IAction contribution : allActions) {
                     if (contribution instanceof SeparatorAction) {
                         contributionManager.add(new Separator());
                     } else {
-                        contributionManager.add(contribution);
+                        contributionManager
+                                .add(new EnhancedActionContributionItem(
+                                        contribution));
 
                         /*
                          * The setting of a IContributionManager and IActionBars
@@ -1335,23 +1405,16 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     @Override
-    public final List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type) {
-        if (type == RCPMainUserInterfaceElement.TOOLBAR) {
+    public final Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type) {
+        if (type == RcpMainUiElement.TOOLBAR) {
             if (temporalControlsInToolBar) {
-
-                /*
-                 * Create the selected time mode action.
-                 */
-                List<Action> list = new ArrayList<>();
-                list.add(new SeparatorAction());
-                selectedTimeModeAction = new SelectedTimeModeAction();
-                list.add(selectedTimeModeAction);
 
                 /*
                  * Create the navigation actions for the toolbar.
                  */
-                list.add(new SeparatorAction());
+                Map<String, List<? extends IAction>> map = new HashMap<>(
+                        TOOLBAR_BUTTON_IMAGE_FILE_NAMES.size() + 1, 1.0f);
                 for (int j = 0; j < TOOLBAR_BUTTON_IMAGE_FILE_NAMES
                         .size(); j++) {
                     Action action = new NavigationAction(
@@ -1359,8 +1422,16 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                             BUTTON_DESCRIPTIONS.get(j));
                     actionsForButtonIdentifiers.put(BUTTON_IDENTIFIERS.get(j),
                             action);
-                    list.add(action);
+                    map.put(BUTTON_IDENTIFIERS.get(j),
+                            ImmutableList.of(action));
                 }
+
+                /*
+                 * Create the selected time mode action.
+                 */
+                selectedTimeModeAction = new SelectedTimeModeAction();
+                map.put(SELECTED_TIME_MODE_IDENTIFIER,
+                        ImmutableList.of(selectedTimeModeAction));
 
                 /*
                  * Pass these to the view part when it is ready.
@@ -1373,54 +1444,62 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
                                 selectedTimeModeAction);
                     }
                 });
-                return list;
+
+                return map;
             }
-            return Collections.emptyList();
+            return Collections.emptyMap();
         } else {
-
-            SeparatorAction sep = new SeparatorAction();
-
+            Map<String, List<? extends IAction>> map = new HashMap<>(9, 1.0f);
             changeSiteAction = new ChangeSiteAction();
+            map.put(CHANGE_SITE_IDENTIFIER, ImmutableList.of(changeSiteAction));
 
             CommandConsoleAction exportHazardConfigAction = new CommandConsoleAction(
                     EXPORT_HAZARD_SITE_CONFIG_MENU_TEXT, null, null,
                     Command.EXPORT_SITE_CONFIG);
+            map.put(EXPORT_HAZARD_SITE_CONFIG_IDENTIFIER,
+                    ImmutableList.of(exportHazardConfigAction));
 
             CommandConsoleAction exportHazardProductEditsAction = new CommandConsoleAction(
                     EXPORT_HAZARD_SITE_PRODUCT_EDITS_MENU_TEXT, null, null,
                     Command.EXPORT_SITE_PRODUCT_EDITS);
+            map.put(EXPORT_HAZARD_SITE_PRODUCT_EDITS_IDENTIFIER,
+                    ImmutableList.of(exportHazardProductEditsAction));
 
             CommandConsoleAction checkHazardConflictsAction = new CommandConsoleAction(
                     CHECK_HAZARD_CONFLICTS_MENU_TEXT, null, null,
                     Command.CHECK_FOR_CONFLICTS);
+            map.put(CHECK_HAZARD_CONFLICTS_IDENTIFIER,
+                    ImmutableList.of(checkHazardConflictsAction));
 
             ToggleConsoleAction autoCheckHazardConflictsAction = new ToggleConsoleAction(
                     AUTO_CHECK_HAZARD_CONFLICTS_MENU_TEXT, null, null,
                     Toggle.AUTO_CHECK_FOR_CONFLICTS);
+            map.put(AUTO_CHECK_HAZARD_CONFLICTS_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(autoCheckHazardConflictsAction));
 
             ToggleConsoleAction showHatchedAreaAction = new ToggleConsoleAction(
                     SHOW_HATCHED_AREAS_MENU_TEXT, null, null,
                     Toggle.SHOW_HATCHED_AREAS);
             showHatchedAreaAction.setChecked(true);
+            map.put(SHOW_HATCHED_AREAS_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(showHatchedAreaAction));
 
             ChangeVtecFormatAction changeVtecFormatAction = new ChangeVtecFormatAction();
+            map.put(CHANGE_VTEC_FORMAT_IDENTIFIER,
+                    ImmutableList.of(changeVtecFormatAction));
 
             ToggleConsoleAction showHistoryListsAction = new ToggleConsoleAction(
                     SHOW_HISTORY_LISTS_MENU_TEXT, null, null,
                     Toggle.SHOW_HISTORY_LISTS);
+            map.put(SHOW_HISTORY_LISTS_TOGGLE_IDENTIFIER,
+                    ImmutableList.of(showHistoryListsAction));
 
-            List<Action> actions = Lists.newArrayList(changeSiteAction,
-                    exportHazardConfigAction, exportHazardProductEditsAction,
-                    sep, checkHazardConflictsAction,
-                    autoCheckHazardConflictsAction, showHatchedAreaAction, sep,
-                    changeVtecFormatAction, sep, showHistoryListsAction, sep);
+            CommandConsoleAction resetEventsCommandAction = new CommandConsoleAction(
+                    RESET_EVENTS_COMMAND_MENU_TEXT, null, null, Command.RESET);
+            map.put(RESET_EVENTS_IDENTIFIER,
+                    ImmutableList.of(resetEventsCommandAction));
 
-            if ((CAVEMode.OPERATIONAL.equals(CAVEMode.getMode()) == false)
-                    && addPracticeModeMenuItems(actions)) {
-                actions.add(sep);
-            }
-
-            return actions;
+            return map;
         }
     }
 
@@ -1621,21 +1700,6 @@ public class ConsoleView extends ViewPartDelegateView<ConsoleViewPart>
     }
 
     // Private Methods
-
-    /**
-     * Add any menu items to the specified list that are appropriate for display
-     * in the main UI's menu when in practice mode .
-     * 
-     * @param actions
-     *            List to which to add any menu items.
-     * @return True if one or more items were added, false otherwise.
-     */
-    protected boolean addPracticeModeMenuItems(List<Action> actions) {
-        CommandConsoleAction resetEventsCommandAction = new CommandConsoleAction(
-                RESET_EVENTS_COMMAND_MENU_TEXT, null, null, Command.RESET);
-        actions.add(resetEventsCommandAction);
-        return true;
-    }
 
     /**
      * Detach the view part if a forced detach is required.

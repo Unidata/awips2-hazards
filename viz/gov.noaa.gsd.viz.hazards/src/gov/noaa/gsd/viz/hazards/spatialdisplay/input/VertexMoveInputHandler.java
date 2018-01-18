@@ -9,6 +9,11 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import java.util.List;
+
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
@@ -16,11 +21,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.VertexManipulationPoint;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-
-import java.util.List;
-
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
 
 /**
  * Description: Input handler that allows the user to move the vertex of an
@@ -34,13 +34,15 @@ import com.vividsolutions.jts.geom.Geometry;
  * Sep 29, 2016   15928    Chris.Golden Initial creation (majority of code
  *                                      refactored out of the
  *                                      SelectionAndModificationInputHandler).
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new version of
+ *                                      {@link IDrawable}.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class VertexMoveInputHandler extends
-        ModificationInputHandler<VertexManipulationPoint> {
+public class VertexMoveInputHandler
+        extends ModificationInputHandler<VertexManipulationPoint> {
 
     // Public Constructors
 
@@ -58,7 +60,7 @@ public class VertexMoveInputHandler extends
 
     @Override
     protected boolean isEditableViaHandler(AbstractDrawableComponent drawable) {
-        return ((IDrawable<?>) drawable).isEditable();
+        return ((IDrawable<?>) drawable).isVertexEditable();
     }
 
     @Override

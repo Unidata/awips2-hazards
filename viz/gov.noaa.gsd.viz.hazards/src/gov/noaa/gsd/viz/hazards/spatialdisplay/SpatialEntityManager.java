@@ -119,6 +119,10 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityI
  * Nov 22, 2017   21504    Chris.Golden Updates for hazard locking.
  * Dec 17, 2017   20739    Chris.Golden Refactored away access to directly
  *                                      mutable session events.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new, more
+ *                                      flexible toolbar contribution code,
+ *                                      and to provide new enhanced
+ *                                      geometry-operation-based edits.
  * </pre>
  * 
  * @author Chris.Golden
@@ -378,7 +382,7 @@ class SpatialEntityManager {
     /**
      * View associated with the presenter using this manager.
      */
-    private ISpatialView<?, ?> view;
+    private ISpatialView<?, ?, ?> view;
 
     /**
      * Read-only set that will always contain the currently selected event
@@ -495,7 +499,7 @@ class SpatialEntityManager {
      * @param view
      *            View to be used.
      */
-    void setView(ISpatialView<?, ?> view) {
+    void setView(ISpatialView<?, ?, ?> view) {
         this.view = view;
     }
 
@@ -506,6 +510,24 @@ class SpatialEntityManager {
      */
     Set<IEntityIdentifier> getSelectedSpatialEntityIdentifiers() {
         return Collections.unmodifiableSet(selectedSpatialEntityIdentifiers);
+    }
+
+    /**
+     * Determine whether or not at least one selected spatial entity is
+     * editable.
+     * 
+     * @return <code>true</code> if at least one selected spatial entity is
+     *         editable, <code>false</code> otherwise.
+     */
+    boolean isAtLeastOneSelectedSpatialEntityEditable() {
+        for (IEntityIdentifier identifier : selectedSpatialEntityIdentifiers) {
+            SpatialEntity<? extends IEntityIdentifier> entity = spatialEntitiesForIdentifiers
+                    .get(identifier);
+            if ((entity != null) && entity.isEditableUsingGeometryOps()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1951,7 +1973,7 @@ class SpatialEntityManager {
                                 (showLabel ? significance : null), 0.0, 0.0,
                                 textOffsetLength, textOffsetDirection,
                                 hazardTextPointSize, hazardColor,
-                                DragCapability.NONE, false, false, false,
+                                DragCapability.NONE, false, false, false, false,
                                 false);
                 if (spatialEntities == null) {
                     spatialEntities = new ArrayList<>();
@@ -2036,7 +2058,7 @@ class SpatialEntityManager {
                         hazardMultiPointTextOffsetDirection,
                         hazardTextPointSize, hazardColor,
                         (editable ? DragCapability.ALL : DragCapability.NONE),
-                        false, rotatable, scaleable, false);
+                        false, editable, rotatable, scaleable, false);
         return new CreatedSpatialEntity(entity, (entity == oldEntity));
     }
 
@@ -2389,63 +2411,73 @@ class SpatialEntityManager {
                                 event.getProductGeometry(), 0));
 
         /*
-         * Compile a list of polygons for the geometry if it is a collection.
-         */
-        AdvancedGeometryCollection collection = (geometry instanceof AdvancedGeometryCollection
-                ? (AdvancedGeometryCollection) geometry : null);
-        List<Polygon> polygons = null;
-        if (collection != null) {
-            for (IAdvancedGeometry subGeometry : collection.getChildren()) {
-                if (subGeometry instanceof GeometryWrapper) {
-                    Geometry subBaseGeometry = ((GeometryWrapper) subGeometry)
-                            .getGeometry();
-                    if (subBaseGeometry instanceof Polygon) {
-                        if (polygons == null) {
-                            polygons = new ArrayList<>(
-                                    collection.getChildren().size());
-                        }
-                        polygons.add((Polygon) subBaseGeometry);
-                    }
-                }
-            }
-        }
-
-        /*
-         * If this geometry is made up entirely of polygons, prune it.
-         * Otherwise, if it is a polygon, remove any holes from it.
-         */
-        if ((polygons != null)
-                && (polygons.size() == collection.getChildren().size())) {
-
-            /*
-             * For each polygon with the multi-polygon, attempt to prune out
-             * holes.
-             */
-            Geometry newGeometry = geometryFactory
-                    .createGeometryCollection(getPrunedPolygons(polygons)
-                            .toArray(new Geometry[polygons.size()]))
-                    .buffer(0);
-            geometry = AdvancedGeometryUtilities
-                    .createGeometryWrapper(newGeometry, 0);
-
-        } else if (geometry instanceof GeometryWrapper) {
-            GeometryWrapper wrapper = (GeometryWrapper) geometry;
-            Geometry baseGeometry = wrapper.getGeometry();
-            if (baseGeometry instanceof Polygon) {
-
-                /*
-                 * Remove any holes in the polygon.
-                 */
-                geometry = AdvancedGeometryUtilities.createGeometryWrapper(
-                        getPolygonWithHolesRemoved((Polygon) baseGeometry),
-                        wrapper.getRotation());
-            }
-        }
-
-        /*
-         * Return the result.
+         * TODO: For now, just return the geometry, as the code this method was
+         * executing previously (commented out below) is problematic. For
+         * example, said code removed any holes from polygons. See the Redmine
+         * issue referenced in the Javadoc comment above for the reasoning
+         * behind this method, and possible alternatives for its code.
          */
         return geometry;
+
+        // /*
+        // * Compile a list of polygons for the geometry if it is a collection.
+        // */
+        // AdvancedGeometryCollection collection = (geometry instanceof
+        // AdvancedGeometryCollection
+        // ? (AdvancedGeometryCollection) geometry : null);
+        // List<Polygon> polygons = null;
+        // if (collection != null) {
+        // for (IAdvancedGeometry subGeometry : collection.getChildren()) {
+        // if (subGeometry instanceof GeometryWrapper) {
+        // Geometry subBaseGeometry = ((GeometryWrapper) subGeometry)
+        // .getGeometry();
+        // if (subBaseGeometry instanceof Polygon) {
+        // if (polygons == null) {
+        // polygons = new ArrayList<>(
+        // collection.getChildren().size());
+        // }
+        // polygons.add((Polygon) subBaseGeometry);
+        // }
+        // }
+        // }
+        // }
+        //
+        // /*
+        // * If this geometry is made up entirely of polygons, prune it.
+        // * Otherwise, if it is a polygon, remove any holes from it.
+        // */
+        // if ((polygons != null)
+        // && (polygons.size() == collection.getChildren().size())) {
+        //
+        // /*
+        // * For each polygon with the multi-polygon, attempt to prune out
+        // * holes.
+        // */
+        // Geometry newGeometry = geometryFactory
+        // .createGeometryCollection(getPrunedPolygons(polygons)
+        // .toArray(new Geometry[polygons.size()]))
+        // .buffer(0);
+        // geometry = AdvancedGeometryUtilities
+        // .createGeometryWrapper(newGeometry, 0);
+        //
+        // } else if (geometry instanceof GeometryWrapper) {
+        // GeometryWrapper wrapper = (GeometryWrapper) geometry;
+        // Geometry baseGeometry = wrapper.getGeometry();
+        // if (baseGeometry instanceof Polygon) {
+        //
+        // /*
+        // * Remove any holes in the polygon.
+        // */
+        // geometry = AdvancedGeometryUtilities.createGeometryWrapper(
+        // getPolygonWithHolesRemoved((Polygon) baseGeometry),
+        // wrapper.getRotation());
+        // }
+        // }
+        //
+        // /*
+        // * Return the result.
+        // */
+        // return geometry;
     }
 
     /**

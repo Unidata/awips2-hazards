@@ -11,10 +11,11 @@ package gov.noaa.gsd.viz.hazards.ui;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
-import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IPartListener;
 import org.eclipse.ui.IPartListener2;
@@ -31,7 +32,7 @@ import org.eclipse.ui.part.ViewPart;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
-import gov.noaa.gsd.viz.hazards.display.RCPMainUserInterfaceElement;
+import gov.noaa.gsd.viz.hazards.display.RcpMainUiElement;
 import gov.noaa.gsd.viz.mvp.IView;
 
 /**
@@ -61,8 +62,8 @@ import gov.noaa.gsd.viz.mvp.IView;
  * a view part it is managing, in which case direct manipulation may occur.
  * </p>
  * <p>
- * TODO: Remove dependency on {@link RCPMainUserInterfaceElement} in order to
- * move this package to its own plugin.
+ * TODO: Remove dependency on {@link RcpMainUiElement} in order to move this
+ * package to its own plugin.
  * </p>
  * 
  * <pre>
@@ -79,6 +80,8 @@ import gov.noaa.gsd.viz.mvp.IView;
  * Oct 05, 2016  22300     Kevin.Bisanz Don't call page.findView(..) in
  *                                      showViewPart().  Instead always create
  *                                      the view.
+ * Jan 17, 2018  33428     Chris.Golden Changed to work with new, more flexible
+ *                                      toolbar contribution code.
  * </pre>
  * 
  * @author Chris.Golden
@@ -86,7 +89,7 @@ import gov.noaa.gsd.viz.mvp.IView;
  */
 @SuppressWarnings("restriction")
 public abstract class ViewPartDelegateView<V extends ViewPart>
-        implements IView<Action, RCPMainUserInterfaceElement> {
+        implements IView<String, IAction, RcpMainUiElement> {
 
     // Private Static Constants
 
@@ -188,8 +191,8 @@ public abstract class ViewPartDelegateView<V extends ViewPart>
     }
 
     @Override
-    public abstract List<? extends Action> contributeToMainUI(
-            RCPMainUserInterfaceElement type);
+    public abstract Map<? extends String, List<? extends IAction>> contributeToMainUi(
+            RcpMainUiElement type);
 
     /**
      * Add the specified view part creation listener, to be notified whenever

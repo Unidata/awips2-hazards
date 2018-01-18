@@ -58,6 +58,9 @@ import gov.noaa.gsd.common.utilities.TimeResolutionAdapter;
  * May 10, 2016 18515      Chris.Golden Added "deselect after issuing" flag.
  * Oct 19, 2016 21873      Chris.Golden Added time resolution.
  * Oct 23, 2017 21730      Chris.Golden Added defaultType.
+ * Jan 17, 2018 33428      Chris.Golden Removed no-longer-needed flag indicating
+ *                                      whether a new geometry should be added to
+ *                                      a selected event's geometry.
  * </pre>
  * 
  * @author bsteffen
@@ -157,12 +160,6 @@ public class Settings implements ISettings {
     private Boolean addToSelected;
 
     /**
-     * Flag indicating whether or not newly drawn geometries should be added to
-     * the current selected hazard event.
-     */
-    private Boolean addGeometryToSelected;
-
-    /**
      * Identifiers of perspectives (if any) associated with this Setting. When
      * Hazard Services is started, these are searched to determine the
      * appropriate setting to load.
@@ -220,7 +217,6 @@ public class Settings implements ISettings {
         setColumns(other.getColumns());
         setStaticSettingsID(other.getStaticSettingsID());
         setAddToSelected(other.getAddToSelected());
-        setAddGeometryToSelected(other.getAddGeometryToSelected());
         setPerspectiveIDs(other.getPerspectiveIDs());
         setEventIdDisplayType(other.getEventIdDisplayType());
         setDeselectAfterIssuing(other.getDeselectAfterIssuing());
@@ -392,18 +388,8 @@ public class Settings implements ISettings {
     }
 
     @Override
-    public Boolean getAddGeometryToSelected() {
-        return addGeometryToSelected;
-    }
-
-    @Override
     public void setAddToSelected(Boolean addToSelected) {
         this.addToSelected = addToSelected;
-    }
-
-    @Override
-    public void setAddGeometryToSelected(Boolean addGeometryToSelected) {
-        this.addGeometryToSelected = addGeometryToSelected;
     }
 
     @Override

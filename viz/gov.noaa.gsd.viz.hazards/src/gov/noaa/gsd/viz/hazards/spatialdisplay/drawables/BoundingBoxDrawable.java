@@ -9,10 +9,10 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
-import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
-
 import java.util.Collections;
 import java.util.List;
+
+import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
 
 /**
  * Description: Bounding box drawable shape, used to indicate the bounding box
@@ -24,6 +24,8 @@ import java.util.List;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 29, 2016   15928    Chris.Golden Initial creation.
+ * Jan 17, 2018   33428    Chris.Golden Changed to work with new version of
+ *                                      {@link IDrawable}.
  * </pre>
  * 
  * @author Chris.Golden
@@ -55,7 +57,7 @@ public class BoundingBoxDrawable extends PathDrawable {
         super(boundedDrawable.getIdentifier(), attributes, geometry);
         this.boundedDrawable = boundedDrawable;
         setClosed(true);
-        setEditable(false);
+        setVertexEditable(false);
         setRotatable(false);
         setResizable(false);
         setMovable(false);

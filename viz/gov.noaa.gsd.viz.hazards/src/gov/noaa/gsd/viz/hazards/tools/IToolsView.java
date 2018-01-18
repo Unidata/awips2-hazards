@@ -36,12 +36,26 @@ import gov.noaa.gsd.viz.mvp.IView;
  *                                           with their results (that is, within the returned
  *                                           event set).
  * Sep 27, 2017   38072    Chris.Golden      Changed to work with new recommender manager.
+ * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible toolbar
+ *                                           contribution code.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public interface IToolsView<C, E extends Enum<E>> extends IView<C, E> {
+public interface IToolsView<I, C, E extends Enum<E>> extends IView<I, C, E> {
+
+    // Public Static Constants
+
+    /**
+     * Tools pulldown identifier.
+     */
+    public static final String TOOLS_PULLDOWN_IDENTIFIER = "toolsPulldown";
+
+    /**
+     * Event-driven tools toggle identifier.
+     */
+    public static final String EVENT_DRIVEN_TOOLS_TOGGLE_IDENTIFIER = "eventDrivenToolsToggle";
 
     // Public Methods
 

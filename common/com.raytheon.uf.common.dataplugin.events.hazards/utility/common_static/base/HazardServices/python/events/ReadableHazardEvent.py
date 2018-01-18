@@ -20,7 +20,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    12/14/17        20739         Chris.Golden   Initial creation.
-#
+#    01/26/18        33428         Chris.Golden   Added issuance count.
 
 import JUtil, datetime
 
@@ -76,6 +76,9 @@ class ReadableHazardEvent(Event, JUtil.JavaWrapperClass):
 
     def getHazardStatus(self):
         return self.jobj.getStatus().name()
+
+    def getIssuanceCount(self):
+        return self.jobj.getIssuanceCount()
             
     def getPhenomenon(self):
         return self.jobj.getPhenomenon()
@@ -171,6 +174,8 @@ class ReadableHazardEvent(Event, JUtil.JavaWrapperClass):
             return self.getSiteID()
         elif lowerKey == 'status':
             return self.getStatus()
+        elif lowerKey == 'issuancecount':
+            return self.getIssuanceCount()
         elif lowerKey == 'visibleinhistorylist':
             return self.isVisibleInHistoryList()
         elif lowerKey == 'phenomenon' or lowerKey == 'phen':
