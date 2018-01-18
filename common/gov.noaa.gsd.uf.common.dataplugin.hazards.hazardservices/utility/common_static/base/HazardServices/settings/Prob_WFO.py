@@ -198,6 +198,12 @@ Prob_WFO = {
             "displayName": "PHI Grid Recommender",
             "toolType": "RECOMMENDER",
             "visible":True,
-        }
+        },
+        {
+            "toolName": "OwnershipTool",
+            "displayName": "Ownership Tool",
+            "toolType": "RECOMMENDER",
+            "visible":True,
+        },                     
     ],
 }

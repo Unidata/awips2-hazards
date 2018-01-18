@@ -1633,7 +1633,6 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                 stageWindowUpper = filters['Stage Window Upper']['values']
     
                 tupleList, tupleMap = self.createImpactsData(values)
-
                 # Sort the list of tuples
                 tupleList.sort()
                 if referenceValue == None or referenceValue == MISSING_VALUE:
@@ -1659,7 +1658,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
                             closest = (-9999, "Rising")
                             delta = 9999
-                            # select closest to the reference value
+                            # select closest to the reference value 
                             for impactTuple in windowTuples:
                                 value, trend = impactTuple
                                 if abs(value - referenceValue) < delta:
@@ -2090,10 +2089,14 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         self.flush()       
         
         # event modification
-        mws.append( self.getConvectiveObjectInfo(activate, activateModify))
+        mws.append(self.getEventModification(activate, activateModify))
+        # automation buttons and shape automation
+        mws.append(self.getAutomationSettingsAndShape(activate))
         
-        # Shape
-        mws.append( self.getConvectiveShape(activate))
+#         mws.append( self.getConvectiveObjectInfo(activate, activateModify))
+#         
+#         # Shape
+#         mws.append( self.getConvectiveShape(activate))
         
         # Motion Vector
         mws.append( self.getConvectiveMotionVector(activate))
@@ -2153,6 +2156,14 @@ to pose a significant threat. Please continue to heed all road closures.'''}
              "fieldName": "manuallyCreatedStatus",
              "values": self.hazardEvent.get('manuallyCreated', True)
              },
+ 
+#             {
+#             "fieldType": "HiddenField",
+#             "fieldName": "ownerChangeRequest",
+#             "modifyRecommender": 'OwnershipTool',
+#             "doesNotAffectModifyFlag": True,
+#             "values": self.hazardEvent.get("ownerChangeRequest", False)
+#             }  
 
         ]        
         return mwList
@@ -2212,6 +2223,24 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
         return grp
     
+    def getAutomationSettingsAndShape(self, activate):        
+        
+        print "\nCM-ACTIVATE-getAutomationSettingsAndShape:", activate
+        self.flush()       
+        
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "AutomationSettingCompositeGroup",
+            "label": "Automation",
+            "numColumns":2,
+            "fields": [
+                       self.getAutomationButtons(activate),
+                       self.getConvectiveShape(activate),                          
+                    ],
+            }
+        
+        return grp
+    
     def getConvectiveObjectInfo(self, activate, activateModify):        
         
         print "\nCM-ACTIVATE-getConvectiveObjectInfo:", activate, activateModify
@@ -2236,13 +2265,30 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return grp
     
     def getEventModification(self, activate, activateModify):        
-         
+        
         print "\nCM-ACTIVATE-getEventModification:", activate, activateModify
+        self.flush()       
+        
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "EventModificationCompositeGroup",
+            "label": " ",
+            "numColumns":1,
+            "fields": [
+                       self.getEventModificationGroup(activate, activateModify),                          
+                    ],
+            }
+        
+        return grp    
+    
+    def getEventModificationGroup(self, activate, activateModify):        
+         
+        print "\nCM-ACTIVATE-getEventModificationGroup:", activate, activateModify
         self.flush()
 
         grp = {
             "fieldType": "Group",
-            "fieldName": "convectiveObjectInfo",
+            "fieldName": "EventModificationGroup",
             "label": "Event Modification", ### BUG ALERT: rename?
             "leftMargin": 5,
             "rightMargin": 5,
@@ -2270,7 +2316,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return {
             "fieldType": "CheckBox",
             "fieldName": "geometryAutomated",
-            "label": "Automate Shape/Position  ",
+            "label": "Automate",
             "sendEveryChange": False,
             "values": geometryAutomated,
             "modifyRecommender": 'SwathRecommender',
@@ -2310,34 +2356,22 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "modifyRecommender": 'SwathRecommender',
         }
         return grp
-
-
-    def getConvectiveMotionVector(self, enable):
-        wdir = self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectDir')
-        wspd = self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectSpdKts')
-        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
-        
-        
-        enableAutomated = self.getEnableAutomated(enable)
-        print "\nCM-ACTIVATE-getConvectiveMotionVector:", enable
-        print '\tenableAutomated:', enableAutomated, '\n'
+    
+    def getMotionVectorAutomationGroup(self, enable, enableAutomated, recommender):        
+         
+        print "\nCM-ACTIVATE-getMotionVectorAutomationGroup"
         self.flush()
-        
-        
+
         grp = {
-            "fieldType": "Group",
-            "fieldName": "convectiveMotionVectorGroup",
-            "label": "Motion Vector",
-            "leftMargin": 5,
-            "rightMargin": 5,
-            "topMargin": 5,
-            "bottomMargin": 5,                        
+            "fieldType": "Composite",
+            "fieldName": "MotionVectorAutomationComposite",
+            "label": "motion vector automation composite",
             "numColumns":3,
             "fields": [
                         {
                         "fieldType": "CheckBox",
                         "fieldName": "motionAutomated",
-                        "label": "Automate Motion Vector",
+                        "label": "Automate",
                         "values": False,
                         "modifyRecommender": recommender,
                         "editable": enableAutomated,
@@ -2359,6 +2393,23 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "modifyRecommender": recommender,
                         "editable": enable,
                         },
+                    ]
+        }        
+        return grp
+
+    def getMotionVectorAutomationDetails(self, enable, recommender):        
+         
+        wdir = self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectDir')
+        wspd = self.probUtils.getDefaultMotionVectorKey(self.hazardEvent, 'convectiveObjectSpdKts')
+        print "\nCM-ACTIVATE-getMotionVectorAutomationDetails"
+        self.flush()
+
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "MotionVectorAutomationDetailsComposite",
+            "label": "motion vector automation details composite",
+            "numColumns":3,
+            "fields": [
                         {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDir",
@@ -2411,6 +2462,49 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "modifyRecommender": recommender,
                         "editable": enable,
                         },
+                    ]
+        }        
+        return grp
+
+    def getConvectiveMotionVector(self, activate):        
+        
+        print "\nCM-ACTIVATE-getConvectiveMotionVector:", activate
+        self.flush()       
+        
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "ConvectiveMotionVectorCompositeGroup",
+            "label": " ",
+            "numColumns":1,
+            "fields": [
+                       self.getConvectiveMotionVectorGroup(activate),                          
+                    ],
+            }
+        
+        return grp 
+
+    def getConvectiveMotionVectorGroup(self, enable):
+        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
+        
+        
+        enableAutomated = self.getEnableAutomated(enable)
+        print "\nCM-ACTIVATE-getConvectiveMotionVectorGroup:", enable
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+        
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveMotionVectorGroup",
+            "label": "Motion Vector",
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,                        
+            "numColumns":1,
+            "fields": [
+                       self.getMotionVectorAutomationGroup(enable, enableAutomated, recommender),
+                       self.getMotionVectorAutomationDetails(enable, recommender),
                        ]
         }        
         return grp
@@ -2437,39 +2531,18 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
         return presets
 
-    
-    def getConvectiveProbabilityTrend(self, enable):
-        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
-
-        
-        probInc = 5
-        #self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
-        graphProbs =  self.probUtils.getGraphProbs(self.hazardEvent, fromCommonMetaData=True)  
-        previousDataLayerTime = self.probUtils.getPreviousDataLayerTime()
-        colors = [ self.getProbTrendColor(y) for y in range(0,100, 20)]
-                
-        enableAutomated = self.getEnableAutomated(enable)
-        print "\nCM-ACTIVATE-getProbTrend:", enable
-        print '\tenableAutomated:', enableAutomated, '\n'
-        self.flush()
-
-        
+    def getConvectiveProbabilityTrendAutomation(self, enable, enableAutomated, recommender):        
+         
         grp = {
-            "fieldType": "Group",
-            "fieldName": "convectiveProbabilityGroup",
-            "label": "Prob Trend",
-            "leftMargin": 5,
-            "rightMargin": 5,
-            "topMargin": 5,
-            "bottomMargin": 5,                        
-            "expandHorizontally": False,
-            "expandVertically": False,
-            "numColumns":9,
+            "fieldType": "Composite",
+            "fieldName": "ProbabilityTrendAutomationComposite",
+            "label": "probability trend automation composite",
+            "numColumns":3,
             "fields": [
                        {
                         "fieldType": "CheckBox",
                         "fieldName": "probTrendAutomated",
-                        "label": "Automate Probability",
+                        "label": "Automate",
                         "values": False,
                         "modifyRecommender": recommender,
                         "editable": enableAutomated,
@@ -2477,8 +2550,23 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         {
                         "fieldType": "Label",
                         "fieldName": "convectiveProbTrendLabel",
-                        "label": "Trend Interpolation:"
+                        "label": "Interpolation:"
                         },
+
+                        self.getConvectiveProbabilityButtons(enable),
+                    ]
+        }        
+        return grp
+    
+    def getConvectiveProbabilityButtons(self, enable):        
+         
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "ProbabilityTrendButton",
+            "label": "probability trend button composite",
+            "numColumns":7,
+            "columnSpacing":3,
+            "fields": [
                         {
                         "fieldType": "Button",
                         "fieldName": "convectiveProbTrendDraw",
@@ -2521,6 +2609,40 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "label": "-5",
                         "editable": enable,
                         },
+
+                    ]
+        }        
+        return grp                        
+    
+    def getConvectiveProbabilityTrend(self, enable):
+        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
+
+        
+        probInc = 5
+        #self.hazardEvent.set('convectiveProbabilityTrendIncrement', probInc)
+        graphProbs =  self.probUtils.getGraphProbs(self.hazardEvent, fromCommonMetaData=True)  
+        previousDataLayerTime = self.probUtils.getPreviousDataLayerTime()
+        colors = [ self.getProbTrendColor(y) for y in range(0,100, 20)]
+                
+        enableAutomated = self.getEnableAutomated(enable)
+        print "\nCM-ACTIVATE-getProbTrend:", enable
+        print '\tenableAutomated:', enableAutomated, '\n'
+        self.flush()
+
+        
+        grp = {
+            "fieldType": "Group",
+            "fieldName": "convectiveProbabilityGroup",
+            "label": "Prob Trend",
+            "leftMargin": 5,
+            "rightMargin": 5,
+            "topMargin": 5,
+            "bottomMargin": 5,                        
+            "expandHorizontally": False,
+            "expandVertically": False,
+            "numColumns":1,
+            "fields": [
+                       self.getConvectiveProbabilityTrendAutomation(enable, enableAutomated, recommender),
                         {
                         "fieldType": "Graph",
                         "fieldName": "convectiveProbTrendGraph",
@@ -2535,7 +2657,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "drawnPointsInterval": 5,
                         "modifyRecommender": recommender,
                         "sendEveryChange":False,
-                        "width": 9,
+                        "width": 1,
                         "yColors": colors,
                         "values": graphProbs,
                         "editable": enable,
@@ -2609,7 +2731,24 @@ to pose a significant threat. Please continue to heed all road closures.'''}
          
         return text
 
-    def getStormCharacteristics(self, enable):
+    def getStormCharacteristics(self, activate):        
+        
+        print "\nCM-ACTIVATE-getStormCharacteristics:", activate
+        self.flush()       
+        
+        grp = {
+            "fieldType": "Composite",
+            "fieldName": "stormCharacteristicComposite",
+            "label": " ",
+            "numColumns":1,
+            "fields": [
+                       self.getStormCharacteristicsComposite(activate),                          
+                    ],
+            }
+        
+        return grp
+
+    def getStormCharacteristicsComposite(self, enable):
         windType =  self.buildStormChars('Wind', [str(x) + " mph" for x in ["<40", 40, 50, 60, 70, 80, 90]], enable)
 
         hailType =  self.buildStormChars("Hail", ["0.5\"", "1\"", "1.5\"", "2\"", "2.5\"", "3\"", "3.5\"", ">=4\"", "copious small hail"], enable)
@@ -2620,8 +2759,28 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldType": "Composite",
             "fieldName": "convectiveStormCharsGroup",
             "label": "Storm Characteristics (included in discussion)",
-            "numColumns":3,
-            "fields": [windType, hailType, tornType],
+            "numColumns":6,
+            "columnSpacing":3,         
+            "fields": [
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "maxWindLabel",
+                        "label": "Max Wind:"
+                        },
+                       windType, 
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "maxHailLabel",
+                        "label": "Max Hail:"
+                        },
+                       hailType, 
+                        {
+                        "fieldType": "Label",
+                        "fieldName": "tornadoLabel",
+                        "label": "Tornado:"
+                        },
+                       tornType,
+                       ],
             "editable": enable,
             }
 
@@ -2630,7 +2789,8 @@ to pose a significant threat. Please continue to heed all road closures.'''}
 
     def buildStormChars(self, typ, vals, enable):
         capType = typ.capitalize()
-        labelDict = {'Wind':'Max Wind', 'Hail': 'Max Hail', 'Torn': 'Tornado'}
+        labelDict = {'Wind':'', 'Hail': '', 'Torn': ''}
+        #labelDict = {'Wind':'Max Wind', 'Hail': 'Max Hail', 'Torn': 'Tornado'}
         fieldName = "convectiveStormChars"+capType
         values = self.hazardEvent.get(fieldName, "None")
         choices = ["None"]
@@ -2796,6 +2956,11 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     
         return returnDict
 
+#     if triggerIdentifiers and 'reloadingMetaData' in triggerIdentifiers:
+#         print "Get reloadingMetaData..."
+#         sys.stdout.flush()
+#         returnDict['reloadingMetaData'] = {'values':True}
+#         return returnDict
 
 
     if triggerIdentifiers and 'automateAllButton' in triggerIdentifiers:
