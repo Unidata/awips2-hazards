@@ -19,6 +19,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    Oct 02, 2017    38506         Chris.Golden   Initial creation.
+#    Jan 24, 2018    25765         Chris.Golden   Added sanity checks for
+#                                                 queryObjects() parameters.
 #
 import JUtil, datetime
 import TimeUtils
@@ -215,9 +217,19 @@ def queryObjects(parameters, practice):
         # Get the key and value, and the operand if the tuple is large
         # enough.
         key = parameter[0]
+        if key is None:
+            raise ValueError("query parameter key cannot be None")
         operand = (None if len(parameter) is 2 else parameter[1])
         value = (parameter[1] if len(parameter) is 2 else parameter[2])
+        if value is None:
+            raise ValueError("query parameter value cannot be None")
         multipleValues = isinstance(value, (list, set, tuple))
+        if multipleValues:
+            if len(value) == 0:
+                raise ValueError("query parameter value cannot be empty collection")
+            for valueElement in value:
+                if valueElement is None:
+                    raise ValueError("query parameter value collection cannot hold any elements with value of None")
         value = JUtil.pyValToJavaObj(value)
         if multipleValues:
             value = value.toArray()

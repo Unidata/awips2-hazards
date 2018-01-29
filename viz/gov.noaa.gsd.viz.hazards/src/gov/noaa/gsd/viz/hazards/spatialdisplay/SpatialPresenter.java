@@ -89,6 +89,7 @@ import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Point;
 
 import gov.noaa.gsd.common.eventbus.BoundedReceptionEventBus;
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
@@ -248,6 +249,9 @@ import net.engio.mbassy.listener.Handler;
  * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible toolbar
  *                                           contribution code, and to provide new enhanced
  *                                           geometry-operation-based edits.
+ * Jan 22, 2018 25765      Chris.Golden      Added ability for the settings to specify which
+ *                                           drag-and-drop manipulation points are to be
+ *                                           prioritized.
  * </pre>
  * 
  * @author Chris.Golden
@@ -759,6 +763,15 @@ public class SpatialPresenter
         if (change.getChanged().contains(ObservedSettings.Type.FILTERS)) {
             updateAllDisplayables(false);
         }
+
+        /*
+         * Let the view know if the priority for drag-and-drop geometry edits
+         * has changed.
+         */
+        if (change.getChanged().contains(
+                ObservedSettings.Type.PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS)) {
+            updatePriorityForDragAndDropGeometryEdits();
+        }
     }
 
     /**
@@ -914,7 +927,8 @@ public class SpatialPresenter
         getView().initialize(this,
                 getModel().getConfigurationManager().getSiteID(),
                 getModel().getConfigurationManager().getSiteID(),
-                spatialEntityManager.getSelectedSpatialEntityIdentifiers());
+                spatialEntityManager.getSelectedSpatialEntityIdentifiers(),
+                getPriorityForDragAndDropGeometryEdits());
         spatialEntityManager.setView(view);
 
         /*
@@ -1852,6 +1866,26 @@ public class SpatialPresenter
          */
         getView().setCombineGeometryOperationsEnabled(editable,
                 rememberSelectedAction);
+    }
+
+    /**
+     * Update the priority for drag-and-drop geometry edits.
+     */
+    private void updatePriorityForDragAndDropGeometryEdits() {
+        getView().setPriorityForDragAndDropGeometryEdits(
+                getPriorityForDragAndDropGeometryEdits());
+    }
+
+    /**
+     * Get the priority for drag-and-drop geometry edits.
+     * 
+     * @return Priority for drag-and-drop geometry edits.
+     */
+    private DragAndDropGeometryEditSource getPriorityForDragAndDropGeometryEdits() {
+        return getModel().getConfigurationManager()
+                .<DragAndDropGeometryEditSource> getSettingsValue(
+                        HazardConstants.PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS,
+                        getModel().getConfigurationManager().getSettings());
     }
 
     /**

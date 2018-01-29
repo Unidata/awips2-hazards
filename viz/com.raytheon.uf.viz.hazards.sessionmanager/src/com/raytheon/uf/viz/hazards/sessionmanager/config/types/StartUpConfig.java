@@ -25,6 +25,7 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
@@ -49,6 +50,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Mar 08, 2017 29138      Chris.Golden Added startup config option to allow persistence behavior
  *                                      to be tweaked via configuration.
  * Oct 23, 2017 21730      Chris.Golden Added defaultType.
+ * Jan 22, 2018 25765      Chris.Golden Added "priority for drag-and-drop geometry edit" flag
+ *                                      to make geometry editing from the spatial display more
+ *                                      flexible.
  * </pre>
  * 
  * @author bsteffen
@@ -94,6 +98,9 @@ public class StartUpConfig {
 
     @JsonProperty("backupSites")
     private String[] backupSites;
+
+    @JsonProperty("priorityForDragAndDropGeometryEdits")
+    private DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits;
 
     @JsonProperty("eventIdDisplayType")
     private String eventIdDisplayType;
@@ -243,6 +250,17 @@ public class StartUpConfig {
 
     public void setTimeResolution(TimeResolution timeResolution) {
         this.timeResolution = timeResolution;
+    }
+
+    public DragAndDropGeometryEditSource getPriorityForDragAndDropGeometryEdits() {
+        return (priorityForDragAndDropGeometryEdits == null
+                ? DragAndDropGeometryEditSource.BOUNDING_BOX
+                : priorityForDragAndDropGeometryEdits);
+    }
+
+    public void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
+        this.priorityForDragAndDropGeometryEdits = priorityForDragAndDropGeometryEdits;
     }
 
     public String getPersistenceBehavior() {

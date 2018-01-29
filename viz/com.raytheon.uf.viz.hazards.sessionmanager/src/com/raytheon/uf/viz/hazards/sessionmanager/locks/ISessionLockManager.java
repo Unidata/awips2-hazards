@@ -37,6 +37,11 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
  * Date         Ticket#    Engineer      Description
  * ------------ ---------- ------------- --------------------------
  * Dec 12, 2016   21504    Robert.Blum   Initial creation.
+ * Jan 31, 2018   25765    Chris.Golden  Fixed erroneously displayed error
+ *                                       messages when an unlock of a hazard
+ *                                       event could not occur because the
+ *                                       hazard event was (rightfully) not
+ *                                       locked to begin with.
  * </pre>
  * 
  * @author Robert.Blum
@@ -110,8 +115,8 @@ public interface ISessionLockManager {
      * 
      * @param eventId
      *            Identifier of the event for which to override the lock.
-     * @return <code>true</code> if the unlock was granted, <code>false</code>
-     *         otherwise.
+     * @return <code>true</code> if the unlock was granted or the event was not
+     *         locked to begin with, <code>false</code> otherwise.
      */
     public boolean unlockHazardEvent(String eventId);
 
@@ -120,8 +125,8 @@ public interface ISessionLockManager {
      * 
      * @param eventIds
      *            Identifiers of the events for which to override the locks.
-     * @return <code>true</code> if the unlocks were granted, <code>false</code>
-     *         otherwise.
+     * @return <code>true</code> if the unlocks were granted or the events were
+     *         not locked to begin with, <code>false</code> otherwise.
      */
     public boolean unlockHazardEvents(Set<String> eventIds);
 

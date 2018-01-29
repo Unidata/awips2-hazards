@@ -157,6 +157,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      saved to database from a recommender execution are to
  *                                      remain locked.
  * Jan 26, 2018 33428     Chris.Golden  Added issuance count.
+ * Jan 22, 2018 25765     Chris.Golden  Added "priority for drag-and-drop geometry edit" flag
+ *                                      to make geometry editing from the spatial display more
+ *                                      flexible.
  * </pre>
  * 
  * @author mnash
@@ -182,6 +185,11 @@ public final class HazardConstants {
      * Key for time resolution in settings.
      */
     public static final String TIME_RESOLUTION = "timeResolution";
+
+    /**
+     * Key for priority for drag-and-drop geometry edits in settings.
+     */
+    public static final String PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS = "priorityForDragAndDropGeometryEdits";
 
     /**
      * Key for a hazard's label in a spatial input parameters dictionary.

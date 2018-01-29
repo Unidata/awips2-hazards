@@ -9,6 +9,20 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
+
+import com.raytheon.uf.common.util.Pair;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.Point;
+
 import gov.noaa.gsd.viz.hazards.spatialdisplay.InputHandlerType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.MutableDrawableInfo;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
@@ -22,19 +36,6 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.SymbolDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.VertexManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Event;
-
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.Point;
 
 /**
  * Description: Input handler for selection or drawable modification modes in
@@ -77,13 +78,20 @@ import com.vividsolutions.jts.geom.Point;
  *                                      classes. Added ability to use other
  *                                      new input handlers for delegation of
  *                                      rotating and resizing drawables.
+ * Jan 22, 2018   25765    Chris.Golden Changed to bring together algorithms
+ *                                      to determine which drawable is the
+ *                                      best fit for a certain point into one
+ *                                      place, combine them where possible,
+ *                                      and ensure consistency, all in the
+ *                                      service of handling mouse events that
+ *                                      select or modify said drawables.
  * </pre>
  * 
  * @author Chris.Golden
  * @version 1.0
  */
-public class SelectionAndModificationInputHandler extends
-        ModificationCapableInputHandler<ManipulationPoint> {
+public class SelectionAndModificationInputHandler
+        extends ModificationCapableInputHandler<ManipulationPoint> {
 
     // Private Variables
 
@@ -250,15 +258,8 @@ public class SelectionAndModificationInputHandler extends
                 if (manipulationPoint != null) {
                     editingDrawableActive = true;
                     drawable = manipulationPoint.getDrawable();
+                    drawableUnderMouseDown = drawable;
                 } else {
-
-                    /*
-                     * Retrieve a list of drawables which contain this mouse
-                     * click point, with the first drawable in the list being
-                     * topmost.
-                     */
-                    List<AbstractDrawableComponent> containingDrawables = getSpatialDisplay()
-                            .getContainingDrawables(location, x, y);
 
                     /*
                      * Get the active and reactive drawable identifiers.
@@ -268,69 +269,16 @@ public class SelectionAndModificationInputHandler extends
                     Set<IEntityIdentifier> reactiveIdentifiers = getReactiveDrawableIdentifiers();
 
                     /*
-                     * Iterate through the containing drawables up to two times,
-                     * the first attempting to find one that is active, the
-                     * second (if none is found the first time through)
-                     * attempting to find one that is reactive. If there are
-                     * symbols (including points), give them precedence.
+                     * Get the primary and alternate drawables for the point.
                      */
-                    editingDrawableActive = false;
-                    for (Set<IEntityIdentifier> allowableIdentifiers = activeIdentifiers; allowableIdentifiers != null; allowableIdentifiers = (allowableIdentifiers == activeIdentifiers ? reactiveIdentifiers
-                            : null)) {
-                        for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                            IEntityIdentifier identifier = ((IDrawable<?>) containingDrawable)
-                                    .getIdentifier();
-                            if (((drawable == null) || (containingDrawable instanceof SymbolDrawable))
-                                    && allowableIdentifiers
-                                            .contains(identifier)
-                                    && getSpatialDisplay()
-                                            .isDrawableModifiable(
-                                                    containingDrawable)) {
-                                drawable = containingDrawable;
-                                editingDrawableActive = (allowableIdentifiers == activeIdentifiers);
-                                if (containingDrawable instanceof SymbolDrawable) {
-                                    break;
-                                }
-                            }
-                        }
-                        if (drawable != null) {
-                            break;
-                        }
-                    }
-
-                    /*
-                     * If none of the active or reactive drawables were found to
-                     * have been clicked, then just pick the topmost drawable
-                     * containing the click. Also choose the topmost one that is
-                     * uneditable and unmovable, in case it needs to be selected
-                     * during mouse-up later.
-                     * 
-                     * TODO: May need a better way of determining which
-                     * containing drawable of multiple drawables to choose as
-                     * the selected?
-                     */
-                    if (drawable == null) {
-                        for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                            if (getSpatialDisplay().isDrawableModifiable(
-                                    containingDrawable)) {
-                                drawable = containingDrawable;
-                                break;
-                            } else if (drawableUnderMouseDown == null) {
-                                drawableUnderMouseDown = containingDrawable;
-                            }
-                        }
-                    }
-
-                    /*
-                     * If something was found to be editable, but nothing was
-                     * set for the drawable under the mouse down, set the latter
-                     * to the former. This way, if nothing occurs except for a
-                     * mouse up, an unselected drawable may be selected by the
-                     * click.
-                     */
-                    if (drawableUnderMouseDown == null) {
-                        drawableUnderMouseDown = drawable;
-                    }
+                    Pair<AbstractDrawableComponent, AbstractDrawableComponent> drawablesUnderPoint = getSpatialDisplay()
+                            .getDrawablesBestMatchingPoint(activeIdentifiers,
+                                    reactiveIdentifiers, location, x, y);
+                    drawable = drawablesUnderPoint.getFirst();
+                    drawableUnderMouseDown = drawablesUnderPoint.getSecond();
+                    editingDrawableActive = ((drawable != null)
+                            && activeIdentifiers.contains(
+                                    ((IDrawable<?>) drawable).getIdentifier()));
                 }
 
                 /*
@@ -430,9 +378,9 @@ public class SelectionAndModificationInputHandler extends
                     .getDrawableBeingEdited();
             if (getManipulationPointUnderMouse() instanceof VertexManipulationPoint) {
                 VertexMoveInputHandler handler = inputHandlerFactory
-                        .getNonDrawingInputHandler(InputHandlerType.VERTEX_MOVE);
-                handler.initialize(
-                        drawableBeingEdited,
+                        .getNonDrawingInputHandler(
+                                InputHandlerType.VERTEX_MOVE);
+                handler.initialize(drawableBeingEdited,
                         (VertexManipulationPoint) getManipulationPointUnderMouse(),
                         location);
                 specialistInputHandler = handler;
@@ -492,7 +440,8 @@ public class SelectionAndModificationInputHandler extends
          */
         if (isShiftDown() || isControlDown()) {
             specialistInputHandler = inputHandlerFactory
-                    .getNonDrawingInputHandler(isShiftDown() ? InputHandlerType.RECTANGLE_MULTI_SELECTION
+                    .getNonDrawingInputHandler(isShiftDown()
+                            ? InputHandlerType.RECTANGLE_MULTI_SELECTION
                             : InputHandlerType.FREEHAND_MULTI_SELECTION);
             return true;
         }
@@ -619,22 +568,20 @@ public class SelectionAndModificationInputHandler extends
             List<ManipulationPoint> manipulationPoints = ((IDrawable<?>) drawable)
                     .getManipulationPoints();
             if (manipulationPoints.isEmpty() == false) {
-                getSpatialDisplay().setHandlebarPoints(
-                        active ? ((IDrawable<?>) drawable)
-                                .getManipulationPoints() : null);
-                if (active
-                        && (mutableDrawableInfo.getManipulationPoint() == null)) {
+                getSpatialDisplay()
+                        .setHandlebarPoints(active ? manipulationPoints : null);
+                if (active && (mutableDrawableInfo
+                        .getManipulationPoint() == null)) {
                     getSpatialDisplay()
-                            .setCursor(
-                                    mutableDrawableInfo.getEdgeIndex() > -1 ? CursorType.DRAW_CURSOR
-                                            : CursorType.MOVE_SHAPE_CURSOR);
+                            .setCursor(mutableDrawableInfo.getEdgeIndex() > -1
+                                    ? CursorType.DRAW_CURSOR
+                                    : CursorType.MOVE_SHAPE_CURSOR);
                 } else {
-                    setManipulationPointUnderMouse(mutableDrawableInfo
-                            .getManipulationPoint());
+                    setManipulationPointUnderMouse(
+                            mutableDrawableInfo.getManipulationPoint());
                     if (active) {
-                        getSpatialDisplay().setCursor(
-                                mutableDrawableInfo.getManipulationPoint()
-                                        .getCursor());
+                        getSpatialDisplay().setCursor(mutableDrawableInfo
+                                .getManipulationPoint().getCursor());
                     }
                 }
             } else {
@@ -659,8 +606,8 @@ public class SelectionAndModificationInputHandler extends
         Set<IEntityIdentifier> reactiveIdentifiers = new HashSet<>(
                 reactiveDrawables.size(), 1.0f);
         for (AbstractDrawableComponent reactiveDrawable : reactiveDrawables) {
-            reactiveIdentifiers.add(((IDrawable<?>) reactiveDrawable)
-                    .getIdentifier());
+            reactiveIdentifiers
+                    .add(((IDrawable<?>) reactiveDrawable).getIdentifier());
         }
         return reactiveIdentifiers;
     }
@@ -725,10 +672,12 @@ public class SelectionAndModificationInputHandler extends
                      */
                     if (distance < SpatialDisplay.SLOP_DISTANCE_PIXELS) {
                         MoveInputHandler handler = inputHandlerFactory
-                                .getNonDrawingInputHandler(InputHandlerType.MOVE);
+                                .getNonDrawingInputHandler(
+                                        InputHandlerType.MOVE);
                         handler.initialize(editedDrawable,
                                 new MovementManipulationPoint(editedDrawable,
-                                        lastButtonDownLocation), location);
+                                        lastButtonDownLocation),
+                                location);
                         specialistInputHandler = handler;
                     }
                 }

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
@@ -34,6 +35,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jan 17, 2018   33428    Chris.Golden Removed no-longer-needed flag indicating
  *                                      whether a new geometry should be added to
  *                                      a selected event's geometry.
+ * Jan 22, 2018   25765    Chris.Golden Added "priority for drag-and-drop geometry
+ *                                      edit" flag to make geometry editing from the
+ *                                      spatial display more flexible.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,6 +63,11 @@ public interface ISettings {
     public Set<String> getVisibleStatuses();
 
     public void setVisibleStatuses(Set<String> visibleStatuses);
+
+    public DragAndDropGeometryEditSource getPriorityForDragAndDropGeometryEdits();
+
+    public void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits);
 
     public List<Tool> getToolbarTools();
 

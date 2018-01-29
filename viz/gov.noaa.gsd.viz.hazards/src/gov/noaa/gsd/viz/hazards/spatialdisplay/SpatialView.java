@@ -58,6 +58,7 @@ import com.raytheon.viz.ui.editor.AbstractEditor;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
@@ -164,6 +165,9 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  * Jan 17, 2018 33428      Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code, and to provide new
  *                                           enhanced geometry-operation-based edits.
+ * Jan 22, 2018 25765      Chris.Golden      Added ability for the settings to specify
+ *                                           which drag-and-drop manipulation points are to
+ *                                           be prioritized.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1338,7 +1342,8 @@ public class SpatialView implements
     @Override
     public final void initialize(SpatialPresenter presenter,
             String localizedSite, String currentSite,
-            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers) {
+            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers,
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
         this.presenter = presenter;
         this.localizedSiteIdentifier = localizedSite;
         this.currentSiteIdentifier = currentSite;
@@ -1367,6 +1372,13 @@ public class SpatialView implements
             }
             createResourceListeners(abstractEditor);
         }
+
+        /*
+         * Tell the spatial display about the drag-and-drop geometry edit
+         * priority.
+         */
+        spatialDisplay.setPriorityForDragAndDropGeometryEdits(
+                priorityForDragAndDropGeometryEdits);
     }
 
     @Override
@@ -1769,6 +1781,19 @@ public class SpatialView implements
                 if (rememberSelectedAction == false) {
                     previousGeometryEditChoiceAction = null;
                 }
+            }
+        });
+    }
+
+    @Override
+    public void setPriorityForDragAndDropGeometryEdits(
+            final DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
+        VizApp.runAsync(new Runnable() {
+
+            @Override
+            public void run() {
+                spatialDisplay.setPriorityForDragAndDropGeometryEdits(
+                        priorityForDragAndDropGeometryEdits);
             }
         });
     }

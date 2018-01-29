@@ -79,6 +79,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Apr 07, 2017   32734    mduff         Check for orphaned locks on
  *                                       startup.
  * Jun 30, 2017   35726    Robert.Blum   Added shutdown() method.
+ * Jan 31, 2018   25765    Chris.Golden  Fixed erroneously displayed error
+ *                                       messages when an unlock of a hazard
+ *                                       event could not occur because the
+ *                                       hazard event was (rightfully) not
+ *                                       locked to begin with.
  * </pre>
  * 
  * @author Robert.Blum
@@ -248,7 +253,7 @@ public class SessionLockManager
          * If none are locked by this workstation, do nothing more.
          */
         if (eventsToUnlock.isEmpty()) {
-            return false;
+            return true;
         }
 
         /*

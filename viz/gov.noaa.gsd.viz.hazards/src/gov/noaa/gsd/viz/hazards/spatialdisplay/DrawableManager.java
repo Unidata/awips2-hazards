@@ -12,6 +12,7 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,8 +20,10 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.RGB;
@@ -30,6 +33,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
 import com.raytheon.uf.viz.core.IGraphicsTarget.PointStyle;
 import com.raytheon.uf.viz.core.drawables.FillPatterns;
@@ -47,10 +51,15 @@ import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.LineString;
 import com.vividsolutions.jts.geom.Point;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities.GeometryAndMetaInfo;
+import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities.GeometryType;
+import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.SpatialEntityType;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.BoundingBoxDrawable;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.CenterRelativeManipulationPoint;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.DrawableBuilder;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.IDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.ManipulationPoint;
@@ -139,6 +148,17 @@ import gov.noaa.nws.ncep.ui.pgen.gfa.IGfa;
  *                                      a performance hit.
  * Jan 17, 2018   33428    Chris.Golden Changed to use new method name from
  *                                      {@link IDrawable}.
+ * Jan 22, 2018   25765    Chris.Golden Changed to bring together algorithms
+ *                                      to determine which drawable is the
+ *                                      best fit for a certain point into one
+ *                                      place, combine them where possible,
+ *                                      and ensure consistency, all in the
+ *                                      service of handling mouse events that
+ *                                      select or modify said drawables. Also
+ *                                      added ability for the settings to
+ *                                      specify which drag-and-drop
+ *                                      manipulation points are to be
+ *                                      prioritized.
  * </pre>
  * 
  * @author Chris.Golden
@@ -655,6 +675,30 @@ class DrawableManager {
      */
     private static final String GL_PATTERN_VERTICAL_DOTTED = "VERTICAL_DOTTED";
 
+    /**
+     * Comparator to be used to sort geometries and their associated
+     * meta-information.
+     */
+    private static final Comparator<GeometryAndMetaInfo> GEOMETRY_AND_META_INFO_COMPARATOR = new Comparator<GeometryAndMetaInfo>() {
+
+        @Override
+        public int compare(GeometryAndMetaInfo o1, GeometryAndMetaInfo o2) {
+            int typeDifference = o1.getType().ordinal()
+                    - o2.getType().ordinal();
+            if (typeDifference != 0) {
+                return typeDifference;
+            }
+            double sizeDifference = o1.getSize() - o2.getSize();
+            if (sizeDifference < 0.0) {
+                return -1;
+            } else if (sizeDifference == 0.0) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+    };
+
     // Private Variables
 
     /**
@@ -787,6 +831,29 @@ class DrawableManager {
      * active.
      */
     private boolean highlitDrawableActive;
+
+    /**
+     * Priority for drag-and-drop geometry edits.
+     */
+    private DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits = DragAndDropGeometryEditSource.BOUNDING_BOX;
+
+    /**
+     * Comparator used to sort manipulation points based upon the current
+     * {@link #priorityForDragAndDropGeometryEdits}.
+     */
+    private Comparator<ManipulationPoint> MANIPULATION_POINT_COMPARATOR = new Comparator<ManipulationPoint>() {
+
+        @Override
+        public int compare(ManipulationPoint o1, ManipulationPoint o2) {
+            int firstBoundingBox = (o1 instanceof CenterRelativeManipulationPoint
+                    ? 1 : 0);
+            int secondBoundingBox = (o2 instanceof CenterRelativeManipulationPoint
+                    ? 1 : 0);
+            return (firstBoundingBox - secondBoundingBox)
+                    * (priorityForDragAndDropGeometryEdits == DragAndDropGeometryEditSource.VERTEX
+                            ? 1 : -1);
+        }
+    };
 
     /**
      * Map of handlebar type renderers to lists of two-element arrays, each
@@ -1477,197 +1544,6 @@ class DrawableManager {
     }
 
     /**
-     * Get the mutable drawable, and if editable and with a vertex nearby, the
-     * index of said vertex under the specified point.
-     * 
-     * @param x
-     *            Pixel X coordinate.
-     * @param y
-     *            Pixel Y coordinate.
-     * @param activeOnly
-     *            Flag indicating whether or not only active mutable drawables
-     *            should be considered.
-     * @return Information including the drawable and vertex index if an
-     *         editable drawable is under the point and said drawable has a
-     *         vertex that lies under the point as well; drawable and
-     *         <code>-1</code> for the index if a mutable (editable and/or
-     *         movable) drawable lies under the point, with a <code>true</code>
-     *         value for close-to-edge if the point is near the edge of the
-     *         drawable and the drawable is editable; and an empty object if no
-     *         mutable drawable lies under the point.
-     */
-    MutableDrawableInfo getMutableDrawableInfoUnderPoint(int x, int y,
-            boolean activeOnly) {
-        boolean active = false;
-        int edgeIndex = -1;
-        ManipulationPoint manipulationPoint = null;
-        AbstractDrawableComponent drawable = null;
-
-        /*
-         * Get the world coordinate location of the mouse cursor.
-         */
-        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
-                .getInstance().getActiveEditor());
-        Coordinate location = editor.translateClick(x, y);
-        if (location != null) {
-
-            /*
-             * Retrieve the currently reactive shapes, and from it compile a set
-             * of the identifiers that are currently active and which are
-             * modifiable, and (if reactive ones are allowed as well) another
-             * set of ones that are currently reactive and modifiable.
-             */
-            Set<IEntityIdentifier> activeIdentifiers = new HashSet<>(
-                    spatialDisplay.getActiveSpatialEntityIdentifiers().size(),
-                    1.0f);
-            Set<IEntityIdentifier> reactiveIdentifiers = new HashSet<>(
-                    (activeOnly ? 0 : reactiveDrawables.size()), 1.0f);
-            for (AbstractDrawableComponent reactiveDrawable : reactiveDrawables) {
-                if (isDrawableModifiable(reactiveDrawable)
-                        || isDrawableBoundingBox(reactiveDrawable)) {
-                    IEntityIdentifier identifier = ((IDrawable<?>) reactiveDrawable)
-                            .getIdentifier();
-                    if (spatialDisplay.getActiveSpatialEntityIdentifiers()
-                            .contains(identifier)) {
-                        activeIdentifiers.add(identifier);
-                    } else if (activeOnly == false) {
-                        reactiveIdentifiers.add(identifier);
-                    }
-                }
-            }
-
-            /*
-             * First try to find a drawable that completely contains the click
-             * point, giving precedence to active ones. There could be several
-             * of these.
-             */
-            List<AbstractDrawableComponent> containingDrawables = getContainingDrawables(
-                    location, x, y);
-            for (AbstractDrawableComponent containingDrawable : containingDrawables) {
-                if (isDrawableModifiable(containingDrawable)
-                        || isDrawableBoundingBox(containingDrawable)) {
-                    if (activeIdentifiers
-                            .contains(((IDrawable<?>) containingDrawable)
-                                    .getIdentifier())) {
-                        drawable = (containingDrawable instanceof BoundingBoxDrawable
-                                ? ((BoundingBoxDrawable) containingDrawable)
-                                        .getBoundedDrawable()
-                                : containingDrawable);
-                        active = true;
-                        break;
-                    } else if ((drawable == null) && reactiveIdentifiers
-                            .contains(((IDrawable<?>) containingDrawable)
-                                    .getIdentifier())) {
-                        drawable = containingDrawable;
-                    }
-                }
-            }
-
-            /*
-             * If no drawable has been found, try to find the closest drawable.
-             */
-            if (drawable == null) {
-                AbstractDrawableComponent nearestDrawable = getNearestDrawable(
-                        location);
-                if ((nearestDrawable != null)
-                        && (activeIdentifiers
-                                .contains(((IDrawable<?>) nearestDrawable)
-                                        .getIdentifier())
-                        || reactiveIdentifiers
-                                .contains(((IDrawable<?>) nearestDrawable)
-                                        .getIdentifier()))
-                        && (isDrawableModifiable(nearestDrawable)
-                                || isDrawableBoundingBox(nearestDrawable))) {
-                    drawable = (nearestDrawable instanceof BoundingBoxDrawable
-                            ? ((BoundingBoxDrawable) nearestDrawable)
-                                    .getBoundedDrawable()
-                            : nearestDrawable);
-                    active = activeIdentifiers.contains(
-                            ((IDrawable<?>) drawable).getIdentifier());
-                }
-            }
-
-            /*
-             * If an drawable has been found, determine whether the point is
-             * close to its edge, and determine whether the point is close to
-             * one if its manipulation points.
-             */
-            if (drawable != null) {
-                Coordinate mouseScreenLocation = new Coordinate(x, y);
-                if (isDrawableEditable(drawable)) {
-
-                    /*
-                     * Get the rings of coordinates making up the geometry, and
-                     * for each ring, see if the point is close to it.
-                     */
-                    List<Coordinate[]> coordinates = AdvancedGeometryUtilities
-                            .getCoordinates(AdvancedGeometryUtilities
-                                    .getJtsGeometry(((IDrawable<?>) drawable)
-                                            .getGeometry()));
-                    Point mouseScreenPoint = AdvancedGeometryUtilities
-                            .getGeometryFactory()
-                            .createPoint(mouseScreenLocation);
-                    for (int j = 0; j < coordinates.size(); j++) {
-
-                        /*
-                         * Create a line string with screen coordinates, and
-                         * determine the distance between the line string and
-                         * the given point.
-                         */
-                        Coordinate[] ringCoordinates = coordinates.get(j);
-                        Coordinate[] screenCoordinates = new Coordinate[ringCoordinates.length];
-                        for (int k = 0; k < ringCoordinates.length; k++) {
-                            double[] coords = editor
-                                    .translateInverseClick(ringCoordinates[k]);
-                            screenCoordinates[k] = new Coordinate(coords[0],
-                                    coords[1]);
-                        }
-                        LineString lineString = AdvancedGeometryUtilities
-                                .getGeometryFactory()
-                                .createLineString(screenCoordinates);
-                        double distance = mouseScreenPoint.distance(lineString);
-
-                        /*
-                         * If the distance is small enough, note that the cursor
-                         * is close to the edge of this ring of the drawable.
-                         */
-                        if (distance <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
-                            edgeIndex = j;
-                            break;
-                        }
-                    }
-                }
-
-                /*
-                 * Determine whether or not the mouse position is close to one
-                 * of the drawable's manipulation points. If it is close enough,
-                 * record the manipulation point, picking the one that is
-                 * closest.
-                 */
-                List<ManipulationPoint> manipulationPoints = ((IDrawable<?>) drawable)
-                        .getManipulationPoints();
-                double minDistance = Double.MAX_VALUE;
-                for (ManipulationPoint point : manipulationPoints) {
-                    double[] screen = editor
-                            .translateInverseClick(point.getLocation());
-                    Coordinate pixelLocation = new Coordinate(screen[0],
-                            screen[1]);
-                    double distance = mouseScreenLocation
-                            .distance(pixelLocation);
-                    if (distance <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
-                        if (distance < minDistance) {
-                            manipulationPoint = point;
-                            minDistance = distance;
-                        }
-                    }
-                }
-            }
-        }
-        return new MutableDrawableInfo(drawable, active, edgeIndex,
-                manipulationPoint);
-    }
-
-    /**
      * Given the specified point, find all drawables which contain it.
      * 
      * @param point
@@ -1736,6 +1612,469 @@ class DrawableManager {
          * easier for applications to find the top-most containing element.
          */
         return Lists.reverse(containingDrawables);
+    }
+
+    /**
+     * Get the mutable drawable, and if editable and with a vertex nearby, the
+     * index of said vertex under the specified point.
+     * 
+     * @param x
+     *            Pixel X coordinate.
+     * @param y
+     *            Pixel Y coordinate.
+     * @param activeOnly
+     *            Flag indicating whether or not only active mutable drawables
+     *            should be considered.
+     * @return Information including the drawable and vertex index if an
+     *         editable drawable is under the point and said drawable has a
+     *         vertex that lies under the point as well; drawable and
+     *         <code>-1</code> for the index if a mutable (editable and/or
+     *         movable) drawable lies under the point, with a <code>true</code>
+     *         value for close-to-edge if the point is near the edge of the
+     *         drawable and the drawable is editable; and an empty object if no
+     *         mutable drawable lies under the point.
+     */
+    MutableDrawableInfo getMutableDrawableInfoUnderPoint(int x, int y,
+            boolean activeOnly) {
+        boolean active = false;
+        int edgeIndex = -1;
+        ManipulationPoint manipulationPoint = null;
+        AbstractDrawableComponent drawable = null;
+
+        /*
+         * Get the world coordinate location of the mouse cursor.
+         */
+        AbstractEditor editor = ((AbstractEditor) VizWorkbenchManager
+                .getInstance().getActiveEditor());
+        Coordinate location = editor.translateClick(x, y);
+        if (location != null) {
+
+            /*
+             * Retrieve the currently reactive shapes, and from it compile a set
+             * of the identifiers that are currently active and which are
+             * modifiable, and (if reactive ones are allowed as well) another
+             * set of ones that are currently reactive and modifiable.
+             */
+            Set<IEntityIdentifier> activeIdentifiers = new HashSet<>(
+                    spatialDisplay.getActiveSpatialEntityIdentifiers().size(),
+                    1.0f);
+            Set<IEntityIdentifier> reactiveIdentifiers = new HashSet<>(
+                    (activeOnly ? 0 : reactiveDrawables.size()), 1.0f);
+            for (AbstractDrawableComponent reactiveDrawable : reactiveDrawables) {
+                if (isDrawableModifiable(reactiveDrawable)
+                        || isDrawableBoundingBox(reactiveDrawable)) {
+                    IEntityIdentifier identifier = ((IDrawable<?>) reactiveDrawable)
+                            .getIdentifier();
+                    if (spatialDisplay.getActiveSpatialEntityIdentifiers()
+                            .contains(identifier)) {
+                        activeIdentifiers.add(identifier);
+                    } else if (activeOnly == false) {
+                        reactiveIdentifiers.add(identifier);
+                    }
+                }
+            }
+
+            /*
+             * Retrieve a list of drawables which contain this mouse click
+             * point.
+             */
+            List<AbstractDrawableComponent> containingDrawables = getContainingDrawables(
+                    location, x, y);
+
+            /*
+             * Iterate through the containing drawables attempting to find one
+             * that is active, or failing that, reactive, that best matches the
+             * point.
+             */
+            Pair<AbstractDrawableComponent, Boolean> drawableAndActiveFlag = getActiveOrReactiveDrawableBestMatchingPoint(
+                    containingDrawables, true, activeIdentifiers,
+                    reactiveIdentifiers, location, x, y);
+            if (drawableAndActiveFlag.getFirst() != null) {
+                drawable = drawableAndActiveFlag.getFirst();
+                active = drawableAndActiveFlag.getSecond();
+            }
+
+            /*
+             * If no drawable has been found, try to find the closest drawable.
+             */
+            if (drawable == null) {
+                AbstractDrawableComponent nearestDrawable = getNearestDrawable(
+                        location);
+                if ((nearestDrawable != null)
+                        && (activeIdentifiers
+                                .contains(((IDrawable<?>) nearestDrawable)
+                                        .getIdentifier())
+                        || reactiveIdentifiers
+                                .contains(((IDrawable<?>) nearestDrawable)
+                                        .getIdentifier()))
+                        && (isDrawableModifiable(nearestDrawable)
+                                || isDrawableBoundingBox(nearestDrawable))) {
+                    drawable = (nearestDrawable instanceof BoundingBoxDrawable
+                            ? ((BoundingBoxDrawable) nearestDrawable)
+                                    .getBoundedDrawable()
+                            : nearestDrawable);
+                    active = activeIdentifiers.contains(
+                            ((IDrawable<?>) drawable).getIdentifier());
+                }
+            }
+
+            /*
+             * If a drawable has been found, determine whether the point is
+             * close to its edge, and determine whether the point is close to
+             * one if its manipulation points.
+             */
+            if (drawable != null) {
+                Coordinate mouseScreenLocation = new Coordinate(x, y);
+                if (isDrawableEditable(drawable)) {
+
+                    /*
+                     * Get the rings of coordinates making up the geometry, and
+                     * for each ring, see if the point is close to it.
+                     */
+                    List<Coordinate[]> coordinates = AdvancedGeometryUtilities
+                            .getCoordinates(AdvancedGeometryUtilities
+                                    .getJtsGeometry(((IDrawable<?>) drawable)
+                                            .getGeometry()));
+                    Point mouseScreenPoint = AdvancedGeometryUtilities
+                            .getGeometryFactory()
+                            .createPoint(mouseScreenLocation);
+                    for (int j = 0; j < coordinates.size(); j++) {
+
+                        /*
+                         * Create a line string with screen coordinates, and
+                         * determine the distance between the line string and
+                         * the given point.
+                         */
+                        Coordinate[] ringCoordinates = coordinates.get(j);
+                        Coordinate[] screenCoordinates = new Coordinate[ringCoordinates.length];
+                        for (int k = 0; k < ringCoordinates.length; k++) {
+                            double[] coords = editor
+                                    .translateInverseClick(ringCoordinates[k]);
+                            screenCoordinates[k] = new Coordinate(coords[0],
+                                    coords[1]);
+                        }
+                        LineString lineString = AdvancedGeometryUtilities
+                                .getGeometryFactory()
+                                .createLineString(screenCoordinates);
+                        double distance = mouseScreenPoint.distance(lineString);
+
+                        /*
+                         * If the distance is small enough, note that the cursor
+                         * is close to the edge of this ring of the drawable.
+                         */
+                        if (distance <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
+                            edgeIndex = j;
+                            break;
+                        }
+                    }
+                }
+
+                /*
+                 * Determine whether or not the mouse position is close to one
+                 * of the drawable's manipulation points. If it is close enough,
+                 * record the manipulation point.
+                 */
+                List<ManipulationPoint> manipulationPoints = ((IDrawable<?>) drawable)
+                        .getManipulationPoints();
+                manipulationPoints = sortManipulationPointsByPriority(
+                        manipulationPoints);
+                for (ManipulationPoint point : manipulationPoints) {
+                    double[] screen = editor
+                            .translateInverseClick(point.getLocation());
+                    Coordinate pixelLocation = new Coordinate(screen[0],
+                            screen[1]);
+                    double distance = mouseScreenLocation
+                            .distance(pixelLocation);
+                    if (distance <= SpatialDisplay.SLOP_DISTANCE_PIXELS) {
+                        manipulationPoint = point;
+                        break;
+                    }
+                }
+            }
+        }
+        return new MutableDrawableInfo(drawable, active, edgeIndex,
+                manipulationPoint);
+    }
+
+    /**
+     * Given the specified identifiers of currently active and reactive
+     * drawables, get the active or reactive drawable from the specified list of
+     * containing drawables that best matches the specified point.
+     * 
+     * @param containingDrawables
+     *            List of drawables containing the point from which to choose an
+     *            active or reactive drawable.
+     * @param includeBoundingBoxesAsPotentials
+     *            Flag indicating whether or not to include bounding box
+     *            drawables as potential drawables to be chosen.
+     * @param activeIdentifiers
+     *            Identifiers of any drawables that are currently active, that
+     *            is, selected and ready to be edited.
+     * @param reactiveIdentifiers
+     *            Identifiers of any drawables that have potential to be active,
+     *            but are currently not; they are editable but not selected.
+     * @param point
+     *            Point to test in geographic space.
+     * @param x
+     *            X coordinate of point in pixel space.
+     * @param y
+     *            Y coordinate of point in pixel space.
+     * @return Drawable that was chosen, as well as a flag indicating whether or
+     *         not said drawable is active. The drawable may be
+     *         <code>null</code>, in which case the flag is meaningless.
+     */
+    @SuppressWarnings("unchecked")
+    Pair<AbstractDrawableComponent, Boolean> getActiveOrReactiveDrawableBestMatchingPoint(
+            List<AbstractDrawableComponent> containingDrawables,
+            boolean includeBoundingBoxesAsPotentials,
+            Set<IEntityIdentifier> activeIdentifiers,
+            Set<IEntityIdentifier> reactiveIdentifiers, Coordinate point, int x,
+            int y) {
+
+        /*
+         * Iterate through the containing drawables attempting to find one that
+         * is active. If there are symbols (including points), give them
+         * precedence. Otherwise, compile a list of active drawables that are
+         * potentials, and then pick one from that list that is the best fit for
+         * the point.
+         */
+        AbstractDrawableComponent drawable = null;
+        boolean active = false;
+        List<IDrawable<? extends IAdvancedGeometry>> potentialDrawables = new ArrayList<>();
+        for (AbstractDrawableComponent containingDrawable : containingDrawables) {
+            IEntityIdentifier identifier = ((IDrawable<?>) containingDrawable)
+                    .getIdentifier();
+            if (((drawable == null)
+                    || isDrawablePrioritizedForHitTests(containingDrawable))
+                    && activeIdentifiers.contains(identifier)
+                    && (isDrawableModifiable(containingDrawable)
+                            || (includeBoundingBoxesAsPotentials
+                                    && isDrawableBoundingBox(
+                                            containingDrawable)))) {
+                AbstractDrawableComponent thisDrawable = (containingDrawable instanceof BoundingBoxDrawable
+                        ? ((BoundingBoxDrawable) containingDrawable)
+                                .getBoundedDrawable()
+                        : containingDrawable);
+                active = true;
+                if (isDrawablePrioritizedForHitTests(containingDrawable)) {
+                    drawable = thisDrawable;
+                    break;
+                }
+                potentialDrawables.add(
+                        (IDrawable<? extends IAdvancedGeometry>) thisDrawable);
+            }
+        }
+        if ((drawable == null) && (potentialDrawables.isEmpty() == false)) {
+            drawable = getDrawableBestMatchingPoint(potentialDrawables, point,
+                    x, y);
+        }
+
+        /*
+         * Iterate through the containing drawables again if nothing was found
+         * in the above iteration, this time attempting to find any that are
+         * reactive. If there are symbols (including points), give them
+         * precedence. Otherwise, compile a list of reactive drawables that are
+         * potentials, and then pick one from that list that is the best fit for
+         * the point.
+         */
+        if (drawable == null) {
+            potentialDrawables.clear();
+            for (AbstractDrawableComponent containingDrawable : containingDrawables) {
+                IEntityIdentifier identifier = ((IDrawable<?>) containingDrawable)
+                        .getIdentifier();
+                if (reactiveIdentifiers.contains(identifier)
+                        && isDrawableModifiable(containingDrawable)) {
+                    if (isDrawablePrioritizedForHitTests(containingDrawable)) {
+                        drawable = containingDrawable;
+                        break;
+                    }
+                    potentialDrawables.add(
+                            (IDrawable<? extends IAdvancedGeometry>) containingDrawable);
+                }
+            }
+            if ((drawable == null) && (potentialDrawables.isEmpty() == false)) {
+                drawable = getDrawableBestMatchingPoint(potentialDrawables,
+                        point, x, y);
+            }
+        }
+
+        return new Pair<>(drawable, active);
+    }
+
+    /**
+     * Given the specified identifiers of currently active and reactive
+     * drawables, get the primary and alternate drawables that best match the
+     * specified point. The primary drawable is that which is to be edited, if
+     * an edit action occurs; the alternate is the not necessarily editable
+     * drawable to be used if selection or deselection, instead of editing,
+     * occurs. They may be the same object, or one or both may be
+     * <code>null</code>.
+     * 
+     * @param activeIdentifiers
+     *            Identifiers of any drawables that are currently active, that
+     *            is, selected and ready to be edited.
+     * @param reactiveIdentifiers
+     *            Identifiers of any drawables that have potential to be active,
+     *            but are currently not; they are editable but not selected.
+     * @param point
+     *            Point to test in geographic space.
+     * @param x
+     *            X coordinate of point in pixel space.
+     * @param y
+     *            Y coordinate of point in pixel space.
+     * @return Primary and alternate drawables that best match the specified
+     *         point. Either or both may be <code>null</code> if matches cannot
+     *         be found.
+     */
+    @SuppressWarnings("unchecked")
+    Pair<AbstractDrawableComponent, AbstractDrawableComponent> getDrawablesBestMatchingPoint(
+            Set<IEntityIdentifier> activeIdentifiers,
+            Set<IEntityIdentifier> reactiveIdentifiers, Coordinate point, int x,
+            int y) {
+
+        /*
+         * Retrieve a list of drawables which contain this mouse click point.
+         */
+        List<AbstractDrawableComponent> containingDrawables = getContainingDrawables(
+                point, x, y);
+
+        /*
+         * Iterate through the containing drawables attempting to find one that
+         * is active, or failing that, reactive, that best matches the point.
+         */
+        Pair<AbstractDrawableComponent, Boolean> drawableAndActiveFlag = getActiveOrReactiveDrawableBestMatchingPoint(
+                containingDrawables, false, activeIdentifiers,
+                reactiveIdentifiers, point, x, y);
+        AbstractDrawableComponent drawable = drawableAndActiveFlag.getFirst();
+        AbstractDrawableComponent secondaryDrawable = null;
+
+        /*
+         * If none of the active or reactive drawables were found to have been
+         * clicked, compile two lists, one of drawables that are modifiable that
+         * are under the mouse, and one of drawables that are not modifiable and
+         * under the mouse. Then pick the drawable from each that is best
+         * matched with the mouse location. (The unmodifiable one is chosen in
+         * case it needs to be selected during mouse-up later.) If however an
+         * active or reactive drawable is found to have been clicked, choose a
+         * drawable from all the containing drawables that (regardless of its
+         * modifiability, selection state, etc.) is the best fit for the point;
+         * this will be used for selection actions during mouse-up later if no
+         * edit occurs.
+         */
+        if (drawable == null) {
+            List<IDrawable<? extends IAdvancedGeometry>> potentialModifiableDrawables = new ArrayList<>();
+            List<IDrawable<? extends IAdvancedGeometry>> potentialReadOnlyDrawables = new ArrayList<>();
+            for (AbstractDrawableComponent containingDrawable : containingDrawables) {
+                (isDrawableModifiable(containingDrawable)
+                        ? potentialModifiableDrawables
+                        : potentialReadOnlyDrawables).add(
+                                (IDrawable<? extends IAdvancedGeometry>) containingDrawable);
+            }
+            if (potentialModifiableDrawables.isEmpty() == false) {
+                drawable = getDrawableBestMatchingPoint(
+                        potentialModifiableDrawables, point, x, y);
+            }
+            if (potentialReadOnlyDrawables.isEmpty() == false) {
+                secondaryDrawable = getDrawableBestMatchingPoint(
+                        potentialReadOnlyDrawables, point, x, y);
+            }
+        } else {
+            List<IDrawable<? extends IAdvancedGeometry>> potentialDrawables = new ArrayList<>(
+                    containingDrawables.size());
+            for (AbstractDrawableComponent containingDrawable : containingDrawables) {
+                potentialDrawables.add(
+                        (IDrawable<? extends IAdvancedGeometry>) containingDrawable);
+            }
+            secondaryDrawable = getDrawableBestMatchingPoint(potentialDrawables,
+                    point, x, y);
+        }
+
+        /*
+         * If something was found to be editable, but nothing was set for the
+         * drawable under the mouse down, set the latter to the former. This
+         * way, if nothing occurs except for a mouse up, an unselected drawable
+         * may be selected by the click.
+         */
+        if (secondaryDrawable == null) {
+            secondaryDrawable = drawable;
+        }
+
+        return new Pair<>(drawable, secondaryDrawable);
+    }
+
+    /**
+     * Get the drawable from the specified list that is the best match for the
+     * specified point.
+     * 
+     * @param drawables
+     *            Non-empty list of drawables from which to get the best match.
+     * @param point
+     *            Point to test in geographic space.
+     * @param x
+     *            X coordinate of point in pixel space.
+     * @param y
+     *            Y coordinate of point in pixel space.
+     * @return Drawable that best matches the point.
+     */
+    AbstractDrawableComponent getDrawableBestMatchingPoint(
+            List<IDrawable<? extends IAdvancedGeometry>> drawables,
+            Coordinate point, int x, int y) {
+
+        /*
+         * Handle differently depending upon whether the list has no, one, or
+         * multiple elements.
+         */
+        if (drawables.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "cannot handle empty list of drawables");
+        } else if (drawables.size() == 1) {
+            return (AbstractDrawableComponent) drawables.get(0);
+        } else {
+
+            /*
+             * Create a two-dimensional representation of the point to be used
+             * for intersection checks.
+             */
+            Geometry clickPointWithSlop = getClickPointWithSlop(
+                    AdvancedGeometryUtilities.getGeometryFactory()
+                            .createPoint(point),
+                    x, y);
+
+            /*
+             * Create a sorted map that pairs the geometries that are found to
+             * intersect with their drawables, sorted so that points are first,
+             * then lines (shortest to longest), then polygons (smallest to
+             * largest in area).
+             */
+            NavigableMap<GeometryAndMetaInfo, IDrawable<? extends IAdvancedGeometry>> drawablesForIntersectingGeometries = new TreeMap<>(
+                    GEOMETRY_AND_META_INFO_COMPARATOR);
+
+            /*
+             * Iterate through the drawables, getting the sub-geometries that
+             * intersect from each, and taking any as the one wanted that is a
+             * point, or making a record of any that are lines or polygons.
+             */
+            for (IDrawable<? extends IAdvancedGeometry> drawable : drawables) {
+                GeometryAndMetaInfo geometryAndMetaInfo = AdvancedGeometryUtilities
+                        .getSmallestIntersectingGeometryComponent(
+                                AdvancedGeometryUtilities
+                                        .getJtsGeometry(drawable.getGeometry()),
+                                clickPointWithSlop);
+                if (geometryAndMetaInfo.getType() == GeometryType.PUNTAL) {
+                    return (AbstractDrawableComponent) drawable;
+                }
+                drawablesForIntersectingGeometries.put(geometryAndMetaInfo,
+                        drawable);
+            }
+
+            /*
+             * Return the drawable containing the shortest intersecting line, or
+             * if there are no such drawables, the drawable containing the
+             * smallest intersecting polygon.
+             */
+            return (AbstractDrawableComponent) drawablesForIntersectingGeometries
+                    .firstEntry().getValue();
+        }
     }
 
     /**
@@ -1887,6 +2226,17 @@ class DrawableManager {
     }
 
     /**
+     * Set the priority for drag-and-drop geometry edits.
+     * 
+     * @param priorityForDragAndDropGeometryEdits
+     *            New priority for drag-and-drop geometry edits.
+     */
+    void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
+        this.priorityForDragAndDropGeometryEdits = priorityForDragAndDropGeometryEdits;
+    }
+
+    /**
      * Paint the drawables.
      * 
      * @param target
@@ -1976,6 +2326,20 @@ class DrawableManager {
     }
 
     // Private Methods
+
+    /**
+     * Determine whether the specified drawable should be prioritized when doing
+     * hit tests on multiple drawables.
+     * 
+     * @param drawable
+     *            Drawable to be checked.
+     * @return <code>true</code> if the drawable should be prioritized,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isDrawablePrioritizedForHitTests(
+            AbstractDrawableComponent drawable) {
+        return (drawable instanceof SymbolDrawable);
+    }
 
     /**
      * Get an iterator for the PGEN drawables. Note that this iterator does not
@@ -2790,6 +3154,23 @@ class DrawableManager {
             elementContainer.draw(target, paintProperties, displayProperties);
             elementContainer.dispose();
         }
+    }
+
+    /**
+     * Given the specified list of manipulation points, sort the points by
+     * priority, with highest priority being first.
+     * 
+     * @param manipulationPoints
+     *            List to be sorted by current priority.
+     * @return Sorted version of the list. This will not be the same object as
+     *         the original list.
+     */
+    private List<ManipulationPoint> sortManipulationPointsByPriority(
+            List<ManipulationPoint> manipulationPoints) {
+        List<ManipulationPoint> sortedPoints = new ArrayList<>(
+                manipulationPoints);
+        Collections.sort(sortedPoints, MANIPULATION_POINT_COMPARATOR);
+        return sortedPoints;
     }
 
     /**

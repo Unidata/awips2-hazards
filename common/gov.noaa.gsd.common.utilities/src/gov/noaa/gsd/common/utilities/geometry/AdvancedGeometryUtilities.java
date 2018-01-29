@@ -10,6 +10,8 @@
 package gov.noaa.gsd.common.utilities.geometry;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,9 +22,11 @@ import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
 import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.Polygonal;
+import com.vividsolutions.jts.geom.Puntal;
 import com.vividsolutions.jts.geom.util.AffineTransformation;
 
 /**
@@ -52,6 +56,10 @@ import com.vividsolutions.jts.geom.util.AffineTransformation;
  *                                      polygonal elements to be more general,
  *                                      and made another version that works with
  *                                      a list.
+ * Jan 22, 2018   25765    Chris.Golden Added method that takes two geometries
+ *                                      and gets the smallest sub-geometry of the
+ *                                      first of them that intersects with the
+ *                                      second of them.
  * </pre>
  * 
  * @author Chris.Golden
@@ -62,11 +70,91 @@ public class AdvancedGeometryUtilities {
     // Public Enumerated Types
 
     /**
+     * Types of geometries.
+     */
+    public enum GeometryType {
+        PUNTAL, LINEAL, POLYGONAL
+    };
+
+    /**
      * Types of geometries to include in a union.
      */
     public enum GeometryTypesForUnion {
         ALL, POLYGONAL, NON_POLYGONAL
     };
+
+    // Public Static Classes
+
+    /**
+     * Geometry and accompanying information.
+     */
+    public static class GeometryAndMetaInfo {
+
+        // Private Variables
+
+        /**
+         * Geometry.
+         */
+        private final Geometry geometry;
+
+        /**
+         * Type.
+         */
+        private final GeometryType type;
+
+        /**
+         * Size. For {@link GeometryType#PUNTAL} geometries, this will always be
+         * <code>0</code>; for {@link GeometryType#LINEAL}, this will be the
+         * length of the geometry; and for {@link GeometryType#POLYGONAL}, this
+         * will be the area.
+         */
+        private final double size;
+
+        // Public Constructors
+
+        /**
+         * Construct a standard instance.
+         */
+        public GeometryAndMetaInfo(Geometry geometry, GeometryType type,
+                double size) {
+            this.geometry = geometry;
+            this.type = type;
+            this.size = size;
+        }
+
+        // Public Methods
+
+        /**
+         * Get the geometry.
+         * 
+         * @return Geometry.
+         */
+        public Geometry getGeometry() {
+            return geometry;
+        }
+
+        /**
+         * Get the type.
+         * 
+         * @return Type.
+         */
+        public GeometryType getType() {
+            return type;
+        }
+
+        /**
+         * Get the size. If {@link #getType()} returns
+         * {@link GeometryType#PUNTAL}, this will always be <code>0</code>; if
+         * it returns {@link GeometryType#LINEAL}, this will be the length of
+         * the geometry; and if it returns {@link GeometryType#POLYGONAL}, this
+         * will be the area.
+         * 
+         * @return Size.
+         */
+        public double getSize() {
+            return size;
+        }
+    }
 
     // Private Static Constants
 
@@ -100,7 +188,19 @@ public class AdvancedGeometryUtilities {
     private static final int LAT_LON_FLATTENING_RECURSION_LIMIT_FOR_CENTROID = 4;
 
     /**
-     * Geometry factory, used to create {@link Geometry} instances.. It is
+     * Comparator for non-collection geometries, used to sort them into their
+     * types (puntal, lineal, and polygonal).
+     */
+    private static final Comparator<Geometry> LEAF_GEOMETRY_COMPARATOR = new Comparator<Geometry>() {
+
+        @Override
+        public int compare(Geometry o1, Geometry o2) {
+            return getType(o1).ordinal() - getType(o2).ordinal();
+        }
+    };
+
+    /**
+     * Geometry factory, used to create {@link Geometry} instances. It is
      * thread-local because <code>GeometryFactory</code> is not explicitly
      * declared to be thread-safe. Since this factory could be used
      * simultaneously by multiple threads, and each thread must be able to
@@ -209,6 +309,110 @@ public class AdvancedGeometryUtilities {
             leafGeometries.add(geometry);
         }
         return leafGeometries;
+    }
+
+    /**
+     * Break the specified geometry into its leaf sub-geometries, and find the
+     * smallest of these sub-geometries that intersects with the specified
+     * intersecting geometry. In this case, "smallest" is defined as follows:
+     * the first puntal sub-geometry; or if no puntal sub-geometries are
+     * included, the shortest lineal sub-geometry; or if no lineal
+     * sub-geometries are included, the smallest polygonal sub-geometry found.
+     * 
+     * @param geometry
+     *            Geometry to be decomposed into leaf sub-geometries and
+     *            searched for the smallest intersecting sub-geometry. Note that
+     *            this geometry is assumed to have at least one leaf
+     *            sub-geometry that intersects the other geometry.
+     * @param intersectingGeometry
+     *            Target geometry, to be checked for intersection with for any
+     *            sub-geometry of <code>geometry</code>.
+     * @return Smallest geometry as defined above, and accompanying
+     *         meta-information.
+     */
+    public static GeometryAndMetaInfo getSmallestIntersectingGeometryComponent(
+            Geometry geometry, Geometry intersectingGeometry) {
+
+        /*
+         * Decompose the geometry into its non-collection sub-geometries, and
+         * sort them so that they are in the order of points first, then lines,
+         * then polygons.
+         */
+        List<Geometry> leafGeometries = getFlattenedGeometryList(geometry);
+        Collections.sort(leafGeometries, LEAF_GEOMETRY_COMPARATOR);
+
+        /*
+         * Iterate through the sub-geometries to find the first point, or
+         * failing that the shortest line, or failing that the smallest polygon.
+         */
+        double smallestLength = Double.MAX_VALUE;
+        double smallestArea = Double.MAX_VALUE;
+        Geometry smallestGeometry = null;
+        for (Geometry subGeometry : leafGeometries) {
+
+            /*
+             * Handle the intersection check differently depending upon whether
+             * the sub-geometry is puntal, lineal, or polygonal
+             */
+            if (subGeometry instanceof Puntal) {
+
+                /*
+                 * For points, just check to see if the geometry intersects, and
+                 * if it does, use it.
+                 */
+                if (intersectingGeometry.intersects(subGeometry)) {
+                    return new GeometryAndMetaInfo(subGeometry,
+                            GeometryType.PUNTAL, 0);
+                }
+            } else if (subGeometry instanceof Lineal) {
+
+                /*
+                 * For lines, see if the length is smaller than that of any
+                 * previous lineal sub-geometry, and if so, check for
+                 * intersection. If it intersects, remember the sub-geometry and
+                 * its length.
+                 */
+                double length = subGeometry.getLength();
+                if ((length < smallestLength)
+                        && intersectingGeometry.intersects(subGeometry)) {
+                    smallestLength = length;
+                    smallestGeometry = subGeometry;
+                }
+            } else {
+
+                /*
+                 * If this is the first polygonal sub-geometry, and a lineal
+                 * geometry was found that intersects, do nothing more.
+                 */
+                if ((smallestArea == Double.MAX_VALUE)
+                        && (smallestGeometry != null)) {
+                    break;
+                }
+
+                /*
+                 * For polygons, see if the area is smaller than that of any
+                 * previous polygonal sub-geometry, and if so, check for
+                 * intersection. If it intersects, remember the sub-geometry and
+                 * its area.
+                 */
+                double area = subGeometry.getArea();
+                if ((area < smallestArea)
+                        && intersectingGeometry.intersects(subGeometry)) {
+                    smallestArea = area;
+                    smallestGeometry = subGeometry;
+                }
+            }
+        }
+
+        /*
+         * If an intersecting line was found, return it; if a polygon, return
+         * it.
+         */
+        return new GeometryAndMetaInfo(smallestGeometry,
+                (smallestLength != Double.MAX_VALUE ? GeometryType.LINEAL
+                        : GeometryType.POLYGONAL),
+                (smallestLength != Double.MAX_VALUE ? smallestLength
+                        : smallestArea));
     }
 
     /**
@@ -588,6 +792,19 @@ public class AdvancedGeometryUtilities {
         }
         return GEOMETRY_FACTORY.get().createGeometryCollection(
                 leafGeometries.toArray(new Geometry[leafGeometries.size()]));
+    }
+
+    /**
+     * Get the type of the specified non-collection geometry.
+     * 
+     * @param geometry
+     *            Geometry to be typed.
+     * @return Type of the geometry.
+     */
+    private static GeometryType getType(Geometry geometry) {
+        return (geometry instanceof Puntal ? GeometryType.PUNTAL
+                : (geometry instanceof Lineal ? GeometryType.LINEAL
+                        : GeometryType.POLYGONAL));
     }
 
     // Private Constructors

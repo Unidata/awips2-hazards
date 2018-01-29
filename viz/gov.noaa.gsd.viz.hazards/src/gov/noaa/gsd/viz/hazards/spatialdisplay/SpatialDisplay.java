@@ -43,6 +43,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.DataTime;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.AbstractTimeMatcher;
 import com.raytheon.uf.viz.core.IDisplayPaneContainer;
 import com.raytheon.uf.viz.core.IGraphicsTarget;
@@ -72,6 +73,7 @@ import com.vividsolutions.jts.geom.Lineal;
 import com.vividsolutions.jts.geom.LinearRing;
 import com.vividsolutions.jts.geom.Puntal;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryCollection;
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
@@ -231,6 +233,12 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DrawableElement;
  * Jan 17, 2018 33428      Chris.Golden   Changed to work with new, more flexible toolbar contribution
  *                                        code, and to provide new enhanced geometry-operation-based
  *                                        edits.
+ * Jan 22, 2018 25765      Chris.Golden   Changed to bring together algorithms to determine which
+ *                                        drawable is the best fit for a certain point into one place,
+ *                                        combine them where possible, and ensure consistency, all in the
+ *                                        service of handling mouse events that select or modify said
+ *                                        drawables. Also added ability for the settings to specify which
+ *                                        drag-and-drop manipulation points are to be prioritized.
  * </pre>
  * 
  * @author Xiangbao Jing
@@ -1483,6 +1491,60 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
     }
 
     /**
+     * Get the drawable from the specified list that is the best match for the
+     * specified point.
+     * 
+     * @param drawables
+     *            Non-empty list of drawables from which to get the best match.
+     * @param point
+     *            Point to test in geographic space.
+     * @param x
+     *            X coordinate of point in pixel space.
+     * @param y
+     *            Y coordinate of point in pixel space.
+     * @return Drawable that best matches the point.
+     */
+    public AbstractDrawableComponent getDrawableBestMatchingPoint(
+            List<IDrawable<? extends IAdvancedGeometry>> drawables,
+            Coordinate point, int x, int y) {
+        return drawableManager.getDrawableBestMatchingPoint(drawables, point, x,
+                y);
+    }
+
+    /**
+     * Given the specified identifiers of currently active and reactive
+     * drawables, get the primary and alternate drawables that best match the
+     * specified point. The primary drawable is that which is to be edited, if
+     * an edit action occurs; the alternate is the not necessarily editable
+     * drawable to be used if selection or deselection, instead of editing,
+     * occurs. They may be the same object, or one or both may be
+     * <code>null</code>.
+     * 
+     * @param activeIdentifiers
+     *            Identifiers of any drawables that are currently active, that
+     *            is, selected and ready to be edited.
+     * @param reactiveIdentifiers
+     *            Identifiers of any drawables that have potential to be active,
+     *            but are currently not; they are editable but not selected.
+     * @param point
+     *            Point to test in geographic space.
+     * @param x
+     *            X coordinate of point in pixel space.
+     * @param y
+     *            Y coordinate of point in pixel space.
+     * @return Primary and alternate drawables that best match the specified
+     *         point. Either or both may be <code>null</code> if matches cannot
+     *         be found.
+     */
+    public Pair<AbstractDrawableComponent, AbstractDrawableComponent> getDrawablesBestMatchingPoint(
+            Set<IEntityIdentifier> activeIdentifiers,
+            Set<IEntityIdentifier> reactiveIdentifiers, Coordinate point, int x,
+            int y) {
+        return drawableManager.getDrawablesBestMatchingPoint(activeIdentifiers,
+                reactiveIdentifiers, point, x, y);
+    }
+
+    /**
      * Determine whether or not the drawable is movable.
      * 
      * @param drawable
@@ -2195,6 +2257,18 @@ public class SpatialDisplay extends AbstractMovableToolLayer<Object>
                 .get(SpatialEntityType.TOOL)) {
             activeSpatialEntityIdentifiers.add(spatialEntity.getIdentifier());
         }
+    }
+
+    /**
+     * Set the priority for drag-and-drop geometry edits.
+     * 
+     * @param priorityForDragAndDropGeometryEdits
+     *            New priority for drag-and-drop geometry edits.
+     */
+    void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
+        drawableManager.setPriorityForDragAndDropGeometryEdits(
+                priorityForDragAndDropGeometryEdits);
     }
 
     // Private Methods

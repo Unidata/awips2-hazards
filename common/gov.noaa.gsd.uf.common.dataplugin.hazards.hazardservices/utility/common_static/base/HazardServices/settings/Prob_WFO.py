@@ -28,6 +28,8 @@ Prob_WFO = {
     "eventIdDisplayType": "ONLY_SERIAL",
     
     "deselectAfterIssuing": True,
+
+    "priorityForDragAndDropGeometryEdits": "vertex",
     
     "visibleTypes": [
         "Prob_Tornado",

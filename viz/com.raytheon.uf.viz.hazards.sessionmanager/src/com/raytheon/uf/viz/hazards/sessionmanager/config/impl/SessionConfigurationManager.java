@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.hazards.sessionmanager.config.impl;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.EVENT_ID_DISPLAY_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HAZARD_EVENT_TYPE;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.MAP_CENTER;
+import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_FIELD_TYPE_GROUP;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_CATEGORIES_AND_TYPES;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.SETTING_HAZARD_POSSIBLE_SITES;
@@ -131,6 +132,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.styles.HazardStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.ISessionTimeManager;
 import com.raytheon.viz.core.mode.CAVEMode;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.Utils;
 import gov.noaa.gsd.viz.megawidgets.GroupSpecifier;
@@ -317,6 +319,9 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      metadata fetch.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
  *                                      session events.
+ * Jan 22, 2018 25765      Chris.Golden Added "priority for drag-and-drop geometry
+ *                                      edit" flag to make geometry editing from the
+ *                                      spatial display more flexible.
  * </pre>
  * 
  * @author bsteffen
@@ -1451,6 +1456,15 @@ public class SessionConfigurationManager
                 timeResolution = startUpConfig.getConfig().getTimeResolution();
             }
             value = timeResolution;
+        } else if (identifier
+                .equals(PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS)) {
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits = settings
+                    .getPriorityForDragAndDropGeometryEdits();
+            if (priorityForDragAndDropGeometryEdits == null) {
+                priorityForDragAndDropGeometryEdits = startUpConfig.getConfig()
+                        .getPriorityForDragAndDropGeometryEdits();
+            }
+            value = priorityForDragAndDropGeometryEdits;
         }
         return (T) value;
     }

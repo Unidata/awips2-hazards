@@ -13,6 +13,7 @@ import java.util.Set;
 
 import com.vividsolutions.jts.geom.Coordinate;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.common.visuals.SpatialEntity;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialPresenter.Command;
@@ -76,6 +77,9 @@ import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
  *                                           toolbar contribution code, and to provide
  *                                           new enhanced geometry-operation-based
  *                                           edits.
+ * Jan 22, 2018   25765    Chris.Golden      Added ability for the settings to specify
+ *                                           which drag-and-drop manipulation points
+ *                                           are to be prioritized.
  * </pre>
  * 
  * @author Chris.Golden
@@ -138,10 +142,13 @@ public interface ISpatialView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      * @param selectedSpatialEntityIdentifiers
      *            Unmodifiable view of the selected spatial entity identifiers.
      *            This will be kept up to date by the presenter.
+     * @param priorityForDragAndDropGeometryEdits
+     *            Priority for drag-and-drop geometry edits.
      */
     public void initialize(SpatialPresenter presenter, String localizedSite,
             String currentSite,
-            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers);
+            Set<IEntityIdentifier> selectedSpatialEntityIdentifiers,
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits);
 
     /**
      * Get the selected spatial entity identifiers state changer.
@@ -265,4 +272,13 @@ public interface ISpatialView<I, C, E extends Enum<E>> extends IView<I, C, E> {
      */
     public void setCombineGeometryOperationsEnabled(boolean enable,
             boolean rememberSelectedAction);
+
+    /**
+     * Set the priority for drag-and-drop geometry edits.
+     * 
+     * @param priorityForDragAndDropGeometryEdits
+     *            New priority for drag-and-drop geometry edits.
+     */
+    public void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits);
 }

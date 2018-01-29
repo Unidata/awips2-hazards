@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.config.types.Tool;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 
 /**
@@ -89,6 +90,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jan 17, 2018 33428      Chris.Golden Removed no-longer-needed flag indicating
  *                                      whether a new geometry should be added to
  *                                      a selected event's geometry.
+ * Jan 22, 2018 25765     Chris.Golden  Added "priority for drag-and-drop geometry
+ *                                      edit" flag to make geometry editing from
+ *                                      the spatial display more flexible.
  * </pre>
  * 
  * @author bsteffen
@@ -103,7 +107,7 @@ public class ObservedSettings implements ISettings {
      * Types of changes that may be made to a settings object.
      */
     public enum Type {
-        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, MAP_CENTER, DEFAULT_CATEGORY, DEFAULT_TYPE, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
+        IDENTIFIER, FILTERS, TOOLS, DEFAULT_DISPLAY_DURATION, TIME_RESOLUTION, PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS, MAP_CENTER, DEFAULT_CATEGORY, DEFAULT_TYPE, POSSIBLE_SITES, DISPLAY_NAME, DEFAULT_EVENT_DURATION, VISIBLE_COLUMNS, COLUMN_DEFINITIONS, STATIC_IDENTIFIER, ADD_TO_SELECTED, EVENT_IDENTIFIER_DISPLAY_TYPE, PERSPECTIVE_IDENTIFIERS, DESELECT_AFTER_ISSUING
     };
 
     private SessionConfigurationManager configManager;
@@ -275,6 +279,11 @@ public class ObservedSettings implements ISettings {
     }
 
     @Override
+    public DragAndDropGeometryEditSource getPriorityForDragAndDropGeometryEdits() {
+        return delegate.getPriorityForDragAndDropGeometryEdits();
+    }
+
+    @Override
     public List<String> getVisibleColumns() {
         return getListCopy(delegate.getVisibleColumns());
     }
@@ -348,6 +357,13 @@ public class ObservedSettings implements ISettings {
     @Override
     public void setTimeResolution(TimeResolution timeResolution) {
         setTimeResolution(timeResolution, true, Originator.OTHER);
+    }
+
+    @Override
+    public void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
+        setPriorityForDragAndDropGeometryEdits(
+                priorityForDragAndDropGeometryEdits, true, Originator.OTHER);
     }
 
     @Override
@@ -439,6 +455,9 @@ public class ObservedSettings implements ISettings {
                 other.getDefaultTimeDisplayDuration(), false, originator));
         changed.addAll(setTimeResolution(other.getTimeResolution(), false,
                 originator));
+        changed.addAll(setPriorityForDragAndDropGeometryEdits(
+                other.getPriorityForDragAndDropGeometryEdits(), false,
+                originator));
         changed.addAll(setMapCenter(other.getMapCenter(), false, originator));
         changed.addAll(setDefaultCategory(other.getDefaultCategory(), false,
                 originator));
@@ -518,6 +537,12 @@ public class ObservedSettings implements ISettings {
                 persisted.getTimeResolution()) == false) {
             changed.addAll(
                     setTimeResolution(update.getTimeResolution(), false, null));
+        }
+        if (changed(getPriorityForDragAndDropGeometryEdits(),
+                persisted.getPriorityForDragAndDropGeometryEdits()) == false) {
+            changed.addAll(setPriorityForDragAndDropGeometryEdits(
+                    update.getPriorityForDragAndDropGeometryEdits(), false,
+                    null));
         }
         if (changed(getMapCenter(), persisted.getMapCenter()) == false) {
             changed.addAll(setMapCenter(update.getMapCenter(), false, null));
@@ -620,6 +645,13 @@ public class ObservedSettings implements ISettings {
     public void setTimeResolution(TimeResolution timeResolution,
             IOriginator originator) {
         setTimeResolution(timeResolution, true, originator);
+    }
+
+    public void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits,
+            IOriginator originator) {
+        setPriorityForDragAndDropGeometryEdits(
+                priorityForDragAndDropGeometryEdits, true, originator);
     }
 
     public void setMapCenter(MapCenter mapCenter, IOriginator originator) {
@@ -747,6 +779,20 @@ public class ObservedSettings implements ISettings {
             delegate.setTimeResolution(timeResolution);
             settingsChanged(notify, Type.TIME_RESOLUTION, originator);
             return EnumSet.of(Type.TIME_RESOLUTION);
+        }
+        return EnumSet.noneOf(Type.class);
+    }
+
+    protected Set<Type> setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits,
+            boolean notify, IOriginator originator) {
+        if (changed(priorityForDragAndDropGeometryEdits,
+                getPriorityForDragAndDropGeometryEdits())) {
+            delegate.setPriorityForDragAndDropGeometryEdits(
+                    priorityForDragAndDropGeometryEdits);
+            settingsChanged(notify,
+                    Type.PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS, originator);
+            return EnumSet.of(Type.PRIORITY_FOR_DRAG_AND_DROP_GEOMETRY_EDITS);
         }
         return EnumSet.noneOf(Type.class);
     }

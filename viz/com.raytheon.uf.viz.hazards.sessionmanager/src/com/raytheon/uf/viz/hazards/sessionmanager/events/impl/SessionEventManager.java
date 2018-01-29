@@ -629,6 +629,9 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  * Jan 17, 2018   33428    Chris.Golden Changed to use new version of method to get union of
  *                                      polygonal elements of geometry. Also added use of new
  *                                      first-class attribute of hazard event, issuance count.
+ * Jan 31, 2018   25765    Chris.Golden Fixed erroneously displayed error messages when an unlock
+ *                                      of a hazard event could not occur because the hazard event
+ *                                      was (rightfully) not locked to begin with.
  * </pre>
  * 
  * @author bsteffen
@@ -1941,8 +1944,11 @@ public class SessionEventManager implements ISessionEventManager {
                                 || (eventView
                                         .getStatus() == HazardStatus.PROPOSED))) {
                             if ((sessionManager.getLockManager()
-                                    .unlockHazardEvent(
-                                            eventView.getEventID()) == false)
+                                    .getHazardEventLockStatus(eventView
+                                            .getEventID()) == LockStatus.LOCKED_BY_ME)
+                                    && (sessionManager.getLockManager()
+                                            .unlockHazardEvent(eventView
+                                                    .getEventID()) == false)
                                     && originator.isDirectResultOfUserInput()) {
                                 messenger.getWarner().warnUser("Cannot Unlock",
                                         "Cannot unlock event "
@@ -2053,9 +2059,12 @@ public class SessionEventManager implements ISessionEventManager {
                             // updateDurationChoicesForEvent(oEvent, false);
                         } else if (wasReissued) {
                             persistEvent(oEvent);
-                            if (sessionManager.getLockManager()
-                                    .unlockHazardEvent(
-                                            oEvent.getEventID()) == false) {
+                            if ((sessionManager.getLockManager()
+                                    .getHazardEventLockStatus(
+                                            oEvent.getEventID()) != LockStatus.LOCKED_BY_ME)
+                                    || (sessionManager.getLockManager()
+                                            .unlockHazardEvent(oEvent
+                                                    .getEventID()) == false)) {
                                 messenger.getWarner().warnUser("Cannot Unlock",
                                         "Cannot unlock event "
                                                 + oEvent.getEventID()
@@ -6364,8 +6373,16 @@ public class SessionEventManager implements ISessionEventManager {
          * not.
          */
         if (addToHistory || (keepLocked == false)) {
-            if (sessionManager.getLockManager()
-                    .unlockHazardEvents(eventIdentifiers) == false) {
+            boolean atLeastOneNeedsUnlocking = false;
+            for (String eventIdentifier : eventIdentifiers) {
+                if (sessionManager.getLockManager().getHazardEventLockStatus(
+                        eventIdentifier) == LockStatus.LOCKED_BY_ME) {
+                    atLeastOneNeedsUnlocking = true;
+                    break;
+                }
+            }
+            if (atLeastOneNeedsUnlocking && (sessionManager.getLockManager()
+                    .unlockHazardEvents(eventIdentifiers) == false)) {
                 if (originator.isDirectResultOfUserInput()) {
                     messenger.getWarner()
                             .warnUser("Cannot Unlock",

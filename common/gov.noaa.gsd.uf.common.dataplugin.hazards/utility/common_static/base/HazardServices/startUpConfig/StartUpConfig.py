@@ -16,6 +16,7 @@ StartUpConfig = {
         "lon":-95.91,
         "zoom": 7
     },
+
     # Possible Sites -- Hazards from these sites can be selected to be visible in the Hazard Services display.
     #    They will appear in the Settings dialog as a check list from which to choose
     # Example:  "possibleSites": ["BOU","PUB","GJT","CYS","OAX","FSD","DMX","GID","EAX","TOP","RAH"],
@@ -35,6 +36,9 @@ StartUpConfig = {
     # Directory of mounted X.400 directory where exported Site Config data is stored.
     "siteBackupBaseDir" : "CHANGEME",
 
+    # Indicator of what has priority for drag-and-drop-style event modifications; must be "vertex" or "boundingBox".
+    "priorityForDragAndDropGeometryEdits": "boundingBox",
+    
     # NOTE: The following can be added to a Settings file to trump the values in StartUpConfig
     #     "mapCenter", "possibleSites", "visibleSites", "eventIdDisplayType"
     

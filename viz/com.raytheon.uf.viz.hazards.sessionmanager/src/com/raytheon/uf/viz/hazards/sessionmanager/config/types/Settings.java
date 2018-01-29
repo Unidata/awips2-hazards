@@ -32,6 +32,8 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
+import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSourceAdapter;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.common.utilities.TimeResolutionAdapter;
 
@@ -61,6 +63,9 @@ import gov.noaa.gsd.common.utilities.TimeResolutionAdapter;
  * Jan 17, 2018 33428      Chris.Golden Removed no-longer-needed flag indicating
  *                                      whether a new geometry should be added to
  *                                      a selected event's geometry.
+ * Jan 22, 2018 25765      Chris.Golden Added "priority for drag-and-drop geometry
+ *                                      edit" flag to make geometry editing from
+ *                                      the spatial display more flexible.
  * </pre>
  * 
  * @author bsteffen
@@ -100,6 +105,12 @@ public class Settings implements ISettings {
      */
     @XmlJavaTypeAdapter(TimeResolutionAdapter.class)
     private TimeResolution timeResolution;
+
+    /**
+     * Priority for drag-and-drop geometry edits.
+     */
+    @XmlJavaTypeAdapter(DragAndDropGeometryEditSourceAdapter.class)
+    private DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits;
 
     /**
      * Where to center the map when this settings is loaded.
@@ -206,6 +217,8 @@ public class Settings implements ISettings {
         setToolbarTools(other.getToolbarTools());
         setDefaultTimeDisplayDuration(other.getDefaultTimeDisplayDuration());
         setTimeResolution(other.getTimeResolution());
+        setPriorityForDragAndDropGeometryEdits(
+                other.getPriorityForDragAndDropGeometryEdits());
         setMapCenter(other.getMapCenter());
         setDefaultCategory(other.getDefaultCategory());
         setDefaultType(other.getDefaultType());
@@ -280,6 +293,17 @@ public class Settings implements ISettings {
     @Override
     public void setTimeResolution(TimeResolution timeResolution) {
         this.timeResolution = timeResolution;
+    }
+
+    @Override
+    public DragAndDropGeometryEditSource getPriorityForDragAndDropGeometryEdits() {
+        return priorityForDragAndDropGeometryEdits;
+    }
+
+    @Override
+    public void setPriorityForDragAndDropGeometryEdits(
+            DragAndDropGeometryEditSource priorityForDragAndDropGeometryEdits) {
+        this.priorityForDragAndDropGeometryEdits = priorityForDragAndDropGeometryEdits;
     }
 
     @Override

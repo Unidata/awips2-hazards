@@ -9,17 +9,17 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.input;
 
+import java.util.ArrayList;
+
+import com.google.common.collect.Lists;
+import com.vividsolutions.jts.geom.Coordinate;
+
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
 import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.SpatialDisplay;
 import gov.noaa.nws.ncep.ui.pgen.elements.AbstractDrawableComponent;
 import gov.noaa.nws.ncep.ui.pgen.elements.DrawableType;
 import gov.noaa.nws.ncep.ui.pgen.elements.Line;
-
-import java.util.ArrayList;
-
-import com.google.common.collect.Lists;
-import com.vividsolutions.jts.geom.Coordinate;
 
 /**
  * Description: Base class from which to derive classes used to handle input in
@@ -42,6 +42,11 @@ import com.vividsolutions.jts.geom.Coordinate;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Sep 21, 2016   15934    Chris.Golden Initial creation.
+ * Jan 18, 2018   25765    Chris.Golden Changed so that the user draws by
+ *                                      clicking, dragging, and releasing,
+ *                                      instead of clicking and releasing,
+ *                                      moving the mouse, and clicking and
+ *                                      releasing.
  * </pre>
  * 
  * @author Chris.Golden
@@ -87,7 +92,25 @@ public abstract class ScalingDrawingInputHandler extends DrawingInputHandler {
     }
 
     @Override
-    public boolean handleMouseMove(int x, int y) {
+    public boolean handleMouseDown(int x, int y, int button) {
+
+        /*
+         * Get the cursor location.
+         */
+        Coordinate location = getLocationFromPixel(x, y, button, false);
+        if (location == null) {
+            return false;
+        }
+
+        /*
+         * Remember the first location and do nothing more.
+         */
+        firstLocation = location;
+        return true;
+    }
+
+    @Override
+    public boolean handleMouseDownMove(int x, int y, int button) {
 
         /*
          * Do nothing if there is no first point recorded yet.
@@ -130,18 +153,9 @@ public abstract class ScalingDrawingInputHandler extends DrawingInputHandler {
         /*
          * Get the cursor location.
          */
-        Coordinate location = getLocationFromPixel(x, y, button, true);
+        Coordinate location = getLocationFromPixel(x, y, button, false);
         if (location == null) {
             return false;
-        }
-
-        /*
-         * If this is the first location being placed, remember it and do
-         * nothing more.
-         */
-        if (firstLocation == null) {
-            firstLocation = location;
-            return true;
         }
 
         /*
@@ -183,13 +197,14 @@ public abstract class ScalingDrawingInputHandler extends DrawingInputHandler {
      */
     protected final void showGhost() {
         ArrayList<Coordinate> ghostPoints = Lists
-                .newArrayList(AdvancedGeometryUtilities
-                        .getJtsGeometry(
-                                createGeometryFromPoints(firstLocation,
-                                        secondLocation)).getCoordinates());
+                .newArrayList(
+                        AdvancedGeometryUtilities
+                                .getJtsGeometry(createGeometryFromPoints(
+                                        firstLocation, secondLocation))
+                        .getCoordinates());
         AbstractDrawableComponent ghost = getDrawableFactory().create(
-                DrawableType.LINE, getDrawingAttributes(), "Line",
-                "LINE_SOLID", ghostPoints, null);
+                DrawableType.LINE, getDrawingAttributes(), "Line", "LINE_SOLID",
+                ghostPoints, null);
         ((Line) ghost).setLinePoints(ghostPoints);
         getSpatialDisplay().setGhostOfDrawableBeingEdited(ghost);
     }
