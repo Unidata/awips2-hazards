@@ -96,6 +96,7 @@ import com.raytheon.uf.common.style.StyleException;
 import com.raytheon.uf.common.style.StyleManager;
 import com.raytheon.uf.common.style.StyleRule;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
+import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.core.jobs.JobPool;
 import com.raytheon.uf.viz.core.localization.LocalizationManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
@@ -322,6 +323,10 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * Jan 22, 2018 25765      Chris.Golden Added "priority for drag-and-drop geometry
  *                                      edit" flag to make geometry editing from the
  *                                      spatial display more flexible.
+ * Jan 30, 2018 45994      Chris.Golden Added the provision of user name and
+ *                                      workstation to the metadata generators via
+ *                                      the environment map they are given as a
+ *                                      parameter.
  * </pre>
  * 
  * @author bsteffen
@@ -1007,6 +1012,10 @@ public class SessionConfigurationManager
          */
         Map<String, Serializable> environmentMap = new HashMap<String, Serializable>();
         environmentMap.put(HazardConstants.SITE, getSiteID());
+        environmentMap.put(HazardConstants.USER_NAME,
+                VizApp.getWsId().getUserName());
+        environmentMap.put(HazardConstants.WORKSTATION,
+                VizApp.getWsId().getHostName());
 
         /*
          * Get the metadata, which is a map with at least one entry holding the

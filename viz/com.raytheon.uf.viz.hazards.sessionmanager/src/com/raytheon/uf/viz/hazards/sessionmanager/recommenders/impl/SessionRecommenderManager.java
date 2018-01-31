@@ -224,6 +224,15 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      that are supposed to run when the hazard status
  *                                      changes. This allows issuance and reissuance to
  *                                      be treated symmetrically by recommenders.
+ * Jan 30, 2018   45994    Chris.Golden Added the provision of user name and workstation
+ *                                      to the recommenders via their input event set.
+ *                                      Also removed the option of letting a recommender
+ *                                      decide whether or not to set the origin (user
+ *                                      name, workstation, and source) of an event that
+ *                                      has been modified by said recommender; these
+ *                                      elements are always modified. Also fixed bugs
+ *                                      caused by recommenders modifying events that
+ *                                      as of  yet have no hazard type.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1723,6 +1732,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 .getTimeManager().getSelectedTime().getLowerBound());
         eventSet.addAttribute(HazardConstants.FRAMES_INFO,
                 getFramesInfoAsDictionary());
+        eventSet.addAttribute(HazardConstants.USER_NAME,
+                VizApp.getWsId().getUserName());
+        eventSet.addAttribute(HazardConstants.WORKSTATION,
+                VizApp.getWsId().getHostName());
 
         /*
          * If the data times are to be included, add them to the event set as
@@ -1914,40 +1927,6 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     HazardConstants.RECOMMENDER_RESULT_TREAT_AS_ISSUANCE));
 
             /*
-             * Determine whether or not the events should have their user name,
-             * workstation, and source set. This defaults to true. A boolean may
-             * be provided, meaning that all events will have their origin set
-             * (or none), or a map of hazard event identifiers to booleans may
-             * be given instead, allowing a more fine-grained approach.
-             */
-            Set<String> eventIdentifiersNeedingOriginSet = new HashSet<>(
-                    events.size(), 1.0f);
-            Serializable setOriginObj = events.getAttribute(
-                    HazardConstants.RECOMMENDER_RESULT_SET_ORIGIN);
-            if (Boolean.FALSE.equals(setOriginObj) == false) {
-                for (IEvent event : events) {
-                    if (event instanceof IHazardEvent) {
-                        String eventIdentifier = ((IHazardEvent) event)
-                                .getEventID();
-                        if (eventIdentifier != null) {
-                            eventIdentifiersNeedingOriginSet
-                                    .add(((IHazardEvent) event).getEventID());
-                        }
-                    }
-                }
-                if (setOriginObj instanceof Map<?, ?>) {
-                    Map<?, ?> setOriginFlagsForEventIdentifiers = (Map<?, ?>) setOriginObj;
-                    for (Map.Entry<?, ?> entry : setOriginFlagsForEventIdentifiers
-                            .entrySet()) {
-                        if (Boolean.FALSE.equals(entry.getValue())) {
-                            eventIdentifiersNeedingOriginSet
-                                    .remove(entry.getKey());
-                        }
-                    }
-                }
-            }
-
-            /*
              * Determine whether or not all hazard events that are brand new
              * (i.e., just created by the recommender) should be saved to either
              * the history list or the database.
@@ -2078,10 +2057,13 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         /*
                          * Add the hazard area for the event.
                          */
-                        Map<String, String> ugcHatchingAlgorithms = eventManager
-                                .buildInitialHazardAreas(hazardEvent);
-                        hazardEvent.addHazardAttribute(HAZARD_AREA,
-                                (Serializable) ugcHatchingAlgorithms);
+                        if (HazardEventUtilities
+                                .getHazardType(hazardEvent) != null) {
+                            Map<String, String> ugcHatchingAlgorithms = eventManager
+                                    .buildInitialHazardAreas(hazardEvent);
+                            hazardEvent.addHazardAttribute(HAZARD_AREA,
+                                    (Serializable) ugcHatchingAlgorithms);
+                        }
 
                         /*
                          * If this is an existing hazard event, iterate through
@@ -2108,18 +2090,14 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                         }
 
                         /*
-                         * Add the site identifier if it not already set, and if
-                         * the recommender wants the origin set, do so now.
+                         * Add the site identifier if it not already set, set
+                         * the workstation identifier and source.
                          */
                         if (hazardEvent.getSiteID() == null) {
                             hazardEvent.setSiteID(configManager.getSiteID());
                         }
-                        if (isNew || eventIdentifiersNeedingOriginSet
-                                .contains(hazardEvent.getEventID())) {
-                            hazardEvent.setWsId(VizApp.getWsId());
-                            hazardEvent
-                                    .setSource(IHazardEvent.Source.RECOMMENDER);
-                        }
+                        hazardEvent.setWsId(VizApp.getWsId());
+                        hazardEvent.setSource(IHazardEvent.Source.RECOMMENDER);
 
                         /*
                          * Add the event if it is new, or modify an existing
@@ -2250,7 +2228,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                     .getVisibleTypes();
             int startSize = visibleTypes.size();
             for (IHazardEventView event : addedOrModifiedEvents) {
-                visibleTypes.add(HazardEventUtilities.getHazardType(event));
+                String hazardType = HazardEventUtilities.getHazardType(event);
+                if (hazardType != null) {
+                    visibleTypes.add(hazardType);
+                }
             }
             if (startSize != visibleTypes.size()) {
                 configManager.getSettings().setVisibleTypes(visibleTypes);

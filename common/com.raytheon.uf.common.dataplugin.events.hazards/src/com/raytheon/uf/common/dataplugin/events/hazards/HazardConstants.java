@@ -160,6 +160,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jan 22, 2018 25765     Chris.Golden  Added "priority for drag-and-drop geometry edit" flag
  *                                      to make geometry editing from the spatial display more
  *                                      flexible.
+ * Jan 30, 2018 45994     Chris.Golden  Removed obsolete "setOrigin" constant, and added new
+ *                                      constants for defining custom buttons for recommender
+ *                                      dialogs.
  * </pre>
  * 
  * @author mnash
@@ -262,8 +265,6 @@ public final class HazardConstants {
     public static final String RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE = "lockEvents";
 
     public static final String RECOMMENDER_RESULT_TREAT_AS_ISSUANCE = "treatAsIssuance";
-
-    public static final String RECOMMENDER_RESULT_SET_ORIGIN = "setOrigin";
 
     public static final String RECOMMENDER_RESULT_DELETE_EVENT_IDENTIFIERS = "deleteEventIdentifiers";
 
@@ -1020,7 +1021,15 @@ public final class HazardConstants {
 
     public static final String FIELDS = "fields";
 
+    public static final String IDENTIFIER = "identifier";
+
     public static final String LABEL = "label";
+
+    public static final String CLOSE = "close";
+
+    public static final String CANCEL = "cancel";
+
+    public static final String DEFAULT = "default";
 
     public static final String FIELD_NAME = "fieldName";
 
@@ -1037,6 +1046,8 @@ public final class HazardConstants {
     public static final String WORKSTATION = "workStation";
 
     public static final String WSID = "wsID";
+
+    public static final String DIALOG_DISMISS_CHOICE = "__dismissChoice__";
 
     /*
      * The following are related to hazard event metadata and recommender
@@ -1066,6 +1077,11 @@ public final class HazardConstants {
      * Key for values dictionary within the recommender dialog.
      */
     public static final String VALUES_DICTIONARY_KEY = "valueDict";
+
+    /**
+     * Key for custom buttons list within the recommender dialog.
+     */
+    public static final String BUTTONS_KEY = "buttons";
 
     /**
      * Key for title text.

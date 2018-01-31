@@ -55,6 +55,7 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  * <p>
  * When instantiated, the dialog is passed a JSON string holding a dictionary
  * which in turn contains the following parameters:
+ * </p>
  * <dl>
  * <dt><code>fields</code></dt>
  * <dd>List of dictionaries, with each of the latter defining a megawidget.</dd>
@@ -142,12 +143,12 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  */
 abstract class AbstractToolDialog extends BasicDialog {
 
-    // Private Static Constants
+    // Protected Static Constants
 
     /**
      * Logging mechanism.
      */
-    private static final transient IUFStatusHandler statusHandler = UFStatus
+    protected static final transient IUFStatusHandler statusHandler = UFStatus
             .getHandler(AbstractToolDialog.class);
 
     // Private Variables
@@ -233,7 +234,7 @@ abstract class AbstractToolDialog extends BasicDialog {
             dialogDict = Dict.getInstance(jsonParams);
         } catch (Exception e) {
             statusHandler.error(
-                    "ToolDialog.<init>: Error: Problem parsing JSON for dialog dictionary.",
+                    "AbstractToolDialog.<init>: Error: Problem parsing JSON for dialog dictionary.",
                     e);
         }
         try {
@@ -241,7 +242,7 @@ abstract class AbstractToolDialog extends BasicDialog {
                     HazardConstants.VALUES_DICTIONARY_KEY);
         } catch (Exception e) {
             statusHandler.error(
-                    "ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
+                    "AbstractToolDialog.<init>: Error: Problem parsing JSON for initial values.",
                     e);
         }
         String scriptFile = null;
@@ -249,7 +250,7 @@ abstract class AbstractToolDialog extends BasicDialog {
             scriptFile = dialogDict.getDynamicallyTypedValue(FILE_PATH_KEY);
         } catch (Exception e) {
             statusHandler.error(
-                    "ToolDialog.<init>: Error: Problem parsing JSON for initial values.",
+                    "AbstractToolDialog.<init>: Error: Problem parsing JSON for initial values.",
                     e);
         }
         pythonSideEffectsScriptFile = new File(scriptFile);

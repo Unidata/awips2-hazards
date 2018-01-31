@@ -29,6 +29,10 @@ import gov.noaa.gsd.viz.hazards.display.action.ToolAction;
  * Aug 15, 2017   22757    Chris.Golden Initial creation.
  * Sep 27, 2017   38072    Chris.Golden Changed to work with new recommender
  *                                      manager.
+ * Jan 30, 2018   45994    Chris.Golden Fixed bug that could potentially stop
+ *                                      future recommenders from running if
+ *                                      the user closed a dialog via the X
+ *                                      button in the title bar.
  * </pre>
  * 
  * @author Chris.Golden
@@ -64,6 +68,12 @@ public class ToolResultDialog extends AbstractToolDialog {
     protected void createButtonsForButtonBar(Composite parent) {
         createButton(parent, IDialogConstants.CANCEL_ID,
                 IDialogConstants.OK_LABEL, true);
+    }
+
+    @Override
+    protected void handleShellCloseEvent() {
+        cancelPressed();
+        close();
     }
 
     @Override

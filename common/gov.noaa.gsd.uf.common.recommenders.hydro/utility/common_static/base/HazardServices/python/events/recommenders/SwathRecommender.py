@@ -11,7 +11,7 @@ from ProbUtils import ProbUtils
 import logging, UFStatusHandler
 import matplotlib.pyplot as plt
 import LogUtils
-from HazardConstants import SAVE_TO_HISTORY_KEY, SAVE_TO_DATABASE_KEY, KEEP_SAVED_TO_DATABASE_LOCKED_KEY, SET_ORIGIN_KEY, SELECTED_TIME_KEY
+from HazardConstants import SAVE_TO_HISTORY_KEY, SAVE_TO_DATABASE_KEY, KEEP_SAVED_TO_DATABASE_LOCKED_KEY, SELECTED_TIME_KEY
 
 import math, time
 from math import *
@@ -198,8 +198,6 @@ class Recommender(RecommenderTemplate.Recommender):
             self.attributeIdentifiers = []
 
         resultEventSet = EventSetFactory.createEventSet(None)
-        self.setOriginDict = {}
-        resultEventSet.addAttribute(SET_ORIGIN_KEY, self.setOriginDict)
         self.saveToDatabase = True
         self.saveToHistory = False
         self.keepLocked = True
@@ -252,12 +250,11 @@ class Recommender(RecommenderTemplate.Recommender):
                 #print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
                 self.probUtils.setActivation(event)
                 self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
-                self.setOriginDict[event.getEventID()] = False
                 print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
                 print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
                 print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
                 self.flush()
-                # self.setVisualFeatures(event)
+                self.setVisualFeatures(event)
                 resultEventSet.add(event)
                 continue
             

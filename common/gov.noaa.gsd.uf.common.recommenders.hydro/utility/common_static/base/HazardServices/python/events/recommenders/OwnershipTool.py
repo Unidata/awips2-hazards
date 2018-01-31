@@ -92,6 +92,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 labelFieldDict["label"] = self.NO_SELECTION_ERROR_MSG if totalSelectedEvents==0 else self.MORE_THAN_ONE_ERROR_MSG 
                 dialogDict["fields"] = labelFieldDict
                 dialogDict["valueDict"] = valueDict
+                dialogDict["buttons"] = [ { "identifier": "cancel", "label": "OK", "close": True, "cancel": True, "default": True } ]
                 return dialogDict
             else:
                 currentOwnerFieldDict = {}
@@ -115,7 +116,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 fieldDicts = [currentOwnerFieldDict, newOwnerFieldDict]
                 dialogDict["fields"] = fieldDicts
                 dialogDict["valueDict"] = valueDict
-        
+
+                dialogDict["buttons"] = [ { "identifier": "request", "label": "Request", "default": True }, { "identifier": "cancel", "label": "Cancel", "close": True, "cancel": True } ]
+
                 return dialogDict
         
         if trigger == "hazardEventModification":
@@ -129,6 +132,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     labelFieldDict["label"] = self.NEW_OWNER_MSG 
                     dialogDict["fields"] = labelFieldDict
                     dialogDict["valueDict"] = valueDict
+                    dialogDict["buttons"] = [ { "identifier": "accept", "label": "Accept" }, { "identifier": "decline", "label": "Decline", "close": True, "default": True } ]
                     return dialogDict
         return {}                
     
@@ -143,6 +147,8 @@ class Recommender(RecommenderTemplate.Recommender):
         objects
         """
         print "OT: EventSet is ", eventSet
+        
+        print "OT: Dismiss choice is ", dialogInputMap.get("__dismissChoice__", None)
 
         eventSetAttrs = eventSet.getAttributes()
         trigger = eventSetAttrs.get('trigger')
@@ -163,8 +169,6 @@ class Recommender(RecommenderTemplate.Recommender):
 
         print "OT: Total of selected events is ", totalSelectedEvents
         resultEventSet = EventSetFactory.createEventSet(None)
-        self.setOriginDict = {}
-        resultEventSet.addAttribute(SET_ORIGIN_KEY, self.setOriginDict)
         self.saveToDatabase = True
 
         if selectedEvent:
