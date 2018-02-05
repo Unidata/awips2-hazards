@@ -43,6 +43,9 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  * Jan 17, 2018   33428    Chris.Golden Added support for flag that indicates
  *                                      whether or not visual feature is
  *                                      editable via geometry operations.
+ * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
+ *                                      useForCentering properties to visual
+ *                                      features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -147,9 +150,13 @@ class VisualFeaturesListBinaryDeserializer
                     IAdvancedGeometry.class, bytesInputStream));
             visualFeature.setBorderColor(deserializeProperty(
                     SerializableColor.class, bytesInputStream));
+            visualFeature.setBufferColor(deserializeProperty(
+                    SerializableColor.class, bytesInputStream));
             visualFeature.setFillColor(deserializeProperty(
                     SerializableColor.class, bytesInputStream));
             visualFeature.setBorderThickness(
+                    deserializeProperty(Double.class, bytesInputStream));
+            visualFeature.setBufferThickness(
                     deserializeProperty(Double.class, bytesInputStream));
             visualFeature.setBorderStyle(
                     deserializeProperty(BorderStyle.class, bytesInputStream));
@@ -178,6 +185,8 @@ class VisualFeaturesListBinaryDeserializer
             visualFeature.setRotatable(
                     deserializeProperty(Boolean.class, bytesInputStream));
             visualFeature.setScaleable(
+                    deserializeProperty(Boolean.class, bytesInputStream));
+            visualFeature.setUseForCentering(
                     deserializeProperty(Boolean.class, bytesInputStream));
             visualFeature.setTopmost(
                     deserializeProperty(Boolean.class, bytesInputStream));

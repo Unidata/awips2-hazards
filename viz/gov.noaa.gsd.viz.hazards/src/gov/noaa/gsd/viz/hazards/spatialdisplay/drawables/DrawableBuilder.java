@@ -108,6 +108,8 @@ import gov.noaa.nws.ncep.ui.pgen.elements.DECollection;
  *                                      as necessary.
  * Jan 17, 2018 33428      Chris.Golden Changed to work with new version of
  *                                      {@link IDrawable}.
+ * Feb 02, 2018   26712    Chris.Golden Changed to allow visual buffering of appropriate
+ *                                      drawables.
  * </pre>
  * 
  * @author bryon.lawrence
@@ -523,12 +525,13 @@ public class DrawableBuilder {
             drawingAttributes.setColors(new Color[] { color, color });
             drawingAttributes.setDottedLineStyle();
             if (geometry.isPotentiallyCurved()) {
-                hatchedAreas.add(new EllipseDrawable(
-                        spatialEntity.getIdentifier(), drawingAttributes,
-                        (Ellipse) geometry.copyOf()));
+                hatchedAreas
+                        .add(new EllipseDrawable(spatialEntity.getIdentifier(),
+                                (MultiPointDrawableAttributes) drawingAttributes,
+                                (Ellipse) geometry.copyOf()));
             } else {
                 hatchedAreas.add(new PathDrawable(spatialEntity.getIdentifier(),
-                        drawingAttributes,
+                        (MultiPointDrawableAttributes) drawingAttributes,
                         (GeometryWrapper) geometry.copyOf()));
             }
         }
@@ -726,6 +729,10 @@ public class DrawableBuilder {
         Color color = getColor(spatialEntity.getBorderColor());
         drawingAttributes.setColors(new Color[] { color, color });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
+        drawingAttributes
+                .setBufferWidth((float) spatialEntity.getBufferThickness());
+        drawingAttributes
+                .setBufferColor(getColor(spatialEntity.getBufferColor()));
         if (hasNonEmptyLabel(spatialEntity)) {
             drawingAttributes
                     .setLabel(convertNewlinesToArray(spatialEntity.getLabel()));
@@ -790,6 +797,10 @@ public class DrawableBuilder {
         Color fillColor = getColor(spatialEntity.getFillColor());
         drawingAttributes.setColors(new Color[] { borderColor, fillColor });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
+        drawingAttributes
+                .setBufferWidth((float) spatialEntity.getBufferThickness());
+        drawingAttributes
+                .setBufferColor(getColor(spatialEntity.getBufferColor()));
         if (hasNonEmptyLabel(spatialEntity)) {
             drawingAttributes
                     .setLabel(convertNewlinesToArray(spatialEntity.getLabel()));
@@ -854,6 +865,10 @@ public class DrawableBuilder {
         Color fillColor = getColor(spatialEntity.getFillColor());
         drawingAttributes.setColors(new Color[] { borderColor, fillColor });
         drawingAttributes.setFillPattern(FillPattern.SOLID);
+        drawingAttributes
+                .setBufferWidth((float) spatialEntity.getBufferThickness());
+        drawingAttributes
+                .setBufferColor(getColor(spatialEntity.getBufferColor()));
         if (hasNonEmptyLabel(spatialEntity)) {
             drawingAttributes
                     .setLabel(convertNewlinesToArray(spatialEntity.getLabel()));

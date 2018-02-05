@@ -94,6 +94,9 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  * Jan 17, 2018   33428    Chris.Golden Added support for flag that indicates
  *                                      whether or not visual feature is
  *                                      editable via geometry operations.
+ * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
+ *                                      useForCentering properties to visual
+ *                                      features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -215,6 +218,17 @@ class VisualFeaturesListJsonDeserializer
                                     VisualFeaturesListJsonConverter.KEY_BORDER_COLOR);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_BUFFER_COLOR,
+                    new IPropertyDeserializer<SerializableColor>() {
+
+                        @Override
+                        public SerializableColor deserializeProperty(
+                                JsonNode node, String identifier)
+                                        throws JsonParseException {
+                            return deserializeColor(node, identifier,
+                                    VisualFeaturesListJsonConverter.KEY_BUFFER_COLOR);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_FILL_COLOR,
                     new IPropertyDeserializer<SerializableColor>() {
 
@@ -235,6 +249,18 @@ class VisualFeaturesListJsonDeserializer
                             return deserializeNonNegativeDouble(node,
                                     identifier,
                                     VisualFeaturesListJsonConverter.KEY_BORDER_THICKNESS,
+                                    false);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_BUFFER_THICKNESS,
+                    new IPropertyDeserializer<Double>() {
+
+                        @Override
+                        public Double deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeNonNegativeDouble(node,
+                                    identifier,
+                                    VisualFeaturesListJsonConverter.KEY_BUFFER_THICKNESS,
                                     false);
                         }
                     })
@@ -387,6 +413,16 @@ class VisualFeaturesListJsonDeserializer
                                     VisualFeaturesListJsonConverter.KEY_SCALEABLE);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_USE_FOR_CENTERING,
+                    new IPropertyDeserializer<Boolean>() {
+
+                        @Override
+                        public Boolean deserializeProperty(JsonNode node,
+                                String identifier) throws JsonParseException {
+                            return deserializeBoolean(node, identifier,
+                                    VisualFeaturesListJsonConverter.KEY_USE_FOR_CENTERING);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_TOPMOST,
                     new IPropertyDeserializer<Boolean>() {
 
@@ -443,6 +479,16 @@ class VisualFeaturesListJsonDeserializer
                             visualFeature.setBorderColor(value);
                         }
                     })
+            .put(VisualFeaturesListJsonConverter.KEY_BUFFER_COLOR,
+                    new IPropertyAssigner<SerializableColor>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<SerializableColor> value,
+                                VisualFeature visualFeature) {
+                            visualFeature.setBufferColor(value);
+                        }
+                    })
             .put(VisualFeaturesListJsonConverter.KEY_FILL_COLOR,
                     new IPropertyAssigner<SerializableColor>() {
 
@@ -461,6 +507,16 @@ class VisualFeaturesListJsonDeserializer
                                 TemporallyVariantProperty<Double> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setBorderThickness(value);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_BUFFER_THICKNESS,
+                    new IPropertyAssigner<Double>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<Double> value,
+                                VisualFeature visualFeature) {
+                            visualFeature.setBufferThickness(value);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_BORDER_STYLE,
@@ -602,6 +658,16 @@ class VisualFeaturesListJsonDeserializer
                                 TemporallyVariantProperty<Boolean> value,
                                 VisualFeature visualFeature) {
                             visualFeature.setScaleable(value);
+                        }
+                    })
+            .put(VisualFeaturesListJsonConverter.KEY_USE_FOR_CENTERING,
+                    new IPropertyAssigner<Boolean>() {
+
+                        @Override
+                        public void assignPropertyValue(
+                                TemporallyVariantProperty<Boolean> value,
+                                VisualFeature visualFeature) {
+                            visualFeature.setUseForCentering(value);
                         }
                     })
             .put(VisualFeaturesListJsonConverter.KEY_TOPMOST,

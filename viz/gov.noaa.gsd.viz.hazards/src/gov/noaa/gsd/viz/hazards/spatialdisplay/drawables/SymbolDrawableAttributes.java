@@ -10,7 +10,7 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
 /**
- * Description: Drawing attributes for a Hazard Services point.
+ * Drawing attributes for a Hazard Services point.
  * 
  * <pre>
  * 

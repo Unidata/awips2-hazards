@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -53,6 +54,8 @@ import gov.noaa.nws.ncep.ui.pgen.elements.Line;
  *                                       manipulation points.
  * Jan 17, 2018 33428      Chris.Golden  Changed to work with new version of
  *                                       {@link IDrawable}.
+ * Feb 02, 2018 26712      Chris.Golden  Changed to allow visual buffering of
+ *                                       appropriate drawables.
  * </pre>
  * 
  * @author daniel.s.schaffer@noaa.gov
@@ -89,19 +92,30 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry>
     private final int geometryIndex;
 
     /**
-     * Flag indicating whether or not this shape is movable,
+     * Flag indicating whether or not this shape is movable.
      */
     private boolean movable;
 
     /**
-     * Flag indicating whether or not this shape is resizable,
+     * Flag indicating whether or not this shape is resizable.
      */
     private boolean resizable;
 
     /**
-     * Flag indicating whether or not this shape is rotatable,
+     * Flag indicating whether or not this shape is rotatable.
      */
     private boolean rotatable;
+
+    /**
+     * Width of the buffer drawn to either side of the outline of the geometry.
+     * If <code>0.0</code>, no buffer is needed.
+     */
+    private float bufferWidth;
+
+    /**
+     * Color of the buffer drawn to either side of the outline of the geometry.
+     */
+    private Color bufferColor;
 
     /**
      * Manipulation points.
@@ -127,10 +141,12 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry>
      *            Geometry.
      */
     public MultiPointDrawable(IEntityIdentifier identifier,
-            DrawableAttributes attributes, G geometry) {
+            MultiPointDrawableAttributes attributes, G geometry) {
         this.identifier = identifier;
         this.geometryIndex = attributes.getGeometryIndex();
         this.geometry = geometry;
+        this.bufferWidth = attributes.getBufferWidth();
+        this.bufferColor = attributes.getBufferColor();
         update(attributes);
         setPgenCategory(LINE);
         setPgenType(attributes.getLineStyle().toString());
@@ -150,6 +166,8 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry>
     protected MultiPointDrawable(MultiPointDrawable<G> other) {
         this.identifier = other.identifier;
         this.geometryIndex = other.geometryIndex;
+        this.bufferWidth = other.bufferWidth;
+        this.bufferColor = other.bufferColor;
         this.movable = other.movable;
         this.resizable = other.resizable;
         this.rotatable = other.rotatable;
@@ -226,6 +244,25 @@ public abstract class MultiPointDrawable<G extends IAdvancedGeometry>
     @Override
     public int getGeometryIndex() {
         return geometryIndex;
+    }
+
+    /**
+     * Get the width in pixels of the buffer drawn to either side of the shape's
+     * outline. If <code>0</code>, no buffer is needed.
+     * 
+     * @return Width in pixels of the buffer.
+     */
+    public float getBufferWidth() {
+        return bufferWidth;
+    }
+
+    /**
+     * Get the color of the buffer drawn to either side of the shape's outline.
+     * 
+     * @return Color of the buffer.
+     */
+    public Color getBufferColor() {
+        return bufferColor;
     }
 
     @SuppressWarnings("unchecked")

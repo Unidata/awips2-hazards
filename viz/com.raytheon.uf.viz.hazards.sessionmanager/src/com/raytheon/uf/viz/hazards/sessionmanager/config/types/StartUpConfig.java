@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.raytheon.uf.common.colormap.Color;
 
 import gov.noaa.gsd.common.utilities.DragAndDropGeometryEditSource;
 import gov.noaa.gsd.common.utilities.TimeResolution;
@@ -53,6 +54,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jan 22, 2018 25765      Chris.Golden Added "priority for drag-and-drop geometry edit" flag
  *                                      to make geometry editing from the spatial display more
  *                                      flexible.
+ * Feb 02, 2018 26712      Chris.Golden Added geometryBufferColor and geometryBufferThickness
+ *                                      properties to allow base geometries to be given visual
+ *                                      buffers on the Spatial Display.
  * </pre>
  * 
  * @author bsteffen
@@ -116,6 +120,12 @@ public class StartUpConfig {
 
     @JsonProperty("persistenceBehavior")
     private String persistenceBehavior;
+
+    @JsonProperty("geometryBufferThickness")
+    private double geometryBufferThickness;
+
+    @JsonProperty("geometryBufferColor")
+    private Color geometryBufferColor;
 
     public Console getConsole() {
         return console;
@@ -269,6 +279,22 @@ public class StartUpConfig {
 
     public void setPersistenceBehavior(String persistenceBehavior) {
         this.persistenceBehavior = persistenceBehavior;
+    }
+
+    public double getGeometryBufferThickness() {
+        return geometryBufferThickness;
+    }
+
+    public void setGeometryBufferThickness(double geometryBufferThickness) {
+        this.geometryBufferThickness = geometryBufferThickness;
+    }
+
+    public Color getGeometryBufferColor() {
+        return geometryBufferColor;
+    }
+
+    public void setGeometryBufferColor(Color geometryBufferColor) {
+        this.geometryBufferColor = geometryBufferColor;
     }
 
     public String[] getDisplayMaps() {

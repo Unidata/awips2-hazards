@@ -8,9 +8,9 @@
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
 /**
- * <Description> The PGEN drawing attributes associated with a polygon drawn on
- * the Spatial Display in Hazard Services. All drawables in Hazard Services are
- * rendered using PGEN drawing classes.
+ * The PGEN drawing attributes associated with a polygon drawn on the Spatial
+ * Display in Hazard Services. All drawables in Hazard Services are rendered
+ * using PGEN drawing classes.
  * 
  * <pre>
  * SOFTWARE HISTORY
@@ -25,11 +25,13 @@ package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
  *                                             dotted line style.
  * Jul 25, 2016 19537      Chris.Golden        Renamed, and removed unneeded member data and
  *                                             methods.
+ * Feb 02, 2018 26712      Chris.Golden        Changed to allow visual buffering of appropriate
+ *                                             drawables.
  * </pre>
  * 
  * @author Bryon.Lawrence
  */
-public class LineDrawableAttributes extends DrawableAttributes {
+public class LineDrawableAttributes extends MultiPointDrawableAttributes {
 
     public static double SIZE_SCALE = 7.5;
 

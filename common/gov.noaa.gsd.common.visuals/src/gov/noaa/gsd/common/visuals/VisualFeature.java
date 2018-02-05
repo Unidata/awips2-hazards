@@ -86,6 +86,8 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  * Nov 22, 2017   21504    Chris.Golden Updates for hazard locking.
  * Jan 17, 2018   33428    Chris.Golden Added editable-via-geometry-operations
  *                                      flag.
+ * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
+ *                                      useForCentering properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -264,6 +266,12 @@ public class VisualFeature implements Serializable {
             1.0f, 1.0f, 1.0f);
 
     /**
+     * Default buffer color.
+     */
+    public static final SerializableColor DEFAULT_BUFFER_COLOR = new SerializableColor(
+            0.0f, 0.0f, 0.0f, 0.0f);
+
+    /**
      * Default fill color.
      */
     public static final SerializableColor DEFAULT_FILL_COLOR = new SerializableColor(
@@ -273,6 +281,11 @@ public class VisualFeature implements Serializable {
      * Default border thickness.
      */
     public static final double DEFAULT_BORDER_THICKNESS = 1.0;
+
+    /**
+     * Default buffer thickness.
+     */
+    public static final double DEFAULT_BUFFER_THICKNESS = 0.0;
 
     /**
      * Default border style.
@@ -342,6 +355,11 @@ public class VisualFeature implements Serializable {
     public static final boolean DEFAULT_SCALEABLE = false;
 
     /**
+     * Default use for centering flag.
+     */
+    public static final boolean DEFAULT_USE_FOR_CENTERING = false;
+
+    /**
      * Default topmost flag.
      */
     public static final boolean DEFAULT_TOPMOST = false;
@@ -377,6 +395,20 @@ public class VisualFeature implements Serializable {
     };
 
     /**
+     * Buffer color fetcher.
+     */
+    private static final IPropertyFetcher<SerializableColor> BUFFER_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
+
+        @Override
+        public SerializableColor getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<SerializableColor> property = visualFeature
+                    .getBufferColor();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
      * Fill color fetcher.
      */
     private static final IPropertyFetcher<SerializableColor> FILL_COLOR_FETCHER = new IPropertyFetcher<SerializableColor>() {
@@ -399,6 +431,19 @@ public class VisualFeature implements Serializable {
         public Double getPropertyValue(VisualFeature visualFeature, Date time) {
             TemporallyVariantProperty<Double> property = visualFeature
                     .getBorderThickness();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
+     * Buffer thickness fetcher.
+     */
+    private static final IPropertyFetcher<Double> BUFFER_THICKNESS_FETCHER = new IPropertyFetcher<Double>() {
+
+        @Override
+        public Double getPropertyValue(VisualFeature visualFeature, Date time) {
+            TemporallyVariantProperty<Double> property = visualFeature
+                    .getBufferThickness();
             return (property == null ? null : property.getProperty(time));
         }
     };
@@ -596,6 +641,20 @@ public class VisualFeature implements Serializable {
     };
 
     /**
+     * Use for centering flag fetcher.
+     */
+    private static final IPropertyFetcher<Boolean> USE_FOR_CENTERING_FETCHER = new IPropertyFetcher<Boolean>() {
+
+        @Override
+        public Boolean getPropertyValue(VisualFeature visualFeature,
+                Date time) {
+            TemporallyVariantProperty<Boolean> property = visualFeature
+                    .getUseForCentering();
+            return (property == null ? null : property.getProperty(time));
+        }
+    };
+
+    /**
      * Topmost flag fetcher.
      */
     private static final IPropertyFetcher<Boolean> TOPMOST_FETCHER = new IPropertyFetcher<Boolean>() {
@@ -648,6 +707,11 @@ public class VisualFeature implements Serializable {
     private TemporallyVariantProperty<SerializableColor> borderColor;
 
     /**
+     * Buffer color; may be <code>null</code>.
+     */
+    private TemporallyVariantProperty<SerializableColor> bufferColor;
+
+    /**
      * Fill color; may be <code>null</code>.
      */
     private TemporallyVariantProperty<SerializableColor> fillColor;
@@ -656,6 +720,11 @@ public class VisualFeature implements Serializable {
      * Border thickness in pixels; may be <code>null</code>.
      */
     private TemporallyVariantProperty<Double> borderThickness;
+
+    /**
+     * Buffer thickness in pixels; may be <code>null</code>.
+     */
+    private TemporallyVariantProperty<Double> bufferThickness;
 
     /**
      * Border style; may be <code>null</code>.
@@ -737,6 +806,12 @@ public class VisualFeature implements Serializable {
     private TemporallyVariantProperty<Boolean> scaleable;
 
     /**
+     * Flag indicating whether or not the feature is to be used for centering;
+     * may be <code>null</code>.
+     */
+    private TemporallyVariantProperty<Boolean> useForCentering;
+
+    /**
      * Flag indicating whether or not the feature is topmost; may be
      * <code>null</code>.
      */
@@ -779,8 +854,10 @@ public class VisualFeature implements Serializable {
         this.visibilityConstraints = original.visibilityConstraints;
         this.templates = original.templates;
         this.borderColor = original.borderColor;
+        this.bufferColor = original.bufferColor;
         this.fillColor = original.fillColor;
         this.borderThickness = original.borderThickness;
+        this.bufferThickness = original.bufferThickness;
         this.borderStyle = original.borderStyle;
         this.fillStyle = original.fillStyle;
         this.diameter = original.diameter;
@@ -795,6 +872,7 @@ public class VisualFeature implements Serializable {
         this.editableUsingGeometryOps = original.editableUsingGeometryOps;
         this.rotatable = original.rotatable;
         this.scaleable = original.scaleable;
+        this.useForCentering = original.useForCentering;
         this.topmost = original.topmost;
 
         /*
@@ -836,8 +914,10 @@ public class VisualFeature implements Serializable {
                 && Utils.equal(templates, otherFeature.templates)
                 && Utils.equal(geometry, otherFeature.geometry)
                 && Utils.equal(borderColor, otherFeature.borderColor)
+                && Utils.equal(bufferColor, otherFeature.bufferColor)
                 && Utils.equal(fillColor, otherFeature.fillColor)
                 && Utils.equal(borderThickness, otherFeature.borderThickness)
+                && Utils.equal(bufferThickness, otherFeature.bufferThickness)
                 && Utils.equal(borderStyle, otherFeature.borderStyle)
                 && Utils.equal(fillStyle, otherFeature.fillStyle)
                 && Utils.equal(diameter, otherFeature.diameter)
@@ -855,6 +935,7 @@ public class VisualFeature implements Serializable {
                         otherFeature.editableUsingGeometryOps)
                 && Utils.equal(rotatable, otherFeature.rotatable)
                 && Utils.equal(scaleable, otherFeature.scaleable)
+                && Utils.equal(useForCentering, otherFeature.useForCentering)
                 && Utils.equal(topmost, otherFeature.topmost));
     }
 
@@ -863,8 +944,10 @@ public class VisualFeature implements Serializable {
         return (int) ((Utils.getHashCode(identifier)
                 + Utils.getHashCode(visibilityConstraints)
                 + Utils.getHashCode(templates) + Utils.getHashCode(geometry)
-                + Utils.getHashCode(borderColor) + Utils.getHashCode(fillColor)
+                + Utils.getHashCode(borderColor)
+                + Utils.getHashCode(bufferColor) + Utils.getHashCode(fillColor)
                 + Utils.getHashCode(borderThickness)
+                + Utils.getHashCode(bufferThickness)
                 + Utils.getHashCode(borderStyle) + Utils.getHashCode(fillStyle)
                 + Utils.getHashCode(diameter) + Utils.getHashCode(symbolShape)
                 + Utils.getHashCode(label) + Utils.getHashCode(textOffsetLength)
@@ -874,6 +957,7 @@ public class VisualFeature implements Serializable {
                 + Utils.getHashCode(multiGeometryPointsDraggable)
                 + Utils.getHashCode(editableUsingGeometryOps)
                 + Utils.getHashCode(rotatable) + Utils.getHashCode(scaleable)
+                + Utils.getHashCode(useForCentering)
                 + Utils.getHashCode(topmost)) % Integer.MAX_VALUE);
     }
 
@@ -921,6 +1005,17 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Get the buffer color for the specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return Buffer color that applies for the specified time.
+     */
+    public Color getBufferColor(Date time) {
+        return getValue(BUFFER_COLOR_FETCHER, time, DEFAULT_BUFFER_COLOR);
+    }
+
+    /**
      * Get the fill color for the specified time.
      * 
      * @param time
@@ -945,6 +1040,18 @@ public class VisualFeature implements Serializable {
     public double getBorderThickness(Date time) {
         return getValue(BORDER_THICKNESS_FETCHER, time,
                 DEFAULT_BORDER_THICKNESS);
+    }
+
+    /**
+     * Get the buffer thickness in pixels for the specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return Buffer thickness that applies for the specified time.
+     */
+    public double getBufferThickness(Date time) {
+        return getValue(BUFFER_THICKNESS_FETCHER, time,
+                DEFAULT_BUFFER_THICKNESS);
     }
 
     /**
@@ -1130,6 +1237,20 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Determine whether the feature is to be used for centering for the
+     * specified time.
+     * 
+     * @param time
+     *            Time for which to check.
+     * @return <code>true</code> if the feature is to be used for centering at
+     *         the specified time, otherwise <code>false</code>.
+     */
+    public boolean isUseForCentering(Date time) {
+        return getValue(USE_FOR_CENTERING_FETCHER, time,
+                DEFAULT_USE_FOR_CENTERING);
+    }
+
+    /**
      * Determine whether the feature is topmost for the specified time.
      * 
      * @param time
@@ -1263,8 +1384,9 @@ public class VisualFeature implements Serializable {
         double textOffsetDirection = getTextOffsetDirection(time);
         return SpatialEntity.build(spatialEntity, identifier, geometry,
                 getColor(getBorderColor(time), hazardColor),
-                getColor(getFillColor(time), hazardColor),
+                getBufferColor(time), getColor(getFillColor(time), hazardColor),
                 getDouble(getBorderThickness(time), hazardBorderThickness),
+                getBufferThickness(time),
                 getBorderStyle(getBorderStyle(time), hazardBorderStyle),
                 getFillStyle(time),
                 getDouble(getDiameter(time), hazardPointDiameter),
@@ -1281,7 +1403,8 @@ public class VisualFeature implements Serializable {
                 (editable && isMultiGeometryPointsDraggable(time)),
                 (selected && editable && isEditableUsingGeometryOps(time)),
                 (selected && editable && isRotatable(time)),
-                (selected && editable && isScaleable(time)), isTopmost(time));
+                (selected && editable && isScaleable(time)),
+                isUseForCentering(time), isTopmost(time));
     }
 
     /**
@@ -1340,8 +1463,10 @@ public class VisualFeature implements Serializable {
                 DEFAULT_TEXT_OFFSET_DIRECTION);
         return SpatialEntity.build(spatialEntity, identifier, geometry,
                 getColor(getBorderColor(time), DEFAULT_BORDER_COLOR),
+                getBufferColor(time),
                 getColor(getFillColor(time), DEFAULT_FILL_COLOR),
                 getDouble(getBorderThickness(time), DEFAULT_BORDER_THICKNESS),
+                getBufferThickness(time),
                 getBorderStyle(getBorderStyle(time), DEFAULT_BORDER_STYLE),
                 getFillStyle(time),
                 getDouble(getDiameter(time), DEFAULT_DIAMETER),
@@ -1351,7 +1476,7 @@ public class VisualFeature implements Serializable {
                 getColor(getTextColor(time), DEFAULT_TEXT_COLOR),
                 getDragCapability(time), isMultiGeometryPointsDraggable(time),
                 isEditableUsingGeometryOps(time), isRotatable(time),
-                isScaleable(time), isTopmost(time));
+                isScaleable(time), isUseForCentering(time), isTopmost(time));
     }
 
     /**
@@ -1446,6 +1571,15 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Get the buffer color.
+     * 
+     * @return Buffer color; may be <code>null</code>.
+     */
+    TemporallyVariantProperty<SerializableColor> getBufferColor() {
+        return bufferColor;
+    }
+
+    /**
      * Get the fill color.
      * 
      * @return Fill color; may be <code>null</code>.
@@ -1461,6 +1595,15 @@ public class VisualFeature implements Serializable {
      */
     TemporallyVariantProperty<Double> getBorderThickness() {
         return borderThickness;
+    }
+
+    /**
+     * Get the buffer thickness in pixels.
+     * 
+     * @return Buffer thickness; may be <code>null</code>.
+     */
+    TemporallyVariantProperty<Double> getBufferThickness() {
+        return bufferThickness;
     }
 
     /**
@@ -1602,6 +1745,17 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Get the flag indicating whether or not the feature is to be used for
+     * centering.
+     * 
+     * @return Flag indicating whether or not the feature is to be used for
+     *         centering; may be <code>null</code>.
+     */
+    TemporallyVariantProperty<Boolean> getUseForCentering() {
+        return useForCentering;
+    }
+
+    /**
      * Get the flag indicating whether or not the feature is topmost.
      * 
      * @return Flag indicating whether or not the feature is topmost; may be
@@ -1653,6 +1807,17 @@ public class VisualFeature implements Serializable {
     }
 
     /**
+     * Set the buffer color.
+     * 
+     * @param bufferColor
+     *            New value; may be <code>null</code>.
+     */
+    void setBufferColor(
+            TemporallyVariantProperty<SerializableColor> bufferColor) {
+        this.bufferColor = bufferColor;
+    }
+
+    /**
      * Set the fill color.
      * 
      * @param fillColor
@@ -1670,6 +1835,16 @@ public class VisualFeature implements Serializable {
      */
     void setBorderThickness(TemporallyVariantProperty<Double> borderThickness) {
         this.borderThickness = borderThickness;
+    }
+
+    /**
+     * Set the buffer thickness in pixels.
+     * 
+     * @param bufferThickness
+     *            New value; may be <code>null</code>.
+     */
+    void setBufferThickness(TemporallyVariantProperty<Double> bufferThickness) {
+        this.bufferThickness = bufferThickness;
     }
 
     /**
@@ -1821,6 +1996,18 @@ public class VisualFeature implements Serializable {
      */
     void setScaleable(TemporallyVariantProperty<Boolean> scaleable) {
         this.scaleable = scaleable;
+    }
+
+    /**
+     * Set the flag indicating whether or not the feature is to be used for
+     * centering.
+     * 
+     * @param useForCentering
+     *            New value; may be <code>null</code>.
+     */
+    void setUseForCentering(
+            TemporallyVariantProperty<Boolean> useForCentering) {
+        this.useForCentering = useForCentering;
     }
 
     /**

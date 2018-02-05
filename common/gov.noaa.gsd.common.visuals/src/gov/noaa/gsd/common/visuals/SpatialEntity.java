@@ -22,7 +22,7 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  * parameter <code>I</code> provides the type of the entity's identifier.
  * <p>
  * Spatial entities may be created via the
- * {@link #build(SpatialEntity, Object, IAdvancedGeometry, Color, Color, double, BorderStyle, FillStyle, double, SymbolShape, String, double, double, double, double, int, Color, DragCapability, boolean, boolean, boolean, boolean, boolean)
+ * {@link #build(SpatialEntity, Object, IAdvancedGeometry, Color, Color, Color, double, double, BorderStyle, FillStyle, double, SymbolShape, String, double, double, double, double, int, Color, DragCapability, boolean, boolean, boolean, boolean, boolean, boolean)
  * build()} static method, or using one of the {@link VisualFeature} class's
  * <code>getStateAtTime()</code> static methods.
  * </p>
@@ -56,6 +56,8 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  *                                      of JTS geometries.
  * Jan 17, 2018   33428    Chris.Golden Added editable-via-geometry-operations
  *                                      flag.
+ * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
+ *                                      useForCentering properties.
  * </pre>
  * 
  * @author Chris.Golden
@@ -81,6 +83,11 @@ public class SpatialEntity<I> {
     private Color borderColor;
 
     /**
+     * Buffer color.
+     */
+    private Color bufferColor;
+
+    /**
      * Fill color.
      */
     private Color fillColor;
@@ -89,6 +96,11 @@ public class SpatialEntity<I> {
      * Border thickness in pixels.
      */
     private double borderThickness;
+
+    /**
+     * Buffer thickness in pixels.
+     */
+    private double bufferThickness;
 
     /**
      * Border style.
@@ -167,6 +179,11 @@ public class SpatialEntity<I> {
     private boolean scaleable;
 
     /**
+     * Flag indicating whether or not the entity is to be used for centering.
+     */
+    private boolean useForCentering;
+
+    /**
      * Flag indicating whether or not the entity is topmost.
      */
     private boolean topmost;
@@ -192,10 +209,16 @@ public class SpatialEntity<I> {
      *            Geometry to be used.
      * @param borderColor
      *            Border color to be used.
+     * @param bufferColor
+     *            Buffer color to be used, if a positive
+     *            <code>bufferWidth</code> is specified.
      * @param fillColor
      *            Fill color to be used.
      * @param borderThickness
      *            Border thickness to be used.
+     * @param bufferThickness
+     *            Buffer thickness to be used; if not positive, no buffer will
+     *            be used.
      * @param borderStyle
      *            Border style to be used.
      * @param fillStyle
@@ -242,6 +265,8 @@ public class SpatialEntity<I> {
      *            Rotatable flag to be used.
      * @param scaleable
      *            Scaleable flag to be used.
+     * @param useForCentering
+     *            Use for centering flag to be used.
      * @param topmost
      *            Topmost flag to be used.
      * @return Spatial entity with the specified parameters, either the one
@@ -252,7 +277,8 @@ public class SpatialEntity<I> {
      */
     public static <I> SpatialEntity<I> build(SpatialEntity<I> spatialEntity,
             I identifier, IAdvancedGeometry geometry, Color borderColor,
-            Color fillColor, double borderThickness, BorderStyle borderStyle,
+            Color bufferColor, Color fillColor, double borderThickness,
+            double bufferThickness, BorderStyle borderStyle,
             FillStyle fillStyle, double diameter, SymbolShape symbolShape,
             String label, double singlePointTextOffsetLength,
             double singlePointTextOffsetDirection,
@@ -260,7 +286,7 @@ public class SpatialEntity<I> {
             double multiPointTextOffsetDirection, int textSize, Color textColor,
             DragCapability dragCapability, boolean multiGeometryPointsDraggable,
             boolean editableUsingGeometryOps, boolean rotatable,
-            boolean scaleable, boolean topmost) {
+            boolean scaleable, boolean useForCentering, boolean topmost) {
 
         /*
          * Remember the original, and create a new spatial entity if an original
@@ -285,12 +311,20 @@ public class SpatialEntity<I> {
                 borderColor);
         spatialEntity.setBorderColor(borderColor);
         spatialEntity = createIfNeeded(original, spatialEntity,
+                (original == null ? null : original.getBufferColor()),
+                bufferColor);
+        spatialEntity.setBufferColor(bufferColor);
+        spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.getFillColor()), fillColor);
         spatialEntity.setFillColor(fillColor);
         spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.getBorderThickness()),
                 borderThickness);
         spatialEntity.setBorderThickness(borderThickness);
+        spatialEntity = createIfNeeded(original, spatialEntity,
+                (original == null ? null : original.getBufferThickness()),
+                bufferThickness);
+        spatialEntity.setBufferThickness(bufferThickness);
         spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.getBorderStyle()),
                 borderStyle);
@@ -357,6 +391,10 @@ public class SpatialEntity<I> {
                 (original == null ? null : original.isScaleable()), scaleable);
         spatialEntity.setScaleable(scaleable);
         spatialEntity = createIfNeeded(original, spatialEntity,
+                (original == null ? null : original.isUseForCentering()),
+                useForCentering);
+        spatialEntity.setUseForCentering(useForCentering);
+        spatialEntity = createIfNeeded(original, spatialEntity,
                 (original == null ? null : original.isTopmost()), topmost);
         spatialEntity.setTopmost(topmost);
         return spatialEntity;
@@ -421,8 +459,10 @@ public class SpatialEntity<I> {
         identifier = other.identifier;
         geometry = other.geometry;
         borderColor = other.borderColor;
+        bufferColor = other.bufferColor;
         fillColor = other.fillColor;
         borderThickness = other.borderThickness;
+        bufferThickness = other.bufferThickness;
         borderStyle = other.borderStyle;
         fillStyle = other.fillStyle;
         diameter = other.diameter;
@@ -437,6 +477,7 @@ public class SpatialEntity<I> {
         editableUsingGeometryOps = other.editableUsingGeometryOps;
         rotatable = other.rotatable;
         scaleable = other.scaleable;
+        useForCentering = other.useForCentering;
         topmost = other.topmost;
     }
 
@@ -451,8 +492,10 @@ public class SpatialEntity<I> {
         return (Utils.equal(identifier, otherEntity.identifier)
                 && Utils.equal(geometry, otherEntity.geometry)
                 && Utils.equal(borderColor, otherEntity.borderColor)
+                && Utils.equal(bufferColor, otherEntity.bufferColor)
                 && Utils.equal(fillColor, otherEntity.fillColor)
                 && (borderThickness == otherEntity.borderThickness)
+                && (bufferThickness == otherEntity.bufferThickness)
                 && Utils.equal(borderStyle, otherEntity.borderStyle)
                 && Utils.equal(fillStyle, otherEntity.fillStyle)
                 && (diameter == otherEntity.diameter)
@@ -467,6 +510,7 @@ public class SpatialEntity<I> {
                 && (editableUsingGeometryOps == otherEntity.editableUsingGeometryOps)
                 && (rotatable == otherEntity.rotatable)
                 && (scaleable == otherEntity.scaleable)
+                && (useForCentering == otherEntity.useForCentering)
                 && (topmost == otherEntity.topmost));
     }
 
@@ -474,7 +518,8 @@ public class SpatialEntity<I> {
     public int hashCode() {
         return (int) ((Utils.getHashCode(identifier)
                 + Utils.getHashCode(geometry) + Utils.getHashCode(borderColor)
-                + Utils.getHashCode(fillColor) + ((long) borderThickness)
+                + Utils.getHashCode(bufferColor) + Utils.getHashCode(fillColor)
+                + ((long) borderThickness) + ((long) bufferThickness)
                 + Utils.getHashCode(borderStyle) + Utils.getHashCode(fillStyle)
                 + ((long) diameter) + Utils.getHashCode(symbolShape)
                 + Utils.getHashCode(label) + ((long) textOffsetLength)
@@ -483,8 +528,8 @@ public class SpatialEntity<I> {
                 + Utils.getHashCode(dragCapability)
                 + (multiGeometryPointsDraggable ? 1L : 0L)
                 + (editableUsingGeometryOps ? 1L : 0L) + (rotatable ? 1L : 0L)
-                + (scaleable ? 1L : 0L) + (topmost ? 1L : 0L))
-                % Integer.MAX_VALUE);
+                + (scaleable ? 1L : 0L) + (useForCentering ? 1L : 0L)
+                + (topmost ? 1L : 0L)) % Integer.MAX_VALUE);
     }
 
     @Override
@@ -520,6 +565,15 @@ public class SpatialEntity<I> {
     }
 
     /**
+     * Get the buffer color.
+     * 
+     * @return Buffer color.
+     */
+    public Color getBufferColor() {
+        return bufferColor;
+    }
+
+    /**
      * Get the fill color.
      * 
      * @return Fill color.
@@ -531,10 +585,19 @@ public class SpatialEntity<I> {
     /**
      * Get the border thickness in pixels.
      * 
-     * @return Border thickness
+     * @return Border thickness.
      */
     public double getBorderThickness() {
         return borderThickness;
+    }
+
+    /**
+     * Get the buffer thickness in pixels.
+     * 
+     * @return Buffer thickness.
+     */
+    public double getBufferThickness() {
+        return bufferThickness;
     }
 
     /**
@@ -676,6 +739,16 @@ public class SpatialEntity<I> {
     }
 
     /**
+     * Determine whether the entity is to be used for centering.
+     * 
+     * @return <code>true</code> if the entity is to be used for centering,
+     *         otherwise <code>false</code>.
+     */
+    public boolean isUseForCentering() {
+        return useForCentering;
+    }
+
+    /**
      * Determine whether the entity is topmost.
      * 
      * @return <code>true</code> if the entity is topmost, otherwise
@@ -708,6 +781,16 @@ public class SpatialEntity<I> {
     }
 
     /**
+     * Set the buffer color.
+     * 
+     * @param bufferColor
+     *            New value.
+     */
+    private void setBufferColor(Color bufferColor) {
+        this.bufferColor = bufferColor;
+    }
+
+    /**
      * Set the fill color.
      * 
      * @param fillColor
@@ -725,6 +808,16 @@ public class SpatialEntity<I> {
      */
     private void setBorderThickness(double borderThickness) {
         this.borderThickness = borderThickness;
+    }
+
+    /**
+     * Set the buffer thickness in pixels.
+     * 
+     * @param bufferThickness
+     *            New value.
+     */
+    private void setBufferThickness(double bufferThickness) {
+        this.bufferThickness = bufferThickness;
     }
 
     /**
@@ -874,6 +967,17 @@ public class SpatialEntity<I> {
      */
     private void setScaleable(boolean scaleable) {
         this.scaleable = scaleable;
+    }
+
+    /**
+     * Set the flag indicating whether or not the entity is to be used for
+     * centering.
+     * 
+     * @param topmost
+     *            New value.
+     */
+    private void setUseForCentering(boolean useForCentering) {
+        this.useForCentering = useForCentering;
     }
 
     /**

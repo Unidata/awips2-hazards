@@ -9,6 +9,7 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay.drawables;
 
+import java.awt.Color;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,6 +27,8 @@ import gov.noaa.gsd.common.utilities.geometry.GeometryWrapper;
  * Sep 29, 2016   15928    Chris.Golden Initial creation.
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new version of
  *                                      {@link IDrawable}.
+ * Feb 02, 2018   26712    Chris.Golden Changed to allow visual buffering of
+ *                                      appropriate drawables.
  * </pre>
  * 
  * @author Chris.Golden
@@ -53,7 +56,7 @@ public class BoundingBoxDrawable extends PathDrawable {
      *            Bounding box. Drawable that is to be bounded.
      */
     public BoundingBoxDrawable(MultiPointDrawable<?> boundedDrawable,
-            DrawableAttributes attributes, GeometryWrapper geometry) {
+            MultiPointDrawableAttributes attributes, GeometryWrapper geometry) {
         super(boundedDrawable.getIdentifier(), attributes, geometry);
         this.boundedDrawable = boundedDrawable;
         setClosed(true);
@@ -78,6 +81,16 @@ public class BoundingBoxDrawable extends PathDrawable {
     }
 
     // Public Methods
+
+    @Override
+    public float getBufferWidth() {
+        return 0;
+    }
+
+    @Override
+    public Color getBufferColor() {
+        return null;
+    }
 
     /**
      * Get the drawable bounded by this one.

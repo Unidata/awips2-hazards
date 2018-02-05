@@ -2916,6 +2916,14 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     print 'triggerIdentifiers', triggerIdentifiers
     returnDict = {}
 
+    # Ensure that no matter what else, the time range megawidget is made editable or read-only
+    # as appropriate. This has to be done regardless of the trigger because, for example, when
+    # the HID comes up, the time range megawidget is enabled by default. 
+    editable = False
+    if "activate" in mutableProperties:
+        editable = mutableProperties["activate"].get("values", False)
+    returnDict["__startTime__:__endTime__"] = { "editable": editable }
+
     # List of megawidgets that must be made editable or uneditable depending upon the activate
     # value.
     editabilityChangeableMegawidgets = ["resetMotionVector", "convectiveProbTrendDraw",
@@ -2923,24 +2931,21 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
                 "convectiveProbTrendBell", "convectiveProbTrendPlus5", "convectiveProbTrendMinus5",
                 "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
                 "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail",
-                "convectiveStormCharsTorn", "__startTime__:__endTime__"]
+                "convectiveStormCharsTorn"]
     
     # If activate has changed value, ensure the the appropriate megawidgets are editable or
     # uneditable.
     if triggerIdentifiers and "activate" in triggerIdentifiers:
-        editable = False
-        if "activate" in mutableProperties:
-            editable = mutableProperties["activate"].get("values", False)
         for key in editabilityChangeableMegawidgets:
             returnDict[key] = { 'editable' : editable }
             
     # If activateModify has changed value, ensure the Modify button is enabled or disabled
     # as appropriate.
     if triggerIdentifiers and "activateModify" in triggerIdentifiers:
-        editable = True
+        editableModifyButton = True
         if "activateModify" in mutableProperties:
-            editable = mutableProperties["activateModify"].get("values", True)
-        returnDict['modifyButton'] = { 'editable' : editable }
+            editableModifyButton = mutableProperties["activateModify"].get("values", True)
+        returnDict['modifyButton'] = { 'editable' : editableModifyButton }
     
     modifyButtonChosen = triggerIdentifiers and len(triggerIdentifiers) == 1 and 'modifyButton' in triggerIdentifiers 
     print "modifyButtonChosen", modifyButtonChosen
@@ -2949,11 +2954,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         activate = True
         activateModify = False
                        
-        for key in ["resetMotionVector", "convectiveProbTrendDraw",
-                "convectiveProbTrendLinear", "convectiveProbTrendExp1", "convectiveProbTrendExp2", "convectiveProbTrendBell",
-                "convectiveProbTrendPlus5","convectiveProbTrendMinus5", "convectiveProbTrendGraph", "convectiveWarningDecisionDiscussion",
-                "convectiveStormCharsGroup","convectiveStormCharsWind", "convectiveStormCharsHail", "convectiveStormCharsTorn",
-                "__startTime__:__endTime__"]:
+        for key in editabilityChangeableMegawidgets:
             returnDict[key] = {'editable' : activate}
                 
         manuallyCreatedStatus = mutableProperties.get('manuallyCreatedStatus', {})

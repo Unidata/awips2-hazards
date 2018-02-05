@@ -59,6 +59,9 @@ import gov.noaa.gsd.common.utilities.geometry.IAdvancedGeometry;
  * Jan 17, 2018   33428    Chris.Golden Added support for flag that indicates
  *                                      whether or not visual feature is
  *                                      editable via geometry operations.
+ * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
+ *                                      useForCentering properties to visual
+ *                                      features.
  * </pre>
  * 
  * @author Chris.Golden
@@ -95,6 +98,11 @@ public class VisualFeaturesListJsonConverter {
     public static final String KEY_BORDER_COLOR = "borderColor";
 
     /**
+     * Key for the buffer color in a JSON object representing a visual feature.
+     */
+    public static final String KEY_BUFFER_COLOR = "bufferColor";
+
+    /**
      * Key for the fill color in a JSON object representing a visual feature.
      */
     public static final String KEY_FILL_COLOR = "fillColor";
@@ -104,6 +112,12 @@ public class VisualFeaturesListJsonConverter {
      * feature.
      */
     public static final String KEY_BORDER_THICKNESS = "borderThickness";
+
+    /**
+     * Key for the buffer thickness in a JSON object representing a visual
+     * feature.
+     */
+    public static final String KEY_BUFFER_THICKNESS = "bufferThickness";
 
     /**
      * Key for the border style in a JSON object representing a visual feature.
@@ -183,6 +197,12 @@ public class VisualFeaturesListJsonConverter {
      * feature.
      */
     public static final String KEY_SCALEABLE = "scaleable";
+
+    /**
+     * Key for the use for centering flag in a JSON object representing a visual
+     * feature.
+     */
+    public static final String KEY_USE_FOR_CENTERING = "useForCentering";
 
     /**
      * Key for the topmost flag in a JSON object representing a visual feature.
@@ -279,8 +299,9 @@ public class VisualFeaturesListJsonConverter {
             .<String, TypeToken<?>> builder()
             .put(KEY_TEMPLATES, TYPE_LIST_OF_STRINGS)
             .put(KEY_GEOMETRY, TYPE_GEOMETRY).put(KEY_BORDER_COLOR, TYPE_COLOR)
-            .put(KEY_FILL_COLOR, TYPE_COLOR)
+            .put(KEY_BUFFER_COLOR, TYPE_COLOR).put(KEY_FILL_COLOR, TYPE_COLOR)
             .put(KEY_BORDER_THICKNESS, TYPE_DOUBLE)
+            .put(KEY_BUFFER_THICKNESS, TYPE_DOUBLE)
             .put(KEY_BORDER_STYLE, TYPE_BORDER_STYLE)
             .put(KEY_FILL_STYLE, TYPE_FILL_STYLE).put(KEY_DIAMETER, TYPE_DOUBLE)
             .put(KEY_SYMBOL_SHAPE, TYPE_SYMBOL_SHAPE)
@@ -292,6 +313,7 @@ public class VisualFeaturesListJsonConverter {
             .put(KEY_MULTI_GEOMETRY_POINTS_DRAGGABLE, TYPE_BOOLEAN)
             .put(KEY_EDITABLE_USING_GEOMETRY_OPS, TYPE_BOOLEAN)
             .put(KEY_ROTATABLE, TYPE_BOOLEAN).put(KEY_SCALEABLE, TYPE_BOOLEAN)
+            .put(KEY_USE_FOR_CENTERING, TYPE_BOOLEAN)
             .put(KEY_TOPMOST, TYPE_BOOLEAN).build();
 
     /**

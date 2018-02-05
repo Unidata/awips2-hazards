@@ -35,6 +35,7 @@ import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HatchingStyle;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypes;
+import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
@@ -123,6 +124,13 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.ToolVisualFeatureEntityI
  *                                      flexible toolbar contribution code,
  *                                      and to provide new enhanced
  *                                      geometry-operation-based edits.
+ * Feb 02, 2018   26712    Chris.Golden Added visual buffering of spatial
+ *                                      entities' drawables on the Spatial
+ *                                      Display. Also added the ability
+ *                                      to center and zoom on a particular
+ *                                      visual feature of a hazard event,
+ *                                      instead of always using the base
+ *                                      geometry of said event.
  * </pre>
  * 
  * @author Chris.Golden
@@ -510,6 +518,36 @@ class SpatialEntityManager {
      */
     Set<IEntityIdentifier> getSelectedSpatialEntityIdentifiers() {
         return Collections.unmodifiableSet(selectedSpatialEntityIdentifiers);
+    }
+
+    /**
+     * Get the geometries from any of the currently selected spatial entities
+     * that are to be used for centering, as well as the set of hazard events
+     * represented within the collection of returned geometries.
+     * 
+     * @return List of geometries to be used for centering, and the set of
+     *         identifiers of hazard events that have contributed to this list.
+     */
+    Pair<List<Geometry>, Set<String>> getGeometriesOfSpatialEntitiesToBeUsedForCentering() {
+        List<Geometry> geometries = new ArrayList<>(
+                selectedSpatialEntityIdentifiers.size());
+        Set<String> eventIdentifiers = new HashSet<>(geometries.size(), 1.0f);
+        for (IEntityIdentifier identifier : selectedSpatialEntityIdentifiers) {
+            SpatialEntity<?> entity = spatialEntitiesForIdentifiers
+                    .get(identifier);
+            if (entity.isUseForCentering()) {
+                System.err.println(
+                        "Using for centering: " + entity.getIdentifier());
+                geometries.add(AdvancedGeometryUtilities
+                        .getJtsGeometry(entity.getGeometry()));
+                if (identifier instanceof IHazardEventEntityIdentifier) {
+                    eventIdentifiers
+                            .add(((IHazardEventEntityIdentifier) identifier)
+                                    .getEventIdentifier());
+                }
+            }
+        }
+        return new Pair<>(geometries, eventIdentifiers);
     }
 
     /**
@@ -1762,6 +1800,10 @@ class SpatialEntityManager {
             boolean selected = selectedEventIdentifiers
                     .contains(eventIdentifier);
             Color hazardColor = configManager.getColor(event);
+            Color bufferColor = configManager.getStartUpConfig()
+                    .getGeometryBufferColor();
+            float bufferWidth = (float) configManager.getStartUpConfig()
+                    .getGeometryBufferThickness();
             double hazardBorderWidth = configManager.getBorderWidth(event,
                     selected);
             LineStyle lineStyle = configManager.getBorderStyle(event);
@@ -1845,8 +1887,9 @@ class SpatialEntityManager {
                         && (lockManager.getHazardEventLockStatus(event
                                 .getEventID()) != LockStatus.LOCKED_BY_OTHER));
                 CreatedSpatialEntity entity = createDefaultSpatialEntityForEvent(
-                        event, hazardColor, hazardBorderWidth,
-                        hazardBorderStyle, hazardPointDiameter, hazardLabel,
+                        event, hazardColor, bufferColor, hazardBorderWidth,
+                        bufferWidth, hazardBorderStyle, hazardPointDiameter,
+                        hazardLabel,
                         HAZARD_EVENT_SINGLE_POINT_TEXT_OFFSET_LENGTH,
                         HAZARD_EVENT_SINGLE_POINT_TEXT_OFFSET_DIRECTION,
                         HAZARD_EVENT_MULTI_POINT_TEXT_OFFSET_LENGTH,
@@ -1968,13 +2011,13 @@ class SpatialEntityManager {
                         .build(oldEntity, identifier,
                                 AdvancedGeometryUtilities.createGeometryWrapper(
                                         geometryData.getGeometry(), 0),
-                                null, hazardColor, 0.0, BorderStyle.SOLID,
-                                FillStyle.HATCHED, 0.0, null,
+                                null, null, hazardColor, 0.0, 0.0,
+                                BorderStyle.SOLID, FillStyle.HATCHED, 0.0, null,
                                 (showLabel ? significance : null), 0.0, 0.0,
                                 textOffsetLength, textOffsetDirection,
                                 hazardTextPointSize, hazardColor,
                                 DragCapability.NONE, false, false, false, false,
-                                false);
+                                false, false);
                 if (spatialEntities == null) {
                     spatialEntities = new ArrayList<>();
                 }
@@ -1996,8 +2039,12 @@ class SpatialEntityManager {
      *            Hazard event for which spatial entity is to be created.
      * @param hazardColor
      *            Color of the hazard event.
+     * @param bufferColor
+     *            Color of the buffer around the hazard event's outline.
      * @param hazardBorderWidth
      *            Border width of the hazard event.
+     * @param bufferWidth
+     *            Width of the buffer around the hazard event's outline.
      * @param hazardBorderStyle
      *            Border style of the hazard event.
      * @param hazardPointDiameter
@@ -2036,7 +2083,8 @@ class SpatialEntityManager {
      */
     @SuppressWarnings("unchecked")
     private CreatedSpatialEntity createDefaultSpatialEntityForEvent(
-            IHazardEventView event, Color hazardColor, double hazardBorderWidth,
+            IHazardEventView event, Color hazardColor, Color bufferColor,
+            double hazardBorderWidth, double bufferWidth,
             BorderStyle hazardBorderStyle, double hazardPointDiameter,
             String hazardLabel, double hazardSinglePointTextOffsetLength,
             double hazardSinglePointTextOffsetDirection,
@@ -2049,8 +2097,9 @@ class SpatialEntityManager {
                 .get(identifier);
         SpatialEntity<? extends IHazardEventEntityIdentifier> entity = SpatialEntity
                 .build(oldEntity, identifier, getProcessedBaseGeometry(event),
-                        hazardColor, TRANSPARENT_COLOR, hazardBorderWidth,
-                        hazardBorderStyle, FillStyle.SOLID, hazardPointDiameter,
+                        hazardColor, bufferColor, TRANSPARENT_COLOR,
+                        hazardBorderWidth, bufferWidth, hazardBorderStyle,
+                        FillStyle.SOLID, hazardPointDiameter,
                         SymbolShape.CIRCLE, hazardLabel,
                         hazardSinglePointTextOffsetLength,
                         hazardSinglePointTextOffsetDirection,
@@ -2058,7 +2107,7 @@ class SpatialEntityManager {
                         hazardMultiPointTextOffsetDirection,
                         hazardTextPointSize, hazardColor,
                         (editable ? DragCapability.ALL : DragCapability.NONE),
-                        false, editable, rotatable, scaleable, false);
+                        false, editable, rotatable, scaleable, true, false);
         return new CreatedSpatialEntity(entity, (entity == oldEntity));
     }
 

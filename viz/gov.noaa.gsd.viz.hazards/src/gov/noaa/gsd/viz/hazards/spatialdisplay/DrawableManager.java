@@ -159,6 +159,11 @@ import gov.noaa.nws.ncep.ui.pgen.gfa.IGfa;
  *                                      specify which drag-and-drop
  *                                      manipulation points are to be
  *                                      prioritized.
+ * Feb 01, 2018   26712    Chris.Golden Fixed bug that occurred when the user
+ *                                      repeatedly and rapidly modified a
+ *                                      geometry, and the event was being
+ *                                      processed by a recommender while the
+ *                                      movement occurred.
  * </pre>
  * 
  * @author Chris.Golden
@@ -632,8 +637,9 @@ class DrawableManager {
                     nextEntityIndex = 0;
                     nextDrawableIndex = 0;
                 } else {
-                    List<AbstractDrawableComponent> drawables = drawablesForSpatialEntities
-                            .get(spatialEntities.get(nextEntityIndex));
+                    List<AbstractDrawableComponent> drawables = drawablesForIdentifiers
+                            .get(spatialEntities.get(nextEntityIndex)
+                                    .getIdentifier());
                     if ((drawables == null)
                             || (nextDrawableIndex == drawables.size())) {
                         nextEntityIndex++;
@@ -721,16 +727,15 @@ class DrawableManager {
             .unmodifiableSet(reactiveDrawables);
 
     /**
-     * Map pairing drawables with their associated spatial entities. The
-     * mappings involve an N to 1 relationship where N is greater than 0.
+     * Map pairing spatial entity identifiers with their associated spatial
+     * entities.
      */
-    private final Map<AbstractDrawableComponent, SpatialEntity<? extends IEntityIdentifier>> spatialEntitiesForDrawables = new IdentityHashMap<>();
+    private final Map<IEntityIdentifier, SpatialEntity<? extends IEntityIdentifier>> spatialEntitiesForIdentifiers = new HashMap<>();
 
     /**
-     * Map pairing spatial entities with their associated drawables. This
-     * provides the functional inverse of {@link #spatialEntitiesForDrawables}.
+     * Map pairing spatial entity identifiers with their associated drawables.
      */
-    private final Map<SpatialEntity<? extends IEntityIdentifier>, List<AbstractDrawableComponent>> drawablesForSpatialEntities = new IdentityHashMap<>();
+    private final Map<IEntityIdentifier, List<AbstractDrawableComponent>> drawablesForIdentifiers = new HashMap<>();
 
     /**
      * Map pairing spatial entities with their associated types.
@@ -1099,16 +1104,16 @@ class DrawableManager {
         /*
          * Associate the new drawables with the spatial entity.
          */
-        drawablesForSpatialEntities.put(spatialEntity, drawables);
+        spatialEntitiesForIdentifiers.put(spatialEntity.getIdentifier(),
+                spatialEntity);
+        drawablesForIdentifiers.put(spatialEntity.getIdentifier(), drawables);
         typesForSpatialEntities.put(spatialEntity, type);
 
         /*
-         * For each drawable, create an association between it and the spatial
-         * entity, and further process it if it needs to be combined with other
-         * drawables.
+         * For each drawable, further process it if it needs to be combined with
+         * other drawables.
          */
         for (AbstractDrawableComponent drawable : drawables) {
-            spatialEntitiesForDrawables.put(drawable, spatialEntity);
             if (drawable.getClass().equals(TextDrawable.class)
                     && ((TextDrawable) drawable).isCombinable()) {
                 TextDrawable textDrawable = (TextDrawable) drawable;
@@ -1208,8 +1213,8 @@ class DrawableManager {
         /*
          * If there are drawables for this spatial entity, remove them.
          */
-        List<AbstractDrawableComponent> drawables = drawablesForSpatialEntities
-                .remove(spatialEntity);
+        List<AbstractDrawableComponent> drawables = drawablesForIdentifiers
+                .remove(spatialEntity.getIdentifier());
         typesForSpatialEntities.remove(spatialEntity);
         boolean result = false;
         if (drawables != null) {
@@ -1231,7 +1236,6 @@ class DrawableManager {
                  * whether hatching needs to be rebuilt if this drawable was for
                  * hatching.
                  */
-                spatialEntitiesForDrawables.remove(drawable);
                 reactiveDrawables.remove(drawable);
                 hitTestableGeometriesForDrawables.remove(drawable);
                 removeRenderingForDrawable(drawable);
@@ -1291,6 +1295,7 @@ class DrawableManager {
                 }
             }
         }
+        spatialEntitiesForIdentifiers.remove(spatialEntity.getIdentifier());
         return result;
     }
 
@@ -1315,10 +1320,10 @@ class DrawableManager {
          * it visually. If none is found, then the drawables have disappeared,
          * so nothing needs to be done.
          */
-        SpatialEntity<? extends IEntityIdentifier> spatialEntity = spatialEntitiesForDrawables
-                .get(associatedDrawable);
-        List<AbstractDrawableComponent> drawables = drawablesForSpatialEntities
-                .get(spatialEntity);
+        SpatialEntity<? extends IEntityIdentifier> spatialEntity = spatialEntitiesForIdentifiers
+                .get(((IDrawable<?>) associatedDrawable).getIdentifier());
+        List<AbstractDrawableComponent> drawables = drawablesForIdentifiers
+                .get(spatialEntity.getIdentifier());
         if (drawables == null) {
             return;
         }
@@ -1330,12 +1335,15 @@ class DrawableManager {
         int indexForBoundingBoxDrawableInsertion = -1;
         for (int j = 0; j < drawables.size(); j++) {
             AbstractDrawableComponent drawable = drawables.get(j);
-            if (drawable == associatedDrawable) {
+            if (areDrawablesForSameEntity((IDrawable<?>) drawable,
+                    (IDrawable<?>) associatedDrawable)) {
                 indexForBoundingBoxDrawableInsertion = j + 1;
             }
             if ((drawable instanceof BoundingBoxDrawable)
-                    && (((BoundingBoxDrawable) drawable)
-                            .getBoundedDrawable() == associatedDrawable)) {
+                    && areDrawablesForSameEntity(
+                            ((BoundingBoxDrawable) drawable)
+                                    .getBoundedDrawable(),
+                            (IDrawable<?>) associatedDrawable)) {
                 boundingBoxDrawable = (BoundingBoxDrawable) drawable;
                 indexForBoundingBoxDrawableInsertion = j;
                 break;
@@ -1347,7 +1355,6 @@ class DrawableManager {
          */
         if (boundingBoxDrawable != null) {
             reactiveDrawables.remove(boundingBoxDrawable);
-            spatialEntitiesForDrawables.remove(boundingBoxDrawable);
             drawables.remove(boundingBoxDrawable);
         }
 
@@ -1361,7 +1368,6 @@ class DrawableManager {
                 : null);
         if (boundingBoxDrawable != null) {
             reactiveDrawables.add(boundingBoxDrawable);
-            spatialEntitiesForDrawables.put(boundingBoxDrawable, spatialEntity);
             drawables.add(indexForBoundingBoxDrawableInsertion,
                     boundingBoxDrawable);
         }
@@ -2206,7 +2212,8 @@ class DrawableManager {
      */
     SpatialEntity<? extends IEntityIdentifier> getAssociatedSpatialEntity(
             AbstractDrawableComponent drawable) {
-        return spatialEntitiesForDrawables.get(drawable);
+        return spatialEntitiesForIdentifiers
+                .get(((IDrawable<?>) drawable).getIdentifier());
     }
 
     /**
@@ -2326,6 +2333,23 @@ class DrawableManager {
     }
 
     // Private Methods
+
+    /**
+     * Determine whether or not the two drawables are for the same entity.
+     * 
+     * @param drawable1
+     *            First drawable.
+     * @param drawable2
+     *            Second drawable.
+     * @return <code>true</code> if the two drawables are for the same entity,
+     *         <code>false</code> otherwise.
+     */
+    private boolean areDrawablesForSameEntity(IDrawable<?> drawable1,
+            IDrawable<?> drawable2) {
+        return ((drawable1.getIdentifier().equals(drawable2.getIdentifier()))
+                && (drawable1.getGeometryIndex() == drawable2
+                        .getGeometryIndex()));
+    }
 
     /**
      * Determine whether the specified drawable should be prioritized when doing
@@ -2973,24 +2997,26 @@ class DrawableManager {
          */
         boolean combinableTextLocationChanged = false;
         Map<Coordinate, List<TextDrawable>> newTextDrawablesForLocations = new HashMap<>();
-        for (AbstractDrawableComponent drawable : spatialEntitiesForDrawables
-                .keySet()) {
-            if (drawable.getClass() == TextDrawable.class) {
-                TextDrawable textDrawable = (TextDrawable) drawable;
-                if (textDrawable.handleZoomChange()) {
-                    removeRenderingForDrawable(drawable);
-                    combinableTextLocationChanged |= textDrawable
-                            .isCombinable();
-                }
-                if (textDrawable.isCombinable()) {
-                    List<TextDrawable> textDrawables = newTextDrawablesForLocations
-                            .get(textDrawable.getLocation());
-                    if (textDrawables == null) {
-                        textDrawables = new ArrayList<>();
-                        newTextDrawablesForLocations
-                                .put(textDrawable.getLocation(), textDrawables);
+        for (List<AbstractDrawableComponent> drawables : drawablesForIdentifiers
+                .values()) {
+            for (AbstractDrawableComponent drawable : drawables) {
+                if (drawable.getClass() == TextDrawable.class) {
+                    TextDrawable textDrawable = (TextDrawable) drawable;
+                    if (textDrawable.handleZoomChange()) {
+                        removeRenderingForDrawable(drawable);
+                        combinableTextLocationChanged |= textDrawable
+                                .isCombinable();
                     }
-                    textDrawables.add(textDrawable);
+                    if (textDrawable.isCombinable()) {
+                        List<TextDrawable> textDrawables = newTextDrawablesForLocations
+                                .get(textDrawable.getLocation());
+                        if (textDrawables == null) {
+                            textDrawables = new ArrayList<>();
+                            newTextDrawablesForLocations.put(
+                                    textDrawable.getLocation(), textDrawables);
+                        }
+                        textDrawables.add(textDrawable);
+                    }
                 }
             }
         }

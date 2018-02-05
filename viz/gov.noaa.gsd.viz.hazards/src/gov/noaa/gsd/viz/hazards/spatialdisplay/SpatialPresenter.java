@@ -252,6 +252,9 @@ import net.engio.mbassy.listener.Handler;
  * Jan 22, 2018 25765      Chris.Golden      Added ability for the settings to specify which
  *                                           drag-and-drop manipulation points are to be
  *                                           prioritized.
+ * Feb 02, 2018 26712      Chris.Golden      Added the ability to center and zoom on a particular
+ *                                           visual feature of a hazard event, instead of always
+ *                                           using the base geometry of said event.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1799,20 +1802,54 @@ public class SpatialPresenter
      * Center and zoom the display given the currently selected hazard events.
      */
     private void updateCenteringAndZoomLevel() {
+
+        /*
+         * Do nothing unless at least one hazard event is selected.
+         */
         List<IHazardEventView> selectedEvents = getModel().getSelectionManager()
                 .getSelectedEvents();
         if (selectedEvents.isEmpty() == false) {
-            List<Geometry> geometriesOfSelected = new ArrayList<>();
+
+            /*
+             * Get the list of geometries taken from the spatial entities for
+             * the selected hazard events. Note, however, that some hazard
+             * events may have visual features showing, potentially none of
+             * which are marked as to be used for centering. To ensure that
+             * centering in such cases happens based upon the base geometry of
+             * such events, iterate through the selected events, and for each
+             * that does not already have a geometry included in the returned
+             * geometries, include its base geometry.
+             */
+            Pair<List<Geometry>, Set<String>> geometriesAndEventIdentifiers = spatialEntityManager
+                    .getGeometriesOfSpatialEntitiesToBeUsedForCentering();
+            List<Geometry> geometriesOfSelected = geometriesAndEventIdentifiers
+                    .getFirst();
+            Set<String> eventIdentifiersAlreadyIncluded = geometriesAndEventIdentifiers
+                    .getSecond();
             for (IHazardEventView selectedEvent : selectedEvents) {
-                geometriesOfSelected.add(selectedEvent.getFlattenedGeometry());
+                if (eventIdentifiersAlreadyIncluded
+                        .contains(selectedEvent.getEventID()) == false) {
+                    geometriesOfSelected
+                            .add(selectedEvent.getFlattenedGeometry());
+                }
             }
-            Geometry[] asArray = new Geometry[geometriesOfSelected.size()];
+
+            /*
+             * Create a collection of the geometries, and get its centroid to be
+             * used as the centering point and its envelope to be used to
+             * determine its bounds.
+             */
             GeometryCollection geometryCollection = geometryFactory
-                    .createGeometryCollection(
-                            geometriesOfSelected.toArray(asArray));
+                    .createGeometryCollection(geometriesOfSelected.toArray(
+                            new Geometry[geometriesOfSelected.size()]));
             Point center = geometryCollection.getCentroid();
             Coordinate[] hullCoordinates = geometryCollection.convexHull()
                     .getCoordinates();
+
+            /*
+             * Center and zoom based upon the calculated center point and
+             * bounds.
+             */
             getView().centerAndZoomDisplay(Lists.newArrayList(hullCoordinates),
                     center.getCoordinate());
         }

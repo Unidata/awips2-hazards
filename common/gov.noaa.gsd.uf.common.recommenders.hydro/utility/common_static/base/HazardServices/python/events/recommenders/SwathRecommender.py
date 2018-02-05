@@ -135,6 +135,8 @@ class Recommender(RecommenderTemplate.Recommender):
             'gov.noaa.gsd.common.utilities', 'SwathRecommender', level=logging.INFO))
         self.logger.setLevel(logging.INFO)
         self.probUtils = ProbUtils()
+        self.BUFFER_COLOR = { "red": 0.0, "green": 0.0, "blue": 0.0, "alpha": 0.7 }
+        self.BUFFER_THICKNESS = 3.0
         
     def defineScriptMetadata(self):
         '''
@@ -1060,6 +1062,8 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderColor": "eventType",
               "borderThickness": borderThickness,
               "borderStyle": "eventType",
+              "bufferColor": self.BUFFER_COLOR,
+              "bufferThickness": self.BUFFER_THICKNESS,
               "textSize": "eventType",
               "label": label,
               "textColor": "eventType",
@@ -1102,7 +1106,7 @@ class Recommender(RecommenderTemplate.Recommender):
                     dragCapability = 'all'
                     editable = True 
                     print "SR relocatedShape, editable -YG ", self.eventSt_ms
-                    self.flush()           
+                    self.flush()
               
             relocatedFeature = {
               "identifier": "swathRec_relocated_" + str(polySt_ms),
@@ -1110,11 +1114,14 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderColor": "eventType",
               "borderThickness": "eventType",
               "borderStyle": "dashed",
+              "bufferColor": self.BUFFER_COLOR,
+              "bufferThickness": self.BUFFER_THICKNESS,
               "textSize": "eventType",
               "dragCapability": dragCapability,
               "scaleable": editable,
               "rotatable": editable,
               "editableUsingGeometryOps": editable,
+              "useForCentering": True,
               "geometry": {
                   (polySt_ms, polyEt_ms): relocatedShape
                    }
@@ -1170,6 +1177,8 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderColor": "eventType",
               "borderThickness": borderThickness,
               "borderStyle": "eventType",
+              "bufferColor": self.BUFFER_COLOR,
+              "bufferThickness": self.BUFFER_THICKNESS,
               "textSize": "eventType",
               "label": label,
               "textColor": "eventType",
@@ -1214,6 +1223,8 @@ class Recommender(RecommenderTemplate.Recommender):
               "borderColor": { "red": 1, "green": 1, "blue": 0 },
               "borderThickness": 3,
               "borderStyle": "dotted",
+              "bufferColor": self.BUFFER_COLOR,
+              "bufferThickness": self.BUFFER_THICKNESS,
               "geometry": {
                   (startTime_ms,
                    TimeUtils.datetimeToEpochTimeMillis(event.getEndTime()) + 1000):
@@ -1315,6 +1326,8 @@ class Recommender(RecommenderTemplate.Recommender):
                   "borderColor":  color,  
                   "borderThickness": "eventType",
                   "borderStyle": "eventType",
+                  "bufferColor": self.BUFFER_COLOR,
+                  "bufferThickness": self.BUFFER_THICKNESS,
                   "dragCapability": dragCapability,
                   "textSize": "eventType",
                   "label": self.label,
@@ -1345,6 +1358,8 @@ class Recommender(RecommenderTemplate.Recommender):
                   "borderColor":  color,   
                   "borderThickness": "eventType",
                   "borderStyle": "eventType",
+                  "bufferColor": self.BUFFER_COLOR,
+                  "bufferThickness": self.BUFFER_THICKNESS,
                   "dragCapability": 'none',
                   "textSize": "eventType",
                   "label": self.label,
@@ -1421,6 +1436,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     "visibilityConstraints": "selected",
                     "borderColor": { "red": 0, "green": 0, "blue": 0 },  # colorFill[key],
                     "fillColor": colorFill[key],
+                    "bufferColor": self.BUFFER_COLOR,
+                    "bufferThickness": self.BUFFER_THICKNESS,
                     "geometry": {
                         (upstreamSt_ms,
                         # (TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()), 

@@ -9,7 +9,48 @@
  */
 package gov.noaa.gsd.viz.hazards.spatialdisplay;
 
+import java.awt.Color;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.RenderedImage;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.graphics.Rectangle;
+
+import com.raytheon.uf.common.geospatial.util.WorldWrapCorrector;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.core.DrawableString;
+import com.raytheon.uf.viz.core.IExtent;
+import com.raytheon.uf.viz.core.IGraphicsTarget;
+import com.raytheon.uf.viz.core.IGraphicsTarget.HorizontalAlignment;
+import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
+import com.raytheon.uf.viz.core.IGraphicsTarget.VerticalAlignment;
+import com.raytheon.uf.viz.core.PixelExtent;
+import com.raytheon.uf.viz.core.data.IRenderedImageCallback;
+import com.raytheon.uf.viz.core.drawables.IDescriptor;
+import com.raytheon.uf.viz.core.drawables.IFont;
+import com.raytheon.uf.viz.core.drawables.IFont.Style;
+import com.raytheon.uf.viz.core.drawables.IImage;
+import com.raytheon.uf.viz.core.drawables.IShadedShape;
+import com.raytheon.uf.viz.core.drawables.IWireframeShape;
+import com.raytheon.uf.viz.core.drawables.PaintProperties;
+import com.raytheon.uf.viz.core.exception.VizException;
+import com.raytheon.uf.viz.core.map.IMapDescriptor;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.LineString;
+import com.vividsolutions.jts.geom.LinearRing;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.linearref.LengthIndexedLine;
+import com.vividsolutions.jts.linearref.LengthLocationMap;
+import com.vividsolutions.jts.linearref.LinearLocation;
+import com.vividsolutions.jts.linearref.LocationIndexedLine;
+
 import gov.noaa.gsd.common.utilities.geometry.AdvancedGeometryUtilities;
+import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.MultiPointDrawable;
 import gov.noaa.gsd.viz.hazards.spatialdisplay.drawables.PathDrawable;
 import gov.noaa.nws.ncep.ui.pgen.PgenRangeRecord;
 import gov.noaa.nws.ncep.ui.pgen.PgenUtil;
@@ -53,46 +94,6 @@ import gov.noaa.nws.ncep.ui.pgen.elements.SymbolLocationSet;
 import gov.noaa.nws.ncep.ui.pgen.elements.Text;
 import gov.noaa.nws.ncep.ui.pgen.gfa.GfaClip;
 
-import java.awt.Color;
-import java.awt.geom.Rectangle2D;
-import java.awt.image.RenderedImage;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.eclipse.swt.graphics.RGB;
-import org.eclipse.swt.graphics.Rectangle;
-
-import com.raytheon.uf.common.geospatial.util.WorldWrapCorrector;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.core.DrawableString;
-import com.raytheon.uf.viz.core.IExtent;
-import com.raytheon.uf.viz.core.IGraphicsTarget;
-import com.raytheon.uf.viz.core.IGraphicsTarget.HorizontalAlignment;
-import com.raytheon.uf.viz.core.IGraphicsTarget.LineStyle;
-import com.raytheon.uf.viz.core.IGraphicsTarget.VerticalAlignment;
-import com.raytheon.uf.viz.core.PixelExtent;
-import com.raytheon.uf.viz.core.data.IRenderedImageCallback;
-import com.raytheon.uf.viz.core.drawables.IDescriptor;
-import com.raytheon.uf.viz.core.drawables.IFont;
-import com.raytheon.uf.viz.core.drawables.IFont.Style;
-import com.raytheon.uf.viz.core.drawables.IImage;
-import com.raytheon.uf.viz.core.drawables.IShadedShape;
-import com.raytheon.uf.viz.core.drawables.IWireframeShape;
-import com.raytheon.uf.viz.core.drawables.PaintProperties;
-import com.raytheon.uf.viz.core.exception.VizException;
-import com.raytheon.uf.viz.core.map.IMapDescriptor;
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.LinearRing;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.linearref.LengthIndexedLine;
-import com.vividsolutions.jts.linearref.LengthLocationMap;
-import com.vividsolutions.jts.linearref.LinearLocation;
-import com.vividsolutions.jts.linearref.LocationIndexedLine;
-
 /**
  * Description: Copy of the {@link DisplayElementFactory}, with functionality
  * unneeded by the spatial display stripped out, and generating any line
@@ -103,7 +104,8 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
  * created the edge displayables for all the {@link LinearRing} components as a
  * single displayable, which in practice meant that the holes and the exterior
  * ring were connected visually by line segments. This version creates one edge
- * displayable per linear ring.
+ * displayable per linear ring. This version also handles requests for buffers
+ * around borders, making shapes easier to say against colored backgrounds.
  * 
  * <pre>
  * 
@@ -131,6 +133,8 @@ import com.vividsolutions.jts.linearref.LocationIndexedLine;
  *                                      the exterior ring and any interior
  *                                      rings (holes).
  * Feb 07, 2017   15556    Chris.Golden Changed to be package-private.
+ * Feb 02, 2018   26712    Chris.Golden Added visual buffering of drawables
+ *                                      that require it.
  * </pre>
  * 
  * @author Chris.Golden
@@ -187,11 +191,11 @@ class PgenDisplayElementFactory {
         @Override
         public void draw(IGraphicsTarget target, PaintProperties paintProps) {
             try {
-                target.drawWireframeShape(
-                        shape,
-                        new RGB(color.getRed(), color.getGreen(), color
-                                .getBlue()), lineWidth, LineStyle.SOLID, (color
-                                .getAlpha()) / 255.0f);
+                target.drawWireframeShape(shape,
+                        new RGB(color.getRed(), color.getGreen(),
+                                color.getBlue()),
+                        lineWidth, LineStyle.SOLID,
+                        (color.getAlpha()) / 255.0f);
             } catch (VizException e) {
                 statusHandler.error("Cannot draw wireframe shape.", e);
             }
@@ -208,8 +212,8 @@ class PgenDisplayElementFactory {
      */
     private class PgenArcPatternApplicator extends ArcPatternApplicator {
 
-        public PgenArcPatternApplicator(LengthIndexedLine line,
-                double startLoc, double endLoc) {
+        public PgenArcPatternApplicator(LengthIndexedLine line, double startLoc,
+                double endLoc) {
             super(line, startLoc, endLoc);
         }
 
@@ -425,8 +429,8 @@ class PgenDisplayElementFactory {
             // place
             Geometry geo = null;
             try {
-                geo = corrector.correct(GfaClip.getInstance()
-                        .pointsToLineString(coord));
+                geo = corrector.correct(
+                        GfaClip.getInstance().pointsToLineString(coord));
             } catch (Exception e) {
                 statusHandler.error("World wrap error.", e);
                 return list;
@@ -548,17 +552,16 @@ class PgenDisplayElementFactory {
                         || forceAuto) {
                     Coordinate loc = ((ISinglePoint) ((ContourMinmax) tparent)
                             .getSymbol()).getLocation();
-                    double[] pixel = descriptor.worldToPixel(new double[] {
-                            loc.x, loc.y, 0.0 });
-                    double sfactor = deviceScale
-                            * ((ContourMinmax) tparent).getSymbol()
-                                    .getSizeScale();
+                    double[] pixel = descriptor
+                            .worldToPixel(new double[] { loc.x, loc.y, 0.0 });
+                    double sfactor = deviceScale * ((ContourMinmax) tparent)
+                            .getSymbol().getSizeScale();
 
                     pixel[1] = pixel[1] + sfactor * 5;
-                    double[] nloc = descriptor.pixelToWorld(new double[] {
-                            pixel[0], pixel[1], 0.0 });
-                    ((Text) text).setLocationOnly(new Coordinate(nloc[0],
-                            nloc[1]));
+                    double[] nloc = descriptor.pixelToWorld(
+                            new double[] { pixel[0], pixel[1], 0.0 });
+                    ((Text) text)
+                            .setLocationOnly(new Coordinate(nloc[0], nloc[1]));
                     // Only adjust once if auto-place flag in preference is
                     // false.
                     if (!forceAuto) {
@@ -575,19 +578,19 @@ class PgenDisplayElementFactory {
                 / paintProperties.getCanvasBounds().width;
         double vertRatio = paintProperties.getView().getExtent().getHeight()
                 / paintProperties.getCanvasBounds().height;
-        /*
-         * Set background mask and outline
-         */
-        // TextStyle mask = TextStyle.NORMAL;
-        // if ( txt.maskText() && !txt.outlineText() ) {
-        // mask = TextStyle.BLANKED;
-        // }
-        // else if ( txt.maskText() && txt.outlineText() ) {
-        // mask = TextStyle.BOXED;
-        // }
-        // else if ( !txt.maskText() && txt.outlineText() ) {
-        // mask = TextStyle.OUTLINE;
-        // }
+                /*
+                 * Set background mask and outline
+                 */
+                // TextStyle mask = TextStyle.NORMAL;
+                // if ( txt.maskText() && !txt.outlineText() ) {
+                // mask = TextStyle.BLANKED;
+                // }
+                // else if ( txt.maskText() && txt.outlineText() ) {
+                // mask = TextStyle.BOXED;
+                // }
+                // else if ( !txt.maskText() && txt.outlineText() ) {
+                // mask = TextStyle.OUTLINE;
+                // }
 
         /*
          * Initialize Font Style[] styles = null; if ( txt.getStyle() != null )
@@ -658,7 +661,8 @@ class PgenDisplayElementFactory {
         /*
          * create drawableString and calculate its bounds
          */
-        DrawableString dstring = new DrawableString(text.getString(), textColor);
+        DrawableString dstring = new DrawableString(text.getString(),
+                textColor);
         dstring.font = font;
         dstring.setCoordinates(loc[0], loc[1]);
         dstring.horizontalAlignment = HorizontalAlignment.CENTER;
@@ -697,8 +701,9 @@ class PgenDisplayElementFactory {
 
         dstring.horizontalAlignment = align;
 
-        IExtent box = new PixelExtent(dstring.basics.x - left, dstring.basics.x
-                + right, dstring.basics.y - yOffset, dstring.basics.y + yOffset);
+        IExtent box = new PixelExtent(dstring.basics.x - left,
+                dstring.basics.x + right, dstring.basics.y - yOffset,
+                dstring.basics.y + yOffset);
 
         /*
          * create new TextDisplayElement and add it to return list
@@ -743,8 +748,8 @@ class PgenDisplayElementFactory {
         /*
          * calculate angle of major axis
          */
-        double axisAngle = Math.toDegrees(Math.atan2((circum[1] - center[1]),
-                (circum[0] - center[0])));
+        double axisAngle = Math.toDegrees(
+                Math.atan2((circum[1] - center[1]), (circum[0] - center[0])));
         double cosineAxis = Math.cos(Math.toRadians(axisAngle));
         double sineAxis = Math.sin(Math.toRadians(axisAngle));
 
@@ -761,8 +766,8 @@ class PgenDisplayElementFactory {
         // TODO - orientation issues
         // double increment = 5.0; //degrees
         double angle = arc.getStartAngle();
-        int numpts = (int) Math.round(arc.getEndAngle() - arc.getStartAngle()
-                + 1.0);
+        int numpts = (int) Math
+                .round(arc.getEndAngle() - arc.getStartAngle() + 1.0);
         double[][] path = new double[numpts][3];
         for (int j = 0; j < numpts; j++) {
             double thisSine = Math.sin(Math.toRadians(angle));
@@ -952,7 +957,8 @@ class PgenDisplayElementFactory {
         /*
          * create drawableString and calculate its bounds
          */
-        DrawableString dstring = new DrawableString(text.getString(), textColor);
+        DrawableString dstring = new DrawableString(text.getString(),
+                textColor);
         dstring.font = font;
         dstring.setCoordinates(loc[0], loc[1]);
         dstring.horizontalAlignment = HorizontalAlignment.CENTER;
@@ -991,8 +997,9 @@ class PgenDisplayElementFactory {
 
         dstring.horizontalAlignment = align;
 
-        IExtent box = new PixelExtent(dstring.basics.x - left, dstring.basics.x
-                + right, dstring.basics.y - yOffset, dstring.basics.y + yOffset);
+        IExtent box = new PixelExtent(dstring.basics.x - left,
+                dstring.basics.x + right, dstring.basics.y - yOffset,
+                dstring.basics.y + yOffset);
 
         List<Coordinate> rngBox = new ArrayList<Coordinate>();
         rngBox.add(new Coordinate(box.getMinX() - PgenRangeRecord.RANGE_OFFSET,
@@ -1067,18 +1074,22 @@ class PgenDisplayElementFactory {
          * Build range
          */
         List<Coordinate> rngBox = new ArrayList<Coordinate>();
-        rngBox.add(new Coordinate(pts[0][0] - pic.getWidth() / 2
-                - PgenRangeRecord.RANGE_OFFSET, pts[0][1] + pic.getHeight() / 2
-                + PgenRangeRecord.RANGE_OFFSET));
-        rngBox.add(new Coordinate(pts[0][0] + pic.getWidth() / 2
-                + PgenRangeRecord.RANGE_OFFSET, pts[0][1] + pic.getHeight() / 2
-                + PgenRangeRecord.RANGE_OFFSET));
-        rngBox.add(new Coordinate(pts[0][0] + pic.getWidth() / 2
-                + PgenRangeRecord.RANGE_OFFSET, pts[0][1] - pic.getHeight() / 2
-                - PgenRangeRecord.RANGE_OFFSET));
-        rngBox.add(new Coordinate(pts[0][0] - pic.getWidth() / 2
-                - PgenRangeRecord.RANGE_OFFSET, pts[0][1] - pic.getHeight() / 2
-                - PgenRangeRecord.RANGE_OFFSET));
+        rngBox.add(new Coordinate(
+                pts[0][0] - pic.getWidth() / 2 - PgenRangeRecord.RANGE_OFFSET,
+                pts[0][1] + pic.getHeight() / 2
+                        + PgenRangeRecord.RANGE_OFFSET));
+        rngBox.add(new Coordinate(
+                pts[0][0] + pic.getWidth() / 2 + PgenRangeRecord.RANGE_OFFSET,
+                pts[0][1] + pic.getHeight() / 2
+                        + PgenRangeRecord.RANGE_OFFSET));
+        rngBox.add(new Coordinate(
+                pts[0][0] + pic.getWidth() / 2 + PgenRangeRecord.RANGE_OFFSET,
+                pts[0][1] - pic.getHeight() / 2
+                        - PgenRangeRecord.RANGE_OFFSET));
+        rngBox.add(new Coordinate(
+                pts[0][0] - pic.getWidth() / 2 - PgenRangeRecord.RANGE_OFFSET,
+                pts[0][1] - pic.getHeight() / 2
+                        - PgenRangeRecord.RANGE_OFFSET));
 
         List<Coordinate> symPos = new ArrayList<Coordinate>();
         symPos.add(symbol.getLocation());
@@ -1185,8 +1196,8 @@ class PgenDisplayElementFactory {
             if (ringPixels != null) {
                 ringSmoothPixels = new ArrayList<>(ringPixels.size());
                 for (double[][] ring : ringPixels) {
-                    ringSmoothPixels.add(CurveFitter.fitParametricCurve(ring,
-                            density));
+                    ringSmoothPixels
+                            .add(CurveFitter.fitParametricCurve(ring, density));
                 }
             }
         } else {
@@ -1304,6 +1315,10 @@ class PgenDisplayElementFactory {
 
         float drawLineWidth = line.getLineWidth();
         double drawSizeScale = line.getSizeScale();
+        float bufferWidth = (line instanceof MultiPointDrawable
+                ? ((MultiPointDrawable<?>) line).getBufferWidth() : 0);
+        Color bufferColor = (line instanceof MultiPointDrawable
+                ? ((MultiPointDrawable<?>) line).getBufferColor() : null);
 
         /*
          * Get color for creating displayables.
@@ -1322,8 +1337,8 @@ class PgenDisplayElementFactory {
             /*
              * could not find desired line pattern. Used solid line as default.
              */
-            statusHandler.warn(lpe.getMessage()
-                    + ":  Using Solid Line by default.");
+            statusHandler
+                    .warn(lpe.getMessage() + ":  Using Solid Line by default.");
             pattern = null;
         }
 
@@ -1368,9 +1383,9 @@ class PgenDisplayElementFactory {
 
         list.addAll(createDisplayElementsFromPoints(smoothPoints,
                 ringSmoothPoints, dspClr, pattern, scaleType,
-                getDisplayFillMode(line.isFilled()), drawLineWidth,
-                paintProperties));
-        // ((ILine) de).getLineWidth(), isCCFP, ccfp, paintProps));
+                getDisplayFillMode(line.isFilled()), drawLineWidth, bufferWidth,
+                bufferColor, paintProperties));
+                // ((ILine) de).getLineWidth(), isCCFP, ccfp, paintProps));
 
         /*
          * Draw labels for contour lines.
@@ -1405,6 +1420,10 @@ class PgenDisplayElementFactory {
      *            Flag indicating whether or not the object is filled.
      * @param lineWidth
      *            Width of the line.
+     * @param bufferWidth
+     *            Width of the buffer to be drawn to either side of the outline.
+     * @param bufferColor
+     *            Color of the buffer to be drawn to either side of the outline.
      * @param paintProperties
      *            Paint properties of the target.
      * @return List of displayables.
@@ -1412,7 +1431,8 @@ class PgenDisplayElementFactory {
     private List<IDisplayable> createDisplayElementsFromPoints(
             double[][] points, List<double[][]> ringPoints,
             Color[] displayColors, LinePattern pattern, ScaleType scaleType,
-            Boolean isFilled, float lineWidth, PaintProperties paintProperties) {
+            Boolean isFilled, float lineWidth, float bufferWidth,
+            Color bufferColor, PaintProperties paintProperties) {
 
         ArrayList<IDisplayable> list = new ArrayList<IDisplayable>();
         wireframeShapes = new IWireframeShape[displayColors.length];
@@ -1450,9 +1470,9 @@ class PgenDisplayElementFactory {
 
             int n = points.length - 1;
             // calculate direction of arrow head
-            double slope = Math.toDegrees(Math.atan2(
-                    (points[n][1] - points[n - 1][1]),
-                    (points[n][0] - points[n - 1][0])));
+            double slope = Math
+                    .toDegrees(Math.atan2((points[n][1] - points[n - 1][1]),
+                            (points[n][0] - points[n - 1][0])));
 
             arrow = new ArrowHead(new Coordinate(points[n][0], points[n][1]),
                     pointAngle, slope, height, pattern.getArrowHeadType());
@@ -1465,9 +1485,10 @@ class PgenDisplayElementFactory {
             if (pattern.getArrowHeadType() == ArrowHeadType.FILLED) {
                 // Add to shadedshape
 
-                shadedShape.addPolygonPixelSpace(toLineString(ahead), new RGB(
-                        displayColors[0].getRed(), displayColors[0].getGreen(),
-                        displayColors[0].getBlue()));
+                shadedShape.addPolygonPixelSpace(toLineString(ahead),
+                        new RGB(displayColors[0].getRed(),
+                                displayColors[0].getGreen(),
+                                displayColors[0].getBlue()));
             }
         }
         if ((pattern != null) && (pattern.getNumSegments() > 0)) {
@@ -1502,17 +1523,32 @@ class PgenDisplayElementFactory {
             }
         }
 
+        /*
+         * Compile each IWireframeShape, and if a buffer is to be drawn, create
+         * its LineDisplayElement and add to IDisplayable return list
+         */
+        for (int k = 0; k < wireframeShapes.length; k++) {
+
+            wireframeShapes[k].compile();
+
+            if ((bufferWidth > 0.0f) && (bufferColor != null)) {
+                AlphaCapableLineDisplayElement lde = new AlphaCapableLineDisplayElement(
+                        wireframeShapes[k], bufferColor,
+                        lineWidth + (bufferWidth * 2.0f));
+                list.add(lde);
+            }
+        }
+
         if (isFilled) {
             list.add(createFill(points));
         }
 
         /*
-         * Compile each IWireframeShape, create its LineDisplayElement, and add
-         * to IDisplayable return list
+         * Create each wireframe shape's LineDisplayElement, and add to
+         * IDisplayable return list
          */
         for (int k = 0; k < wireframeShapes.length; k++) {
 
-            wireframeShapes[k].compile();
             AlphaCapableLineDisplayElement lde = new AlphaCapableLineDisplayElement(
                     wireframeShapes[k], displayColors[k], lineWidth);
             list.add(lde);
@@ -1614,8 +1650,8 @@ class PgenDisplayElementFactory {
         // segment in the pattern
         // double offset = 1.0 + ( leftover / (numPatterns * psize) );
         if (scaleType == ScaleType.SCALE_BLANK_LINE_ONLY) {
-            pattern = pattern.scaleBlankLineToLength(totalDist
-                    / (numPatterns * sfactor));
+            pattern = pattern.scaleBlankLineToLength(
+                    totalDist / (numPatterns * sfactor));
         } else {
             pattern = pattern
                     .scaleToLength(totalDist / (numPatterns * sfactor));
@@ -1644,8 +1680,8 @@ class PgenDisplayElementFactory {
             double patlen = pattern.getLength() * sfactor;// * offset;
             endPat = begPat + patlen;
             LinearLocation linloc1 = llm.getLocation(endPat);
-            LengthIndexedLine sublil = new LengthIndexedLine(lol.extractLine(
-                    linloc0, linloc1));
+            LengthIndexedLine sublil = new LengthIndexedLine(
+                    lol.extractLine(linloc0, linloc1));
 
             /*
              * Loop over each segment in the pattern
@@ -1701,8 +1737,8 @@ class PgenDisplayElementFactory {
                     PgenArcPatternApplicator circ = new PgenArcPatternApplicator(
                             sublil, currDist, endLoc);
                     circ.setArcAttributes(start, end, seg.getNumberInArc());
-                    wireframeShapes[colorNum].addLineSegment(circ
-                            .calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(circ.calculateLines());
                     break;
 
                 case CIRCLE_FILLED:
@@ -1739,8 +1775,8 @@ class PgenDisplayElementFactory {
                     PgenArcPatternApplicator app180 = new PgenArcPatternApplicator(
                             sublil, currDist, endLoc);
                     app180.setArcAttributes(start, end, seg.getNumberInArc());
-                    wireframeShapes[colorNum].addLineSegment(app180
-                            .calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app180.calculateLines());
                     break;
 
                 case ARC_180_DEGREE_FILLED:
@@ -1771,8 +1807,8 @@ class PgenDisplayElementFactory {
                             new RGB(clr[seg.getColorLocation()].getRed(),
                                     clr[seg.getColorLocation()].getGreen(),
                                     clr[seg.getColorLocation()].getBlue()));
-                    wireframeShapes[colorNum].addLineSegment(app
-                            .getSegmentPts());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app.getSegmentPts());
                     break;
 
                 case ARC_180_DEGREE_CLOSED:
@@ -1794,10 +1830,10 @@ class PgenDisplayElementFactory {
                      * Add points along arc and line segment path to the
                      * appropriate WireframeShape.
                      */
-                    wireframeShapes[colorNum].addLineSegment(app180c
-                            .calculateLines());
-                    wireframeShapes[colorNum].addLineSegment(app180c
-                            .getSegmentPts());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app180c.calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app180c.getSegmentPts());
                     break;
 
                 case ARC_90_DEGREE:
@@ -1819,10 +1855,10 @@ class PgenDisplayElementFactory {
                      * Add points along arc and line segment path to the
                      * appropriate WireframeShape.
                      */
-                    wireframeShapes[colorNum].addLineSegment(app90
-                            .calculateLines());
-                    wireframeShapes[colorNum].addLineSegment(app90
-                            .getSegmentPts());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app90.calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app90.getSegmentPts());
                     break;
 
                 case ARC_270_DEGREE:
@@ -1841,8 +1877,8 @@ class PgenDisplayElementFactory {
                     PgenArcPatternApplicator app270 = new PgenArcPatternApplicator(
                             sublil, currDist, endLoc);
                     app270.setArcAttributes(start, end, seg.getNumberInArc());
-                    wireframeShapes[colorNum].addLineSegment(app270
-                            .calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app270.calculateLines());
                     break;
 
                 case ARC_270_DEGREE_WITH_LINE:
@@ -1864,10 +1900,10 @@ class PgenDisplayElementFactory {
                      * Add points along arc and line segment path to the
                      * appropriate WireframeShape.
                      */
-                    wireframeShapes[colorNum].addLineSegment(app270l
-                            .calculateLines());
-                    wireframeShapes[colorNum].addLineSegment(app270l
-                            .getSegmentPts());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app270l.calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(app270l.getSegmentPts());
                     break;
 
                 case BOX:
@@ -1880,8 +1916,8 @@ class PgenDisplayElementFactory {
                             sublil, currDist, endLoc);
                     box.setHeight(seg.getOffsetSize() * sfactor);
                     box.setPatternType(CornerPattern.BOX);
-                    wireframeShapes[colorNum].addLineSegment(box
-                            .calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(box.calculateLines());
                     break;
 
                 case BOX_FILLED:
@@ -1931,8 +1967,8 @@ class PgenDisplayElementFactory {
                             sublil, currDist, endLoc);
                     ze.setHeight(seg.getOffsetSize() * sfactor);
                     ze.setPatternType(CornerPattern.Z_PATTERN);
-                    wireframeShapes[colorNum].addLineSegment(ze
-                            .calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(ze.calculateLines());
                     break;
 
                 case DOUBLE_LINE:
@@ -1967,10 +2003,10 @@ class PgenDisplayElementFactory {
                      * Add tick segment and the line path segment to the
                      * appropriate WireframeShape.
                      */
-                    wireframeShapes[colorNum].addLineSegment(tick
-                            .getSegmentPts());
-                    wireframeShapes[colorNum].addLineSegment(tick
-                            .calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(tick.getSegmentPts());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(tick.calculateLines());
                     break;
 
                 case ARROW_HEAD:
@@ -1987,10 +2023,10 @@ class PgenDisplayElementFactory {
                      * Add points along arc and line segment path to the
                      * appropriate WireframeShape.
                      */
-                    wireframeShapes[colorNum].addLineSegment(arrow
-                            .calculateLines());
-                    wireframeShapes[colorNum].addLineSegment(arrow
-                            .getSegmentPts());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(arrow.calculateLines());
+                    wireframeShapes[colorNum]
+                            .addLineSegment(arrow.getSegmentPts());
                     break;
 
                 default:
@@ -2048,8 +2084,8 @@ class PgenDisplayElementFactory {
      */
     private LineString[] toLineString(Coordinate[] coords) {
 
-        LineString[] ls = new LineString[] { geometryFactory
-                .createLineString(coords) };
+        LineString[] ls = new LineString[] {
+                geometryFactory.createLineString(coords) };
         return ls;
     }
 
@@ -2133,9 +2169,8 @@ class PgenDisplayElementFactory {
             fillClr = dspClr[1];
         }
 
-        fillarea.addPolygonPixelSpace(
-                ls,
-                new RGB(fillClr.getRed(), fillClr.getGreen(), fillClr.getBlue()));
+        fillarea.addPolygonPixelSpace(ls, new RGB(fillClr.getRed(),
+                fillClr.getGreen(), fillClr.getBlue()));
         fillarea.compile();
 
         float alpha = (fillClr.getAlpha()) / 255.0f;
@@ -2195,9 +2230,8 @@ class PgenDisplayElementFactory {
         double[] pt2 = descriptor.worldToPixel(north);
 
         // TODO - Orientation issues here!
-        return -90.0
-                - Math.toDegrees(Math.atan2((pt2[1] - pt1[1]),
-                        (pt2[0] - pt1[0])));
+        return -90.0 - Math
+                .toDegrees(Math.atan2((pt2[1] - pt1[1]), (pt2[0] - pt1[0])));
     }
 
     /**
@@ -2558,7 +2592,8 @@ class PgenDisplayElementFactory {
 
             boolean forceAuto = PgenUtil.getContourLabelAutoPlacement();
 
-            if (labelText.getAuto() != null && labelText.getAuto() || forceAuto) {
+            if (labelText.getAuto() != null && labelText.getAuto()
+                    || forceAuto) {
                 /*
                  * Find the visible part of the circle.
                  */
@@ -2596,9 +2631,8 @@ class PgenDisplayElementFactory {
                  * the last point.
                  */
                 int pp = Math.max(actualLength / 2, actualLength - 5);
-                double[] loc = descriptor
-                        .pixelToWorld(new double[] {
-                                visiblePts[pp][0] - offset / 2,
+                double[] loc = descriptor.pixelToWorld(
+                        new double[] { visiblePts[pp][0] - offset / 2,
                                 visiblePts[pp][1], 0.0 });
                 Coordinate loc1 = new Coordinate(loc[0], loc[1]);
                 labelText.setLocationOnly(loc1);

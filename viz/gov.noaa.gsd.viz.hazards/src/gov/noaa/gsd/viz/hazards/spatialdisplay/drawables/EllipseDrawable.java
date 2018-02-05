@@ -29,6 +29,8 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
  *                                       points.
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new version of
  *                                      {@link IDrawable}.
+ * Feb 02, 2018   26712    Chris.Golden Changed to allow visual buffering of
+ *                                      appropriate drawables.
  * </pre>
  * 
  * @author Chris.Golden
@@ -49,7 +51,7 @@ public class EllipseDrawable extends MultiPointDrawable<Ellipse> {
      *            Geometry.
      */
     public EllipseDrawable(IEntityIdentifier identifier,
-            DrawableAttributes attributes, Ellipse geometry) {
+            MultiPointDrawableAttributes attributes, Ellipse geometry) {
         super(identifier, attributes, geometry);
     }
 

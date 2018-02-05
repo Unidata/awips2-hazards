@@ -134,6 +134,22 @@ StartUpConfig = {
     #            the history list.
     # "none":    neither "saveToDatabase" nor "saveToHistory" do anything; no persisting
     #            is done in response to either of them
-    "persistenceBehavior": "normal"
+    "persistenceBehavior": "normal",
+
+    #########################
+    # Width in pixels to either side of all hazard event base geometries
+    # that is to be filled with the color specified by "geometryBufferColor".
+    # Default is 0, which means no buffer. This buffer is intended to visually
+    # differentiate hazard event base geometries from the background behind
+    # them. 
+    "geometryBufferThickness": 2.0,
+    
+    # Hazard event base geometry buffer color, specified as a dictionary
+    # holding a number between 0.0 and 1.0 for "red", "green", and "blue"
+    # entries, and optionally, an entry between 0.0 and 1.0 for "alpha".
+    # The latter, if given, provides the opacity of the color. If no "alpha"
+    # is specified, the color is considered opaque. If no color is specified
+    # at all, no buffer will be drawn.
+    "geometryBufferColor": { "red": 0.0, "green": 0.0, "blue": 0.0, "alpha": 0.8 }
 
     }

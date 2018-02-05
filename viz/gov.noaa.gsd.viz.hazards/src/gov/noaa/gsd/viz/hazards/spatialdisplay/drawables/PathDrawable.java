@@ -32,6 +32,8 @@ import gov.noaa.gsd.viz.hazards.spatialdisplay.entities.IEntityIdentifier;
  * Sep 29, 2016   15928    Chris.Golden  Added use of manipulation points.
  * Jan 17, 2018   33428    Chris.Golden Changed to work with new version of
  *                                      {@link IDrawable}.
+ * Feb 02, 2018   26712    Chris.Golden Changed to allow visual buffering of
+ *                                      appropriate drawables.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,7 +61,7 @@ public class PathDrawable extends MultiPointDrawable<GeometryWrapper> {
      *            Geometry.
      */
     public PathDrawable(IEntityIdentifier identifier,
-            DrawableAttributes attributes, GeometryWrapper geometry) {
+            MultiPointDrawableAttributes attributes, GeometryWrapper geometry) {
         super(identifier, attributes, geometry);
     }
 
