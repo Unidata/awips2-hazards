@@ -647,10 +647,12 @@ class Recommender(RecommenderTemplate.Recommender):
             print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
             if currentEvent.get('activateModify') == 0:
                 print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
+                if recommendedObjectIDsList and rawRecommendedID and rawRecommendedID in recommendedEventsDict:
+                    
+                    print recommendedObjectIDsList
+                    print "rawRecommendedID ", rawRecommendedID
 ### These next two lines are a temporary try to see if this kills the duplication issue
-                recommendedObjectIDsList.remove(rawRecommendedID)
-                mergedEvents.add(currentEvent)
-                continue
+                    recommendedObjectIDsList.remove(rawRecommendedID)
 
             #if currentEvent.get('automationLevel') == 'userOwned':
             if not currentEvent.get('geometryAutomated') and not currentEvent.get('motionAutomated') and not currentEvent.get('probTrendAutomated'):

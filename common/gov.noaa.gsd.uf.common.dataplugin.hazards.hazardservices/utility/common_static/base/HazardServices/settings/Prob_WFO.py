@@ -56,7 +56,7 @@ Prob_WFO = {
         "Status",
         "Start Time",
         "End Time",
-        "Workstation",
+        "Owner",
         "DataLayer",
     ],
     "visibleStatuses": [
@@ -179,14 +179,9 @@ Prob_WFO = {
             "fieldName": "objectID",
             "type": "string"
         },
-        "Workstation": {
+        "Owner": {
             "sortDir": "none",
-            "fieldName": "workStation", 
-            "type": "string"
-        },
-        "User Name": {
-            "sortDir": "none",
-            "fieldName": "userName", 
+            "fieldName": "owner", 
             "type": "string"
         },
     },

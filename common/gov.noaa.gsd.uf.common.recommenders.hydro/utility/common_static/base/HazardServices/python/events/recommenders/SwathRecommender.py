@@ -204,6 +204,15 @@ class Recommender(RecommenderTemplate.Recommender):
         self.saveToHistory = False
         self.keepLocked = True
         
+        userName = eventSetAttrs.get('userName')
+        workStation = eventSetAttrs.get('workStation') 
+        # for automated event, username / workstation may not be present
+        if userName and workStation:  
+            self.caveUser = userName + ":" + workStation
+        else:
+            self.caveUser = None
+        print "caveUser is ", self.caveUser
+        
         # IF there are any editable objects, we do not want to set the selected time ahead for
         #   a timeInterval update
         self.editableObjects = False
@@ -250,7 +259,7 @@ class Recommender(RecommenderTemplate.Recommender):
                 
                 print 'SR: Hazard event', event.getEventID(), 'selection state is now', event.get('selected')
                 #print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
-                self.probUtils.setActivation(event)
+                self.probUtils.setActivation(event, self.caveUser)
                 self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
                 print 'SR -- YG: -activate, activateModify-- ', event.get('activate'), event.get('activateModify')
                 print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
@@ -425,6 +434,7 @@ class Recommender(RecommenderTemplate.Recommender):
             resultEventSet.add(event)
             self.saveToHistory = True
             self.keepLocked = False
+            return False
             # BUG ALERT?? Should we still process it?
 
         return True
@@ -587,7 +597,7 @@ class Recommender(RecommenderTemplate.Recommender):
             return False               
         
         if 'status' in self.attributeIdentifiers:
-            self.probUtils.setActivation(event)
+            self.probUtils.setActivation(event, self.caveUser)
             self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
             return True
 
@@ -624,10 +634,35 @@ class Recommender(RecommenderTemplate.Recommender):
                 self.editableHazard = True
             return True
         
-        # Handle Auto Shape
-        if 'geometryAutomated' in self.attributeIdentifiers:
-            self.probUtils.setActivation(event)
-            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
+        # Handle Auto Shape and other auto events
+        if 'geometryAutomated' in self.attributeIdentifiers or "motionAutomated" in self.attributeIdentifiers or "probTrendAutomated" in self.attributeIdentifiers:
+            # check if all three automation are there, and current status
+            # to see if we need to set the new owner
+            if event.get("geometryAutomated") and event.get("motionAutomated") and event.get("probTrendAutomated"):
+                # automate event, no owner
+                if event.get("owner", None):
+                    event.set("owner", None)
+                    print "SW: manual to automate, reset the owner to NONE" 
+                # reset the object ID as well
+                if event.get("objectID") and event.get("objectID").startswith('m'):
+                    event.set("objectID", event.get('objectID')[1:])
+                    
+                # automate event, no need to check the owner
+                #print "SW: automated event, set activation "
+                #self.probUtils.setActivation(event)                                   
+            else:
+                # not all are automate, have to be manual
+                if not event.get("owner", None):
+                    event.set("owner", self.caveUser)
+                    print "SW: automate to manual, set the owner to ", self.caveUser
+                # manual event, need to change the object ID as well
+                if event.get('objectID') and not event.get('objectID').startswith('m'):
+                    event.set('objectID', 'm'+event.get('objectID'))
+                    
+                #print "SW: manual event, set activation"
+                #self.probUtils.setActivation(event, self.caveUser)                         
+            
+            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)            
             return True
                 
         # Get Convective Attributes from the MetaData. 

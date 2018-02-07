@@ -51,6 +51,39 @@ class Recommender(RecommenderTemplate.Recommender):
         metaDict["getSpatialInfoNeeded"] = False
         return metaDict
 
+    def getOwners(self, ownerToExclude = None):
+       
+        owners = ["Greg.Stumpf", "Kevin.Manross", "Yujun.Guo", "awips",]
+        
+        if ownerToExclude:
+            newOwners = []
+            for owner in owners:
+                if owner not in ownerToExclude:
+                # string contains another string
+                    newOwners.append(owner)
+            return newOwners
+        else:
+            return owners
+        
+    def getWorkstations(self):
+       
+        workstations = ["Snow", "Max", "Zoidberg", "Farnsworth"]
+        
+        return workstations
+
+    def isEqualOwner(self, owner1, owner2):
+        #
+        # assume the owner is composed of username:workstation
+        #
+        ownerparts1 = owner1.lower().split(':')
+        ownerparts2 = owner2.lower().split(':')
+        if len(ownerparts1) < 2 or len(ownerparts2) < 2:
+            return False
+        return (ownerparts1[0].find(ownerparts2[0]) >= 0 or \
+                ownerparts2[0].find(ownerparts1[0]) >= 0) and \
+                (ownerparts1[1].find(ownerparts2[1]) >= 0 or \
+                 ownerparts2[1].find(ownerparts1[1]) >= 0)
+
     def defineDialog(self, eventSet):
         """
         @param eventSet: A set of event objects that the user can use to help determine 
@@ -58,83 +91,143 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: MegaWidget dialog definition to solicit user input before running tool
         """        
         dialogDict = {"title": "Ownership Tool"}
-        
-        print "Event Set in DefineDialog is ", eventSet
-        
+
         eventSetAttrs = eventSet.getAttributes()
         trigger = eventSetAttrs.get('trigger')
         print "OT: definedialog trigger --", trigger
+        userName = eventSetAttrs.get('userName')
+        workStation = eventSetAttrs.get('workStation')
+        caveUser = userName + ":" + workStation
+        print "OT: cave User is ", caveUser
 
-        self.MORE_THAN_ONE_ERROR_MSG = "Cannot run ownership tool on more than one event"
-        self.NO_SELECTION_ERROR_MSG = "Cannot run ownership tool without selected event"
-        self.NEW_OWNER_MSG = "Do you want to confirm the ownership change?"
-                
         labelFieldDict = {}
         labelFieldDict["fieldName"] = "labelName"
-        labelFieldDict["label"] = "Cannot run ownership tool on more than one event"
         labelFieldDict["fieldType"] = "Label"
         
-        # function to return the total of selected events
-        selectedEvent = None
-        totalSelectedEvents = 0
-        for event in eventSet:
-            eventID = event.getEventID()
-            print "Event ID ", eventID
-            selected = event.get('selected', False)
-            if selected:
-                totalSelectedEvents  = totalSelectedEvents + 1
-                selectedEvent = event
-           
-        if trigger == "none":
-            valueDict = {}
-            print "total of selected events in definedDialog ", totalSelectedEvents
-            if totalSelectedEvents != 1:
-                labelFieldDict["label"] = self.NO_SELECTION_ERROR_MSG if totalSelectedEvents==0 else self.MORE_THAN_ONE_ERROR_MSG 
+        if trigger == 'hazardEventModification':
+            for event in eventSet: # There will only be one
+                newOwner = event.get('ownerChangeRequest', None)
+                print "OT: newOwner", newOwner, type(newOwner)
+                if not newOwner:
+                    continue
+                
+                forceTakenFlag = False
+                if "=>" in newOwner:
+                    # force owner format: currentOwner=> newOwner
+                    [currentOwner, newOwner] = newOwner.split("=>")
+                    forceTakenFlag = True
+                else:
+                    currentOwner = event.get('owner', caveUser) # in case currentOwner is not set..
+                
+                if self.isEqualOwner(caveUser, currentOwner):
+                    if not self.isEqualOwner(caveUser, newOwner):
+                        # put up dialog for caveUser:
+                        if forceTakenFlag:
+                            str = newOwner + " has taken over the ownership of event " + event.getEventID()+"!"                        
+                        else:
+                            str = "Do you want "+ newOwner + " to take over event " + event.getEventID()+"?"
+                    else:
+                        # caveUser is already the newOwner, do nothing
+                        continue
+                else:
+                    if self.isEqualOwner(caveUser, newOwner):
+                        str = "Do you want to take over event " + event.getEventID()+"?"
+                    else:
+                        # caveUser is not the newOwner either
+                        continue
+                                                         
+                labelFieldDict["label"] = str 
+                valueDict = {}
+                
+                dialogDict["fields"] = [ labelFieldDict ]
+                dialogDict["valueDict"] = valueDict
+                if forceTakenFlag:
+                    dialogDict["buttons"] = [ { "identifier": "ok", "label": "Ok", "default": True, "close": True, }, ]
+                else:
+                    dialogDict["buttons"] = [ { "identifier": "accept", "label": "Accept", "default": True }, { "identifier": "decline", "label": "Decline", "close": True } ]
+                return dialogDict
+                    
+        else:  # trigger is None
+            # call function to return the total of selected events
+            self.totalSelectedEvents, self.selectedEvent = self.getSelectedEventAndTotal(eventSet)                 
+                     
+            if self.totalSelectedEvents != 1:
+                valueDict = {}
+                moreThanOneMsg = "Cannot run ownership tool on more than one selected event."
+                noSelectionMsg = "Cannot run ownership tool without a selected event."
+                
+                labelFieldDict["label"] = noSelectionMsg if self.totalSelectedEvents==0 else moreThanOneMsg 
                 dialogDict["fields"] = labelFieldDict
                 dialogDict["valueDict"] = valueDict
                 dialogDict["buttons"] = [ { "identifier": "cancel", "label": "OK", "close": True, "cancel": True, "default": True } ]
-                return dialogDict
-            else:
-                currentOwnerFieldDict = {}
-                currentOwnerFieldDict["fieldName"] = "currentOwner"
-                currentOwnerFieldDict["label"] = "Current Owner"
-                currentOwnerFieldDict["fieldType"] = "Text"
-                currentOwnerFieldDict["editable"] = False
-                currentOwnerFieldDict["values"] = selectedEvent.getWorkStation() + ':' + selectedEvent.getUserName()
+                return dialogDict  
+                                
+            # Put up dialog to make ownerChangeRequest
+            labelFieldDict["label"] = " Selected Event: " + self.selectedEvent.getEventID()
+    
+            currentOwner = self.selectedEvent.get("owner", caveUser)
+            currentOwnerFieldDict = {}
+            currentOwnerFieldDict["fieldName"] = "currentOwner"
+            currentOwnerFieldDict["label"] = "Current Owner"
+            currentOwnerFieldDict["fieldType"] = "Text"
+            currentOwnerFieldDict["editable"] = False            
+            currentOwnerFieldDict["values"] = currentOwner
+            #currentOwnerFieldDict["values"] = selectedEvent.getWorkStation() + ':' + selectedEvent.getUserName()
                 
-                # function to return list of owners
-                lstOwner = ['A','B','C']
-                newOwnerFieldDict = {}
-                newOwnerFieldDict["fieldName"] = "newOwner"
-                newOwnerFieldDict["label"] = "Please select new owner:"
-                newOwnerFieldDict["fieldType"] = "ComboBox"
-                newOwnerFieldDict["choices"] = lstOwner
-                newOwnerFieldDict["values"] =  None
+            # the owner list may not want to include currentOwner
+            print "Current owner is ", currentOwner 
+            owners = self.getOwners()#currentOwner)
+            print "Owner list ", owners
+            
+            newOwnerFieldDict1 = {}
+            newOwnerFieldDict1["fieldName"] = "newOwnerName"
+            newOwnerFieldDict1["label"] = "User name:"
+            newOwnerFieldDict1["fieldType"] = "ComboBox"
+            newOwnerFieldDict1["choices"] = owners
+            newOwnerFieldDict1["values"] = owners[0]
+            
+            workstations = self.getWorkstations()
+            newOwnerFieldDict2 = {}
+            newOwnerFieldDict2["fieldName"] = "newOwnerWorkstation"
+            newOwnerFieldDict2["label"] = "Workstation:"
+            newOwnerFieldDict2["fieldType"] = "ComboBox"
+            newOwnerFieldDict2["choices"] = workstations  
+            newOwnerFieldDict2["values"] = workstations[0]          
+                        
+            newOwnerFieldDict = {}
+            newOwnerFieldDict["fieldName"] = "newOwner"
+            newOwnerFieldDict["label"] = "Please select new owner:"
+            newOwnerFieldDict["fieldType"] = "Composite"
+            newOwnerFieldDict['numColumns'] = 2
+            newOwnerFieldDict["fields"] = [newOwnerFieldDict1, newOwnerFieldDict2]             
+                        
+            # ADD Checkbox for "Force Owner"
+            forceOwnerFieldDict = {}
+            forceOwnerFieldDict['fieldName'] = "forceOwnerCheck"
+            forceOwnerFieldDict['label'] = ""
+            forceOwnerFieldDict['fieldType'] = "CheckBoxes"
+            forceOwnerFieldDict['choices'] = [
+                                              {
+                                               'identifier': "forceOwner",
+                                               'displayString': "Force Owner",
+                                               },
+                                              ]
+            #forceOwnerFieldDict['values'] = "forceOwner"
         
-                valueDict = {"newOwner": None}
-                
-                fieldDicts = [currentOwnerFieldDict, newOwnerFieldDict]
-                dialogDict["fields"] = fieldDicts
-                dialogDict["valueDict"] = valueDict
-
-                dialogDict["buttons"] = [ { "identifier": "request", "label": "Request", "default": True }, { "identifier": "cancel", "label": "Cancel", "close": True, "cancel": True } ]
-
-                return dialogDict
+            valueDict = {
+                         'newOwnerName':owners[0],
+                         'newOwnerWorkstation':workstations[0],
+                         'forceOwnerCheck':[],
+                         }
+            #valueDict = {"newOwner": ["a"]}
+            fieldDicts = [labelFieldDict, currentOwnerFieldDict, newOwnerFieldDict, forceOwnerFieldDict]
+            dialogDict["fields"] = fieldDicts
+            dialogDict["valueDict"] = valueDict
+            dialogDict["buttons"] = [ { "identifier": "request", "label": "Request", "default": True }, { "identifier": "cancel", "label": "Cancel", "close": True, "cancel": True } ]
         
-        if trigger == "hazardEventModification":
-            valueDict = {}
-            if selectedEvent:
-                currentOwner = selectedEvent.getUserName()
-                newOwner = selectedEvent.get('ownerChangeRequest', "")
-                if newOwner != "" and newOwner != currentOwner:
-                    # do nothing if there is no change
-                    # or else prompt dialog for user to accept/decline
-                    labelFieldDict["label"] = self.NEW_OWNER_MSG 
-                    dialogDict["fields"] = labelFieldDict
-                    dialogDict["valueDict"] = valueDict
-                    dialogDict["buttons"] = [ { "identifier": "accept", "label": "Accept" }, { "identifier": "decline", "label": "Decline", "close": True, "default": True } ]
-                    return dialogDict
-        return {}                
+            return dialogDict
+            
+        return {}      
     
     def execute(self, eventSet, dialogInputMap, visualFeatures):
         """
@@ -146,53 +239,66 @@ class Recommender(RecommenderTemplate.Recommender):
         @return: List of objects that will be later converted to Java IEvent
         objects
         """
-        print "OT: EventSet is ", eventSet
-        
-        print "OT: Dismiss choice is ", dialogInputMap.get("__dismissChoice__", None)
-
         eventSetAttrs = eventSet.getAttributes()
         trigger = eventSetAttrs.get('trigger')
-        print "OT: Event trigger ", trigger
-#         selectedEventIDs = eventSetAttrs.get("selectedEventIDs", [])
-#         print "In Ownership tool "
-#         print "selectedEvent ID is ", selectedEventIDs
+        print "OT: Execute Event trigger ", trigger
+        print "dialogInputMap ", dialogInputMap
+        
+        resultEventSet = EventSetFactory.createEventSet(None)
+        if not dialogInputMap:
+            return resultEventSet
+                
+        if trigger == 'hazardEventModification':
+            print "Trigger is hazardEventModification"
+            for event in eventSet:      
+                print "Event..", event       
+                ownerChangeRequest = event.get('ownerChangeRequest', None)
+                if ownerChangeRequest:
+                    if dialogInputMap.get("__dismissChoice__") == "accept":  
+                        event.set('owner', ownerChangeRequest)
+                        event.set('ownerChangeRequest', None)
+                        resultEventSet.add(event)
+                        resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)   
+                    elif dialogInputMap.get("__dismissChoice__") == "ok":
+                        event.set("ownerChangeRequest", None)
+                        resultEventSet.add(event)
+                        resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True) 
+        else: # trigger is None
+            if not self.selectedEvent or self.totalSelectedEvents > 1:
+                return resultEventSet
+#             newOwner = dialogInputMap.get("newOwner", None)
+            newOwnerName = dialogInputMap.get("newOwnerName", None)
+            newOwnerWorkstation = dialogInputMap.get("newOwnerWorkstation", None)
+            if not newOwnerName or not newOwnerWorkstation:
+                return resultEventSet 
+            newOwner = newOwnerName + ":" + newOwnerWorkstation
 
+            forceOwner = dialogInputMap.get("forceOwnerCheck", None)
+            print "Trigger is none "
+            print "newOwner is ", newOwner
+            print "forceOwner is ", forceOwner
+            currentOwner = self.selectedEvent.get("owner", None)
+            
+            if forceOwner:
+                self.selectedEvent.set('owner',newOwner)
+                self.selectedEvent.set("ownerChangeRequest",currentOwner+"=>"+newOwner)
+            else:
+                self.selectedEvent.set('ownerChangeRequest', newOwner)
+            resultEventSet.add(self.selectedEvent)   
+            resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)                           
+        return resultEventSet      
+
+    def getSelectedEventAndTotal(self, eventSet):
+        
         totalSelectedEvents = 0
         selectedEvent = None
         for event in eventSet:
             eventID = event.getEventID()
-            print "Event ID ", eventID
             selected = event.get('selected', False)
             if selected:
                 totalSelectedEvents  = totalSelectedEvents + 1
                 selectedEvent = event
-
-        print "OT: Total of selected events is ", totalSelectedEvents
-        resultEventSet = EventSetFactory.createEventSet(None)
-        self.saveToDatabase = True
-
-        if selectedEvent:
-            if trigger == "none":
-                if totalSelectedEvents == 1:
-                    selectedEvent.addHazardAttribute("ownerChangeRequest", "newowner")
-                    self.saveToDatabase = True
-                    resultEventSet.add(selectedEvent)
-            elif trigger == "hazardEventModification":
-                currentOwner = selectedEvent.getUserName()
-                newOwner = selectedEvent.get('ownerChangeRequest', "")
-                if newOwner != "" and newOwner != currentOwner:
-                    # depending on the user interaction, accept or reset
-                    selectedEvent.addHazardAttribute("userName", newOwner)
-                    self.saveToDatabase = True 
-                    resultEventSet.add(selectedEvent)                
-                    
-            if self.saveToDatabase:
-                resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
-
-        print "Finishing ownershiptool"
-        return resultEventSet                
+        return totalSelectedEvents, selectedEvent        
 
     def toString(self):
         return "OwnershipTool"
-       
-        

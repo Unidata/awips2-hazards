@@ -65,6 +65,8 @@ class MetaData(object):
     def initialize(self, hazardEvent, metaDict):
         self.hazardEvent = hazardEvent
         self.metaDict = metaDict
+        self.userName = metaDict.get('userName')
+        self.workStation = metaDict.get('workStation')
                 
         if self.hazardEvent:
             self.hazardStatus = self.hazardEvent.getStatus().lower()
@@ -2081,7 +2083,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         
     # Prob_Severe and Prob_Tornado
     def convectiveControls(self): 
-        activate, activateModify = self.probUtils.setActivation(self.hazardEvent, modify=False)
+        activate, activateModify = self.probUtils.setActivation(self.hazardEvent, self.getCaveUser(), modify=False)
         mws = self.initializeObject(activate, activateModify) 
         #activate = self.hazardEvent.get('activate', False)      
         #activateModify = self.hazardEvent.get('activateModify', False)      
@@ -2123,11 +2125,18 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return grp
 
 
+    def getCaveUser(self):
+        
+        if self.userName and self.workStation:
+            return self.userName + ':' + self.workStation
+        return None
+    
     def initializeObject(self, activate, activateModify):        
         if self.hazardEvent.get('objectID') is None:
             # Go with eventID as it should be unique
             self.hazardEvent.set('objectID',  'M' + self.hazardEvent.getDisplayEventID())
             self.hazardEvent.set('manuallyCreated', True)
+            self.hazardEvent.set('owner', self.getCaveUser())
         print "CM calling setActivation"
         #print '\n\nCM - manuallyCreated?', self.hazardEvent.get('manuallyCreated'), ' <<<\n\n'
         #self.flush()
@@ -2137,7 +2146,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
              "fieldType": "HiddenField",
              "fieldName": "activate",
              "values": activate,
-             "doesNotAffectModifyFlag": True,
+             "doesNotAffectModifyFlag": True,             
              },
             {
              "fieldType": "HiddenField",
@@ -2157,13 +2166,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
              "values": self.hazardEvent.get('manuallyCreated', True)
              },
  
-#             {
-#             "fieldType": "HiddenField",
-#             "fieldName": "ownerChangeRequest",
-#             "modifyRecommender": 'OwnershipTool',
-#             "doesNotAffectModifyFlag": True,
-#             "values": self.hazardEvent.get("ownerChangeRequest", False)
-#             }  
+            {
+            "fieldType": "HiddenField",
+            "fieldName": "ownerChangeRequest",
+            "modifyRecommender": 'OwnershipTool',
+            "doesNotAffectModifyFlag": True,
+            "values": self.hazardEvent.get("ownerChangeRequest", None)
+            }  
 
         ]        
         return mwList
@@ -2935,13 +2944,16 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
     
     # If activate has changed value, ensure the the appropriate megawidgets are editable or
     # uneditable.
-    if triggerIdentifiers and "activate" in triggerIdentifiers:
+    if (triggerIdentifiers and "activate" in triggerIdentifiers) or not triggerIdentifiers:
         for key in editabilityChangeableMegawidgets:
             returnDict[key] = { 'editable' : editable }
             
     # If activateModify has changed value, ensure the Modify button is enabled or disabled
     # as appropriate.
-    if triggerIdentifiers and "activateModify" in triggerIdentifiers:
+    # when there is no "activateModify" trigger, 
+    # we still need to refresh the "Modify" button status, so that HID matches the "activateModify" flag 
+    # We can check the mutableProperties status to enable/disable "Modify" button    
+    if (triggerIdentifiers and "activateModify" in triggerIdentifiers) or not triggerIdentifiers:    
         editableModifyButton = True
         if "activateModify" in mutableProperties:
             editableModifyButton = mutableProperties["activateModify"].get("values", True)
@@ -2972,16 +2984,8 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             returnDict[key] = {'editable': activate}                
 
         returnDict['modifyButton'] = {'editable' : activateModify}
-
     
         return returnDict
-
-#     if triggerIdentifiers and 'reloadingMetaData' in triggerIdentifiers:
-#         print "Get reloadingMetaData..."
-#         sys.stdout.flush()
-#         returnDict['reloadingMetaData'] = {'values':True}
-#         return returnDict
-
 
     if triggerIdentifiers and 'automateAllButton' in triggerIdentifiers:
         

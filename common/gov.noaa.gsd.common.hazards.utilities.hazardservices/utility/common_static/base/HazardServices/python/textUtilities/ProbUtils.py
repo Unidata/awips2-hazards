@@ -1098,9 +1098,11 @@ class ProbUtils(object):
     
     #########################################
     ### Common Methods shared among modules
-    def setActivation(self, event, modify=True):
+    def setActivation(self, event, caveUser=None, modify=True):
         '''
         Set the activate and activeModify attributes of the event
+
+        If caveUser is present, and not the owner of the event, deactivated and modify button deactivated
 
         If selecting user-owned (automationLevel) pending (status) hazard: activated and Modify button deactivated
         If selecting automated (automationLevel) and pending (status): deactivated and Modify button deactivated
@@ -1108,6 +1110,20 @@ class ProbUtils(object):
         If selecting issued hazard: deactivated and Modify button activated
         If selecting Ending, Ended, Elapsed hazard: deactivated and Modify button deactivated.
         '''
+        currentOwner = event.get("owner", None)
+        
+        #if caveUser and caveUser != currentOwner:
+        if caveUser and currentOwner and (caveUser.lower() != currentOwner.lower()):
+            print "Cave user is not the event owner, cannot modify event", caveUser, currentOwner
+            activate = False
+            activateModify = False
+            print "PU Setting activate, activateModify", activate, activateModify
+            self.flush()            
+            if modify:
+                event.set('activate', activate)
+                event.set('activateModify', activateModify)            
+            return activate, activateModify
+        
         #automationLevel = event.get('automationLevel')
         status = event.getStatus()
 #         print "PU setActivation", automationLevel, status

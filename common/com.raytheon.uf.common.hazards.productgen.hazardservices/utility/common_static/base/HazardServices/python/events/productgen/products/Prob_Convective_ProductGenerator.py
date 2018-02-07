@@ -151,7 +151,7 @@ class Product(Prob_Generator.Product):
             ### "There should be an 'M' appended to the ID of any object that is wholly or partially manual"
             hazardObjectID = hazardEvent.get('objectID', hazardEvent.getDisplayEventID())
             if hazardObjectID != 'automated':
-                if not hazardObjectID.startswith('M'):
+                if not hazardObjectID.startswith('M') or not hazardObjectID.startswith('m'):
                     hazardEvent.set('objectID', 'M'+hazardObjectID) 
             self.objectID = hazardEvent.get('objectID')
 
