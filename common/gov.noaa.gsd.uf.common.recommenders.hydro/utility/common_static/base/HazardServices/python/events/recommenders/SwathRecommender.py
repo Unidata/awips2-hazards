@@ -290,6 +290,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 changes = self.adjustForEventModification(event, eventSetAttrs, resultEventSet)
                 #if not changes:
                 # Handle other dialog buttons
+                
+                self.probUtils.handleObjectIDNaming(event)
                 self.handleAdditionalEventModifications(event, resultEventSet)
                     #continue
                 if 'modifyButton' in self.attributeIdentifiers or (self.editableHazard and self.movedStartTime): 
@@ -644,8 +646,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     event.set("owner", None)
                     print "SW: manual to automate, reset the owner to NONE" 
                 # reset the object ID as well
-                if event.get("objectID") and event.get("objectID").startswith('m'):
-                    event.set("objectID", event.get('objectID')[1:])
+#                if event.get("objectID") and event.get("objectID").startswith('m'):
+#                    event.set("objectID", event.get('objectID')[1:])
                     
                 # automate event, no need to check the owner
                 #print "SW: automated event, set activation "
@@ -656,8 +658,8 @@ class Recommender(RecommenderTemplate.Recommender):
                     event.set("owner", self.caveUser)
                     print "SW: automate to manual, set the owner to ", self.caveUser
                 # manual event, need to change the object ID as well
-                if event.get('objectID') and not event.get('objectID').startswith('m'):
-                    event.set('objectID', 'm'+event.get('objectID'))
+#                if event.get('objectID') and not event.get('objectID').startswith('m'):
+#                    event.set('objectID', 'm'+event.get('objectID'))
                     
                 #print "SW: manual event, set activation"
                 #self.probUtils.setActivation(event, self.caveUser)                         

@@ -10,6 +10,7 @@ from ProbUtils import ProbUtils
 from VisualFeatures import VisualFeatures
 import json, pickle, os, sys
 import datetime
+import re
 
 class Product(Prob_Generator.Product):
 
@@ -147,13 +148,26 @@ class Product(Prob_Generator.Product):
                 hazardEvent.set('statusForHiddenField', 'ENDED')
                            
             
-            ### Requested by Greg:
-            ### "There should be an 'M' appended to the ID of any object that is wholly or partially manual"
-            hazardObjectID = hazardEvent.get('objectID', hazardEvent.getDisplayEventID())
-            if hazardObjectID != 'automated':
-                if not hazardObjectID.startswith('M') or not hazardObjectID.startswith('m'):
-                    hazardEvent.set('objectID', 'M'+hazardObjectID) 
-            self.objectID = hazardEvent.get('objectID')
+            #===================================================================
+            # hazardObjectID = hazardEvent.get('objectID', hazardEvent.getDisplayEventID())
+            # ### Fully manual should have 'M' prepended
+            # if hazardEvent.get('manuallyCreated'):
+            #     if len(re.findall('[A-Za-z]', str(hazardObjectID))) == 0:
+            #         hazardEvent.set('objectID', 'M'+hazardObjectID)
+            # else:
+            #     #### Fully automated should have nothing prepended
+            #     if hazardEvent.get("geometryAutomated") and hazardEvent.get("motionAutomated") and hazardEvent.get("probTrendAutomated"):
+            #         if len(re.findall('[A-Za-z]', str(hazardObjectID))) > 0:
+            #             recommendedID = re.findall('\d+', str(currentEventObjectID))[0]
+            #             hazardEvent.set('objectID', recommendedID)
+            #     #### Partially automated should have 'm' prepended
+            #     else:
+            #         if len(re.findall('[A-Za-z]', str(hazardObjectID))) == 0:
+            #             hazardEvent.set('objectID', 'm'+hazardObjectID)
+            #===================================================================
+            
+            ### Be sure to properly set the objectID
+            self.objectID = self.probUtils.handleObjectIDNaming(hazardEvent)
 
             productDict = collections.OrderedDict()
             self._initializeProductDict(productDict, eventSetAttributes)

@@ -58,18 +58,25 @@ Event-Driven Tools
          EventDrivenTools.append(cpEntry)  
 '''
 
-_CENTRAL_PROCESSOR = False 
+CENTRAL_PROCESSOR_HOSTNAME = "max"
 
-_RUNCR = True
+import socket
+hostName = socket.gethostname()
+
+CENTRAL_PROCESSOR = False 
+if CENTRAL_PROCESSOR_HOSTNAME == hostName:
+    CENTRAL_PROCESSOR = True
+
+RUNCR = True
 
 EventDrivenTools = []
 
-if _CENTRAL_PROCESSOR:
+if CENTRAL_PROCESSOR:
     cpEntry =  { "toolType": "RECOMMENDER", "toolIdentifiers": [ "PHI_GridRecommender"],
                       "triggerType": "TIME_INTERVAL", "intervalMinutes": 2 }
     EventDrivenTools.append(cpEntry)
     
-    if _RUNCR:
+    if RUNCR:
         cpEntryCR = { "toolType": "RECOMMENDER", "toolIdentifiers": [ "ConvectiveRecommender"],
                       "triggerType": "TIME_INTERVAL", "intervalMinutes": 1 }
         EventDrivenTools.append(cpEntryCR)

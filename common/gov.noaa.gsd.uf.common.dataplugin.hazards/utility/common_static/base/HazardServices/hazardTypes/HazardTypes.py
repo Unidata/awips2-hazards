@@ -135,10 +135,21 @@ HOURS = 3600000
 MINUTES = 60000
 OVERRIDE_LOCK =  ['headline', 'combinableSegments', 'includeAll', 'allowAreaChange', 'allowTimeChange', 'expirationTime', True]
 SESSION_ATTRS = ["issued", "selected", "checked", "hazardCategory"]
-CENTRAL_PROCESSOR = False
 
-modRecsDict = {} if CENTRAL_PROCESSOR else {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status', 'selection' ]}
+CENTRAL_PROCESSOR_HOSTNAME = "max"
 
+import socket
+hostName = socket.gethostname()
+
+CENTRAL_PROCESSOR = False 
+if CENTRAL_PROCESSOR_HOSTNAME == hostName:
+    CENTRAL_PROCESSOR = True
+    
+modRecsDict = {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status', 'selection' ]}
+if CENTRAL_PROCESSOR:
+    modRecsDict = {}
+    
+    
 HazardTypes = {
     'AF.Y' : {'headline': 'ASHFALL ADVISORY',
               '_override_lock_': OVERRIDE_LOCK, 

@@ -198,11 +198,13 @@ class Recommender(RecommenderTemplate.Recommender):
             mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, identifiersOfEventsToSaveToHistory)
         else:
             mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, None)
-        if (identifiersOfEventsToSaveToDatabase):
-            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, identifiersOfEventsToSaveToDatabase)
-        else:
-            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, None)
+#        if (identifiersOfEventsToSaveToDatabase):
+#            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, identifiersOfEventsToSaveToDatabase)
+#        else:
+#            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, None)
+        mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
         mergedEventSet.addAttribute(TREAT_AS_ISSUANCE_KEY, True)
+        mergedEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, False)
         return mergedEventSet
     
 
@@ -481,79 +483,6 @@ class Recommender(RecommenderTemplate.Recommender):
             print 'ConvectiveRecommender: WHAT\'S WRONG WITH THIS POLYGON?', currID, type(recommended.get('polygons')), recommended.get('polygons')
             sys.stdout.flush()
 
-#===============================================================================
-#     def updateUserOwned(self, event, recommended, dataLayerTimeMS):
-#         pass
-# 
-# 
-#     def updateAttributesAndGeometry(self, event, recommended, dataLayerTime):
-#         print '\tGeom BEFORE:', event.getGeometry().asShapely()
-#         self.updateEventGeometry(event, recommended)
-#         print '\tGeom AFTER:', event.getGeometry().asShapely()
-#         self.updateAttributesOnly(event, recommended, dataLayerTime)
-# 
-# 
-#     def updateAttributesOnly(self, event, recommended, probSevereTime):
-#         manualAttrs = event.get('manualAttributes', [])
-#         ##################################################################
-#         ##  Need to handle special cases in computing updatedAttrs
-#         ##################################################################
-#         updatedAttrs = {k:v for k,v in recommended.iteritems() if k not in manualAttrs}
-#         probSevereAttrs = event.get('probSeverAttrs')
-#         
-#         #print '\n=================='
-#         #print 'CR - ManualAttrs:', manualAttrs
-#         #print 'CR - UpdatedAttrs:', updatedAttrs
-#         #print 'CR - probSevereAttrs1:', probSevereAttrs
-#         
-#         for k,v in updatedAttrs.iteritems():
-#                 probSevereAttrs[k] = v
-# 
-#         #print 'CR - probSevereAttrs2:', probSevereAttrs
-#         #print '*******'
-#         
-#         event.set('probSeverAttrs',probSevereAttrs)
-#                 
-#         ### Special Cases
-#         if 'convectiveObjectDir' not in manualAttrs:
-#             event.set('convectiveObjectDir', recommended.get('wdir'))
-#             
-#         if 'convectiveObjectSpdKts' not in manualAttrs:
-#             event.set('convectiveObjectSpdKts', recommended.get('wspd'))
-#             
-#         if 'convectiveProbTrendGraph' not in manualAttrs:
-#             graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
-#             event.set('convectiveProbTrendGraph', graphProbs)
-#             
-#         automationLevel = event.get('automationLevel')
-#         if automationLevel in ['automated', 'attributesAndGeometry']:
-#             event.setStartTime(self.latestDLTDT)
-#             endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-#             event.setEndTime(endTime)
-# 
-#     def updateAutomated(self, event, recommended, probSevereTime):
-#         self.updateEventGeometry(event, recommended)
-#             
-#         event.set('convectiveObjectDir', recommended.get('wdir'))
-#         event.set('convectiveObjectSpdKts', recommended.get('wspd'))
-#         event.set('probSeverAttrs',recommended)
-#         
-#         if recommended.get('belowThreshold'):
-#             event.setStatus('PROPOSED')
-#             event.set('statusForHiddenField', 'PROPOSED')
-#         else:
-#             event.setStatus('ISSUED')
-#             event.set('statusForHiddenField', 'ISSUED')
-#         
-#         graphProbs = self.probUtils.getGraphProbs(event, probSevereTime)
-#         event.set('convectiveProbTrendGraph', graphProbs)
-#         
-#         ### Per request from Greg
-# #        event.setStartTime(recommended.get('startTime', self.dataLayerTime))
-#         event.setStartTime(self.latestDLTDT)
-#         endTime = event.getStartTime() + datetime.timedelta(seconds=DEFAULT_DURATION_IN_SECS)
-#         event.setEndTime(endTime)
-#===============================================================================
       
     ### Update the current events, and return a list of identifiers of
     ### events that are to be saved to the database.  
@@ -642,17 +571,17 @@ class Recommender(RecommenderTemplate.Recommender):
             currentEventObjectID = currentEvent.get('objectID')
             ### If current event has match in rec event, add to dict for later processing
             ### should avoid 'userOwned' since they are filtered out with previous if statement
-            rawRecommendedID = currentEventObjectID[1:] if str(currentEventObjectID).startswith('M') else currentEventObjectID
+#            rawRecommendedID = currentEventObjectID[1:] if str(currentEventObjectID).startswith('M') else currentEventObjectID
+            rawRecommendedID = re.findall('\d+', str(currentEventObjectID))[0]
             
-            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
-            if currentEvent.get('activateModify') == 0:
-                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
-                if recommendedObjectIDsList and rawRecommendedID and rawRecommendedID in recommendedEventsDict:
-                    
-                    print recommendedObjectIDsList
-                    print "rawRecommendedID ", rawRecommendedID
-### These next two lines are a temporary try to see if this kills the duplication issue
-                    recommendedObjectIDsList.remove(rawRecommendedID)
+#            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
+#            if currentEvent.get('activateModify') == 0:
+#                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
+#### These next two lines are a temporary try to see if this kills the duplication issue
+#                if recommendedObjectIDsList and rawRecommendedID and rawRecommendedID in recommendedEventsDict:
+#                    recommendedObjectIDsList.remove(rawRecommendedID)
+#                mergedEvents.add(currentEvent)
+#                continue
 
             #if currentEvent.get('automationLevel') == 'userOwned':
             if not currentEvent.get('geometryAutomated') and not currentEvent.get('motionAutomated') and not currentEvent.get('probTrendAutomated'):

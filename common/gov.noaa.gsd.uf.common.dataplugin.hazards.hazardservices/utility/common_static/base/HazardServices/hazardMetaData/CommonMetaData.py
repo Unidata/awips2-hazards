@@ -51,6 +51,7 @@ import pprint
 from com.raytheon.uf.common.time import SimulatedTime
 from scipy import interpolate
 
+CENTRAL_PROCESSOR_HOSTNAME = "max"
 
 class MetaData(object):
     
@@ -77,7 +78,15 @@ class MetaData(object):
         self.riverForecastManager = None
         self.riverForecastPoint = None
         self.probUtils = ProbUtils()
-        self.CENTRAL_PROCESSOR = False 
+        self.CENTRAL_PROCESSOR = False
+        import socket
+        hostName = socket.gethostname()
+        if CENTRAL_PROCESSOR_HOSTNAME == hostName:
+            self.CENTRAL_PROCESSOR = True
+        if self.CENTRAL_PROCESSOR:
+            self.RECOMMENDER = ""
+        else:
+            self.RECOMMENDER = "SwathRecommender"
 
     # This validate method is an interface to allow subclasses (MetaData_*.py)
     # to define what it means for the meta-data to be valid, allowing for 
@@ -2146,7 +2155,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
              "fieldType": "HiddenField",
              "fieldName": "activate",
              "values": activate,
-             "doesNotAffectModifyFlag": True,             
+             "doesNotAffectModifyFlag": True,
              },
             {
              "fieldType": "HiddenField",
@@ -2328,7 +2337,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "label": "Automate",
             "sendEveryChange": False,
             "values": geometryAutomated,
-            "modifyRecommender": 'SwathRecommender',
+            "modifyRecommender": self.RECOMMENDER,
             "editable": enableAutomated,
             }
     
@@ -2338,7 +2347,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldName": "modifyButton",
             "label": "     MODIFY     ",
             "editable": enable,
-            "modifyRecommender": 'SwathRecommender',
+            "modifyRecommender": self.RECOMMENDER,
         }        
         return grp
     
@@ -2348,7 +2357,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldName": "copyButton",
             "label": "     Copy     ",
             "editable": enable,
-            "modifyRecommender": 'SwathRecommender',
+            "modifyRecommender": self.RECOMMENDER,
         }        
         return grp
     
@@ -2362,7 +2371,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "fieldName": "cancelButton",
             "label": "*** End Object ***",
             "editable": enable,
-            "modifyRecommender": 'SwathRecommender',
+            "modifyRecommender": self.RECOMMENDER,
         }
         return grp
     
@@ -2493,9 +2502,6 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return grp 
 
     def getConvectiveMotionVectorGroup(self, enable):
-        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
-        
-        
         enableAutomated = self.getEnableAutomated(enable)
         print "\nCM-ACTIVATE-getConvectiveMotionVectorGroup:", enable
         print '\tenableAutomated:', enableAutomated, '\n'
@@ -2512,14 +2518,13 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "bottomMargin": 5,                        
             "numColumns":1,
             "fields": [
-                       self.getMotionVectorAutomationGroup(enable, enableAutomated, recommender),
-                       self.getMotionVectorAutomationDetails(enable, recommender),
+                       self.getMotionVectorAutomationGroup(enable, enableAutomated, self.RECOMMENDER),
+                       self.getMotionVectorAutomationDetails(enable, self.RECOMMENDER),
                        ]
         }        
         return grp
 
     def getConvectiveSwathPresets(self, enable):
-        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
         presets = {
             "fieldType": "ComboBox",
             "fieldName": "convectiveSwathPresets",
@@ -2534,7 +2539,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "values": "NoPreset",
             "expandHorizontally": False,
             "width":2,
-            "modifyRecommender": recommender,
+            "modifyRecommender": self.RECOMMENDER,
             "editable": enable,
         }
         
@@ -2624,7 +2629,6 @@ to pose a significant threat. Please continue to heed all road closures.'''}
         return grp                        
     
     def getConvectiveProbabilityTrend(self, enable):
-        recommender = '' if  self.CENTRAL_PROCESSOR else "SwathRecommender" 
 
         
         probInc = 5
@@ -2651,7 +2655,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             "expandVertically": False,
             "numColumns":1,
             "fields": [
-                       self.getConvectiveProbabilityTrendAutomation(enable, enableAutomated, recommender),
+                       self.getConvectiveProbabilityTrendAutomation(enable, enableAutomated, self.RECOMMENDER),
                         {
                         "fieldType": "Graph",
                         "fieldName": "convectiveProbTrendGraph",
@@ -2664,7 +2668,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "heightMultiplier": 1.2,
                         "yLabelSuffix": "%",
                         "drawnPointsInterval": 5,
-                        "modifyRecommender": recommender,
+                        "modifyRecommender": self.RECOMMENDER,
                         "sendEveryChange":False,
                         "width": 1,
                         "yColors": colors,
@@ -2822,7 +2826,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
             enableAutomated = True if enableAutomated and secondBool else False
         return enableAutomated
         
-def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):   
+def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
 
     def convectiveFilter(myIterable, prefix):
         return [tf for tf in myIterable if tf.startswith(prefix)]

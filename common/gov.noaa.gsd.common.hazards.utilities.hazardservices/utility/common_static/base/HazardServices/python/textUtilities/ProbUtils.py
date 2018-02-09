@@ -11,7 +11,7 @@ import shapely.ops as so
 import shapely.geometry as sg
 import shapely.affinity as sa
 
-import os, sys
+import os, sys, re
 import matplotlib
 from matplotlib import path as mPath
 from scipy import ndimage
@@ -36,6 +36,28 @@ class ProbUtils(object):
         self.setUpDomain()
         self._previousDataLayerTime = None
         
+    
+    def handleObjectIDNaming(self,hazardEvent):
+        
+        hazardObjectID = hazardEvent.get('objectID', hazardEvent.getDisplayEventID())
+        
+        ### Fully manual should have 'M' prepended
+        if hazardEvent.get('manuallyCreatedStatus'):
+            if len(re.findall('[A-Za-z]', str(hazardObjectID))) == 0:
+                hazardEvent.set('objectID', 'M'+hazardObjectID)
+        else:
+            #### Fully automated should have nothing prepended
+            if hazardEvent.get("geometryAutomated") and hazardEvent.get("motionAutomated") and hazardEvent.get("probTrendAutomated"):
+                if len(re.findall('[A-Za-z]', str(hazardObjectID))) > 0:
+                    recommendedID = re.findall('\d+', str(hazardObjectID))[0]
+                    hazardEvent.set('objectID', recommendedID)
+            #### Partially automated should have 'm' prepended
+            else:
+                if len(re.findall('[A-Za-z]', str(hazardObjectID))) == 0:
+                    hazardEvent.set('objectID', 'm'+hazardObjectID)
+        
+        return hazardEvent.get('objectID')
+    
         
     def processEvents(self, eventSet, writeToFile=False):
         if writeToFile and not os.path.exists(self.OUTPUTDIR):
