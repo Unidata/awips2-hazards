@@ -151,6 +151,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      hazard events, as that is the job of mergeHazardEvents().
  * Feb 06, 2018 46258      Chris.Golden Fixed null pointer exception bug when checking for hazard
  *                                      conflicts.
+ * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such scripts are
+ *                                      not to be used.
  * </pre>
  * 
  * @author bsteffen
@@ -917,11 +919,8 @@ public interface ISessionEventManager {
      *            Event for which the command was invoked.
      * @param identifier
      *            Identifier of the command that was invoked.
-     * @param mutableProperties
-     *            Mutable properties to be passed to the script, if one is run.
      */
-    public void eventCommandInvoked(IHazardEventView event, String identifier,
-            Map<String, Map<String, Object>> mutableProperties);
+    public void eventCommandInvoked(IHazardEventView event, String identifier);
 
     /**
      * Checks all events for conflicts.

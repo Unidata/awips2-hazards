@@ -48,6 +48,8 @@ import jep.JepException;
  *                                      to the include path.
  * Sep 20, 2016   21609    Kevin.Bisanz Add geoSpatial to the include path.
  * Jun 06, 2017   15561    Chris.Golden Added path to general utilities.
+ * Feb 13, 2018   44514    Chris.Golden Removed event-modifying script code, as such
+ *                                      scripts are not to be used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -63,39 +65,7 @@ public class ConfigScriptFactory
      */
     public static final String NAME = "configScriptFactory";
 
-    /**
-     * Name of the Python function used to wrap invocations of event modifier
-     * entry point functions. When invoked, it takes two parameters, the first
-     * being the name of the event modifier entry point function to be called,
-     * and the second being the hazard event in Java form. It returns either a
-     * modified hazard event, again in Java form, or else None if no
-     * modifications are needed.
-     */
-    public static final String EVENT_MODIFIER_FUNCTION_NAME = "_runHazardEventModifier_";
-
-    /**
-     * Name of the attribute used to return any extra data as JSON.
-     */
-    public static final String EXTRA_DATA_ATTRIBUTE = "__extraDataAttribute__";
-
     // Private Static Constants
-
-    /**
-     * Definition of the Python function used to wrap invocations of event
-     * modifier entry point functions.
-     */
-    private static final String INVOKE_EVENT_MODIFIER_FUNCTION_DEFINITION = "def "
-            + EVENT_MODIFIER_FUNCTION_NAME
-            + "(javaModifierFunc, javaHazardEvent, jsonData):\n"
-            + "  hazardEvent = JUtil.javaObjToPyVal(javaHazardEvent)\n"
-            + "  modifierFunc = JUtil.javaObjToPyVal(javaModifierFunc)\n"
-            + "  extraData = json.loads(jsonData)\n"
-            + "  hazardEvent, extraData = globals()[modifierFunc](hazardEvent, extraData)\n"
-            + "  if hazardEvent is not None:\n"
-            + "    if extraData is not None:\n" + "      hazardEvent.set(\""
-            + EXTRA_DATA_ATTRIBUTE + "\", json.dumps(extraData))\n"
-            + "    return JUtil.pyValToJavaObj(hazardEvent)\n"
-            + "  return None\n\n";
 
     /**
      * List of pre-evaluations that the Python evaluator must do when built.
@@ -108,8 +78,7 @@ public class ConfigScriptFactory
             "JUtil.registerPythonToJava(pyVisualFeaturesToJavaVisualFeatures)",
             "from HazardEventHandler import javaHazardEventToPyHazardEvent, pyHazardEventToJavaHazardEvent",
             "JUtil.registerJavaToPython(javaHazardEventToPyHazardEvent)",
-            "JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)",
-            INVOKE_EVENT_MODIFIER_FUNCTION_DEFINITION);
+            "JUtil.registerPythonToJava(pyHazardEventToJavaHazardEvent)");
 
     // Private Static Variables
 

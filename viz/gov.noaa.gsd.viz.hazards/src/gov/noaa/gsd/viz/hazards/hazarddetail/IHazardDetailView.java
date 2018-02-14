@@ -9,6 +9,12 @@
  */
 package gov.noaa.gsd.viz.hazards.hazarddetail;
 
+import java.util.Map;
+
+import com.google.common.collect.Range;
+import com.raytheon.uf.common.time.TimeRange;
+import com.raytheon.uf.common.util.Pair;
+
 import gov.noaa.gsd.common.utilities.ICurrentTimeProvider;
 import gov.noaa.gsd.common.utilities.TimeResolution;
 import gov.noaa.gsd.viz.hazards.hazarddetail.HazardDetailPresenter.Command;
@@ -17,12 +23,6 @@ import gov.noaa.gsd.viz.mvp.widgets.IChoiceStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.ICommandInvoker;
 import gov.noaa.gsd.viz.mvp.widgets.IQualifiedStateChanger;
 import gov.noaa.gsd.viz.mvp.widgets.IStateChanger;
-
-import java.util.Map;
-
-import com.google.common.collect.Range;
-import com.raytheon.uf.common.time.TimeRange;
-import com.raytheon.uf.common.util.Pair;
 
 /**
  * Description: Interface describing the methods that must be implemented by a
@@ -58,6 +58,8 @@ import com.raytheon.uf.common.util.Pair;
  * Apr 09, 2015    7382    Chris.Golden Added "show start-end time sliders" flag.
  * Apr 15, 2015    3508    Chris.Golden Added "hazard detail to be wide" flag.
  * Oct 19, 2016   21873    Chris.Golden Added time resolution tracking tied to events.
+ * Feb 13, 2018   44514    Chris.Golden Removed event-modifying script code, as such
+ *                                      scripts are not to be used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -99,12 +101,9 @@ public interface IHazardDetailView {
      *            may have used in previous view instantiations, allowing such
      *            data to persist between different views.
      */
-    public void initialize(
-            long minVisibleTime,
-            long maxVisibleTime,
+    public void initialize(long minVisibleTime, long maxVisibleTime,
             ICurrentTimeProvider currentTimeProvider,
-            boolean showStartEndTimeScale,
-            boolean buildForWideViewing,
+            boolean showStartEndTimeScale, boolean buildForWideViewing,
             boolean includeIssueButton,
             Map<Pair<String, Integer>, Map<String, Map<String, Object>>> extraDataForEventVersionIdentifiers);
 
@@ -192,7 +191,7 @@ public interface IHazardDetailView {
      * 
      * @return Notifier invoker.
      */
-    public ICommandInvoker<EventScriptInfo> getNotifierInvoker();
+    public ICommandInvoker<EventCommandInfo> getNotifierInvoker();
 
     /**
      * Get the button invoker. The identifier is the command.

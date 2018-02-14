@@ -20,7 +20,6 @@
 package com.raytheon.uf.viz.hazards.sessionmanager;
 
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.core.runtime.jobs.Job;
 
@@ -88,6 +87,8 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  *                                      and stop batching of messages.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session
  *                                      events.
+ * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such
+ *                                      scripts are not to be used.
  * </pre>
  * 
  * @author bsteffen
@@ -330,10 +331,7 @@ public interface ISessionManager<S extends ISettings> extends IUndoRedoable {
      *            View for the hazard event for which the command was invoked.
      * @param identifier
      *            Identifier of the command that was invoked.
-     * @param mutableProperties
-     *            Mutable properties to be passed to the script, if one is run.
      */
     public void eventCommandInvoked(IHazardEventView eventView,
-            String identifier,
-            Map<String, Map<String, Object>> mutableProperties);
+            String identifier);
 }

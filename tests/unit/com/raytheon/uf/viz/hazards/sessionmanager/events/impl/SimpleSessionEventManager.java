@@ -106,8 +106,7 @@ public class SimpleSessionEventManager implements ISessionEventManager {
     }
 
     @Override
-    public void eventCommandInvoked(IHazardEventView event, String identifier,
-            Map<String, Map<String, Object>> mutableProperties) {
+    public void eventCommandInvoked(IHazardEventView event, String identifier) {
         throw new UnsupportedOperationException();
     }
 

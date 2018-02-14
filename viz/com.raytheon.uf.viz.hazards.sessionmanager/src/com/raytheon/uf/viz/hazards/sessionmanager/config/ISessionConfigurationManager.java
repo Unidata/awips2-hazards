@@ -19,9 +19,7 @@
  **/
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import java.io.File;
 import java.util.List;
-import java.util.Map;
 
 import com.raytheon.uf.common.colormap.Color;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardEventFirstClassAttribute;
@@ -108,6 +106,8 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Feb 01, 2017 15556      Chris.Golden Added originator parameter for setting site ID.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable
  *                                      session events.
+ * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such
+ *                                      scripts are not to be used.
  * </pre>
  * 
  * @author bsteffen
@@ -206,27 +206,6 @@ public interface ISessionConfigurationManager<S extends ISettings> {
      * @return Metadata.
      */
     public HazardEventMetadata getMetadataForHazardEvent(IHazardEvent event);
-
-    /**
-     * Run the event modifying script with the specified entry-point function
-     * name.
-     * 
-     * @param event
-     *            Hazard event to which to apply the script.
-     * @param scriptFile
-     *            Script file in which to find the entry-point function.
-     * @param functionName
-     *            Name of the entry-point function.
-     * @param mutableProperties
-     *            Metadata megawidgets' mutable properties.
-     * @param listener
-     *            Listener to be notified if the event modifying script runs
-     *            successfully.
-     */
-    public void runEventModifyingScript(IHazardEvent event, File scriptFile,
-            String functionName,
-            Map<String, Map<String, Object>> mutableProperties,
-            IEventModifyingScriptJobListener listener);
 
     /**
      * Get the HazardAlertConfig

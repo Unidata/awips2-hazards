@@ -9,7 +9,6 @@
  */
 package com.raytheon.uf.viz.hazards.sessionmanager.config;
 
-import java.io.File;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,6 +42,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  *                                      attributes, but rather are to use the default
  *                                      values given in their metadata definitions.
  * Dec 13, 2017   40923    Chris.Golden Added modified hazard event data member.
+ * Feb 13, 2018   44514    Chris.Golden Removed event-modifying script code, as such
+ *                                      scripts are not to be used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -95,17 +96,6 @@ public class HazardEventMetadata {
      */
     private final Set<String> editRiseCrestFallTriggeringMetadataKeys;
 
-    /**
-     * Script file.
-     */
-    private final File scriptFile;
-
-    /**
-     * Map of event modifying script identifiers to their corresponding entry
-     * point function names.
-     */
-    private final Map<String, String> eventModifyingFunctionNamesForIdentifiers;
-
     // Public Constructors
 
     /**
@@ -134,11 +124,6 @@ public class HazardEventMetadata {
      * @param editRiseCrestFallTriggeringMetadataKeys
      *            Set of metadata keys that are to trigger the editing of
      *            rise-crest-fall when any one of them is changed or invoked.
-     * @param scriptFile
-     *            File holding the script from which the metadata was produced.
-     * @param eventModifyingFunctionNamesForIdentifiers
-     *            Map of event modifying script identifiers to their
-     *            corresponding entry point function names.
      */
     public HazardEventMetadata(
             MegawidgetSpecifierManager megawidgetSpecifierManager,
@@ -147,9 +132,7 @@ public class HazardEventMetadata {
             Set<String> overrideOldValuesMetadataKeys,
             Set<String> affectingModifyFlagMetadataKeys,
             Map<String, String> recommendersTriggeredForMetadataKeys,
-            Set<String> editRiseCrestFallTriggeringMetadataKeys,
-            File scriptFile,
-            Map<String, String> eventModifyingFunctionNamesForIdentifiers) {
+            Set<String> editRiseCrestFallTriggeringMetadataKeys) {
         this.megawidgetSpecifierManager = megawidgetSpecifierManager;
         this.modifiedHazardEvent = modifiedHazardEvent;
         this.recommendersTriggeredForMetadataKeys = recommendersTriggeredForMetadataKeys;
@@ -157,8 +140,6 @@ public class HazardEventMetadata {
         this.overrideOldValuesMetadataKeys = overrideOldValuesMetadataKeys;
         this.affectingModifyFlagMetadataKeys = affectingModifyFlagMetadataKeys;
         this.editRiseCrestFallTriggeringMetadataKeys = editRiseCrestFallTriggeringMetadataKeys;
-        this.scriptFile = scriptFile;
-        this.eventModifyingFunctionNamesForIdentifiers = eventModifyingFunctionNamesForIdentifiers;
     }
 
     // Public Methods
@@ -234,24 +215,5 @@ public class HazardEventMetadata {
      */
     public final Set<String> getEditRiseCrestFallTriggeringMetadataKeys() {
         return editRiseCrestFallTriggeringMetadataKeys;
-    }
-
-    /**
-     * Get the script file.
-     * 
-     * @return Script file.
-     */
-    public final File getScriptFile() {
-        return scriptFile;
-    }
-
-    /**
-     * Get the map of event modifying script identifiers to their corresponding
-     * entry point function names.
-     * 
-     * @return Map.
-     */
-    public final Map<String, String> getEventModifyingFunctionNamesForIdentifiers() {
-        return eventModifyingFunctionNamesForIdentifiers;
     }
 }

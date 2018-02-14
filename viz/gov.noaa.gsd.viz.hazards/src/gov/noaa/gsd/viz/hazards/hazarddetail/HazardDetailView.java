@@ -140,6 +140,8 @@ import gov.noaa.gsd.viz.mvp.widgets.IWidget;
  *                                           way it displays current events.
  * Jan 17, 2018  33428     Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * Feb 13, 2018  44514     Chris.Golden      Removed event-modifying script code, as
+ *                                           such scripts are not to be used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -549,12 +551,12 @@ public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
     /**
      * Notifier invoker delegate.
      */
-    private final ICommandInvoker<EventScriptInfo> notifierInvoker = new CommandInvokerDelegate<>(
+    private final ICommandInvoker<EventCommandInfo> notifierInvoker = new CommandInvokerDelegate<>(
             new ViewPartWidgetDelegateHelper<>(
-                    new Callable<ICommandInvoker<EventScriptInfo>>() {
+                    new Callable<ICommandInvoker<EventCommandInfo>>() {
 
                         @Override
-                        public ICommandInvoker<EventScriptInfo> call()
+                        public ICommandInvoker<EventCommandInfo> call()
                                 throws Exception {
                             return getViewPart().getNotifierInvoker();
                         }
@@ -790,7 +792,7 @@ public class HazardDetailView extends ViewPartDelegateView<HazardDetailViewPart>
     }
 
     @Override
-    public ICommandInvoker<EventScriptInfo> getNotifierInvoker() {
+    public ICommandInvoker<EventCommandInfo> getNotifierInvoker() {
         return notifierInvoker;
     }
 

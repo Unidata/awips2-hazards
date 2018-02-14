@@ -23,11 +23,7 @@ class MetaData(CommonMetaData.MetaData):
         #hazardEvent.setEndTime(newEnd)
 
         return {
-                METADATA_KEY: metaData,
-#                EVENT_MODIFIERS_KEY: { 
-#                                      "convectiveObjectSpdKts": "testScript",
-#                                      "convectiveObjectDir": "testScript"
-#                                      }
+                METADATA_KEY: metaData
                 }    
             
 

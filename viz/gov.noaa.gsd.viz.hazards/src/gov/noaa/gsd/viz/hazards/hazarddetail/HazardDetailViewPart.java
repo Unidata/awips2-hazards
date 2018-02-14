@@ -274,6 +274,8 @@ import gov.noaa.gsd.viz.widgets.CustomizableTabItem;
  *                                           specifier managers that were cached so that
  *                                           they can be forced to be regenerated whenever
  *                                           a hazard event is reselected.
+ * Feb 13, 2018  44514     Chris.Golden      Removed event-modifying script code, as such
+ *                                           scripts are not to be used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1642,24 +1644,24 @@ public class HazardDetailViewPart extends DockTrackingViewPart
      * which the invocation is occurring, coupled with the notifier's
      * identifier.
      */
-    private ICommandInvocationHandler<EventScriptInfo> notifierInvocationHandler;
+    private ICommandInvocationHandler<EventCommandInfo> notifierInvocationHandler;
 
     /**
      * Notifier invoker, for any notifier megawidgets included in the metadata
      * megawidgets. The identifier is that of the hazard event coupled with that
      * of the notifier.
      */
-    private final ICommandInvoker<EventScriptInfo> notifierInvoker = new ICommandInvoker<EventScriptInfo>() {
+    private final ICommandInvoker<EventCommandInfo> notifierInvoker = new ICommandInvoker<EventCommandInfo>() {
 
         @Override
-        public void setEnabled(EventScriptInfo identifier, boolean enable) {
+        public void setEnabled(EventCommandInfo identifier, boolean enable) {
             throw new UnsupportedOperationException(
                     "cannot enable or disable notifier");
         }
 
         @Override
         public void setCommandInvocationHandler(
-                ICommandInvocationHandler<EventScriptInfo> handler) {
+                ICommandInvocationHandler<EventCommandInfo> handler) {
             notifierInvocationHandler = handler;
         }
     };
@@ -2138,7 +2140,7 @@ public class HazardDetailViewPart extends DockTrackingViewPart
     }
 
     @Override
-    public ICommandInvoker<EventScriptInfo> getNotifierInvoker() {
+    public ICommandInvoker<EventCommandInfo> getNotifierInvoker() {
         return notifierInvoker;
     }
 
@@ -3053,11 +3055,10 @@ public class HazardDetailViewPart extends DockTrackingViewPart
                                     if (notifierInvocationHandler != null) {
                                         notifierInvocationHandler
                                                 .commandInvoked(
-                                                        new EventScriptInfo(
+                                                        new EventCommandInfo(
                                                                 visibleEventVersionIdentifier
                                                                         .getFirst(),
-                                                                identifier,
-                                                                manager.getMutableProperties()));
+                                                                identifier));
                                     }
                                 }
 

@@ -38,7 +38,6 @@ import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.S
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VISIBLE_GEOMETRY;
 import static com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.VTEC_CODES;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -109,9 +108,7 @@ import com.raytheon.uf.common.util.Pair;
 import com.raytheon.uf.viz.core.VizApp;
 import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.impl.ObservedSettings;
@@ -132,7 +129,6 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventCheckedStateModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventHistoryModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventModified;
-import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventScriptExtraDataAvailable;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsAdded;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsLockStatusModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.SessionEventsOrderingModified;
@@ -645,6 +641,8 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      triggering once by a user-based origin, and another time
  *                                      by the knock-on other-based origin changes. Also made
  *                                      event type changes result in visual features being cleared.
+ * Feb 13, 2018   44514    Chris.Golden Removed event-modifying script code, as such scripts are
+ *                                      not to be used.
  * </pre>
  * 
  * @author bsteffen
@@ -794,10 +792,6 @@ public class SessionEventManager implements ISessionEventManager {
 
     private final Map<String, Set<String>> editRiseCrestFallTriggeringIdentifiersForEventIdentifiers = new HashMap<>();
 
-    private final Map<String, File> scriptFilesForEventIdentifiers = new HashMap<>();
-
-    private final Map<String, Map<String, String>> eventModifyingScriptsForEventIdentifiers = new HashMap<>();
-
     /**
      * The messenger for displaying questions and warnings to the user and
      * retrieving answers. This allows the viz side (App Builder) to be
@@ -814,18 +808,6 @@ public class SessionEventManager implements ISessionEventManager {
     private ObservedHazardEvent currentEvent;
 
     private final GeoMapUtilities geoMapUtilities;
-
-    /**
-     * Listener for event modifying script completions.
-     */
-    private final IEventModifyingScriptJobListener eventModifyingScriptListener = new IEventModifyingScriptJobListener() {
-
-        @Override
-        public void scriptExecutionComplete(String identifier,
-                ModifiedHazardEvent hazardEvent) {
-            eventModifyingScriptExecutionComplete(hazardEvent);
-        }
-    };
 
     private final RiverForecastManager riverForecastManager;
 
@@ -2286,8 +2268,7 @@ public class SessionEventManager implements ISessionEventManager {
     }
 
     @Override
-    public void eventCommandInvoked(IHazardEventView event, String identifier,
-            Map<String, Map<String, Object>> mutableProperties) {
+    public void eventCommandInvoked(IHazardEventView event, String identifier) {
 
         /*
          * If the command that was invoked is a metadata refresh trigger, and
@@ -2309,25 +2290,6 @@ public class SessionEventManager implements ISessionEventManager {
                         .get(event.getEventID()).contains(identifier)) {
             startRiseCrestFallEdit(event);
         }
-
-        /*
-         * Find the event modifying script that goes with this identifier, if
-         * any, and execute it.
-         */
-        Map<String, String> eventModifyingFunctionNamesForIdentifiers = eventModifyingScriptsForEventIdentifiers
-                .get(event.getEventID());
-        if (eventModifyingFunctionNamesForIdentifiers == null) {
-            return;
-        }
-        String eventModifyingFunctionName = eventModifyingFunctionNamesForIdentifiers
-                .get(identifier);
-        if (eventModifyingFunctionName == null) {
-            return;
-        }
-        configManager.runEventModifyingScript(new BaseHazardEvent(event),
-                scriptFilesForEventIdentifiers.get(event.getEventID()),
-                eventModifyingFunctionName, mutableProperties,
-                eventModifyingScriptListener);
     }
 
     @Override
@@ -2336,31 +2298,6 @@ public class SessionEventManager implements ISessionEventManager {
         Map<String, String> map = recommendersForTriggerIdentifiersForEventIdentifiers
                 .get(identifier);
         return (map == null ? Collections.<String, String> emptyMap() : map);
-    }
-
-    /**
-     * Respond to the completion of an event modifying script execution.
-     * 
-     * @param event
-     *            Hazard event that was returned, indicating what hazard
-     *            attributes have changed. If <code>null</code>, no changes were
-     *            made.
-     */
-    private void eventModifyingScriptExecutionComplete(
-            ModifiedHazardEvent event) {
-        IHazardEvent hazardEvent = event.getHazardEvent();
-        IHazardEventView originalEventView = getEventById(
-                hazardEvent.getEventID());
-        if (originalEventView != null) {
-            if (event.getMutableProperties() != null) {
-                notificationSender.postNotificationAsync(
-                        new SessionEventScriptExtraDataAvailable(this,
-                                originalEventView, event.getMutableProperties(),
-                                Originator.OTHER));
-            }
-            getSessionEventForView(originalEventView)
-                    .setHazardAttributes(hazardEvent.getHazardAttributes());
-        }
     }
 
     /**
@@ -2375,8 +2312,7 @@ public class SessionEventManager implements ISessionEventManager {
 
         /*
          * Get a new megawidget specifier manager for this event, and store it
-         * in the cache. Also get the event modifiers map if one was provided,
-         * and cache it away as well.
+         * in the cache.
          */
         HazardEventMetadata metadata = configManager
                 .getMetadataForHazardEvent(new BaseHazardEvent(eventView));
@@ -2401,14 +2337,6 @@ public class SessionEventManager implements ISessionEventManager {
         editRiseCrestFallTriggeringIdentifiersForEventIdentifiers.put(
                 eventView.getEventID(),
                 metadata.getEditRiseCrestFallTriggeringMetadataKeys());
-        Map<String, String> eventModifiers = metadata
-                .getEventModifyingFunctionNamesForIdentifiers();
-        if (eventModifiers != null) {
-            scriptFilesForEventIdentifiers.put(eventView.getEventID(),
-                    metadata.getScriptFile());
-            eventModifyingScriptsForEventIdentifiers.put(eventView.getEventID(),
-                    eventModifiers);
-        }
 
         sessionManager.startBatchedChanges();
 
@@ -3828,8 +3756,6 @@ public class SessionEventManager implements ISessionEventManager {
                     .remove(eventIdentifier);
             editRiseCrestFallTriggeringIdentifiersForEventIdentifiers
                     .remove(eventIdentifier);
-            scriptFilesForEventIdentifiers.remove(eventIdentifier);
-            eventModifyingScriptsForEventIdentifiers.remove(eventIdentifier);
             notificationSender.postNotificationAsync(
                     new SessionEventsRemoved(this, eventView, originator));
         } else {

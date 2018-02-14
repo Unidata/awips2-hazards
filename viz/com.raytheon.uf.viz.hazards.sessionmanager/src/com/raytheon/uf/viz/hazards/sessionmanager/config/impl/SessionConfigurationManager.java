@@ -49,8 +49,6 @@ import java.util.Set;
 
 import javax.xml.bind.JAXB;
 
-import org.eclipse.swt.widgets.Display;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
@@ -85,7 +83,6 @@ import com.raytheon.uf.common.localization.PathManagerFactory;
 import com.raytheon.uf.common.localization.SaveableOutputStream;
 import com.raytheon.uf.common.localization.exception.LocalizationException;
 import com.raytheon.uf.common.python.concurrent.IPythonExecutor;
-import com.raytheon.uf.common.python.concurrent.IPythonJobListener;
 import com.raytheon.uf.common.python.concurrent.PythonJobCoordinator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -103,9 +100,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.ISessionManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.AllHazardsFilterStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.alerts.impl.HazardEventExpirationAlertStrategy;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.HazardEventMetadata;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.IEventModifyingScriptJobListener;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.ISessionConfigurationManager;
-import com.raytheon.uf.viz.hazards.sessionmanager.config.ModifiedHazardEvent;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsLoaded;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SettingsModified;
 import com.raytheon.uf.viz.hazards.sessionmanager.config.SiteChanged;
@@ -327,6 +322,8 @@ import gov.noaa.gsd.viz.megawidgets.sideeffects.PythonSideEffectsApplier;
  *                                      workstation to the metadata generators via
  *                                      the environment map they are given as a
  *                                      parameter.
+ * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such
+ *                                      scripts are not to be used.
  * </pre>
  * 
  * @author bsteffen
@@ -396,11 +393,10 @@ public class SessionConfigurationManager
             Collections.<String> emptySet(), Collections.<String> emptySet(),
             Collections.<String> emptySet(),
             Collections.<String, String> emptyMap(),
-            Collections.<String> emptySet(), null, null);
+            Collections.<String> emptySet());
 
     /**
-     * Python job coordinator that handles both metadata fetching scripts and
-     * event modifying scripts.
+     * Python job coordinator that handles metadata fetching scripts.
      */
     private static final PythonJobCoordinator<ContextSwitchingPythonEval> PYTHON_JOB_COORDINATOR = new PythonJobCoordinator<>(
             1, "configScriptFactory", new ConfigScriptFactory());
@@ -1019,9 +1015,7 @@ public class SessionConfigurationManager
 
         /*
          * Get the metadata, which is a map with at least one entry holding the
-         * list of megawidget specifiers that applies, as well as an optional
-         * entry for a map of event modifier identifiers to script function
-         * names.
+         * list of megawidget specifiers that applies.
          */
         IPythonExecutor<ContextSwitchingPythonEval, Map<String, Object>> executor = new MetaDataScriptExecutor(
                 event, environmentMap);
@@ -1039,12 +1033,10 @@ public class SessionConfigurationManager
          * of recommender-running metadata keys to their associated
          * recommenders. If the file that produced the metadata has an
          * apply-interdependencies entry point, create a side effects applier
-         * for it. If it includes a map of event modifiers to the names of
-         * scripts that are to be run, remember these.
+         * for it.
          */
         ISideEffectsApplier sideEffectsApplier = null;
         File scriptFile = null;
-        Map<String, String> eventModifyingFunctionNamesForIdentifiers = null;
         if (result.containsKey(HazardConstants.FILE_PATH_KEY)) {
             scriptFile = PathManagerFactory.getPathManager()
                     .getStaticLocalizationFile(
@@ -1054,28 +1046,21 @@ public class SessionConfigurationManager
                     .containsSideEffectsEntryPointFunction(scriptFile)) {
                 sideEffectsApplier = new PythonSideEffectsApplier(scriptFile);
             }
-            if (result.containsKey(HazardConstants.EVENT_MODIFIERS_KEY)) {
-                eventModifyingFunctionNamesForIdentifiers = (Map<String, String>) result
-                        .get(HazardConstants.EVENT_MODIFIERS_KEY);
-            }
         }
         List<Map<String, Object>> specifiersList = (List<Map<String, Object>>) result
                 .get(HazardConstants.METADATA_KEY);
         IHazardEvent modifiedHazardEvent = (IHazardEvent) result
                 .get(HazardConstants.MODIFIED_HAZARD_EVENT_KEY);
         if (specifiersList.isEmpty()) {
-            return ((eventModifyingFunctionNamesForIdentifiers == null)
-                    && (modifiedHazardEvent == null)
-                            ? EMPTY_HAZARD_EVENT_METADATA
-                            : new HazardEventMetadata(
-                                    EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
-                                    modifiedHazardEvent,
-                                    Collections.<String> emptySet(),
-                                    Collections.<String> emptySet(),
-                                    Collections.<String> emptySet(),
-                                    Collections.<String, String> emptyMap(),
-                                    Collections.<String> emptySet(), scriptFile,
-                                    eventModifyingFunctionNamesForIdentifiers));
+            return (modifiedHazardEvent == null ? EMPTY_HAZARD_EVENT_METADATA
+                    : new HazardEventMetadata(
+                            EMPTY_MEGAWIDGET_SPECIFIER_MANAGER,
+                            modifiedHazardEvent,
+                            Collections.<String> emptySet(),
+                            Collections.<String> emptySet(),
+                            Collections.<String> emptySet(),
+                            Collections.<String, String> emptyMap(),
+                            Collections.<String> emptySet()));
         }
         specifiersList = MegawidgetSpecifierManager.makeRawSpecifiersScrollable(
                 specifiersList, METADATA_GROUP_SPECIFIER_PARAMETERS);
@@ -1117,8 +1102,7 @@ public class SessionConfigurationManager
                     overrideOldValuesMetadataKeys,
                     affectingModifyFlagMetadataKeys,
                     recommendersTriggeredForMetadataKeys,
-                    editRiseCrestFallMetadataKeys, scriptFile,
-                    eventModifyingFunctionNamesForIdentifiers);
+                    editRiseCrestFallMetadataKeys);
         } catch (MegawidgetSpecificationException e) {
             statusHandler.error("Could not get hazard metadata for event ID = "
                     + event.getEventID() + ":" + e, e);
@@ -1276,69 +1260,6 @@ public class SessionConfigurationManager
                         parameterName, valuesForTriggerIdentifiers);
             }
         }
-    }
-
-    @Override
-    public void runEventModifyingScript(final IHazardEvent event,
-            final File scriptFile, final String functionName,
-            Map<String, Map<String, Object>> mutableProperties,
-            final IEventModifyingScriptJobListener listener) {
-
-        /*
-         * Run the event-modifying script asynchronously.
-         */
-        IPythonExecutor<ContextSwitchingPythonEval, ModifiedHazardEvent> executor = new EventModifyingScriptExecutor(
-                event, scriptFile, functionName, mutableProperties);
-        try {
-            IPythonJobListener<ModifiedHazardEvent> pythonJobListener = new IPythonJobListener<ModifiedHazardEvent>() {
-
-                @Override
-                public void jobFinished(final ModifiedHazardEvent result) {
-                    Display.getDefault().asyncExec(new Runnable() {
-                        @Override
-                        public void run() {
-                            listener.scriptExecutionComplete(functionName,
-                                    result);
-                        }
-                    });
-                }
-
-                @Override
-                public void jobFailed(final Throwable e) {
-                    Display.getDefault().asyncExec(new Runnable() {
-                        @Override
-                        public void run() {
-                            handleEventModifyingScriptExecutionError(event,
-                                    functionName, e);
-                        }
-                    });
-                }
-            };
-            PYTHON_JOB_COORDINATOR.submitJobWithCallback(executor,
-                    pythonJobListener);
-        } catch (Exception e) {
-            handleEventModifyingScriptExecutionError(event, functionName, e);
-        }
-    }
-
-    /**
-     * Handle an error that occurred during an event modifying script execution
-     * attempt.
-     * 
-     * @param hazardEvent
-     *            Hazard event to which the script was being applied.
-     * @param identifier
-     *            Identifier of the script that was running.
-     * @param e
-     *            Error that occcurred.
-     */
-    private void handleEventModifyingScriptExecutionError(
-            IReadableHazardEvent event, String identifier, Throwable e) {
-        statusHandler.error(
-                "Error executing async event "
-                        + "modifying script job for button identifier "
-                        + identifier + " on event " + event.getEventID() + ".",
-                e);
     }
 
     @Override

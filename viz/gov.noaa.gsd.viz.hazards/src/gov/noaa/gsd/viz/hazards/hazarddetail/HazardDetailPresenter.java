@@ -213,6 +213,8 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  *                                           toolbar contribution code.
  * Feb 06, 2018   46258    Chris.Golden      Fixed null pointer exception bug when
  *                                           checking for hazard conflicts.
+ * Feb 13, 2018   44514    Chris.Golden      Removed event-modifying script code, as such
+ *                                           scripts are not to be used.
  * </pre>
  * 
  * @author Chris.Golden
@@ -720,16 +722,15 @@ public class HazardDetailPresenter
      * which the invocation is occurring coupled with that of the notifier that
      * has been invoked.
      */
-    private final ICommandInvocationHandler<EventScriptInfo> notifierInvocationHandler = new ICommandInvocationHandler<EventScriptInfo>() {
+    private final ICommandInvocationHandler<EventCommandInfo> notifierInvocationHandler = new ICommandInvocationHandler<EventCommandInfo>() {
 
         @Override
-        public void commandInvoked(EventScriptInfo identifier) {
+        public void commandInvoked(EventCommandInfo identifier) {
             IHazardEventView event = getEventByIdentifier(
                     identifier.getEventIdentifier());
             if (event != null) {
                 getModel().eventCommandInvoked(event,
-                        identifier.getDetailIdentifier(),
-                        identifier.getMutableProperties());
+                        identifier.getAttributeIdentifier());
             }
         }
     };

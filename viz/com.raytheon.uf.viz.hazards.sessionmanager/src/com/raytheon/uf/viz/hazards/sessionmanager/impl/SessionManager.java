@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.hazards.sessionmanager.impl;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import com.raytheon.uf.common.activetable.request.ClearPracticeVTECTableRequest;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardNotification;
@@ -186,6 +185,8 @@ import gov.noaa.gsd.common.utilities.IRunnableAsynchronousScheduler;
  *                                      intra-managerial notifications instead of listening on
  *                                      the event bus for notifications.
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session events.
+ * Feb 13, 2018 44514      Chris.Golden Removed event-modifying script code, as such scripts are
+ *                                      not to be used.
  * </pre>
  * 
  * @author bsteffen
@@ -696,9 +697,8 @@ public class SessionManager implements ISessionManager<ObservedSettings> {
     }
 
     @Override
-    public void eventCommandInvoked(IHazardEventView event, String identifier,
-            Map<String, Map<String, Object>> mutableProperties) {
-        eventManager.eventCommandInvoked(event, identifier, mutableProperties);
+    public void eventCommandInvoked(IHazardEventView event, String identifier) {
+        eventManager.eventCommandInvoked(event, identifier);
         recommenderManager.eventCommandInvoked(event.getEventID(), identifier);
     }
 

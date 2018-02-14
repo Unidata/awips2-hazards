@@ -168,6 +168,8 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  *                                      not events should be considered modified.
  * Feb 08, 2018 44515     Chris.Golden  Added OBJECT_TYPE constant.
  * Feb 13, 2018 20595     Chris.Golden  Added "type" as a recommender trigger.
+ * Feb 13, 2018 44514     Chris.Golden  Removed event-modifying script code, as such scripts are
+ *                                      not to be used.
  * </pre>
  * 
  * @author mnash
@@ -1077,8 +1079,6 @@ public final class HazardConstants {
     public static final String MODIFIED_HAZARD_EVENT_KEY = "modifiedHazardEvent";
 
     public static final String FILE_PATH_KEY = "filePath";
-
-    public static final String EVENT_MODIFIERS_KEY = "eventModifiers";
 
     public static final String ENDING_SYNOPSIS = "endingSynopsis";
 

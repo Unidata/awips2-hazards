@@ -30,6 +30,8 @@
     Feb 06, 2018    46258   Chris.Golden         Added key for recommender results not being
                                                  treated as modifications when applied to the
                                                  associated events.
+    Feb 13, 2018    44514   Chris.Golden         Removed event-modifying script code, as such
+                                                 scripts are not to be used.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -170,7 +172,6 @@ GRID_PARAM_KEY = "gridParm"
 METADATA_KEY = "metadata"
 METADATA_FILE_PATH_KEY = "filePath"
 METADATA_MODIFIED_HAZARD_EVENT = "modifiedHazardEvent"
-EVENT_MODIFIERS_KEY = "eventModifiers"
 INTERDEPENDENCIES_SCRIPT_KEY = "interdependencies"
 METADICT_KEY = "metaDict"
 FILENAME_KEY = "fileName"
