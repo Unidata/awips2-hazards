@@ -21,6 +21,19 @@
 #    Oct 02, 2017    38506         Chris.Golden   Initial creation.
 #    Jan 24, 2018    25765         Chris.Golden   Added sanity checks for
 #                                                 queryObjects() parameters.
+#    Feb 08, 2018    44515         Chris.Golden   Added objectType to generic
+#                                                 registry objects, so that
+#                                                 focal points can use these
+#                                                 to avoid having to keep their
+#                                                 uniqueID values unique across
+#                                                 all registries. Also added
+#                                                 checks to ensure that any
+#                                                 generic registry object
+#                                                 dictionary supplied to this
+#                                                 module's methods includes a
+#                                                 string entry for objectType
+#                                                 and uniqueID, to avoid
+#                                                 problems.                                                 
 #
 import JUtil, datetime
 import TimeUtils
@@ -36,15 +49,18 @@ from com.raytheon.uf.common.dataplugin.events.hazards.request import GenericRegi
 Store the specified generic registry object in the registry.
 
 @param objectDict Dictionary representing a generic registry object with the
-        following entry:
+        following required entries:
             uniqueID:
                 String holding an identifier that is unique across all generic
-                registry objects. If the dictionary does not hold this value,
-                the behavior is not guaranteed. 
+                registry objects of this objectType.
+            objectType:
+                String holding the object type. This is used to indicate the
+                purpose of the object, with each object of this objectType
+                having a uniqueID that is unique for this objectType.
         Additionally, it may hold any other entries with names other than
-        "uniqueID", and values that are standard simple objects (booleans,
-        numbers, strings, and datetime instances), as well as collections
-        (lists, sets) of simple objects.
+        "uniqueID" and "objectType", and values that are standard simple
+        objects (booleans, numbers, strings, and datetime instances), as well
+        as collections (lists, sets) of simple objects.
 @param practice Flag indicating whether or not practice mode is in effect.
 '''
 def storeObject(objectDict, practice):
@@ -60,15 +76,18 @@ def storeObject(objectDict, practice):
 Store the specified generic registry objects in the registry.
 
 @param objectDicts Collection of dictionaries, each representing a generic
-        registry object, with the following entry:
+        registry object, with the following required entries:
             uniqueID:
                 String holding an identifier that is unique across all generic
-                registry objects. If the dictionary does not hold this value,
-                the behavior is not guaranteed. 
+                registry objects of this objectType.
+            objectType:
+                String holding the object type. This is used to indicate the
+                purpose of the object, with each object of this objectType
+                having a uniqueID that is unique for this objectType.
         Additionally, each dictionary may hold any other entries with names
-        other than "uniqueID", and values that are standard simple objects
-        (booleans numbers, strings, and datetime instances), as well as
-        collections (lists, sets) of simple objects.
+        other than "uniqueID" and "objectType", and values that are standard
+        simple objects (booleans numbers, strings, and datetime instances), as
+        well as collections (lists, sets) of simple objects.
 @param practice Flag indicating whether or not practice mode is in effect.
 '''
 def storeObjects(objectDicts, practice):
@@ -83,15 +102,18 @@ def storeObjects(objectDicts, practice):
 Update the specified generic registry object in the registry.
 
 @param objectDict Dictionary representing a generic registry object with the
-        following entry:
+        following required entries:
             uniqueID:
                 String holding an identifier that is unique across all generic
-                registry objects. If the dictionary does not hold this value,
-                the behavior is not guaranteed. 
+                registry objects of this objectType.
+            objectType:
+                String holding the object type. This is used to indicate the
+                purpose of the object, with each object of this objectType
+                having a uniqueID that is unique for this objectType.
         Additionally, it may hold any other entries with names other than
-        "uniqueID", and values that are standard simple objects (booleans,
-        numbers, strings, and datetime instances), as well as collections
-        (lists, sets) of simple objects.
+        "uniqueID" and "objectType", and values that are standard simple
+        objects (booleans, numbers, strings, and datetime instances), as well
+        as collections (lists, sets) of simple objects.
 @param practice Flag indicating whether or not practice mode is in effect.
 '''
 def updateObject(objectDict, practice):
@@ -107,15 +129,18 @@ def updateObject(objectDict, practice):
 Update the specified generic registry objects in the registry.
 
 @param objectDicts Collection of dictionaries, each representing a generic
-        registry object, with the following entry:
+        registry object, with the following required entries:
             uniqueID:
                 String holding an identifier that is unique across all generic
-                registry objects. If the dictionary does not hold this value,
-                the behavior is not guaranteed. 
+                registry objects of this objectType.
+            objectType:
+                String holding the object type. This is used to indicate the
+                purpose of the object, with each object of this objectType
+                having a uniqueID that is unique for this objectType.
         Additionally, each dictionary may hold any other entries with names
-        other than "uniqueID", and values that are standard simple objects
-        (booleans numbers, strings, and datetime instances), as well as
-        collections (lists, sets) of simple objects.
+        other than "uniqueID" and "objectType", and values that are standard
+        simple objects (booleans numbers, strings, and datetime instances), as
+        well as collections (lists, sets) of simple objects.
 @param practice Flag indicating whether or not practice mode is in effect.
 '''
 def updateObjects(objectDicts, practice):
@@ -130,15 +155,18 @@ def updateObjects(objectDicts, practice):
 Delete the specified generic registry object from the registry.
 
 @param objectDict Dictionary representing a generic registry object with the
-        following entry:
+        following required entries:
             uniqueID:
                 String holding an identifier that is unique across all generic
-                registry objects. If the dictionary does not hold this value,
-                the behavior is not guaranteed. 
+                registry objects of this objectType.
+            objectType:
+                String holding the object type. This is used to indicate the
+                purpose of the object, with each object of this objectType
+                having a uniqueID that is unique for this objectType.
         Additionally, it may hold any other entries with names other than
-        "uniqueID", and values that are standard simple objects (booleans,
-        numbers, strings, and datetime instances), as well as collections
-        (lists, sets) of simple objects.
+        "uniqueID" and "objectType", and values that are standard simple
+        objects (booleans, numbers, strings, and datetime instances), as well
+        as collections (lists, sets) of simple objects.
 @param practice Flag indicating whether or not practice mode is in effect.
 '''
 def removeObject(objectDict, practice):
@@ -154,15 +182,18 @@ def removeObject(objectDict, practice):
 Delete the specified generic registry objects from the registry.
 
 @param objectDicts Collection of dictionaries, each representing a generic
-        registry object, with the following entry:
+        registry object, with the following required entries:
             uniqueID:
                 String holding an identifier that is unique across all generic
-                registry objects. If the dictionary does not hold this value,
-                the behavior is not guaranteed. 
+                registry objects of this objectType.
+            objectType:
+                String holding the object type. This is used to indicate the
+                purpose of the object, with each object of this objectType
+                having a uniqueID that is unique for this objectType.
         Additionally, each dictionary may hold any other entries with names
-        other than "uniqueID", and values that are standard simple objects
-        (booleans numbers, strings, and datetime instances), as well as
-        collections (lists, sets) of simple objects.
+        other than "uniqueID" and "objectType", and values that are standard
+        simple objects (booleans numbers, strings, and datetime instances), as
+        well as collections (lists, sets) of simple objects.
 @param practice Flag indicating whether or not practice mode is in effect.
 '''
 def removeObjects(objectDicts, practice):
@@ -199,14 +230,18 @@ parameters.
        match "event1", "event2", and/or "event3".
 @param practice Flag indicating whether or not practice mode is in effect.
 @return List of dictionaries representing the generic registry objects that
-        match. Each dictionary has the following entry:
+        match. Each dictionary has the following entries:
             uniqueID:
                 String holding an identifier that is unique across all generic
-                registry objects.
+                registry objects of this objectType.
+            objectType:
+                String holding the object type. This is used to indicate the
+                purpose of the object, with each object of this objectType
+                having a uniqueID that is unique for this objectType.
         Additionally, each dictionary may hold any other entries with names
-        other than "uniqueID", and values that are standard simple objects
-        (booleans numbers, strings, and datetime instances), as well as
-        collections (lists, sets) of simple objects. 
+        other than "uniqueID" and "objectType", and values that are standard
+        simple objects (booleans numbers, strings, and datetime instances), as
+        well as collections (lists, sets) of simple objects. 
 '''
 def queryObjects(parameters, practice):
 
@@ -254,8 +289,13 @@ Private Functions
 # Convert the specified dictionary to a Generic Registry Object.
 def _getGenericRegistryObjectFromDict(objectDict):
     object = GenericRegistryObject()
+    if not "uniqueID" in objectDict or not isinstance(objectDict["uniqueID"], basestring):
+        raise ValueError("generic registry object dictionary must have uniqueID entry of type string")
     object.setUniqueID(objectDict["uniqueID"])
-    objectDict = { key:objectDict[key] for key in objectDict if key != 'uniqueID' }
+    if not "objectType" in objectDict or not isinstance(objectDict["objectType"], basestring):
+        raise ValueError("generic registry object dictionary must have objectType entry of type string")
+    object.setObjectType(objectDict["objectType"])
+    objectDict = { key:objectDict[key] for key in objectDict if key != 'uniqueID' and key != "objectType" }
     object.setProperties(JUtil.pyValToJavaObj(objectDict))
     return object
 
@@ -271,6 +311,7 @@ def _getGenericRegistryObjectsFromDicts(objectDicts):
 def _getDictFromGenericRegistryObject(object):
     objectDict = JUtil.javaObjToPyVal(object.getProperties())
     objectDict["uniqueID"] = object.getUniqueID()
+    objectDict["objectType"] = object.getObjectType()
     return objectDict
 
 # Convert the specfied Java Collection of GenericRegistryObject instances to

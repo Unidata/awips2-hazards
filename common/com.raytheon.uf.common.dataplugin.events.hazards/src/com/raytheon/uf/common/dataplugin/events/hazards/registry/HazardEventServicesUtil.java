@@ -135,7 +135,7 @@ public class HazardEventServicesUtil {
      *            Class for which the query is to search.
      * @param queryParameters
      *            The query parameters
-     * @param slotNameGenerator
+     * @param queryParameterKeyGenerator
      *            Optional query parameter key generator. If specified, it is
      *            used to generate modified parameter keys in place of any keys
      *            provided in the <code>queryParameters</code>.
@@ -171,7 +171,7 @@ public class HazardEventServicesUtil {
      *            Class for which the query is to search.
      * @param queryParameters
      *            The query parameters
-     * @param slotNameGenerator
+     * @param queryParameterKeyGenerator
      *            Optional query parameter key generator. If specified, it is
      *            used to generate modified parameter keys in place of any keys
      *            provided in the <code>queryParameters</code>.

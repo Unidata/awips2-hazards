@@ -166,6 +166,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Feb 06, 2018 46258     Chris.Golden  Added "revert" to recommender trigger origin, and added
  *                                      recommender result flag constant indicating whether or
  *                                      not events should be considered modified.
+ * Feb 08, 2018 44515     Chris.Golden  Added OBJECT_TYPE constant.
  * Feb 13, 2018 20595     Chris.Golden  Added "type" as a recommender trigger.
  * </pre>
  * 
@@ -747,6 +748,8 @@ public final class HazardConstants {
     public static final String SIGNIFICANCE = "significance";
 
     public static final String UNIQUE_ID = "uniqueID";
+
+    public static final String OBJECT_TYPE = "objectType";
 
     public static final String EXPIRATION_TIME = "expirationTime";
 

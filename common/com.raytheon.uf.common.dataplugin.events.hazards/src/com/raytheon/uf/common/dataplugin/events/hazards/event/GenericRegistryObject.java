@@ -44,6 +44,7 @@ import gov.noaa.gsd.common.utilities.Utils;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 02, 2017   38506    Chris.Golden Initial creation.
+ * Feb 08, 2018   44515    Chris.Golden Added objectType data member.
  * </pre>
  * 
  * @author Chris.Golden
@@ -59,12 +60,26 @@ public class GenericRegistryObject {
     // Private Variables
 
     /**
-     * Unique identifier.
+     * Unique identifier. This is intended to be unique across all instances of
+     * this class that share the same {@link #objectType}.
      */
     @DynamicSerializeElement
     @XmlElement
     @SlotAttribute(HazardConstants.UNIQUE_ID)
     private String uniqueID;
+
+    /**
+     * Object type. This is meant to be used to differentiate different uses of
+     * instances of this object from one another. For example, one focal point
+     * might be using these objects to track CAP identifiers; she might assign
+     * the value "capId" to this variable. Meanwhile, another focal point might
+     * be storing a PHI configuration dialog's values within one of these
+     * objects; he might assign the value "phiConfigValues" to this variable.
+     */
+    @DynamicSerializeElement
+    @XmlElement
+    @SlotAttribute(HazardConstants.OBJECT_TYPE)
+    private String objectType;
 
     /**
      * Map of the object's property names to their values.
@@ -108,6 +123,21 @@ public class GenericRegistryObject {
     }
 
     /**
+     * @return Object type.
+     */
+    public String getObjectType() {
+        return objectType;
+    }
+
+    /**
+     * @param objectType
+     *            Object type.
+     */
+    public void setObjectType(String objectType) {
+        this.objectType = objectType;
+    }
+
+    /**
      * @return Properties.
      */
     public Map<String, Serializable> getProperties() {
@@ -144,6 +174,8 @@ public class GenericRegistryObject {
         result = prime * result
                 + ((uniqueID == null) ? 0 : uniqueID.hashCode());
         result = prime * result
+                + ((objectType == null) ? 0 : objectType.hashCode());
+        result = prime * result
                 + ((properties == null) ? 0 : properties.hashCode());
         result = prime * result + (practice ? 1 : 0);
         return result;
@@ -159,6 +191,9 @@ public class GenericRegistryObject {
         }
         GenericRegistryObject otherGenericObject = (GenericRegistryObject) other;
         if (Utils.equal(uniqueID, otherGenericObject.uniqueID) == false) {
+            return false;
+        }
+        if (Utils.equal(objectType, otherGenericObject.objectType) == false) {
             return false;
         }
         if (Utils.equal(properties, otherGenericObject.properties) == false) {

@@ -54,6 +54,8 @@ import oasis.names.tc.ebxml.regrep.xsd.rim.v4.ValueType;
  * Date         Ticket#    Engineer     Description
  * ------------ ---------- ------------ --------------------------
  * Oct 02, 2017   38506    Chris.Golden Initial creation.
+ * Feb 08, 2018   44515    Chris.Golden Added objectType as a first-class
+ *                                      data member.
  * </pre>
  * 
  * @author Chris.Golden
@@ -72,8 +74,9 @@ public class GenericRegistryPropertySlotConverter implements SlotConverter {
      * @return Prefix to be used for the name of the slot.
      */
     public static String getSlotNamePrefixForPropertyName(String name) {
-        return (HazardConstants.UNIQUE_ID.equals(name) ? ""
-                : HazardConstants.GENERIC_PROPERTY + "-");
+        return (HazardConstants.UNIQUE_ID.equals(name)
+                || HazardConstants.OBJECT_TYPE.equals(name) ? ""
+                        : HazardConstants.GENERIC_PROPERTY + "-");
     }
 
     // Public Methods
