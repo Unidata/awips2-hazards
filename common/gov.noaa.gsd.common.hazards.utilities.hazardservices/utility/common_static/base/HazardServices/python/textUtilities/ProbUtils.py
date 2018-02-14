@@ -1038,7 +1038,12 @@ class ProbUtils(object):
         ### BugAlert: this 1.25x multiplier is an empirical value suggested by Greg
         ### after playing with the distance tool.  Need to find
         ### source of 80% slowdown of downstream polygons.
-        speedVal = float(speedVal) * 1.2136  # (calculated via testing)
+        ### Darrel Kingfield found the issue of calculating distances on Mercator-like
+        ### projections has a (1/math.cos(centerLat*(math.pi/180))) scaling factor
+        ### and at about 33 degreees latitude this works out to approximately 1.2x
+        tmpPoly = so.transform(AdvancedGeometry.c3857t4326, threat)
+        centerLat = tmpPoly.centroid.y
+        speedVal = float(speedVal) * (1/math.cos(centerLat*(math.pi/180)))  # (calculated via testing)
 #        speedVal = float(speedVal)
         dirVal = float(dirVal)
         dis = secs * speedVal * 0.514444444

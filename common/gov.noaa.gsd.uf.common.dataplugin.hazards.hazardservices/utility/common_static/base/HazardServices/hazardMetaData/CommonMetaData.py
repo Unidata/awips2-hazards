@@ -2442,6 +2442,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "editable": enable,
                         },
                         {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convRecPastconvectiveObjectDirHID",
+                         "values": self.hazardEvent.get('convRecPastconvectiveObjectDir', self.hazardEvent.get('convectiveObjectDir'))
+                         },
+                        {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectSpdKts",
                         "label": "Spd (kts)",
@@ -2454,6 +2459,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "modifyRecommender": recommender,
                         "editable": enable,
                         },
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convRecPastconvectiveObjectSpdKtsHID",
+                         "values": self.hazardEvent.get('convRecPastconvectiveObjectSpdKts', self.hazardEvent.get('convectiveObjectSpdKts'))
+                         },
                        {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectDirUnc",
@@ -2467,6 +2477,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "modifyRecommender": recommender,
                         "editable": enable,
                         },
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convRecPastconvectiveObjectDirUncHID",
+                         "values": self.hazardEvent.get('convRecPastconvectiveObjectDirUnc', self.hazardEvent.get('convectiveObjectDirUnc'))
+                         },
                        {
                         "fieldType": "IntegerSpinner",
                         "fieldName": "convectiveObjectSpdKtsUnc",
@@ -2480,6 +2495,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "modifyRecommender": recommender,
                         "editable": enable,
                         },
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convRecPastconvectiveObjectSpdKtsUncHID",
+                         "values": self.hazardEvent.get('convRecPastconvectiveObjectSpdKtsUnc', self.hazardEvent.get('convectiveObjectSpdKtsUnc'))
+                         },
                     ]
         }        
         return grp
@@ -2690,6 +2710,11 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                          "fieldType": "HiddenField",
                          "fieldName": "convectiveProbabilityTrend",
                          "values": [100, 80, 60, 40, 20, 10]
+                         },
+                        {
+                         "fieldType": "HiddenField",
+                         "fieldName": "convRecPastconvectiveProbTrendGraphHID",
+                         "values": self.hazardEvent.get('convRecPastconvectiveProbTrendGraph', self.hazardEvent.get('convectiveProbTrendGraph'))
                          },
                        ]
         }
@@ -2924,6 +2949,7 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
             sys.stderr.write('New probs length does not match old probs length. No change')
 
         return convectiveProbTrendGraphVals
+    
 
     print "\n*****************\nCM applyConvective called"
     print 'triggerIdentifiers', triggerIdentifiers
@@ -3010,6 +3036,33 @@ def applyConvectiveInterdependencies(triggerIdentifiers, mutableProperties):
         print returnDict
         return returnDict
 
+
+    ### The next 3 if statements are to immediately update respective fields
+    ### if reautomated, per Greg
+    if triggerIdentifiers and 'geometryAutomated' in triggerIdentifiers:
+        pass
+        return returnDict
+    
+    if triggerIdentifiers and 'motionAutomated' in triggerIdentifiers:
+        returnDict = {}
+        if mutableProperties['motionAutomated']["values"] == True:
+            returnDict["convectiveObjectDir"] = {"values":mutableProperties["convRecPastconvectiveObjectDirHID"]["values"]}
+            returnDict["convectiveObjectSpdKts"] = {"values":mutableProperties["convRecPastconvectiveObjectSpdKtsHID"]["values"]}
+            returnDict["convectiveObjectDirUnc"] = {"values":mutableProperties["convRecPastconvectiveObjectDirUncHID"]["values"]}
+            returnDict["convectiveObjectSpdKtsUnc"] = {"values":mutableProperties["convRecPastconvectiveObjectSpdKtsUncHID"]["values"]}
+        return returnDict
+    
+    if triggerIdentifiers and 'probTrendAutomated' in triggerIdentifiers:
+        returnDict = {}
+        if mutableProperties['probTrendAutomated']["values"] == True:
+            returnDict["convectiveProbTrendGraph"] = {"values":mutableProperties["convRecPastconvectiveProbTrendGraphHID"]["values"]}
+        return returnDict
+
+
+
+
+        
+        
     if triggerIdentifiers:
         convectTriggers = convectiveFilter(triggerIdentifiers, 'convective')
         convectMutables = convectiveFilter(mutableProperties, 'convective')

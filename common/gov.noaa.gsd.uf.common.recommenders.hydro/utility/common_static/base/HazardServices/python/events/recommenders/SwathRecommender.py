@@ -313,6 +313,9 @@ class Recommender(RecommenderTemplate.Recommender):
                 changes = True
                 
             elif trigger == 'autoUpdate':
+                pastProbSeverePolys = event.get('probSevereGeomList', [])
+                if len(pastProbSeverePolys) > 1:
+                    self.updateMotionVector(event, pastProbSeverePolys)
                 changes = True
             
             if not changes:
@@ -351,6 +354,22 @@ class Recommender(RecommenderTemplate.Recommender):
 
         self.printEventSet("*****\nFinishing SwathRecommender", eventSet, eventLevel=1)
         return resultEventSet      
+    
+    
+    def updateMotionVector(self, event, motionVectorTuples):
+        newMotion = self.probUtils.computeMotionVector(motionVectorTuples, self.eventSt_ms) 
+        updateDict = {}
+        for key in ['convectiveObjectDir', 'convectiveObjectSpdKts', 'convectiveObjectDirUnc', 'convectiveObjectSpdKtsUnc']:
+            value = int(newMotion.get(key))
+            # Save new motion vector to Application Dictionary
+            if key in ['convectiveObjectDir', 'convectiveObjectSpdKts']:
+                updateDict[key] = value           
+            event.set(key, value)
+        print "SR updateApplicationDict adjust", updateDict
+        self.flush()
+        self.probUtils.updateApplicationDict(updateDict)
+
+    
     
     def setDataLayerTimes(self, eventSetAttrs):
         # Data Layer Times are in ms past the epoch

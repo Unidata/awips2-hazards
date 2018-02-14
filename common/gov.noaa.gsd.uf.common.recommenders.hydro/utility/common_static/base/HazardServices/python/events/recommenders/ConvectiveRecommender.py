@@ -26,7 +26,7 @@ import h5py
 import numpy as np
 import glob, os, time, datetime
 import pprint
-from collections import defaultdict
+from collections import defaultdict, deque
 from shapely.wkt import loads
 from shapely.geometry import Polygon, Point
 
@@ -198,10 +198,7 @@ class Recommender(RecommenderTemplate.Recommender):
             mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, identifiersOfEventsToSaveToHistory)
         else:
             mergedEventSet.addAttribute(SAVE_TO_HISTORY_KEY, None)
-#        if (identifiersOfEventsToSaveToDatabase):
-#            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, identifiersOfEventsToSaveToDatabase)
-#        else:
-#            mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, None)
+
         mergedEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
         mergedEventSet.addAttribute(TREAT_AS_ISSUANCE_KEY, True)
         mergedEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, False)
@@ -209,9 +206,7 @@ class Recommender(RecommenderTemplate.Recommender):
     
 
     def getRecommendedEventsDict(self, currentTime, latestDatetime):
-        #hdfFilesList = self.getLatestProbSevereDataHDFFileList(currentTime)
         hdfFilesList = self.getLatestProbSevereDataHDFFileList(latestDatetime=None)
-        #eventsDict = self.eventSetFromHDFFile(hdfFilesList, currentTime, latestDatetime)
         eventsDict = self.latestEventSetFromHDFFile(hdfFilesList, currentTime)
         return eventsDict
 
@@ -244,9 +239,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return dict(contents)
                 
-            
-            
-                
 
     def latestEventSetFromHDFFile(self, hdfFilenameList, currentTime):
         ### Should be a single file with latest timestamp
@@ -263,23 +255,14 @@ class Recommender(RecommenderTemplate.Recommender):
             valuesDict.update(self.dumpHDFContents(hFile))
             hFile.close()
         
-        #print 'HHHHHHHHHHHHHHHHHHH\n\n'
-        #print '\thdfFilenameList', hdfFilenameList, hdfFilenameList[:2]
-        ##pprint.pprint(valuesDict)
-        #print '\tself.latestDLTDT:', self.latestDLTDT
-        #print '\tsorted(valuesDict.keys()', sorted(valuesDict.keys())
-        
         ### BUG ALERT :: Rounding to zero in datetime comparison
         groupDTList = [t for t in sorted(valuesDict.keys()) if t.replace(second=0) <= self.latestDLTDT.replace(second=0)]
         
         ### No ProbSevere objects older than Latest Data Layer
         if len(groupDTList) == 0:
             return {}
-        #print '\tgroupDTList', groupDTList
+
         latestGroupDT = max(groupDTList)# if len(groupDTList) else self.latestDLTDT
-        #print'\tgroupDTList', groupDTList
-        #print '\tlatestGroupDT', latestGroupDT
-        #print'====================='
         latestGroup = valuesDict.get(latestGroupDT)
 
         returnDict = {}
@@ -335,8 +318,6 @@ class Recommender(RecommenderTemplate.Recommender):
             return fileList
         
         
-        
-        
         if latestDatetime:
             ### Use filename to make datetime and return ONLY the latest
             regex = "probsevere-%Y-%m-%d-%H.h5"
@@ -354,6 +335,7 @@ class Recommender(RecommenderTemplate.Recommender):
     def toString(self):
         return "ConvectiveRecommender"
     
+
     def getLatestTimestampOfCurrentEvents(self, eventSet, currentEvents):
         ### Initialize latestDatetime
         latestDatetime = datetime.datetime.min
@@ -363,18 +345,12 @@ class Recommender(RecommenderTemplate.Recommender):
             if eventCreationTime > latestDatetime:
                latestDatetime =  eventCreationTime
 
-        #=======================================================================
-        # for event in eventSet:
-        #     eventCreationTime = event.getCreationTime()
-        #     if eventCreationTime > latestDatetime:
-        #        latestDatetime =  eventCreationTime
-        #=======================================================================
-               
         return latestDatetime
+
     
     def getCurrentEvents(self, eventSet):
         siteID = eventSet.getAttributes().get('siteID')        
-#        caveMode = self._sessionDict.get('hazardMode','PRACTICE').upper()
+
         caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
         practice = True
         if caveMode == 'OPERATIONAL':
@@ -391,10 +367,8 @@ class Recommender(RecommenderTemplate.Recommender):
                 eventIDs.append(event.getEventID())
         return currentEvents
 
+
     def makeHazardEvent(self, ID, values):
-        
-        #print '\n========= MAKING HAZARD EVENT ========'
-        #print '\t>>>>', ID, '<<<<\n'
         
         if values.get('belowThreshold'):
             print '\t', ID, 'Below Threshold', self.lowThreshold, 'returning None'
@@ -408,7 +382,6 @@ class Recommender(RecommenderTemplate.Recommender):
         
         sys.stdout.flush()
         probSevereTime = values.get('startTime', self.dataLayerTime)
-        #dataLayerTimeMS = int(currentTime.strftime('%s'))*1000
         hazardEvent = EventFactory.createEvent()
         hazardEvent.setCreationTime(probSevereTime)
         self.setEventTimes(hazardEvent, values)
@@ -437,6 +410,7 @@ class Recommender(RecommenderTemplate.Recommender):
         
         return hazardEvent
 
+
     def setEventTimes(self, event, values):
         psStartTime = values.get('startTime', self.dataLayerTime)
         event.set('probSevereStartTime', TimeUtils.datetimeToEpochTimeMillis(psStartTime))
@@ -450,7 +424,34 @@ class Recommender(RecommenderTemplate.Recommender):
         event.setEndTime(endTime)
         
 
+    def storeLastEvent(self, event):
+        checkList = ['convectiveObjectSpdKtsUnc', 'convectiveObjectDirUnc', 'convectiveProbTrendGraph',
+                            'convectiveObjectDir', 'convectiveObjectSpdKts']
+        
+        for c in checkList:
+            event.set('convRecPast'+c, event.get(c))
+
+
+    def storeNextGeometry(self, event):
+        geomList = deque(event.get('probSevereGeomList', []), maxlen=5)
+        st = long(TimeUtils.datetimeToEpochTimeMillis(event.getStartTime()))
+        geom = event.getGeometry()
+        
+        ### Only want to store if new startTime 
+        times = sorted([t[1] for t in geomList])
+        if len(times) == 0:
+            geomList.append((geom, st))
+        elif st > times[-1]:
+            geomList.append((geom, st))
+        
+        event.set('probSevereGeomList', list(geomList))
+        
+        
     def updateEvent(self, event, recommended, dataLayerTimeMS):
+        
+        # Store last update
+        self.storeLastEvent(event)
+        self.storeNextGeometry(event)
         
         if event.get('motionAutomated', False):
             event.set('convectiveObjectDir', recommended.get('wdir'))
@@ -467,6 +468,8 @@ class Recommender(RecommenderTemplate.Recommender):
         probSevereAttrs = event.get('probSeverAttrs')
         for k,v in recommended.iteritems():
             probSevereAttrs[k] = v
+            
+
         event.set('probSeverAttrs',probSevereAttrs)
         
         ### BUG ALERT: Do we want to set the 
@@ -506,25 +509,10 @@ class Recommender(RecommenderTemplate.Recommender):
             ### but it appears to be consistent and something we can use to
             ### tell the Convective Recommedner to bypass THIS event
             ### if THIS event activateModify=0
-            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
-            if currentEvent.get('activateModify') == 0:
-                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
-                continue
-            
-            
-            
-            ### if we want to ensure a selected HE is not updated when the Conv Rec
-            ### runs, we need to make sure this is working correctly.
-            ### Right now, it will not recognize a HE that is selected on the UI machine
-            ### (selected and activate are both always seen as False from the Conv Rec) 
-            #===================================================================
-            # editableHazard = self.isEditableSelected(currentEvent)
-            # print '\n!!!!!!!  ID[1]: ', ID, editableHazard
-            # if editableHazard:# and selectedHazard:
-            #     print '\tSkipping Update!'
-            #     continue
-            #===================================================================
-
+#            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
+#            if currentEvent.get('activateModify') == 0:
+#                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
+#                continue
             
             recommendedAttrs = vals['recommendedAttrs']
             
@@ -571,36 +559,19 @@ class Recommender(RecommenderTemplate.Recommender):
             currentEventObjectID = currentEvent.get('objectID')
             ### If current event has match in rec event, add to dict for later processing
             ### should avoid 'userOwned' since they are filtered out with previous if statement
-#            rawRecommendedID = currentEventObjectID[1:] if str(currentEventObjectID).startswith('M') else currentEventObjectID
+
             rawRecommendedID = re.findall('\d+', str(currentEventObjectID))[0]
             
-#            print "CR activateModify", currentEvent.getEventID(), currentEvent.get('activateModify')
-#            if currentEvent.get('activateModify') == 0:
-#                print '\tNot updating this hazard event in Convective Recommender...', currentEvent.get('objectID')
-#### These next two lines are a temporary try to see if this kills the duplication issue
-#                if recommendedObjectIDsList and rawRecommendedID and rawRecommendedID in recommendedEventsDict:
-#                    recommendedObjectIDsList.remove(rawRecommendedID)
-#                mergedEvents.add(currentEvent)
-#                continue
-
             #if currentEvent.get('automationLevel') == 'userOwned':
             if not currentEvent.get('geometryAutomated') and not currentEvent.get('motionAutomated') and not currentEvent.get('probTrendAutomated'):
-               #print 'Manual Event.  Storing and moving on...'
                 evtGeom = currentEvent.getGeometry().asShapely()
                 manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
                 continue
             
-            #print '######### currentEventObjectID ######', currentEventObjectID
-            #print '\t0-->', str(currentEventObjectID)
-            #print '\t1-->', recommendedObjectIDsList
-            #print '\t2-->', str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList]))
-
 
             #if currentEventObjectID in recommendedObjectIDsList:
             ### Account for prepended 'M' to automated events that are level 3 or 2 automation.
             if str(currentEventObjectID).endswith(tuple([str(z) for z in recommendedObjectIDsList])):
-                #print "\t#### rawRecommendedID", rawRecommendedID
-                #pprint.pprint(recommendedEventsDict)
                 intersectionDict[currentEventObjectID] = {'currentEvent': currentEvent, 'recommendedAttrs': recommendedEventsDict[rawRecommendedID]}
                 
                 ### Remove ID from rec list so remaining list is "newOnly"
@@ -608,7 +579,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 mergedEvents.add(currentEvent)
                 
             else:
-                #print '\t!!!!!!!  ELAPSING   !!!!!'
                 if currentEvent.getStatus() != 'ELAPSED':
                     currentEvent.setStatus('ELAPSED')
                     currentEvent.set('statusForHiddenField', 'ELAPSED')
@@ -631,7 +601,6 @@ class Recommender(RecommenderTemplate.Recommender):
         ### Loop through remaining/unmatched recommendedEvents
         ### if recommended geometry overlaps an existing *manual* geometry
         ### ignore it. 
-#        for recID in makeNewObjectsIDList:
         for recID in recommendedObjectIDsList:
             recommendedValues = recommendedEventsDict[recID]
             recommendedEvent = None
@@ -640,7 +609,6 @@ class Recommender(RecommenderTemplate.Recommender):
                 
                 ### If an event is created, add it to the event set and add
                 ### it to the list of events to be saved to history.
-                #print '1111111: Calling makeHazardEvent for:', recID
                 recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
                 
             else:
@@ -654,24 +622,20 @@ class Recommender(RecommenderTemplate.Recommender):
                     if hazType == 'Prob_Severe' and evtGeom.intersects(recGeom):
                         makeNew = False
                 if makeNew:
-                    #print '2222222: Calling makeHazardEvent for:', recID
                     recommendedEvent = self.makeHazardEvent(recID, recommendedValues)
 
             if recommendedEvent:
                 mergedEvents.add(recommendedEvent)
                 identifiersOfEventsToSaveToHistory.append(recommendedEvent.getEventID())
 
-        for e in mergedEvents:
-            print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
+        #for e in mergedEvents:
+        #    print '[CR-2] %%%%%:', e.get('objectID'), '(', e.getEventID(), ')', e.getStatus()
                     
         return identifiersOfEventsToSaveToHistory, identifiersOfEventsToSaveToDatabase, mergedEvents
     
         
     def isEditableSelected(self, event):
         selected = event.get('selected', False)
-        #print 'CR [FARNSWORTH] ID:', event.get('objectID')
-        #print "CR [FARNSWORTH] isEditable  selected, activate", selected, event.get('activate', False)
-        #print "CR [FARNSWORTH] isEditable automationLevel, status", event.get('automationLevel'), event.getStatus()
         if selected == 0: selected = False  
         return selected and event.get('activate', False), selected        
 
