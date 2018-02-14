@@ -11,7 +11,7 @@ from ProbUtils import ProbUtils
 import logging, UFStatusHandler
 import matplotlib.pyplot as plt
 import LogUtils
-from HazardConstants import SAVE_TO_HISTORY_KEY, SAVE_TO_DATABASE_KEY, KEEP_SAVED_TO_DATABASE_LOCKED_KEY, SELECTED_TIME_KEY
+from HazardConstants import SAVE_TO_HISTORY_KEY, SAVE_TO_DATABASE_KEY, KEEP_SAVED_TO_DATABASE_LOCKED_KEY, DO_NOT_COUNT_AS_MODIFICATION_KEY, SELECTED_TIME_KEY
 
 import math, time
 from math import *
@@ -203,6 +203,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.saveToDatabase = True
         self.saveToHistory = False
         self.keepLocked = True
+        self.doNotCountAsModification = False
         
         userName = eventSetAttrs.get('userName')
         workStation = eventSetAttrs.get('workStation') 
@@ -265,7 +266,18 @@ class Recommender(RecommenderTemplate.Recommender):
                 print "SR: editableHazard, selectedHazard, editableObjects -- YG", self.editableHazard, self.selectedHazard, self.editableObjects
                 print "SR: lastSelectedTime, starttime -- YG", self.lastSelectedTime, event.getStartTime()
                 self.flush()
-                self.setVisualFeatures(event)
+                
+                # We shouldn't need to regenerate visual features each
+                # time selection changes, and furthermore, when we
+                # regenerate them, it messes up re-centering because
+                # the proper visual features are not available to
+                # center upon in the Spatial Display until after the
+                # recommender responds to the selection. Therefore, if
+                # this causes problems, therthis line probably should
+                # not be uncommented; instead, we need to figure out
+                # why visual features are not being generated properly
+                # so as to work whether selected or not.
+                # self.setVisualFeatures(event)
                 resultEventSet.add(event)
                 continue
             
@@ -345,12 +357,16 @@ class Recommender(RecommenderTemplate.Recommender):
         
         # Save to history list if appropriate; otherwise, if needed, save to database,
         # and in the latter case, note whether to keep the event locked or not. (For
-        # saves to history, the lock is automatically let go.)    
+        # saves to history, the lock is automatically let go.)
         if self.saveToHistory:
             resultEventSet.addAttribute(SAVE_TO_HISTORY_KEY, True)
         elif self.saveToDatabase:
             resultEventSet.addAttribute(SAVE_TO_DATABASE_KEY, True)
             resultEventSet.addAttribute(KEEP_SAVED_TO_DATABASE_LOCKED_KEY, self.keepLocked)
+            
+        # Do not count the changes to the event as modification if appropriate.
+        if self.doNotCountAsModification:
+            resultEventSet.addAttribute(DO_NOT_COUNT_AS_MODIFICATION_KEY, self.doNotCountAsModification)
 
         self.printEventSet("*****\nFinishing SwathRecommender", eventSet, eventLevel=1)
         return resultEventSet      
@@ -419,9 +435,20 @@ class Recommender(RecommenderTemplate.Recommender):
 #             self.keepLocked = False
             return False
         
-        # Make sure that triggers resulting from database changes are never
-        # processed.
+        # Make sure that triggers resulting from database or revert changes
+        # are never processed. For the latter, ensure that the activate and
+        # activateModify flags are set correctly, and the visual features are
+        # correct given the non-activated state of the event.
         if origin == 'database':
+            return False
+        elif origin == "revert":
+            self.keepLocked = False
+            self.doNotCountAsModification = True
+            self.probUtils.setActivation(event)
+            self.editableHazard, self.selectedHazard = self.isEditableSelected(event)
+            self.advanceForecastPolys(event, eventSetAttrs)         
+            self.setVisualFeatures(event)
+            resultEventSet.add(event)
             return False
 
         # For event modification, visual feature change, or selection change, 
@@ -821,10 +848,11 @@ class Recommender(RecommenderTemplate.Recommender):
             if st >= self.latestDataLayerTime:
                 print "SR Advancing to ", i, self.probUtils.displayMsTime(st), self.probUtils.displayMsTime(self.latestDataLayerTime)    
                 self.flush()
-                if i > 0:
-                    index = i-1
-                else:
-                    index = 0
+                index = i
+#                 if i > 0:
+#                     index = i-1
+#                 else:
+#                     index = 0
                 break
                 
         # Reset geometry to new interior start time shape
@@ -1184,7 +1212,8 @@ class Recommender(RecommenderTemplate.Recommender):
             }
             #print "SR Test I 34 -- dashed polys", featuresDisplay.get('dashedPolys'),  self.selectedHazard,  event.get('automationLevel') in ['userOwned', 'attributesOnly']
             #self.flush()
-            if featuresDisplay.get('dashedPolys') and self.selectedHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+#            if featuresDisplay.get('dashedPolys') and self.selectedHazard and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
+            if featuresDisplay.get('dashedPolys') and not event.get('geometryAutomated'): # old: event.get('automationLevel') in ['userOwned', 'attributesOnly']:
                 features.append(relocatedFeature)
             
 
@@ -1199,8 +1228,9 @@ class Recommender(RecommenderTemplate.Recommender):
                   (polySt_ms, polyEt_ms): AdvancedGeometry.createShapelyWrapper(centroid, 0)
                    }
             }
-            if featuresDisplay.get('dashedPolyCentroid') and self.selectedHazard:
-               features.append(centroidFeature)
+#            if featuresDisplay.get('dashedPolyCentroid') and self.selectedHazard:
+            if featuresDisplay.get('dashedPolyCentroid'):
+                features.append(centroidFeature)
                    
         # Start time may be prior to first forecast shape and we need to display it
         if not startTimeShapeFound:

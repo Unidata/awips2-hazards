@@ -149,6 +149,8 @@ import gov.noaa.gsd.viz.megawidgets.MegawidgetSpecifierManager;
  * Dec 17, 2017 20739      Chris.Golden Refactored away access to directly mutable session events.
  *                                      Also changed addEvent() to no longer be capable of merging
  *                                      hazard events, as that is the job of mergeHazardEvents().
+ * Feb 06, 2018 46258      Chris.Golden Fixed null pointer exception bug when checking for hazard
+ *                                      conflicts.
  * </pre>
  * 
  * @author bsteffen
@@ -931,7 +933,7 @@ public interface ISessionEventManager {
      *             If a problem occurs while attempting to get the conflicting
      *             hazard events.
      */
-    public Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> getAllConflictingEvents()
+    public Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> getAllConflictingEvents()
             throws HazardEventServiceException;
 
     /**
@@ -957,8 +959,8 @@ public interface ISessionEventManager {
      *             If a problem occurs while attempting to get the conflicting
      *             hazard events.
      */
-    public Map<IHazardEventView, Collection<String>> getConflictingEvents(
-            IHazardEventView event, Date startTime, Date endTime,
+    public Map<IReadableHazardEvent, Collection<String>> getConflictingEvents(
+            IReadableHazardEvent event, Date startTime, Date endTime,
             Geometry geometry, String phenSigSubtype)
                     throws HazardEventServiceException;
 
@@ -977,7 +979,7 @@ public interface ISessionEventManager {
      *         conflict. The latter is an empty collection if there are no
      *         conflicting hazards.
      */
-    public Map<String, Collection<IHazardEventView>> getConflictingEventsForSelectedEvents();
+    public Map<String, Collection<IReadableHazardEvent>> getConflictingEventsForSelectedEvents();
 
     /**
      * Determine whether or not it is valid to change the specified event's

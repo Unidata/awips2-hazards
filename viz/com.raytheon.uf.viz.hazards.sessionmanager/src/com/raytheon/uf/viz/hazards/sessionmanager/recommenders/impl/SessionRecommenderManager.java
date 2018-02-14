@@ -70,6 +70,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.RecommenderOriginator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.RevertOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.ISessionRecommenderManager;
 import com.raytheon.uf.viz.hazards.sessionmanager.recommenders.RecommenderExecutionContext;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.SelectedTime;
@@ -233,6 +234,11 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      elements are always modified. Also fixed bugs
  *                                      caused by recommenders modifying events that
  *                                      as of  yet have no hazard type.
+ * Feb 06, 2018   46258    Chris.Golden Added "revert" to recommender trigger origin, and
+ *                                      added ability to treat event modifications as a
+ *                                      result of a recommender run as being actual
+ *                                      modifications from the perspectives of the
+ *                                      session events.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1193,9 +1199,11 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
         return ((originator instanceof RecommenderOriginator)
                 || originator.equals(Originator.OTHER)
                         ? RecommenderTriggerOrigin.OTHER
-                        : (originator.equals(Originator.DATABASE)
-                                ? RecommenderTriggerOrigin.DATABASE
-                                : RecommenderTriggerOrigin.USER));
+                        : (originator instanceof RevertOriginator
+                                ? RecommenderTriggerOrigin.REVERT
+                                : (originator.equals(Originator.DATABASE)
+                                        ? RecommenderTriggerOrigin.DATABASE
+                                        : RecommenderTriggerOrigin.USER)));
     }
 
     /**
@@ -1913,10 +1921,15 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
             /*
              * Determine whether or not the events that are to be saved to the
              * database are to be kept locked after the save, instead of the
-             * usual practice of unlocking them.
+             * usual practice of unlocking them. Also determine whether or not
+             * any modifications being made to events should be counted as
+             * modifications from the events' perspectives.
              */
             boolean keepLocked = Boolean.TRUE.equals(events.getAttribute(
                     HazardConstants.RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE));
+            boolean doNotCountAsModification = Boolean.TRUE
+                    .equals(events.getAttribute(
+                            HazardConstants.RECOMMENDER_RESULT_DO_NOT_COUNT_AS_MODIFICATION));
 
             /*
              * Determine whether or not the events that are to be saved to the
@@ -2124,7 +2137,8 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                                 EventPropertyChangeResult result = eventManager
                                         .mergeHazardEvents(hazardEvent,
                                                 addedEvent, false, false, true,
-                                                false, originator);
+                                                doNotCountAsModification,
+                                                originator);
                                 if (result != EventPropertyChangeResult.SUCCESS) {
                                     statusHandler
                                             .warn("Could not modify hazard event as requested by "

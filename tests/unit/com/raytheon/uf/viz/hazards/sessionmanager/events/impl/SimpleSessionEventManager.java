@@ -178,7 +178,7 @@ public class SimpleSessionEventManager implements ISessionEventManager {
     }
 
     @Override
-    public Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> getAllConflictingEvents() {
+    public Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> getAllConflictingEvents() {
         throw new UnsupportedOperationException();
     }
 
@@ -188,14 +188,14 @@ public class SimpleSessionEventManager implements ISessionEventManager {
     }
 
     @Override
-    public Map<IHazardEventView, Collection<String>> getConflictingEvents(
-            IHazardEventView event, Date startTime, Date endTime,
+    public Map<IReadableHazardEvent, Collection<String>> getConflictingEvents(
+            IReadableHazardEvent event, Date startTime, Date endTime,
             Geometry geometry, String phenSigSubtype) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Map<String, Collection<IHazardEventView>> getConflictingEventsForSelectedEvents() {
+    public Map<String, Collection<IReadableHazardEvent>> getConflictingEventsForSelectedEvents() {
         throw new UnsupportedOperationException();
     }
 

@@ -40,6 +40,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.productgen.data.ProductData;
 import com.raytheon.uf.common.hazards.productgen.data.ProductDataUtil;
@@ -200,6 +201,8 @@ import net.engio.mbassy.listener.Handler;
  *                                           mutable session events.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * Feb 06, 2018   46258    Chris.Golden      Fixed null pointer exception bug when
+ *                                           checking for hazard conflicts.
  * </pre>
  * 
  * @author Chris.Golden
@@ -1481,7 +1484,7 @@ public class ConsolePresenter
      */
     private void checkForConflicts() {
         try {
-            Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictMap = getModel()
+            Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> conflictMap = getModel()
                     .getEventManager().getAllConflictingEvents();
             if (conflictMap.isEmpty() == false) {
                 consoleHandler.showUserConflictingHazardsWarning(conflictMap);

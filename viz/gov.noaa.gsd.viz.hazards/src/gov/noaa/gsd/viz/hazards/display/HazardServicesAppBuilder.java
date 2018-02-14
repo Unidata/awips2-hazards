@@ -43,6 +43,7 @@ import com.google.common.collect.Maps;
 import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.hazards.registry.HazardEventServiceException;
 import com.raytheon.uf.common.hazards.configuration.HazardsConfigurationConstants;
 import com.raytheon.uf.common.hazards.configuration.ServerConfigLookupProxy;
@@ -334,6 +335,8 @@ import net.engio.mbassy.bus.error.PublicationError;
  *                                             events.
  * Jan 17, 2018 33428      Chris.Golden        Changed to work with new, more flexible toolbar
  *                                             contribution code.
+ * Feb 06, 2018 46258      Chris.Golden        Fixed null pointer exception bug when checking for
+ *                                             hazard conflicts.
  * </pre>
  * 
  * @author The Hazard Services Team
@@ -1250,7 +1253,7 @@ public class HazardServicesAppBuilder
 
     @Override
     public void showUserConflictingHazardsWarning(
-            Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> areasForConflictingEventsForEvents) {
+            Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> areasForConflictingEventsForEvents) {
         launchConflictingHazardsDialog(areasForConflictingEventsForEvents,
                 false);
     }
@@ -2099,7 +2102,7 @@ public class HazardServicesAppBuilder
         ISessionSelectionManager sessionSelectionManager = sessionManager
                 .getSelectionManager();
 
-        Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictMap = null;
+        Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> conflictMap = null;
         try {
             List<IHazardEventView> selectedEvents = sessionSelectionManager
                     .getSelectedEvents();
@@ -2396,7 +2399,7 @@ public class HazardServicesAppBuilder
      * @return The return value from the dialog based on the user's selection.
      */
     private boolean launchConflictingHazardsDialog(
-            final Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictingHazardMap,
+            final Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> conflictingHazardMap,
             final Boolean requiresConfirmation) {
 
         boolean userSelection = true;
@@ -2411,7 +2414,8 @@ public class HazardServicesAppBuilder
                 message.append("\n");
             }
 
-            for (IHazardEventView hazardEvent : conflictingHazardMap.keySet()) {
+            for (IReadableHazardEvent hazardEvent : conflictingHazardMap
+                    .keySet()) {
 
                 String phenSig = HazardEventUtilities
                         .getHazardType(hazardEvent);
@@ -2420,7 +2424,7 @@ public class HazardServicesAppBuilder
                 message.append(phenSig);
                 message.append(") conflicts with: ");
 
-                Map<? extends IHazardEventView, Collection<String>> conflictingHazards = conflictingHazardMap
+                Map<? extends IReadableHazardEvent, Collection<String>> conflictingHazards = conflictingHazardMap
                         .get(hazardEvent);
 
                 HazardTypeEntry hazardTypeEntry = sessionManager
@@ -2429,7 +2433,7 @@ public class HazardServicesAppBuilder
                 Set<String> ugcTypes = hazardTypeEntry.getUgcTypes(); // E.g.
                                                                       // county
 
-                for (IHazardEventView conflictingHazard : conflictingHazards
+                for (IReadableHazardEvent conflictingHazard : conflictingHazards
                         .keySet()) {
                     String conflictingPhenSig = HazardEventUtilities
                             .getHazardType(conflictingHazard);

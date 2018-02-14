@@ -33,6 +33,7 @@ import com.raytheon.uf.common.dataplugin.events.hazards.HazardConstants.HazardSt
 import com.raytheon.uf.common.dataplugin.events.hazards.event.HazardEventUtilities;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventParameterDescriber;
 import com.raytheon.uf.common.dataplugin.events.hazards.event.IHazardEventView;
+import com.raytheon.uf.common.dataplugin.events.hazards.event.IReadableHazardEvent;
 import com.raytheon.uf.common.dataplugin.events.locks.LockInfo.LockStatus;
 import com.raytheon.uf.common.hazards.configuration.types.HazardTypeEntry;
 import com.raytheon.uf.common.time.TimeRange;
@@ -210,6 +211,8 @@ import net.engio.mbassy.subscription.MessageEnvelope;
  *                                           that event's type is true.
  * Jan 17, 2018   33428    Chris.Golden      Changed to work with new, more flexible
  *                                           toolbar contribution code.
+ * Feb 06, 2018   46258    Chris.Golden      Fixed null pointer exception bug when
+ *                                           checking for hazard conflicts.
  * </pre>
  * 
  * @author Chris.Golden
@@ -480,7 +483,7 @@ public class HazardDetailPresenter
      * if any, as last fetched. This is kept up to date elsewhere, so it does
      * not need to be refreshed by this object. (It is also unmodifiable here.)
      */
-    private final Map<String, Collection<IHazardEventView>> conflictingEventsForSelectedEventIdentifiers;
+    private final Map<String, Collection<IReadableHazardEvent>> conflictingEventsForSelectedEventIdentifiers;
 
     /**
      * Tab text describers, used to generate the title text for a particular
@@ -1625,7 +1628,7 @@ public class HazardDetailPresenter
                  */
                 boolean conflict = false;
                 if (showConflicts && (identifier.getSecond() == null)) {
-                    Collection<IHazardEventView> conflictingEvents = conflictingEventsForSelectedEventIdentifiers
+                    Collection<IReadableHazardEvent> conflictingEvents = conflictingEventsForSelectedEventIdentifiers
                             .get(identifier.getFirst());
                     conflict = ((conflictingEvents != null)
                             && (conflictingEvents.size() > 0));

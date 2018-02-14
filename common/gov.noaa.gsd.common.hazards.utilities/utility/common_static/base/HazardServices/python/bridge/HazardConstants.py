@@ -27,6 +27,9 @@
     Sep 05, 2017    22965   Chris.Golden         Fixed SITE_CFG_ROOT path.
     Dec 13, 2017    40923   Chris.Golden         Added constants for returning modified
                                                  hazard event from metadata fetch.
+    Feb 06, 2018    46258   Chris.Golden         Added key for recommender results not being
+                                                 treated as modifications when applied to the
+                                                 associated events.
     @author Tracy.L.Hansen@noaa.gov
     @version 1.0
 """
@@ -175,6 +178,7 @@ FILENAME_KEY = "fileName"
 SAVE_TO_HISTORY_KEY = "saveToHistory"
 SAVE_TO_DATABASE_KEY = "saveToDatabase"
 KEEP_SAVED_TO_DATABASE_LOCKED_KEY = "lockEvents"
+DO_NOT_COUNT_AS_MODIFICATION_KEY = "doNotCountAsModification"
 TREAT_AS_ISSUANCE_KEY = "treatAsIssuance"
 DELETE_EVENT_IDENTIFIERS_KEY = "deleteEventIdentifiers"
 SELECTED_TIME_KEY = "selectedTime"

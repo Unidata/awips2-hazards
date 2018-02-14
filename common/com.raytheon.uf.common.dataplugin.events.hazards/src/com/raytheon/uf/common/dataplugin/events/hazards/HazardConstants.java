@@ -163,6 +163,9 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Jan 30, 2018 45994     Chris.Golden  Removed obsolete "setOrigin" constant, and added new
  *                                      constants for defining custom buttons for recommender
  *                                      dialogs.
+ * Feb 06, 2018 46258     Chris.Golden  Added "revert" to recommender trigger origin, and added
+ *                                      recommender result flag constant indicating whether or
+ *                                      not events should be considered modified.
  * </pre>
  * 
  * @author mnash
@@ -262,6 +265,8 @@ public final class HazardConstants {
 
     public static final String RECOMMENDER_RESULT_SAVE_TO_HISTORY = "saveToHistory";
 
+    public static final String RECOMMENDER_RESULT_DO_NOT_COUNT_AS_MODIFICATION = "doNotCountAsModification";
+
     public static final String RECOMMENDER_RESULT_KEEP_LOCKED_WHEN_SAVING_TO_DATABASE = "lockEvents";
 
     public static final String RECOMMENDER_RESULT_TREAT_AS_ISSUANCE = "treatAsIssuance";
@@ -316,7 +321,7 @@ public final class HazardConstants {
      * Possible origins of a triggered recommender execution.
      */
     public enum RecommenderTriggerOrigin {
-        USER("user"), DATABASE("database"), OTHER("other");
+        USER("user"), REVERT("revert"), DATABASE("database"), OTHER("other");
 
         // Private Variables
 

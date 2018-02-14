@@ -148,6 +148,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IQuestion
 import com.raytheon.uf.viz.hazards.sessionmanager.messenger.IMessenger.IRiseCrestFallEditor;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.IOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.originator.Originator;
+import com.raytheon.uf.viz.hazards.sessionmanager.originator.RevertOriginator;
 import com.raytheon.uf.viz.hazards.sessionmanager.product.ProductGenerationComplete;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeChanged;
 import com.raytheon.uf.viz.hazards.sessionmanager.time.CurrentTimeMinuteTicked;
@@ -632,6 +633,10 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  * Jan 31, 2018   25765    Chris.Golden Fixed erroneously displayed error messages when an unlock
  *                                      of a hazard event could not occur because the hazard event
  *                                      was (rightfully) not locked to begin with.
+ * Feb 06, 2018   46258    Chris.Golden Changed revert to last saved to use the RevertOriginator
+ *                                      instead of Originator.OTHER for the mergeHazardEvents()
+ *                                      invocation. Also fixed a bug that caused null pointer
+ *                                      exceptions when checking for conflicting hazards.
  * </pre>
  * 
  * @author bsteffen
@@ -769,7 +774,7 @@ public class SessionEventManager implements ISessionEventManager {
      */
     private final Set<String> eventIdentifiersWithEndingStatus = new HashSet<>();
 
-    private final Map<String, Collection<IHazardEventView>> conflictingEventsForSelectedEventIdentifiers = new HashMap<>();
+    private final Map<String, Collection<IReadableHazardEvent>> conflictingEventsForSelectedEventIdentifiers = new HashMap<>();
 
     private final Map<String, MegawidgetSpecifierManager> megawidgetSpecifiersForEventIdentifiers = new HashMap<>();
 
@@ -4163,7 +4168,7 @@ public class SessionEventManager implements ISessionEventManager {
     }
 
     @Override
-    public Map<String, Collection<IHazardEventView>> getConflictingEventsForSelectedEvents() {
+    public Map<String, Collection<IReadableHazardEvent>> getConflictingEventsForSelectedEvents() {
         return Collections
                 .unmodifiableMap(conflictingEventsForSelectedEventIdentifiers);
     }
@@ -4895,7 +4900,7 @@ public class SessionEventManager implements ISessionEventManager {
          * rebuilt whenever this method is called in response to a change of
          * some sort.
          */
-        Map<String, Collection<IHazardEventView>> oldMap = new HashMap<>(
+        Map<String, Collection<IReadableHazardEvent>> oldMap = new HashMap<>(
                 conflictingEventsForSelectedEventIdentifiers);
         conflictingEventsForSelectedEventIdentifiers.clear();
 
@@ -4904,7 +4909,7 @@ public class SessionEventManager implements ISessionEventManager {
 
         for (IHazardEventView eventToCheck : selectedEventViews) {
 
-            Map<IHazardEventView, Collection<String>> conflictingHazards = null;
+            Map<IReadableHazardEvent, Collection<String>> conflictingHazards = null;
             try {
                 conflictingHazards = getConflictingEvents(eventToCheck,
                         eventToCheck.getStartTime(), eventToCheck.getEndTime(),
@@ -4932,22 +4937,22 @@ public class SessionEventManager implements ISessionEventManager {
     }
 
     @Override
-    public Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> getAllConflictingEvents()
+    public Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> getAllConflictingEvents()
             throws HazardEventServiceException {
 
-        Map<IHazardEventView, Map<IHazardEventView, Collection<String>>> conflictingHazardMap = new HashMap<>();
+        Map<IReadableHazardEvent, Map<IReadableHazardEvent, Collection<String>>> conflictingHazardMap = new HashMap<>();
         /*
          * Find the union of the session events and those retrieved from the
          * hazard event manager. Ignore "Ended" events.
          */
-        List<IHazardEventView> eventsToCheck = getEventsToCheckForConflicts(
+        List<IReadableHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
                 new HazardEventQueryRequest(CAVEMode.OPERATIONAL
                         .equals(CAVEMode.getMode()) == false),
                 EnumSet.allOf(HazardStatus.class));
 
-        for (IHazardEventView eventToCheck : eventsToCheck) {
+        for (IReadableHazardEvent eventToCheck : eventsToCheck) {
 
-            Map<IHazardEventView, Collection<String>> conflictingHazards = getConflictingEvents(
+            Map<IReadableHazardEvent, Collection<String>> conflictingHazards = getConflictingEvents(
                     eventToCheck, eventToCheck.getStartTime(),
                     eventToCheck.getEndTime(),
                     eventToCheck.getFlattenedGeometry(),
@@ -4963,12 +4968,12 @@ public class SessionEventManager implements ISessionEventManager {
     }
 
     @Override
-    public Map<IHazardEventView, Collection<String>> getConflictingEvents(
-            final IHazardEventView event, final Date startTime,
+    public Map<IReadableHazardEvent, Collection<String>> getConflictingEvents(
+            final IReadableHazardEvent event, final Date startTime,
             final Date endTime, final Geometry geometry, String phenSigSubtype)
                     throws HazardEventServiceException {
 
-        Map<IHazardEventView, Collection<String>> conflictingHazardsMap = new HashMap<>();
+        Map<IReadableHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
         /*
          * A hazard type may not always be assigned to an event yet.
@@ -5011,7 +5016,7 @@ public class SessionEventManager implements ISessionEventManager {
                     Set<HazardStatus> allowableStatuses = EnumSet
                             .of(HazardStatus.ISSUED, HazardStatus.ENDING);
 
-                    List<IHazardEventView> eventsToCheck = getEventsToCheckForConflicts(
+                    List<IReadableHazardEvent> eventsToCheck = getEventsToCheckForConflicts(
                             queryRequest, allowableStatuses);
 
                     /*
@@ -5020,7 +5025,7 @@ public class SessionEventManager implements ISessionEventManager {
                     TimeRange modifiedEventTimeRange = new TimeRange(
                             event.getStartTime(), event.getEndTime());
 
-                    for (IHazardEventView eventToCheck : eventsToCheck) {
+                    for (IReadableHazardEvent eventToCheck : eventsToCheck) {
 
                         /*
                          * Test the events for overlap in time. If they do not
@@ -5106,7 +5111,7 @@ public class SessionEventManager implements ISessionEventManager {
      *             If a problem occurs while attempting to fetch the events to
      *             be checked.
      */
-    private List<IHazardEventView> getEventsToCheckForConflicts(
+    private List<IReadableHazardEvent> getEventsToCheckForConflicts(
             final HazardEventQueryRequest queryRequest,
             Set<HazardStatus> allowableStatuses)
                     throws HazardEventServiceException {
@@ -5116,19 +5121,24 @@ public class SessionEventManager implements ISessionEventManager {
          * compiling a list of those that have not ended or elapsed, as well as
          * set of all these non-ended/elapsed event's identifiers.
          */
-        List<IHazardEventView> eventsToCheck = new ArrayList<>(getEvents());
+        List<IHazardEventView> sessionEventsToCheck = new ArrayList<>(
+                getEvents());
         Set<String> eventIdentifiersToBeChecked = new HashSet<>(
-                eventsToCheck.size(), 1.0f);
+                sessionEventsToCheck.size(), 1.0f);
 
         for (IHazardEventView sessionEventView : new ArrayList<>(
-                eventsToCheck)) {
+                sessionEventsToCheck)) {
             if ((sessionEventView.getStatus() != HazardStatus.ENDED)
                     && (sessionEventView.getStatus() != HazardStatus.ELAPSED)) {
                 eventIdentifiersToBeChecked.add(sessionEventView.getEventID());
             } else {
-                eventsToCheck.remove(sessionEventView);
+                sessionEventsToCheck.remove(sessionEventView);
             }
         }
+
+        List<IReadableHazardEvent> eventsToCheck = new ArrayList<>(
+                sessionEventsToCheck.size());
+        eventsToCheck.addAll(sessionEventsToCheck);
 
         /*
          * Retrieve the latest versions of matching events from the database
@@ -5146,7 +5156,7 @@ public class SessionEventManager implements ISessionEventManager {
                     && (entry.getValue().getStatus() != HazardStatus.ELAPSED)
                     && allowableStatuses
                             .contains(entry.getValue().getStatus())) {
-                eventsToCheck.add(getEventById(entry.getValue().getEventID()));
+                eventsToCheck.add(entry.getValue());
             }
         }
 
@@ -5189,9 +5199,9 @@ public class SessionEventManager implements ISessionEventManager {
      * of conflicting areas (zones, counties, etc). Polygons are a special case
      * in which the polygon is the hatched area.
      * 
-     * @param firstEventView
+     * @param firstEvent
      *            The first of the two events to compare for conflicts
-     * @param secondEventView
+     * @param secondEvent
      *            The second of the two events to compare for conflicts
      * @param hatchedAreasFirstEvent
      *            The hatched areas associated with the first event
@@ -5208,46 +5218,46 @@ public class SessionEventManager implements ISessionEventManager {
      * 
      */
     @SuppressWarnings("unchecked")
-    private Map<IHazardEventView, Collection<String>> buildConflictMap(
-            IHazardEventView firstEventView, IHazardEventView secondEventView,
+    private Map<IReadableHazardEvent, Collection<String>> buildConflictMap(
+            IReadableHazardEvent firstEvent, IReadableHazardEvent secondEvent,
             List<IGeometryData> hatchedAreasFirstEvent,
             List<IGeometryData> hatchedAreasSecondEvent,
             String firstEventLabelParameter, String secondEventLabelParameter) {
 
-        Map<IHazardEventView, Collection<String>> conflictingHazardsMap = new HashMap<>();
+        Map<IReadableHazardEvent, Collection<String>> conflictingHazardsMap = new HashMap<>();
 
-        if (geoMapUtilities.isNonHatching(firstEventView)
-                || geoMapUtilities.isNonHatching(secondEventView)) {
+        if (geoMapUtilities.isNonHatching(firstEvent)
+                || geoMapUtilities.isNonHatching(secondEvent)) {
             return conflictingHazardsMap;
         }
 
         Set<String> forecastZoneSet = new HashSet<>();
 
-        if (!geoMapUtilities.isWarngenHatching(firstEventView)
-                && !geoMapUtilities.isWarngenHatching(secondEventView)) {
+        if (!geoMapUtilities.isWarngenHatching(firstEvent)
+                && !geoMapUtilities.isWarngenHatching(secondEvent)) {
 
             Set<IGeometryData> commonHatchedAreas = new HashSet<>();
             commonHatchedAreas.addAll(hatchedAreasFirstEvent);
             commonHatchedAreas.retainAll(hatchedAreasSecondEvent);
 
             if (!commonHatchedAreas.isEmpty()) {
-                HashMap<String, Serializable> firstHazardAreaMap = (HashMap<String, Serializable>) firstEventView
+                HashMap<String, Serializable> firstHazardAreaMap = (HashMap<String, Serializable>) firstEvent
                         .getHazardAttribute(HAZARD_AREA);
-                HashMap<String, Serializable> secondHazardAreaMap = (HashMap<String, Serializable>) secondEventView
+                HashMap<String, Serializable> secondHazardAreaMap = (HashMap<String, Serializable>) secondEvent
                         .getHazardAttribute(HAZARD_AREA);
                 forecastZoneSet.addAll(firstHazardAreaMap.keySet());
                 forecastZoneSet.retainAll(secondHazardAreaMap.keySet());
 
-                conflictingHazardsMap.put(secondEventView, forecastZoneSet);
+                conflictingHazardsMap.put(secondEvent, forecastZoneSet);
             }
         } else {
             String labelFieldName = null;
             List<IGeometryData> geoWithLabelInfo = null;
 
-            if (!geoMapUtilities.isWarngenHatching(firstEventView)) {
+            if (!geoMapUtilities.isWarngenHatching(firstEvent)) {
                 labelFieldName = firstEventLabelParameter;
                 geoWithLabelInfo = hatchedAreasFirstEvent;
-            } else if (!geoMapUtilities.isWarngenHatching(secondEventView)) {
+            } else if (!geoMapUtilities.isWarngenHatching(secondEvent)) {
                 labelFieldName = secondEventLabelParameter;
                 geoWithLabelInfo = hatchedAreasSecondEvent;
             }
@@ -5265,10 +5275,10 @@ public class SessionEventManager implements ISessionEventManager {
                         if (labelFieldName != null) {
                             HashMap<String, Serializable> hazardAreaMap = null;
                             if (geoWithLabelInfo == hatchedAreasFirstEvent) {
-                                hazardAreaMap = (HashMap<String, Serializable>) firstEventView
+                                hazardAreaMap = (HashMap<String, Serializable>) firstEvent
                                         .getHazardAttribute(HAZARD_AREA);
                             } else {
-                                hazardAreaMap = (HashMap<String, Serializable>) secondEventView
+                                hazardAreaMap = (HashMap<String, Serializable>) secondEvent
                                         .getHazardAttribute(HAZARD_AREA);
                             }
 
@@ -5282,7 +5292,7 @@ public class SessionEventManager implements ISessionEventManager {
             }
 
             if (conflictFound) {
-                conflictingHazardsMap.put(secondEventView, forecastZoneSet);
+                conflictingHazardsMap.put(secondEvent, forecastZoneSet);
             }
 
         }
@@ -6515,7 +6525,8 @@ public class SessionEventManager implements ISessionEventManager {
         if (getHistoricalVersionCountForEvent(identifier) > 0) {
             List<IHazardEventView> list = getEventHistoryById(identifier);
             mergeHazardEvents(list.get(list.size() - 1), event, false, false,
-                    false, true, Originator.OTHER);
+                    false, true, (originator.isDirectResultOfUserInput()
+                            ? RevertOriginator.USER : RevertOriginator.OTHER));
             if (sessionManager.getLockManager()
                     .unlockHazardEvent(identifier) == false) {
                 if (originator.isDirectResultOfUserInput()) {
