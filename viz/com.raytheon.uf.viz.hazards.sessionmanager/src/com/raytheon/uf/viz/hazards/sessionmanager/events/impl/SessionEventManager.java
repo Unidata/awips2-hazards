@@ -637,6 +637,9 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  *                                      instead of Originator.OTHER for the mergeHazardEvents()
  *                                      invocation. Also fixed a bug that caused null pointer
  *                                      exceptions when checking for conflicting hazards.
+ * Feb 08, 2018   44464    Chris.Golden Fixed annoying "Are you sure you want to override high-
+ *                                      resolution geometry?" messages that were appearing at
+ *                                      times when they made no sense.
  * </pre>
  * 
  * @author bsteffen
@@ -1653,7 +1656,9 @@ public class SessionEventManager implements ISessionEventManager {
          * the change.
          */
         if (isValidGeometryChange(geometry, event, false)
-                && userConfirmationAsNecessary(event)) {
+                && ((originator.isDirectResultOfUserInput() == false)
+                        || (originator instanceof RevertOriginator)
+                        || userConfirmationAsNecessary(event))) {
             sessionManager.startBatchedChanges();
             makeHighResolutionVisible(event, originator);
             event.setGeometry(geometry, originator);
