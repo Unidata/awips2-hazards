@@ -43,6 +43,10 @@ import gov.noaa.gsd.common.visuals.VisualFeature.SerializableColor;
  * Feb 02, 2018   26712    Chris.Golden Added bufferColor, bufferThickness, and
  *                                      useForCentering properties to visual
  *                                      features.
+ * Feb 13, 2018   20595    Chris.Golden Changed to serialize and deserialize
+ *                                      RGBA color components as floats, which is
+ *                                      what they are, instead of trying to use
+ *                                      one byte per float, which led to problems.
  * </pre>
  * 
  * @author Chris.Golden
@@ -269,28 +273,14 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
             } else {
                 PrimitiveAndStringBinaryTranslator.writeBoolean(false,
                         outputStream);
-                PrimitiveAndStringBinaryTranslator
-                        .writeByte(VisualFeaturesListBinarySerializer
-                                .translateColorComponentToInteger(
-                                        color.getRed()),
-                                outputStream);
-                PrimitiveAndStringBinaryTranslator
-                        .writeByte(
-                                VisualFeaturesListBinarySerializer
-                                        .translateColorComponentToInteger(
-                                                color.getGreen()),
-                                outputStream);
-                PrimitiveAndStringBinaryTranslator
-                        .writeByte(VisualFeaturesListBinarySerializer
-                                .translateColorComponentToInteger(
-                                        color.getBlue()),
-                                outputStream);
-                PrimitiveAndStringBinaryTranslator
-                        .writeByte(
-                                VisualFeaturesListBinarySerializer
-                                        .translateColorComponentToInteger(
-                                                color.getAlpha()),
-                                outputStream);
+                PrimitiveAndStringBinaryTranslator.writeFloat(color.getRed(),
+                        outputStream, ByteOrder.BIG_ENDIAN);
+                PrimitiveAndStringBinaryTranslator.writeFloat(color.getGreen(),
+                        outputStream, ByteOrder.BIG_ENDIAN);
+                PrimitiveAndStringBinaryTranslator.writeFloat(color.getBlue(),
+                        outputStream, ByteOrder.BIG_ENDIAN);
+                PrimitiveAndStringBinaryTranslator.writeFloat(color.getAlpha(),
+                        outputStream, ByteOrder.BIG_ENDIAN);
             }
         } else if (propertyValue instanceof IAdvancedGeometry) {
             AdvancedGeometryBinaryTranslator.serializeToBinaryStream(
@@ -308,25 +298,5 @@ class VisualFeaturesListBinarySerializer extends VisualFeaturesListSerializer {
                             + propertyValue.getClass()
                             + "\" could not be serialized as it is of an unexpected type");
         }
-    }
-
-    /**
-     * Get a value between 0 and 255 inclusive from the specified color
-     * component value, with the value of 0.0 returning 0, 1.0 returning 255,
-     * and anything in between returning something between 0 and 255 inclusive.
-     * 
-     * @param value
-     *            Value to be translated; must be between 0.0 and 1.0 inclusive.
-     *            Values above or below this range will be silently truncated to
-     *            the range.
-     * @return Value translated to an integer between 0 and 255 inclusive.
-     */
-    private static short translateColorComponentToInteger(float value) {
-        if (value < 0.0) {
-            value = 0.0f;
-        } else if (value > 1.0) {
-            value = 1.0f;
-        }
-        return (short) ((value * 255.0f) + 0.5f);
     }
 }

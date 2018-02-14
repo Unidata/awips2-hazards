@@ -16,7 +16,7 @@ import gov.noaa.gsd.common.utilities.IMergeable;
 import gov.noaa.gsd.common.utilities.MergeResult;
 
 /**
- * Modification of the type (phenomen, significance, subtype) of an event.
+ * Modification of the type (phenomenon, significance, subtype) of an event.
  * 
  * <pre>
  *

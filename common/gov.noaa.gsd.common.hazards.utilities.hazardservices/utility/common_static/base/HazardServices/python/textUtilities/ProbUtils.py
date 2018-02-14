@@ -21,6 +21,7 @@ from collections import defaultdict
 from shutil import copy2
 import HazardDataAccess
 import TimeUtils, LogUtils
+import GeometryFactory
 import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 from ConfigurationUtils import ConfigUtils
@@ -273,7 +274,7 @@ class ProbUtils(object):
         swathPolygon = []
         for geometry in advancedGeometries:
             swathPolygon.append(geometry.asShapely()[0])
-        union = so.cascaded_union(swathPolygon)
+        union = GeometryFactory.performCascadedUnion(swathPolygon)
         llLon = (math.floor(union.bounds[0] * 100) / 100.) - 0.01
         llLat = (math.floor(union.bounds[1] * 100) / 100.) - 0.01
         urLon = (math.ceil(union.bounds[2] * 100) / 100.) + 0.01
@@ -933,7 +934,7 @@ class ProbUtils(object):
         # Convert the shape to a shapely polygon.
         poly = shape.asShapely()
         if type(poly) is shapely.geometry.collection.GeometryCollection:
-            poly = poly[0] 
+            poly = poly[0]
                     
         presetChoice = event.get('convectiveSwathPresets') if event.get('convectiveSwathPresets') is not None else 'NoPreset'
         presetMethod = getattr(swathPresetClass, presetChoice)
@@ -951,12 +952,34 @@ class ProbUtils(object):
         for i in range(len(timeIntervals)):
             secs = timeIntervals[i]
             origDirVal = dirVal
+            
             intervalShape, secs = self.getIntervalShape(secs, totalSecs, shape, gglPoly, 
                                                         speedVal, dirVal, spdUVal, dirUVal, 
-                                                        timeDirection, presetMethod) 
-
+                                                        timeDirection, presetMethod)
             intervalShape = self.reduceShapeIfPolygon(intervalShape)
+
+            # Convert the shape to its shapely geometry, and ensure it is not a collection.
+            intervalGeometry = intervalShape.asShapely()
+            if type(intervalGeometry) is shapely.geometry.collection.GeometryCollection:
+                intervalGeometry = intervalGeometry[0]
+            
+            # If the base geometry is concave, this can lead to interval shapes that are
+            # invalid. These need to be corrected before proceeding further.
+            changed = False
+            if not intervalGeometry.is_valid:
+                changed = True
+                intervalGeometry = GeometryFactory.correctPolygonIfInvalid(intervalGeometry, 0.001)
+            
+            # If the resulting shape has holes in it, de-hole it.
+            if intervalGeometry.interiors:
+                changed = True
+                intervalGeometry = GeometryFactory.createPolygon(intervalGeometry.exterior.coords)
+            
+            if changed:
+                intervalShape = AdvancedGeometry.createShapelyWrapper(intervalGeometry,  intervalShape.getRotation())
+                                                  
             intervalShapes.append(intervalShape)
+            
             st = self.convertFeatureTime(startTime_ms, secs)
             if i < len(timeIntervals)-1:
                 endSecs = timeIntervals[i+1] - secs

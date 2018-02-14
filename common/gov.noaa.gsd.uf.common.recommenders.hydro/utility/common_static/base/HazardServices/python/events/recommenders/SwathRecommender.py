@@ -136,7 +136,7 @@ class Recommender(RecommenderTemplate.Recommender):
         self.logger.setLevel(logging.INFO)
         self.probUtils = ProbUtils()
         self.BUFFER_COLOR = { "red": 0.0, "green": 0.0, "blue": 0.0, "alpha": 0.7 }
-        self.BUFFER_THICKNESS = 3.0
+        self.BUFFER_THICKNESS = 1.0
         
     def defineScriptMetadata(self):
         '''
@@ -1148,7 +1148,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "bufferThickness": self.BUFFER_THICKNESS,
               "textSize": "eventType",
               "label": label,
-              "textColor": "eventType",
+              "textColor": { "red": 1.0, "green": 1.0, "blue": 1.0 },
               "dragCapability": "none",
               "scaleable": False,
               "rotatable": False,
@@ -1265,7 +1265,7 @@ class Recommender(RecommenderTemplate.Recommender):
               "bufferThickness": self.BUFFER_THICKNESS,
               "textSize": "eventType",
               "label": label,
-              "textColor": "eventType",
+              "textColor": { "red": 1.0, "green": 1.0, "blue": 1.0 },
               "dragCapability": dragCapability,
               "scaleable": editable,
               "rotatable": editable,
@@ -1300,7 +1300,28 @@ class Recommender(RecommenderTemplate.Recommender):
         forecastPolys = []
         for geometry in advancedGeometries:
             forecastPolys.append(geometry.asShapely())
-        envelope = shapely.ops.cascaded_union(forecastPolys)
+            
+        # The following is simply to print out warning messages if any
+        # null, empty, or invalid geometries are included in the forecast
+        # polygons. This is being done in order to alert the user if a bug
+        # that was seen once resurfaces, in which the cascaded union failed
+        # (prior to performCascadedUnion(), which tests for these same
+        # issues, being used).
+        nonNullPolygons = [polygon for polygon in forecastPolys if polygon is not None]
+        if len(nonNullPolygons) != len(forecastPolys):
+            sys.stderr.write("WARNING: There are " + str(len(forecastPolys) - len(nonNullPolygons)) +
+                             " null geometry(ies) in the forecast polygons; these will be ignored.\n")
+        nonEmptyPolygons = [polygon for polygon in nonNullPolygons if polygon is not polygon.is_empty]
+        if len(nonEmptyPolygons) != len(nonNullPolygons):
+            sys.stderr.write("WARNING: There are " + str(len(nonNullPolygons) - len(nonEmptyPolygons)) +
+                             " empty geometry(ies) in the forecast polygons; these will be ignored.\n")
+        validPolygons = [polygon for polygon in nonEmptyPolygons if polygon.is_valid]
+        if len(validPolygons) != len(nonEmptyPolygons):
+            sys.stderr.write("WARNING: There are " + str(len(nonEmptyPolygons) - len(validPolygons)) +
+                             " invalid geometry(ies) in the forecast polygons; these will be " +
+                             "processed using buffer(0) in an attempt to fix them before unioning.\n")
+            
+        envelope = GeometryFactory.performCascadedUnion(forecastPolys)
         swath = {
               "identifier": "swathRec_swath",
               "visibilityConstraints": "selected",
@@ -1415,7 +1436,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   "dragCapability": dragCapability,
                   "textSize": "eventType",
                   "label": self.label,
-                  "textColor": "eventType",
+                  "textColor": { "red": 1.0, "green": 1.0, "blue": 1.0 },
                   "geometry": {
                       (polySt_ms, polyEt_ms): poly
                    }
@@ -1447,7 +1468,7 @@ class Recommender(RecommenderTemplate.Recommender):
                   "dragCapability": 'none',
                   "textSize": "eventType",
                   "label": self.label,
-                  "textColor": "eventType",
+                  "textColor": { "red": 1.0, "green": 1.0, "blue": 1.0 },
                   "geometry": {
                       (polySt_ms, polyEt_ms): poly
                    }

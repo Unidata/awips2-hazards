@@ -78,9 +78,9 @@
 #                            the associated value being a list holding the names of attributes
 #                            that when changed trigger the running of that recommender. Valid
 #                            attributes are "timeRange", "geometry", "visualFeature", "status",
-#                            and "selection".  (Note that any hazard event attributes that may
-#                            be specific to a hazard type, e.g. "cta", may be made triggers as
-#                            well within a hazard type's metadata generation script.) 
+#                            "type", and "selection".  (Note that any hazard event attributes
+#                            that may be specific to a hazard type, e.g. "cta", may be made
+#                            triggers as well within a hazard type's metadata generation script.) 
 # regenMetadataUponSelection True:  Always regenerate metadata for a hazard event of this type
 #                                   whenever said event is selected by the user.
 #                            False: Only regenerate metadata (rerun the metadata generation
@@ -144,8 +144,8 @@ hostName = socket.gethostname()
 CENTRAL_PROCESSOR = False 
 if CENTRAL_PROCESSOR_HOSTNAME == hostName:
     CENTRAL_PROCESSOR = True
-    
-modRecsDict = {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status', 'selection' ]}
+
+modRecsDict = {'SwathRecommender': [ 'geometry', 'visualFeature', 'timeRange', 'status', 'type', 'selection' ]}
 if CENTRAL_PROCESSOR:
     modRecsDict = {}
     

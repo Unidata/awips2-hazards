@@ -640,6 +640,11 @@ import gov.noaa.gsd.viz.megawidgets.validators.SingleTimeDeltaStringChoiceValida
  * Feb 08, 2018   44464    Chris.Golden Fixed annoying "Are you sure you want to override high-
  *                                      resolution geometry?" messages that were appearing at
  *                                      times when they made no sense.
+ * Feb 13, 2018   20595    Chris.Golden Made setting of event type always have an origin of OTHER
+ *                                      to avoid running recommenders multiple times due to
+ *                                      triggering once by a user-based origin, and another time
+ *                                      by the knock-on other-based origin changes. Also made
+ *                                      event type changes result in visual features being cleared.
  * </pre>
  * 
  * @author bsteffen
@@ -1361,8 +1366,27 @@ public class SessionEventManager implements ISessionEventManager {
 
             /*
              * Assign the new type.
+             * 
+             * TODO: This is given an originator of OTHER at all times in order
+             * to get around running triggered recommenders (that is, those
+             * triggered by event type changes and by other knock-on effects of
+             * event type changes, like attributes being set) without combining
+             * them. The problem is that the SessionRecommenderManager cannot
+             * merge two recommender execution requests together that are from
+             * different origins, so having this be a user-triggered type
+             * change, and then the knock-on effects being other-triggered
+             * attribute changes, for example, makes the recommender manager run
+             * the recommender twice, once for the type change (of origin user),
+             * and once for the attribute changes (of origin other). This is a
+             * temporary fix to make them batch nicely. A more permanent
+             * solution is to make the recommender manager able to run a
+             * triggered recommender with multiple origins, with each origin
+             * having the things that changed. But that means some reworking of
+             * recommenders so it is not something to be done until there is
+             * time.
              */
-            event.setHazardType(phenomenon, significance, subType, originator);
+            event.setHazardType(phenomenon, significance, subType,
+                    Originator.OTHER);
 
             /*
              * Make sure the updated hazard type is a part of the visible types
@@ -1434,6 +1458,11 @@ public class SessionEventManager implements ISessionEventManager {
         }
 
         /*
+         * Remove any visual features.
+         */
+        event.setVisualFeatures(null);
+
+        /*
          * Update the time boundaries and duration choices, if any.
          */
         IHazardEventView eventView = getViewForSessionEvent(event);
@@ -1452,7 +1481,7 @@ public class SessionEventManager implements ISessionEventManager {
 
         sessionManager.finishBatchedChanges();
 
-        return (originator != Originator.OTHER);
+        return (oldEvent == null);
     }
 
     /**

@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.hazards.sessionmanager.events.EventGeometryModificati
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventIssuanceCountModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventStatusModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTimeRangeModification;
+import com.raytheon.uf.viz.hazards.sessionmanager.events.EventTypeModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.EventVisualFeaturesModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.IEventModification;
 import com.raytheon.uf.viz.hazards.sessionmanager.events.ISessionEventManager;
@@ -239,6 +240,7 @@ import gov.noaa.gsd.common.visuals.VisualFeaturesList;
  *                                      result of a recommender run as being actual
  *                                      modifications from the perspectives of the
  *                                      session events.
+ * Feb 13, 2018   20595    Chris.Golden Added "type" as a recommender execution trigger.
  * </pre>
  * 
  * @author Chris.Golden
@@ -864,6 +866,10 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
                 addTriggeredRecommenderEntryForModifiedAttribute(
                         modifiedAttributesForTriggeredRecommenders,
                         notification, HazardEventFirstClassAttribute.GEOMETRY);
+            } else if (modification instanceof EventTypeModification) {
+                addTriggeredRecommenderEntryForModifiedAttribute(
+                        modifiedAttributesForTriggeredRecommenders,
+                        notification, HazardEventFirstClassAttribute.TYPE);
             } else if (modification instanceof EventVisualFeaturesModification) {
 
                 /*
@@ -1517,7 +1523,7 @@ public class SessionRecommenderManager implements ISessionRecommenderManager {
      * 
      * @param setBatchingAction
      *            Action to be taken with regard to the batching flag.
-     * @param resetRunningTrackers
+     * @param assumeNoRunningRecommender
      *            Flag indicating whether or not to reset the running
      *            recommender tracker member variables if batching is now (or
      *            already was) toggled on or there are no pending recommender

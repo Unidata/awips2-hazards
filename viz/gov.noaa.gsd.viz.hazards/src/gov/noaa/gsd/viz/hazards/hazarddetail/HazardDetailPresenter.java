@@ -1971,7 +1971,7 @@ public class HazardDetailPresenter
      *            Original type of the hazard event before it was replaced by
      *            this one.
      * @param choiceToSelect
-     *            choiceToSelect Choice that is to be selected to begin with.
+     *            Choice that is to be selected to begin with.
      * @param includeOriginalType
      *            Flag indicating whether or not to include the original type in
      *            the list of possible types.

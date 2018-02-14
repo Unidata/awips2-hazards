@@ -166,6 +166,7 @@ import gov.noaa.gsd.common.utilities.TimeResolution;
  * Feb 06, 2018 46258     Chris.Golden  Added "revert" to recommender trigger origin, and added
  *                                      recommender result flag constant indicating whether or
  *                                      not events should be considered modified.
+ * Feb 13, 2018 20595     Chris.Golden  Added "type" as a recommender trigger.
  * </pre>
  * 
  * @author mnash
@@ -355,8 +356,8 @@ public final class HazardConstants {
      */
     public enum HazardEventFirstClassAttribute {
         TIME_RANGE(HAZARD_EVENT_TIME_RANGE), GEOMETRY(
-                HazardConstants.GEOMETRY), STATUS(
-                        HAZARD_EVENT_STATUS), VISUAL_FEATURE(
+                HazardConstants.GEOMETRY), STATUS(HAZARD_EVENT_STATUS), TYPE(
+                        HAZARD_EVENT_TYPE), VISUAL_FEATURE(
                                 HAZARD_EVENT_VISUAL_FEATURE), SELECTION(
                                         HAZARD_EVENT_SELECTION);
 

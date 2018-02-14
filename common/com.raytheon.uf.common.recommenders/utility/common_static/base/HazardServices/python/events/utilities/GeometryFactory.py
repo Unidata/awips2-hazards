@@ -31,13 +31,17 @@
 #    02/29/16        15016         kbisanz        Update createCollection(..) to
 #                                                 return None if provided an
 #                                                 empty GeometryCollection
-#    
-# 
+#    02/13/18        20595         Chris.Golden   Made performCascadedUnion() more
+#                                                 robust, and added a method that
+#                                                 makes invalid polygons valid by
+#                                                 removing self-crossing edges,
+#                                                 edges that run along one another,
+#                                                 and self-intersecting edges.
 #
 
 from shapely.geometry import *
 from shapely import wkt
-from shapely.ops import cascaded_union
+from shapely.ops import cascaded_union, polygonize_full
 
 def createLineString(coordinates):
     '''
@@ -91,10 +95,8 @@ def createMultiPolygon(polygons, context_type):
 
 def createCollection(geometries):
     '''
-    Takes any type of geometry and puts them
-    into a GeometryCollection.  This is done
-    in a backwards way as shapely doesn't allow
-    addition of arbitrary geometries to a
+    Takes any type of geometry and puts them into a GeometryCollection.  This is done
+    in a backwards way as shapely doesn't allow addition of arbitrary geometries to a
     GeometryCollection.
     '''
     # remove any empty geometries
@@ -113,8 +115,71 @@ def createCollection(geometries):
     return retval
 
 def performCascadedUnion(polygons):
-    '''    
-    @param polygons: a list of polygons
-    @return: the union of all of the polygons in the provided list
-    '''    
-    return cascaded_union(polygons) 
+    '''
+    Perform a safe cascaded union, attempting to correct null or invalid geometries,
+    and ignoring those that cannot be corrected.
+    @param polygons: A list of polygons
+    @return: The union of all of the polygons in the provided list
+    '''
+    return cascaded_union([shape if shape.is_valid else shape.buffer(0) 
+                          for shape in [polygon for polygon in polygons 
+                                        if polygon and not polygon.is_empty]])
+
+def correctPolygonIfInvalid(polygon, bufferRadius):
+    '''
+    Correct the specified polygon if it is invalid in the following ways: it is
+    self-crossing, self-intersecting, and/or that has edges running on top of one
+    another. Correction is performed by breaking it into its valid subpolygons, then
+    unioning these with any points of intersection (buffered to the specified radius)
+    as well as any edges (again buffered to the specified radius) that lay atop one
+    another in the original invalid polygon.
+    @param polygon: Polygon to be corrected, if any correction is needed.
+    @param bufferRadius: Radius to be applied when buffering any points of
+    intersection or edges that run on top of one another.
+    @return: Corrected polygon, or original polygon if no correction is needed.
+    '''
+    
+    # Do no correcting if the polygon is already valid.
+    if polygon.is_valid:
+        return polygon
+    
+    # Take the exterior of the invalid polygon, intersect it with itself,
+    # and then polygonizing the resulting multi-line strings. This in turn
+    # provides a list of valid sub-polygons and a list of "dangles", line
+    # strings that represent edges of the original invalid polygon that
+    # ran along on top of one another.
+    #
+    # Note that this part of the algorithm is taken from:
+    #
+    #     https://gis.stackexchange.com/questions/243144/bowtie-or-hourglass-polygon-validity-issue-when-self-crossing-point-is-not-defin
+    #
+    # but differs in that it does not use polygonize(), which would only
+    # yield the resulting sub-polygons, but instead needs the dangles as
+    # well.
+    exterior = polygon.exterior
+    multiLineStrings = exterior.intersection(exterior)
+    subPolygons, dangles, cuts, invalids = polygonize_full(multiLineStrings)
+    subPolygons = list(subPolygons)
+    
+    # If there is more than one sub-polygon, compare all sub-polygons'
+    # vertices with one another to find any intersection points, and for
+    # any such intersections, record them. Then turn each into a polygon
+    # using the provided buffer radius, and add it to the list of sub-
+    # polygons.
+    if len(subPolygons) > 1:
+        intersectionCoords = set()
+        subPolygonsCoords = [set(subPolygon.exterior.coords) for subPolygon in subPolygons]
+        for index1 in range(0, len(subPolygons)):
+            for index2 in range(index1 + 1, len(subPolygons)):
+                intersectionCoords = intersectionCoords.union(subPolygonsCoords[index1].intersection(subPolygonsCoords[index2]))
+        for coord in intersectionCoords:
+            subPolygons.append(Point(coord).buffer(bufferRadius, 2))
+    
+    # Turn any edges that ran on top of one another in the original
+    # invalid polygon into polygons by buffering them, and add them to
+    # the list of sub-polygons.
+    for dangle in list(dangles):
+        subPolygons.append(dangle.buffer(bufferRadius, 2))
+    
+    # Finally, take the union of all the sub-polygons.
+    return cascaded_union(subPolygons)

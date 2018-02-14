@@ -536,8 +536,6 @@ class SpatialEntityManager {
             SpatialEntity<?> entity = spatialEntitiesForIdentifiers
                     .get(identifier);
             if (entity.isUseForCentering()) {
-                System.err.println(
-                        "Using for centering: " + entity.getIdentifier());
                 geometries.add(AdvancedGeometryUtilities
                         .getJtsGeometry(entity.getGeometry()));
                 if (identifier instanceof IHazardEventEntityIdentifier) {
