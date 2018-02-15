@@ -111,8 +111,8 @@ class Recommender(RecommenderTemplate.Recommender):
         """        
         return None
 
-    def initialize(self):
-        self.probUtils = ProbUtils()
+    def initialize(self, practice):
+        self.probUtils = ProbUtils(practice=practice)
         lats = self.probUtils.lats
         ulLat = lats[0]
         lrLat = lats[-1]
@@ -145,7 +145,13 @@ class Recommender(RecommenderTemplate.Recommender):
                          str(eventSet.getAttribute("origin")) + "\n    hazard ID:  " +
                          str(eventSet.getAttribute("eventIdentifiers")) + "\n    attribute:  " +
                          str(eventSet.getAttribute("attributeIdentifiers")) + "\n")
-        self.initialize()
+
+
+        ### Make sure we are getting the latest PHIConfig info each time we run.
+        caveMode = eventSet.getAttributes().get('hazardMode','PRACTICE').upper()
+        practice = (False if caveMode == 'OPERATIONAL' else True)
+        self.initialize(practice)
+
         sessionAttributes = eventSet.getAttributes()
         if sessionAttributes:
             sessionMap = JUtil.pyDictToJavaMap(sessionAttributes)
@@ -567,6 +573,19 @@ class Recommender(RecommenderTemplate.Recommender):
                 evtGeom = currentEvent.getGeometry().asShapely()
                 manualEventGeomsList.append({'ID':currentEvent.get('objectID'), 'hazType':currentEvent.getHazardType(), 'geom':evtGeom})
                 continue
+            
+            ### Set below threshold to Proposed to hide
+            if currentEvent.get('probSeverAttrs').get('probabilities') < self.lowThreshold:
+                currentEvent.setStatus('PROPOSED')
+                sys.stderr.write('\n\t' + currentEvent.get('objectID') + ' is below threshold ['+ str(self.lowThreshold) + '].Skipping...\n')
+                sys.stderr.flush()
+                mergedEvents.add(currentEvent)
+                continue
+            else:
+                if currentEvent.getStatus() == 'PROPOSED':
+                    sys.stderr.write('\n\t' + currentEvent.get('objectID') + ' is above threshold again ['+ str(self.lowThreshold) + ']. Resurrecting...\n')
+                    sys.stderr.flush()
+                    currentEvent.setStatus('ISSUED')
             
 
             #if currentEventObjectID in recommendedObjectIDsList:

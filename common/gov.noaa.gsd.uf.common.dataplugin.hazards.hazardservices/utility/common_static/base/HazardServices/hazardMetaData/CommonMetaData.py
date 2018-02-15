@@ -2449,7 +2449,7 @@ to pose a significant threat. Please continue to heed all road closures.'''}
                         "fieldName": "convectiveObjectSpdKts",
                         "label": "Spd (kts)",
                         "sendEveryChange": False,
-                        "minValue": 1,
+                        "minValue": 0,
                         "maxValue": 102,
                         "width": 2,
                         "values": int(wspd),

@@ -26,6 +26,9 @@ import AdvancedGeometry
 from VisualFeatures import VisualFeatures
 from ConfigurationUtils import ConfigUtils
 
+import GenericRegistryObjectDataAccess
+from HazardConstants import *
+
 from socket import gethostname
 from ufpy import qpidingest
 
@@ -33,8 +36,8 @@ DEG_TO_RAD = np.pi / 180.0
 RAD_TO_DEG = 180.0 / np.pi
 
 class ProbUtils(object):
-    def __init__(self):
-        self.setUpDomain()
+    def __init__(self, practice=True):
+        self.setUpDomain(practice)
         self._previousDataLayerTime = None
 
     def handleObjectIDNaming(self,hazardEvent):
@@ -51,10 +54,22 @@ class ProbUtils(object):
                 if len(re.findall('[A-Za-z]', str(hazardObjectID))) > 0:
                     recommendedID = re.findall('\d+', str(hazardObjectID))[0]
                     hazardEvent.set('objectID', recommendedID)
+
+            #### automated but all automation taken over should have 'm' prepended
+            elif not hazardEvent.get("geometryAutomated") and not hazardEvent.get("motionAutomated") and not hazardEvent.get("probTrendAutomated"):
+                if len(re.findall('[A-Za-z]', str(hazardObjectID))) > 0:
+                    recommendedID = re.findall('\d+', str(hazardObjectID))[0]
+                else:
+                    recommendedID = str(hazardObjectID)
+                hazardEvent.set('objectID', 'M'+recommendedID)
+                
             #### Partially automated should have 'm' prepended
             else:
-                if len(re.findall('[A-Za-z]', str(hazardObjectID))) == 0:
-                    hazardEvent.set('objectID', 'm'+hazardObjectID)
+                if len(re.findall('[A-Za-z]', str(hazardObjectID))) > 0:
+                    recommendedID = re.findall('\d+', str(hazardObjectID))[0]
+                else:
+                    recommendedID = str(hazardObjectID)
+                hazardEvent.set('objectID', 'm'+recommendedID)
         
         return hazardEvent.get('objectID')
     
@@ -172,8 +187,8 @@ class ProbUtils(object):
         firstIdx = 0
         if event.getStatus().upper() == 'ISSUED': 
             firstIdx =  next(i for i,j in enumerate(forecastTimes) if j[0]/1000 >= int(currentTime.strftime('%s')))
-        #probTrend = self.getInterpolatedProbTrendColors(event)
-        probTrend = self.getGraphProbs(event)
+        probTrend = self.getInterpolatedProbTrendColors(event)
+        #probTrend = self.getGraphProbs(event)
         
         probGridSwath = self.makeGrid(forecastPolys[firstIdx:], probTrend[firstIdx:], self.lons, self.lats, 
                                  self.xMin1, self.xMax1, self.yMax1, self.yMin1)
@@ -189,8 +204,8 @@ class ProbUtils(object):
         if not forecastPolys:
            return
         
-        #probTrend = self.getInterpolatedProbTrendColors(event)
-        probTrend = self.getGraphProbs(event)
+        probTrend = self.getInterpolatedProbTrendColors(event)
+        #probTrend = self.getGraphProbs(event)
         probGridSwath = self.makeGrid(forecastPolys, probTrend, self.lons, self.lats, 
                                  self.xMin1, self.xMax1, self.yMax1, self.yMin1)
         
@@ -264,6 +279,7 @@ class ProbUtils(object):
         
         swathPolygon: Array of swath polygons in the form of advanced geometries.
         '''        
+        
         probability = np.zeros((len(y1), len(x1)))
 
         nx1, ny1 = y1.shape[0], x1.shape[0]
@@ -1331,14 +1347,43 @@ class ProbUtils(object):
         return colors
 
     def getOutputDir(self):
+#        objectDicts = GenericRegistryObjectDataAccess.queryObjects([("uniqueID", "phiConfig")], practice)
+#        OUTPUTDIR = objectDicts.get(OUTPUTDIRKEY, DEFAULTPHIOUTPUTDIR)
         return self.OUTPUTDIR
+    
+#    def getThreshold(self):
+#        objectDicts = GenericRegistryObjectDataAccess.queryObjects([("uniqueID", "phiConfig")], practice)
+#        lowThreshold = objectDicts.get(LOWTHRESHKEY, DEFAULTLOWTHRESHOLD)
+#        return lowThreshold
+#    
+#    def getBuffer(self):
+#        objectDicts = GenericRegistryObjectDataAccess.queryObjects([("uniqueID", "phiConfig")], practice)
+#        buff = objectDicts.get(DOMAINBUFFERKEY, DEFAULTDOMAINBUFFER)
+#        return buff
 
-    def setUpDomain(self):                            
-        self.setUpDomainValues()
-        self.ulLat = self.initial_ulLat
-        self.ulLon = self.initial_ulLon
-        self.lrLat = self.initial_lrLat
-        self.lrLon = self.initial_lrLon
+    def setUpDomain(self, practice):                            
+        returnList = GenericRegistryObjectDataAccess.queryObjects([("uniqueID", "phiConfig"),("objectType", "phiConfigData")], practice)
+        
+        if len(returnList) == 1:
+            objectDicts = returnList[0]
+        elif len(returnList) == 0:
+            objectDicts = {}
+        else:
+            sts.stderr.write("!!!! PU - GenericRegistryObjectDataAccess.queryObject returned multiple dictionaries. Reverting to default values")
+            objectDicts = {}
+        print '\n\n################ PU - QUERY  #############' 
+        print objectDicts
+        print type(objectDicts)
+        sys.stdout.flush()
+
+        self.OUTPUTDIR = objectDicts.get(OUTPUTDIRKEY, DEFAULTPHIOUTPUTDIR)
+        self.buff = objectDicts.get(DOMAINBUFFERKEY, DEFAULTDOMAINBUFFER)
+        self.lowThreshold = objectDicts.get(LOWTHRESHKEY, DEFAULTLOWTHRESHOLD)
+        self.ulLon = objectDicts.get(DOMAINULLONKEY, DEFAULTDOMAINULLON)
+        self.ulLat = objectDicts.get(DOMAINULLATKEY, DEFAULTDOMAINULLAT)
+        self.lrLon = objectDicts.get(DOMAINLRLONKEY, DEFAULTDOMAINLRLON)
+        self.lrLat = objectDicts.get(DOMAINLRLATKEY, DEFAULTDOMAINLRLAT)
+        
         self.xMin1 = self.ulLon - self.buff   
         self.xMax1 = self.lrLon + self.buff
         self.yMax1 = self.ulLat + self.buff
@@ -1349,18 +1394,6 @@ class ProbUtils(object):
         sys.stdout.flush()
 
 
-    def setUpDomainValues(self):
-        cu = ConfigUtils()
-        domainDict = cu.getConfigDict()
-        self.OUTPUTDIR = domainDict.get(cu.outputDirKey)
-        self.buff = domainDict.get(cu.domainBufferKey)
-        self.initial_ulLon = domainDict.get(cu.domainULLonKey)
-        self.initial_ulLat = domainDict.get(cu.domainULLatKey)
-        self.initial_lrLon = domainDict.get(cu.domainLRLonKey)
-        self.initial_lrLat = domainDict.get(cu.domainLRLatKey)
-        self.lowThreshold = domainDict.get(cu.lowThreshKey)
-        sys.stdout.flush()
-        
     def getCaveUser(self, userName, workStation):
         # To turn off Ownership, return None
         return None
@@ -1370,5 +1403,4 @@ class ProbUtils(object):
 #                 workStation += ".hwt.nssl"
 #             return userName + ':' + workStation
 #         return None
-
 
